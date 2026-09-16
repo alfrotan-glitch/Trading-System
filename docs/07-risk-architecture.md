@@ -21,22 +21,26 @@ risk:
   version: 1
   approved: false  # must be true for LIVE
   per_trade:
-    max_quantity: 1.0  # lots or units, per instrument
-    max_notional: 10000  # USD
+    max_quantity: 1.0  # lots
+    min_quantity: 0.01  # lots (instrument.lot_size)
+    quantity_step: 0.01  # lots — enforced, veto QUANTITY_STEP_VIOLATION if not multiple
+    max_notional: 50000  # USD — enforced as lots × contract_size(100 for XAUUSD) × price; veto EXCEEDS_NOTIONAL
     max_risk_per_trade_bps: 50  # 0.5% of equity
-    stop_loss_required: true
+    stop_loss_required: false
   portfolio:
-    max_exposure: 2.0  # lots net
-    max_leverage: 5
-    max_correlated_exposure: 1.5  # e.g. XAUUSD + XAUEUR if added
+    max_exposure_lots: 2.0  # lots net abs(|qty + delta|) — veto EXCEEDS_EXPOSURE
+    max_exposure_notional: null  # optional USD cap
+    max_leverage: 5  # (sum|qty|×contract×price)/equity
+    max_correlated_exposure: 1.5
     max_open_orders: 5
   account:
-    daily_loss_limit: 200  # USD or bps
-    max_drawdown: 500
-    volatility_target: 0.15  # annualized, for vol-aware sizing
+    daily_loss_limit: 200  # USD loss (daily_pnl <= -limit vetoes)
+    max_drawdown: 500  # USD peak-equ
+    volatility_target: null  # annualized, for vol-aware resize (factor 0.25-1.0)
   kill_switch:
     enabled: true
     triggers: [daily_loss, max_drawdown, drift, consecutive_losses:5]
+    persist: SQLite risk_state.killed (survives restart, needs qts risk reset --confirm)
 ```
 
 Limits are stored with `risk_version` in `ValidationReport` and `Order` lineage.
@@ -47,8 +51,9 @@ Limits are stored with `risk_version` in `ValidationReport` and `Order` lineage.
 
 | Check | Veto Reason if Fail |
 |-------|---------------------|
-| Quantity >0, notional within max | `EXCEEDS_MAX_QUANTITY` |
-| Notional ≤ max_notional | `EXCEEDS_NOTIONAL` |
+| Quantity ≥ min_quantity, multiple of lot_size/quantity_step | `MIN_QUANTITY_VIOLATION` / `QUANTITY_STEP_VIOLATION` |
+| Quantity ≤ max_quantity | `EXCEEDS_MAX_QUANTITY` |
+| Notional = qty×contract_size×est_price ≤ max_notional | `EXCEEDS_NOTIONAL` |
 | Risk per trade ≤ limit (stop distance × qty) | `EXCEEDS_RISK_PER_TRADE` |
 | Stop-loss present if required | `MISSING_STOP` |
 | Leverage after trade ≤ max | `EXCEEDS_LEVERAGE` |
@@ -61,7 +66,7 @@ Limits are stored with `risk_version` in `ValidationReport` and `Order` lineage.
 | Kill-switch not active | `KILL_SWITCH_ACTIVE` |
 | Instrument suspended | `INSTRUMENT_SUSPENDED` |
 
-Returns `RiskDecision {allowed: bool, resized_quantity?, veto_reason?}`.
+Returns `RiskDecision {allowed: bool, resized_quantity?, veto_reason?: RiskVetoReason, reason_detail}` + emits `NO_TRADE` on veto/kill.
 
 ### Portfolio (periodic)
 
@@ -75,10 +80,11 @@ Returns `RiskDecision {allowed: bool, resized_quantity?, veto_reason?}`.
 
 ## 7.4 Kill Switch
 
-- **Software:** `RiskEngine.kill_switch(reason)` → sets `killed=True`, emits `KillSwitchEvent`, `ExecutionEngine` cancels all pending, optionally market-closes positions (configurable `flatten_on_kill`).
+- **Software:** `RiskEngine.kill_switch(reason)` → sets `killed=True` in SQLite `risk_state`, emits `KillSwitchEvent`, `ExecutionEngine.handle_kill` cancels all pending and venue orders.
 - **Manual:** `qts risk kill --reason "manual"` or API `POST /risk/kill`.
 - **Broker:** MT5 terminal manual close still reconciled; Risk detects drift and holds SUSPENDED.
-- **Persistence:** `killed` flag in SQLite survives restart; requires explicit `qts risk reset --confirm` + audit.
+- **Persistence:** `killed` flag in SQLite `data/sqlite/qts.db` survives process restart; new `RiskEngine(db_path=...)` loads it; requires explicit `reset_kill()` + audit. `pre_trade` always checks `killed` first → `KILL_SWITCH_ACTIVE`.
+- **Post-trade:** `post_trade(fill, ctx)` checks `daily_pnl <= -daily_loss_limit` or `drawdown >= max_drawdown` then kills.
 
 ## 7.5 Volatility-Aware Sizing
 

@@ -59,9 +59,18 @@ class ValidationConfig(BaseModel):
     slippage_stress_bps: list[float] = Field(default_factory=lambda: [0, 2, 5, 10])  # type: ignore[arg-type]
 
 
+class ShipperConfig(BaseModel):
+    enabled: bool = False
+    type: str = "local"  # local | s3
+    bucket: str | None = None
+    prefix: str = "qts/audit/"
+    local_root: Path = Path("data/shipped")
+    region: str | None = None
+
 class ObservabilityConfig(BaseModel):
     audit_jsonl: Path = Path("logs/audit.jsonl")
     http_enabled: bool = False
+    shipper: ShipperConfig = ShipperConfig()
 
 
 class Settings(BaseModel):
@@ -72,6 +81,7 @@ class Settings(BaseModel):
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     confirm_live: bool = False
+    strict_quality: bool = True  # fail closed on data quality fail
 
     def assert_live_allowed(self) -> None:
         if self.execution.mode == "live":

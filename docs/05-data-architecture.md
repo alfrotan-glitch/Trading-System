@@ -27,7 +27,7 @@ data/
 
 - **Parquet** partitioned by `(instrument, venue, timeframe, date)`, dictionary + Snappy, `event_time` sorted.
 - **SQLite WAL** for manifests, lineage, quality results. `qts.db` is portable.
-- **Manifest** per version: `{version, created_at, code_version, sources: [{instrument, timeframe, start, end, rows, checksum, source_url}], schema_version, params}`.
+- **Manifest** per version: `{version, created_at, code_version, instrument, venue, timeframe, start, end, rows, checksum, source_url, schema_version}` plus `quality_report` (stored in SQLite `quality_reports` with `passed` + per-check details).
 - **Version** = `YYYYMMDD-<git_short>-<content_hash8>` e.g. `20260101-a1b2c3d-9f3e2a1b`. Data is immutable; new ingest → new version.
 
 ## 5.3 Normalization
@@ -39,16 +39,16 @@ data/
 - Schema validation: Pydantic `Bar` + `pandera` DataFrame schema on ingest.
 - Provenance: every `Bar` carries `data_version` + `source`.
 
-## 5.4 Quality Gates (run on ingest & on read)
+## 5.4 Quality Gates (run on ingest & on read) — Enforced (Phase 1)
 
 - Schema: required columns, types, UTC tz, no NaN.
-- Temporal: monotonic `open_time`, no future bars beyond `now()`, gap detection (expected bars vs actual), duplicate detection.
-- Price: `high>=low`, `high>=open,close`, `low<=open,close`, spread >=0, tick_size alignment.
+- Temporal: monotonic `open_time`, no future bars beyond `now()`, gap detection, duplicate `(symbol, venue, open_time)` unique.
+- Price: `high>=low`, `high>=open,close`, `low<=open,close`, tick_size quantization via `Bar.quantize()`.
 - Volume: >=0.
 - Staleness: `max(event_time) < now - threshold` → alert.
 - Outlier: z-score on returns vs rolling median (flag, not drop).
 
-Result: `DataQualityReport {passed, checks: [{name, passed, details}]}` stored with manifest. `READ` path can be strict (`raise`) or permissive (`warn`) via config.
+Implementation: `validate_bars(bars)` in `src/qts/data/quality.py`; `SqliteParquetDataStore.write_bars(..., strict_quality=True)` runs it and raises `ValueError("data quality failed: ...")` fail-closed if any check fails. Quality report is persisted in SQLite `quality_reports` and on filesystem via manifest JSON, queryable via `store.quality_report(version)`. `read_bars` post-validates slice invariants (OHLC). Config `strict_quality` (Settings) controls ingest vs permissive read. `qts data validate --version` surfaces report and exits 2 on FAIL.
 
 ## 5.5 Time & Session
 

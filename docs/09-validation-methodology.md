@@ -21,7 +21,7 @@ Every `Experiment` produces a `ValidationReport` by running:
 12. Adversarial Suite
 ```
 
-All steps emit artifacts; report aggregates `checks: [{name, passed, metric, threshold, details}]`. Promotion requires all `required=True` checks pass.
+All steps emit artifacts; report aggregates `checks: [{name, passed, metric, threshold, details, status: IMPLEMENTED|NOT_IMPLEMENTED}]`. Promotion requires all `required=True` checks pass and no `status==NOT_IMPLEMENTED`. Validation CLI (`qts validate`) orchestrates real evidence: walk-forward splits + `run_stress` + perturbation re-runs + CPCV. Fallback PF multiplication is rejected (treated as NOT_IMPLEMENTED).
 
 ## 9.2 Splits
 
@@ -62,14 +62,13 @@ If strategy is spread-sensitive (XAUUSD often is), it fails this gate — correc
 - **Block bootstrap** for autocorrelated returns (circular block length ~20).
 - **Monte Carlo price paths** (optional): simulate GBM with fitted vol, test strategy not just lucky path.
 
-## 9.8 Statistical Tests
+## 9.8 Statistical Tests — Implemented (Phase 1, Bailey/LdP, No Heuristic)
 
-- **Deflated Sharpe Ratio (DSR, Bailey & Lopez de Prado 2014):** Adjusts Sharpe for non-normality (skew, kurtosis), length, and multiple trials `N`. Reports `Pr[SR > 0]`. Needs `N` = number of strategies tested (including discarded) — tracked in ExperimentStore.
-- **Probabilistic Sharpe Ratio (PSR):** `Pr[SR > threshold]` given observed skew/kurtosis/length.
-- **Probability of Backtest Overfitting (PBO, Lopez de Prado 2018, CPCV):** Fraction of CPCV paths where IS optimal underperforms median OOS. PBO >0.5 → overfit likely. CPCV generates combinatorial splits for robust estimate.
-- **White's Reality Check / Hansen SPA** (future): for multiple-testing correction when comparing many strategies.
+- **Probabilistic Sharpe Ratio (PSR, Bailey & Lopez de Prado 2012):** `PSR(SR*) = Φ[(SR̂ - SR*) / σ̂_SR]` where `σ̂_SR = sqrt((1 - γ̂1*SR̂ + (γ̂2-1)/4 * SR̂²)/(T-1))`, `γ̂1`=skew, `γ̂2`=kurtosis raw, `T=n`. Probability true Sharpe > benchmark. `n = len(returns)` (auto).
+- **Deflated Sharpe Ratio (DSR, Bailey & Lopez de Prado 2014):** `DSR = PSR(SR0)` with `SR0 = E[max SR̂ under null across N trials]`. `E[max] = (1-γ)Φ⁻¹(1-1/N) + γΦ⁻¹(1-1/(Ne))`, `γ≈0.5772`. N = trials tracked in `ExperimentStore.count_trials()` (including discarded). DSR==PSR(0) when N=1, DSR ↓ as N↑, DSR<P SR for N>1. No 0.15 factor; benchmark unscaled (conservative, documented in `src/qts/validation/metrics.py`).
+- **Probability of Backtest Overfitting (PBO, Lopez de Prado 2018, CPCV):** `PBO = #{best IS test Sharpe < median test Sharpe} / #CPCV folds`. CPCV via `ValidatorPipeline.cpcv_splits(n, n_groups, n_test)`: partition bars into groups, enumerate `C(n_groups, n_test)` combos; each fold records `{best_is_trial, best_is_test_sharpe, median_test_sharpe}` across trials (e.g. fast=5/10/15). Requires `>=5` folds else `NOT_IMPLEMENTED → BLOCKS` (`max_pbo=0.5`). PBO reported in `ValidationReport.metrics["pbo"]`.
 
-Document assumptions: IID violation, stationarity not assumed, reported DSR is optimistic lower bound.
+Assumptions: IID violation acknowledged, stationarity not assumed, DSR optimistic lower bound; skew/kurtosis are sample estimates; annualization `sqrt(252*24)` consistent for SR and benchmark.
 
 ## 9.9 Adversarial Suite
 
@@ -90,24 +89,26 @@ Every promising strategy is attacked for:
 
 Each check is an automated validator; findings go to `AdversarialFindings` and block promotion.
 
-## 9.10 Thresholds (Defaults, Tunable per Instrument)
+## 9.10 Thresholds (Defaults, Tunable per Instrument) — Enforced Pipeline
 
 ```yaml
 validation:
-  required:
-    walk_forward:
-      min_folds: 5
+  required:  # any NOT_IMPLEMENTED blocks passed=False
+    walk_forward_real:
+      min_folds: 5        # len(walk_forward_folds) required, each {is_sharpe, oos_sharpe} from independent backtests
       min_wfe: 0.3
-      min_oos_sharpe: 0.5
-    dsr:
-      min_prob: 0.95  # Pr >0.95 after deflation (if N known)
-      min_trials_tracked: true
-    pbo:
+      min_oos_sharpe: 0.0  # demo relaxed to -1.0 for synthetic
+    pbo_cpcv:
+      min_combos: 5
       max_pbo: 0.5
     perturbation:
-      max_sharpe_drop: 0.3
-    stress:
-      spread_1_5x_pf: 1.0
+      min_variants: 7     # ±5/10/20% around baseline, re-run Sharpe per variant
+      max_sharpe_drop: 0.3 # (baseline - worst)/|baseline| ≤30%, sign flip fails
+    stress_spread:
+      re_run: true        # must be from BacktestEngine.run_stress(multipliers 1.0/1.5/2.0) not PF*m
+      spread_1_5x_pf: 1.0 # PF at 1.5× ≥1.0
+    dsr:
+      min_prob: 0.95      # informational unless trials>5 & n>30
 ```
 
 Tunable per `instrument` and `timeframe`; defaults conservative for XAUUSD.

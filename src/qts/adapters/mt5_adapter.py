@@ -50,11 +50,36 @@ class MT5Adapter(BrokerAdapter):
     def _map_symbol(self, symbol: str) -> str:
         return self.symbol_map.get(symbol, symbol)
 
+    @staticmethod
+    def lots_to_mt5_volume(quantity_lots: float | str, lot_size: float = 0.01) -> float:
+        """XAUUSD: quantity is lots (1 lot = 100 oz). MT5 volume is lots.
+        Enforces step/min: rounds to nearest lot_size, validates.
+        """
+        from decimal import Decimal, ROUND_HALF_UP
+
+        q = Decimal(str(quantity_lots))
+        step = Decimal(str(lot_size))
+        # quantize to step
+        steps = (q / step).to_integral_value(rounding=ROUND_HALF_UP)
+        quantized = steps * step
+        if quantized <= 0:
+            raise ValueError(f"quantity {q} below lot_size {step}")
+        return float(quantized)
+
     def submit(self, intent: OrderIntent) -> Order:  # noqa: F841
         self._require_mt5()
-        # Simplified — real impl maps OrderIntent to mt5.order_send dict
-        # We never assume fill; caller must reconcile
-        raise NotImplementedError("MT5 live submit requires terminal + EA bridge — use Paper in backtest")
+        # Map quantity (lots) -> MT5 volume with lot_size quantization
+        # For XAUUSD, contract_size=100, lot_size=0.01 => 0.01 lot = 1 oz
+        # MT5 expects volume in lots; we enforce step
+        vol = self.lots_to_mt5_volume(float(intent.quantity), float(intent.instrument.lot_size))
+        # Build MT5 request dict (not sent in Phase0 — requires terminal)
+        # request = {
+        #   "symbol": self._map_symbol(intent.instrument.symbol),
+        #   "volume": vol,
+        #   "type": "ORDER_TYPE_BUY" if intent.side=="BUY" else ...
+        # }
+        # We never assume fill; caller must reconcile via positions_get/orders_get
+        raise NotImplementedError(f"MT5 live submit requires terminal + EA bridge (would send volume={vol}) — use Paper in backtest")
 
     def positions(self) -> list[Position]:
         mt5 = self._require_mt5()

@@ -11,7 +11,7 @@ Explicitly stating what we assume, what we don't know, and what experiments will
 | A3 | Deterministic Python event loop suffices for 1m/1H XAUUSD (no μs need) | High | Profile event loop at 1m tick rate; if >10ms/event, Rust justified |
 | A4 | Walk-forward 12m/3m captures regime change for XAUUSD | Medium | Compare WFE vs 6m/1m, 24m/6m; CPCV PBO |
 | A5 | Purged/embargo horizon = label horizon prevents leakage for our labels | High | Leakage injection tests |
-| A6 | DSR assumes we track N trials correctly via ExperimentStore | Medium | Audit N counting; if N undercounted, DSR optimistic |
+| A6 | DSR assumes we track N trials correctly via ExperimentStore (`count_trials` + DSR=PSR(E[max]), N=1→PSR) | Medium | Audit N counting (now includes CPCV×trials); Adversarial test `test_dsr_documents_trials`; if N undercounted, DSR optimistic → inflate N, require higher Sharpe |
 | A7 | Single SQLite+Parquet suffices for years of 1m XAUUSD | High | Load test: 5 years × 1m = ~2.6M bars, <100MB Parquet |
 | A8 | Kill-switch + reconciler prevents runaway orders | High | Failure-injection tests |
 | A9 | Regime classification may not improve returns; treat as hypothesis | High | Regime-conditioned WFA uplift test |
@@ -23,7 +23,7 @@ Explicitly stating what we assume, what we don't know, and what experiments will
 |---|---------|------------|
 | U1 | What is live XAUUSD spread distribution on target broker (session/time dependent)? | Live tick capture 2 weeks, histogram per session |
 | U2 | What slippage/latency does MT5 bridge impose (py vs ZMQ vs EA)? | Benchmark submit→ack→fill latency; SHADOW delta |
-| U3 | What `spread_bps` + `slippage_bps` makes SMA breakout unprofitable? | Cost-stress sweep in validation |
+| U3 | What `spread_bps` + `slippage_bps` makes SMA breakout unprofitable? | Cost-stress sweep in validation via `run_stress` multipliers 1.0/1.5/2.0 (re-run, not multiplication) |
 | U4 | What walk-forward config maximizes OOS relevance for XAUUSD? | Grid over train/test/step, compare PBO |
 | U5 | Does vol-aware sizing improve risk-adjusted returns for XAUUSD? | Backtest with/without, WFA OOS Sharpe |
 | U6 | Does any regime detector provide conditional edge? | Regime-conditioned WFA for 3 detectors |
@@ -39,6 +39,18 @@ Explicitly stating what we assume, what we don't know, and what experiments will
 - We do **not** assume regime classification helps.
 - We do **not** assume AI generates valid hypotheses.
 - We do **not** assume MT5 fills at requested price.
+
+## 15.4 What Phase 1 Closed (Evidence)
+
+| Assumption/Unknown | Status after Phase 1 |
+|--------------------|---------------------|
+| Leakage via same-bar close | **Closed** — next-bar proven, `test_next_bar_execution_no_lookahead` PASS, exec_bar +1ms, hash `next_bar_open` |
+| Fake validation placeholders | **Closed** — `NOT_IMPLEMENTED → BLOCKS`, real CPCV/PBO, PSR/DSR no heuristic, perturbation/stress re-runs |
+| Quantity semantics | **Closed** — lots×contract×price, micro vs std test, `MT5Adapter.lots_to_mt5_volume` quantized |
+| Kill/idempotency durability | **Closed** — SQLite persisted kill, placeholder survives restart |
+| NO_TRADE when uncertain | **Closed** — `NoTradeReason` + `EventType.NO_TRADE` emitted on every veto/kill/drift, auditable |
+| Data integrity | **Closed** — `validate_bars` on write + `quality_reports` table, strict_quality fail-closed |
+| Audit durability | **Closed** — `Shipper` local+S3, content-hash key, CLI `qts audit ship` |
 
 ## 15.4 Decisions Deferred
 

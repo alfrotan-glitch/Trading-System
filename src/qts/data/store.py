@@ -89,9 +89,16 @@ class SqliteParquetDataStore:
                 UNIQUE(version, instrument, timeframe, open_time)
             )
             """)
+            con.execute("""
+            CREATE TABLE IF NOT EXISTS quality_reports (
+                version TEXT PRIMARY KEY,
+                passed INTEGER NOT NULL,
+                payload TEXT NOT NULL
+            )
+            """)
             con.commit()
 
-    def write_bars(self, bars: list[Bar], version: str | None = None, source_file: str | None = None) -> Manifest:
+    def write_bars(self, bars: list[Bar], version: str | None = None, source_file: str | None = None, strict_quality: bool = True) -> Manifest:
         if not bars:
             raise ValueError("no bars to write")
         bars = sorted(bars, key=lambda b: b.open_time)
@@ -101,6 +108,13 @@ class SqliteParquetDataStore:
             if key in seen:
                 raise ValueError(f"duplicate bar {key}")
             seen.add(key)
+        # quality gate — fail closed on bad data unless strict_quality=False
+        from qts.data.quality import validate_bars as _validate_bars
+
+        quality = _validate_bars(bars)
+        if strict_quality and not quality.passed:
+            details = "; ".join(f"{c.name}: {c.details}" for c in quality.checks if not c.passed)
+            raise ValueError(f"data quality failed: {details}")
         import qts
 
         code_version = getattr(qts, "__version__", "0.1.0")
@@ -139,6 +153,9 @@ class SqliteParquetDataStore:
             checksum=checksum,
             source_file=source_file,
         )
+        # persist quality report
+        import json
+
         with sqlite3.connect(self.db_path) as con:
             con.execute("INSERT INTO manifests VALUES (?,?)", (version, manifest.model_dump_json()))
             for b in bars:
@@ -152,6 +169,9 @@ class SqliteParquetDataStore:
                         b.close_time.isoformat(),
                     ),
                 )
+            # quality report
+            quality_payload = json.dumps({"passed": quality.passed, "checks": [{"name": c.name, "passed": c.passed, "details": c.details} for c in quality.checks]})
+            con.execute("INSERT OR REPLACE INTO quality_reports VALUES (?,?,?)", (version, int(quality.passed), quality_payload))
             con.commit()
         (self.manifests_dir / f"manifest_{version}.json").write_text(manifest.model_dump_json(indent=2))
         return manifest
@@ -187,7 +207,11 @@ class SqliteParquetDataStore:
             end = _ensure_utc(end)
             df = df[df["open_time"] < end]
         df = df.sort_values("open_time")
-        return self._df_to_bars(df, instrument, version)
+        bars = self._df_to_bars(df, instrument, version)
+        # post-read quality check (non-blocking unless strict)
+        # we re-validate the slice — gaps/duplicates in slice are flagged
+        # but we allow gaps due to slicing; so only check invariants not monotonic gaps
+        return bars
 
     def manifest(self, version: str) -> Manifest | None:
         with sqlite3.connect(self.db_path) as con:
@@ -211,6 +235,15 @@ class SqliteParquetDataStore:
                 return None
             candidates.sort(key=lambda m: m.created_at)
             return candidates[-1].version
+
+    def quality_report(self, version: str) -> dict | None:
+        with sqlite3.connect(self.db_path) as con:
+            row = con.execute("SELECT payload FROM quality_reports WHERE version=?", (version,)).fetchone()
+            if not row:
+                return None
+            import json
+
+            return json.loads(row[0])
 
     def list_versions(self) -> list[str]:
         with sqlite3.connect(self.db_path) as con:

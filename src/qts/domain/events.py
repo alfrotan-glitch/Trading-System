@@ -29,6 +29,7 @@ class EventType(StrEnum):
     KILL_SWITCH = "KillSwitchEvent"
     LIFECYCLE = "LifecycleTransition"
     DATA_QUALITY = "DataQualityAlert"
+    NO_TRADE = "NoTrade"
 
 
 class DomainEvent(BaseModel):

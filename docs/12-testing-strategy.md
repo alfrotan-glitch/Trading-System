@@ -33,6 +33,24 @@ Run: `pytest tests/unit -q`
 
 Run: `pytest tests/integration -q --run-integration` (needs data fixtures).
 
+
+
+## 12.4 Adversarial Tests (Phase 1 Audit `tests/adversarial/test_phase1_audit.py` — 20 checks)
+
+Implemented to make system fail if leakage or fake validation exists:
+
+- `test_next_bar_execution_no_lookahead`: hold_long queued at close N → fill at open N+1 (`bar_idx==1`, price==next open), not same-bar. Prevents zigzag leakage.
+- `test_walk_forward_is_real_not_sliced`, `test_pbo_requires_real_computation`: missing `walk_forward_folds` / `cpcv_folds<5` → `NOT_IMPLEMENTED` blocks (`passed=False`).
+- `test_psr_dsr_reference_values`, `test_dsr_documents_trials`: `PSR(1,100)∈(0.5,1)`, `DSR<PSR` for N>1, `DSR==PSR` when N=1, DSR ↓ with N when SR<benchmark, ↑ when SR>benchmark.
+- `test_perturbation_requires_real_runs`, `test_stress_must_be_real_not_multiplied`: real re-runs required (fast ±5/10/20%, `run_stress` spreads 1.0/1.5/2.0 distinct), `PF×0.7` rejected, missing → `NOT_IMPLEMENTED`.
+- `test_pnl_*`: long→flat, partial 0.4, flip long→short, fees/spread (MatchingEngine 10bps/5bps → price>close, fee 0.2), validated via `Portfolio` lots×contract invariants.
+- `test_kill_switch_survives_restart_and_blocks`, `test_risk_uses_current_equity_not_stale`: SQLite persisted kill, new engine still `KILL_SWITCH_ACTIVE`, notional = `lots×contract×price` (XAUUSD 0.1 lot 100×2000=20000 veto).
+- `test_idempotency_no_double_fill`: second submit `fills2==[]`, survives restart via persistent placeholder `REJECTED/duplicate-persistent`.
+- `test_reconciliation_suspends_on_drift`: `QUANTITY_MISMATCH` → `requires_suspend=True`, `UNKNOWN_POSITION` likewise.
+- `test_quantity_lots_to_notional`, `test_manifest_reproducibility`, `test_bar_interval_and_timezone`, `test_no_trade_on_uncertainty`: micro vs std contract 1 vs 100, checksum `sha256:`, tz/interval invariants, veto → `NO_TRADE` (empty fills, `EventType.NO_TRADE` emitted).
+
+Run: `pytest tests/adversarial -v` (20 passed), included in `pytest -q` (64 passed).
+
 ## 12.4 Property-Based (`tests/property/` via Hypothesis)
 
 - **Prices:** random bars always satisfy `high>=low`, conversion round-trip `Bar→DataFrame→Bar`.

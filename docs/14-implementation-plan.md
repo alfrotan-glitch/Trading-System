@@ -2,35 +2,46 @@
 
 **Approach:** Foundations first — data integrity → research correctness → validation → execution → risk → observability → AI → UX. No dashboard before decisions are trustworthy.
 
-## Phase 0 — Foundation (Week 1) ✅ This Repo
+## Phase 0 — Foundation (Week 1) ✅ Done
 
 - [x] ADRs, architecture, domain model, lifecycles, data/execution/risk/validation/security/observability/testing docs
-- [ ] Repo scaffolding: `pyproject.toml`, `src/qts`, `tests`, `configs`, CI
-- [ ] Domain value objects (Pydantic, Decimal, UTC)
-- [ ] DataStore (Parquet+SQLite, manifests, quality gates, synthetic)
-- [ ] Deterministic event loop + Bar/Tick bus
-- [ ] Strategy interface + SMA breakout example
-- [ ] RiskEngine (per-trade, exposure, daily loss, kill-switch)
-- [ ] ExecutionEngine + MatchingEngine + Paper/Replay adapters
-- [ ] Validation pipeline (splits, walk-forward, stress, perturbation, Monte Carlo, DSR/PBO)
-- [ ] Experiment memory (SQLite lineage)
-- [ ] Audit log (JSONL+SQLite)
-- [ ] Lifecycle state machine + gates
-- [ ] Unit + determinism tests, CI, ruff/mypy
+- [x] Repo scaffolding: `pyproject.toml`, `src/qts`, `tests`, `configs`, CI
+- [x] Domain value objects (Pydantic, Decimal, UTC, Instrument lot_size/contract_size)
+- [x] DataStore (Parquet+SQLite, manifests, quality_reports, synthetic) — quality gate enforced `write_bars(strict_quality=True)`, staleness/duplicate/tz checks
+- [x] Deterministic event loop + Bar/Tick bus + next-bar `exec_bar` (open_time+1ms)
+- [x] Strategy interface + SMA breakout + hold_long test harness
+- [x] RiskEngine (per-trade lots×contract×price, step/min lots, exposure, daily loss, drawdown, kill-switch persisted SQLite)
+- [x] ExecutionEngine + MatchingEngine + Paper/Replay/MT5Adapter (lots_to_mt5_volume, idempotency SQLite + placeholder, reconcile requires_suspend, NO_TRADE explicit)
+- [x] Validation pipeline (real walk-forward splits, CPCV+PBO, perturbation ±10/20% re-run, stress run_stress multipliers, PSR/DSR Bailey, NOT_IMPLEMENTED blocks)
+- [x] Experiment memory (SQLite lineage, Hypothesis/Experiment) + ResearchLoop (NullAgent → validate → AdversarialAgent)
+- [x] Audit log (JSONL+SQLite, redaction) + Shipper (Local+S3 bucket/prefix/content-hash)
+- [x] Lifecycle state machine + gates + NO_TRADE sentinel (NoTradeReason)
+- [x] Unit + determinism + 20 adversarial tests (64 passed), CI, ruff/mypy
 
-**Exit:** `qts backtest --strategy sma_breakout --data-version <ver>` deterministic, risk vetoes work, audit log complete, tests green.
+**Exit:** `qts backtest --strategy sma_breakout --data-version <ver>` deterministic (hash stable), risk vetoes lots-aware, reconciliation suspends on drift, validation fails closed on placeholder, audit durable.
 
-## Phase 1 — Research Hardening (Week 2-3)
+## Phase 0.1 — Fidelity Patch (Phase 1 Audit Fix) ✅ This PR (907d8dc)
 
-- [ ] Feature Store (`fit`/`transform`, leakage guards, IC)
-- [ ] Purged/CPCV splits, embargo
-- [ ] Adversarial suite (leakage, cost sensitivity, regime)
-- [ ] MT5 history ingest (CSV + MT5 API), session metadata
-- [ ] Paper trading on live MT5 ticks (MT5DataFeed + PaperAdapter)
-- [ ] Reconciler (drift detection, SUSPEND)
-- [ ] Property tests, failure injection
+- next-bar proven via `test_next_bar_execution_no_lookahead` (hold_long bar_idx 1, price==next open), zigzag PF inf no longer mis-flagged
+- Portfolio PnL weighted avg / partial 0.4 / flip + contract×lots formula + mark_to_market
+- Idempotency persistent placeholder survives restart
+- Kill persists across RiskEngine restarts
+- Docs updated for lots, next-bar, PSR/DSR, CPCV, gates, shipper, NO_TRADE
 
-**Exit:** Walk-forward + adversarial report for SMA; paper trading 1 week without drift.
+## Phase 1 — Research Hardening (Week 2-3) ▲ In Progress
+
+- [x] Adversarial suite (20 audits) + determinism
+- [x] Purged/CPCV splits (cpcv_splits + embargo via walk_forward_splits), PBO blocking
+- [x] Reconciler drift SUSPEND (`requires_suspend`) + kill persistence
+- [x] MT5 symbol/lot mapping (MT5Adapter.lots_to_mt5_volume, 0.01 step, contract_size 100) — live send stubbed for Phase 2
+- [x] Data quality hooks enforced (validate_bars on write, quality_reports SQLite, `qts data validate`)
+- [x] Shipper local+S3, NO_TRADE explicit, AI loop (ResearchLoop)
+- [ ] Feature Store (`fit`/`transform`, leakage guards, IC) — vectorized isolated, not for execution
+- [ ] MT5 history ingest from terminal API (CSV path done, MT5 API polling next)
+- [ ] Paper trading on live MT5 ticks (MT5DataFeed + PaperAdapter) — Paper on synthetic done, MT5 ticks pending terminal
+- [ ] Property tests & failure injection (hypothesis already in tests/property for portfolio, need walk-forward + execution property)
+
+**Exit:** Walk-forward + adversarial report for SMA ✅ + paper trading 1 week without drift (paper on synthetic done, MT5 paper pending)
 
 ## Phase 2 — Live Readiness (Week 4-5)
 

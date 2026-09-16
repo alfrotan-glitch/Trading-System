@@ -31,11 +31,12 @@
 - `config.Settings` validates env separation; `dev` cannot set `mode=live` without `live` env.
 - `LIVE` lifecycle requires `env=live` + `--confirm` + secret scope present; otherwise exit 2.
 
-## 10.5 Safe Logging
+## 10.5 Safe Logging & Ship
 
-- All `DomainEvent` loggers use `SafeFormatter` that redacts `password`, `token`, `secret`, `account_id` (show last 4 only).
+- All `DomainEvent` loggers use `SafeFormatter` that redacts `password`, `token`, `secret`, `account_id` (show last 4 only) — implemented in `SqliteAuditLog.emit` (redacts payload keys containing password/secret/token).
 - Audit log: account ID hashed or truncated; full ID only in encrypted column if needed (not at v1).
 - No credential in exception traces.
+- Audit JSONL shipped durably via `Shipper` (S3 prefix with content-hash key); S3 credentials via env/IAM not YAML, never logged; `ship_audit_logs` idempotent. Local fallback `data/shipped/` for dev.
 
 ## 10.6 Audit Logs
 
@@ -45,11 +46,11 @@
 
 ## 10.7 Environment Separation
 
-| Env | DB | Secrets | Broker | Can Trade Live |
-|-----|----|---------|--------|----------------|
-| dev | `data/dev.db` | `dev/*` | Replay/Paper | No |
-| paper | `data/paper.db` | `paper/*` | Paper/MT5 paper | No (paper adapter) |
-| live | `data/live.db` | `live/*` | MT5 live | Yes, with gates |
+| Env | DB | Secrets (via `SecretsProvider` `secret://`) | Broker | Can Trade Live | Audit Ship |
+|-----|----|--------------------------------------------|--------|----------------|-------------|
+| dev | `data/dev.db` | `dev/*` env dummy | Replay/Paper | No | LocalShipper |
+| paper | `data/paper.db` | `paper/*` vault | Paper/MT5 paper | No (paper adapter) | Local or S3 (staging bucket) |
+| live | `data/live.db` | `live/*` vault/IAM, includes S3 ship creds | MT5 live | Yes, with gates | S3Shipper `s3://qts-audit/` (hash key, boto3) |
 
 Different DB files prevent paper experiments contaminating live lineage.
 
@@ -69,8 +70,8 @@ Different DB files prevent paper experiments contaminating live lineage.
 |--------|------------|
 | Credential leak via logs | Redaction, safe formatter, review |
 | Accidental live trade from dev | Env isolation, fail-closed, confirm flag |
-| Stolen DB with account IDs | File perms, truncation, encryption at rest (v2) |
-| Replay of old order (duplicate) | Idempotency key, venue comment dedup |
+| Stolen DB with account IDs | File perms 600, truncation, encryption at rest (v2), S3 server-side encryption if shipped |
+| Replay of old order (duplicate) | Idempotency SQLite PK `client_order_id`, placeholder `REJECTED/duplicate-persistent`, venue comment/magic dedup |
 | Privilege escalation (paper→live) | Provider scope, no cross-env read |
 
 ## 10.11 Checklist Before LIVE

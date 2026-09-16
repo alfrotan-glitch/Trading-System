@@ -128,9 +128,20 @@ Live trading requires explicit `--mode live --env live --confirm` and valid `Val
 
 | Situation | Default |
 |-----------|---------|
-| Data gap/duplicate | Halt strategy, emit `DataQualityAlert`, NO_TRADE |
-| Risk veto | NO_TRADE, log `RiskVeto` with reason |
-| Broker drift detected | Pause trading, reconcile, alert |
-| Validation inconclusive | REJECT or RESEARCH, never promote |
+| Data gap/duplicate | Halt strategy, emit `DataQualityAlert`, NO_TRADE (`NoTradeReason.DATA_QUALITY_FAIL`) |
+| Risk veto | NO_TRADE, log `RiskVeto` + `NoTrade` with `NoTradeReason.RISK_VETO` |
+| Broker drift detected | Pause trading, `ReconcileReport.requires_suspend=True` → NO_TRADE |
+| Validation inconclusive (NOT_IMPLEMENTED) | BLOCK — ValidationReport.passed=False, never promote |
 | Systems disagree | NO_TRADE |
-| Kill-switch triggered | Cancel all, flatten (if configured), SUSPEND |
+| Kill-switch triggered | Cancel all, flatten (if configured), SUSPEND, persist killed flag in SQLite |
+
+## 1.11 Execution Semantics — Next-Bar & Quantity (Phase 1 Fidelity)
+
+- **Next-bar open:** Signal generated on `bar.close_time` (N) is queued as `pending_intent`; fill occurs at `bar N+1 open` via synthetic `exec_bar` (`open==high==low==close==open(N+1)`, `close_time = open_time+1ms`). Same-bar close fills are prohibited — lookahead closed. Audit hash includes `execution: next_bar_open`.
+- **Quantity canonical:** `OrderIntent.quantity` is **lots** (broker lots). Notional = `lots × contract_size × price`. For XAUUSD `contract_size=100` (1 lot =100 oz), `lot_size=0.01` (0.01 lot =1 oz, step). Risk `pre_trade` enforces `min_quantity`, `quantity_step` (quantized to `instrument.lot_size`) and notional `max_notional` using the formula above.
+- **Idempotency:** `client_order_id` primary key in SQLite `IdempotencyStore` + in-memory `OrderManager.orders`. Duplicate (persistent) returns placeholder `REJECTED/duplicate-persistent` with no fill — survives restart.
+- **Reconciliation gate:** `ReconcileReport.drift != NONE` → `requires_suspend=True` → ExecutionEngine must enforce NO_TRADE and alert; quantity mismatch is never auto-healed.
+- **Validation gates:** `ValidatorPipeline` requires real evidence: `walk_forward_folds`, `cpcv_folds>=5`, `perturbed_sharpes>=7`, `stress_results` from re-run `BacktestEngine.run_stress` (spread multiplier applied, not PF×factor). Missing → `NOT_IMPLEMENTED → BLOCKS` and `passed=False`.
+- **PSR/DSR/CPCV:** `probabilistic_sharpe_ratio`/`deflated_sharpe_ratio` Bailey & Lopez de Prado with `E[max] = (1-γ)Φ⁻¹(1-1/N)+γΦ⁻¹(1-1/(Ne))`, skew/kurtosis, n=obs. DSR==PSR when N=1, DSR ↓ as N↑. PBO via CPCV combinatorial.
+- **NO_TRADE explicit:** Empty signal, veto, kill, drift, gap, invalid qty all emit `EventType.NO_TRADE` with `NoTradeReason` — not absent log but auditable decision.
+- **Durability:** Audit JSONL shipped via `Shipper` (Local|S3). S3 key includes content hash for idempotency; boto3 if available else local fallback.

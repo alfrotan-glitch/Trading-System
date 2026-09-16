@@ -115,6 +115,40 @@ Popularity ≠ quality. We inspected code, docs, issues, and institutional liter
 
 - **Decision:** Structured JSONL audit log + SQLite `events` table for every decision (data version, signal, risk veto, order, fill, reconcile). OpenTelemetry optional. Build dashboard only after audit is trustworthy.
 
+
+
+## ADR-011: Next-Bar Open Execution — Lookahead Closed (2026-09-16)
+
+- **Context:** Same-bar close fill lets strategy trade on a price not known until bar close — spurious profitability (zigzag leakage). Must be falsifiable.
+- **Decision:** Signal on `bar N close_time` → `pending_intents` → synthetic `exec_bar` at `N+1 open` (`open==high==low==close==open(N+1)`, `close_time = open_time+1ms`) via `BacktestEngine.run`. MatchingEngine price at open + spread/slippage. Audit `execution: next_bar_open`. `test_next_bar_execution_no_lookahead` (hold_long bar_idx 1, price==next open) proves it.
+- **Alternatives:** Same-bar close with delay 1ms → rejected due to lookahead. Tick replay → future when ticks available.
+- **Consequence:** Zigzag fixture PF was `inf` under next-bar (previous test incorrectly expected <1.5); fixed test to assert timing not profitability. Re-simulation required for stress (see ADR-013).
+
+## ADR-012: Quantity Canonical in Lots, Notional = lots × contract_size × price (2026-09-16)
+
+- **Context:** XAUUSD MT5: 1 lot = 100 oz; micro contracts 1. Dollar notional miscomputed if `contract_size` ignored.
+- **Decision:** `Instrument{lot_size=0.01, contract_size=100}`; `OrderIntent.quantity` is lots. Risk: `notional = qty * contract_size * est_price`, exposure lots `abs(sum qty + delta)`, leverage `notional/equity`. `MT5Adapter.lots_to_mt5_volume` quantizes to `lot_size` step `ROUND_HALF_UP`. Risk vetoes `MIN_QUANTITY_VIOLATION` / `QUANTITY_STEP_VIOLATION`. `test_quantity_lots_to_notional` verifies 0.1 lot = 20000 USD (std) vs 200 USD (micro 1) → different veto.
+- **Replaces:** Ad-hoc `quantity * price` (would misstate by 100×).
+
+## ADR-013: Validation Must Have Real Evidence — NOT_IMPLEMENTED Blocks (2026-09-16)
+
+- **Context:** Dummy `wfe=0.54`, `pf*1.5` placeholders passed weak strategies.
+- **Decision:** `ValidatorPipeline.validate(...)` requires real evidence: `walk_forward_folds` (list `is_sharpe/oos_sharpe` from independent backtests via `walk_forward_splits`), `cpcv_folds>=5` (combinatorial `cpcv_splits` + per-trial `best_is_test_sharpe/median_test_sharpe` for PBO), `perturbed_sharpes>=7` (re-run with fast ±5/10/20%), `stress_results` from `BacktestEngine.run_stress` (re-run at spreads 1.0/1.5/2.0, not multiplication). Missing → `Check(status=NOT_IMPLEMENTED, required=True) → passed=False → never promote`. `validate()` docstring documents caller responsibility.
+- **Evidence:** `tests/integration/test_validation.py` now uses flat equity (`is_eq=oos_eq=[10000]*6`), perturbed zeros, realistic stress; placeholder fails.
+
+## ADR-014: Persistence for Kill-Switch and Idempotency Survives Restart (2026-09-16)
+
+- **Decision:** `RiskEngine.killed` stored in SQLite `risk_state (k, killed, reason, updated_at)`; new engine `RiskEngine(db_path)` loads it. `ExecutionEngine.submit_intent` checks `is_duplicate_in_memory or is_duplicate_persistent` (IdempotencyStore SQLite PRIMARY KEY); if persistent without in-memory it creates `REJECTED/duplicate-persistent` placeholder → no second fill even after process restart. Reconcile drift sets `requires_suspend=True` and emits `NO_TRADE`.
+
+## ADR-015: Durable Audit via Shipper + Explicit NO_TRADE (2026-09-16)
+
+- **Decision:** `observability/shipper.py` `Shipper` protocol with `LocalShipper` and `S3Shipper` (boto3, idempotent key `sha256`, prefix). Credentials via env/IAM not YAML. `DomainEvent.EventType.NO_TRADE` + `domain/no_trade.py` `NoTradeReason` enumerates all capital-preservation paths (empty signal, veto, kill, drift, gap, invalid qty). Every veto/kill/drift emits `NO_TRADE`. Failure when uncertain is now measured, not missing.
+
+## ADR-016: Data Quality Enforced at Write (2026-09-16)
+
+- **Decision:** `SqliteParquetDataStore.write_bars(..., strict_quality=True)` runs `validate_bars` (monotonic, no_future, OHLC invariants, no_duplicates, tz_aware, volume) before write; fail-closed raises `ValueError`. Report persisted in `quality_reports` SQLite table and manifest JSON, queryable via `store.quality_report(version)` and `qts data validate`. Read path preserves invariants.
+
+
 ## Summary Table
 
 | Need | Reuse | Adapt | Isolate | Rewrite | Build | Reject |

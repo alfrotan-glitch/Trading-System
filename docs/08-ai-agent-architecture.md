@@ -39,14 +39,20 @@ Tools: read_hypothesis, propose_hypothesis, read_experiment, run_validation, rea
 No tool: submit_order, override_risk, promote_lifecycle (human-only)
 ```
 
-## 8.3 Hypothesis Generation Loop
+## 8.3 Hypothesis Generation Loop — Implemented `ResearchLoop` (Phase 1)
 
 ```
 Human or Scheduler → ResearchAgent.propose(n=5) → Hypotheses
-  → human curation (accept/reject) → Experiment planner → run → Validation
-  → AdversarialAgent review → Validated or Rejected
-  → lineage stored → next loop conditions on lineage (avoid repeats)
+  → ExperimentStore.put_hypothesis
+  → ResearchLoop.run_experiment(hypothesis_id, strategy_id, params, data_version)
+       → BacktestEngine.run (next-bar, lots×contract)
+       → ValidatorPipeline.validate (real walk-forward, stress, perturbation, CPCV/PBO)
+       → AdversarialAgent.review (WFE, DSR, PBO, spread stress)
+       → if passed & no findings → CANDIDATE else REJECTED (with reason + lineage)
+  → lineage stored `parent=hypothesis_id child=experiment_id` → next loop queries memory to avoid repeats
 ```
+
+Implemented: `src/qts/research/loop.py` `ResearchLoop` (NullAgent deterministic fallback) + `NullAgent`/`AdversarialAgent` in `agent.py`. No AI output bypasses gates; every decision audited via `ExperimentStore` and `audit`. Future `LLMAgent` swaps behind same `ResearchAgent` protocol.
 
 AI ideas are hypotheses, not truth. Every AI hypothesis carries `generated_by: "ResearchAgent vX"` + prompt + lineage refs for audit.
 
@@ -72,8 +78,9 @@ Regime detectors (volatility quantile, HMM, clustering) are **empirical hypothes
 
 ## 8.7 Implementation
 
-- `src/qts/research/agent.py` — `ResearchAgent` interface with `LocalLLMAgent` and `NullAgent` (deterministic baseline).
-- At v1, `NullAgent` proposes simple hypotheses (SMA, RSI) for testing without LLM; `LocalLLMAgent` wraps any OpenAI-compatible API via config, optional.
+- `src/qts/research/agent.py` — `ResearchAgent` protocol with `NullAgent` (5 templates) and `AdversarialAgent` (WFE/DSR/PBO/spread checks).
+- `src/qts/research/loop.py` — `ResearchLoop` orchestration (propose → experiment → backtest → validate → review → lineage).
+- `src/qts/research/experiment.py` — `Hypothesis`/`Experiment`/`ExperimentStore` (SQLite hypotheses/experiments/rejections/lineage, `count_trials` for DSR).
 - Evaluation harness: `qts research evaluate --agent null vs llm --trials 20` compares validation pass rate.
 
 ## 8.8 Memory

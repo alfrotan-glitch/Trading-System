@@ -6,7 +6,7 @@ Ubiquitous language. All names map 1:1 to code in `src/qts/domain/`.
 
 | Object | Fields | Invariants |
 |--------|--------|------------|
-| `Instrument` | `symbol: str` (e.g. `"XAUUSD"`), `venue: str` (`"MT5"`), `asset_class: AssetClass`, `tick_size`, `lot_size`, `contract_size` | `symbol` upper, venue required; tick_size > 0 |
+| `Instrument` | `symbol: str` (e.g. `"XAUUSD"`), `venue: str` (`"MT5"`), `asset_class: AssetClass`, `tick_size`, `lot_size` (step, e.g. 0.01), `contract_size` (oz/lot, e.g. 100 for XAUUSD) | `symbol` upper, venue required; tick_size>0, lot_size>0, contract_size>0; quantity in lots; MT5 volume = quantized lots via `MT5Adapter.lots_to_mt5_volume` |
 | `Bar` | `instrument`, `open, high, low, close: Decimal`, `volume: Decimal`, `open_time, close_time: datetime UTC`, `data_version: str`, `source: str` | `high >= max(o,h,l,c)`, `low <= min(...)`, `open_time < close_time`, `close_time - open_time == timeframe`, no NaN |
 | `Tick` | `instrument`, `bid, ask: Decimal`, `bid_size, ask_size`, `event_time` | `ask >= bid`, spread >= 0 |
 | `Signal` | `instrument`, `side: Side`, `strength: float [-1,1]`, `event_time`, `hypothesis_id`, `features: dict` | strength clipped, hypothesis required |
@@ -56,12 +56,18 @@ OrderIntent --1:1--> Order --1:N--> Fill --1:1--> Position delta
 
 ## 2.5 Invariants Enforced in Domain
 
-- No order without `client_order_id`.
+- No order without `client_order_id` (SQLite PK in `idempotency_store`).
 - No fill without order in ACCEPTED/PARTIALLY_FILLED.
-- No position without fills.
-- No strategy promotion without `ValidationReport` + `RiskLimits`.
-- All timestamps UTC, tz-aware; naive datetime rejected.
-- Decimals for prices/quantities (no float leakage into execution/money).
+- No position without fills; PnL via `lots × contract_size × Δprice`, fees deducted, avg weighted on add, unchanged on partial close, reset on flip.
+- No strategy promotion without `ValidationReport.passed==True` + `RiskLimits.approved==True` + all `NOT_IMPLEMENTED==0`.
+- All timestamps UTC, tz-aware; naive datetime rejected; `Bar.open_time < close_time` (close_time exclusive), proven by `exec_bar.close_time = open_time+1ms` for next-bar.
+- Decimals for prices/quantities (no float leakage into execution/money); quantity canonical lots.
+- `Portfolio` is single source of truth (`balance + unrealized == equity`); broker is venue truth reconciled via `ReconcileReport.requires_suspend`.
+
+## 2.6 NO_TRADE Explicit
+
+- `NoTradeReason` enum centralizes why system stays flat: `EMPTY_SIGNAL | RISK_VETO | KILL_SWITCH | RECONCILE_SUSPEND | DATA_GAP | DATA_QUALITY_FAIL | INVALID_QUANTITY | INSUFFICIENT_HISTORY | REGIME_FILTER | VALIDATION_FAIL`.
+- `NoTradeEvent` is emitted as `EventType.NO_TRADE` for every veto/kill/drift/empty-signal — dashboards aggregate reasons instead of inferring from missing fills.
 
 ## 2.6 Anti-Corruption
 

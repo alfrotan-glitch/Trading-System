@@ -78,7 +78,21 @@ Exposed via `qts metrics` or `/metrics` HTTP if `observability.http_enabled`.
 
 Health endpoint `/healthz` for orchestrators.
 
-## 11.5 Lineage
+## 11.5 Durability — Shipper (Phase 1)
+
+- `AuditLog` is `SqliteAuditLog` (SQLite `audit_events` + JSONL `logs/audit.jsonl`, redacts `password/secret/token`).
+- `Shipper` protocol (`src/qts/observability/shipper.py`): `LocalShipper(root=data/shipped)` for dev and `S3Shipper(bucket, prefix, region)` for prod (boto3). Key includes content hash `sha256[:12]` for idempotency, `ship_audit_logs(jsonl, shipper)` is periodic/CLI `qts audit ship`.
+- `ObservabilityConfig.shipper {enabled, type: local|s3, bucket, prefix, local_root}` — credentials via env/IAM (or `security.SecretsProvider`), never YAML. Factory `make_shipper_from_config`.
+
+CLI:
+
+```bash
+qts audit ship --jsonl logs/audit.jsonl --shipper s3 --bucket qts-audit --prefix prod/
+```
+
+Durability gate: SHADOW→LIVE_CANDIDATE requires shipper enabled in prod or explicit acknowledge unshipped risk in audit.
+
+## 11.6 Lineage
 
 Every decision carries `lineage {data_version, code_version, experiment_id, manifest_hash}`:
 

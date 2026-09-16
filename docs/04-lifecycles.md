@@ -105,6 +105,15 @@ Candidate `S-042 v1` → PAPER 8 weeks, Sharpe live/paper delta 0.2 → SHADOW 4
 
 If live drawdown > 2× expected → SUSPENDED, hypothesis re-opened.
 
-## 4.5 NO_TRADE Discipline
+## 4.5 NO_TRADE Discipline — Explicit `NoTradeReason`
 
-Strategies return `[]` (no signal) when: confidence low, regime uncertain, data quality bad, risk veto, or validation says weak. The platform treats empty signal set as success (capital preserved), not failure.
+Strategies return `[]` (no signal) → `NO_TRADE/EMPTY_SIGNAL`. All other uncertainty maps to explicit `NoTradeReason`:
+
+- `RISK_VETO` (pre_trade veto), `KILL_SWITCH` (killed flag), `RECONCILE_SUSPEND` (`requires_suspend`), `DATA_GAP`, `DATA_QUALITY_FAIL` (validate_bars STRICT), `INVALID_QUANTITY` (lot step/min), `INSUFFICIENT_HISTORY`, `REGIME_FILTER`, `VALIDATION_FAIL`.
+
+Each emits `EventType.NO_TRADE` via `ExecutionEngine.submit_intent` or `BacktestEngine` (audit trail), not silent absence. Validation and dashboards aggregate reasons. `NO_TRADE` is success (capital preserved), not failure.
+
+## 4.6 Reconciliation Gate
+
+`ExecutionEngine.reconcile()` → `ReconcileReport(requires_suspend)` any drift (QUANTITY_MISMATCH, UNKNOWN_POSITION, MISSING_POSITION) forces NO_TRADE until healed (`qts reconcile --heal` or kill reset). Never auto-heal quantity.
+

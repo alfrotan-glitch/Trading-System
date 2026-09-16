@@ -350,6 +350,17 @@ class ExecutionEngine:
                         },
                     )
                 )
+                self.audit.emit(
+                    DomainEvent(
+                        event_type=EventType.NO_TRADE,
+                        payload={
+                            "client_order_id": intent.client_order_id,
+                            "strategy_id": intent.strategy_id,
+                            "reason": "KILL_SWITCH",
+                            "detail": "kill active — NO_TRADE",
+                        },
+                    )
+                )
             return None, []
 
         decision = self.risk.pre_trade(intent, ctx)
@@ -363,6 +374,19 @@ class ExecutionEngine:
                             "strategy_id": intent.strategy_id,
                             "reason": decision.veto_reason.value if decision.veto_reason else "UNKNOWN",
                             "detail": decision.reason_detail,
+                        },
+                    )
+                )
+                # explicit NO_TRADE — auditable capital preservation
+                self.audit.emit(
+                    DomainEvent(
+                        event_type=EventType.NO_TRADE,
+                        payload={
+                            "client_order_id": intent.client_order_id,
+                            "strategy_id": intent.strategy_id,
+                            "reason": decision.veto_reason.value if decision.veto_reason else "RISK_VETO",
+                            "detail": decision.reason_detail,
+                            "price": str(intent.limit_price or ""),
                         },
                     )
                 )
@@ -449,6 +473,7 @@ class ExecutionEngine:
 
         For PaperBroker, venue is mirror; for live, venue is source of truth.
         Critical divergence → requires_suspend = True.
+        When requires_suspend is True, caller must enforce NO_TRADE until healed.
         """
         venue_positions = {p.instrument.symbol: p for p in self.broker.positions()}
         # check local vs venue quantity

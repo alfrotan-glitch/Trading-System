@@ -284,6 +284,52 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
         click.echo("RECOMMENDATION: DO NOT PROMOTE — validation failed or NOT_IMPLEMENTED blocks", err=True)
 
 
+@main.group()
+def risk() -> None:
+    pass
+
+
+@risk.command("kill")
+@click.option("--reason", default="manual")
+def risk_kill(reason: str) -> None:
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    eng = RiskEngine(RiskLimits())
+    eng.kill_switch(reason)
+    click.echo(f"kill active: {reason}")
+
+
+@risk.command("reset")
+@click.option("--confirm", required=True, help="must be 'yes' to reset")
+def risk_reset(confirm: str) -> None:
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    if confirm != "yes":
+        click.echo("reset requires --confirm yes", err=True)
+        raise SystemExit(2)
+    eng = RiskEngine(RiskLimits())
+    eng.reset_kill()
+    click.echo("kill reset")
+
+
+@risk.command("check")
+@click.option("--instrument", default="XAUUSD")
+@click.option("--quantity", default=0.1, type=float)
+def risk_check(instrument: str, quantity: float) -> None:
+    from decimal import Decimal
+
+    from qts.domain.value_objects import Instrument, OrderIntent
+    from qts.risk.engine import RiskContext, RiskEngine, RiskLimits
+    from qts.domain.value_objects import Account
+    from datetime import UTC, datetime
+
+    instr = Instrument(symbol=instrument)
+    intent = OrderIntent(instrument=instr, side="BUY", quantity=Decimal(str(quantity)), client_order_id="check", strategy_id="check")
+    ctx = RiskContext(account=Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)), positions={}, open_orders_count=0, daily_pnl=Decimal("0"), drawdown=Decimal("0"), instrument_suspended=set())
+    dec = RiskEngine(RiskLimits()).pre_trade(intent, ctx)
+    click.echo(f"allowed={dec.allowed} veto={dec.veto_reason} detail={dec.reason_detail}")
+
+
 @main.command("health")
 def health() -> None:
     store = SqliteParquetDataStore()
@@ -306,6 +352,32 @@ def audit_query(strategy: str | None, limit: int) -> None:
     events = log.query(strategy_id=strategy, limit=limit)
     for e in events:
         click.echo(f"{e.event_time.isoformat()} {e.event_type.value} {json.dumps(e.payload, default=str)[:120]}")
+
+
+@audit.command("ship")
+@click.option("--jsonl", default="logs/audit.jsonl")
+@click.option("--shipper", default="local", type=click.Choice(["local", "s3"]))
+@click.option("--bucket", default=None, help="S3 bucket (required for s3)")
+@click.option("--prefix", default="qts/audit/")
+def audit_ship(jsonl: str, shipper: str, bucket: str | None, prefix: str) -> None:
+    from pathlib import Path
+
+    from qts.observability.shipper import LocalShipper, S3Shipper, ship_audit_logs
+
+    path = Path(jsonl)
+    if shipper == "s3":
+        if not bucket:
+            click.echo("s3 shipper requires --bucket", err=True)
+            raise SystemExit(2)
+        shipper_obj = S3Shipper(bucket=bucket, prefix=prefix)
+    else:
+        shipper_obj = LocalShipper()
+    uri = ship_audit_logs(path, shipper_obj)
+    if uri:
+        click.echo(f"shipped {path} -> {uri}")
+    else:
+        click.echo(f"ship failed or {path} not found", err=True)
+        raise SystemExit(1)
 
 
 @main.group()
