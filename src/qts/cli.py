@@ -1115,3 +1115,50 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
     engine = BacktestEngine(store)
     result = engine.run(instr, timeframe, data_version, strategy_id=strategy)
     click.echo(f"backtest result: equity={result.final_equity:.2f} trades={result.trades} sharpe={result.sharpe:.3f}")
+
+@main.group()
+def desktop() -> None:
+    """Desktop application."""
+
+@desktop.command("launch")
+@click.option("--host", default="127.0.0.1")
+@click.option("--port", default=8000, type=int)
+def desktop_launch(host: str, port: int) -> None:
+    from qts.desktop.launcher import start_api_server, open_desktop_window
+    from qts.desktop.health import startup_health_check
+    click.echo("[desktop] startup health check")
+    health = startup_health_check()
+    for c in health["checks"]:
+        click.echo(f"  {c['name']}: {'PASS' if c['passed'] else 'FAIL'} {c['detail']}")
+    click.echo(f"overall: {health['overall']} status={health['system_status']}")
+    server, thread = start_api_server(host, port)
+    click.echo(f"API at http://{host}:{port}/ — opening desktop window")
+    open_desktop_window(host, port)
+
+@desktop.command("api")
+@click.option("--host", default="127.0.0.1")
+@click.option("--port", default=8000, type=int)
+def desktop_api(host: str, port: int) -> None:
+    import uvicorn
+    from qts.api.server import app
+    click.echo(f"starting API server at http://{host}:{port}")
+    uvicorn.run(app, host=host, port=port)
+
+@research.command("campaign")
+@click.option("--family", default="trend", type=click.Choice(["trend","breakout","mean_reversion","momentum","volatility"]))
+@click.option("--symbol", default="XAUUSD")
+@click.option("--timeframe", default="1H")
+@click.option("--data-version", required=True)
+@click.option("--trials", default=12, type=int)
+@click.option("--max-runtime", default=60, type=int)
+def research_campaign(family: str, symbol: str, timeframe: str, data_version: str, trials: int, max_runtime: int) -> None:
+    from qts.research.campaign import CampaignConfig, run_campaign
+    cfg = CampaignConfig(name=f"campaign-{family}", symbol=symbol, timeframe=timeframe, data_version=data_version, family=family, max_trials=trials, max_runtime_s=max_runtime, max_param_combinations=trials)
+    click.echo(f"launching bounded campaign family={family} trials={trials}")
+    summary = run_campaign(cfg)
+    Path("data/evidence").mkdir(parents=True, exist_ok=True)
+    Path("data/evidence/campaign_last.json").write_text(json.dumps(summary, indent=2, default=str))
+    click.echo(f"campaign {summary['campaign_id']} completed: passed={summary['passed']} failed={summary['failed']} total={summary['total_trials']} DSR N={summary['dsr_trial_count']}")
+    if summary['passed']==0:
+        click.echo("BLOCK — no candidate survived scientific gates — keep NO_TRADE")
+

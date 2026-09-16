@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>QTS Trading System</title>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">QTS <span>Trading System</span> <span id="env-badge" class="badge">development</span></div>
+  <div class="env-note">MOCK / PAPER / SHADOW — not real broker unless explicitly REAL MT5</div>
+  <div class="health-mini" id="health-mini">Loading…</div>
+</header>
+
+<nav class="nav">
+  <button data-view="home" class="active">Home</button>
+  <button data-view="dashboard">Dashboard</button>
+  <button data-view="research">Research</button>
+  <button data-view="strategies">Strategies</button>
+  <button data-view="validation">Validation</button>
+  <button data-view="paper">Paper/Shadow</button>
+  <button data-view="execution">Execution</button>
+  <button data-view="risk">Risk</button>
+  <button data-view="mt5">MT5</button>
+  <button data-view="audit">Audit</button>
+  <button data-view="live">Live Control</button>
+</nav>
+
+<main id="content">
+  <!-- Home / System Status -->
+  <section id="view-home" class="view active">
+    <h2>System Status</h2>
+    <div id="home-grid" class="status-grid"></div>
+    <div class="card">
+      <h3>Startup Health Check</h3>
+      <pre id="startup-health" class="pre"></pre>
+    </div>
+    <div class="card">
+      <h3>Trading Mode</h3>
+      <div id="mode-banner" class="banner">Research / Backtest</div>
+      <p class="muted">No live execution unless all gates pass and human approval confirms.</p>
+    </div>
+  </section>
+
+  <!-- Dashboard -->
+  <section id="view-dashboard" class="view">
+    <h2>Dashboard — Safety First</h2>
+    <div id="safety-banner" class="banner warn">Loading safety…</div>
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="two-col">
+      <div class="card"><h3>Open Positions</h3><div id="positions"></div></div>
+      <div class="card"><h3>Latest Decisions</h3><div id="decisions"></div></div>
+    </div>
+    <div class="card"><h3>Reconciliation</h3><div id="recon"></div></div>
+  </section>
+
+  <!-- Research Center -->
+  <section id="view-research" class="view">
+    <h2>Research Center</h2>
+    <div class="card">
+      <h3>Create Research Campaign</h3>
+      <label>Family <select id="campaign-family">
+        <option value="trend">trend following</option>
+        <option value="breakout">breakout</option>
+        <option value="mean_reversion">mean reversion</option>
+        <option value="momentum">momentum</option>
+        <option value="volatility">volatility</option>
+      </select></label>
+      <label>Symbol <input id="campaign-symbol" value="XAUUSD"/></label>
+      <label>Timeframe <input id="campaign-timeframe" value="1H"/></label>
+      <label>Data Version <input id="campaign-version" placeholder="auto latest if blank"/></label>
+      <label>Max Trials <input id="campaign-trials" type="number" value="12" min="1" max="100"/></label>
+      <button id="btn-start-campaign">Start Bounded Campaign</button>
+      <div id="campaign-result" class="pre"></div>
+    </div>
+    <div class="card">
+      <h3>Campaigns</h3>
+      <div id="campaigns-list"></div>
+    </div>
+    <div class="card">
+      <h3>Trial Ledger</h3>
+      <div id="trial-ledger"></div>
+      <p class="muted">Every variation recorded — winners, losers, discarded variants, parameter/feature variants, failed experiments. No hidden trials. DSR uses N.</p>
+    </div>
+  </section>
+
+  <!-- Strategy Library -->
+  <section id="view-strategies" class="view">
+    <h2>Strategy Library</h2>
+    <div id="strategy-cards" class="cards"></div>
+  </section>
+
+  <!-- Validation View -->
+  <section id="view-validation" class="view">
+    <h2>Backtest / Validation View</h2>
+    <label>Strategy <input id="val-strategy" value="sma_breakout"/></label>
+    <button id="btn-load-validation">Load Validation</button>
+    <div id="validation-detail" class="pre"></div>
+    <div id="scorecard" class="card"></div>
+  </section>
+
+  <!-- Paper/Shadow -->
+  <section id="view-paper" class="view">
+    <h2>Paper / Shadow Center</h2>
+    <div class="two-col">
+      <div class="card"><h3>PAPER — Simulated</h3><div id="paper-view"></div></div>
+      <div class="card"><h3>SHADOW — Would-Be</h3><div id="shadow-view"></div></div>
+    </div>
+    <div class="card"><h3>Shadow vs Paper Discrepancy</h3><div id="shadow-paper-diff" class="pre"></div></div>
+  </section>
+
+  <!-- Execution Center -->
+  <section id="view-execution" class="view">
+    <h2>Execution Center — Order Lifecycle</h2>
+    <div class="flow">INTENT → RISK → SUBMISSION → ACCEPTED → PARTIAL → FILLED <span class="muted"> or REJECTED / CANCELLED / AMBIGUOUS</span></div>
+    <div id="orders"></div>
+    <div id="order-trail" class="pre"></div>
+  </section>
+
+  <!-- Risk Center -->
+  <section id="view-risk" class="view">
+    <h2>Risk Center — Hard Limits</h2>
+    <div id="risk-limits"></div>
+    <div id="risk-block" class="banner warn">Loading…</div>
+  </section>
+
+  <!-- MT5 Center -->
+  <section id="view-mt5" class="view">
+    <h2>MT5 Center</h2>
+    <div id="mt5-view"></div>
+    <div class="banner warn">Never imply mock is real — check MOCK vs REAL badge.</div>
+  </section>
+
+  <!-- Audit -->
+  <section id="view-audit" class="view">
+    <h2>Audit / Evidence Center</h2>
+    <input id="audit-q" placeholder="search decisions, risk vetoes, orders, fills, reconciliations…"/>
+    <button id="btn-audit-search">Search</button>
+    <div id="audit-list" class="pre"></div>
+  </section>
+
+  <!-- Live Control -->
+  <section id="view-live" class="view">
+    <h2>Live Control</h2>
+    <div id="live-badge" class="banner danger">LIVE TRADING LOCKED</div>
+    <div id="live-checklist"></div>
+    <div id="live-reasons" class="pre"></div>
+    <p class="muted">MT5 connected ≠ safe to trade. All scientific, risk, reconciliation gates must pass + human approval. No convenience override.</p>
+    <button id="btn-request-live" disabled>Enable Live — Requires Explicit Confirmation (Gated)</button>
+  </section>
+</main>
+
+<div id="notifications" class="notifications"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

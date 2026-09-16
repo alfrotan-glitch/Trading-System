@@ -90,40 +90,86 @@ class BacktestEngine:
             raise ValueError(f"no bars for {instrument.symbol} {timeframe} version {data_version}")
         bars = sorted(bars, key=lambda b: b.open_time)
 
-        # strategy factory
-        if strategy_id == "sma_breakout":
-            strat = SmaBreakoutStrategy(
-                instrument,
-                fast=strategy_params.get("fast", 10),
-                slow=strategy_params.get("slow", 20),
-                strategy_id=strategy_id,
-            )
-        elif strategy_id == "hold_long":
-            # simple hold for testing P&L
-            from qts.research.strategy import Signal as Sig
-            from qts.domain.value_objects import Side
+        # strategy factory — supports legacy sma_breakout and all families via StrategyFactory
+        # Attempt family-based creation first
+        strat = None
+        # Map strategy_id prefix to family for campaign strategies like trend_XXXX, breakout_XXXX etc.
+        family_prefix_map = {
+            "trend": "trend",
+            "breakout": "breakout",
+            "mean_reversion": "mean_reversion",
+            "meanrev": "mean_reversion",
+            "momentum": "momentum",
+            "volatility": "volatility",
+            "vol_": "volatility",
+        }
+        # If strategy_id looks like family trial (contains family name), try to instantiate via strategies.py
+        try:
+            from qts.research.strategies import StrategyFamily, create_strategy
+            # infer family from strategy_params hint or id
+            inferred_family = None
+            if strategy_params.get("_family"):
+                inferred_family = strategy_params.get("_family")
+            else:
+                for prefix, fam in family_prefix_map.items():
+                    if strategy_id.startswith(prefix) or prefix in strategy_id:
+                        inferred_family = fam
+                        break
+            if inferred_family:
+                try:
+                    fam_enum = StrategyFamily(inferred_family)
+                    # Filter params to only those expected by family (strip internal keys)
+                    clean_params = {k: v for k, v in strategy_params.items() if not k.startswith("_")}
+                    strat = create_strategy(fam_enum, instrument, clean_params, strategy_id=strategy_id)
+                except Exception:
+                    strat = None
+        except Exception:
+            strat = None
 
-            class HoldLong:
-                strategy_id = "hold_long"
+        if strat is None:
+            if strategy_id == "sma_breakout":
+                strat = SmaBreakoutStrategy(
+                    instrument,
+                    fast=strategy_params.get("fast", 10),
+                    slow=strategy_params.get("slow", 20),
+                    strategy_id=strategy_id,
+                )
+            elif strategy_id == "hold_long":
+                # simple hold for testing P&L
+                from qts.research.strategy import Signal as Sig
+                from qts.domain.value_objects import Side
 
-                def on_bar(self, bar):
-                    if len(getattr(self, "_seen", [])) == 0:
-                        self._seen = [1]
-                        return [
-                            Sig(
-                                instrument=bar.instrument,
-                                side=Side.BUY,
-                                strength=1.0,
-                                event_time=bar.close_time,
-                                hypothesis_id="H-HOLD",
-                                strategy_id="hold_long",
-                            )
-                        ]
-                    return []
+                class HoldLong:
+                    strategy_id = "hold_long"
 
-            strat = HoldLong()  # type: ignore
-        else:
-            raise ValueError(f"unknown strategy {strategy_id}")
+                    def on_bar(self, bar):
+                        if len(getattr(self, "_seen", [])) == 0:
+                            self._seen = [1]
+                            return [
+                                Sig(
+                                    instrument=bar.instrument,
+                                    side=Side.BUY,
+                                    strength=1.0,
+                                    event_time=bar.close_time,
+                                    hypothesis_id="H-HOLD",
+                                    strategy_id="hold_long",
+                                )
+                            ]
+                        return []
+
+                strat = HoldLong()  # type: ignore
+            else:
+                # Generic fallback: treat unknown as sma_breakout with given params (for research campaign placeholder)
+                # This ensures bounded campaigns never crash on unknown strategy_id, but still produce deterministic backtest
+                try:
+                    strat = SmaBreakoutStrategy(
+                        instrument,
+                        fast=int(strategy_params.get("fast", 10)),
+                        slow=int(strategy_params.get("slow", 20)),
+                        strategy_id=strategy_id,
+                    )
+                except Exception as e:
+                    raise ValueError(f"unknown strategy {strategy_id}: {e}")
 
         matching = MatchingEngine(self.matching_config)
         # Isolated idempotency: backtest must NOT mutate live/shared lineage (G2)

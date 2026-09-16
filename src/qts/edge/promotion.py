@@ -12,6 +12,7 @@ from pathlib import Path
 class PromotionState(StrEnum):
     RESEARCH = "RESEARCH"
     CANDIDATE = "CANDIDATE"
+    VALIDATING = "VALIDATING"
     VALIDATED = "VALIDATED"
     FORWARD_OBSERVATION = "FORWARD_OBSERVATION"
     PAPER_VERIFIED = "PAPER_VERIFIED"
@@ -24,7 +25,9 @@ class PromotionState(StrEnum):
 
 _ALLOWED = {
     PromotionState.RESEARCH: {PromotionState.CANDIDATE, PromotionState.REJECTED},
-    PromotionState.CANDIDATE: {PromotionState.VALIDATED, PromotionState.REJECTED, PromotionState.SUSPENDED},
+    # VALIDATING is the scientifically disciplined step; keep CANDIDATE->VALIDATED for backward compat but primary path is via VALIDATING
+    PromotionState.CANDIDATE: {PromotionState.VALIDATING, PromotionState.VALIDATED, PromotionState.REJECTED, PromotionState.SUSPENDED},
+    PromotionState.VALIDATING: {PromotionState.VALIDATED, PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.VALIDATED: {PromotionState.FORWARD_OBSERVATION, PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.FORWARD_OBSERVATION: {PromotionState.PAPER_VERIFIED, PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.PAPER_VERIFIED: {PromotionState.SHADOW_VERIFIED, PromotionState.REJECTED, PromotionState.SUSPENDED},

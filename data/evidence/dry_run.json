@@ -4,7 +4,7 @@
   "data_version": "20260916-010-572728d9",
   "is_mock": true,
   "health": {
-    "timestamp": "2026-09-16T13:49:07.649326+00:00",
+    "timestamp": "2026-09-16T14:08:23.585160+00:00",
     "connected": true,
     "terminal_ok": true,
     "account_ok": true,
@@ -61,12 +61,12 @@
   },
   "normalized_quantity": "0.01",
   "broker_request": {
-    "action": "<MagicMock name='mock.TRADE_ACTION_DEAL' id='140339086275216'>",
+    "action": "<MagicMock name='mock.TRADE_ACTION_DEAL' id='140029231216784'>",
     "symbol": "XAUUSD",
     "volume": 0.01,
-    "type": "<MagicMock name='mock.ORDER_TYPE_BUY' id='140339086274832'>",
-    "type_filling": "<MagicMock name='mock.ORDER_FILLING_IOC' id='140339115338384'>",
-    "type_time": "<MagicMock name='mock.ORDER_TIME_GTC' id='140339086306448'>",
+    "type": "<MagicMock name='mock.ORDER_TYPE_BUY' id='140029231216976'>",
+    "type_filling": "<MagicMock name='mock.ORDER_FILLING_IOC' id='140029231243600'>",
+    "type_time": "<MagicMock name='mock.ORDER_TIME_GTC' id='140029232448976'>",
     "comment": "dryrun:sma_breakout:2026_ea62cd",
     "magic": 20250916
   },
