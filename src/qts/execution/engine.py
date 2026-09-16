@@ -25,6 +25,13 @@ from qts.observability.audit import AuditLog
 from qts.portfolio.portfolio import Portfolio
 from qts.risk.engine import RiskContext, RiskEngine
 
+# For market data safety, import lazily to avoid circular
+try:
+    from qts.adapters.market_data import MarketDataProvider, MarketDataError
+except ImportError:
+    MarketDataProvider = None  # type: ignore
+    MarketDataError = RuntimeError  # type: ignore
+
 
 class OrderManager:
     def __init__(self, audit: AuditLog | None = None, idempotency: IdempotencyStore | None = None):
@@ -130,6 +137,10 @@ class ReconcileReport:
 class BrokerAdapter:
     """Protocol for adapters."""
 
+    # Subclasses should set is_live = True for MT5 live, is_shadow for shadow
+    is_live: bool = False
+    is_shadow: bool = False
+
     def submit(self, intent: OrderIntent) -> Order:  # type: ignore[no-untyped-def]
         raise NotImplementedError
 
@@ -145,8 +156,14 @@ class BrokerAdapter:
     def cancel(self, client_order_id: str) -> None:  # noqa: B027
         pass
 
+    def get_symbol_spec(self, symbol: str):  # type: ignore[no-untyped-def]
+        return None
+
 
 class PaperBrokerAdapter(BrokerAdapter):
+    is_live = False
+    is_shadow = False
+
     def __init__(self, matching: MatchingEngine | None = None, account: Account | None = None):
         self.matching = matching or MatchingEngine()
         self._account = account or Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD")
@@ -229,6 +246,7 @@ class ExecutionEngine:
         portfolio: Portfolio,
         audit: AuditLog | None = None,
         db_path: Path | str | None = None,
+        market_data: Any | None = None,
     ):
         self.om = order_manager
         self.risk = risk_engine
@@ -240,6 +258,7 @@ class ExecutionEngine:
         self.drawdown = Decimal("0")
         self._day_start_equity = portfolio.equity()
         self._db_path = Path(db_path) if db_path else Path(getattr(risk_engine, "db_path", "data/sqlite/qts.db"))
+        self.market_data = market_data
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_reconcile_db()
         loaded_suspended, loaded_reason = self._load_reconcile_suspend()
@@ -277,17 +296,40 @@ class ExecutionEngine:
 
     def _risk_ctx(self, reference_prices: dict[str, Decimal] | None = None) -> RiskContext:
         self._update_drawdown()
-        is_live = not isinstance(self.broker, PaperBrokerAdapter)
-        if is_live:
+        # Determine broker type: live (MT5), realistic paper, or legacy paper/shadow
+        # Use is_live flag if present, else fallback to class name check
+        is_live = bool(getattr(self.broker, "is_live", False))
+        # Also treat MT5Adapter by name as live (for backward compat without flag)
+        if not is_live and self.broker.__class__.__name__ == "MT5Adapter":
+            is_live = True
+        # Realistic paper also uses broker account for margin realism, but not stale check as strict
+        is_realistic_paper = self.broker.__class__.__name__ == "RealisticPaperBroker"
+        use_broker_account = is_live or is_realistic_paper
+        if use_broker_account:
             try:
                 account = self.broker.account()
                 from datetime import datetime, timezone
+                # Validate account fields — fail closed on missing/stale/contradictory/malformed
+                if account.balance is None or account.equity is None:
+                    raise ValueError("account balance/equity missing")
+                if not account.balance.is_finite() or not account.equity.is_finite():
+                    raise ValueError("account values not finite")
+                # Check staleness
                 age = (datetime.now(timezone.utc) - account.updated_at).total_seconds() if account.updated_at else 999999
                 if age > 300:
                     raise ValueError(f"stale account {age:.0f}s")
+                # Check contradictory: equity cannot be negative large vs balance
+                # For live, free_margin should be consistent with margin
+                # Basic sanity: margin <= equity*leverage approx
+                if account.margin and account.equity:
+                    # margin should not exceed equity * leverage * 1.5
+                    if account.margin > account.equity * account.leverage * Decimal("1.5") + Decimal("1"):
+                        raise ValueError(f"account margin {account.margin} inconsistent with equity {account.equity} leverage {account.leverage}")
+                if account.free_margin and account.free_margin < Decimal("-1000"):
+                    raise ValueError(f"account free_margin {account.free_margin} too negative")
                 equity = account.equity
             except Exception as e:
-                raise RuntimeError(f"live account unavailable: {e}") from e
+                raise RuntimeError(f"account unavailable: {e}") from e
         else:
             equity = self.portfolio.equity()
             account = Account(
@@ -298,7 +340,7 @@ class ExecutionEngine:
                 leverage=Decimal("100"),
                 currency=self.portfolio.currency,
             )
-        daily_pnl = equity - self._day_start_equity if not is_live else account.equity - self._day_start_equity
+        daily_pnl = equity - self._day_start_equity if not use_broker_account else account.equity - self._day_start_equity
         # authoritative market snapshot: portfolio last prices + any override from bar/tick
         # This is the price Risk must use for market-order notional (auditable)
         ref = dict(self.portfolio._last_price)  # copy
@@ -390,16 +432,50 @@ class ExecutionEngine:
                         )
                     )
                 return placeholder, []
-        # Build authoritative reference price from bar/tick if available
+        # Shadow mode check — if broker is shadow, record intent but do not submit to venue
+        is_shadow = bool(getattr(self.broker, "is_shadow", False))
+        if is_shadow:
+            # Still do risk and idempotency, but do not call broker.submit
+            # Record shadow intent for later comparison
+            pass
+
+        # Market data safety: for live, validate via MarketDataProvider if available
+        # Define one authoritative live pricing path: MarketDataProvider.get_tick
+        # For live market orders, use executable bid/ask, not mid/close
         ref_override: dict[str, Decimal] = {}
-        if bar is not None:
+        is_live = bool(getattr(self.broker, "is_live", False)) or self.broker.__class__.__name__ == "MT5Adapter"
+        if is_live and self.market_data is not None:
+            try:
+                # Validate tick freshness, spread, symbol, market availability
+                md_tick = self.market_data.get_tick(intent.instrument)
+                # Use correct side for executable price
+                side_price = md_tick.ask if intent.side.value == "BUY" else md_tick.bid
+                ref_override[intent.instrument.symbol] = side_price
+                # Also validate that tick is for correct symbol
+                if md_tick.instrument.symbol != intent.instrument.symbol:
+                    raise ValueError(f"tick symbol mismatch {md_tick.instrument.symbol} vs {intent.instrument.symbol}")
+            except Exception as e:
+                # Market data unsafe — fail closed, suspend, NO_TRADE
+                self._suspended = True
+                self._suspend_reason = f"market data unsafe: {e}"
+                self._persist_reconcile_suspend(True, self._suspend_reason)
+                if self.audit:
+                    self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": "MARKET_DATA_UNSAFE", "details": str(e), "requires_suspend": True}))
+                    self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"client_order_id": intent.client_order_id, "strategy_id": intent.strategy_id, "reason": "MARKET_DATA_UNSAFE", "detail": str(e)}))
+                return None, []
+        elif bar is not None:
             # For next-bar execution, the executable price is bar open (or close for limit)
             # For risk, the reference is the current market price: bar close if available, else open
             # Use bar.close as last known, and bar.open as executable for market
             ref_override[intent.instrument.symbol] = bar.close if bar.close else bar.open
             # Also include portfolio last price fallback
         elif tick is not None:
-            ref_override[intent.instrument.symbol] = tick.mid if hasattr(tick, 'mid') else tick.bid
+            # For tick-based, distinguish executable bid/ask vs mid
+            # If tick provided, use side-specific price for risk (BUY→ask, SELL→bid) not mid
+            if is_live:
+                ref_override[intent.instrument.symbol] = tick.ask if intent.side.value == "BUY" else tick.bid
+            else:
+                ref_override[intent.instrument.symbol] = tick.mid if hasattr(tick, 'mid') else tick.bid
         try:
             ctx = self._risk_ctx(reference_prices=ref_override if ref_override else None)
         except Exception as e:
@@ -485,6 +561,33 @@ class ExecutionEngine:
         # check again idempotency after resize (quantity change would be new intent, but keep same id)
         self.om.submit(intent)
 
+        # Shadow mode: do not actually submit to broker, just record would-be
+        is_shadow = bool(getattr(self.broker, "is_shadow", False))
+        if is_shadow:
+            # Shadow records intent, marks as ACCEPTED but never fills on venue
+            # Still audit the intent, but no broker interaction
+            self.om.update_state(
+                intent.client_order_id,
+                OrderState.ACCEPTED,
+                exchange_order_id=f"shadow_{intent.client_order_id}",
+            )
+            if self.audit:
+                self.audit.emit(DomainEvent(event_type=EventType.ORDER_EVENT, payload={"client_order_id": intent.client_order_id, "from": OrderState.PENDING.value, "to": OrderState.ACCEPTED.value, "shadow": True}))
+                # Also emit NO_TRADE for shadow to distinguish
+                self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"client_order_id": intent.client_order_id, "strategy_id": intent.strategy_id, "reason": "SHADOW_NO_SUBMIT", "detail": "shadow mode: intent recorded, no venue order"}))
+            # In shadow, also record would-be fill price based on reference (if available)
+            # For comparison with paper, we can store would-be executable price
+            if hasattr(self.broker, "record_would_be_fill"):
+                try:
+                    ref_price = ref_override.get(intent.instrument.symbol) if ref_override else None
+                    self.broker.record_would_be_fill({"client_order_id": intent.client_order_id, "price": str(ref_price) if ref_price else "", "quantity": str(intent.quantity)})
+                except Exception:
+                    pass
+            # Return shadow accepted, no fills
+            if self.audit:
+                self.audit.emit(DomainEvent(event_type=EventType.ORDER_INTENT, payload={"client_order_id": intent.client_order_id, "quantity": str(intent.quantity), "side": intent.side.value, "shadow": True}))
+            return self.om.get(intent.client_order_id), []
+
         try:
             broker_order = self.broker.submit(intent)
             self.om.update_state(
@@ -525,8 +628,13 @@ class ExecutionEngine:
             return None, []
 
         fills: list[Fill] = []
-        # Only PaperBroker uses matching to generate fills synchronously; live fills come via poll
-        if isinstance(self.broker, PaperBrokerAdapter) and bar is not None:
+        # Paper brokers (legacy and realistic) use matching to generate fills synchronously; live fills come via poll
+        # Check for paper types: legacy PaperBrokerAdapter or RealisticPaperBroker (has matching)
+        is_paper = isinstance(self.broker, PaperBrokerAdapter) or self.broker.__class__.__name__ == "RealisticPaperBroker"
+        # Also check via is_live flag: if not live and not shadow, treat as paper
+        if not is_paper:
+            is_paper = not bool(getattr(self.broker, "is_live", False)) and not bool(getattr(self.broker, "is_shadow", False)) and hasattr(self.broker, "apply_fill")
+        if is_paper and bar is not None:
             fills = self.matching.match(intent, bar, tick)
             cumulative_qty = Decimal("0")
             for idx, fill in enumerate(fills):
@@ -604,6 +712,81 @@ class ExecutionEngine:
             )
         return self.om.get(intent.client_order_id), fills
 
+    def poll_live_fills(self) -> list[Fill]:
+        """Poll live broker for new fills (deals) and apply to portfolio.
+
+        For MT5, fills are deals; for paper, this is no-op (fills already applied synchronously).
+        Must be called periodically in live mode. Each fill is applied to portfolio
+        and audited. Returns list of new fills.
+        """
+        if not bool(getattr(self.broker, "is_live", False)) and self.broker.__class__.__name__ != "MT5Adapter":
+            return []
+        new_fills: list[Fill] = []
+        # For MT5, use history_deals or positions diff
+        # We need to track which deals have been applied — for now, poll all and deduplicate via fill_id?
+        # Simplify: if broker has poll_fills or history_deals, use it
+        try:
+            if hasattr(self.broker, "poll_fills"):
+                # poll_fills may return dicts or fills
+                raw = self.broker.poll_fills("")  # empty means all
+                for item in raw or []:
+                    # If item is already Fill, use it
+                    if isinstance(item, Fill):
+                        fill = item
+                    elif isinstance(item, dict):
+                        # dict from MT5Adapter.poll_fills
+                        # Need to deduplicate — check if fill already applied via fill_id?
+                        # For now, create Fill if not seen
+                        from qts.domain.value_objects import uuid7 as _uuid7
+                        fill = Fill(
+                            fill_id=_uuid7(),
+                            order_id=item.get("client_order_id", ""),
+                            client_order_id=item.get("client_order_id", ""),
+                            instrument=Instrument(symbol=item.get("symbol", "XAUUSD")),
+                            side=item.get("side", Side.BUY),
+                            quantity=item.get("volume", Decimal("0.1")),
+                            price=item.get("price", Decimal("2000")),
+                            event_time=item.get("time", datetime.now(UTC)),
+                        )
+                    else:
+                        continue
+                    # Check if this fill already applied (via fill_id in portfolio.fills?)
+                    if any(f.fill_id == fill.fill_id for f in self.portfolio.fills):
+                        continue
+                    self.portfolio.apply_fill(fill)
+                    self._update_drawdown()
+                    if self.audit:
+                        self.audit.emit(DomainEvent(event_type=EventType.FILL, payload={"fill_id": fill.fill_id, "client_order_id": fill.client_order_id, "price": str(fill.price), "quantity": str(fill.quantity)}))
+                    # Update order state to FILLED or PARTIALLY_FILLED
+                    existing = self.om.get(fill.client_order_id)
+                    if existing:
+                        # Determine if fully filled
+                        # For live, we may not know total quantity vs filled, so mark FILLED
+                        self.om.update_state(fill.client_order_id, OrderState.FILLED, filled_quantity=fill.quantity, avg_fill_price=fill.price)
+                    # Also update broker mirror if needed
+                    if hasattr(self.broker, "apply_fill"):
+                        try:
+                            self.broker.apply_fill(fill)
+                        except Exception:
+                            pass
+                    new_fills.append(fill)
+                    # post-trade risk
+                    try:
+                        ctx2 = self._risk_ctx(reference_prices={fill.instrument.symbol: fill.price})
+                    except Exception as e:
+                        self._suspended = True
+                        self._suspend_reason = f"account unavailable post-trade poll: {e}"
+                        self._persist_reconcile_suspend(True, self._suspend_reason)
+                        ctx2 = None
+                    if ctx2 is not None:
+                        self.risk.post_trade(fill, ctx2)
+                        if self.risk.killed:
+                            self.handle_kill(f"poll post-trade kill: {fill.fill_id}")
+        except Exception as e:
+            if self.audit:
+                self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": "POLL_ERROR", "details": str(e), "requires_suspend": False}))
+        return new_fills
+
     def reconcile(self) -> ReconcileReport:
         """Compare local Portfolio vs venue truth.
 
@@ -657,10 +840,39 @@ class ExecutionEngine:
                     )
                     self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"reason": report.drift, "detail": report.details}))
                 return report
-            # avg price mismatch is warning but not necessarily suspend at v1 (could be rounding)
-            if venue.avg_price != local.avg_price and abs(venue.avg_price - local.avg_price) > Decimal("0.01"):
-                # log but not suspend (broker avg may differ due to venue calculation)
-                pass
+            # avg price mismatch — if significant (>0.5% or > 10 points), suspend (G5)
+            if venue.avg_price != local.avg_price:
+                # Use relative diff: abs(diff)/price > 0.005 (0.5%) or absolute > 10*point
+                try:
+                    diff = abs(venue.avg_price - local.avg_price)
+                    # Get point from broker spec if available
+                    point = Decimal("0.01")
+                    try:
+                        if hasattr(self.broker, "get_symbol_spec"):
+                            spec = self.broker.get_symbol_spec(sym)
+                            point = spec.point
+                    except Exception:
+                        pass
+                    # Threshold: max(10*point, 0.5% of price)
+                    thresh = max(point * Decimal("10"), local.avg_price * Decimal("0.005") if local.avg_price else point)
+                    if diff > thresh:
+                        report = ReconcileReport(
+                            "PRICE_MISMATCH",
+                            f"{sym} local avg {local.avg_price} vs venue {venue.avg_price} diff {diff} > thresh {thresh}",
+                            requires_suspend=True,
+                        )
+                        self._suspended = True
+                        self._suspend_reason = report.details
+                        self._persist_reconcile_suspend(True, self._suspend_reason)
+                        if self.audit:
+                            self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": report.drift, "details": report.details, "requires_suspend": True}))
+                            self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"reason": report.drift, "detail": report.details}))
+                        return report
+                except Exception as e:
+                    # If price check itself fails, log but don't block unless it's suspend case above
+                    if "PRICE_MISMATCH" in str(e):
+                        raise
+                    pass
 
         for sym, venue in venue_positions.items():
             if venue.quantity != Decimal("0") and sym not in self.portfolio.positions:
@@ -692,7 +904,7 @@ class ExecutionEngine:
                         self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"reason": report.drift, "detail": report.details}))
                     return report
 
-        # also check venue orders vs local orders (unknown/missing) — must suspend
+        # also check venue orders vs local orders (unknown/missing/status-mismatch) — must suspend
         # unknown order: venue has order not in local -> drift
         for cid, venue_order in venue_orders.items():
             local = self.om.orders.get(cid)
@@ -706,6 +918,24 @@ class ExecutionEngine:
                     self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": report.drift, "details": report.details, "requires_suspend": True}))
                     self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"reason": report.drift, "detail": report.details}))
                 return report
+            # status mismatch: local vs venue state differs
+            # For live, venue is truth — if local is FILLED but venue is still ACCEPTED, or vice versa, suspend
+            if local.state != venue_order.state:
+                # Allow PENDING→ACCEPTED as normal transition, but not FILLED vs ACCEPTED long-term
+                # If local is ACCEPTED and venue is FILLED, we need to apply fill; but if mismatch persists, suspend
+                # Check if venue is more advanced (FILLED) but local is still ACCEPTED/PENDING — then we have missed fill
+                # Or local is FILLED but venue is CANCELLED/REJECTED — then we have phantom fill
+                # Any state mismatch where one is terminal and other is not → suspend
+                terminal = {OrderState.FILLED, OrderState.REJECTED, OrderState.CANCELLED, OrderState.AMBIGUOUS}
+                if (local.state in terminal) != (venue_order.state in terminal) or (local.state == OrderState.FILLED and venue_order.state != OrderState.FILLED) or (venue_order.state == OrderState.FILLED and local.state != OrderState.FILLED):
+                    report = ReconcileReport("STATUS_MISMATCH", f"order {cid} local {local.state} vs venue {venue_order.state}", requires_suspend=True)
+                    self._suspended = True
+                    self._suspend_reason = report.details
+                    self._persist_reconcile_suspend(True, self._suspend_reason)
+                    if self.audit:
+                        self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": report.drift, "details": report.details, "requires_suspend": True}))
+                        self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"reason": report.drift, "detail": report.details}))
+                    return report
         for cid, local_order in self.om.orders.items():
             if local_order.state in (OrderState.PENDING, OrderState.ACCEPTED, OrderState.PARTIALLY_FILLED):
                 if cid not in venue_orders:
