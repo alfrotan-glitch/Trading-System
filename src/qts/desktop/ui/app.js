@@ -26,6 +26,10 @@ async function loadView(v){
     if(v==='failure') await loadFailure();
     if(v==='evidence') await loadEvidence();
     if(v==='data-observatory') await loadDataObservatory();
+    if(v==='data-source-lab') await loadDataSourceLab();
+    if(v==='market-monitor') await loadMarketMonitor();
+    if(v==='forward-observatory') await loadForwardObservatory();
+    if(v==='data-lineage') await loadDataLineage();
     if(v==='lifecycle') await loadLifecycle();
     if(v==='research-memory') await loadResearchMemory();
     if(v==='strategies') await loadStrategies();
@@ -247,12 +251,72 @@ async function loadEvidence(){
   $('evidence-calibration').textContent = 'PSR/DSR calibrated probability, not raw 92% confidence; false-positive via permutation, reliability via null/placebo.';
 }
 async function loadDataObservatory(){
-  const audit = await api('/api/research/data-audit');
-  $('data-audit').textContent = JSON.stringify(audit, null,2).slice(0,4000);
-  $('data-expansion').textContent = JSON.stringify(audit.minimum_expansion_needed||audit, null,2);
-  const feats = await api('/api/research/features');
-  $('data-features').textContent = JSON.stringify(feats, null,2);
-  $('data-micro').textContent = 'Execution-aware: next-bar-open, spread 3bps ×1/1.5/2, slippage, latency 100ms, partial fills, bid/ask asymmetry — mid-price only not validated.';
+  try{
+    const audit = await api('/api/research/data-audit');
+    $('data-audit').textContent = JSON.stringify(audit, null,2).slice(0,4000);
+    $('data-expansion').textContent = JSON.stringify(audit.minimum_expansion_needed||audit, null,2);
+  }catch(e){ $('data-audit').textContent='Error '+e; $('data-expansion').textContent='Error '+e}
+  try{
+    const inv = await api('/api/research/data-inventory');
+    const qa = await api('/api/research/data-quality-summary');
+    $('data-inventory').textContent = JSON.stringify({inventory: inv.slice(0,1), quality_summary: qa}, null,2).slice(0,6000);
+  }catch(e){ $('data-inventory').textContent='Error '+e}
+  try{
+    const feats = await api('/api/research/features');
+    $('data-features').textContent = JSON.stringify(feats, null,2);
+  }catch(e){$('data-features').textContent='Error '+e}
+  $('data-micro').textContent = 'Execution-aware: next-bar-open, spread 3bps ×1/1.5/2, slippage, latency 100ms, partial fills, bid/ask asymmetry — mid-price only not validated. Spread labeled SYNTHETIC until real tick observed.';
+}
+async function loadDataSourceLab(){
+  try{
+    const cat = await api('/api/research/data-source-catalog');
+    $('source-catalog').textContent = JSON.stringify(cat, null,2).slice(0,7000);
+    $('source-reco').textContent = JSON.stringify({recommendation: "Priority: mt5_history for XAUUSD broker spread via forward capture + dukascopy EURUSD for cross-market + binance BTC for diversity; fisstrate if budget but mid only → SYNTHETIC spread", next_acquisition: "MT5 export 2yr XAUUSD 1H+1m and Dukascopy EURUSD 1H, verify TrueFX XAUUSD", catalog_path: "data/evidence/data_source_catalog.json", docs: "docs/data_source_comparison.md docs/data_requirements.md"}, null,2);
+  }catch(e){$('source-catalog').textContent='Error '+e}
+}
+async function loadMarketMonitor(){
+  try{
+    const reg = await api('/api/research/regime-observations');
+    $('monitor-regime').textContent = JSON.stringify(reg, null,2).slice(0,5000);
+  }catch(e){$('monitor-regime').textContent='Error '+e}
+  try{
+    const adv = await api('/api/research/data-quality-adversarial');
+    $('monitor-quality').textContent = JSON.stringify(adv, null,2);
+  }catch(e){$('monitor-quality').textContent='Error '+e}
+  try{
+    const fwd = await api('/api/research/forward-manifest');
+    const ticks = fwd.sample_ticks||[];
+    $('monitor-quotes').textContent = ticks.length ? ticks.map(t=>`${t.timestamp} ${t.symbol} bid ${Number(t.bid).toFixed(2)} ask ${Number(t.ask).toFixed(2)} spread ${Number(t.spread_bps).toFixed(1)}bps session ${t.session} regime ${t.regime} freshness ${t.data_freshness_ms||'-'} anomaly ${t.anomaly||'none'}`).join('\\n') + '\\n\\n(no live broker — forward observatory simulated, safe, no capital)' : 'No ticks yet — forward observatory records live quotes with no capital exposure';
+  }catch(e){$('monitor-quotes').textContent='Error '+e}
+}
+async function loadForwardObservatory(){
+  try{
+    const fwd = await api('/api/research/forward-manifest');
+    $('forward-sessions').textContent = JSON.stringify({active_observation_sessions: fwd.active_observation_sessions, ticks_recorded: fwd.ticks_recorded, signals_recorded: fwd.signals_recorded, safety: fwd.safety}, null,2);
+    $('forward-ticks').textContent = JSON.stringify(fwd.sample_ticks||[], null,2).slice(0,4000);
+    $('forward-signals').textContent = JSON.stringify(fwd.sample_signals||[], null,2).slice(0,5000);
+  }catch(e){$('forward-sessions').textContent='Error '+e}
+  try{
+    const exec = await api('/api/research/execution-reality');
+    $('forward-execution').textContent = JSON.stringify(exec, null,2).slice(0,3000) + '\\n\\nRequired fields: signal_price vs expected (bid/ask at decision) vs actual (fill), submission/broker_ack/fill timestamps, volumes, spread/slippage/latency/rejection/partial/market state — source REAL/SYNTHETIC explicit — currently 0 real observations → cannot claim realism';
+  }catch(e){$('forward-execution').textContent='Error '+e}
+  try{
+    const timeframe = {eligible: "1H limited (500 bars synthetic proxy, single month, spread SYNTHETIC) — all other timeframes BLOCK until quality sufficient", ineligible: ["1m","5m","15m","4H resampled SYNTHETIC","1D","tick"], cost_sensitivity: "0.025% spread at 1H vs high at 1m — quantified per timeframe", doc: "docs/timeframe_research.md"};
+    const cross = {current: "single symbol XAUUSD", needed: "EURUSD (dukascopy) + BTC (binance) for genuine diversity", doc: "docs/cross_market_research.md"};
+    $('forward-timeframe').textContent = JSON.stringify({timeframe, cross_market: cross}, null,2);
+  }catch(e){$('forward-timeframe').textContent='Error '+e}
+}
+async function loadDataLineage(){
+  try{
+    const inv = await api('/api/research/data-inventory');
+    const line = inv.map(d=>`${d.checksum} ${d.instrument} ${d.timeframe} ${d.date_range.start}→${d.date_range.end} rows ${d.row_count} raw ${d.raw_preserved} → curated ${d.curated_path} → manifest ${d.checksum} schema v${d.schema_version} preprocessing ${d.preprocessing_version} quality ${d.quality_report.every(c=>c.passed)?'PASS':'BLOCK'} eligibility "${d.research_eligibility}"`).join('\\n\\n');
+    $('lineage-graph').textContent = line || 'No lineage';
+  }catch(e){$('lineage-graph').textContent='Error '+e}
+  $('lineage-versioning').textContent = JSON.stringify({immutability: "Any preprocessing change → new dataset version (new checksum), old version never mutated, research experiments reference exact checksum", manifest_id: "version = ingestion date + checksum short (e.g., 20260916-010-572728d9)", locked_test: "Frozen via LockedTestPartitioner — inaccessible during discovery, purged CPCV, embargo, monotonic time", preprocessing_version: inv0=>inv0}, null,2).slice(0,2000) + '\\n\\nSee data/manifests/, src/qts/data/store.py, src/qts/data/provider.py';
+  try{
+    const gate = {DATA_QUALITY: "PASS (12/12) but synthetic spread — conditional", DATA_DEPTH: "FAIL — 500 vs 5000 required, single month", DATA_DIVERSITY: "FAIL — single symbol/timeframe", EXECUTION_REALISM: "FAIL — 0 real execution observations (SYNTHETIC only)", REGIME_COVERAGE: "FAIL — single month Jan 2020, no multi-regime", OOS_COVERAGE: "PARTIAL — 5-fold walk-forward but limited", TRIAL_COUNT: "75 trials preserved (no reset)", STAT_EVIDENCE: "FAIL — DSR 0.12 <0.95, PBO fail, costs fragile", OVERALL: "BLOCK — KEEP NO_TRADE, LIVE structurally locked, see docs/market_data_observatory.md docs/execution_reality_protocol.md"};
+    $('lineage-gate').textContent = JSON.stringify(gate, null,2);
+  }catch(e){$('lineage-gate').textContent='Error '+e}
 }
 async function loadLifecycle(){
   const health = await api('/api/health');

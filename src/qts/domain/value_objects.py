@@ -145,19 +145,33 @@ class Tick(BaseModel):
     instrument: Instrument
     bid: Decimal
     ask: Decimal
+    last: Decimal | None = None  # last trade price if available
     bid_size: Decimal = Decimal("0")
     ask_size: Decimal = Decimal("0")
-    event_time: datetime
+    event_time: datetime  # canonical: timestamp
+    tick_type: str = "unknown"  # e.g., quote, trade, bid, ask
+    session: str = "unknown"  # e.g., London, NY, Asian, weekend_closed
+    source: str = "REAL"  # REAL/SYNTHETIC/SIMULATED/ESTIMATED/IMPUTED/BROKER_DERIVED/MODEL_DERIVED — must be explicit, never synthetic as REAL
 
     @field_validator("event_time")
     @classmethod
     def _utc(cls, v: datetime) -> datetime:
         return _ensure_utc(v)
 
+    @field_validator("source")
+    @classmethod
+    def _source_label(cls, v: str) -> str:
+        allowed = {"REAL", "SYNTHETIC", "SIMULATED", "ESTIMATED", "IMPUTED", "BROKER-DERIVED", "MODEL-DERIVED"}
+        up = v.strip().upper()
+        if up not in allowed:
+            raise ValueError(f"source must be one of {allowed}, got {v!r}")
+        return up
+
     @model_validator(mode="after")
     def _spread(self) -> Tick:
         if self.ask < self.bid:
             raise ValueError(f"ask {self.ask} < bid {self.bid}")
+        # Never manufacture real bid/ask from OHLC: if source REAL but bid derived from mid, caller must label SYNTHETIC
         return self
 
     @property

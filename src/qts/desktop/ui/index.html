@@ -25,6 +25,10 @@
   <button data-view="failure">Failure Analysis</button>
   <button data-view="evidence">Evidence Viewer</button>
   <button data-view="data-observatory">Data Observatory</button>
+  <button data-view="data-source-lab">Data Source Lab</button>
+  <button data-view="market-monitor">Market Monitor</button>
+  <button data-view="forward-observatory">Forward Observatory</button>
+  <button data-view="data-lineage">Data Lineage</button>
   <button data-view="lifecycle">Strategy Lifecycle</button>
   <button data-view="research-memory">Research Memory</button>
   <button data-view="strategies">Strategies</button>
@@ -224,11 +228,47 @@
 
   <!-- Data Observatory -->
   <section id="view-data-observatory" class="view">
-    <h2>Data Observatory</h2>
-    <div class="card"><h3>Available Data Sources Audit</h3><div id="data-audit" class="pre"></div></div>
+    <h2>Data Observatory — Machine-Readable Inventory (26 provenance fields, REAL vs SYNTHETIC explicit)</h2>
+    <div class="card"><h3>Available Data Sources Audit (12 checks, fail-closed)</h3><div id="data-audit" class="pre"></div></div>
+    <div class="card"><h3>Data Inventory (machine-readable data_inventory.json + data_quality_summary.json)</h3><div id="data-inventory" class="pre"></div></div>
     <div class="card"><h3>Minimum Expansion Needed</h3><div id="data-expansion" class="pre"></div></div>
     <div class="card"><h3>Feature Discovery (controlled, no leakage)</h3><div id="data-features" class="pre"></div></div>
-    <div class="card"><h3>Market Microstructure / Execution-Aware</h3><div id="data-micro" class="pre"></div></div>
+    <div class="card"><h3>Market Microstructure / Execution-Aware (bid/ask SYNTHETIC proxy labeled)</h3><div id="data-micro" class="pre"></div></div>
+    <div class="card"><h3>Data Labeling — REAL/SYNTHETIC/SIMULATED/ESTIMATED/IMPUTED/BROKER-DERIVED/MODEL-DERIVED</h3><div class="pre">OHLC: REAL proxy via CSV import (but limited depth) — bid/ask: SYNTHETIC via high-low — volume: SYNTHETIC tick proxy — spread: SYNTHETIC — regime: OBSERVED via ForwardObservatory — execution: NO REAL observations yet (SIMULATED hypothetical) — All UI badges prefix source.</div></div>
+  </section>
+
+  <!-- Data Source Lab -->
+  <section id="view-data-source-lab" class="view">
+    <h2>Data Source Lab — External Source Research (docs/data_source_comparison.md + data_source_catalog.json)</h2>
+    <div class="card"><h3>External Provider Catalog (5 providers, historical depth/granularity/bid-ask/tick/timezone/licensing/API/reliability/quality/mapping/timestamp/limitations/cost/suitability)</h3><div id="source-catalog" class="pre"></div></div>
+    <div class="card"><h3>Recommendation & Next Acquisition</h3><div id="source-reco" class="pre"></div></div>
+    <div class="card"><h3>Provider-Neutral Ingestion (Provider→Raw Storage→Validation→Normalization→Canonical→Manifest→Evidence, immutable dataset ID)</h3><div class="pre">CSV/Synthetic implemented; Dukascopy/FirstRate/MT5/Binance/TrueFX cataloged. Raw preserved, checksum, timezone UTC, quality report before canonical. See docs/market_data_observatory.md docs/data_quality_protocol.md.</div></div>
+  </section>
+
+  <!-- Market Monitor -->
+  <section id="view-market-monitor" class="view">
+    <h2>Market Monitor — Live Quotes / Spreads / Volatility / Sessions / Regime / Freshness / Anomalies</h2>
+    <div class="card"><h3>Live Quotes (bid/ask/mid/spread, no capital exposure)</h3><div id="monitor-quotes" class="pre"></div></div>
+    <div class="card"><h3>Regime Observations (trend/vol/session/spread/acceleration/compression/expansion/shock)</h3><div id="monitor-regime" class="pre"></div></div>
+    <div class="card"><h3>Data Quality — Adversarial Stress (fail-closed, corrupted → BLOCK)</h3><div id="monitor-quality" class="pre"></div></div>
+  </section>
+
+  <!-- Forward Observatory -->
+  <section id="view-forward-observatory" class="view">
+    <h2>Forward Observatory — Safe Forward Observation (no real orders, recording live quotes/spreads/vol/sessions/signals/NO_TRADE/hypothetical fills/latency/regime/interruptions)</h2>
+    <div class="card"><h3>Active Sessions</h3><div id="forward-sessions" class="pre"></div></div>
+    <div class="card"><h3>Ticks Recorded (bid/ask/mid/spread_bps/session/regime/freshness/anomaly)</h3><div id="forward-ticks" class="pre"></div></div>
+    <div class="card"><h3>Signals vs NO_TRADE (theoretical vs executable, hypothetical fill, slippage, latency)</h3><div id="forward-signals" class="pre"></div></div>
+    <div class="card"><h3>Execution Reality (signal vs expected vs actual, bid/ask at decision, timestamps/volumes/spread/slippage/latency/rejection)</h3><div id="forward-execution" class="pre"></div></div>
+    <div class="card"><h3>Timeframe & Cross-Market Eligibility (1m/5m/15m/1H/4H/1D/tick — eligible only if quality sufficient, cost/frequency/slippage quantified)</h3><div id="forward-timeframe" class="pre"></div></div>
+  </section>
+
+  <!-- Data Lineage -->
+  <section id="view-data-lineage" class="view">
+    <h2>Data Lineage — Raw→Canonical→Manifest→Evidence→Experiment→Strategy (immutable, checksum, preprocessing version, locked-test)</h2>
+    <div class="card"><h3>Lineage Graph (per dataset)</h3><div id="lineage-graph" class="pre"></div></div>
+    <div class="card"><h3>Versioning / Locking (new version on preprocessing change, evidence references exact checksum, locked test inaccessible)</h3><div id="lineage-versioning" class="pre"></div></div>
+    <div class="card"><h3>Research Quality Gate (DATA QUALITY/DEPTH/DIVERSITY/EXECUTION REALISM/REGIME COVERAGE/OOS COVERAGE/TRIAL COUNT/STAT EVIDENCE → BLOCK if insufficient, keep NO_TRADE, never unlock LIVE)</h3><div id="lineage-gate" class="pre"></div></div>
   </section>
 
   <!-- Strategy Lifecycle -->

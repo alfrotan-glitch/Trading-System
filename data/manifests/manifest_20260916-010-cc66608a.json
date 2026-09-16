@@ -1,0 +1,30 @@
+{
+  "version": "20260916-010-cc66608a",
+  "schema_version": 2,
+  "created_at": "2026-09-16T14:41:09.670713Z",
+  "code_version": "0.1.0",
+  "instrument": "XAUUSD",
+  "venue": "MT5",
+  "timeframe": "1H",
+  "start": "2020-01-01T00:00:00Z",
+  "end": "2020-01-03T02:00:00Z",
+  "rows": 50,
+  "checksum": "sha256:cc66608a179f3a05",
+  "source_file": "test.csv",
+  "source": "test.csv",
+  "ingestion_timestamp": "2026-09-16T14:41:09.670721Z",
+  "preprocessing_version": "1.0",
+  "timezone": "UTC",
+  "missing_data_stats": {
+    "expected": 51,
+    "actual": 50,
+    "missing": 1,
+    "gap_count": 0,
+    "max_gap_s": 0,
+    "missing_pct": 1.96
+  },
+  "session_stats": {
+    "timezone": "UTC",
+    "weekend_gaps": 0
+  }
+}

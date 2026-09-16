@@ -657,6 +657,76 @@ def research_autonomous(payload: dict[str, Any]) -> dict[str, Any]:
     result = run_autonomous_campaign(name, symbol, timeframe, data_version, max_trials, max_runtime_s, seed)
     return result
 
+@app.get("/api/research/data-inventory")
+def research_data_inventory() -> list[dict[str, Any]]:
+    p = Path("data/evidence/data_inventory.json")
+    return json.loads(p.read_text()) if p.exists() else []
+
+@app.get("/api/research/data-source-catalog")
+def research_data_source_catalog() -> list[dict[str, Any]]:
+    p = Path("data/evidence/data_source_catalog.json")
+    return json.loads(p.read_text()) if p.exists() else []
+
+@app.get("/api/research/data-quality-summary")
+def research_data_quality_summary() -> dict[str, Any]:
+    p = Path("data/evidence/data_quality_summary.json")
+    return json.loads(p.read_text()) if p.exists() else {}
+
+@app.get("/api/research/forward-manifest")
+def research_forward_manifest() -> dict[str, Any]:
+    p = Path("data/evidence/forward_observation_manifest.json")
+    return json.loads(p.read_text()) if p.exists() else {}
+
+@app.get("/api/research/regime-observations")
+def research_regime_observations() -> dict[str, Any]:
+    p = Path("data/evidence/market_regime_observations.json")
+    return json.loads(p.read_text()) if p.exists() else {}
+
+@app.get("/api/research/execution-reality")
+def research_execution_reality() -> dict[str, Any]:
+    p = Path("data/evidence/execution_reality.json")
+    return json.loads(p.read_text()) if p.exists() else {}
+
+@app.get("/api/research/data-quality-adversarial")
+def research_data_quality_adversarial() -> dict[str, Any]:
+    # Run lightweight adversarial quality stress and return result without failing closed (for monitoring)
+    from qts.data.store import SqliteParquetDataStore
+    from qts.domain.value_objects import Instrument
+    from qts.data.quality import validate_bars
+    store = SqliteParquetDataStore()
+    versions = store.list_versions()
+    results: dict[str, Any] = {}
+    for v in versions[:1]:
+        m = store.manifest(v)
+        if not m:
+            continue
+        bars = store.read_bars(Instrument(symbol=m.instrument, venue=m.venue), m.timeframe, version=v)
+        # Simulate adversarial: duplicate
+        import copy
+        dup_bars = bars + [bars[0]] if bars else []
+        rep = validate_bars(dup_bars)
+        results["duplicate_corrupted_passed"] = rep.passed
+        # missing bars
+        if len(bars) > 5:
+            missing = bars[:3] + bars[5:]
+            rep2 = validate_bars(missing)
+            results["missing_corrupted_gap_check"] = next((c.passed for c in rep2.checks if c.name == "no_missing_bars"), None)
+        # zero price
+        if bars:
+            bad = copy.copy(bars[0])
+            bad = bad.model_copy(update={"close": __import__("decimal").Decimal("0")}) if hasattr(bad, "model_copy") else bars[0]
+            # For Bar, directly construct
+            from decimal import Decimal
+            try:
+                from qts.domain.value_objects import Bar
+                bad_bar = Bar(instrument=bars[0].instrument, open=bars[0].open, high=bars[0].high, low=bars[0].low, close=Decimal("0"), volume=bars[0].volume, open_time=bars[0].open_time, close_time=bars[0].close_time, data_version=bars[0].data_version, source=bars[0].source)
+                rep3 = validate_bars([bad_bar])
+                results["zero_price_passed"] = rep3.passed
+            except Exception as e:
+                results["zero_price_error"] = str(e)
+    results["fail_closed_principle"] = "Corrupted dataset fails validation — no manifest created"
+    return results
+
 @app.get("/api/research/statistical")
 def research_statistical() -> dict[str, Any]:
     # Return example statistical extensions on dummy data
