@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
+import sqlite3
+from pathlib import Path
 
 from qts.domain.events import DomainEvent, EventType
 from qts.domain.value_objects import (
@@ -225,6 +228,7 @@ class ExecutionEngine:
         matching: MatchingEngine,
         portfolio: Portfolio,
         audit: AuditLog | None = None,
+        db_path: Path | str | None = None,
     ):
         self.om = order_manager
         self.risk = risk_engine
@@ -235,8 +239,34 @@ class ExecutionEngine:
         self.peak_equity = portfolio.equity()
         self.drawdown = Decimal("0")
         self._day_start_equity = portfolio.equity()
-        self._suspended = False
-        self._suspend_reason: str | None = None
+        self._db_path = Path(db_path) if db_path else Path(getattr(risk_engine, "db_path", "data/sqlite/qts.db"))
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_reconcile_db()
+        loaded_suspended, loaded_reason = self._load_reconcile_suspend()
+        self._suspended = loaded_suspended
+        self._suspend_reason: str | None = loaded_reason
+        if self._suspended and self.audit:
+            self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": "RESTORED_SUSPEND", "details": self._suspend_reason or "", "requires_suspend": True}))
+
+    def _init_reconcile_db(self) -> None:
+        with sqlite3.connect(self._db_path) as con:
+            con.execute("CREATE TABLE IF NOT EXISTS reconcile_state (k INTEGER PRIMARY KEY, suspended INTEGER NOT NULL, reason TEXT, updated_at TEXT)")
+            con.commit()
+
+    def _load_reconcile_suspend(self) -> tuple[bool, str | None]:
+        try:
+            with sqlite3.connect(self._db_path) as con:
+                row = con.execute("SELECT suspended, reason FROM reconcile_state WHERE k=1").fetchone()
+                if row:
+                    return bool(row[0]), row[1]
+        except Exception:
+            pass
+        return False, None
+
+    def _persist_reconcile_suspend(self, suspended: bool, reason: str | None) -> None:
+        with sqlite3.connect(self._db_path) as con:
+            con.execute("INSERT OR REPLACE INTO reconcile_state VALUES (1,?,?,?)", (1 if suspended else 0, reason or "", datetime.now(UTC).isoformat()))
+            con.commit()
 
     def _update_drawdown(self) -> None:
         eq = self.portfolio.equity()
@@ -246,18 +276,29 @@ class ExecutionEngine:
         self.drawdown = self.peak_equity - eq if eq < self.peak_equity else Decimal("0")
 
     def _risk_ctx(self, reference_prices: dict[str, Decimal] | None = None) -> RiskContext:
-        # ensure portfolio is marked to current prices before risk check? Caller should have marked.
         self._update_drawdown()
-        equity = self.portfolio.equity()
-        account = Account(
-            balance=self.portfolio.balance,
-            equity=equity,
-            margin=Decimal("0"),
-            free_margin=equity,
-            leverage=Decimal("100"),
-            currency=self.portfolio.currency,
-        )
-        daily_pnl = equity - self._day_start_equity
+        is_live = not isinstance(self.broker, PaperBrokerAdapter)
+        if is_live:
+            try:
+                account = self.broker.account()
+                from datetime import datetime, timezone
+                age = (datetime.now(timezone.utc) - account.updated_at).total_seconds() if account.updated_at else 999999
+                if age > 300:
+                    raise ValueError(f"stale account {age:.0f}s")
+                equity = account.equity
+            except Exception as e:
+                raise RuntimeError(f"live account unavailable: {e}") from e
+        else:
+            equity = self.portfolio.equity()
+            account = Account(
+                balance=self.portfolio.balance,
+                equity=equity,
+                margin=Decimal("0"),
+                free_margin=equity,
+                leverage=Decimal("100"),
+                currency=self.portfolio.currency,
+            )
+        daily_pnl = equity - self._day_start_equity if not is_live else account.equity - self._day_start_equity
         # authoritative market snapshot: portfolio last prices + any override from bar/tick
         # This is the price Risk must use for market-order notional (auditable)
         ref = dict(self.portfolio._last_price)  # copy
@@ -359,7 +400,17 @@ class ExecutionEngine:
             # Also include portfolio last price fallback
         elif tick is not None:
             ref_override[intent.instrument.symbol] = tick.mid if hasattr(tick, 'mid') else tick.bid
-        ctx = self._risk_ctx(reference_prices=ref_override if ref_override else None)
+        try:
+            ctx = self._risk_ctx(reference_prices=ref_override if ref_override else None)
+        except Exception as e:
+            self._suspended = True
+            self._suspend_reason = f"account unavailable: {e}"
+            self._persist_reconcile_suspend(True, self._suspend_reason)
+            if self.audit:
+                self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": "ACCOUNT_UNAVAILABLE", "details": str(e), "requires_suspend": True}))
+                self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"client_order_id": intent.client_order_id, "strategy_id": intent.strategy_id, "reason": "ACCOUNT_UNAVAILABLE", "detail": str(e)}))
+                self.audit.emit(DomainEvent(event_type=EventType.RISK_VETO, payload={"client_order_id": intent.client_order_id, "strategy_id": intent.strategy_id, "reason": "ACCOUNT_UNAVAILABLE", "detail": str(e)}))
+            return None, []
         # reconciliation suspend check — fail closed
         if self._suspended:
             if self.audit:
@@ -403,6 +454,10 @@ class ExecutionEngine:
                             "strategy_id": intent.strategy_id,
                             "reason": decision.veto_reason.value if decision.veto_reason else "UNKNOWN",
                             "detail": decision.reason_detail,
+                            "price": str(decision.price) if getattr(decision, 'price', None) else str(intent.limit_price or ctx.reference_price_for(intent.instrument.symbol) or ""),
+                            "price_source": getattr(decision, 'price_source', None) or "",
+                            "notional": str(getattr(decision, 'notional', None) or ""),
+                            "symbol": intent.instrument.symbol,
                         },
                     )
                 )
@@ -415,7 +470,9 @@ class ExecutionEngine:
                             "strategy_id": intent.strategy_id,
                             "reason": decision.veto_reason.value if decision.veto_reason else "RISK_VETO",
                             "detail": decision.reason_detail,
-                            "price": str(intent.limit_price or ""),
+                            "price": str(decision.price) if getattr(decision, 'price', None) else str(intent.limit_price or ""),
+                            "price_source": getattr(decision, 'price_source', None) or "",
+                            "notional": str(getattr(decision, 'notional', None) or ""),
                         },
                     )
                 )
@@ -446,28 +503,36 @@ class ExecutionEngine:
             state = OrderState.AMBIGUOUS if is_ambiguous else OrderState.REJECTED
             self.om.update_state(intent.client_order_id, state, reject_reason=str(e))
             if self.audit:
+                # Use consistent from/to schema plus error detail (G12)
+                # The update_state above already emitted from/to, this is additional error context
                 self.audit.emit(
                     DomainEvent(
                         event_type=EventType.ORDER_EVENT,
-                        payload={"client_order_id": intent.client_order_id, "error": str(e), "state": state.value},
+                        payload={"client_order_id": intent.client_order_id, "from": OrderState.PENDING.value, "to": state.value, "error": str(e), "state": state.value},
                     )
                 )
             if state == OrderState.AMBIGUOUS:
                 # Fail closed: suspend trading until reconcile
                 self._suspended = True
                 self._suspend_reason = f"ambiguous broker state {intent.client_order_id}: {e}"
+                self._persist_reconcile_suspend(True, self._suspend_reason)
                 if self.audit:
                     self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": "AMBIGUOUS", "details": str(e), "requires_suspend": True}))
                     self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"client_order_id": intent.client_order_id, "strategy_id": intent.strategy_id, "reason": "AMBIGUOUS", "detail": str(e)}))
+            else:
+                # For definitive REJECTED, still ensure ORDER_EVENT uses consistent from/to (G12)
+                pass
             return None, []
 
         fills: list[Fill] = []
         # Only PaperBroker uses matching to generate fills synchronously; live fills come via poll
         if isinstance(self.broker, PaperBrokerAdapter) and bar is not None:
             fills = self.matching.match(intent, bar, tick)
-            for fill in fills:
+            cumulative_qty = Decimal("0")
+            for idx, fill in enumerate(fills):
                 # portfolio is authoritative
                 self.portfolio.apply_fill(fill)
+                cumulative_qty += fill.quantity
                 self._update_drawdown()
                 if self.audit:
                     self.audit.emit(
@@ -479,22 +544,49 @@ class ExecutionEngine:
                                 "price": str(fill.price),
                                 "quantity": str(fill.quantity),
                                 "fee": str(fill.fee),
+                                "cumulative_quantity": str(cumulative_qty),
                             },
                         )
                     )
                 # post-trade risk (check kill) — reference price is fill price
-                ctx2 = self._risk_ctx(reference_prices={fill.instrument.symbol: fill.price})
-                self.risk.post_trade(fill, ctx2)
+                try:
+                    ctx2 = self._risk_ctx(reference_prices={fill.instrument.symbol: fill.price})
+                except Exception as e:
+                    self._suspended = True
+                    self._suspend_reason = f"account unavailable post-trade: {e}"
+                    self._persist_reconcile_suspend(True, self._suspend_reason)
+                    if self.audit:
+                        self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": "ACCOUNT_UNAVAILABLE_POST", "details": str(e), "requires_suspend": True}))
+                    ctx2 = None
+                if ctx2 is not None:
+                    self.risk.post_trade(fill, ctx2)
                 if self.risk.killed:
                     self.handle_kill(f"post-trade kill: {fill.fill_id}")
                 # keep broker mirror for reconciliation
                 self.broker.apply_fill(fill)
-            self.om.update_state(
-                intent.client_order_id,
-                OrderState.FILLED,
-                filled_quantity=intent.quantity,
-                avg_fill_price=fills[0].price if fills else None,
-            )
+                # Real partial-fill state (G11): emit PARTIALLY_FILLED until fully filled
+                if idx < len(fills) - 1 or cumulative_qty < intent.quantity:
+                    # Not yet fully filled
+                    self.om.update_state(
+                        intent.client_order_id,
+                        OrderState.PARTIALLY_FILLED,
+                        filled_quantity=cumulative_qty,
+                        avg_fill_price=fill.price,
+                    )
+                else:
+                    self.om.update_state(
+                        intent.client_order_id,
+                        OrderState.FILLED,
+                        filled_quantity=cumulative_qty,
+                        avg_fill_price=fills[0].price if fills else None,
+                    )
+            # If fills empty, keep as ACCEPTED? But matching always returns at least one if called
+            if not fills:
+                self.om.update_state(
+                    intent.client_order_id,
+                    OrderState.ACCEPTED,
+                )
+        
         else:
             # live: fills async
             pass
@@ -527,6 +619,7 @@ class ExecutionEngine:
             report = ReconcileReport("BROKER_DISCONNECT", f"broker positions/orders failed: {e}", requires_suspend=True)
             self._suspended = True
             self._suspend_reason = f"broker disconnect: {e}"
+            self._persist_reconcile_suspend(True, self._suspend_reason)
             if self.audit:
                 self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": report.drift, "details": report.details, "requires_suspend": True}))
                 self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"reason": "BROKER_DISCONNECT", "detail": report.details}))
@@ -542,6 +635,7 @@ class ExecutionEngine:
                 )
                 self._suspended = True
                 self._suspend_reason = report.details
+                self._persist_reconcile_suspend(True, self._suspend_reason)
                 if self.audit:
                     self.audit.emit(
                         DomainEvent(event_type=EventType.RECONCILE, payload={"drift": report.drift, "details": report.details, "requires_suspend": True})
@@ -556,6 +650,7 @@ class ExecutionEngine:
                 )
                 self._suspended = True
                 self._suspend_reason = report.details
+                self._persist_reconcile_suspend(True, self._suspend_reason)
                 if self.audit:
                     self.audit.emit(
                         DomainEvent(event_type=EventType.RECONCILE, payload={"drift": report.drift, "details": report.details, "requires_suspend": True})
@@ -574,6 +669,7 @@ class ExecutionEngine:
                 )
                 self._suspended = True
                 self._suspend_reason = report.details
+                self._persist_reconcile_suspend(True, self._suspend_reason)
                 if self.audit:
                     self.audit.emit(
                         DomainEvent(event_type=EventType.RECONCILE, payload={"drift": report.drift, "details": report.details, "requires_suspend": True})
@@ -588,6 +684,7 @@ class ExecutionEngine:
                     )
                     self._suspended = True
                     self._suspend_reason = report.details
+                    self._persist_reconcile_suspend(True, self._suspend_reason)
                     if self.audit:
                         self.audit.emit(
                             DomainEvent(event_type=EventType.RECONCILE, payload={"drift": report.drift, "details": report.details, "requires_suspend": True})
@@ -604,6 +701,7 @@ class ExecutionEngine:
                 report = ReconcileReport("UNKNOWN_ORDER", f"venue order {cid} not local", requires_suspend=True)
                 self._suspended = True
                 self._suspend_reason = report.details
+                self._persist_reconcile_suspend(True, self._suspend_reason)
                 if self.audit:
                     self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": report.drift, "details": report.details, "requires_suspend": True}))
                     self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"reason": report.drift, "detail": report.details}))
@@ -611,15 +709,13 @@ class ExecutionEngine:
         for cid, local_order in self.om.orders.items():
             if local_order.state in (OrderState.PENDING, OrderState.ACCEPTED, OrderState.PARTIALLY_FILLED):
                 if cid not in venue_orders:
-                    # local pending but venue missing -> could be not yet propagated, but for safety treat as missing
-                    # For PaperBroker this shouldn't happen; for live, could be delay. We require suspend if order is old.
-                    # Check age: if created > order_timeout, then missing
                     from datetime import datetime, timezone
                     age = (datetime.now(timezone.utc) - local_order.created_at).total_seconds()
-                    if age > 10:  # order_timeout
+                    if age > 10:
                         report = ReconcileReport("MISSING_ORDER", f"local order {cid} not on venue age {age:.1f}s", requires_suspend=True)
                         self._suspended = True
                         self._suspend_reason = report.details
+                        self._persist_reconcile_suspend(True, self._suspend_reason)
                         if self.audit:
                             self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": report.drift, "details": report.details, "requires_suspend": True}))
                             self.audit.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"reason": report.drift, "detail": report.details}))
@@ -635,6 +731,7 @@ class ExecutionEngine:
         """Explicit reactivation after drift healed — required (no auto-heal)."""
         self._suspended = False
         self._suspend_reason = None
+        self._persist_reconcile_suspend(False, None)
         if self.audit:
             self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": "HEALED", "details": reason}))
 

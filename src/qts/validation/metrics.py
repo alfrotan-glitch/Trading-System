@@ -41,6 +41,38 @@ import numpy as np
 from scipy.stats import norm
 
 
+def periods_per_year_for_timeframe(timeframe: str) -> int:
+    """Derive P (periods per year) from timeframe string. No silent fallback.
+
+    Supported: 1m, 5m, 15m, 30m, 1H, 4H, 1D. For unknown, raises ValueError to fail closed.
+    Uses 252 trading days for traditional markets, 24h for XAUUSD.
+    """
+    tf = timeframe.strip()
+    # Normalize: allow 1H, 1h, H1, M1 etc — support common variants
+    mapping = {
+        "1m": 252 * 24 * 60,
+        "5m": 252 * 24 * 12,
+        "15m": 252 * 24 * 4,
+        "30m": 252 * 24 * 2,
+        "1H": 252 * 24,
+        "1h": 252 * 24,
+        "4H": 252 * 6,
+        "4h": 252 * 6,
+        "1D": 252,
+        "1d": 252,
+        "D1": 252,
+    }
+    if tf in mapping:
+        return mapping[tf]
+    # Try generic: e.g., "M1" -> 1m, "H1" -> 1H
+    normalized = tf.upper()
+    if normalized == "M1":
+        return 252 * 24 * 60
+    if normalized == "H1":
+        return 252 * 24
+    raise ValueError(f"unknown timeframe {timeframe!r}: cannot derive periods_per_year (fail closed)")
+
+
 def sharpe_ratio(returns: np.ndarray, risk_free: float = 0.0, periods_per_year: int = 252 * 24) -> float:
     """Annualized Sharpe: mean_excess / std * sqrt(periods_per_year).
 

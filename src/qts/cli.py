@@ -188,8 +188,11 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
     eq_is = np.array(full.equity_curve[:mid])
     eq_oos = np.array(full.equity_curve[mid:])
 
-    # Real stress: re-run with spread multipliers
-    stress_results = engine.run_stress(instr, timeframe, data_version, strategy, {"fast": 10, "slow": 20, "quantity": 0.1}, spreads=[1.0, 1.5, 2.0])
+    # Real stress: re-run with spread multipliers — G6 use Settings spread_stress_levels (no duplicate)
+    from qts.config.settings import load_settings as _load_settings_for_stress
+    _settings_for_stress = _load_settings_for_stress()
+    spreads_cfg = _settings_for_stress.validation.spread_stress_levels
+    stress_results = engine.run_stress(instr, timeframe, data_version, strategy, {"fast": 10, "slow": 20, "quantity": 0.1}, spreads=spreads_cfg)
 
     # Real perturbation: baseline ±5/10/20%
     baseline = 10
@@ -252,6 +255,9 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
         pass
 
     pipeline = ValidatorPipeline()  # coherent Settings policy; materially negative OOS Sharpe fails (min_oos_sharpe=0.30)
+    # Derive timeframe from manifest for P scaling (G8) — no hardcoded 252 fallback without audit
+    manifest_for_p = store.manifest(data_version)
+    timeframe_for_p = manifest_for_p.timeframe if manifest_for_p else timeframe
     report = pipeline.validate(
         strategy_id=strategy,
         data_version=data_version,
@@ -262,7 +268,39 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
         cpcv_folds=cpcv_folds if cpcv_folds else None,
         perturbed_sharpes=perturbed if perturbed else None,
         stress_results=stress_results,
+        timeframe=timeframe_for_p,
     )
+    # G12: Durable audit for validation outcome — success and failure must be auditable
+    try:
+        from qts.observability.audit import SqliteAuditLog
+        from qts.domain.events import DomainEvent, EventType
+        audit_log = SqliteAuditLog()
+        # Emit VALIDATION event with passed flag and reasons
+        audit_log.emit(DomainEvent(
+            event_type=EventType.ORDER_EVENT if report.passed else EventType.RISK_VETO,
+            payload={
+                "event": "VALIDATION",
+                "strategy_id": strategy,
+                "data_version": data_version,
+                "timeframe": timeframe_for_p,
+                "periods_per_year": report.metrics.get("periods_per_year"),
+                "passed": report.passed,
+                "reasons": report.reasons,
+                "metrics": {k: (float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else v) for k, v in report.metrics.items()},
+                "checks": [{"name": c.name, "passed": c.passed, "status": c.status, "metric": c.metric, "threshold": c.threshold, "details": c.details} for c in report.checks],
+                "from": "VALIDATING",
+                "to": "REJECTED" if not report.passed else "CANDIDATE",
+            }
+        ))
+        # Also emit NO_TRADE on validation failure for capital preservation audit trail
+        if not report.passed:
+            audit_log.emit(DomainEvent(
+                event_type=EventType.NO_TRADE,
+                payload={"strategy_id": strategy, "data_version": data_version, "reason": "VALIDATION_FAILED", "detail": "; ".join(report.reasons)[:500]}
+            ))
+    except Exception as e:
+        click.echo(f"validation audit emit failed: {e}", err=True)
+
     click.echo(f"validation passed={report.passed} reasons={report.reasons}")
     click.echo(
         f"metrics: sharpe_is={report.metrics.get('sharpe_is', 0):.3f} sharpe_oos={report.metrics.get('sharpe_oos', 0):.3f} wfe={report.metrics.get('wfe', 0):.2f} dsr={report.metrics.get('dsr_prob', 0):.2f} pbo={report.metrics.get('pbo', 0):.2f}"
@@ -422,8 +460,19 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         except ValueError as e:
             click.echo(f"live blocked (fail closed): {e}", err=True)
             sys.exit(2)
-        click.echo("live mode — not implemented in Phase 0 (requires MT5 terminal + SHADOW success)")
-        sys.exit(0)
+        # LIVE BROKER BOUNDARY (G4): MT5 submission is not implemented in Phase0
+        # No live path may report success while MT5Adapter.submit raises NotImplementedError.
+        # Fail closed with non-zero until live stack is fully implemented and shadow-validated.
+        # Also ensure dummy/invalid data-version never succeeds in live mode (G3)
+        # Check that requested data_version actually exists
+        store_tmp = SqliteParquetDataStore()
+        manifest_tmp = store_tmp.manifest(data_version)
+        if manifest_tmp is None:
+            click.echo(f"live blocked: data_version {data_version} not found (fail closed)", err=True)
+            sys.exit(2)
+        # Explicit live unimplemented guard - must be non-zero
+        click.echo("live mode — not implemented in Phase 0 (requires MT5 terminal + SHADOW success) — BLOCKED", err=True)
+        sys.exit(2)
     click.echo(f"running mode={mode} strategy={strategy} version={data_version}")
     store = SqliteParquetDataStore()
     instr = Instrument(symbol="XAUUSD", venue="MT5")

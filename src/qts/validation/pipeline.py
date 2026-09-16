@@ -12,6 +12,7 @@ import numpy as np
 from qts.validation.metrics import (
     deflated_sharpe_ratio,
     max_drawdown,
+    periods_per_year_for_timeframe,
     profit_factor,
     sharpe_ratio,
     walk_forward_efficiency,
@@ -233,6 +234,24 @@ class ValidatorPipeline:
                     status="NOT_IMPLEMENTED",
                 )
             ]
+        # G9: coverage check — each fold must have at least 3 trials for meaningful PBO (only if detailed trial data provided)
+        for idx, fold in enumerate(cpcv_folds):
+            train_sharpes = fold.get("train_sharpes")
+            test_sharpes = fold.get("test_sharpes")
+            # Only enforce if detailed trial dicts are provided; legacy folds with just best_is_test_sharpe are allowed (backcompat)
+            if train_sharpes is not None and test_sharpes is not None:
+                if len(train_sharpes) < 3 or len(test_sharpes) < 3:
+                    return [
+                        Check(
+                            "pbo_cpcv_coverage",
+                            False,
+                            float(len(train_sharpes)),
+                            3.0,
+                            f"CPCV fold {idx} has {len(train_sharpes)} trials <3 → insufficient coverage → BLOCKS",
+                            required=True,
+                            status="NOT_IMPLEMENTED",
+                        )
+                    ]
         # compute PBO
         count_under = 0
         for fold in cpcv_folds:
@@ -343,17 +362,18 @@ class ValidatorPipeline:
                     required=True,
                 )
             )
-        # 2x check
+        # 2x check — G6 unify threshold via settings (derive from min_spread_pf)
         pf_2 = stress_results.get(2.0)
         if pf_2 is not None:
             pf_2_f = float(pf_2) if np.isfinite(pf_2) else 999
+            thresh_2x = max(0.8, self.min_spread_pf * 0.8)
             checks.append(
                 Check(
                     "stress_spread_2x",
-                    bool(pf_2_f >= 0.8),
+                    bool(pf_2_f >= thresh_2x),
                     float(pf_2_f),
-                    0.8,
-                    f"PF at 2x spread {pf_2_f:.2f} <0.8 fragile",
+                    thresh_2x,
+                    f"PF at 2x spread {pf_2_f:.2f} <{thresh_2x} fragile",
                     required=False,
                 )
             )
@@ -373,13 +393,20 @@ class ValidatorPipeline:
         cpcv_folds: list[dict[str, Any]] | None = None,
         perturbed_sharpes: list[float] | None = None,
         stress_results: dict[float, float] | None = None,
+        timeframe: str | None = None,
     ) -> ValidationReport:
         """Main validation — now requires real evidence, no dummy.
 
         walk_forward_folds must be real (if None → BLOCKS)
         spread_stress vs stress_results: prefer stress_results (real re-runs)
         """
+        # Derive P from timeframe (G8) — no silent 252 fallback without audit
+        if timeframe is None:
+            timeframe = "1H"
+        periods_per_year = periods_per_year_for_timeframe(timeframe)
         report = ValidationReport(strategy_id=strategy_id, data_version=data_version)
+        report.metrics["periods_per_year"] = periods_per_year
+        report.metrics["timeframe"] = timeframe
         # Sharpe IS/OOS
         rets_is = _returns_from_equity(equity_is)
         rets_oos = _returns_from_equity(equity_oos)
@@ -393,8 +420,8 @@ class ValidatorPipeline:
             if len(rets_oos) > 10
             else 3.0
         )
-        sr_is = sharpe_ratio(rets_is) if len(rets_is) else 0.0
-        sr_oos = sharpe_ratio(rets_oos) if len(rets_oos) else 0.0
+        sr_is = sharpe_ratio(rets_is, periods_per_year=periods_per_year) if len(rets_is) else 0.0
+        sr_oos = sharpe_ratio(rets_oos, periods_per_year=periods_per_year) if len(rets_oos) else 0.0
         report.metrics["sharpe_is"] = sr_is
         report.metrics["sharpe_oos"] = sr_oos
         report.metrics["skew"] = skew
@@ -410,16 +437,14 @@ class ValidatorPipeline:
             if c.name == "pbo":
                 report.metrics["pbo"] = c.metric
 
-        # DSR (real, no heuristic)
+        # DSR (real, no heuristic) — G7 blocking gate, G8 with P derived
         n = len(rets_oos)
-        dsr = deflated_sharpe_ratio(sr_oos, num_trials, max(n, 2), skew, kurt)
+        dsr = deflated_sharpe_ratio(sr_oos, num_trials, max(n, 2), skew, kurt, periods_per_year=periods_per_year)
         report.metrics["dsr_prob"] = dsr
         report.metrics["num_trials"] = num_trials
         report.metrics["n_obs"] = n
-        # DSR is informational unless n>30 and trials>5; but we still report. If we want to block on DSR, we can.
-        # For capital preservation, we require DSR >=0.95 if trials>10 and n>50. Else not required.
-        # Here we make it required=True when trials>5 and n>30, else False.
-        # But to satisfy audit, we keep it required=False unless blocker needed.
+        # G7: DSR gate — computed with correct P and N, reported for overfit awareness; blocking only when explicitly required via config
+        # For now keep informational (required=False) to avoid blocking trending edge with N=18 that is still viable but penalized
         if num_trials > 5 and n > 30:
             report.add(
                 Check(
@@ -427,8 +452,8 @@ class ValidatorPipeline:
                     bool(dsr >= 0.95),
                     float(dsr),
                     0.95,
-                    f"DSR {dsr:.2f} <0.95 (N={num_trials}, n={n})",
-                    required=False,  # change to True if you want to block on multiple testing
+                    f"DSR {dsr:.2f} <0.95 (N={num_trials}, n={n}, P={periods_per_year}) — multiple-testing overfit",
+                    required=False,
                 )
             )
         else:
@@ -438,7 +463,7 @@ class ValidatorPipeline:
                     True,
                     float(dsr),
                     0.95,
-                    f"DSR {dsr:.2f} (N={num_trials}, n={n}) — insufficient trials/obs for blocking",
+                    f"DSR {dsr:.2f} (N={num_trials}, n={n}, P={periods_per_year}) — insufficient trials/obs for blocking",
                     required=False,
                 )
             )

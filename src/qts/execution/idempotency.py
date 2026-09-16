@@ -30,11 +30,30 @@ class IdempotencyStore:
     """Stores client_order_id -> status to prevent duplicate economic orders."""
 
     def __init__(self, db_path: Path | str = "data/sqlite/qts.db"):
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.db_path = Path(db_path) if str(db_path) != ":memory:" else Path(":memory:")
+        if str(db_path) != ":memory:":
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+            self._memory_con = None
+        else:
+            # Persistent in-memory connection - each store gets isolated memory DB
+            # Must keep single connection, otherwise :memory: per connect is empty
+            self._memory_con = sqlite3.connect(":memory:", check_same_thread=False)
         self._init()
 
     def _init(self) -> None:
+        if self._memory_con is not None:
+            con = self._memory_con
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS idempotency (
+                    client_order_id TEXT PRIMARY KEY,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            con.commit()
+            return
         with sqlite3.connect(self.db_path) as con:
             con.execute(
                 """
@@ -47,7 +66,17 @@ class IdempotencyStore:
             )
             con.commit()
 
+    def _connect(self):
+        if self._memory_con is not None:
+            return self._memory_con
+        return sqlite3.connect(self.db_path)
+
     def seen(self, client_order_id: str) -> bool:
+        if self._memory_con is not None:
+            row = self._memory_con.execute(
+                "SELECT 1 FROM idempotency WHERE client_order_id=?", (client_order_id,)
+            ).fetchone()
+            return row is not None
         with sqlite3.connect(self.db_path) as con:
             row = con.execute(
                 "SELECT 1 FROM idempotency WHERE client_order_id=?", (client_order_id,)
@@ -55,6 +84,11 @@ class IdempotencyStore:
             return row is not None
 
     def get_status(self, client_order_id: str) -> str | None:
+        if self._memory_con is not None:
+            row = self._memory_con.execute(
+                "SELECT status FROM idempotency WHERE client_order_id=?", (client_order_id,)
+            ).fetchone()
+            return row[0] if row else None
         with sqlite3.connect(self.db_path) as con:
             row = con.execute(
                 "SELECT status FROM idempotency WHERE client_order_id=?", (client_order_id,)
@@ -82,6 +116,13 @@ class IdempotencyStore:
     def record(self, client_order_id: str, status: str = "PENDING") -> None:
         from datetime import datetime, timezone
 
+        if self._memory_con is not None:
+            self._memory_con.execute(
+                "INSERT OR IGNORE INTO idempotency VALUES (?,?,?)",
+                (client_order_id, status, datetime.now(timezone.utc).isoformat()),
+            )
+            self._memory_con.commit()
+            return
         with sqlite3.connect(self.db_path) as con:
             con.execute(
                 "INSERT OR IGNORE INTO idempotency VALUES (?,?,?)",
@@ -90,6 +131,12 @@ class IdempotencyStore:
             con.commit()
 
     def update(self, client_order_id: str, status: str) -> None:
+        if self._memory_con is not None:
+            self._memory_con.execute(
+                "UPDATE idempotency SET status=? WHERE client_order_id=?", (status, client_order_id)
+            )
+            self._memory_con.commit()
+            return
         with sqlite3.connect(self.db_path) as con:
             con.execute(
                 "UPDATE idempotency SET status=? WHERE client_order_id=?", (status, client_order_id)
@@ -97,6 +144,10 @@ class IdempotencyStore:
             con.commit()
 
     def clear(self) -> None:
+        if self._memory_con is not None:
+            self._memory_con.execute("DELETE FROM idempotency")
+            self._memory_con.commit()
+            return
         with sqlite3.connect(self.db_path) as con:
             con.execute("DELETE FROM idempotency")
             con.commit()

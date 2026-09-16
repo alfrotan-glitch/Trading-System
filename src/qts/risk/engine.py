@@ -84,6 +84,11 @@ class RiskDecision(BaseModel):
     veto_reason: RiskVetoReason | None = None
     resized_quantity: Decimal | None = None
     reason_detail: str = ""
+    # Audit fields for G10: durable price source traceability
+    price: Decimal | None = None
+    price_source: str | None = None
+    notional: Decimal | None = None
+    symbol: str | None = None
 
 
 class RiskEngine:
@@ -132,15 +137,16 @@ class RiskEngine:
         return intent.quantity * intent.instrument.contract_size * est_price
 
     def pre_trade(self, intent: OrderIntent, ctx: RiskContext) -> RiskDecision:
+        sym = intent.instrument.symbol
         if self._killed:
             return RiskDecision(
                 allowed=False,
                 veto_reason=RiskVetoReason.KILL_SWITCH_ACTIVE,
                 reason_detail="kill active",
+                symbol=sym,
             )
-        sym = intent.instrument.symbol
         if sym in ctx.instrument_suspended:
-            return RiskDecision(allowed=False, veto_reason=RiskVetoReason.INSTRUMENT_SUSPENDED)
+            return RiskDecision(allowed=False, veto_reason=RiskVetoReason.INSTRUMENT_SUSPENDED, symbol=sym)
 
         # quantity step / min
         if intent.quantity < self.limits.min_quantity:
@@ -148,6 +154,7 @@ class RiskEngine:
                 allowed=False,
                 veto_reason=RiskVetoReason.MIN_QUANTITY_VIOLATION,
                 reason_detail=f"{intent.quantity} < min {self.limits.min_quantity}",
+                symbol=sym,
             )
         # step: quantity must be multiple of step (within tolerance)
         # check (quantity / step) is integer
@@ -164,6 +171,7 @@ class RiskEngine:
                     allowed=False,
                     veto_reason=RiskVetoReason.QUANTITY_STEP_VIOLATION,
                     reason_detail=f"{intent.quantity} not multiple of {instr_step}",
+                    symbol=sym,
                 )
 
         if intent.quantity > self.limits.max_quantity:
@@ -171,6 +179,7 @@ class RiskEngine:
                 allowed=False,
                 veto_reason=RiskVetoReason.EXCEEDS_MAX_QUANTITY,
                 reason_detail=f"{intent.quantity} > {self.limits.max_quantity}",
+                symbol=sym,
             )
 
         # notional — must use authoritative market price, not hard-coded fallback (Blocker 5)
@@ -186,6 +195,10 @@ class RiskEngine:
                 allowed=False,
                 veto_reason=RiskVetoReason.MISSING_MARKET_PRICE,
                 reason_detail=f"no market price for {sym}: need limit_price or reference_prices[{sym}]",
+                price=None,
+                price_source="missing",
+                notional=None,
+                symbol=sym,
             )
         notional = self._notional_for(intent, est_price)
         # audit detail includes price_source for traceability
@@ -193,7 +206,11 @@ class RiskEngine:
             return RiskDecision(
                 allowed=False,
                 veto_reason=RiskVetoReason.EXCEEDS_NOTIONAL,
-                reason_detail=f"notional {notional} > {self.limits.max_notional}",
+                reason_detail=f"notional {notional} > {self.limits.max_notional} price {est_price} source {price_source}",
+                price=est_price,
+                price_source=price_source,
+                notional=notional,
+                symbol=sym,
             )
 
         if (
@@ -204,17 +221,20 @@ class RiskEngine:
             return RiskDecision(allowed=False, veto_reason=RiskVetoReason.MISSING_STOP)
 
         if ctx.open_orders_count >= self.limits.max_open_orders:
-            return RiskDecision(allowed=False, veto_reason=RiskVetoReason.TOO_MANY_ORDERS)
+            return RiskDecision(allowed=False, veto_reason=RiskVetoReason.TOO_MANY_ORDERS, symbol=sym, price=est_price if 'est_price' in locals() else None, price_source=price_source if 'price_source' in locals() else None)
 
         # daily loss: ctx.daily_pnl is negative if losing
         if ctx.daily_pnl <= -self.limits.daily_loss_limit:
             return RiskDecision(
                 allowed=False,
                 veto_reason=RiskVetoReason.DAILY_LOSS_BREACH,
-                reason_detail=f"daily_pnl {ctx.daily_pnl}",
+                reason_detail=f"daily_pnl {ctx.daily_pnl} price {est_price} source {price_source}",
+                price=est_price,
+                price_source=price_source,
+                symbol=sym,
             )
         if ctx.drawdown >= self.limits.max_drawdown:
-            return RiskDecision(allowed=False, veto_reason=RiskVetoReason.DRAWDOWN_BREACH)
+            return RiskDecision(allowed=False, veto_reason=RiskVetoReason.DRAWDOWN_BREACH, symbol=sym, price=est_price if 'est_price' in locals() else None, price_source=price_source if 'price_source' in locals() else None)
 
         # exposure lots: net quantity + new delta
         current_qty = sum((p.quantity for p in ctx.positions.values()), Decimal("0"))
@@ -224,7 +244,11 @@ class RiskEngine:
             return RiskDecision(
                 allowed=False,
                 veto_reason=RiskVetoReason.EXCEEDS_EXPOSURE,
-                reason_detail=f"exposure lots {new_exposure_lots} > {self.limits.max_exposure_lots}",
+                reason_detail=f"exposure lots {new_exposure_lots} > {self.limits.max_exposure_lots} price {est_price} source {price_source}",
+                price=est_price,
+                price_source=price_source,
+                notional=notional,
+                symbol=sym,
             )
         # exposure notional (optional)
         if self.limits.max_exposure_notional is not None:
@@ -240,7 +264,11 @@ class RiskEngine:
                 return RiskDecision(
                     allowed=False,
                     veto_reason=RiskVetoReason.EXCEEDS_EXPOSURE,
-                    reason_detail=f"exposure notional {new_notional} > {self.limits.max_exposure_notional}",
+                    reason_detail=f"exposure notional {new_notional} > {self.limits.max_exposure_notional} price {est_price} source {price_source}",
+                    price=est_price,
+                    price_source=price_source,
+                    notional=new_notional,
+                    symbol=sym,
                 )
 
         # leverage: total notional / equity
@@ -259,7 +287,11 @@ class RiskEngine:
             return RiskDecision(
                 allowed=False,
                 veto_reason=RiskVetoReason.EXCEEDS_LEVERAGE,
-                reason_detail=f"leverage {lev:.2f} > {self.limits.max_leverage}",
+                reason_detail=f"leverage {lev:.2f} > {self.limits.max_leverage} price {est_price} source {price_source}",
+                price=est_price,
+                price_source=price_source,
+                notional=notional,
+                symbol=sym,
             )
 
         # vol-aware resize (not veto)
@@ -276,8 +308,12 @@ class RiskEngine:
                     resized_quantity=resized,
                     veto_reason=RiskVetoReason.VOL_RESIZE,
                     reason_detail=f"vol resize {factor:.2f}",
+                    price=est_price,
+                    price_source=price_source,
+                    notional=notional,
+                    symbol=sym,
                 )
-        return RiskDecision(allowed=True)
+        return RiskDecision(allowed=True, price=est_price, price_source=price_source, notional=notional, symbol=sym)
 
     def post_trade(self, fill: Fill, ctx: RiskContext) -> None:
         if not self.limits.kill_switch_enabled:

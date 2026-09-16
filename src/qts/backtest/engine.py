@@ -126,15 +126,14 @@ class BacktestEngine:
             raise ValueError(f"unknown strategy {strategy_id}")
 
         matching = MatchingEngine(self.matching_config)
-        # use temp db for idempotency to keep backtests isolated but persistent check works
-        # use same db_path but with unique prefix via temp? For determinism use same path but clear
+        # Isolated idempotency: backtest must NOT mutate live/shared lineage (G2)
+        # Use isolated in-memory store (or per-run temp file) so live records remain untouched
+        # Previously this cleared the shared DB (idemp.clear()) which destroyed live lineage.
         risk = RiskEngine(self.risk_limits, db_path=self.data_store.db_path)
         risk.reset_kill()
-        # idempotency store per backtest run (cleared)
-        idemp = IdempotencyStore(db_path=self.data_store.db_path)
-        # clear previous idempotency for deterministic replay? We want each backtest to be independent,
-        # so clear before run
-        idemp.clear()
+        # Backtest idempotency is isolated - use :memory: SQLite so it never touches live DB
+        # Each backtest run gets a fresh isolated namespace
+        idemp = IdempotencyStore(db_path=":memory:")
         om = OrderManager(audit=self.audit, idempotency=idemp)
         broker = PaperBrokerAdapter(matching=matching)
         portfolio = Portfolio(initial_balance=Decimal(str(self.initial_balance)), currency="USD")
