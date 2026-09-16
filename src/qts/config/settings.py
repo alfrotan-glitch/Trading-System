@@ -16,7 +16,7 @@ class DataConfig(BaseModel):
 
 
 class ExecutionConfig(BaseModel):
-    mode: Literal["backtest", "paper", "live"] = "backtest"
+    mode: Literal["backtest", "paper", "shadow", "live", "dry_run", "micro"] = "backtest"
     reconcile_interval_s: int = 30
     order_timeout_s: int = 10
     max_retries: int = 3
@@ -96,6 +96,19 @@ class Settings(BaseModel):
                 raise ValueError("live mode requires --confirm live")
             if not self.risk.approved:
                 raise ValueError("live mode requires risk.approved=true")
+
+    def assert_micro_allowed(self) -> None:
+        if self.execution.mode == "micro":
+            import os
+            if os.getenv("QTS_MICRO_ENABLED") != "true":
+                raise ValueError("micro mode requires QTS_MICRO_ENABLED=true (fail closed)")
+            if self.env != "live":
+                raise ValueError("micro mode requires env=live")
+            if not self.confirm_live:
+                raise ValueError("micro mode requires --confirm live")
+            if not self.risk.approved:
+                raise ValueError("micro mode requires risk.approved=true")
+
 
 
 def load_settings(path: str | Path | None = None, env: str | None = None) -> Settings:

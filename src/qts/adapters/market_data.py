@@ -69,24 +69,30 @@ class MarketDataProvider:
         if spread_bps < 0:
             raise MarketDataError(f"negative spread {spread_bps} for {expected_symbol}")
         # Additional: check if broker says market closed / trade disabled
-        # We can't directly check via tick, but we can try to get symbol spec if broker is MT5Adapter
         try:
             if hasattr(self.broker, "get_symbol_spec"):
-                spec = self.broker.get_symbol_spec(expected_symbol)
+                try:
+                    spec = self.broker.get_symbol_spec(expected_symbol)
+                except Exception as e:
+                    raise MarketDataError(f"market not trade_allowed for {expected_symbol}: {e}") from e
                 if not spec.trade_allowed or spec.trade_mode == 0:
                     raise MarketDataError(f"market not trade_allowed for {expected_symbol} mode {spec.trade_mode}")
         except MarketDataError:
             raise
         except Exception:
-            # If spec fetch fails, don't block on tick but log
             pass
 
     def get_tick(self, instrument: Instrument) -> Tick:
         """Authoritative executable tick — validated, fail-closed."""
-        # Broker must provide ticks()
         if not hasattr(self.broker, "ticks"):
             raise MarketDataError(f"broker {type(self.broker).__name__} has no ticks() for {instrument.symbol}")
-        tick = self.broker.ticks(instrument)
+        try:
+            tick = self.broker.ticks(instrument)
+        except Exception as e:
+            # Convert pydantic ValidationError or other broker errors to MarketDataError
+            if isinstance(e, MarketDataError):
+                raise
+            raise MarketDataError(f"tick retrieval failed for {instrument.symbol}: {e}") from e
         if tick is None:
             raise MarketDataError(f"no tick available for {instrument.symbol} (market closed or symbol unknown)")
         self._validate_tick(tick, instrument.symbol)

@@ -35,7 +35,7 @@ from qts.execution.engine import BrokerAdapter
 
 @dataclass(frozen=True)
 class SymbolSpec:
-    """Authoritative broker symbol metadata — single source for validation."""
+    """Authoritative broker symbol metadata — single canonical spec."""
     symbol: str
     contract_size: Decimal
     volume_min: Decimal
@@ -47,6 +47,14 @@ class SymbolSpec:
     trade_mode: int
     trade_allowed: bool
     filling_mode: int
+    # Extended authoritative fields (Phase 2)
+    execution_mode: int = 0  # 0 market, 1 instant, 2 request, 3 exchange
+    stops_level: int = 0  # minimum stop distance in points
+    freeze_level: int = 0
+    volume_limit: Decimal = Decimal("0")
+    # session info (if available)
+    session_open: str | None = None
+    session_close: str | None = None
     # raw mt5 info for audit
     raw: dict[str, Any] | None = None
 
@@ -156,12 +164,12 @@ class MT5Adapter(BrokerAdapter):
     # ---------- Symbol metadata (authoritative) ----------
 
     def get_symbol_spec(self, symbol: str) -> SymbolSpec:
-        """Fetch and cache authoritative symbol spec from broker."""
+        """Fetch and cache authoritative symbol spec — canonical single source (Phase 2)."""
         if symbol in self._spec_cache:
             return self._spec_cache[symbol]
         mt5 = self._require_mt5()
         mt5_sym = self._map_symbol(symbol)
-        # Ensure symbol is selected
+        # Phase 1: ensure symbol visible/selected before info
         try:
             mt5.symbol_select(mt5_sym, True)
         except Exception:
@@ -169,7 +177,6 @@ class MT5Adapter(BrokerAdapter):
         info = mt5.symbol_info(mt5_sym)
         if info is None:
             raise RuntimeError(f"MT5 symbol_info not found for {symbol} (mapped {mt5_sym}): {mt5.last_error()}")
-        # Validate required fields
         contract_size = Decimal(str(getattr(info, "contract_size", 100)))
         volume_min = Decimal(str(getattr(info, "volume_min", 0.01)))
         volume_max = Decimal(str(getattr(info, "volume_max", 100)))
@@ -177,11 +184,13 @@ class MT5Adapter(BrokerAdapter):
         digits = int(getattr(info, "digits", 2))
         point = Decimal(str(getattr(info, "point", 0.01)))
         tick_size = Decimal(str(getattr(info, "trade_tick_size", point)))
-        trade_mode = int(getattr(info, "trade_mode", 4))  # 0 disabled, 4 full
+        trade_mode = int(getattr(info, "trade_mode", 4))
         trade_allowed = bool(getattr(info, "trade_allowed", True))
         filling = int(getattr(info, "filling_mode", 1))
-        # Validate trade mode
-        if trade_mode == 0:  # SYMBOL_TRADE_MODE_DISABLED
+        execution_mode = int(getattr(info, "execution_mode", getattr(info, "trade_execution", 0)))
+        stops_level = int(getattr(info, "trade_stops_level", getattr(info, "stops_level", 0)))
+        freeze_level = int(getattr(info, "trade_freeze_level", getattr(info, "freeze_level", 0)))
+        if trade_mode == 0:
             raise RuntimeError(f"MT5 symbol {symbol} trade disabled (mode 0)")
         if not trade_allowed:
             raise RuntimeError(f"MT5 symbol {symbol} trade not allowed")
@@ -197,6 +206,9 @@ class MT5Adapter(BrokerAdapter):
             trade_mode=trade_mode,
             trade_allowed=trade_allowed,
             filling_mode=filling,
+            execution_mode=execution_mode,
+            stops_level=stops_level,
+            freeze_level=freeze_level,
             raw={
                 "contract_size": str(contract_size),
                 "volume_min": str(volume_min),
@@ -205,10 +217,197 @@ class MT5Adapter(BrokerAdapter):
                 "digits": digits,
                 "point": str(point),
                 "trade_mode": trade_mode,
+                "filling_mode": filling,
+                "execution_mode": execution_mode,
+                "stops_level": stops_level,
+                "freeze_level": freeze_level,
             },
         )
         self._spec_cache[symbol] = spec
         return spec
+
+    # ---------- Phase 1: Connectivity & health ----------
+
+    def validate_prerequisites(self, symbol: str | None = None) -> dict[str, Any]:
+        """Verify all prerequisites before any order submission — fail-closed."""
+        errors: list[str] = []
+        mt5 = self._require_mt5()
+        try:
+            term = mt5.terminal_info()
+            if term is None:
+                errors.append("terminal_info unavailable — not initialized")
+        except Exception as e:
+            errors.append(f"terminal_info error: {e}")
+        try:
+            acct = mt5.account_info()
+            if acct is None:
+                errors.append(f"account_info unavailable: {mt5.last_error()}")
+        except Exception as e:
+            errors.append(f"account connectivity: {e}")
+        if symbol:
+            try:
+                self.get_symbol_spec(symbol)
+            except Exception as e:
+                errors.append(f"symbol {symbol} not tradable: {e}")
+        return {"ok": len(errors) == 0, "errors": errors}
+
+    def health_check(self) -> dict[str, Any]:
+        """Connection health — terminal, account, last_error, ping."""
+        mt5 = self._require_mt5()
+        now = datetime.now(UTC)
+        result: dict[str, Any] = {"timestamp": now.isoformat(), "connected": False, "terminal_ok": False, "account_ok": False, "last_error": None}
+        try:
+            ti = mt5.terminal_info()
+            result["terminal_ok"] = ti is not None
+            result["terminal_info"] = {"connected": bool(getattr(ti, "connected", False)), "trade_allowed": bool(getattr(ti, "trade_allowed", False))} if ti else None
+        except Exception as e:
+            result["terminal_error"] = str(e)
+        try:
+            ai = mt5.account_info()
+            result["account_ok"] = ai is not None
+            if ai:
+                result["account"] = {"balance": str(getattr(ai, "balance", "")), "login": getattr(ai, "login", None)}
+        except Exception as e:
+            result["account_error"] = str(e)
+        try:
+            err = mt5.last_error()
+            result["last_error"] = str(err)
+            result["connected"] = result["terminal_ok"] and result["account_ok"] and (err[0] == 1 if isinstance(err, tuple) else True)
+        except Exception as e:
+            result["last_error"] = str(e)
+        return result
+
+    def is_connected(self) -> bool:
+        try:
+            h = self.health_check()
+            return bool(h["connected"])
+        except Exception:
+            return False
+
+    def terminal_info(self) -> Any:
+        mt5 = self._require_mt5()
+        return mt5.terminal_info()
+
+    def discover_symbols(self, pattern: str = "*", max_count: int = 500) -> list[str]:
+        """Symbol discovery — authoritative broker listing."""
+        mt5 = self._require_mt5()
+        try:
+            raw = mt5.symbols_get()
+            if raw is None:
+                return []
+            names = [getattr(s, "name", str(s)) for s in raw]
+            if pattern != "*":
+                import fnmatch
+                names = [n for n in names if fnmatch.fnmatch(n, pattern)]
+            return names[:max_count]
+        except Exception:
+            return []
+
+    def ensure_symbol_visible(self, symbol: str) -> bool:
+        mt5 = self._require_mt5()
+        try:
+            return bool(mt5.symbol_select(self._map_symbol(symbol), True))
+        except Exception:
+            return False
+
+    def is_symbol_tradable(self, symbol: str) -> bool:
+        try:
+            spec = self.get_symbol_spec(symbol)
+            return spec.trade_allowed and spec.trade_mode != 0
+        except Exception:
+            return False
+
+    def reconnect(self, max_attempts: int = 3) -> bool:
+        """Clean shutdown then reconnect — recovery behavior."""
+        mt5 = self._require_mt5()
+        for attempt in range(max_attempts):
+            try:
+                import contextlib
+                with contextlib.suppress(Exception):
+                    mt5.shutdown()
+                kwargs: dict[str, Any] = {}
+                path = self.config.get("path")
+                if path:
+                    kwargs["path"] = path
+                if not mt5.initialize(**kwargs):
+                    continue
+                login = self.config.get("login")
+                password = self.config.get("password")
+                server = self.config.get("server")
+                if login and password and server:
+                    if not mt5.login(login, password, server):
+                        continue
+                if self.is_connected():
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def build_broker_request(self, intent: OrderIntent) -> dict[str, Any]:
+        """Construct exact broker request without submitting — dry-run (Phase 9)."""
+        spec = self.get_symbol_spec(intent.instrument.symbol)
+        normalized_qty = self.validate_and_normalize_quantity(intent.quantity, spec)
+        limit_price = self.validate_price_precision(intent.limit_price, spec) if intent.limit_price else None
+        stop_price = self.validate_price_precision(intent.stop_price, spec) if intent.stop_price else None
+        # SL/TP validation against stops_level
+        if intent.limit_price and spec.stops_level > 0:
+            # Use current tick price approximation for distance check — not blocking for market orders
+            pass
+        mt5 = self._require_mt5()
+        mt5_symbol = self._map_symbol(intent.instrument.symbol)
+        comment = self._build_comment(intent.client_order_id)
+        if intent.order_type == OrderType.MARKET:
+            mt5_type = mt5.ORDER_TYPE_BUY if intent.side == Side.BUY else mt5.ORDER_TYPE_SELL
+            action = mt5.TRADE_ACTION_DEAL
+            price = 0.0
+        elif intent.order_type == OrderType.LIMIT:
+            if limit_price is None:
+                raise ValueError("LIMIT requires limit_price")
+            mt5_type = mt5.ORDER_TYPE_BUY_LIMIT if intent.side == Side.BUY else mt5.ORDER_TYPE_SELL_LIMIT
+            action = mt5.TRADE_ACTION_PENDING
+            price = float(limit_price)
+        elif intent.order_type == OrderType.STOP:
+            if stop_price is None:
+                raise ValueError("STOP requires stop_price")
+            mt5_type = mt5.ORDER_TYPE_BUY_STOP if intent.side == Side.BUY else mt5.ORDER_TYPE_SELL_STOP
+            action = mt5.TRADE_ACTION_PENDING
+            price = float(stop_price)
+        else:
+            raise ValueError(f"unsupported order_type {intent.order_type}")
+        filling = getattr(mt5, "ORDER_FILLING_IOC", 1)
+        if spec.filling_mode == 1:
+            filling = mt5.ORDER_FILLING_IOC
+        elif spec.filling_mode == 2:
+            filling = mt5.ORDER_FILLING_FOK
+        else:
+            filling = mt5.ORDER_FILLING_RETURN
+        request: dict[str, Any] = {
+            "action": action,
+            "symbol": mt5_symbol,
+            "volume": float(normalized_qty),
+            "type": mt5_type,
+            "type_filling": filling,
+            "type_time": getattr(mt5, "ORDER_TIME_GTC", 0),
+            "comment": comment,
+            "magic": int(self.config.get("magic", 20250916)),
+        }
+        if price:
+            request["price"] = price
+        return request
+
+    def validate_sl_tp(self, price: Decimal, sl: Decimal | None, tp: Decimal | None, spec: SymbolSpec, side: Side) -> None:
+        """Validate SL/TP distance against broker stops_level."""
+        if spec.stops_level <= 0:
+            return
+        min_dist = spec.stops_level * spec.point
+        if sl is not None:
+            dist = abs(price - sl)
+            if dist < min_dist - Decimal("1e-9"):
+                raise ValueError(f"SL distance {dist} < stops_level {spec.stops_level}*{spec.point}={min_dist} for {spec.symbol}")
+        if tp is not None:
+            dist = abs(price - tp)
+            if dist < min_dist - Decimal("1e-9"):
+                raise ValueError(f"TP distance {dist} < stops_level {spec.stops_level}*{spec.point}={min_dist} for {spec.symbol}")
 
     def invalidate_spec_cache(self, symbol: str | None = None) -> None:
         if symbol:
