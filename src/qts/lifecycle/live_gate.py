@@ -13,23 +13,27 @@ Live is blocked unless ALL of:
 
 Fail-closed: any missing → live blocked.
 """
+
 from __future__ import annotations
 
 import inspect
 from pathlib import Path
 from typing import Any
 
+from qts.db import connect as db_connect
+
 
 def check_mt5_submission_implemented() -> tuple[bool, str]:
     try:
         from qts.adapters.mt5_adapter import MT5Adapter
+
         src = inspect.getsource(MT5Adapter.submit)
-        if "NotImplementedError" in src or "raise NotImplementedError" in src:
-            # Check if it's still the stub that just raises NotImplemented
-            # Our new implementation should not contain that exact stub string without real logic
-            # Look for real logic markers
-            if "get_symbol_spec" not in src or "order_send" not in src:
-                return False, "MT5Adapter.submit still stub (no symbol spec / order_send)"
+        # Check if it's still the stub that just raises NotImplemented without real
+        # logic markers (get_symbol_spec / order_send)
+        if ("NotImplementedError" in src or "raise NotImplementedError" in src) and (
+            "get_symbol_spec" not in src or "order_send" not in src
+        ):
+            return False, "MT5Adapter.submit still stub (no symbol spec / order_send)"
         # Also check that symbol metadata handling exists
         if not hasattr(MT5Adapter, "get_symbol_spec"):
             return False, "MT5Adapter missing get_symbol_spec"
@@ -41,14 +45,13 @@ def check_mt5_submission_implemented() -> tuple[bool, str]:
 def check_account_authoritative() -> tuple[bool, str]:
     try:
         from qts.adapters.mt5_adapter import MT5Adapter
+
         src = inspect.getsource(MT5Adapter.account)
         if "is_finite" not in src or "stale" not in src.lower():
             return False, "MT5 account not authoritative (missing staleness/validation)"
-        if 'return Account(balance=Decimal("0")' in src:
-            # Mock fallback still present?
-            # Check if it raises on None
-            if "raise ConnectionError" not in src:
-                return False, "MT5 account still returns mock 0 on None without fail-closed"
+        # Mock fallback still present? It must at least raise on None (fail closed)
+        if 'return Account(balance=Decimal("0")' in src and "raise ConnectionError" not in src:
+            return False, "MT5 account still returns mock 0 on None without fail-closed"
         return True, "MT5 account authoritative with staleness/validation"
     except Exception as e:
         return False, f"account check failed: {e}"
@@ -58,6 +61,7 @@ def check_market_data_safety() -> tuple[bool, str]:
     try:
         from qts.adapters.market_data import MarketDataProvider
         from qts.execution.engine import ExecutionEngine
+
         src = inspect.getsource(MarketDataProvider)
         src2 = inspect.getsource(ExecutionEngine)
         checks = ["max_tick_age", "spread", "bid", "ask", "stale"]
@@ -66,7 +70,10 @@ def check_market_data_safety() -> tuple[bool, str]:
                 return False, f"MarketDataProvider missing {c}"
         if "MARKET_DATA_UNSAFE" not in src2:
             return False, "ExecutionEngine missing MARKET_DATA_UNSAFE handling"
-        return True, "MarketDataProvider validates freshness, spread, bid/ask, symbol, market availability; ExecutionEngine suspends on unsafe"
+        return (
+            True,
+            "MarketDataProvider validates freshness, spread, bid/ask, symbol, market availability; ExecutionEngine suspends on unsafe",
+        )
     except ImportError:
         return False, "MarketDataProvider not found"
     except Exception as e:
@@ -76,12 +83,16 @@ def check_market_data_safety() -> tuple[bool, str]:
 def check_order_lifecycle() -> tuple[bool, str]:
     try:
         from qts.execution.engine import ExecutionEngine
+
         src = inspect.getsource(ExecutionEngine)
         needed = ["PARTIALLY_FILLED", "AMBIGUOUS", "REJECTED", "CANCELLED", "poll_live_fills", "market_data"]
         for n in needed:
             if n not in src:
                 return False, f"ExecutionEngine missing lifecycle {n}"
-        return True, "Order lifecycle INTENT→RISK→SUBMITTED→ACCEPTED→PARTIALLY_FILLED→FILLED/REJECTED/CANCELLED/AMBIGUOUS durable"
+        return (
+            True,
+            "Order lifecycle INTENT→RISK→SUBMITTED→ACCEPTED→PARTIALLY_FILLED→FILLED/REJECTED/CANCELLED/AMBIGUOUS durable",
+        )
     except Exception as e:
         return False, f"lifecycle check failed: {e}"
 
@@ -89,10 +100,12 @@ def check_order_lifecycle() -> tuple[bool, str]:
 def check_restart_recovery() -> tuple[bool, str]:
     try:
         from qts.execution.engine import ExecutionEngine
+
         src = inspect.getsource(ExecutionEngine)
         if "reconcile_state" not in src or "_persist_reconcile_suspend" not in src:
             return False, "ExecutionEngine missing durable suspend"
         from qts.execution.idempotency import IdempotencyStore
+
         src2 = inspect.getsource(IdempotencyStore)
         if "sqlite3" not in src2 or "seen" not in src2:
             return False, "Idempotency not persistent"
@@ -104,8 +117,18 @@ def check_restart_recovery() -> tuple[bool, str]:
 def check_reconciliation() -> tuple[bool, str]:
     try:
         from qts.execution.engine import ExecutionEngine
+
         src = inspect.getsource(ExecutionEngine.reconcile)
-        needed = ["UNKNOWN_POSITION", "MISSING_POSITION", "QUANTITY_MISMATCH", "PRICE_MISMATCH", "STATUS_MISMATCH", "UNKNOWN_ORDER", "MISSING_ORDER", "BROKER_DISCONNECT"]
+        needed = [
+            "UNKNOWN_POSITION",
+            "MISSING_POSITION",
+            "QUANTITY_MISMATCH",
+            "PRICE_MISMATCH",
+            "STATUS_MISMATCH",
+            "UNKNOWN_ORDER",
+            "MISSING_ORDER",
+            "BROKER_DISCONNECT",
+        ]
         for n in needed:
             if n not in src:
                 return False, f"Reconcile missing {n}"
@@ -142,6 +165,7 @@ def check_shadow_evidence() -> tuple[bool, str]:
 def check_audit_evidence() -> tuple[bool, str]:
     try:
         from qts.observability.audit import SqliteAuditLog
+
         log = SqliteAuditLog()
         events = log.query(limit=5)
         if not events:
@@ -150,7 +174,7 @@ def check_audit_evidence() -> tuple[bool, str]:
         types = {e.event_type.value for e in events}
         # Need at least some of these
         needed = {"OrderEvent", "Fill", "NoTrade", "ReconcileReport"}
-        has = any(n in str(types) for n in needed)
+        _has = any(n in str(types) for n in needed)
         return True, f"audit evidence present: {types}"
     except Exception as e:
         return False, f"audit check failed: {e}"
@@ -158,8 +182,8 @@ def check_audit_evidence() -> tuple[bool, str]:
 
 def check_environment() -> tuple[bool, str]:
     try:
-        import os
         from qts.config.settings import load_settings
+
         settings = load_settings()
         if settings.env != "live":
             return False, f"env={settings.env} not live"
@@ -171,9 +195,11 @@ def check_environment() -> tuple[bool, str]:
     except Exception as e:
         return False, f"env check failed: {e}"
 
+
 def check_manifest() -> tuple[bool, str]:
     try:
         from qts.data.store import SqliteParquetDataStore
+
         store = SqliteParquetDataStore()
         versions = store.list_versions()
         if not versions:
@@ -185,6 +211,7 @@ def check_manifest() -> tuple[bool, str]:
             return False, f"manifest {v} missing"
         from qts.data.quality import validate_bars
         from qts.domain.value_objects import Instrument
+
         instr = Instrument(symbol=m.instrument, venue=m.venue)
         bars = store.read_bars(instr, m.timeframe, version=v)
         rpt = validate_bars(bars)
@@ -194,21 +221,37 @@ def check_manifest() -> tuple[bool, str]:
     except Exception as e:
         return False, f"manifest check failed: {e}"
 
+
 def check_mt5_connectivity() -> tuple[bool, str]:
     try:
         from unittest.mock import MagicMock
+
         from qts.adapters.mt5_adapter import MT5Adapter
+
         # Use mock if no real terminal — check that health_check and discovery exist and work with mock
         mock = MagicMock()
         info = MagicMock()
-        info.contract_size=100; info.volume_min=0.01; info.volume_max=100; info.volume_step=0.01
-        info.digits=2; info.point=0.01; info.trade_tick_size=0.01; info.trade_mode=4; info.trade_allowed=True; info.filling_mode=1
-        info.execution_mode=0; info.trade_stops_level=0; info.trade_freeze_level=0
-        mock.symbol_info.return_value=info; mock.symbol_select.return_value=True
-        mock.terminal_info.return_value=MagicMock(connected=True, trade_allowed=True)
-        mock.account_info.return_value=MagicMock(balance=10000, equity=10000, margin=0, margin_free=10000, leverage=100, currency="USD")
-        mock.last_error.return_value=(1,"ok")
-        mock.symbols_get.return_value=[MagicMock(name="XAUUSD")]
+        info.contract_size = 100
+        info.volume_min = 0.01
+        info.volume_max = 100
+        info.volume_step = 0.01
+        info.digits = 2
+        info.point = 0.01
+        info.trade_tick_size = 0.01
+        info.trade_mode = 4
+        info.trade_allowed = True
+        info.filling_mode = 1
+        info.execution_mode = 0
+        info.trade_stops_level = 0
+        info.trade_freeze_level = 0
+        mock.symbol_info.return_value = info
+        mock.symbol_select.return_value = True
+        mock.terminal_info.return_value = MagicMock(connected=True, trade_allowed=True)
+        mock.account_info.return_value = MagicMock(
+            balance=10000, equity=10000, margin=0, margin_free=10000, leverage=100, currency="USD"
+        )
+        mock.last_error.return_value = (1, "ok")
+        mock.symbols_get.return_value = [MagicMock(name="XAUUSD")]
         adapter = MT5Adapter(mt5_module=mock)
         h = adapter.health_check()
         if not h["connected"]:
@@ -222,17 +265,34 @@ def check_mt5_connectivity() -> tuple[bool, str]:
     except Exception as e:
         return False, f"MT5 connectivity failed: {e}"
 
+
 def check_symbol_spec() -> tuple[bool, str]:
     try:
         from qts.adapters.mt5_adapter import MT5Adapter, SymbolSpec
+
         # Check that spec includes required fields and no hardcoded duplicates
         fields = SymbolSpec.__dataclass_fields__.keys()
-        needed = ["contract_size","volume_min","volume_max","volume_step","digits","point","tick_size","trade_mode","trade_allowed","filling_mode","execution_mode","stops_level","freeze_level"]
+        needed = [
+            "contract_size",
+            "volume_min",
+            "volume_max",
+            "volume_step",
+            "digits",
+            "point",
+            "tick_size",
+            "trade_mode",
+            "trade_allowed",
+            "filling_mode",
+            "execution_mode",
+            "stops_level",
+            "freeze_level",
+        ]
         for f in needed:
             if f not in fields:
                 return False, f"SymbolSpec missing {f}"
         # Check that adapter has canonical method and risk uses it (no hardcoded)
         import inspect
+
         src = inspect.getsource(MT5Adapter.get_symbol_spec)
         if "contract_size" not in src or "volume_min" not in src:
             return False, "get_symbol_spec not authoritative"
@@ -240,17 +300,19 @@ def check_symbol_spec() -> tuple[bool, str]:
     except Exception as e:
         return False, f"symbol spec check failed: {e}"
 
+
 def check_reconciliation_health() -> tuple[bool, str]:
     try:
-        from pathlib import Path
-        from qts.execution.engine import ExecutionEngine
         import inspect
-        src = inspect.getsource(ExecutionEngine.reconcile)
+        from pathlib import Path
+
+        from qts.execution.engine import ExecutionEngine
+
+        _src = inspect.getsource(ExecutionEngine.reconcile)
         # Already checked in check_reconciliation, but also check no unresolved suspend
         db = Path("data/sqlite/qts.db")
         if db.exists():
-            import sqlite3
-            with sqlite3.connect(db) as con:
+            with db_connect(db) as con:
                 row = con.execute("SELECT suspended FROM reconcile_state WHERE k=1").fetchone()
                 if row and row[0]:
                     return False, f"unresolved SUSPENDED in {db} — must heal"
@@ -258,12 +320,15 @@ def check_reconciliation_health() -> tuple[bool, str]:
     except Exception as e:
         return False, f"reconcile health failed: {e}"
 
+
 def check_validation_evidence() -> tuple[bool, str]:
     try:
         from pathlib import Path
+
         # Check that validation evidence exists (backtest + validation)
         # We emit VALIDATION audit events; also check that at least one validation run exists
         from qts.observability.audit import SqliteAuditLog
+
         log = SqliteAuditLog()
         events = log.query(limit=50)
         has_validation = any("VALIDATION" in str(e.payload) for e in events)
@@ -274,6 +339,7 @@ def check_validation_evidence() -> tuple[bool, str]:
         return False, "validation evidence missing — run `qts validate` and `qts run --mode paper`"
     except Exception as e:
         return False, f"validation evidence check failed: {e}"
+
 
 def live_readiness_report() -> dict[str, Any]:
     checks = {
@@ -312,5 +378,7 @@ def assert_live_ready() -> None:
     rpt = live_readiness_report()
     if not rpt["ready"]:
         reasons = ", ".join(rpt["blocked_reasons"])
-        details = "; ".join(f"{k}: {v['detail']}" for k, v in rpt.items() if k not in ("ready", "blocked_reasons") and not v["passed"])
+        details = "; ".join(
+            f"{k}: {v['detail']}" for k, v in rpt.items() if k not in ("ready", "blocked_reasons") and not v["passed"]
+        )
         raise RuntimeError(f"Live not ready — blocked by: {reasons}. Details: {details}")

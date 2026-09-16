@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import sqlite3
+import contextlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -11,6 +11,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from qts.db import connect as db_connect
 from qts.domain.value_objects import Account, Fill, OrderIntent, Position
 
 
@@ -51,6 +52,7 @@ class RiskLimits(BaseModel):
     kill_switch_enabled: bool = True
     approved: bool = False
     version: int = 1
+
     # legacy alias
     @property
     def max_exposure(self) -> Decimal:
@@ -102,14 +104,14 @@ class RiskEngine:
         self._killed = self._load_killed()
 
     def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute(
                 "CREATE TABLE IF NOT EXISTS risk_state (k INTEGER PRIMARY KEY, killed INTEGER, reason TEXT, updated_at TEXT)"
             )
             con.commit()
 
     def _load_killed(self) -> bool:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             row = con.execute("SELECT killed FROM risk_state WHERE k=1").fetchone()
             return bool(row[0]) if row else False
 
@@ -119,7 +121,7 @@ class RiskEngine:
 
     def kill_switch(self, reason: str) -> None:
         self._killed = True
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute(
                 "INSERT OR REPLACE INTO risk_state VALUES (1,1,?,?)",
                 (reason, datetime.now(UTC).isoformat()),
@@ -128,7 +130,7 @@ class RiskEngine:
 
     def reset_kill(self) -> None:
         self._killed = False
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("DELETE FROM risk_state WHERE k=1")
             con.commit()
 
@@ -221,7 +223,13 @@ class RiskEngine:
             return RiskDecision(allowed=False, veto_reason=RiskVetoReason.MISSING_STOP)
 
         if ctx.open_orders_count >= self.limits.max_open_orders:
-            return RiskDecision(allowed=False, veto_reason=RiskVetoReason.TOO_MANY_ORDERS, symbol=sym, price=est_price if 'est_price' in locals() else None, price_source=price_source if 'price_source' in locals() else None)
+            return RiskDecision(
+                allowed=False,
+                veto_reason=RiskVetoReason.TOO_MANY_ORDERS,
+                symbol=sym,
+                price=est_price if "est_price" in locals() else None,
+                price_source=price_source if "price_source" in locals() else None,
+            )
 
         # daily loss: ctx.daily_pnl is negative if losing
         if ctx.daily_pnl <= -self.limits.daily_loss_limit:
@@ -234,7 +242,13 @@ class RiskEngine:
                 symbol=sym,
             )
         if ctx.drawdown >= self.limits.max_drawdown:
-            return RiskDecision(allowed=False, veto_reason=RiskVetoReason.DRAWDOWN_BREACH, symbol=sym, price=est_price if 'est_price' in locals() else None, price_source=price_source if 'price_source' in locals() else None)
+            return RiskDecision(
+                allowed=False,
+                veto_reason=RiskVetoReason.DRAWDOWN_BREACH,
+                symbol=sym,
+                price=est_price if "est_price" in locals() else None,
+                price_source=price_source if "price_source" in locals() else None,
+            )
 
         # exposure lots: net quantity + new delta
         current_qty = sum((p.quantity for p in ctx.positions.values()), Decimal("0"))
@@ -274,10 +288,13 @@ class RiskEngine:
         # leverage: total notional / equity
         equity = ctx.account.equity if ctx.account.equity != Decimal("0") else Decimal("10000")
         # total notional for leverage: exposure notional
-        total_notional_for_lev = sum(
-            (abs(p.quantity) * p.instrument.contract_size * est_price for p in ctx.positions.values()),
-            Decimal("0"),
-        ) + notional
+        total_notional_for_lev = (
+            sum(
+                (abs(p.quantity) * p.instrument.contract_size * est_price for p in ctx.positions.values()),
+                Decimal("0"),
+            )
+            + notional
+        )
         # if flat, leverage is just new notional/equity
         if total_notional_for_lev == notional and not ctx.positions:
             lev = notional / equity
@@ -335,39 +352,23 @@ class RiskEngine:
         if self._killed:
             out.append(RiskDecision(allowed=False, veto_reason=RiskVetoReason.KILL_SWITCH_ACTIVE))
         return out
+
     def close(self) -> None:
-        try:
-            db = getattr(self, "db_path", getattr(self, "_db_path", None))
-            if db is not None:
-                db = Path(db)
-                if db.exists() and str(db) != ":memory:":
-                    import sqlite3
-                    with sqlite3.connect(db) as con:
-                        try:
-                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                            con.commit()
-                        except Exception:
-                            pass
+        with contextlib.suppress(Exception):
+            # File-backed connections are opened/closed per operation via qts.db.connect,
+            # so no persistent handle exists here. We must NOT re-open the database file
+            # in close()/__del__: that recreates deleted files and re-acquires Windows
+            # file locks during GC/shutdown (root cause of WinError 32 on cleanup).
             # close any memory connection if present
             mem = getattr(self, "_memory_con", None)
             if mem is not None:
-                try:
+                with contextlib.suppress(Exception):
                     mem.commit()
                     mem.close()
-                except Exception:
-                    pass
                 self._memory_con = None
-        except Exception:
-            pass
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-    def __del__(self):
-        try:
-            self.close()
-        except Exception:
-            pass

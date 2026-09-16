@@ -7,7 +7,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
-from qts.domain.value_objects import Bar, Instrument, OrderIntent, OrderType, Side
+from qts.domain.value_objects import Bar, Side
 
 
 class ExitType(StrEnum):
@@ -34,7 +34,9 @@ class ExitPolicy:
 # Predefined exit policies — each is a falsifiable joint hypothesis with entry
 EXIT_POLICIES: list[ExitPolicy] = [
     ExitPolicy(ExitType.FIXED_STOP, {"stop_pct": 0.01, "tp_pct": 0.02}, "1% stop, 2% TP fixed"),
-    ExitPolicy(ExitType.VOLATILITY_STOP, {"atr_mult_stop": 1.5, "atr_mult_tp": 3.0, "atr_period": 14}, "ATR 1.5 stop, 3.0 TP"),
+    ExitPolicy(
+        ExitType.VOLATILITY_STOP, {"atr_mult_stop": 1.5, "atr_mult_tp": 3.0, "atr_period": 14}, "ATR 1.5 stop, 3.0 TP"
+    ),
     ExitPolicy(ExitType.TRAILING, {"trail_pct": 0.005}, "0.5% trailing protection"),
     ExitPolicy(ExitType.TIME_BASED, {"max_hold_bars": 20}, "Time exit 20 bars"),
     ExitPolicy(ExitType.BREAK_EVEN, {"breakeven_trigger_pct": 0.005}, "Move to breakeven after 0.5% profit"),

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
-import sqlite3
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
+from qts.db import connect as db_connect
 from qts.domain.events import DomainEvent, EventType
 
 
@@ -63,7 +64,7 @@ class SqliteAuditLog:
         self._init_db()
 
     def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("""
             CREATE TABLE IF NOT EXISTS audit_events (
                 event_id TEXT PRIMARY KEY,
@@ -88,10 +89,10 @@ class SqliteAuditLog:
             for k in list(payload.keys()):
                 if any(s in k.lower() for s in ["password", "secret", "token"]):
                     payload[k] = "***REDACTED***"
-            with open(self.jsonl_path, "a") as f:
+            with open(self.jsonl_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(line, default=str) + "\n")
         # SQLite
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute(
                 "INSERT OR IGNORE INTO audit_events VALUES (?,?,?,?,?,?,?,?)",
                 (
@@ -125,7 +126,7 @@ class SqliteAuditLog:
             q += " WHERE " + " AND ".join(clauses)
         q += " ORDER BY event_time DESC LIMIT ?"
         params.append(str(limit * 5))  # fetch more for payload filtering
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             rows = con.execute(q, params).fetchall()
         events: list[DomainEvent] = []
         for row in rows:
@@ -154,39 +155,23 @@ class SqliteAuditLog:
             if len(events) >= limit:
                 break
         return list(reversed(events))
+
     def close(self) -> None:
-        try:
-            db = getattr(self, "db_path", getattr(self, "_db_path", None))
-            if db is not None:
-                db = Path(db)
-                if db.exists() and str(db) != ":memory:":
-                    import sqlite3
-                    with sqlite3.connect(db) as con:
-                        try:
-                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                            con.commit()
-                        except Exception:
-                            pass
+        with contextlib.suppress(Exception):
+            # File-backed connections are opened/closed per operation via qts.db.connect,
+            # so no persistent handle exists here. We must NOT re-open the database file
+            # in close()/__del__: that recreates deleted files and re-acquires Windows
+            # file locks during GC/shutdown (root cause of WinError 32 on cleanup).
             # close any memory connection if present
             mem = getattr(self, "_memory_con", None)
             if mem is not None:
-                try:
+                with contextlib.suppress(Exception):
                     mem.commit()
                     mem.close()
-                except Exception:
-                    pass
                 self._memory_con = None
-        except Exception:
-            pass
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-    def __del__(self):
-        try:
-            self.close()
-        except Exception:
-            pass

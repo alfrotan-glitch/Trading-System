@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from datetime import UTC, datetime
 from typing import Any
 
 from qts.data.store import SqliteParquetDataStore
@@ -14,31 +12,33 @@ def audit_data_sources() -> dict[str, Any]:
     """Inspect available data, report limitation explicitly if only one dataset."""
     store = SqliteParquetDataStore()
     versions = store.list_versions()
-    manifests = [store.manifest(v).model_dump() for v in versions] if versions else []
+    manifests = [m.model_dump() for v in versions if (m := store.manifest(v)) is not None]
     # Check directories
     sources = []
     for v in manifests:
-        sources.append({
-            "version": v["version"],
-            "instrument": v["instrument"],
-            "timeframe": v["timeframe"],
-            "rows": v["rows"],
-            "start": v["start"],
-            "end": v["end"],
-            "checksum": v["checksum"],
-            "source": v.get("source", "unknown"),
-            "bid_ask_available": False,  # our sample only has OHLC, no bid/ask
-            "spread_available": "proxy via high-low only",
-            "tick_available": False,
-            "timestamp_quality": v.get("timezone", "UTC"),
-            "survivorship": "single symbol XAUUSD, no survivorship issue for FX/metal",
-            "corporate_adjustments": "not applicable (XAUUSD)",
-            "broker_differences": "mock vs real MT5 not distinguished in sample — limitation",
-            "historical_depth": f"{v['rows']} bars (~{v['rows']/24:.1f} days for 1H)",
-            "market_regimes": "limited to 2020-01 sample, not multi-regime",
-            "execution_conditions": "not real tick, spread proxy only",
-            "licensing": "synthetic_or_csv — internal, no external licensing, not production market data",
-        })
+        sources.append(
+            {
+                "version": v["version"],
+                "instrument": v["instrument"],
+                "timeframe": v["timeframe"],
+                "rows": v["rows"],
+                "start": v["start"],
+                "end": v["end"],
+                "checksum": v["checksum"],
+                "source": v.get("source", "unknown"),
+                "bid_ask_available": False,  # our sample only has OHLC, no bid/ask
+                "spread_available": "proxy via high-low only",
+                "tick_available": False,
+                "timestamp_quality": v.get("timezone", "UTC"),
+                "survivorship": "single symbol XAUUSD, no survivorship issue for FX/metal",
+                "corporate_adjustments": "not applicable (XAUUSD)",
+                "broker_differences": "mock vs real MT5 not distinguished in sample — limitation",
+                "historical_depth": f"{v['rows']} bars (~{v['rows'] / 24:.1f} days for 1H)",
+                "market_regimes": "limited to 2020-01 sample, not multi-regime",
+                "execution_conditions": "not real tick, spread proxy only",
+                "licensing": "synthetic_or_csv — internal, no external licensing, not production market data",
+            }
+        )
     comparison = {
         "available_sources": sources,
         "count": len(sources),

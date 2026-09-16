@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
-import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
@@ -13,6 +13,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from pydantic import BaseModel
 
+from qts.db import connect as db_connect
 from qts.domain.value_objects import Bar, Instrument
 
 
@@ -79,7 +80,7 @@ class SqliteParquetDataStore:
         self._init_db()
 
     def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("""
             CREATE TABLE IF NOT EXISTS manifests (
                 version TEXT PRIMARY KEY,
@@ -105,7 +106,14 @@ class SqliteParquetDataStore:
             """)
             con.commit()
 
-    def write_bars(self, bars: list[Bar], version: str | None = None, source_file: str | None = None, strict_quality: bool = True) -> Manifest:
+    def write_bars(
+        self,
+        bars: list[Bar],
+        version: str | None = None,
+        source_file: str | None = None,
+        strict_quality: bool = True,
+        source: str | None = None,
+    ) -> Manifest:
         if not bars:
             raise ValueError("no bars to write")
         bars = sorted(bars, key=lambda b: b.open_time)
@@ -129,7 +137,7 @@ class SqliteParquetDataStore:
             content_hash = _checksum_bars(bars)[7:15]
             short = code_version.replace(".", "")[:6]
             version = f"{datetime.now(UTC).strftime('%Y%m%d')}-{short}-{content_hash}"
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             row = con.execute("SELECT 1 FROM manifests WHERE version=?", (version,)).fetchone()
             if row:
                 raise ValueError(f"version {version} already exists")
@@ -150,7 +158,7 @@ class SqliteParquetDataStore:
         # Phase 1: compute missing data stats
         missing_stats = None
         session_stats = None
-        try:
+        with contextlib.suppress(Exception):
             # estimate expected bars based on timeframe
             tf_seconds = {"1m": 60, "5m": 300, "15m": 900, "1H": 3600, "1D": 86400}.get(timeframe)
             if tf_seconds:
@@ -158,17 +166,22 @@ class SqliteParquetDataStore:
                 expected = int(total_seconds // tf_seconds) + 1 if total_seconds > 0 else len(bars)
                 missing = max(0, expected - len(bars))
                 gap_count = 0
-                max_gap_s = 0
-                for i in range(len(bars)-1):
-                    gap = (bars[i+1].open_time - bars[i].close_time).total_seconds()
+                max_gap_s = 0.0
+                for i in range(len(bars) - 1):
+                    gap = (bars[i + 1].open_time - bars[i].close_time).total_seconds()
                     if gap > tf_seconds * 1.5:
                         gap_count += 1
                         max_gap_s = max(max_gap_s, gap)
-                missing_stats = {"expected": expected, "actual": len(bars), "missing": missing, "gap_count": gap_count, "max_gap_s": max_gap_s, "missing_pct": round(missing/expected*100,2) if expected else 0}
+                missing_stats = {
+                    "expected": expected,
+                    "actual": len(bars),
+                    "missing": missing,
+                    "gap_count": gap_count,
+                    "max_gap_s": max_gap_s,
+                    "missing_pct": round(missing / expected * 100, 2) if expected else 0,
+                }
                 # session boundaries: count weekend gaps (market closures)
                 session_stats = {"timezone": "UTC", "weekend_gaps": gap_count}
-        except Exception:
-            pass
         manifest = Manifest(
             version=version,
             created_at=datetime.now(UTC),
@@ -181,7 +194,7 @@ class SqliteParquetDataStore:
             rows=len(bars),
             checksum=checksum,
             source_file=source_file,
-            source=source_file or "synthetic_or_csv",
+            source=source or source_file or "synthetic_or_csv",
             ingestion_timestamp=datetime.now(UTC),
             preprocessing_version="1.0",
             timezone="UTC",
@@ -191,7 +204,7 @@ class SqliteParquetDataStore:
         # persist quality report
         import json
 
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("INSERT INTO manifests VALUES (?,?)", (version, manifest.model_dump_json()))
             for b in bars:
                 con.execute(
@@ -205,10 +218,19 @@ class SqliteParquetDataStore:
                     ),
                 )
             # quality report
-            quality_payload = json.dumps({"passed": quality.passed, "checks": [{"name": c.name, "passed": c.passed, "details": c.details} for c in quality.checks]})
-            con.execute("INSERT OR REPLACE INTO quality_reports VALUES (?,?,?)", (version, int(quality.passed), quality_payload))
+            quality_payload = json.dumps(
+                {
+                    "passed": quality.passed,
+                    "checks": [{"name": c.name, "passed": c.passed, "details": c.details} for c in quality.checks],
+                }
+            )
+            con.execute(
+                "INSERT OR REPLACE INTO quality_reports VALUES (?,?,?)", (version, int(quality.passed), quality_payload)
+            )
             con.commit()
-        (self.manifests_dir / f"manifest_{version}.json").write_text(manifest.model_dump_json(indent=2))
+        (self.manifests_dir / f"manifest_{version}.json").write_text(
+            manifest.model_dump_json(indent=2), encoding="utf-8"
+        )
         return manifest
 
     def read_bars(
@@ -249,17 +271,17 @@ class SqliteParquetDataStore:
         return bars
 
     def manifest(self, version: str) -> Manifest | None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             row = con.execute("SELECT payload FROM manifests WHERE version=?", (version,)).fetchone()
             if not row:
                 f = self.manifests_dir / f"manifest_{version}.json"
                 if f.exists():
-                    return Manifest.model_validate_json(f.read_text())
+                    return Manifest.model_validate_json(f.read_text(encoding="utf-8"))
                 return None
             return Manifest.model_validate_json(row[0])
 
     def latest_version(self, instrument: Instrument, timeframe: str) -> str | None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             all_rows = con.execute("SELECT payload FROM manifests").fetchall()
             candidates: list[Manifest] = []
             for (payload,) in all_rows:
@@ -272,7 +294,7 @@ class SqliteParquetDataStore:
             return candidates[-1].version
 
     def quality_report(self, version: str) -> dict | None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             row = con.execute("SELECT payload FROM quality_reports WHERE version=?", (version,)).fetchone()
             if not row:
                 return None
@@ -281,9 +303,94 @@ class SqliteParquetDataStore:
             return json.loads(row[0])
 
     def list_versions(self) -> list[str]:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             rows = con.execute("SELECT version FROM manifests ORDER BY rowid").fetchall()
             return [r[0] for r in rows]
+
+    def version_usable(self, version: str) -> bool:
+        """A version is USABLE only if manifest + curated parquet exist and the
+        parquet actually yields the number of rows the manifest claims.
+
+        Never treat a manifest row (SQLite or JSON) as proof that data exists:
+        on a clean clone the registry may reference versions whose parquet was
+        never materialized (gitignored). Zero readable bars => not usable.
+        """
+        try:
+            m = self.manifest(version)
+            if m is None:
+                return False
+            parquet = (
+                self.curated
+                / f"instrument={m.instrument}"
+                / f"venue={m.venue}"
+                / f"timeframe={m.timeframe}"
+                / f"version={version}"
+                / "part-0.parquet"
+            )
+            if not parquet.exists():
+                return False
+            bars = self.read_bars(Instrument(symbol=m.instrument, venue=m.venue), m.timeframe, version=version)
+            return len(bars) > 0 and len(bars) == m.rows
+        except Exception:
+            return False
+
+    def list_usable_versions(self) -> list[str]:
+        """Registered versions that pass version_usable() — truthful availability."""
+        return [v for v in self.list_versions() if self.version_usable(v)]
+
+    def purge_version(self, version: str) -> bool:
+        """Remove a STALE registration: manifest row, index rows, manifest JSON and
+        the (empty or partial) curated partition for ``version``.
+
+        Safety: refuses to purge a version that is currently usable — this is a
+        registry-integrity repair for partially-materialized versions (e.g. a crash
+        between DB commit and parquet write, or curated data deleted out-of-band),
+        never a way to delete real datasets. Returns True if something was purged.
+        """
+        if self.version_usable(version):
+            return False
+        purged = False
+        with db_connect(self.db_path) as con:
+            cur = con.execute("DELETE FROM manifests WHERE version=?", (version,))
+            purged = purged or cur.rowcount > 0
+            con.execute("DELETE FROM bars_index WHERE version=?", (version,))
+            con.execute("DELETE FROM quality_reports WHERE version=?", (version,))
+        jf = self.manifests_dir / f"manifest_{version}.json"
+        if jf.exists():
+            jf.unlink()
+            purged = True
+        # remove any curated partitions for this version (parquet missing or partial)
+        if self.curated.exists():
+            for part in self.curated.glob(f"instrument=*/venue=*/timeframe=*/version={version}"):
+                import shutil
+
+                shutil.rmtree(part, ignore_errors=True)
+                purged = True
+        return purged
+
+    def find_versions_by_checksum(self, checksum: str) -> list[str]:
+        """All known versions (DB + manifest JSON files) with the given content checksum."""
+        found: list[str] = []
+        with db_connect(self.db_path) as con:
+            rows = con.execute("SELECT payload FROM manifests").fetchall()
+        for (payload,) in rows:
+            try:
+                m = Manifest.model_validate_json(payload)
+                if m.checksum == checksum:
+                    found.append(m.version)
+            # B112: tolerate corrupt manifest rows during checksum lookup
+            except Exception:  # nosec B112
+                continue
+        if self.manifests_dir.exists():
+            for f in sorted(self.manifests_dir.glob("manifest_*.json")):
+                try:
+                    m = Manifest.model_validate_json(f.read_text(encoding="utf-8"))
+                    if m.checksum == checksum and m.version not in found:
+                        found.append(m.version)
+                # B112: tolerate corrupt manifest files during checksum lookup
+                except Exception:  # nosec B112
+                    continue
+        return found
 
     def _infer_timeframe(self, bars: list[Bar]) -> str:
         if len(bars) < 2:
@@ -303,29 +410,17 @@ class SqliteParquetDataStore:
         return f"{secs}s"
 
     def close(self) -> None:
-        # Deterministic closure for Windows file-lock semantics: checkpoint WAL and close any handles
-        try:
-            if self.db_path.exists() and str(self.db_path) != ":memory:":
-                with sqlite3.connect(self.db_path) as con:
-                    try:
-                        con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                        con.commit()
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+        # File-backed connections are opened/closed per operation via qts.db.connect,
+        # so no persistent handle exists here. We must NOT re-open the database file
+        # in close()/__del__: that recreates deleted files and re-acquires Windows
+        # file locks during GC/shutdown (root cause of WinError 32 on cleanup).
+        return None
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-    def __del__(self):
-        try:
-            self.close()
-        except Exception:
-            pass
 
     def _bars_to_df(self, bars: list[Bar]) -> pd.DataFrame:
         return pd.DataFrame(

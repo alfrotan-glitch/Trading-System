@@ -3,14 +3,15 @@
 import json
 import tempfile
 from pathlib import Path
-from datetime import UTC, datetime
 
 import pytest
 
 
 def _client():
-    from qts.api.server import app
     from fastapi.testclient import TestClient
+
+    from qts.api.server import app
+
     return TestClient(app)
 
 
@@ -32,13 +33,22 @@ def test_ui_startup():
 
 def test_ui_backend_connection():
     c = _client()
-    for endpoint in ["/api/dashboard", "/api/strategies", "/api/risk", "/api/mt5", "/api/audit", "/api/live/status", "/api/notifications"]:
+    for endpoint in [
+        "/api/dashboard",
+        "/api/strategies",
+        "/api/risk",
+        "/api/mt5",
+        "/api/audit",
+        "/api/live/status",
+        "/api/notifications",
+    ]:
         r = c.get(endpoint)
         assert r.status_code == 200, f"{endpoint} failed {r.text[:200]}"
 
 
 def test_state_restoration():
     from qts.desktop.state import restore_state, verify_no_state_loss
+
     before = restore_state()
     after = restore_state()
     ok, msg = verify_no_state_loss(before, after)
@@ -48,14 +58,14 @@ def test_state_restoration():
 
 def test_suspension_persistence():
     from qts.risk.engine import RiskEngine, RiskLimits
-    import tempfile
+
     db = Path(tempfile.mktemp(suffix=".db"))
     eng = RiskEngine(RiskLimits(), db_path=db)
     # kill
     eng.kill_switch("test")
     assert eng.killed is True
     # new instance should see persisted kill (if durable) — for file db it should
-    eng2 = RiskEngine(RiskLimits(), db_path=db)
+    _eng2 = RiskEngine(RiskLimits(), db_path=db)
     # If RiskEngine persists kill via DB, this should still be killed
     # If not, at least first eng killed check passes
     assert eng.killed is True
@@ -65,14 +75,15 @@ def test_suspension_persistence():
 
 
 def test_reconciliation():
+    from decimal import Decimal
+
     from qts.execution.engine import ExecutionEngine, OrderManager, PaperBrokerAdapter
     from qts.execution.idempotency import IdempotencyStore
-    from qts.execution.matching import MatchingEngine, MatchingConfig
+    from qts.execution.matching import MatchingConfig, MatchingEngine
+    from qts.observability.audit import InMemoryAuditLog
     from qts.portfolio.portfolio import Portfolio
     from qts.risk.engine import RiskEngine, RiskLimits
-    from qts.observability.audit import InMemoryAuditLog
-    from decimal import Decimal
-    import tempfile
+
     db = Path(tempfile.mktemp(suffix=".db"))
     risk = RiskEngine(RiskLimits(), db_path=db)
     audit = InMemoryAuditLog()
@@ -88,7 +99,9 @@ def test_reconciliation():
 
 def test_mode_switching():
     import os
+
     from qts.api.server import _env_mode
+
     orig = os.getenv("QTS_ENV")
     try:
         os.environ["QTS_ENV"] = "paper"
@@ -106,6 +119,7 @@ def test_mode_switching():
 
 def test_live_gate():
     from qts.lifecycle.live_gate import live_readiness_report
+
     rpt = live_readiness_report()
     assert "ready" in rpt
     assert rpt["ready"] is False  # should be blocked since no validated edge
@@ -129,12 +143,23 @@ def test_risk_veto_visibility():
 
 
 def test_research_campaign_execution():
-    from qts.research.campaign import CampaignConfig, run_campaign
     from qts.data.store import SqliteParquetDataStore
+    from qts.research.campaign import CampaignConfig, run_campaign
+
     store = SqliteParquetDataStore()
     versions = store.list_versions()
     assert versions
-    cfg = CampaignConfig(name="test-campaign", symbol="XAUUSD", timeframe="1H", data_version=versions[-1], family="trend", max_trials=3, max_runtime_s=10, max_param_combinations=3, seed=123)
+    cfg = CampaignConfig(
+        name="test-campaign",
+        symbol="XAUUSD",
+        timeframe="1H",
+        data_version=versions[-1],
+        family="trend",
+        max_trials=3,
+        max_runtime_s=10,
+        max_param_combinations=3,
+        seed=123,
+    )
     summary = run_campaign(cfg)
     assert summary["total_trials"] == 3
     assert summary["status"] == "COMPLETED"
@@ -145,13 +170,16 @@ def test_research_campaign_execution():
 
 def test_trial_ledger():
     from qts.research.experiment import ExperimentStore
+
     store = ExperimentStore()
     before = store.count_trials()
     # Clean clone may have 0, existing dev has >=33 — check durability, not absolute (never reset)
     assert before >= 0
     # ledger must feed DSR
-    from qts.validation.metrics import deflated_sharpe_ratio, probabilistic_sharpe_ratio, sharpe_ratio
     import numpy as np
+
+    from qts.validation.metrics import deflated_sharpe_ratio, probabilistic_sharpe_ratio, sharpe_ratio
+
     rets = np.random.randn(100) * 0.01
     sr = sharpe_ratio(rets)
     psr = probabilistic_sharpe_ratio(sr, n=len(rets), benchmark=0.0)
@@ -165,7 +193,7 @@ def test_trial_ledger():
 
 def test_strategy_promotion_lifecycle():
     from qts.edge.promotion import PromotionLedger, PromotionState
-    import tempfile
+
     db = Path(tempfile.mktemp(suffix=".db"))
     ledger = PromotionLedger(db_path=db)
     sid = "test-strat-lifecycle"
@@ -185,7 +213,7 @@ def test_strategy_promotion_lifecycle():
     ledger.transition(sid, PromotionState.LIVE_ELIGIBLE)
     assert ledger.get_state(sid) == PromotionState.LIVE_ELIGIBLE
     # No manual edit promoted: verify log exists
-    with ledger.db_path.open("rb") as f:
+    with ledger.db_path.open("rb") as _f:
         pass
     # suspend
     ledger.suspend_on_anomaly(sid, "test anomaly")
@@ -230,8 +258,9 @@ def test_mt5_status_display():
 
 
 def test_application_restart():
-    from qts.desktop.health import startup_health_check, shutdown_procedure
+    from qts.desktop.health import shutdown_procedure, startup_health_check
     from qts.desktop.state import restore_state, verify_no_state_loss
+
     before = restore_state()
     health = startup_health_check()
     assert "overall" in health
@@ -245,12 +274,13 @@ def test_application_restart():
 def test_unexpected_termination_recovery():
     # Simulate kill and ensure state preserved
     from qts.desktop.health import startup_health_check
+
     h1 = startup_health_check()
     # No state lost even if health shows blocked due to kill? Should be preserved
     assert h1["checks"][0]["name"] == "load_durable_state"
     # If system was suspended, restart should keep Suspended
     from qts.risk.engine import RiskEngine, RiskLimits
-    import tempfile
+
     db = Path(tempfile.mktemp(suffix=".db"))
     eng = RiskEngine(RiskLimits(), db_path=db)
     eng.kill_switch("unexpected")
@@ -264,22 +294,50 @@ def test_unexpected_termination_recovery():
 
 
 def test_strategy_registry_no_undocumented():
-    from qts.research.registry import StrategyRegistry, StrategyRecord
-    import tempfile
+    from qts.research.registry import StrategyRecord, StrategyRegistry
+
     db = Path(tempfile.mktemp(suffix=".db"))
     reg = StrategyRegistry(db_path=db)
-    bad = StrategyRecord(strategy_id="bad1", name="", version="1.0", hypothesis="", market="XAUUSD", symbol="XAUUSD", timeframe="1H", data_manifest="", feature_definition={}, parameter_definition={}, execution_assumptions={}, risk_assumptions={}, code_revision="0.1.0")
+    bad = StrategyRecord(
+        strategy_id="bad1",
+        name="",
+        version="1.0",
+        hypothesis="",
+        market="XAUUSD",
+        symbol="XAUUSD",
+        timeframe="1H",
+        data_manifest="",
+        feature_definition={},
+        parameter_definition={},
+        execution_assumptions={},
+        risk_assumptions={},
+        code_revision="0.1.0",
+    )
     with pytest.raises(ValueError, match="undocumented"):
         reg.register(bad)
-    good = StrategyRecord(strategy_id="good1", name="Good", version="1.0", hypothesis="Test", market="XAUUSD", symbol="XAUUSD", timeframe="1H", data_manifest="v1", feature_definition={"f":1}, parameter_definition={"p":1}, execution_assumptions={"e":1}, risk_assumptions={"r":1}, code_revision="0.1.0")
+    good = StrategyRecord(
+        strategy_id="good1",
+        name="Good",
+        version="1.0",
+        hypothesis="Test",
+        market="XAUUSD",
+        symbol="XAUUSD",
+        timeframe="1H",
+        data_manifest="v1",
+        feature_definition={"f": 1},
+        parameter_definition={"p": 1},
+        execution_assumptions={"e": 1},
+        risk_assumptions={"r": 1},
+        code_revision="0.1.0",
+    )
     reg.register(good)
     assert reg.get("good1") is not None
 
 
 def test_scorecard_independent_dimensions():
     from qts.edge.scorecard import EdgeScorecard
-    import json
-    ev = json.loads(Path("data/evidence/edge_validation.json").read_text())
+
+    ev = json.loads(Path("data/evidence/edge_validation.json").read_text(encoding="utf-8"))
     ev["strategy_id"] = "sma_breakout"
     sc = EdgeScorecard.from_evidence(ev)
     d = sc.to_dict()
@@ -302,9 +360,21 @@ def test_desktop_ui_static_files():
     assert (ui_dir / "index.html").exists()
     assert (ui_dir / "style.css").exists()
     assert (ui_dir / "app.js").exists()
-    html = (ui_dir / "index.html").read_text()
+    html = (ui_dir / "index.html").read_text(encoding="utf-8")
     # Must contain required views
-    for view in ["Home", "Dashboard", "Research", "Strategies", "Validation", "Paper/Shadow", "Execution", "Risk", "MT5", "Audit", "Live"]:
+    for view in [
+        "Home",
+        "Dashboard",
+        "Research",
+        "Strategies",
+        "Validation",
+        "Paper/Shadow",
+        "Execution",
+        "Risk",
+        "MT5",
+        "Audit",
+        "Live",
+    ]:
         assert view in html, f"missing {view} in UI"
 
 

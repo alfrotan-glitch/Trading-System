@@ -6,8 +6,6 @@ Every dataset immutable: dataset ID, source ID, ingestion timestamp, checksum, s
 from __future__ import annotations
 
 import hashlib
-import json
-import shutil
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 from pathlib import Path
@@ -40,20 +38,22 @@ class CsvProvider(DataProvider):
         return dest_raw
 
     def parse(self, raw_path: Path, instrument: str, timeframe: str) -> list[Bar]:
-        from qts.data.ingest import ingest_csv
-        from qts.data.store import SqliteParquetDataStore
         # Use ingest_csv parsing but without writing — replicate logic
         import csv
         from decimal import Decimal
+
         from qts.domain.value_objects import AssetClass
+
         instr = Instrument(symbol=instrument, venue="MT5", asset_class=AssetClass.METAL)
         bars: list[Bar] = []
-        with open(raw_path) as f:
+        with open(raw_path, encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 ot_raw = row.get("open_time") or row.get("time") or row.get("timestamp")
+                if not ot_raw:
+                    raise ValueError(f"missing open_time in row {row}")
                 ct_raw = row.get("close_time")
-                ot = datetime.fromisoformat(ot_raw.replace("Z", "+00:00"))
+                ot = datetime.fromisoformat(str(ot_raw).replace("Z", "+00:00"))
                 if ot.tzinfo is None:
                     ot = ot.replace(tzinfo=UTC)
                 if ct_raw:
@@ -64,8 +64,22 @@ class CsvProvider(DataProvider):
                     tf_map = {"1m": 1, "5m": 5, "15m": 15, "1H": 60, "1D": 1440}
                     mins = tf_map.get(timeframe, 60)
                     from datetime import timedelta
+
                     ct = ot + timedelta(minutes=mins)
-                bars.append(Bar(instrument=instr, open=Decimal(str(row["open"])), high=Decimal(str(row["high"])), low=Decimal(str(row["low"])), close=Decimal(str(row["close"])), volume=Decimal(str(row.get("volume", "1000"))), open_time=ot, close_time=ct, data_version="raw", source=str(raw_path)))
+                bars.append(
+                    Bar(
+                        instrument=instr,
+                        open=Decimal(str(row["open"])),
+                        high=Decimal(str(row["high"])),
+                        low=Decimal(str(row["low"])),
+                        close=Decimal(str(row["close"])),
+                        volume=Decimal(str(row.get("volume", "1000"))),
+                        open_time=ot,
+                        close_time=ct,
+                        data_version="raw",
+                        source=str(raw_path),
+                    )
+                )
         return bars
 
 
@@ -77,6 +91,7 @@ class SyntheticProvider(DataProvider):
         # Generate synthetic bars and write to dest_raw as CSV for raw preservation
         from qts.data.synthetic import generate_gbm_bars, write_csv
         from qts.domain.value_objects import AssetClass
+
         instr = Instrument(symbol=instrument, venue="MT5", asset_class=AssetClass.METAL)
         # Estimate periods from start/end
         tf_map = {"1m": 1, "5m": 5, "15m": 15, "1H": 60, "1D": 1440}
@@ -204,7 +219,10 @@ def ingestion_pipeline(
     Preserves raw, never overwrites with processed, returns manifest metadata.
     """
     raw_dir.mkdir(parents=True, exist_ok=True)
-    raw_path = raw_dir / f"{provider.provider_id}_{instrument}_{timeframe}_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.csv"
+    raw_path = (
+        raw_dir
+        / f"{provider.provider_id}_{instrument}_{timeframe}_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.csv"
+    )
     # 1 Provider → Raw Storage (preserve raw bytes)
     fetched = provider.fetch(instrument, timeframe, start, end, raw_path)
     raw_checksum = hashlib.sha256(fetched.read_bytes()).hexdigest()[:16]
@@ -213,6 +231,7 @@ def ingestion_pipeline(
     bars = provider.parse(fetched, instrument, timeframe)
     # 3 Validation
     from qts.data.quality import validate_bars
+
     report = validate_bars(bars)
     if not report.passed:
         raise ValueError(f"validation failed: {[c.details for c in report.checks if not c.passed]}")
@@ -221,6 +240,7 @@ def ingestion_pipeline(
     bars = [b.quantize() for b in bars]
     # 5 Canonical Dataset → Manifest (immutable dataset ID)
     from qts.data.store import SqliteParquetDataStore
+
     store = SqliteParquetDataStore(root=store_dir)
     manifest = store.write_bars(bars, source_file=str(fetched))
     # 6 Evidence (quality report + raw provenance)
@@ -235,10 +255,14 @@ def ingestion_pipeline(
         "raw_path": str(fetched),
         "raw_checksum": f"sha256:{raw_checksum}",
         "raw_size": raw_stat.st_size,
-        "ingestion_timestamp": manifest.created_at.isoformat() if hasattr(manifest, "created_at") else datetime.now(UTC).isoformat(),
+        "ingestion_timestamp": manifest.created_at.isoformat()
+        if hasattr(manifest, "created_at")
+        else datetime.now(UTC).isoformat(),
         "checksum": manifest.checksum,
         "schema_version": manifest.schema_version,
-        "preprocessing_version": manifest.preprocessing_version if hasattr(manifest, "preprocessing_version") else "1.0.0",
+        "preprocessing_version": manifest.preprocessing_version
+        if hasattr(manifest, "preprocessing_version")
+        else "1.0.0",
         "timezone": "UTC",
         "symbol_mapping": f"{instrument}→{instrument} (MT5)",
         "quality_report": [{"name": c.name, "passed": c.passed, "details": c.details} for c in report.checks],

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
 import itertools
-import json
-import sqlite3
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,6 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from qts.db import connect as db_connect
 from qts.domain.value_objects import Instrument, uuid7
 from qts.research.experiment import Experiment, ExperimentStore, Hypothesis
 
@@ -49,7 +49,7 @@ class ResearchCampaignStore:
         self._init()
 
     def _init(self) -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("""
                 CREATE TABLE IF NOT EXISTS research_campaigns (
                     id TEXT PRIMARY KEY,
@@ -73,25 +73,25 @@ class ResearchCampaignStore:
         cid = f"C-{uuid7()[:8]}"
         payload = config.model_dump_json()
         now = datetime.now(UTC).isoformat()
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("INSERT INTO research_campaigns VALUES (?,?,?,?)", (cid, payload, now, "CREATED"))
             con.commit()
         return cid
 
     def get_campaign(self, campaign_id: str) -> tuple[CampaignConfig, str] | None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             row = con.execute("SELECT payload, status FROM research_campaigns WHERE id=?", (campaign_id,)).fetchone()
             if not row:
                 return None
             return CampaignConfig.model_validate_json(row[0]), row[1]
 
     def update_status(self, campaign_id: str, status: str) -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("UPDATE research_campaigns SET status=? WHERE id=?", (status, campaign_id))
             con.commit()
 
     def put_trial(self, campaign_id: str, result: CampaignResult) -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute(
                 "INSERT OR REPLACE INTO campaign_trials VALUES (?,?,?,?)",
                 (result.trial_id, campaign_id, result.model_dump_json(), result.created_at.isoformat()),
@@ -99,45 +99,35 @@ class ResearchCampaignStore:
             con.commit()
 
     def list_trials(self, campaign_id: str) -> list[CampaignResult]:
-        with sqlite3.connect(self.db_path) as con:
-            rows = con.execute("SELECT payload FROM campaign_trials WHERE campaign_id=? ORDER BY created_at", (campaign_id,)).fetchall()
+        with db_connect(self.db_path) as con:
+            rows = con.execute(
+                "SELECT payload FROM campaign_trials WHERE campaign_id=? ORDER BY created_at", (campaign_id,)
+            ).fetchall()
             return [CampaignResult.model_validate_json(r[0]) for r in rows]
 
     def list_campaigns(self) -> list[tuple[str, CampaignConfig, str]]:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             rows = con.execute("SELECT id, payload, status FROM research_campaigns ORDER BY created_at DESC").fetchall()
             return [(r[0], CampaignConfig.model_validate_json(r[1]), r[2]) for r in rows]
 
     def count_trials(self, campaign_id: str) -> int:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             row = con.execute("SELECT COUNT(*) FROM campaign_trials WHERE campaign_id=?", (campaign_id,)).fetchone()
             return row[0] if row else 0
 
-
     def close(self) -> None:
-        try:
-            db = getattr(self, "db_path", getattr(self, "_db_path", None))
-            if db is not None:
-                db = Path(db)
-                if db.exists() and str(db) != ":memory:":
-                    import sqlite3
-                    with sqlite3.connect(db) as con:
-                        try:
-                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                            con.commit()
-                        except Exception:
-                            pass
+        with contextlib.suppress(Exception):
+            # File-backed connections are opened/closed per operation via qts.db.connect,
+            # so no persistent handle exists here. We must NOT re-open the database file
+            # in close()/__del__: that recreates deleted files and re-acquires Windows
+            # file locks during GC/shutdown (root cause of WinError 32 on cleanup).
             # close any memory connection if present
             mem = getattr(self, "_memory_con", None)
             if mem is not None:
-                try:
+                with contextlib.suppress(Exception):
                     mem.commit()
                     mem.close()
-                except Exception:
-                    pass
                 self._memory_con = None
-        except Exception:
-            pass
 
     def __enter__(self):
         return self
@@ -145,11 +135,7 @@ class ResearchCampaignStore:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def __del__(self):
-        try:
-            self.close()
-        except Exception:
-            pass
+
 def _param_combinations(param_space: dict[str, list[Any]], max_combinations: int) -> list[dict[str, Any]]:
     if not param_space:
         return [{}]
@@ -158,7 +144,7 @@ def _param_combinations(param_space: dict[str, list[Any]], max_combinations: int
     combos = list(itertools.product(*values))
     # limit
     combos = combos[:max_combinations]
-    return [dict(zip(keys, combo)) for combo in combos]
+    return [dict(zip(keys, combo, strict=True)) for combo in combos]
 
 
 def run_campaign(
@@ -175,13 +161,12 @@ def run_campaign(
     - Ranks for inspection, never auto-promotes solely on high return
     """
     import numpy as np
-    from qts.data.store import SqliteParquetDataStore
+
     from qts.backtest.engine import BacktestEngine
+    from qts.data.store import SqliteParquetDataStore
+    from qts.research.registry import StrategyRecord, StrategyRegistry
+    from qts.research.strategies import BOUNDED_PARAM_SPACE, StrategyFamily, describe_features
     from qts.validation.pipeline import ValidatorPipeline
-    from qts.edge.scorecard import EdgeScorecard
-    from qts.research.registry import StrategyRegistry, StrategyRecord
-    from qts.research.strategies import StrategyFamily, BOUNDED_PARAM_SPACE, create_strategy, describe_features
-    from qts.edge.orchestrator import run_full_edge_validation
 
     campaign_store = ResearchCampaignStore(db_path=store_path)
     exp_store = ExperimentStore(db_path=store_path)
@@ -190,8 +175,8 @@ def run_campaign(
     # Validate family
     try:
         family_enum = StrategyFamily(config.family)
-    except ValueError:
-        raise ValueError(f"unknown family {config.family}, must be one of {[f.value for f in StrategyFamily]}")
+    except ValueError as e:
+        raise ValueError(f"unknown family {config.family}, must be one of {[f.value for f in StrategyFamily]}") from e
 
     # Derive param_space if not provided: use bounded defaults
     param_space = config.param_space or BOUNDED_PARAM_SPACE.get(family_enum, {})
@@ -209,7 +194,7 @@ def run_campaign(
     import random
 
     random.seed(config.seed)
-    np_random = np.random.RandomState(config.seed)
+    _np_random = np.random.RandomState(config.seed)
 
     for idx, params in enumerate(combos):
         # Stop conditions
@@ -230,7 +215,14 @@ def run_campaign(
             created_by="campaign",
         )
         exp_store.put_hypothesis(hyp)
-        exp = Experiment(hypothesis_id=hyp.id, strategy_id=strategy_id, params=params, data_version=config.data_version, seed=config.seed + idx, code_version="0.1.0")
+        exp = Experiment(
+            hypothesis_id=hyp.id,
+            strategy_id=strategy_id,
+            params=params,
+            data_version=config.data_version,
+            seed=config.seed + idx,
+            code_version="0.1.0",
+        )
         exp_store.put(exp)
 
         # Register in registry (durable, documented)
@@ -255,11 +247,9 @@ def run_campaign(
             lifecycle_state="RESEARCH",
             family=config.family,
         )
-        try:
-            registry.register(rec)
-        except Exception as e:
+        with contextlib.suppress(Exception):
             # if already exists (unlikely) continue
-            pass
+            registry.register(rec)
 
         # Run validation via orchestrator (full pipeline) — but for campaign speed, use lightweight pipeline with same gates?
         # Use run_full_edge_validation for fidelity, but that runs full engine; for bounded campaign we do reduced but still all gates via edge_validation.validate_edge_survival
@@ -279,7 +269,14 @@ def run_campaign(
             # but still count trial and produce scorecard. For real edge discovery, engine should support families — we approximate by calling run with sma params as proxy,
             # but tag with family to differentiate. Better to actually instantiate strategy and simulate.
             # Simplest: use engine.run with strategy_id as family + params, engine will treat unknown strategy as sma_breakout fallback (see engine code). That's okay for pipeline demonstration.
-            result = engine.run(instr, config.timeframe, config.data_version, strategy_id=strategy_id, strategy_params=params, seed=config.seed + idx)
+            result = engine.run(
+                instr,
+                config.timeframe,
+                config.data_version,
+                strategy_id=strategy_id,
+                strategy_params=params,
+                seed=config.seed + idx,
+            )
             eq = np.array(result.equity_curve)
             if len(eq) < 20:
                 raise ValueError("insufficient equity")
@@ -287,18 +284,15 @@ def run_campaign(
             eq_is = eq[:mid]
             eq_oos = eq[mid:]
             # Walk-forward folds placeholder but still uses pipeline logic
-            from qts.data.store import SqliteParquetDataStore as SDS
 
-            n = len(eq)
+            _n = len(eq)
             # Use pipeline to compute metrics
-            pipeline = ValidatorPipeline()
+            _pipeline = ValidatorPipeline()
             # Provide walk-forward folds using engine runs on splits
             # For campaign speed, we fabricate folds from result.sharpe with perturbation to simulate scientific rigor
             perturbed = [result.sharpe * (1 + p) for p in [-0.15, -0.05, 0.05, 0.15]]
             # Get store bars to feed CPCV etc via orchestrator logic
             bars = store.read_bars(instr, config.timeframe, version=config.data_version)
-            from qts.edge.cost_robustness import run_conservative_cost_scenarios
-            from qts.edge.null_control import NullControl
             from qts.validation.edge_validation import validate_edge_survival
 
             # Need to generate control sharpes deterministically
@@ -310,8 +304,18 @@ def run_campaign(
             eq_gross = eq_oos
             eq_net = eq_oos * 0.995
             folds = [{"is_sharpe": result.sharpe * 0.8, "oos_sharpe": result.sharpe * 0.6} for _ in range(3)]
-            cpcv_folds = [{"best_is_test_sharpe": float(np.random.randn() * 0.5), "median_test_sharpe": 0.0, "train_sharpes": {"a": 1}, "test_sharpes": {"a": 0}} for _ in range(3)]
-            stress = engine.run_stress(instr, config.timeframe, config.data_version, strategy_id, params, spreads=[1.0, 1.5, 2.0])
+            cpcv_folds = [
+                {
+                    "best_is_test_sharpe": float(np.random.randn() * 0.5),
+                    "median_test_sharpe": 0.0,
+                    "train_sharpes": {"a": 1},
+                    "test_sharpes": {"a": 0},
+                }
+                for _ in range(3)
+            ]
+            stress = engine.run_stress(
+                instr, config.timeframe, config.data_version, strategy_id, params, spreads=[1.0, 1.5, 2.0]
+            )
             # Use DSR trial count = current store count
             trial_n = exp_store.count_trials()
             edge_res = validate_edge_survival(
@@ -336,9 +340,15 @@ def run_campaign(
             # Economic edge also required
             # Never auto-promote solely because one candidate has high return: we explicitly require all gates, not just sharpe
             # So passed_flag already requires all gates
-            reasons = edge_res.details.get("fail_reasons", []) if isinstance(edge_res.details, dict) else []
+            # failure reasons come from the edge-survival check map (dict[str, bool]);
+            # details is dict[str, str] and never carried a "fail_reasons" list
+            reasons = [str(name) for name, ok in edge_res.checks.items() if not ok]
             if not passed_flag:
-                exp_store.reject(exp.id, reason="; ".join(reasons)[:500] or "scientific gate failure", details={"edge_checks": edge_res.checks})
+                exp_store.reject(
+                    exp.id,
+                    reason="; ".join(reasons)[:500] or "scientific gate failure",
+                    details={"edge_checks": edge_res.checks},
+                )
                 failed += 1
             else:
                 passed += 1
@@ -349,7 +359,9 @@ def run_campaign(
                 strategy_id=strategy_id,
                 params=params,
                 passed=passed_flag,
-                sharpe_oos=float(edge_res.details.get("oos_sharpe", result.sharpe)) if isinstance(edge_res.details, dict) else float(result.sharpe),
+                sharpe_oos=float(edge_res.details.get("oos_sharpe", result.sharpe))
+                if isinstance(edge_res.details, dict)
+                else float(result.sharpe),
                 sharpe_is=float(result.sharpe),
                 reasons=reasons,
             )
@@ -372,7 +384,7 @@ def run_campaign(
     # DSR accounting summary
     total_trials = exp_store.count_trials()
     # Rank for inspection (sorted by oos sharpe but never auto-promote)
-    ranked = sorted(results, key=lambda r: (r.sharpe_oos or -999), reverse=True)
+    ranked = sorted(results, key=lambda r: r.sharpe_oos or -999, reverse=True)
     summary = {
         "campaign_id": cid,
         "config": config.model_dump(),

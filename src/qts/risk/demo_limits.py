@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class DemoForwardLimits(BaseModel):
     """Explicit safety boundary for DEMO_FORWARD. No env can silently become another."""
+
     # Order / position
     max_volume_per_order: float = 0.1  # lots, conservative (vs live 0.2)
     max_simultaneous_exposure: float = 0.3  # lots total
@@ -26,7 +27,16 @@ class DemoForwardLimits(BaseModel):
     allowed_envs: list[str] = Field(default_factory=lambda: ["demo_forward", "demo", "paper"])
     label: str = "DEMO"  # every result labeled DEMO, never LIVE
     # LIVE remains separately gated — this file never grants LIVE
-    live_requires: list[str] = Field(default_factory=lambda: ["env=live", "--confirm live", "risk.approved", "validation.passed", "reconciliation.healthy", "human_approval"])
+    live_requires: list[str] = Field(
+        default_factory=lambda: [
+            "env=live",
+            "--confirm live",
+            "risk.approved",
+            "validation.passed",
+            "reconciliation.healthy",
+            "human_approval",
+        ]
+    )
 
 
 DEMO_FORWARD_DEFAULTS = DemoForwardLimits()
@@ -40,6 +50,7 @@ SAFETY_BOUNDARY = {
     "LIVE": "REAL money, separately gated, requires env=live + --confirm live + risk.approved + validation.passed + reconciliation + human approval — LOCKED unless all pass",
 }
 
+
 def assert_demo_limits(volume: float, exposure: float, spread_bps: float, slippage_bps: float) -> tuple[bool, str]:
     lim = DEMO_FORWARD_DEFAULTS
     if volume > lim.max_volume_per_order:
@@ -51,6 +62,7 @@ def assert_demo_limits(volume: float, exposure: float, spread_bps: float, slippa
     if slippage_bps > lim.max_slippage_bps:
         return False, f"slippage {slippage_bps}bps > demo limit {lim.max_slippage_bps}bps"
     return True, "within demo limits"
+
 
 def env_boundary_check(current_env: str, requested_mode: str) -> tuple[bool, str]:
     """No environment can silently become another."""

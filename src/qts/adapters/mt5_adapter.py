@@ -20,22 +20,35 @@ but MT5Adapter.ticks() is the raw source.
 Order lifecycle: submit → ACCEPTED or REJECTED/AMBIGUOUS, fills via polling
 history_deals (not assumed), cancel via TRADE_ACTION_REMOVE.
 """
+
 from __future__ import annotations
 
-import sqlite3
+import contextlib
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
-from qts.domain.value_objects import Account, Instrument, Order, OrderIntent, OrderState, Position, Tick, Side, OrderType
+from qts.db import connect as db_connect
+from qts.domain.value_objects import (
+    Account,
+    Instrument,
+    Order,
+    OrderIntent,
+    OrderState,
+    OrderType,
+    Position,
+    Side,
+    Tick,
+)
 from qts.execution.engine import BrokerAdapter
 
 
 @dataclass(frozen=True)
 class SymbolSpec:
     """Authoritative broker symbol metadata — single canonical spec."""
+
     symbol: str
     contract_size: Decimal
     volume_min: Decimal
@@ -61,6 +74,7 @@ class SymbolSpec:
 
 class MT5Adapter(BrokerAdapter):
     """Isolated MT5 broker adapter. All MT5 access is via _mt5 (injected or imported)."""
+
     is_live = True
     is_shadow = False
 
@@ -98,7 +112,7 @@ class MT5Adapter(BrokerAdapter):
         self._init_comment_db()
 
     def _init_comment_db(self) -> None:
-        with sqlite3.connect(self._db_path) as con:
+        with db_connect(self._db_path) as con:
             con.execute("""
                 CREATE TABLE IF NOT EXISTS mt5_comment_map (
                     client_order_id TEXT PRIMARY KEY,
@@ -109,7 +123,7 @@ class MT5Adapter(BrokerAdapter):
             con.commit()
 
     def _store_comment_map(self, client_order_id: str, comment: str) -> None:
-        with sqlite3.connect(self._db_path) as con:
+        with db_connect(self._db_path) as con:
             con.execute(
                 "INSERT OR REPLACE INTO mt5_comment_map VALUES (?,?,?)",
                 (client_order_id, comment, datetime.now(UTC).isoformat()),
@@ -117,12 +131,14 @@ class MT5Adapter(BrokerAdapter):
             con.commit()
 
     def _load_comment_map(self, client_order_id: str) -> str | None:
-        with sqlite3.connect(self._db_path) as con:
-            row = con.execute("SELECT mt5_comment FROM mt5_comment_map WHERE client_order_id=?", (client_order_id,)).fetchone()
+        with db_connect(self._db_path) as con:
+            row = con.execute(
+                "SELECT mt5_comment FROM mt5_comment_map WHERE client_order_id=?", (client_order_id,)
+            ).fetchone()
             return row[0] if row else None
 
     def _reverse_comment_map(self, comment: str) -> str | None:
-        with sqlite3.connect(self._db_path) as con:
+        with db_connect(self._db_path) as con:
             row = con.execute("SELECT client_order_id FROM mt5_comment_map WHERE mt5_comment=?", (comment,)).fetchone()
             return row[0] if row else None
 
@@ -131,12 +147,17 @@ class MT5Adapter(BrokerAdapter):
             return self._mt5
         try:
             import MetaTrader5 as mt5
+
             self._mt5 = mt5
             return mt5
         except ImportError as e:
-            raise RuntimeError("MetaTrader5 package not installed — install MetaTrader5 or use injected mock for tests") from e
+            raise RuntimeError(
+                "MetaTrader5 package not installed — install MetaTrader5 or use injected mock for tests"
+            ) from e
 
-    def connect(self, login: int | None = None, password: str | None = None, server: str | None = None, path: str | None = None) -> None:
+    def connect(
+        self, login: int | None = None, password: str | None = None, server: str | None = None, path: str | None = None
+    ) -> None:
         mt5 = self._require_mt5()
         # Use config or params
         login = login or self.config.get("login")
@@ -148,13 +169,13 @@ class MT5Adapter(BrokerAdapter):
             kwargs["path"] = path
         if not mt5.initialize(**kwargs):
             raise RuntimeError(f"MT5 initialize failed: {mt5.last_error()}")
-        if login and password and server:
-            if not mt5.login(login, password, server):
-                raise RuntimeError(f"MT5 login failed: {mt5.last_error()}")
+        if login and password and server and not mt5.login(login, password, server):
+            raise RuntimeError(f"MT5 login failed: {mt5.last_error()}")
 
     def disconnect(self) -> None:
         if self._mt5:
             import contextlib
+
             with contextlib.suppress(Exception):
                 self._mt5.shutdown()
 
@@ -170,10 +191,8 @@ class MT5Adapter(BrokerAdapter):
         mt5 = self._require_mt5()
         mt5_sym = self._map_symbol(symbol)
         # Phase 1: ensure symbol visible/selected before info
-        try:
+        with contextlib.suppress(Exception):
             mt5.symbol_select(mt5_sym, True)
-        except Exception:
-            pass
         info = mt5.symbol_info(mt5_sym)
         if info is None:
             raise RuntimeError(f"MT5 symbol_info not found for {symbol} (mapped {mt5_sym}): {mt5.last_error()}")
@@ -255,11 +274,24 @@ class MT5Adapter(BrokerAdapter):
         """Connection health — terminal, account, last_error, ping."""
         mt5 = self._require_mt5()
         now = datetime.now(UTC)
-        result: dict[str, Any] = {"timestamp": now.isoformat(), "connected": False, "terminal_ok": False, "account_ok": False, "last_error": None}
+        result: dict[str, Any] = {
+            "timestamp": now.isoformat(),
+            "connected": False,
+            "terminal_ok": False,
+            "account_ok": False,
+            "last_error": None,
+        }
         try:
             ti = mt5.terminal_info()
             result["terminal_ok"] = ti is not None
-            result["terminal_info"] = {"connected": bool(getattr(ti, "connected", False)), "trade_allowed": bool(getattr(ti, "trade_allowed", False))} if ti else None
+            result["terminal_info"] = (
+                {
+                    "connected": bool(getattr(ti, "connected", False)),
+                    "trade_allowed": bool(getattr(ti, "trade_allowed", False)),
+                }
+                if ti
+                else None
+            )
         except Exception as e:
             result["terminal_error"] = str(e)
         try:
@@ -272,7 +304,9 @@ class MT5Adapter(BrokerAdapter):
         try:
             err = mt5.last_error()
             result["last_error"] = str(err)
-            result["connected"] = result["terminal_ok"] and result["account_ok"] and (err[0] == 1 if isinstance(err, tuple) else True)
+            result["connected"] = (
+                result["terminal_ok"] and result["account_ok"] and (err[0] == 1 if isinstance(err, tuple) else True)
+            )
         except Exception as e:
             result["last_error"] = str(e)
         return result
@@ -298,6 +332,7 @@ class MT5Adapter(BrokerAdapter):
             names = [getattr(s, "name", str(s)) for s in raw]
             if pattern != "*":
                 import fnmatch
+
                 names = [n for n in names if fnmatch.fnmatch(n, pattern)]
             return names[:max_count]
         except Exception:
@@ -320,9 +355,10 @@ class MT5Adapter(BrokerAdapter):
     def reconnect(self, max_attempts: int = 3) -> bool:
         """Clean shutdown then reconnect — recovery behavior."""
         mt5 = self._require_mt5()
-        for attempt in range(max_attempts):
+        for _attempt in range(max_attempts):
             try:
                 import contextlib
+
                 with contextlib.suppress(Exception):
                     mt5.shutdown()
                 kwargs: dict[str, Any] = {}
@@ -334,12 +370,12 @@ class MT5Adapter(BrokerAdapter):
                 login = self.config.get("login")
                 password = self.config.get("password")
                 server = self.config.get("server")
-                if login and password and server:
-                    if not mt5.login(login, password, server):
-                        continue
+                if login and password and server and not mt5.login(login, password, server):
+                    continue
                 if self.is_connected():
                     return True
-            except Exception:
+            # B112: reconnect retry loop: failed attempt retries until max_attempts
+            except Exception:  # nosec B112
                 continue
         return False
 
@@ -395,7 +431,9 @@ class MT5Adapter(BrokerAdapter):
             request["price"] = price
         return request
 
-    def validate_sl_tp(self, price: Decimal, sl: Decimal | None, tp: Decimal | None, spec: SymbolSpec, side: Side) -> None:
+    def validate_sl_tp(
+        self, price: Decimal, sl: Decimal | None, tp: Decimal | None, spec: SymbolSpec, side: Side
+    ) -> None:
         """Validate SL/TP distance against broker stops_level."""
         if spec.stops_level <= 0:
             return
@@ -403,11 +441,15 @@ class MT5Adapter(BrokerAdapter):
         if sl is not None:
             dist = abs(price - sl)
             if dist < min_dist - Decimal("1e-9"):
-                raise ValueError(f"SL distance {dist} < stops_level {spec.stops_level}*{spec.point}={min_dist} for {spec.symbol}")
+                raise ValueError(
+                    f"SL distance {dist} < stops_level {spec.stops_level}*{spec.point}={min_dist} for {spec.symbol}"
+                )
         if tp is not None:
             dist = abs(price - tp)
             if dist < min_dist - Decimal("1e-9"):
-                raise ValueError(f"TP distance {dist} < stops_level {spec.stops_level}*{spec.point}={min_dist} for {spec.symbol}")
+                raise ValueError(
+                    f"TP distance {dist} < stops_level {spec.stops_level}*{spec.point}={min_dist} for {spec.symbol}"
+                )
 
     def invalidate_spec_cache(self, symbol: str | None = None) -> None:
         if symbol:
@@ -435,7 +477,9 @@ class MT5Adapter(BrokerAdapter):
         normalized = self._quantize_to_step(quantity, spec.volume_step)
         # Check that quantization didn't move outside bounds
         if normalized < spec.volume_min - Decimal("0.0000001") or normalized > spec.volume_max + Decimal("0.0000001"):
-            raise ValueError(f"quantized quantity {normalized} out of bounds [{spec.volume_min}, {spec.volume_max}] for {spec.symbol}")
+            raise ValueError(
+                f"quantized quantity {normalized} out of bounds [{spec.volume_min}, {spec.volume_max}] for {spec.symbol}"
+            )
         # Check that original quantity is already a multiple of step within tolerance
         # If caller passed 0.015 with step 0.01, normalized is 0.02 but we should reject unless close
         diff = abs(quantity - normalized)
@@ -447,7 +491,9 @@ class MT5Adapter(BrokerAdapter):
             # To be fail-closed, we will raise if diff > 1e-9 and not exactly on step
             remainder = (quantity / spec.volume_step) % 1
             if remainder != 0 and abs(remainder) > Decimal("0.0000001") and abs(1 - remainder) > Decimal("0.0000001"):
-                raise ValueError(f"quantity {quantity} not multiple of broker step {spec.volume_step} for {spec.symbol} (normalized {normalized})")
+                raise ValueError(
+                    f"quantity {quantity} not multiple of broker step {spec.volume_step} for {spec.symbol} (normalized {normalized})"
+                )
         return normalized
 
     def validate_price_precision(self, price: Decimal | None, spec: SymbolSpec) -> Decimal | None:
@@ -459,10 +505,11 @@ class MT5Adapter(BrokerAdapter):
             quantum = spec.tick_size
         quantized = (price / quantum).to_integral_value(rounding=ROUND_HALF_UP) * quantum
         # Strict: price must be exactly on quantum (within 1e-9)
-        if price != quantized:
-            # Allow tiny epsilon for Decimal representation
-            if abs(price - quantized) > Decimal("0.0000001"):
-                raise ValueError(f"price {price} not at broker precision {quantum} (digits {spec.digits}) for {spec.symbol} quantized {quantized}")
+        # Allow tiny epsilon for Decimal representation
+        if price != quantized and abs(price - quantized) > Decimal("0.0000001"):
+            raise ValueError(
+                f"price {price} not at broker precision {quantum} (digits {spec.digits}) for {spec.symbol} quantized {quantized}"
+            )
         if quantized <= 0:
             raise ValueError(f"price must be >0, got {quantized}")
         return quantized
@@ -489,6 +536,7 @@ class MT5Adapter(BrokerAdapter):
         else:
             # Use hash prefix to avoid collision, keep first 24 + hash 6
             import hashlib
+
             h = hashlib.sha256(client_order_id.encode()).hexdigest()[:6]
             comment = client_order_id[:24] + "_" + h
             comment = comment[:31]
@@ -588,12 +636,22 @@ class MT5Adapter(BrokerAdapter):
                 exchange_order_id=str(exchange_id) if exchange_id else None,
             )
         elif retcode in self.AMBIGUOUS_RETCODES:
-            raise TimeoutError(f"MT5 ambiguous retcode {retcode} for {intent.client_order_id}: {getattr(result, 'comment', '')}")
+            raise TimeoutError(
+                f"MT5 ambiguous retcode {retcode} for {intent.client_order_id}: {getattr(result, 'comment', '')}"
+            )
         else:
             # Definitive rejection — map retcode to reason
             comment = getattr(result, "comment", f"retcode {retcode}")
             # Classify known rejection codes
-            if retcode in (self.RETCODE_INVALID, self.RETCODE_INVALID_VOLUME, self.RETCODE_INVALID_PRICE, self.RETCODE_REJECT, self.RETCODE_NO_MONEY, self.RETCODE_PRICE_OFF, self.RETCODE_TRADE_DISABLED):
+            if retcode in (
+                self.RETCODE_INVALID,
+                self.RETCODE_INVALID_VOLUME,
+                self.RETCODE_INVALID_PRICE,
+                self.RETCODE_REJECT,
+                self.RETCODE_NO_MONEY,
+                self.RETCODE_PRICE_OFF,
+                self.RETCODE_TRADE_DISABLED,
+            ):
                 raise ValueError(f"MT5 rejected {intent.client_order_id} retcode {retcode}: {comment}")
             # Unknown retcode — treat as reject if not timeout
             raise ValueError(f"MT5 rejected {intent.client_order_id} retcode {retcode}: {comment}")
@@ -626,8 +684,14 @@ class MT5Adapter(BrokerAdapter):
             "order": int(ticket),
         }
         result = mt5.order_send(request)
-        if result is None or getattr(result, "retcode", None) not in (self.RETCODE_DONE, self.RETCODE_PLACED, self.RETCODE_CANCEL):
-            raise RuntimeError(f"MT5 cancel failed for {client_order_id} ticket {ticket}: {getattr(result, 'comment', mt5.last_error())}")
+        if result is None or getattr(result, "retcode", None) not in (
+            self.RETCODE_DONE,
+            self.RETCODE_PLACED,
+            self.RETCODE_CANCEL,
+        ):
+            raise RuntimeError(
+                f"MT5 cancel failed for {client_order_id} ticket {ticket}: {getattr(result, 'comment', mt5.last_error())}"
+            )
 
     # ---------- Positions, orders, account, ticks ----------
 
@@ -681,10 +745,7 @@ class MT5Adapter(BrokerAdapter):
             # MT5 order type to side
             o_type = getattr(o, "type", 0)
             # 0 BUY, 1 SELL, 2 BUY_LIMIT, 3 SELL_LIMIT, 4 BUY_STOP, 5 SELL_STOP
-            if o_type in (0, 2, 4):
-                side = Side.BUY
-            else:
-                side = Side.SELL
+            side = Side.BUY if o_type in (0, 2, 4) else Side.SELL
             # Determine order_type
             if o_type in (2, 3):
                 otype = OrderType.LIMIT
@@ -769,6 +830,7 @@ class MT5Adapter(BrokerAdapter):
         if tick is None:
             return None
         from datetime import datetime
+
         # Validate tick freshness and integrity will be done by MarketDataProvider
         return Tick(
             instrument=instrument,
@@ -784,6 +846,7 @@ class MT5Adapter(BrokerAdapter):
         try:
             # Need to ensure history is selected
             from datetime import datetime, timedelta
+
             now = datetime.now(UTC)
             start = now - timedelta(days=30)
             deals = mt5.history_deals_get(start, now)
@@ -798,25 +861,47 @@ class MT5Adapter(BrokerAdapter):
             return []
 
     def poll_fills(self, client_order_id: str) -> list[Any]:
-        """Poll for fills for a specific order — used by ExecutionEngine live path."""
-        # For MT5, fills are deals; we can map to Fill objects
-        deals = self.history_deals(client_order_id)
+        """Poll for fills (deals) — used by ExecutionEngine live path.
+
+        Each returned dict carries:
+        * ``fill_id`` — STABLE id derived from the deal ticket, so repeated polls
+          deduplicate instead of re-applying the same economic fill.
+        * ``client_order_id`` — the attributed order via the persisted comment map,
+          or None when the deal comment cannot be mapped. Callers MUST fail closed
+          on unattributed fills (never apply them to a portfolio blindly).
+        """
+        deals = self.history_deals(client_order_id or None)
         fills = []
         for d in deals:
-            # Need to map deal to Fill
             # Deal fields: ticket, order, symbol, volume, price, profit, type, time
             try:
                 sym = getattr(d, "symbol", "UNKNOWN")
-                instr = Instrument(symbol=sym, venue="MT5")
                 vol = Decimal(str(getattr(d, "volume", 0)))
                 price = Decimal(str(getattr(d, "price", 0)))
                 # type 0 BUY, 1 SELL
                 deal_type = getattr(d, "type", 0)
                 side = Side.BUY if deal_type == 0 else Side.SELL
-                # time
                 deal_time = datetime.fromtimestamp(getattr(d, "time", datetime.now(UTC).timestamp()), tz=UTC)
+                ticket = getattr(d, "ticket", None)
+                comment = getattr(d, "comment", "") or ""
+                attributed = self._reverse_comment_map(comment)
+                if attributed is None and client_order_id:
+                    # history_deals already filtered by this order's comment —
+                    # accept the match when the comment equals the mapped/expected one
+                    expected = self._load_comment_map(client_order_id) or client_order_id[:31]
+                    if comment == expected:
+                        attributed = client_order_id
+                if ticket is not None:
+                    fill_id = f"mt5-deal-{ticket}"
+                else:
+                    import hashlib
+
+                    key = f"{attributed or comment}|{sym}|{deal_time.isoformat()}|{price}|{vol}"
+                    fill_id = "mt5-deal-" + hashlib.sha256(key.encode()).hexdigest()[:16]
                 fills.append(
                     {
+                        "fill_id": fill_id,
+                        "client_order_id": attributed,
                         "symbol": sym,
                         "volume": vol,
                         "price": price,
@@ -825,42 +910,27 @@ class MT5Adapter(BrokerAdapter):
                         "deal": d,
                     }
                 )
-            except Exception:
+            # B112: skip unprocessable deal; reconcile fail-closes on venue drift
+            except Exception:  # nosec B112
                 continue
         return fills
+
     def close(self) -> None:
-        try:
-            db = getattr(self, "db_path", getattr(self, "_db_path", None))
-            if db is not None:
-                db = Path(db)
-                if db.exists() and str(db) != ":memory:":
-                    import sqlite3
-                    with sqlite3.connect(db) as con:
-                        try:
-                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                            con.commit()
-                        except Exception:
-                            pass
+        with contextlib.suppress(Exception):
+            # File-backed connections are opened/closed per operation via qts.db.connect,
+            # so no persistent handle exists here. We must NOT re-open the database file
+            # in close()/__del__: that recreates deleted files and re-acquires Windows
+            # file locks during GC/shutdown (root cause of WinError 32 on cleanup).
             # close any memory connection if present
             mem = getattr(self, "_memory_con", None)
             if mem is not None:
-                try:
+                with contextlib.suppress(Exception):
                     mem.commit()
                     mem.close()
-                except Exception:
-                    pass
                 self._memory_con = None
-        except Exception:
-            pass
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-    def __del__(self):
-        try:
-            self.close()
-        except Exception:
-            pass

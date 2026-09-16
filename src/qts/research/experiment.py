@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from qts.db import connect as db_connect
 from qts.domain.value_objects import uuid7
 
 
@@ -58,7 +58,7 @@ class ExperimentStore:
         self._init()
 
     def _init(self) -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("CREATE TABLE IF NOT EXISTS hypotheses (id TEXT PRIMARY KEY, payload TEXT)")
             con.execute(
                 "CREATE TABLE IF NOT EXISTS experiments (id TEXT PRIMARY KEY, hypothesis_id TEXT, payload TEXT)"
@@ -72,18 +72,18 @@ class ExperimentStore:
             con.commit()
 
     def put_hypothesis(self, h: Hypothesis) -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("INSERT OR REPLACE INTO hypotheses VALUES (?,?)", (h.id, h.model_dump_json()))
             con.commit()
 
     def get_hypothesis(self, hid: str) -> Hypothesis | None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             row = con.execute("SELECT payload FROM hypotheses WHERE id=?", (hid,)).fetchone()
             return Hypothesis.model_validate_json(row[0]) if row else None
 
     def put(self, exp: Experiment) -> None:
         exp.manifest_hash = exp.compute_hash()
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute(
                 "INSERT OR REPLACE INTO experiments VALUES (?,?,?)",
                 (exp.id, exp.hypothesis_id, exp.model_dump_json()),
@@ -91,17 +91,17 @@ class ExperimentStore:
             con.commit()
 
     def get(self, exp_id: str) -> Experiment | None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             row = con.execute("SELECT payload FROM experiments WHERE id=?", (exp_id,)).fetchone()
             return Experiment.model_validate_json(row[0]) if row else None
 
     def all_experiments(self) -> list[Experiment]:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             rows = con.execute("SELECT payload FROM experiments").fetchall()
             return [Experiment.model_validate_json(r[0]) for r in rows]
 
     def reject(self, experiment_id: str, reason: str, details: dict[str, object] | None = None) -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute(
                 "INSERT OR REPLACE INTO rejections VALUES (?,?,?,?)",
                 (f"R-{uuid7()[:6]}", experiment_id, reason, json.dumps(details or {})),
@@ -109,35 +109,24 @@ class ExperimentStore:
             con.commit()
 
     def lineage(self, parent: str, child: str, relation: str = "derived") -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("INSERT OR IGNORE INTO lineage VALUES (?,?,?)", (parent, child, relation))
             con.commit()
 
     def count_trials(self) -> int:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             row = con.execute("SELECT COUNT(*) FROM experiments").fetchone()
             return row[0] if row else 0
 
     def close(self) -> None:
-        try:
-            if self.db_path.exists() and str(self.db_path) != ":memory:":
-                with sqlite3.connect(self.db_path) as con:
-                    try:
-                        con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                        con.commit()
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+        # File-backed connections are opened/closed per operation via qts.db.connect,
+        # so no persistent handle exists here. We must NOT re-open the database file
+        # in close()/__del__: that recreates deleted files and re-acquires Windows
+        # file locks during GC/shutdown (root cause of WinError 32 on cleanup).
+        return None
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-    def __del__(self):
-        try:
-            self.close()
-        except Exception:
-            pass

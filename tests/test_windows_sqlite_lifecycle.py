@@ -12,14 +12,13 @@ On Windows this would raise PermissionError if close is missing.
 import tempfile
 from pathlib import Path
 
-import pytest
-
 
 def test_sqlite_parquet_store_closes_before_tmp_cleanup():
-    from qts.data.store import SqliteParquetDataStore
-    from qts.domain.value_objects import Instrument, Bar
     from datetime import UTC, datetime, timedelta
     from decimal import Decimal
+
+    from qts.data.store import SqliteParquetDataStore
+    from qts.domain.value_objects import Bar, Instrument
 
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "qts.db"
@@ -47,9 +46,10 @@ def test_sqlite_parquet_store_closes_before_tmp_cleanup():
 
 
 def test_risk_engine_closes_before_tmp_cleanup():
-    from qts.risk.engine import RiskEngine, RiskLimits
     import tempfile
     from pathlib import Path
+
+    from qts.risk.engine import RiskEngine, RiskLimits
 
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "risk.db"
@@ -62,6 +62,7 @@ def test_risk_engine_closes_before_tmp_cleanup():
 
 def test_idempotency_store_closes_before_tmp_cleanup():
     from qts.execution.idempotency import IdempotencyStore
+
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "idem.db"
         store = IdempotencyStore(db_path=db)
@@ -73,6 +74,7 @@ def test_idempotency_store_closes_before_tmp_cleanup():
 
 def test_idempotency_memory_close():
     from qts.execution.idempotency import IdempotencyStore
+
     store = IdempotencyStore(db_path=":memory:")
     store.record("a", "PENDING")
     assert store.get_status("a") == "PENDING"
@@ -82,6 +84,7 @@ def test_idempotency_memory_close():
 
 def test_experiment_store_context_manager():
     from qts.research.experiment import ExperimentStore
+
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "exp.db"
         with ExperimentStore(db_path=db) as store:
@@ -91,10 +94,11 @@ def test_experiment_store_context_manager():
 
 
 def test_locked_test_partitioner_closes():
-    from qts.data.locked_test import LockedTestPartitioner
-    from qts.domain.value_objects import Instrument, Bar
     from datetime import UTC, datetime, timedelta
     from decimal import Decimal
+
+    from qts.data.locked_test import LockedTestPartitioner
+    from qts.domain.value_objects import Bar, Instrument
 
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "locked.db"
@@ -121,8 +125,9 @@ def test_locked_test_partitioner_closes():
 
 
 def test_multiple_stores_same_db_close():
-    from qts.risk.engine import RiskEngine, RiskLimits
     from qts.execution.idempotency import IdempotencyStore
+    from qts.risk.engine import RiskEngine, RiskLimits
+
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "shared.db"
         risk = RiskEngine(RiskLimits(), db_path=db)
@@ -138,18 +143,20 @@ def test_multiple_stores_same_db_close():
 def test_conftest_safe_temporary_directory_patches():
     # Verify that tempfile.TemporaryDirectory is our Safe version
     import tempfile
+
     # It should have our cleanup that closes stores
     assert tempfile.TemporaryDirectory.__name__ == "SafeTemporaryDirectory"
 
 
 def test_mkdtemp_sqlite_close():
+    import shutil
     import tempfile
-    from pathlib import Path
-    from qts.data.store import SqliteParquetDataStore
-    from qts.domain.value_objects import Instrument, Bar
     from datetime import UTC, datetime, timedelta
     from decimal import Decimal
-    import shutil
+    from pathlib import Path
+
+    from qts.data.store import SqliteParquetDataStore
+    from qts.domain.value_objects import Bar, Instrument
 
     d = Path(tempfile.mkdtemp())
     try:

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from qts.domain.value_objects import Account, Fill, Instrument, Position
+from qts.domain.value_objects import Fill, Instrument, Position
 
 
 class Portfolio:
@@ -86,12 +86,8 @@ class Portfolio:
         # opposite direction: closing (partial/full) or flipping
         close_lots = min(abs(old_qty), abs(qty_delta_lots))
         # realized for closed portion: lots * contract_size * price_diff
-        if old_qty > 0:
-            # long closed by sell
-            price_diff = fill.price - old_avg  # USD/oz
-        else:
-            # short closed by buy
-            price_diff = old_avg - fill.price
+        # long closed by sell vs short closed by buy
+        price_diff = fill.price - old_avg if old_qty > 0 else old_avg - fill.price  # USD/oz
 
         realized_for_close = close_lots * contract * price_diff
         self.realized_pnl += realized_for_close - fee

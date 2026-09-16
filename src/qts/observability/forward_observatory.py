@@ -5,8 +5,8 @@ No live trading, no capital exposure — data becomes future research evidence.
 
 from __future__ import annotations
 
+import contextlib
 import json
-import sqlite3
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -14,6 +14,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from qts.db import connect as db_connect
 from qts.domain.value_objects import uuid7
 
 
@@ -56,36 +57,54 @@ class ForwardObservatory:
         self._init()
 
     def _init(self):
-        with sqlite3.connect(self.db_path) as con:
-            con.execute("CREATE TABLE IF NOT EXISTS observation_ticks (id TEXT PRIMARY KEY, payload TEXT, created_at TEXT)")
-            con.execute("CREATE TABLE IF NOT EXISTS observation_signals (id TEXT PRIMARY KEY, payload TEXT, created_at TEXT)")
-            con.execute("CREATE TABLE IF NOT EXISTS observation_sessions (id TEXT PRIMARY KEY, start TEXT, end TEXT, status TEXT)")
+        with db_connect(self.db_path) as con:
+            con.execute(
+                "CREATE TABLE IF NOT EXISTS observation_ticks (id TEXT PRIMARY KEY, payload TEXT, created_at TEXT)"
+            )
+            con.execute(
+                "CREATE TABLE IF NOT EXISTS observation_signals (id TEXT PRIMARY KEY, payload TEXT, created_at TEXT)"
+            )
+            con.execute(
+                "CREATE TABLE IF NOT EXISTS observation_sessions (id TEXT PRIMARY KEY, start TEXT, end TEXT, status TEXT)"
+            )
             con.commit()
 
     def record_tick(self, tick: ObservationTick):
-        with sqlite3.connect(self.db_path) as con:
-            con.execute("INSERT OR REPLACE INTO observation_ticks VALUES (?,?,?)", (tick.id, tick.model_dump_json(), tick.timestamp.isoformat()))
+        with db_connect(self.db_path) as con:
+            con.execute(
+                "INSERT OR REPLACE INTO observation_ticks VALUES (?,?,?)",
+                (tick.id, tick.model_dump_json(), tick.timestamp.isoformat()),
+            )
             con.commit()
 
     def record_signal(self, sig: ObservationSignal):
-        with sqlite3.connect(self.db_path) as con:
-            con.execute("INSERT OR REPLACE INTO observation_signals VALUES (?,?,?)", (sig.id, sig.model_dump_json(), sig.timestamp.isoformat()))
+        with db_connect(self.db_path) as con:
+            con.execute(
+                "INSERT OR REPLACE INTO observation_signals VALUES (?,?,?)",
+                (sig.id, sig.model_dump_json(), sig.timestamp.isoformat()),
+            )
             con.commit()
 
     def start_session(self, session_id: str | None = None) -> str:
         sid = session_id or f"FS-{uuid7()[:6]}"
-        with sqlite3.connect(self.db_path) as con:
-            con.execute("INSERT OR REPLACE INTO observation_sessions VALUES (?,?,?,?)", (sid, datetime.now(UTC).isoformat(), "", "ACTIVE"))
+        with db_connect(self.db_path) as con:
+            con.execute(
+                "INSERT OR REPLACE INTO observation_sessions VALUES (?,?,?,?)",
+                (sid, datetime.now(UTC).isoformat(), "", "ACTIVE"),
+            )
             con.commit()
         return sid
 
     def end_session(self, session_id: str):
-        with sqlite3.connect(self.db_path) as con:
-            con.execute("UPDATE observation_sessions SET end=?, status=? WHERE id=?", (datetime.now(UTC).isoformat(), "ENDED", session_id))
+        with db_connect(self.db_path) as con:
+            con.execute(
+                "UPDATE observation_sessions SET end=?, status=? WHERE id=?",
+                (datetime.now(UTC).isoformat(), "ENDED", session_id),
+            )
             con.commit()
 
     def summary(self) -> dict[str, Any]:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             tick_count = con.execute("SELECT COUNT(*) FROM observation_ticks").fetchone()[0]
             signal_count = con.execute("SELECT COUNT(*) FROM observation_signals").fetchone()[0]
             sessions = con.execute("SELECT COUNT(*) FROM observation_sessions WHERE status='ACTIVE'").fetchone()[0]
@@ -100,70 +119,85 @@ class ForwardObservatory:
     def to_manifest(self, path: Path = Path("data/evidence/forward_observation_manifest.json")) -> dict[str, Any]:
         s = self.summary()
         # Also include sample ticks/signals
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             tick_rows = con.execute("SELECT payload FROM observation_ticks ORDER BY created_at DESC LIMIT 5").fetchall()
-            sig_rows = con.execute("SELECT payload FROM observation_signals ORDER BY created_at DESC LIMIT 5").fetchall()
+            sig_rows = con.execute(
+                "SELECT payload FROM observation_signals ORDER BY created_at DESC LIMIT 5"
+            ).fetchall()
         s["sample_ticks"] = [json.loads(r[0]) for r in tick_rows]
         s["sample_signals"] = [json.loads(r[0]) for r in sig_rows]
         s["generated_at"] = datetime.now(UTC).isoformat()
         s["forward_observation_protocol"] = "docs/forward_observation_protocol.md"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(s, indent=2, default=str))
+        path.write_text(json.dumps(s, indent=2, default=str), encoding="utf-8")
         return s
 
     def simulate_observation(self, symbol: str = "XAUUSD", n_ticks: int = 10):
         """Simulate n_ticks of forward observation without capital — for testing/demo."""
         import random
         from decimal import Decimal
+
         session = self.start_session()
         base = Decimal("2000")
         for i in range(n_ticks):
-            spread = Decimal(str(random.uniform(0.5, 1.5)))
-            bid = base + Decimal(str(random.uniform(-2, 2)))
+            # B311: non-cryptographic scientific randomness (seeded permutation/simulation), not security
+            spread = Decimal(str(random.uniform(0.5, 1.5)))  # nosec B311
+            # B311: non-cryptographic scientific randomness (seeded permutation/simulation), not security
+            bid = base + Decimal(str(random.uniform(-2, 2)))  # nosec B311
             ask = bid + spread
-            tick = ObservationTick(symbol=symbol, bid=bid, ask=ask, mid=(bid+ask)/2, spread_bps=float(spread/base*10000), session="London" if i%2==0 else "NY", regime="trend" if i%3==0 else "range")
+            tick = ObservationTick(
+                symbol=symbol,
+                bid=bid,
+                ask=ask,
+                mid=(bid + ask) / 2,
+                spread_bps=float(spread / base * 10000),
+                session="London" if i % 2 == 0 else "NY",
+                regime="trend" if i % 3 == 0 else "range",
+            )
             self.record_tick(tick)
             # Simulate signal 30% of time, NO_TRADE otherwise
-            if random.random() < 0.3:
-                sig = ObservationSignal(symbol=symbol, signal_side="BUY" if random.random()<0.5 else "SELL", strategy_id="demo_state_machine", theoretical_price=tick.mid, executable_bid=tick.bid, executable_ask=tick.ask, hypothetical_fill_price=tick.ask if random.random()<0.5 else tick.bid, slippage_model_bps=2.0, regime_at_signal=tick.regime)
+            # B311: non-cryptographic scientific randomness (seeded permutation/simulation), not security
+            if random.random() < 0.3:  # nosec B311
+                sig = ObservationSignal(
+                    symbol=symbol,
+                    # B311: non-cryptographic scientific randomness (seeded permutation/simulation), not security
+                    signal_side="BUY" if random.random() < 0.5 else "SELL",  # nosec B311
+                    strategy_id="demo_state_machine",
+                    theoretical_price=tick.mid,
+                    executable_bid=tick.bid,
+                    executable_ask=tick.ask,
+                    # B311: non-cryptographic scientific randomness (seeded permutation/simulation), not security
+                    hypothetical_fill_price=tick.ask if random.random() < 0.5 else tick.bid,  # nosec B311
+                    slippage_model_bps=2.0,
+                    regime_at_signal=tick.regime,
+                )
             else:
-                sig = ObservationSignal(symbol=symbol, signal_side=None, strategy_id="demo_state_machine", no_trade_reason="regime filter: range chop" if tick.regime=="range" else "volatility too low")
+                sig = ObservationSignal(
+                    symbol=symbol,
+                    signal_side=None,
+                    strategy_id="demo_state_machine",
+                    no_trade_reason="regime filter: range chop" if tick.regime == "range" else "volatility too low",
+                )
             self.record_signal(sig)
         self.end_session(session)
         return self.summary()
+
     def close(self) -> None:
-        try:
-            db = getattr(self, "db_path", getattr(self, "_db_path", None))
-            if db is not None:
-                db = Path(db)
-                if db.exists() and str(db) != ":memory:":
-                    import sqlite3
-                    with sqlite3.connect(db) as con:
-                        try:
-                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                            con.commit()
-                        except Exception:
-                            pass
+        with contextlib.suppress(Exception):
+            # File-backed connections are opened/closed per operation via qts.db.connect,
+            # so no persistent handle exists here. We must NOT re-open the database file
+            # in close()/__del__: that recreates deleted files and re-acquires Windows
+            # file locks during GC/shutdown (root cause of WinError 32 on cleanup).
             # close any memory connection if present
             mem = getattr(self, "_memory_con", None)
             if mem is not None:
-                try:
+                with contextlib.suppress(Exception):
                     mem.commit()
                     mem.close()
-                except Exception:
-                    pass
                 self._memory_con = None
-        except Exception:
-            pass
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-    def __del__(self):
-        try:
-            self.close()
-        except Exception:
-            pass

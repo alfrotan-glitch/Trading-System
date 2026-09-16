@@ -1,13 +1,10 @@
-
 """Phase 10: Forward paper observation — unseen forward data, no retune."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
-from datetime import datetime
-from decimal import Decimal
+from dataclasses import dataclass
 from pathlib import Path
-import json
+
 
 @dataclass
 class ForwardObservation:
@@ -30,19 +27,20 @@ class ForwardObservation:
     invalidated: bool = False
     invalidation_reason: str = ""
 
+
 class ForwardObserver:
     def __init__(self, db_path: Path | str = "data/sqlite/qts.db"):
         self.db_path = Path(db_path)
 
-    def observe(self, strategy, bars: list, engine, store, data_version: str, observation_bars: list) -> ForwardObservation:
+    def observe(
+        self, strategy, bars: list, engine, store, data_version: str, observation_bars: list
+    ) -> ForwardObservation:
         # Run frozen strategy on genuinely unseen forward bars without retuning
         signals = 0
         no_trades = 0
         intended = 0
-        fills = 0
+        _fills = 0
         # Use backtest engine on forward slice
-        from qts.domain.value_objects import Instrument
-        from qts.backtest.engine import BacktestEngine
         # For demo, just count signals via strategy
         for bar in observation_bars:
             sigs = strategy.on_bar(bar)
@@ -71,7 +69,7 @@ class ForwardObserver:
             realized_pnl=float(0),
             drawdown=0.0,
             regime="unknown",
-            invalidated=False
+            invalidated=False,
         )
 
     def record_intervention(self, reason: str):

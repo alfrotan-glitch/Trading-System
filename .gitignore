@@ -39,3 +39,8 @@ htmlcov/
 
 # OS
 .DS_Store
+
+# Generated dataset registries — recreated deterministically by `qts data bootstrap`
+# (committing manifests without the gitignored curated/DB data creates phantom
+# "versions" that resolve to zero usable bars on a clean clone)
+data/manifests/

@@ -17,13 +17,25 @@ def ingest_csv(
     timeframe: str,
     venue: str = "MT5",
     store: SqliteParquetDataStore | None = None,
+    source: str | None = None,
 ) -> str:
+    """Ingest a CSV of bars into the store.
+
+    ``source`` is the provenance label recorded on every Bar and in the manifest
+    (e.g. ``SYNTHETIC:fixture:XAUUSD_1H_500.csv``). Data classes must never be
+    conflated: a SYNTHETIC dataset can never masquerade as REAL broker history.
+
+    Encoding is forced to UTF-8 (BOM-tolerant via ``utf-8-sig``) so ingestion is
+    identical on Windows (cp1252 default locale) and POSIX. Fails closed on an
+    empty/zero-bar file — a fixture with zero usable bars is never promoted to a
+    dataset version.
+    """
     path = Path(path)
     if store is None:
         store = SqliteParquetDataStore()
     instr = Instrument(symbol=instrument, venue=venue, asset_class=AssetClass.METAL)
     bars: list[Bar] = []
-    with open(path) as f:
+    with open(path, encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
             # flexible columns: open_time / close_time or time
@@ -56,8 +68,13 @@ def ingest_csv(
                     open_time=ot,
                     close_time=ct,
                     data_version="ingest",
-                    source=str(path),
+                    source=source or str(path),
                 )
             )
-    manifest = store.write_bars(bars, source_file=str(path))
+    if not bars:
+        raise ValueError(
+            f"no usable bars in {path} — file parsed but contained zero data rows; "
+            "refusing to create a dataset version (fail closed)"
+        )
+    manifest = store.write_bars(bars, source_file=str(path), source=source)
     return manifest.version

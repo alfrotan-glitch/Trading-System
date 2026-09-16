@@ -1,14 +1,14 @@
 """Statistical extensions unit tests — White Reality Check, Hansen SPA, permutation, min length, drawdown, parameter surface."""
 
 import numpy as np
-import pytest
+
 from qts.research.statistical import (
-    white_reality_check,
-    hansen_spa,
-    permutation_test,
-    minimum_backtest_length,
     drawdown_distribution,
+    hansen_spa,
+    minimum_backtest_length,
     parameter_surface_analysis,
+    permutation_test,
+    white_reality_check,
 )
 
 
@@ -25,7 +25,7 @@ def test_white_reality_check():
 
 def test_hansen_spa():
     rets = np.random.randn(100) * 0.01
-    res = hansen_spa([rets, rets*0.5], n_bootstrap=100, seed=42)
+    res = hansen_spa([rets, rets * 0.5], n_bootstrap=100, seed=42)
     assert "p_value" in res
     assert 0 <= res["p_value"] <= 1
     assert "Hansen" in res["purpose"]
@@ -49,7 +49,7 @@ def test_minimum_backtest_length():
 
 
 def test_drawdown_distribution():
-    eq = np.cumprod(1 + np.random.randn(100)*0.01) * 10000
+    eq = np.cumprod(1 + np.random.randn(100) * 0.01) * 10000
     res = drawdown_distribution(eq, n_bootstrap=50, seed=42)
     assert "observed_max_dd" in res
     assert "bootstrap_mean_dd" in res

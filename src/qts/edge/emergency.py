@@ -1,12 +1,12 @@
-
 """Phase 17: Real-time emergency controls — 10 independent safeguards."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from decimal import Decimal
 import time
 from collections import deque
+from dataclasses import dataclass
+from decimal import Decimal
+
 
 @dataclass
 class EmergencyConfig:
@@ -16,10 +16,11 @@ class EmergencyConfig:
     max_latency_ms: float = 2000
     max_data_staleness_s: float = 5.0
 
+
 class EmergencyControls:
     def __init__(self, config: EmergencyConfig | None = None):
         self.config = config or EmergencyConfig()
-        self._order_times = deque()
+        self._order_times: deque[float] = deque()
         self._killed = False
         self._suspended = False
 
@@ -76,8 +77,18 @@ class EmergencyControls:
             return False, "reconciliation_stop"
         return True, "ok"
 
-    def pre_trade_gate(self, qty: Decimal, spread_bps: float, latency_ms: float, data_age_s: float, account, is_suspended: bool) -> tuple[bool, str]:
-        for check in [self.check_order_rate, lambda: self.check_order_size(qty), lambda: self.check_spread(spread_bps), lambda: self.check_latency(latency_ms), lambda: self.check_data_staleness(data_age_s), lambda: self.check_account_state(account), lambda: self.check_reconciliation(is_suspended)]:
+    def pre_trade_gate(
+        self, qty: Decimal, spread_bps: float, latency_ms: float, data_age_s: float, account, is_suspended: bool
+    ) -> tuple[bool, str]:
+        for check in [
+            self.check_order_rate,
+            lambda: self.check_order_size(qty),
+            lambda: self.check_spread(spread_bps),
+            lambda: self.check_latency(latency_ms),
+            lambda: self.check_data_staleness(data_age_s),
+            lambda: self.check_account_state(account),
+            lambda: self.check_reconciliation(is_suspended),
+        ]:
             ok, reason = check()
             if not ok:
                 return False, reason

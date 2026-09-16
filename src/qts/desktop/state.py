@@ -2,23 +2,24 @@
 
 from __future__ import annotations
 
-import json
-import sqlite3
-from pathlib import Path
 from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+from qts.db import connect as db_connect
 
 
-def restore_state(db_path: Path | str = "data/sqlite/qts.db") -> dict:
+def restore_state(db_path: Path | str = "data/sqlite/qts.db") -> dict[str, Any]:
     db_path = Path(db_path)
     if not db_path.exists():
         return {"restored": False, "reason": "no db yet"}
-    info = {}
-    with sqlite3.connect(db_path) as con:
+    info: dict[str, Any] = {}
+    with db_connect(db_path) as con:
         # suspension
-        try:
-            cur = con.execute("SELECT state FROM promotion_state WHERE strategy_id='__global'")  # not used
-        except Exception:
-            pass
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            con.execute("SELECT state FROM promotion_state WHERE strategy_id='__global'")
         # risk kill?
         try:
             cur = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='risk_state'")

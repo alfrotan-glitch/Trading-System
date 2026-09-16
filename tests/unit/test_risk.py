@@ -124,7 +124,9 @@ def test_exposure_veto():
 
         pos = Position(instrument=instr, quantity=Decimal("0.15"), avg_price=Decimal("2000"))
         ctx = RiskContext(
-            account=Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)),
+            account=Account(
+                balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)
+            ),
             positions={"XAUUSD": pos},
             open_orders_count=0,
             daily_pnl=Decimal("0"),

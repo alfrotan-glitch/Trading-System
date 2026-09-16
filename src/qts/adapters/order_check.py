@@ -1,4 +1,3 @@
-
 """Phase 18: MT5 execution correctness — order_check pre-check."""
 
 from __future__ import annotations
@@ -6,12 +5,14 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+
 class OrderCheckResult:
     def __init__(self, ok: bool, retcode: int, comment: str, requirements: dict):
         self.ok = ok
         self.retcode = retcode
         self.comment = comment
         self.requirements = requirements
+
 
 def mt5_order_check(adapter, intent) -> OrderCheckResult:
     """Emulate MT5 order_check — pre-check without execution guarantee."""
@@ -35,11 +36,19 @@ def mt5_order_check(adapter, intent) -> OrderCheckResult:
         notional = intent.quantity * spec.contract_size * price
         margin_req = notional / acct.leverage
         if margin_req > acct.free_margin:
-            return OrderCheckResult(False, 10019, "no money", {"margin_req": margin_req, "free_margin": acct.free_margin})
+            return OrderCheckResult(
+                False, 10019, "no money", {"margin_req": margin_req, "free_margin": acct.free_margin}
+            )
     except Exception as e:
         return OrderCheckResult(False, 10006, f"account check failed: {e}", {})
     # All local gates passed — but MT5 docs: order_check is pre-check, not execution guarantee
-    return OrderCheckResult(True, 0, "order_check passed (not execution guarantee)", {"spec": spec, "margin_req": margin_req if 'margin_req' in locals() else None})
+    return OrderCheckResult(
+        True,
+        0,
+        "order_check passed (not execution guarantee)",
+        {"spec": spec, "margin_req": margin_req if "margin_req" in locals() else None},
+    )
+
 
 def submit_with_order_check(adapter, intent, risk_engine, ctx) -> Any:
     """Submit only after all local risk gates pass and order_check passes, then poll/reconcile."""

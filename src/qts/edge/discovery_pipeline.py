@@ -7,7 +7,6 @@ from typing import Any
 
 from qts.edge.scorecard import EdgeScorecard
 
-
 STAGES = [
     "DATA_QUALITY",
     "DISCOVERY",
@@ -49,6 +48,7 @@ class DiscoveryPipeline:
         for prior in STAGES[:idx]:
             if prior not in self.stages_executed:
                 raise ValueError(f"stage {stage} bypassed prior {prior} — pipeline must run in order, no bypass")
+
     def execute(self, stage: str, passed: bool, details: dict[str, Any] | None = None) -> PipelineResult:
         self._require_prior(stage)
         if stage in self.results:
@@ -62,12 +62,30 @@ class DiscoveryPipeline:
         return len(self.stages_executed) == len(STAGES)
 
     def overall_passed(self) -> bool:
-        mandatory = ["DATA_QUALITY","WALK_FORWARD","CPCV","PBO","PSR","DSR","COST_STRESS","PERTURBATION","REGIME","NULL_CONTROL","PLACEBO_CONTROL","EXPECTANCY","ECONOMIC_EDGE","FORWARD_PAPER","SHADOW"]
+        mandatory = [
+            "DATA_QUALITY",
+            "WALK_FORWARD",
+            "CPCV",
+            "PBO",
+            "PSR",
+            "DSR",
+            "COST_STRESS",
+            "PERTURBATION",
+            "REGIME",
+            "NULL_CONTROL",
+            "PLACEBO_CONTROL",
+            "EXPECTANCY",
+            "ECONOMIC_EDGE",
+            "FORWARD_PAPER",
+            "SHADOW",
+        ]
         return all(self.results.get(s, PipelineResult(s, False)).passed for s in mandatory)
 
     def scorecard(self, strategy_id: str, data_version: str, evidence: dict[str, Any]) -> EdgeScorecard:
         if not self.is_complete():
-            raise ValueError(f"pipeline not complete — missing {set(STAGES) - set(self.stages_executed)} — cannot promote")
+            raise ValueError(
+                f"pipeline not complete — missing {set(STAGES) - set(self.stages_executed)} — cannot promote"
+            )
         sc = EdgeScorecard.from_evidence(evidence)
         sc.strategy_id = strategy_id
         sc.data_version = data_version

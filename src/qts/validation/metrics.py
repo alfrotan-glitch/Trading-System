@@ -158,7 +158,7 @@ def probabilistic_sharpe_ratio(
     # Convert to per-period for variance calc if annualized
     if annualized and P != 1:
         sr_per = observed_sr / math.sqrt(P)
-        bench_per = benchmark / math.sqrt(P)
+        _bench_per = benchmark / math.sqrt(P)
         # skew/kurt are of returns, same for per-period
         var_per = (1 - skewness * sr_per + (kurtosis - 1) / 4 * sr_per**2) / (n - 1)
         if var_per <= 0:

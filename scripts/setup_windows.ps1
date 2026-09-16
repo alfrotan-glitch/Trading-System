@@ -1,104 +1,109 @@
-# QTS Trading System — Windows Clean-Clone Setup
+﻿# QTS Trading System — Windows Clean-Clone Setup
 # Usage: powershell -ExecutionPolicy Bypass -File scripts/setup_windows.ps1
-# Requires: Python 3.11+, git, Windows 10/11
+# Requires: Python 3.11–3.13, git, Windows 10/11
+#
+# This file MUST remain UTF-8 with BOM: Windows PowerShell 5.1 reads BOM-less
+# .ps1 files as ANSI (cp1252) and mis-parses the non-ASCII characters below.
+# It MUST remain PS 5.1-compatible (no ternary operator, no ?? coalescing).
+# Idempotent: safe to re-run; data bootstrap reuses existing usable versions.
 $ErrorActionPreference = "Stop"
 Write-Host "=== QTS Trading System — Windows Setup ===" -ForegroundColor Cyan
 
 function Fail($msg) { Write-Host "ERROR: $msg" -ForegroundColor Red; exit 1 }
 
+# --- locate repository root (script may be invoked from anywhere) ---
+$repoRoot = Split-Path -Parent $PSScriptRoot
+Set-Location $repoRoot
+Write-Host "Repository root: $repoRoot"
+
 # 1. Check Python (supported 3.11, 3.12, 3.13 — 3.14 not yet verified)
 $py = Get-Command python -ErrorAction SilentlyContinue
 if (-not $py) { $py = Get-Command py -ErrorAction SilentlyContinue }
 if (-not $py) { Fail "Python not found. Install Python 3.11, 3.12, or 3.13 from https://www.python.org and add to PATH." }
-$ver = python --version 2>&1
-Write-Host "Found $ver at $($py.Source)"
-python -c "import sys; major, minor = sys.version_info[:2]; assert (3,11) <= (major, minor) < (3,14), f'Python {major}.{minor} not supported — supported: 3.11, 3.12, 3.13 (3.14 not yet verified)'; print(f'Python {sys.version} OK')"
+$pyExe = $py.Source
+$ver = & $pyExe --version 2>&1
+Write-Host "Found $ver at $pyExe"
+& $pyExe -c "import sys; major, minor = sys.version_info[:2]; ok = (3,11) <= (major, minor) < (3,14); print('Python %d.%d.%d %s' % (major, minor, sys.version_info[2], 'OK' if ok else 'NOT SUPPORTED')); sys.exit(0 if ok else 1)"
 if ($LASTEXITCODE -ne 0) { Fail "Python version not supported — install Python 3.11, 3.12, or 3.13 (3.14 not yet verified, see docs/desktop_installation_windows.md)" }
 
-# 2. Check git
-try { git --version | Out-Null } catch { Fail "git not found. Install git from https://git-scm.com" }
+# 2. Check git (Get-Command is reliable under $ErrorActionPreference=Stop)
+$git = Get-Command git -ErrorAction SilentlyContinue
+if (-not $git) { Fail "git not found. Install git from https://git-scm.com" }
 
-# 3. Create venv
+# 3. Create venv (reuse if present — idempotent)
 if (-not (Test-Path ".venv")) {
   Write-Host "Creating virtual environment .venv ..."
-  python -m venv .venv
+  & $pyExe -m venv .venv
   if ($LASTEXITCODE -ne 0) { Fail "venv creation failed" }
-} else { Write-Host ".venv already exists — reusing" }
+} else { Write-Host ".venv already exists — reusing (delete .venv for a fully fresh environment)" }
 
-$venvPython = ".\.venv\Scripts\python.exe"
-if (-not (Test-Path $venvPython)) { Fail ".venv Scripts python not found" }
+$venvPython = Join-Path $repoRoot ".venv\Scripts\python.exe"
+if (-not (Test-Path $venvPython)) { Fail ".venv Scripts python not found at $venvPython" }
 
 # 4. Upgrade pip
 Write-Host "Upgrading pip ..."
 & $venvPython -m pip install --upgrade pip
+if ($LASTEXITCODE -ne 0) { Fail "pip upgrade failed" }
 
-# 5. Install package
+# 5. Install package (editable + dev extras)
 Write-Host "Installing QTS (editable) ..."
 & $venvPython -m pip install -e ".[dev]"
 if ($LASTEXITCODE -ne 0) { Fail "pip install failed" }
 
 # 6. Create required directories
-foreach ($d in @("data/raw","data/curated","data/sqlite","data/evidence","logs")) {
+foreach ($d in @("data\raw","data\curated","data\sqlite","data\evidence","logs")) {
   if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d | Out-Null; Write-Host "Created $d" }
 }
 
-# 7. Create default dev config if missing
-if (-not (Test-Path "configs/dev.yaml")) { Write-Host "configs/dev.yaml missing — using default" }
-if (-not (Test-Path ".env")) {
-  @"
-# QTS Environment — set QTS_ENV to development/paper/shadow/demo_forward/live
-QTS_ENV=development
-QTS_MT5_MODE=MOCK
-"@ | Out-File -Encoding utf8 ".env.example"
-  Write-Host "Created .env.example — copy to .env and edit for demo_forward/live"
+# 7. Create .env.example if missing (informational; QTS reads QTS_ENV from the environment)
+if (-not (Test-Path ".env.example")) {
+  $envLines = @(
+    "# QTS Environment — set QTS_ENV to development/paper/shadow/demo_forward/live",
+    "QTS_ENV=development",
+    "QTS_MT5_MODE=MOCK"
+  )
+  Set-Content -Path ".env.example" -Value $envLines -Encoding ASCII
+  Write-Host "Created .env.example"
 }
 
-# 8. Ensure data (ingest fixture if no usable versions — robust for clean clone where manifest JSON exists but DB/curated missing)
-Write-Host "Checking data versions ..."
-# Check usable bars: manifest + DB + curated must all be present; covers case where manifest JSON is committed but DB is empty (clean clone)
-$usableCount = & $venvPython -c "from qts.data.store import SqliteParquetDataStore; print(len(SqliteParquetDataStore().list_versions()))" 2>&1
-$hasUsableBars = & $venvPython -c "from qts.data.store import SqliteParquetDataStore; from qts.domain.value_objects import Instrument; s=SqliteParquetDataStore(); m=s.manifest('20260916-010-572728d9'); print(len(s.read_bars(Instrument(symbol=m.instrument, venue=m.venue), m.timeframe, version='20260916-010-572728d9')) if m else 0)" 2>&1
-if ($usableCount -eq "0" -or $hasUsableBars -eq "0" -or -not (Test-Path "data/curated/instrument=XAUUSD")) {
-  if (Test-Path "data/fixtures/XAUUSD_1H_500.csv") {
-    Write-Host "Ingesting fixture XAUUSD_1H_500.csv (no usable bars — clean clone or curated missing) ..."
-    & $venvPython -m qts data ingest --path data/fixtures/XAUUSD_1H_500.csv --instrument XAUUSD --timeframe 1H
-    if ($LASTEXITCODE -ne 0) {
-      Write-Host "Ingest returned $LASTEXITCODE (may be duplicate version) — checking fallback" -ForegroundColor Yellow
-      # If ingest failed due to duplicate but still no usable bars, remove stale DB entry and retry via synthetic
-      $stillZero = & $venvPython -c "from qts.data.store import SqliteParquetDataStore; from qts.domain.value_objects import Instrument; s=SqliteParquetDataStore(); m=s.manifest('20260916-010-572728d9'); print(len(s.read_bars(Instrument(symbol=m.instrument, venue=m.venue), m.timeframe, version='20260916-010-572728d9')) if m else 0)" 2>&1
-      if ($stillZero -eq "0") {
-        Write-Host "Still no usable bars after ingest — generating synthetic fallback" -ForegroundColor Yellow
-        & $venvPython -c "from pathlib import Path; from datetime import UTC, datetime, timedelta; from decimal import Decimal; from qts.data.store import SqliteParquetDataStore; from qts.domain.value_objects import Instrument, Bar; s=SqliteParquetDataStore(); instr=Instrument(symbol='XAUUSD'); base=datetime(2020,1,1,tzinfo=UTC); bars=[Bar(instrument=instr, open=Decimal('2000'), high=Decimal('2005'), low=Decimal('1995'), close=Decimal('2000'), volume=Decimal('1000'), open_time=base+timedelta(hours=i), close_time=base+timedelta(hours=i+1)) for i in range(500)]; s.write_bars(bars, source_file='synthetic_fallback'); print('synthetic done')" 2>&1
-      }
-    }
-  } else {
-    Write-Host "Fixture not found, will synthesize if needed" -ForegroundColor Yellow
-  }
-}
-# Also ensure synthetic for 1m if needed
-if (-not (Test-Path "data/raw/synthetic_XAUUSD_1m.csv")) {
-  Write-Host "Generating synthetic 1m data ..."
+# 8. Data bootstrap — deterministic, truthful, idempotent.
+#    `qts data bootstrap` verifies a version is USABLE (manifest + curated parquet +
+#    readable bars), never trusts a version row alone, ingests the SYNTHETIC fixture
+#    with explicit provenance when nothing usable exists, and FAILS (exit 1) rather
+#    than fabricating data if the fixture is missing or has zero usable bars.
+Write-Host "Bootstrapping data ..."
+& $venvPython -m qts data bootstrap
+if ($LASTEXITCODE -ne 0) { Fail "data bootstrap failed — no usable dataset could be established (nothing was fabricated). See message above and docs/troubleshooting_windows.md" }
+
+# Synthetic 1m dev CSV (explicitly synthetic, lives in data/raw, never promoted to a version)
+if (-not (Test-Path "data\raw\synthetic_XAUUSD_1m.csv")) {
+  Write-Host "Generating synthetic 1m dev CSV ..."
   & $venvPython -m qts data synthetic --rows 2000 --out data/raw/synthetic_XAUUSD_1m.csv
+  if ($LASTEXITCODE -ne 0) { Fail "synthetic dev CSV generation failed" }
 }
 
-# 9. Validate install
+# 9. Validate install — CLI must start and report health truthfully
 Write-Host "Verifying qts CLI ..."
 & $venvPython -m qts --help | Out-Null
 if ($LASTEXITCODE -ne 0) { Fail "qts CLI not working" }
 & $venvPython -m qts health 2>&1 | Select-Object -First 20
+if ($LASTEXITCODE -ne 0) { Fail "qts health check failed" }
 
-# 10. Run quick tests (fail-closed — do not print Setup Complete on failure)
-Write-Host "Running quick tests (pytest -q) ..."
+# 10. Run full test suite (fail-closed — never print Setup Complete on failure)
+Write-Host "Running tests (pytest -q) ..."
 & $venvPython -m pytest tests -q --tb=short
 if ($LASTEXITCODE -ne 0) {
   Write-Host "ERROR: tests failed (pytest exit $LASTEXITCODE) — see output above. Setup NOT complete." -ForegroundColor Red
   Write-Host "Fix failures and re-run setup_windows.ps1 (idempotent) — see docs/troubleshooting_windows.md" -ForegroundColor Yellow
   exit 1
 }
-Write-Host "Tests passed ($LASTEXITCODE)" -ForegroundColor Green
+Write-Host "Tests passed" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "=== Setup Complete ===`nSecond run is idempotent — re-run to verify." -ForegroundColor Green
+Write-Host "=== Setup Complete ===" -ForegroundColor Green
+Write-Host "Second run is idempotent — re-run to verify."
+Write-Host "Bootstrap data is SYNTHETIC (fixture, GBM seed=42) — it is NOT real market history"
+Write-Host "and never satisfies real-data requirements for demo_forward/live eligibility."
 Write-Host "Next steps:"
 Write-Host "  1. .\scripts\run_qts.bat    — launch desktop (MOCK, no MT5)"
 Write-Host "  2. See docs/desktop_installation_windows.md for MT5 DEMO setup"

@@ -74,6 +74,7 @@ class ShipperConfig(BaseModel):
     local_root: Path = Path("data/shipped")
     region: str | None = None
 
+
 class ObservabilityConfig(BaseModel):
     audit_jsonl: Path = Path("logs/audit.jsonl")
     http_enabled: bool = False
@@ -104,11 +105,14 @@ class Settings(BaseModel):
             if self.env not in ("demo_forward", "demo", "paper"):
                 raise ValueError("demo_forward mode requires env=demo_forward (fail closed)")
             if not self.execution.demo_forward_enabled:
-                raise ValueError("demo_forward mode requires execution.demo_forward_enabled=true and explicit user confirmation in UI")
+                raise ValueError(
+                    "demo_forward mode requires execution.demo_forward_enabled=true and explicit user confirmation in UI"
+                )
 
     def assert_micro_allowed(self) -> None:
         if self.execution.mode == "micro":
             import os
+
             if os.getenv("QTS_MICRO_ENABLED") != "true":
                 raise ValueError("micro mode requires QTS_MICRO_ENABLED=true (fail closed)")
             if self.env != "live":
@@ -117,7 +121,6 @@ class Settings(BaseModel):
                 raise ValueError("micro mode requires --confirm live")
             if not self.risk.approved:
                 raise ValueError("micro mode requires risk.approved=true")
-
 
 
 def load_settings(path: str | Path | None = None, env: str | None = None) -> Settings:
@@ -131,7 +134,7 @@ def load_settings(path: str | Path | None = None, env: str | None = None) -> Set
     p = Path(path)
     if not p.exists():
         return Settings()
-    data = yaml.safe_load(p.read_text()) or {}
+    data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
     if env:
         data["env"] = env
     return Settings.model_validate(data)

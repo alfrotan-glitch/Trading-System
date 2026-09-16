@@ -1,12 +1,11 @@
-
 """Phase 12: Capital survival policy — hard limits, NO_TRADE/SUSPENDED."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
 from enum import StrEnum
 from typing import Any
+
 
 class CapitalLimit(StrEnum):
     RISK_PER_TRADE = "risk_per_trade"
@@ -22,6 +21,7 @@ class CapitalLimit(StrEnum):
     LATENCY = "latency"
     DATA_STALENESS = "data_staleness"
     RECONCILIATION_DRIFT = "reconciliation_drift"
+
 
 @dataclass
 class CapitalPolicy:

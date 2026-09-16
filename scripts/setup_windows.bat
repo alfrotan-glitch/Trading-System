@@ -1,20 +1,28 @@
 @echo off
-REM QTS Trading System — Windows Setup (Batch fallback)
+REM QTS Trading System -- Windows Setup (Batch fallback)
 REM Usage: scripts\setup_windows.bat
-REM Requires Python 3.11+, git
+REM Requires Python 3.11-3.13, git
+REM This file must stay pure ASCII: cmd.exe parses batch files in the OEM
+REM codepage (cp437/cp850); UTF-8 characters become mojibake or parse errors.
+REM Idempotent: safe to re-run; data bootstrap reuses existing usable versions.
 
-echo === QTS Trading System — Windows Setup (Batch) ===
+setlocal
+cd /d "%~dp0.."
+
+echo === QTS Trading System -- Windows Setup (Batch) ===
+echo Repository root: %CD%
 
 where python >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-  echo ERROR: python not found. Install Python 3.11+ and add to PATH.
+  echo ERROR: python not found. Install Python 3.11, 3.12 or 3.13 and add to PATH.
   exit /b 1
 )
 
 python --version
-python -c "import sys; major, minor = sys.version_info[:2]; assert (3,11) <= (major, minor) < (3,14), f'Python {major}.{minor} not supported — supported 3.11/3.12/3.13 (3.14 not yet verified)'" 2>&1
+python -c "import sys; major, minor = sys.version_info[:2]; ok = (3,11) <= (major, minor) < (3,14); print('Python %d.%d %s' % (major, minor, 'OK' if ok else 'NOT SUPPORTED')); sys.exit(0 if ok else 1)"
 if %ERRORLEVEL% NEQ 0 (
-  echo ERROR: Python version not supported — install Python 3.11, 3.12, or 3.13 (Python 3.14 not yet verified; see docs/desktop_installation_windows.md)
+  echo ERROR: Python version not supported -- install Python 3.11, 3.12 or 3.13
+  echo        (3.14 not yet verified; see docs/desktop_installation_windows.md)
   exit /b 1
 )
 
@@ -27,21 +35,29 @@ if %ERRORLEVEL% NEQ 0 (
 if not exist .venv (
   echo Creating virtual environment .venv ...
   python -m venv .venv
-  if %ERRORLEVEL% NEQ 0 (
+  if errorlevel 1 (
     echo ERROR: venv creation failed
     exit /b 1
   )
 ) else (
-  echo .venv already exists — reusing
+  echo .venv already exists -- reusing
+)
+
+if not exist .venv\Scripts\python.exe (
+  echo ERROR: .venv\Scripts\python.exe not found
+  exit /b 1
 )
 
 echo Upgrading pip ...
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-if %ERRORLEVEL% NEQ 0 exit /b 1
+.venv\Scripts\python.exe -m pip install --upgrade pip
+if errorlevel 1 (
+  echo ERROR: pip upgrade failed
+  exit /b 1
+)
 
-echo Installing QTS ...
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-if %ERRORLEVEL% NEQ 0 (
+echo Installing QTS (editable) ...
+.venv\Scripts\python.exe -m pip install -e ".[dev]"
+if errorlevel 1 (
   echo ERROR: pip install failed
   exit /b 1
 )
@@ -52,40 +68,51 @@ if not exist data\sqlite mkdir data\sqlite
 if not exist data\evidence mkdir data\evidence
 if not exist logs mkdir logs
 
-echo Checking data versions ...
-.\.venv\Scripts\python.exe -c "from qts.data.store import SqliteParquetDataStore; print(len(SqliteParquetDataStore().list_versions()))" > "%TEMP%\qts_versions.txt" 2>&1
-set /p QTS_VERSIONS=<"%TEMP%\qts_versions.txt"
-.\.venv\Scripts\python.exe -c "from qts.data.store import SqliteParquetDataStore; from qts.domain.value_objects import Instrument; s=SqliteParquetDataStore(); m=s.manifest('20260916-010-572728d9'); print(len(s.read_bars(Instrument(symbol=m.instrument, venue=m.venue), m.timeframe, version='20260916-010-572728d9')) if m else 0)" > "%TEMP%\qts_bars.txt" 2>&1
-set /p QTS_BARS=<"%TEMP%\qts_bars.txt"
-if "%QTS_VERSIONS%"=="0" goto do_ingest
-if "%QTS_BARS%"=="0" goto do_ingest
-if not exist data\curated\instrument=XAUUSD goto do_ingest
-goto skip_ingest
-:do_ingest
-if exist data\fixtures\XAUUSD_1H_500.csv (
-  echo Ingesting fixture XAUUSD_1H_500.csv (no usable bars -- clean clone or curated missing) ...
-  .\.venv\Scripts\python.exe -m qts data ingest --path data/fixtures/XAUUSD_1H_500.csv --instrument XAUUSD --timeframe 1H
-  if %ERRORLEVEL% NEQ 0 (
-    echo Ingest returned error %ERRORLEVEL% (may be duplicate) -- checking fallback
-  )
-)
-:skip_ingest
-if not exist data\raw\synthetic_XAUUSD_1m.csv (
-  echo Generating synthetic 1m data ...
-  .\.venv\Scripts\python.exe -m qts data synthetic --rows 2000 --out data/raw/synthetic_XAUUSD_1m.csv
+if not exist .env.example (
+  echo # QTS Environment -- set QTS_ENV to development/paper/shadow/demo_forward/live> .env.example
+  echo QTS_ENV=development>> .env.example
+  echo QTS_MT5_MODE=MOCK>> .env.example
+  echo Created .env.example
 )
 
-echo Verifying qts CLI ...
-.\.venv\Scripts\python.exe -m qts --help >nul
-if %ERRORLEVEL% NEQ 0 (
-  echo ERROR: qts CLI not working
+REM Data bootstrap -- deterministic, truthful, idempotent.
+REM `qts data bootstrap` verifies a version is USABLE (manifest + curated parquet +
+REM readable bars), never trusts a version row alone, ingests the SYNTHETIC fixture
+REM with explicit provenance when nothing usable exists, and FAILS (exit 1) rather
+REM than fabricating data if the fixture is missing or has zero usable bars.
+echo Bootstrapping data ...
+.venv\Scripts\python.exe -m qts data bootstrap
+if errorlevel 1 (
+  echo ERROR: data bootstrap failed -- no usable dataset could be established
+  echo        (nothing was fabricated). See docs/troubleshooting_windows.md
   exit /b 1
 )
 
-echo Running quick tests ...
-.\.venv\Scripts\python.exe -m pytest tests -q --tb=short
-if %ERRORLEVEL% NEQ 0 (
-  echo ERROR: tests failed (pytest exit %ERRORLEVEL%) -- Setup NOT complete.
+if not exist data\raw\synthetic_XAUUSD_1m.csv (
+  echo Generating synthetic 1m dev CSV ...
+  .venv\Scripts\python.exe -m qts data synthetic --rows 2000 --out data/raw/synthetic_XAUUSD_1m.csv
+  if errorlevel 1 (
+    echo ERROR: synthetic dev CSV generation failed
+    exit /b 1
+  )
+)
+
+echo Verifying qts CLI ...
+.venv\Scripts\python.exe -m qts --help >nul
+if errorlevel 1 (
+  echo ERROR: qts CLI not working
+  exit /b 1
+)
+.venv\Scripts\python.exe -m qts health
+if errorlevel 1 (
+  echo ERROR: qts health check failed
+  exit /b 1
+)
+
+echo Running tests (pytest -q) ...
+.venv\Scripts\python.exe -m pytest tests -q --tb=short
+if errorlevel 1 (
+  echo ERROR: tests failed -- Setup NOT complete.
   echo Fix failures and re-run setup_windows.bat (idempotent) -- see docs/troubleshooting_windows.md
   exit /b 1
 )
@@ -93,5 +120,8 @@ echo Tests passed.
 
 echo.
 echo === Setup Complete === -- second run is idempotent, re-run to verify.
-echo Next: scripts\run_qts.bat  — launch desktop
+echo Bootstrap data is SYNTHETIC (fixture, GBM seed=42) -- NOT real market history;
+echo it never satisfies real-data requirements for demo_forward/live eligibility.
+echo Next: scripts\run_qts.bat -- launch desktop
 echo See docs\desktop_installation_windows.md
+endlocal

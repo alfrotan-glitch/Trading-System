@@ -5,15 +5,14 @@ Generated: 2026-09-16
 `src/qts/data/audit.py` `audit_data_sources()` inspects `SqliteParquetDataStore` manifests, `data/raw`, `data/curated`, checks licensing, depth, timestamp, bid/ask, spread, tick, survivorship, adjustments, broker differences.
 
 ## Available Sources (as of 2026-09-16)
-| Version | Instrument | Timeframe | Rows | Start | End | Checksum | Source | Bid/Ask | Spread | Tick | Timestamp | Survivorship | Depth |
-|---------|------------|-----------|------|-------|-----|----------|--------|---------|--------|------|-----------|--------------|-------|
-| 20260916-010-572728d9 | XAUUSD | 1H | 500 | 2020-01-01 | 2020-01-21 | sha256:5727 | synthetic_or_csv | false | proxy high-low only | false | UTC | single symbol no issue | 500 bars (~20.8 days) |
-| 20260916-010-86ca2f9c | XAUUSD | 1H | 500? | 2020-01-01 | 2020-01-21 | sha256:86ca | synthetic_or_csv | false | proxy | false | UTC | same | same |
+| Version | Instrument | Timeframe | Rows | Start | End | Checksum | Source label | Bid/Ask | Spread | Tick | Timestamp | Survivorship | Depth |
+|---------|------------|-----------|------|-------|-----|----------|--------------|---------|--------|------|-----------|--------------|-------|
+| `<checksum-derived id>` (established by `qts data bootstrap`) | XAUUSD | 1H | 500 | 2020-01-01 | 2020-01-21 | sha256 of fixture bytes | **SYNTHETIC:fixture:XAUUSD_1H_500** | false | proxy high-low only | false | UTC | single symbol no issue | 500 bars (~20.8 days) |
 
-Raw files: `data/raw` empty. Curated: partitioned Parquet per version. Fixtures: `data/fixtures/XAUUSD_1H_500.csv`.
+Version IDs are content-checksum derived (never hardcoded/date-stamped) and are **not tracked in git**: `data/manifests/` and `data/curated/` are gitignored, and a clean clone establishes the dataset via `qts data bootstrap` (idempotent, fail-closed, truthful `SYNTHETIC` labeling). Raw files: `data/raw` empty on clean clone. Curated: partitioned Parquet per version. Fixtures: `data/fixtures/XAUUSD_1H_500.csv` (tracked).
 
 ## Per Source Details
-- **Licensing/availability**: synthetic_or_csv internal, no external licensing, not production market data.
+- **Licensing/availability**: synthetic fixture (GBM-generated), internal, no external licensing, **not production market data** — labeled `SYNTHETIC`, never `REAL`.
 - **Historical depth**: 500 bars (~20 days 1H) — insufficient for credible multi-regime inference.
 - **Timestamp quality**: UTC, monotonic, tz_aware PASS, gap_count 0, missing 0.2%.
 - **Bid/ask**: not available — limitation.

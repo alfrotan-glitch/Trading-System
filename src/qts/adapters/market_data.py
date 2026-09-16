@@ -13,9 +13,10 @@ and execution. Reference/mark is mid/close for portfolio marking.
 
 Fail closed on any violation: returns None or raises, caller must suspend.
 """
+
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -24,6 +25,7 @@ from qts.domain.value_objects import Instrument, Tick
 
 class MarketDataError(RuntimeError):
     """Fail-closed market data violation."""
+
     pass
 
 
@@ -65,7 +67,9 @@ class MarketDataProvider:
             raise MarketDataError(f"tick mid zero for {expected_symbol}")
         spread_bps = float((tick.ask - tick.bid) / mid * Decimal("10000"))
         if spread_bps > self.max_spread_bps:
-            raise MarketDataError(f"spread explosion {spread_bps:.1f}bps > {self.max_spread_bps}bps for {expected_symbol} bid {tick.bid} ask {tick.ask}")
+            raise MarketDataError(
+                f"spread explosion {spread_bps:.1f}bps > {self.max_spread_bps}bps for {expected_symbol} bid {tick.bid} ask {tick.ask}"
+            )
         if spread_bps < 0:
             raise MarketDataError(f"negative spread {spread_bps} for {expected_symbol}")
         # Additional: check if broker says market closed / trade disabled
@@ -79,7 +83,8 @@ class MarketDataProvider:
                     raise MarketDataError(f"market not trade_allowed for {expected_symbol} mode {spec.trade_mode}")
         except MarketDataError:
             raise
-        except Exception:
+        # B110: best-effort pre-check; domain MarketDataError re-raised above
+        except Exception:  # nosec B110
             pass
 
     def get_tick(self, instrument: Instrument) -> Tick:

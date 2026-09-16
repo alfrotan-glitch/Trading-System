@@ -80,9 +80,7 @@ class ValidatorPipeline:
         self.min_spread_pf: float = float(cfg.get("min_spread_pf", defaults.min_spread_pf))
 
     # ---------- helpers for real walk-forward ----------
-    def walk_forward_splits(
-        self, n: int, train: int, test: int, step: int
-    ) -> list[tuple[int, int, int, int]]:
+    def walk_forward_splits(self, n: int, train: int, test: int, step: int) -> list[tuple[int, int, int, int]]:
         """Return list of (train_start, train_end, test_start, test_end) indices, contiguous."""
         splits: list[tuple[int, int, int, int]] = []
         start = 0
@@ -206,9 +204,7 @@ class ValidatorPipeline:
         )
         return checks
 
-    def validate_cpcv_pbo(
-        self, cpcv_folds: list[dict[str, Any]] | None, num_trials: int
-    ) -> list[Check]:
+    def validate_cpcv_pbo(self, cpcv_folds: list[dict[str, Any]] | None, num_trials: int) -> list[Check]:
         """CPCV PBO — must be real, not heuristic.
 
         cpcv_folds: list of dicts with keys:
@@ -239,19 +235,22 @@ class ValidatorPipeline:
             train_sharpes = fold.get("train_sharpes")
             test_sharpes = fold.get("test_sharpes")
             # Only enforce if detailed trial dicts are provided; legacy folds with just best_is_test_sharpe are allowed (backcompat)
-            if train_sharpes is not None and test_sharpes is not None:
-                if len(train_sharpes) < 3 or len(test_sharpes) < 3:
-                    return [
-                        Check(
-                            "pbo_cpcv_coverage",
-                            False,
-                            float(len(train_sharpes)),
-                            3.0,
-                            f"CPCV fold {idx} has {len(train_sharpes)} trials <3 → insufficient coverage → BLOCKS",
-                            required=True,
-                            status="NOT_IMPLEMENTED",
-                        )
-                    ]
+            if (
+                train_sharpes is not None
+                and test_sharpes is not None
+                and (len(train_sharpes) < 3 or len(test_sharpes) < 3)
+            ):
+                return [
+                    Check(
+                        "pbo_cpcv_coverage",
+                        False,
+                        float(len(train_sharpes)),
+                        3.0,
+                        f"CPCV fold {idx} has {len(train_sharpes)} trials <3 → insufficient coverage → BLOCKS",
+                        required=True,
+                        status="NOT_IMPLEMENTED",
+                    )
+                ]
         # compute PBO
         count_under = 0
         for fold in cpcv_folds:
@@ -290,7 +289,7 @@ class ValidatorPipeline:
             baseline_sharpe = perturbed_sharpes[len(perturbed_sharpes) // 2]
         # stability: max drop, sign changes
         worst = min(perturbed_sharpes)
-        best = max(perturbed_sharpes)
+        _best = max(perturbed_sharpes)
         mean_p = float(np.mean(perturbed_sharpes))
         # Sharpe drop >30% is fragile; sign change is fail
         if math.copysign(1, baseline_sharpe) != math.copysign(1, worst) and baseline_sharpe != 0:
@@ -312,7 +311,9 @@ class ValidatorPipeline:
                 bool(drop <= self.max_perturbation_drop),
                 float(drop),
                 self.max_perturbation_drop,
-                f"Sharpe drops {drop:.1%} under ±20% perturbation → fragile (>{self.max_perturbation_drop:.0%})" if drop > self.max_perturbation_drop else f"drop {drop:.1%}",
+                f"Sharpe drops {drop:.1%} under ±20% perturbation → fragile (>{self.max_perturbation_drop:.0%})"
+                if drop > self.max_perturbation_drop
+                else f"drop {drop:.1%}",
                 required=True,
             )
         )
@@ -330,9 +331,7 @@ class ValidatorPipeline:
         )
         return checks
 
-    def validate_stress(
-        self, stress_results: dict[float, float] | None
-    ) -> list[Check]:
+    def validate_stress(self, stress_results: dict[float, float] | None) -> list[Check]:
         """Stress: dict[spread_multiplier -> PF or Sharpe]. Must be from re-runs."""
         if stress_results is None or len(stress_results) == 0:
             return [
@@ -358,7 +357,9 @@ class ValidatorPipeline:
                     bool(pf_1_5_f >= self.min_spread_pf),
                     float(pf_1_5_f),
                     self.min_spread_pf,
-                    f"PF at 1.5x spread {pf_1_5_f:.2f} <{self.min_spread_pf}" if pf_1_5_f < self.min_spread_pf else f"PF 1.5x {pf_1_5_f:.2f}",
+                    f"PF at 1.5x spread {pf_1_5_f:.2f} <{self.min_spread_pf}"
+                    if pf_1_5_f < self.min_spread_pf
+                    else f"PF 1.5x {pf_1_5_f:.2f}",
                     required=True,
                 )
             )
@@ -428,7 +429,9 @@ class ValidatorPipeline:
         report.metrics["kurtosis"] = kurt
 
         # walk-forward real
-        for c in self.validate_real_walk_forward(strategy_id, data_version, equity_is, equity_oos, walk_forward_folds, num_trials):
+        for c in self.validate_real_walk_forward(
+            strategy_id, data_version, equity_is, equity_oos, walk_forward_folds, num_trials
+        ):
             report.add(c)
 
         # CPCV/PBO

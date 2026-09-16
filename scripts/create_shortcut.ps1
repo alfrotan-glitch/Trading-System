@@ -1,5 +1,6 @@
-# Creates Windows desktop shortcut for QTS Trading System
+﻿# Creates Windows desktop shortcut for QTS Trading System
 # Run in PowerShell: powershell -ExecutionPolicy Bypass -File scripts/create_shortcut.ps1
+# This file MUST remain UTF-8 with BOM for Windows PowerShell 5.1 compatibility.
 
 $WScriptShell = New-Object -ComObject WScript.Shell
 $Shortcut = $WScriptShell.CreateShortcut("$Home\Desktop\QTS Trading System.lnk")

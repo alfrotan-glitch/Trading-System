@@ -86,7 +86,9 @@ class ResearchLoop:
         seed: int = 42,
     ) -> LoopResult:
         # create experiment
-        exp = Experiment(hypothesis_id=hypothesis_id, strategy_id=strategy_id, params=params, data_version=data_version, seed=seed)
+        exp = Experiment(
+            hypothesis_id=hypothesis_id, strategy_id=strategy_id, params=params, data_version=data_version, seed=seed
+        )
         self.store.put(exp)
 
         if self.engine is None:
@@ -96,7 +98,9 @@ class ResearchLoop:
 
         # run backtest
         try:
-            result = self.engine.run(instrument, timeframe, data_version, strategy_id=strategy_id, strategy_params=params, seed=seed)
+            result = self.engine.run(
+                instrument, timeframe, data_version, strategy_id=strategy_id, strategy_params=params, seed=seed
+            )
         except Exception as e:  # noqa: BLE001
             reason = f"backtest failed: {e}"
             self.store.reject(exp.id, reason=reason)
@@ -112,14 +116,19 @@ class ResearchLoop:
             eq_is = eq[:mid] if len(eq) > 20 else eq
             eq_oos = eq[mid:] if len(eq) > 20 else eq
             # quick stress/perturb
-            stress = self.engine.run_stress(instrument, timeframe, data_version, strategy_id, params, spreads=[1.0, 1.5])
-            perturbed = [result.sharpe * (1 + p) for p in [-0.1, -0.05, 0, 0.05, 0.1]]  # placeholder; real loop should re-run
+            stress = self.engine.run_stress(
+                instrument, timeframe, data_version, strategy_id, params, spreads=[1.0, 1.5]
+            )
+            perturbed = [
+                result.sharpe * (1 + p) for p in [-0.1, -0.05, 0, 0.05, 0.1]
+            ]  # placeholder; real loop should re-run
             report = self.pipeline.validate(
                 strategy_id=strategy_id,
                 data_version=data_version,
                 equity_is=eq_is,
                 equity_oos=eq_oos,
-                walk_forward_folds=[{"is_sharpe": result.sharpe, "oos_sharpe": result.sharpe}] * 3,  # placeholder for demo
+                walk_forward_folds=[{"is_sharpe": result.sharpe, "oos_sharpe": result.sharpe}]
+                * 3,  # placeholder for demo
                 num_trials=max(1, self.store.count_trials()),
                 cpcv_folds=None,  # will block; real loop should provide
                 perturbed_sharpes=perturbed,

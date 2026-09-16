@@ -2,6 +2,8 @@
 
 Covers 15 scenarios required for production execution boundary.
 """
+
+import contextlib
 import tempfile
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -10,17 +12,17 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from qts.domain.value_objects import Instrument, OrderIntent, Side, OrderType, Bar, Tick, OrderState
-from qts.execution.engine import ExecutionEngine, OrderManager, PaperBrokerAdapter, BrokerAdapter
+from qts.adapters.market_data import MarketDataError, MarketDataProvider
+from qts.adapters.mt5_adapter import MT5Adapter
+from qts.adapters.paper_adapter import RealisticPaperBroker
+from qts.adapters.shadow_adapter import ShadowBroker
+from qts.domain.value_objects import Bar, Instrument, OrderIntent, OrderState, OrderType, Side, Tick
+from qts.execution.engine import BrokerAdapter, ExecutionEngine, OrderManager, PaperBrokerAdapter
 from qts.execution.idempotency import IdempotencyStore
 from qts.execution.matching import MatchingConfig, MatchingEngine
+from qts.observability.audit import InMemoryAuditLog
 from qts.portfolio.portfolio import Portfolio
 from qts.risk.engine import RiskEngine, RiskLimits
-from qts.observability.audit import InMemoryAuditLog
-from qts.adapters.mt5_adapter import MT5Adapter, SymbolSpec
-from qts.adapters.paper_adapter import RealisticPaperBroker, DEFAULT_XAUUSD_SPEC
-from qts.adapters.shadow_adapter import ShadowBroker
-from qts.adapters.market_data import MarketDataProvider, MarketDataError
 
 
 def _bar(close=Decimal("2000"), volume=Decimal("1000")):
@@ -67,7 +69,9 @@ def _make_engine(broker=None, tmp=None):
 def test_duplicate_submission_blocks():
     eng, audit, _, tmp = _make_engine()
     bar = _bar()
-    intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="dup1", strategy_id="s")
+    intent = OrderIntent(
+        instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="dup1", strategy_id="s"
+    )
     order, fills = eng.submit_intent(intent, bar=bar)
     assert order is not None and len(fills) == 1
     # Duplicate same id
@@ -81,15 +85,22 @@ def test_duplicate_submission_blocks():
 def test_timeout_after_acceptance_ambiguous():
     class TimeoutAfterBroker(BrokerAdapter):
         is_live = True
+
         def submit(self, intent):
             raise TimeoutError("timeout after broker acceptance — ambiguous")
+
         def account(self):
             from qts.domain.value_objects import Account
-            return Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC))
+
+            return Account(
+                balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)
+            )
 
     eng, audit, _, _ = _make_engine(broker=TimeoutAfterBroker())
     bar = _bar()
-    intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="amb1", strategy_id="s")
+    intent = OrderIntent(
+        instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="amb1", strategy_id="s"
+    )
     order, fills = eng.submit_intent(intent, bar=bar)
     assert order is None and fills == []
     # Should be AMBIGUOUS and suspended
@@ -97,7 +108,9 @@ def test_timeout_after_acceptance_ambiguous():
     assert stored is not None and stored.state == OrderState.AMBIGUOUS
     assert eng.is_suspended
     # Next submit should be blocked due to suspend
-    intent2 = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="next1", strategy_id="s")
+    intent2 = OrderIntent(
+        instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="next1", strategy_id="s"
+    )
     order2, _ = eng.submit_intent(intent2, bar=bar)
     assert order2 is None
 
@@ -106,15 +119,22 @@ def test_timeout_after_acceptance_ambiguous():
 def test_timeout_before_acceptance():
     class TimeoutBefore(BrokerAdapter):
         is_live = True
+
         def submit(self, intent):
             raise ConnectionError("connection timeout before acceptance")
+
         def account(self):
             from qts.domain.value_objects import Account
-            return Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC))
+
+            return Account(
+                balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)
+            )
 
     eng, _, _, _ = _make_engine(broker=TimeoutBefore())
     bar = _bar()
-    intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="amb2", strategy_id="s")
+    intent = OrderIntent(
+        instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="amb2", strategy_id="s"
+    )
     order, _ = eng.submit_intent(intent, bar=bar)
     assert order is None
     assert eng.om.get("amb2").state == OrderState.AMBIGUOUS
@@ -130,14 +150,22 @@ def test_partial_fill_then_disconnect():
     # Need to set matching for engine too
     eng.matching = matching
     bar = _bar(volume=Decimal("0.2"))  # qty 0.1 > 0.06 triggers partial
-    intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="partial_dis", strategy_id="s")
+    intent = OrderIntent(
+        instrument=bar.instrument,
+        side=Side.BUY,
+        quantity=Decimal("0.1"),
+        client_order_id="partial_dis",
+        strategy_id="s",
+    )
     order, fills = eng.submit_intent(intent, bar=bar)
     assert len(fills) == 2
     assert order.state == OrderState.FILLED
     # Simulate disconnect on reconcile
-    orig_positions = broker.positions
+    _orig_positions = broker.positions
+
     def failing_positions():
         raise ConnectionError("broker disconnect after partial")
+
     broker.positions = failing_positions
     report = eng.reconcile()
     assert report.drift == "BROKER_DISCONNECT"
@@ -149,20 +177,28 @@ def test_broker_rejection():
     class RejectBroker(BrokerAdapter):
         def submit(self, intent):
             raise ValueError("invalid price")
+
         def account(self):
             from qts.domain.value_objects import Account
-            return Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC))
+
+            return Account(
+                balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)
+            )
 
     eng, audit, _, _ = _make_engine(broker=RejectBroker())
     bar = _bar()
-    intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="rej1", strategy_id="s")
+    intent = OrderIntent(
+        instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="rej1", strategy_id="s"
+    )
     order, fills = eng.submit_intent(intent, bar=bar)
     assert order is None and fills == []
     stored = eng.om.get("rej1")
     assert stored.state == OrderState.REJECTED
     assert not eng.is_suspended  # REJECTED does not suspend, only AMBIGUOUS
     # New id should be allowed
-    intent2 = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="rej2", strategy_id="s")
+    intent2 = OrderIntent(
+        instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="rej2", strategy_id="s"
+    )
     # Need a good broker for second
     eng.broker = PaperBrokerAdapter()
     order2, fills2 = eng.submit_intent(intent2, bar=bar)
@@ -174,20 +210,38 @@ def test_cancel_race():
     broker = PaperBrokerAdapter()
     eng, _, _, _ = _make_engine(broker=broker)
     bar = _bar()
-    intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="cancel1", strategy_id="s")
+    intent = OrderIntent(
+        instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="cancel1", strategy_id="s"
+    )
     order, _ = eng.submit_intent(intent, bar=bar)
     # Cancel before fill is not relevant for paper (already filled), so create a pending order manually
     # Instead test cancel_all_pending
     from qts.domain.value_objects import Order
+
     # Create a pending order via OM
-    pending_intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="pending1", strategy_id="s", order_type=OrderType.LIMIT, limit_price=Decimal("1900"))
+    pending_intent = OrderIntent(
+        instrument=bar.instrument,
+        side=Side.BUY,
+        quantity=Decimal("0.1"),
+        client_order_id="pending1",
+        strategy_id="s",
+        order_type=OrderType.LIMIT,
+        limit_price=Decimal("1900"),
+    )
     # Submit but broker will accept as pending? For paper, submit always ACCEPTED, but we can simulate
     eng.om.submit(pending_intent)
     eng.om.update_state("pending1", OrderState.ACCEPTED)
     # Now cancel race: broker cancel succeeds
     broker._orders["pending1"] = Order(
-        order_id="pending1", client_order_id="pending1", instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"),
-        order_type=OrderType.LIMIT, limit_price=Decimal("1900"), state=OrderState.ACCEPTED, strategy_id="s"
+        order_id="pending1",
+        client_order_id="pending1",
+        instrument=bar.instrument,
+        side=Side.BUY,
+        quantity=Decimal("0.1"),
+        order_type=OrderType.LIMIT,
+        limit_price=Decimal("1900"),
+        state=OrderState.ACCEPTED,
+        strategy_id="s",
     )
     eng.handle_kill("test cancel race")
     assert eng.om.get("pending1").state == OrderState.CANCELLED
@@ -227,8 +281,16 @@ def test_stale_quote_blocks():
     # Also need to ensure broker is considered live
     bar = None
     tick = None
-    intent = OrderIntent(instrument=Instrument(symbol="XAUUSD"), side=Side.BUY, quantity=Decimal("0.1"), client_order_id="stale1", strategy_id="s")
-    order, fills = eng.submit_intent(intent, tick=tick, bar=bar)  # No bar/tick, will try to get tick via market_data, which will be stale
+    intent = OrderIntent(
+        instrument=Instrument(symbol="XAUUSD"),
+        side=Side.BUY,
+        quantity=Decimal("0.1"),
+        client_order_id="stale1",
+        strategy_id="s",
+    )
+    order, fills = eng.submit_intent(
+        intent, tick=tick, bar=bar
+    )  # No bar/tick, will try to get tick via market_data, which will be stale
     # Since we passed no bar/tick, engine will try to get tick via market_data.get_tick which will raise stale
     # But our test passes tick=None and bar=None, so it will go to market_data path and fail
     # However we need to ensure it actually tries market_data: it will because is_live and market_data not None
@@ -278,7 +340,13 @@ def test_spread_explosion_blocks():
     # Also test via engine
     eng, _, _, _ = _make_engine(broker=broker)
     eng.market_data = md
-    intent = OrderIntent(instrument=Instrument(symbol="XAUUSD"), side=Side.BUY, quantity=Decimal("0.1"), client_order_id="spread1", strategy_id="s")
+    intent = OrderIntent(
+        instrument=Instrument(symbol="XAUUSD"),
+        side=Side.BUY,
+        quantity=Decimal("0.1"),
+        client_order_id="spread1",
+        strategy_id="s",
+    )
     order, _ = eng.submit_intent(intent)
     assert order is None
     assert eng.is_suspended
@@ -288,7 +356,13 @@ def test_spread_explosion_blocks():
 def test_invalid_lot_size():
     broker = RealisticPaperBroker()
     # Spec requires step 0.01, try 0.015
-    intent = OrderIntent(instrument=Instrument(symbol="XAUUSD"), side=Side.BUY, quantity=Decimal("0.015"), client_order_id="lot1", strategy_id="s")
+    intent = OrderIntent(
+        instrument=Instrument(symbol="XAUUSD"),
+        side=Side.BUY,
+        quantity=Decimal("0.015"),
+        client_order_id="lot1",
+        strategy_id="s",
+    )
     eng, _, _, _ = _make_engine(broker=broker)
     bar = _bar()
     order, _ = eng.submit_intent(intent, bar=bar)
@@ -336,36 +410,44 @@ def test_insufficient_free_margin():
     # Need to use portfolio with matching 100 balance to avoid daily loss breach, and permissive risk
     tmp2 = tempfile.TemporaryDirectory()
     db2 = Path(tmp2.name) / "margin.db"
-    risk2 = RiskEngine(RiskLimits(max_notional=Decimal("1000000"), max_leverage=Decimal("10000"), max_quantity=Decimal("10"), max_exposure_lots=Decimal("10"), daily_loss_limit=Decimal("100000"), max_drawdown=Decimal("100000")), db_path=db2)
+    risk2 = RiskEngine(
+        RiskLimits(
+            max_notional=Decimal("1000000"),
+            max_leverage=Decimal("10000"),
+            max_quantity=Decimal("10"),
+            max_exposure_lots=Decimal("10"),
+            daily_loss_limit=Decimal("100000"),
+            max_drawdown=Decimal("100000"),
+        ),
+        db_path=db2,
+    )
     audit2 = InMemoryAuditLog()
     om2 = OrderManager(audit=audit2, idempotency=IdempotencyStore(db_path=db2))
     portfolio2 = Portfolio(initial_balance=Decimal("100"))
     eng = ExecutionEngine(om2, risk2, broker, MatchingEngine(MatchingConfig()), portfolio2, audit=audit2, db_path=db2)
     try:
         bar = _bar(close=Decimal("2000"))
-        intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("1.0"), client_order_id="margin1", strategy_id="s")
+        intent = OrderIntent(
+            instrument=bar.instrument,
+            side=Side.BUY,
+            quantity=Decimal("1.0"),
+            client_order_id="margin1",
+            strategy_id="s",
+        )
         order, _ = eng.submit_intent(intent, bar=bar)
         # Broker should reject due to insufficient margin
         assert order is None
         stored = eng.om.get("margin1")
         assert stored is not None and stored.state == OrderState.REJECTED
     finally:
-        try:
+        with contextlib.suppress(Exception):
             eng.close()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             risk2.close()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             om2.idempotency.close()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             tmp2.cleanup()
-        except Exception:
-            pass
 
 
 # ---------- 12. Broker restart/disconnect ----------
@@ -373,11 +455,15 @@ def test_broker_restart_disconnect():
     broker = PaperBrokerAdapter()
     eng, _, _, _ = _make_engine(broker=broker)
     bar = _bar()
-    intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="brok1", strategy_id="s")
+    intent = OrderIntent(
+        instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="brok1", strategy_id="s"
+    )
     eng.submit_intent(intent, bar=bar)
+
     # Simulate broker disconnect
     def failing():
         raise ConnectionError("broker restart")
+
     broker.positions = failing
     broker.orders = failing
     report = eng.reconcile()
@@ -399,7 +485,13 @@ def test_local_restart_after_fill():
     eng1 = ExecutionEngine(om1, risk1, broker, matching, portfolio1, audit=audit1, db_path=db)
     try:
         bar = _bar()
-        intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="restart_fill", strategy_id="s")
+        intent = OrderIntent(
+            instrument=bar.instrument,
+            side=Side.BUY,
+            quantity=Decimal("0.1"),
+            client_order_id="restart_fill",
+            strategy_id="s",
+        )
         order, fills = eng1.submit_intent(intent, bar=bar)
         assert order.state == OrderState.FILLED
         # Simulate restart: new engine with same DB, same broker (which has position)
@@ -421,48 +513,41 @@ def test_local_restart_after_fill():
             # Actually broker has position, portfolio2 empty, so reconcile should detect MISSING_POSITION or UNKNOWN?
             # For this test, we just check idempotency
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 eng2.close()
-            except Exception:
-                pass
-            try:
+            with contextlib.suppress(Exception):
                 risk2.close()
-            except Exception:
-                pass
-            try:
+            with contextlib.suppress(Exception):
                 om2.idempotency.close()
-            except Exception:
-                pass
     finally:
-        try:
+        with contextlib.suppress(Exception):
             eng1.close()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             risk1.close()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             om1.idempotency.close()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             tmp.cleanup()
-        except Exception:
-            pass
 
 
 # ---------- 14. Local restart after ambiguous ----------
 def test_local_restart_after_ambiguous():
     tmp = tempfile.TemporaryDirectory()
     db = Path(tmp.name) / "amb.db"
+
     class AmbBroker(BrokerAdapter):
         is_live = True
+
         def submit(self, intent):
             raise TimeoutError("timeout ambiguous")
+
         def account(self):
             from qts.domain.value_objects import Account
-            return Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC))
+
+            return Account(
+                balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)
+            )
+
     broker = AmbBroker()
     risk1 = RiskEngine(RiskLimits(), db_path=db)
     audit1 = InMemoryAuditLog()
@@ -471,7 +556,13 @@ def test_local_restart_after_ambiguous():
     eng1 = ExecutionEngine(om1, risk1, broker, MatchingEngine(), portfolio1, audit=audit1, db_path=db)
     try:
         bar = _bar()
-        intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="amb_restart", strategy_id="s")
+        intent = OrderIntent(
+            instrument=bar.instrument,
+            side=Side.BUY,
+            quantity=Decimal("0.1"),
+            client_order_id="amb_restart",
+            strategy_id="s",
+        )
         eng1.submit_intent(intent, bar=bar)
         assert eng1.om.get("amb_restart").state == OrderState.AMBIGUOUS
         assert eng1.is_suspended
@@ -485,42 +576,28 @@ def test_local_restart_after_ambiguous():
             # Should restore suspended and AMBIGUOUS
             assert eng2.is_suspended
             assert eng2._suspend_reason is not None
-            stored = eng2.om.get("amb_restart")
+            _stored = eng2.om.get("amb_restart")
             # On restart, the order is not in memory, but idempotency should have it
             # Try duplicate - should be blocked and return AMBIGUOUS placeholder
             order2, fills2 = eng2.submit_intent(intent, bar=bar)
             assert order2.state == OrderState.AMBIGUOUS
             assert fills2 == []
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 eng2.close()
-            except Exception:
-                pass
-            try:
+            with contextlib.suppress(Exception):
                 risk2.close()
-            except Exception:
-                pass
-            try:
+            with contextlib.suppress(Exception):
                 om2.idempotency.close()
-            except Exception:
-                pass
     finally:
-        try:
+        with contextlib.suppress(Exception):
             eng1.close()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             risk1.close()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             om1.idempotency.close()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             tmp.cleanup()
-        except Exception:
-            pass
 
 
 # ---------- 15. Reconciliation drift ----------
@@ -529,6 +606,7 @@ def test_reconciliation_drift():
     eng, _, portfolio, _ = _make_engine(broker=broker)
     # Create local position
     from qts.domain.value_objects import Position
+
     instr = Instrument(symbol="XAUUSD")
     portfolio.positions["XAUUSD"] = Position(instrument=instr, quantity=Decimal("0.1"), avg_price=Decimal("2000"))
     # Broker has different quantity
@@ -540,7 +618,9 @@ def test_reconciliation_drift():
     broker2 = RealisticPaperBroker()
     eng2, _, portfolio2, _ = _make_engine(broker=broker2)
     portfolio2.positions["XAUUSD"] = Position(instrument=instr, quantity=Decimal("0.1"), avg_price=Decimal("2000"))
-    broker2._positions["XAUUSD"] = Position(instrument=instr, quantity=Decimal("0.1"), avg_price=Decimal("2100"))  # diff 100 > thresh
+    broker2._positions["XAUUSD"] = Position(
+        instrument=instr, quantity=Decimal("0.1"), avg_price=Decimal("2100")
+    )  # diff 100 > thresh
     report2 = eng2.reconcile()
     assert report2.drift == "PRICE_MISMATCH"
     # Status mismatch
@@ -548,10 +628,29 @@ def test_reconciliation_drift():
     eng3, _, _, _ = _make_engine(broker=broker3)
     # Create local order FILLED, broker has ACCEPTED
     from qts.domain.value_objects import Order
-    local_order = Order(order_id="oid1", client_order_id="stat1", instrument=instr, side=Side.BUY, quantity=Decimal("0.1"), order_type=OrderType.MARKET, state=OrderState.FILLED, strategy_id="s")
+
+    local_order = Order(
+        order_id="oid1",
+        client_order_id="stat1",
+        instrument=instr,
+        side=Side.BUY,
+        quantity=Decimal("0.1"),
+        order_type=OrderType.MARKET,
+        state=OrderState.FILLED,
+        strategy_id="s",
+    )
     eng3.om.orders["stat1"] = local_order
     eng3.om.idempotency.record("stat1", "FILLED")
-    broker3._orders["stat1"] = Order(order_id="oid1", client_order_id="stat1", instrument=instr, side=Side.BUY, quantity=Decimal("0.1"), order_type=OrderType.MARKET, state=OrderState.ACCEPTED, strategy_id="s")
+    broker3._orders["stat1"] = Order(
+        order_id="oid1",
+        client_order_id="stat1",
+        instrument=instr,
+        side=Side.BUY,
+        quantity=Decimal("0.1"),
+        order_type=OrderType.MARKET,
+        state=OrderState.ACCEPTED,
+        strategy_id="s",
+    )
     report3 = eng3.reconcile()
     assert report3.drift == "STATUS_MISMATCH"
 
@@ -589,8 +688,11 @@ def test_market_data_correct_side():
 
 def test_paper_uses_same_lifecycle_as_live():
     # Verify paper and live share same risk/execution path
+    import inspect
+
     from qts.execution.engine import ExecutionEngine as EE
-    src = inspect.getsource(EE.submit_intent) if 'inspect' in globals() else ""
+
+    _src = inspect.getsource(EE.submit_intent)
     # Just check that realistic paper uses same validation as MT5
     paper = RealisticPaperBroker()
     mt5_mock = MagicMock()
@@ -624,7 +726,9 @@ def test_shadow_no_submission():
     broker = ShadowBroker()
     eng, audit, _, _ = _make_engine(broker=broker)
     bar = _bar()
-    intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="shadow1", strategy_id="s")
+    intent = OrderIntent(
+        instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="shadow1", strategy_id="s"
+    )
     order, fills = eng.submit_intent(intent, bar=bar)
     assert order is not None
     assert order.state == OrderState.ACCEPTED

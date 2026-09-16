@@ -10,7 +10,7 @@ import pytest
 
 from qts.data.store import SqliteParquetDataStore
 from qts.data.synthetic import generate_gbm_bars, generate_trending_bars
-from qts.domain.value_objects import Account, Bar, Instrument, OrderIntent, Position, Side, Tick
+from qts.domain.value_objects import Account, Bar, Instrument, OrderIntent, Position, Side
 from qts.execution.engine import ExecutionEngine, OrderManager, PaperBrokerAdapter
 from qts.execution.idempotency import IdempotencyStore
 from qts.execution.matching import MatchingConfig, MatchingEngine
@@ -49,18 +49,32 @@ def test_next_bar_execution_no_lookahead():
                 )
             )
         manifest = store.write_bars(bars)
-        engine = BacktestEngine(store, matching_config=MatchingConfig(spread_bps=0, slippage_bps=0, commission_per_lot=0))
-        res = engine.run(instr, manifest.timeframe, manifest.version, strategy_id="hold_long", strategy_params={"quantity": 0.1})
+        engine = BacktestEngine(
+            store, matching_config=MatchingConfig(spread_bps=0, slippage_bps=0, commission_per_lot=0)
+        )
+        res = engine.run(
+            instr, manifest.timeframe, manifest.version, strategy_id="hold_long", strategy_params={"quantity": 0.1}
+        )
         # hold_long should have exactly 1 trade, filled at bar 1 open
         assert res.trades == 1, f"expected 1 fill, got {res.fills}"
         fill = res.fills[0]
         # next-bar: fill at bar_idx 1, price == bars[1].open == 2010
         assert fill["bar_idx"] == 1, f"fill at {fill['bar_idx']} should be 1 (next bar)"
-        assert Decimal(fill["price"]) == bars[1].open, f"fill price {fill['price']} should be next bar open {bars[1].open}"
+        assert Decimal(fill["price"]) == bars[1].open, (
+            f"fill price {fill['price']} should be next bar open {bars[1].open}"
+        )
         # Also verify SMA strategy still respects next-bar: pending queue
         # Run SMA and ensure no fill on bar 0
-        engine2 = BacktestEngine(store, matching_config=MatchingConfig(spread_bps=0, slippage_bps=0, commission_per_lot=0))
-        res2 = engine2.run(instr, manifest.timeframe, manifest.version, strategy_id="sma_breakout", strategy_params={"fast": 2, "slow": 3, "quantity": 0.1})
+        engine2 = BacktestEngine(
+            store, matching_config=MatchingConfig(spread_bps=0, slippage_bps=0, commission_per_lot=0)
+        )
+        res2 = engine2.run(
+            instr,
+            manifest.timeframe,
+            manifest.version,
+            strategy_id="sma_breakout",
+            strategy_params={"fast": 2, "slow": 3, "quantity": 0.1},
+        )
         # All fills must be offset by 1 bar from signal; we check first fill bar_idx >=3 (slow=3 needs 3 bars)
         if res2.fills:
             assert res2.fills[0]["bar_idx"] >= 3
@@ -106,8 +120,12 @@ def test_leakage_fixture_only_profitable_with_lookahead():
         store = SqliteParquetDataStore(root=Path(tmp) / "data", db_path=Path(tmp) / "qts.db")
         manifest = store.write_bars(bars)
         # Honest strategy: hold_long (1 trade) — with next-bar should be flat (entry at bar1 open 2000, never exit, PF 0 or flat)
-        engine = BacktestEngine(store, matching_config=MatchingConfig(spread_bps=0, slippage_bps=0, commission_per_lot=0))
-        res = engine.run(instr, manifest.timeframe, manifest.version, strategy_id="hold_long", strategy_params={"quantity": 0.1})
+        engine = BacktestEngine(
+            store, matching_config=MatchingConfig(spread_bps=0, slippage_bps=0, commission_per_lot=0)
+        )
+        res = engine.run(
+            instr, manifest.timeframe, manifest.version, strategy_id="hold_long", strategy_params={"quantity": 0.1}
+        )
         # With no trend and next-bar at open, equity should not grow: final equity == initial or small
         # hold_long buys at bar1 open 2000 and never sells, mark at 2000 -> flat
         assert res.trades == 1
@@ -117,15 +135,31 @@ def test_leakage_fixture_only_profitable_with_lookahead():
         # a strategy that buys at low (1900) and sells at high (2100) intrabar would profit.
         # We directly use MatchingEngine to show the difference:
         bar0 = bars[0]
-        intent_buy_low = OrderIntent(instrument=instr, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="cheat-buy", strategy_id="cheat")
-        intent_sell_high = OrderIntent(instrument=instr, side=Side.SELL, quantity=Decimal("0.1"), client_order_id="cheat-sell", strategy_id="cheat")
+        intent_buy_low = OrderIntent(
+            instrument=instr, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="cheat-buy", strategy_id="cheat"
+        )
+        _intent_sell_high = OrderIntent(
+            instrument=instr, side=Side.SELL, quantity=Decimal("0.1"), client_order_id="cheat-sell", strategy_id="cheat"
+        )
         # Cheating execution at intrabar extremes (not allowed): would fill at 1900/2100
         # Our matching at bar close would give price != high/low, but cheating would pick them
         # Prove that next-bar price is 2000, not 1900/2100
         from qts.execution.matching import MatchingEngine as ME
+
         me = ME(MatchingConfig(spread_bps=0, slippage_bps=0, commission_per_lot=0))
         # Correct next-bar exec_bar at next open (bar1.open =2000)
-        exec_bar = BarVO(instrument=instr, open=Decimal("2000"), high=Decimal("2000"), low=Decimal("2000"), close=Decimal("2000"), volume=Decimal("1000"), open_time=bar0.close_time, close_time=bar0.close_time + timedelta(milliseconds=1), data_version="test", source="execution_open")
+        exec_bar = BarVO(
+            instrument=instr,
+            open=Decimal("2000"),
+            high=Decimal("2000"),
+            low=Decimal("2000"),
+            close=Decimal("2000"),
+            volume=Decimal("1000"),
+            open_time=bar0.close_time,
+            close_time=bar0.close_time + timedelta(milliseconds=1),
+            data_version="test",
+            source="execution_open",
+        )
         fills_next = me.match(intent_buy_low, exec_bar)
         assert fills_next[0].price == Decimal("2000"), f"next-bar price should be open 2000, got {fills_next[0].price}"
         # Cheating fill at low (1900) would be profitable vs next-bar 2000
@@ -140,7 +174,6 @@ def test_leakage_fixture_only_profitable_with_lookahead():
         assert cheating_profit == Decimal("2000")
         assert next_bar_profit == Decimal("0")
         # If engine were broken to allow same-bar, this test would fail because res would be profitable
-
 
 
 # ---- 2. Real walk-forward vs slicing ----
@@ -193,7 +226,11 @@ def test_pbo_requires_real_computation():
         data_version="v1",
         equity_is=is_eq,
         equity_oos=oos_eq,
-        walk_forward_folds=[{"is_sharpe": 1, "oos_sharpe": 0.5}, {"is_sharpe": 1, "oos_sharpe": 0.5}, {"is_sharpe": 1, "oos_sharpe": 0.5}],
+        walk_forward_folds=[
+            {"is_sharpe": 1, "oos_sharpe": 0.5},
+            {"is_sharpe": 1, "oos_sharpe": 0.5},
+            {"is_sharpe": 1, "oos_sharpe": 0.5},
+        ],
         num_trials=1,
         cpcv_folds=None,  # missing
         perturbed_sharpes=[0, 0, 0, 0, 0, 0, 0],
@@ -322,7 +359,14 @@ def test_stress_must_be_real_not_multiplied():
         from qts.backtest.engine import BacktestEngine
 
         engine = BacktestEngine(store)
-        stress = engine.run_stress(instr, manifest.timeframe, manifest.version, "sma_breakout", {"fast": 10, "slow": 20}, spreads=[1.0, 1.5, 2.0])
+        stress = engine.run_stress(
+            instr,
+            manifest.timeframe,
+            manifest.version,
+            "sma_breakout",
+            {"fast": 10, "slow": 20},
+            spreads=[1.0, 1.5, 2.0],
+        )
         assert 1.0 in stress and 1.5 in stress and 2.0 in stress
         # Stress must come from actual trades, not PF*0.7
         # We check that stress values are not simply PF*multiplier but actual re-run
@@ -337,13 +381,36 @@ def test_pnl_long_flat():
     pf = Portfolio(initial_balance=Decimal("10000"))
     # Buy 1 lot at 2000
     pf.apply_fill(
-        type("Fill", (), {"instrument": instr, "side": Side.BUY, "quantity": Decimal("1"), "price": Decimal("2000"), "fee": Decimal("0"), "fill_id": "1"})()  # type: ignore
+        type(
+            "Fill",
+            (),
+            {
+                "instrument": instr,
+                "side": Side.BUY,
+                "quantity": Decimal("1"),
+                "price": Decimal("2000"),
+                "fee": Decimal("0"),
+                "fill_id": "1",
+            },
+        )()  # type: ignore
     )
     # Actually use real Fill
     from qts.domain.value_objects import Fill as FillVO
 
     pf2 = Portfolio(initial_balance=Decimal("10000"))
-    pf2.apply_fill(FillVO(fill_id="1", order_id="o1", client_order_id="c1", instrument=instr, side=Side.BUY, quantity=Decimal("1"), price=Decimal("2000"), fee=Decimal("5"), event_time=datetime.now(UTC)))
+    pf2.apply_fill(
+        FillVO(
+            fill_id="1",
+            order_id="o1",
+            client_order_id="c1",
+            instrument=instr,
+            side=Side.BUY,
+            quantity=Decimal("1"),
+            price=Decimal("2000"),
+            fee=Decimal("5"),
+            event_time=datetime.now(UTC),
+        )
+    )
     assert pf2.positions["XAUUSD"].quantity == Decimal("1")
     assert pf2.realized_pnl == Decimal("-5")
     # Mark at 2010
@@ -352,7 +419,19 @@ def test_pnl_long_flat():
     assert pf2.unrealized_total() == Decimal("1000")
     assert pf2.equity() == Decimal("10000") - Decimal("5") + Decimal("1000")
     # Sell 1 lot at 2010 -> flat
-    pf2.apply_fill(FillVO(fill_id="2", order_id="o2", client_order_id="c2", instrument=instr, side=Side.SELL, quantity=Decimal("1"), price=Decimal("2010"), fee=Decimal("5"), event_time=datetime.now(UTC)))
+    pf2.apply_fill(
+        FillVO(
+            fill_id="2",
+            order_id="o2",
+            client_order_id="c2",
+            instrument=instr,
+            side=Side.SELL,
+            quantity=Decimal("1"),
+            price=Decimal("2010"),
+            fee=Decimal("5"),
+            event_time=datetime.now(UTC),
+        )
+    )
     assert pf2.positions["XAUUSD"].quantity == Decimal("0")
     # realized: -5 + (1*100*10 -5) = 990
     assert pf2.realized_pnl == Decimal("990")
@@ -365,9 +444,33 @@ def test_pnl_partial_close():
     from qts.domain.value_objects import Fill as FillVO
 
     pf = Portfolio(initial_balance=Decimal("10000"))
-    pf.apply_fill(FillVO(fill_id="1", order_id="o1", client_order_id="c1", instrument=instr, side=Side.BUY, quantity=Decimal("1"), price=Decimal("2000"), fee=Decimal("0"), event_time=datetime.now(UTC)))
+    pf.apply_fill(
+        FillVO(
+            fill_id="1",
+            order_id="o1",
+            client_order_id="c1",
+            instrument=instr,
+            side=Side.BUY,
+            quantity=Decimal("1"),
+            price=Decimal("2000"),
+            fee=Decimal("0"),
+            event_time=datetime.now(UTC),
+        )
+    )
     # partial close 0.4 at 2010
-    pf.apply_fill(FillVO(fill_id="2", order_id="o2", client_order_id="c2", instrument=instr, side=Side.SELL, quantity=Decimal("0.4"), price=Decimal("2010"), fee=Decimal("0"), event_time=datetime.now(UTC)))
+    pf.apply_fill(
+        FillVO(
+            fill_id="2",
+            order_id="o2",
+            client_order_id="c2",
+            instrument=instr,
+            side=Side.SELL,
+            quantity=Decimal("0.4"),
+            price=Decimal("2010"),
+            fee=Decimal("0"),
+            event_time=datetime.now(UTC),
+        )
+    )
     assert pf.positions["XAUUSD"].quantity == Decimal("0.6")
     assert pf.positions["XAUUSD"].avg_price == Decimal("2000")  # avg unchanged
     assert pf.realized_pnl == Decimal("0.4") * Decimal("100") * Decimal("10")  # 400
@@ -380,9 +483,33 @@ def test_pnl_flip_long_to_short():
     from qts.domain.value_objects import Fill as FillVO
 
     pf = Portfolio(initial_balance=Decimal("10000"))
-    pf.apply_fill(FillVO(fill_id="1", order_id="o1", client_order_id="c1", instrument=instr, side=Side.BUY, quantity=Decimal("0.5"), price=Decimal("2000"), fee=Decimal("0"), event_time=datetime.now(UTC)))
+    pf.apply_fill(
+        FillVO(
+            fill_id="1",
+            order_id="o1",
+            client_order_id="c1",
+            instrument=instr,
+            side=Side.BUY,
+            quantity=Decimal("0.5"),
+            price=Decimal("2000"),
+            fee=Decimal("0"),
+            event_time=datetime.now(UTC),
+        )
+    )
     # Sell 1.0 at 2010 → close 0.5 long (+500), new short 0.5 at 2010
-    pf.apply_fill(FillVO(fill_id="2", order_id="o2", client_order_id="c2", instrument=instr, side=Side.SELL, quantity=Decimal("1"), price=Decimal("2010"), fee=Decimal("0"), event_time=datetime.now(UTC)))
+    pf.apply_fill(
+        FillVO(
+            fill_id="2",
+            order_id="o2",
+            client_order_id="c2",
+            instrument=instr,
+            side=Side.SELL,
+            quantity=Decimal("1"),
+            price=Decimal("2010"),
+            fee=Decimal("0"),
+            event_time=datetime.now(UTC),
+        )
+    )
     assert pf.positions["XAUUSD"].quantity == Decimal("-0.5")
     assert pf.positions["XAUUSD"].avg_price == Decimal("2010")
     assert pf.realized_pnl == Decimal("0.5") * Decimal("100") * Decimal("10")  # 500
@@ -405,7 +532,14 @@ def test_pnl_fees_and_spread():
     )
     from qts.domain.value_objects import OrderIntent, OrderType
 
-    intent = OrderIntent(instrument=instr, side=Side.BUY, quantity=Decimal("0.1"), order_type=OrderType.MARKET, client_order_id="c1", strategy_id="s")
+    intent = OrderIntent(
+        instrument=instr,
+        side=Side.BUY,
+        quantity=Decimal("0.1"),
+        order_type=OrderType.MARKET,
+        client_order_id="c1",
+        strategy_id="s",
+    )
     fills = matching.match(intent, bar)
     # BUY at ask + slippage + commission
     assert fills[0].price > bar.close
@@ -419,7 +553,7 @@ def test_kill_switch_survives_restart_and_blocks():
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "qts.db"
         risk = RiskEngine(RiskLimits(daily_loss_limit=Decimal("100"), max_drawdown=Decimal("200")), db_path=db)
-        portfolio = Portfolio(initial_balance=Decimal("10000"))
+        _portfolio = Portfolio(initial_balance=Decimal("10000"))
         # Simulate loss: apply fill that causes -150 realized
         instr = Instrument(symbol="XAUUSD", contract_size=Decimal("100"))
         from qts.domain.value_objects import Fill as FillVO
@@ -428,7 +562,9 @@ def test_kill_switch_survives_restart_and_blocks():
         # Create a fill that loses
         # Instead we test via RiskEngine.post_trade with ctx
         ctx = RiskContext(
-            account=Account(balance=Decimal("10000"), equity=Decimal("9850"), currency="USD", updated_at=datetime.now(UTC)),
+            account=Account(
+                balance=Decimal("10000"), equity=Decimal("9850"), currency="USD", updated_at=datetime.now(UTC)
+            ),
             positions={},
             open_orders_count=0,
             daily_pnl=Decimal("-150"),
@@ -437,16 +573,27 @@ def test_kill_switch_survives_restart_and_blocks():
             reference_prices={"XAUUSD": Decimal("2000")},
         )
         # post_trade should trigger kill
-        fill = FillVO(fill_id="1", order_id="o1", client_order_id="c1", instrument=instr, side=Side.BUY, quantity=Decimal("1"), price=Decimal("2000"), fee=Decimal("0"), event_time=datetime.now(UTC))
+        fill = FillVO(
+            fill_id="1",
+            order_id="o1",
+            client_order_id="c1",
+            instrument=instr,
+            side=Side.BUY,
+            quantity=Decimal("1"),
+            price=Decimal("2000"),
+            fee=Decimal("0"),
+            event_time=datetime.now(UTC),
+        )
         risk.post_trade(fill, ctx)
         assert risk.killed
         # New engine from same db should still be killed
         risk2 = RiskEngine(RiskLimits(daily_loss_limit=Decimal("100")), db_path=db)
         assert risk2.killed
         # pre_trade should veto
-        from qts.domain.value_objects import OrderType
 
-        intent2 = OrderIntent(instrument=instr, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="c2", strategy_id="s")
+        intent2 = OrderIntent(
+            instrument=instr, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="c2", strategy_id="s"
+        )
         d = risk2.pre_trade(intent2, ctx)
         assert not d.allowed
         assert d.veto_reason.value == "KILL_SWITCH_ACTIVE"
@@ -461,9 +608,13 @@ def test_risk_uses_current_equity_not_stale():
         risk = RiskEngine(RiskLimits(max_notional=Decimal("5000")), db_path=db)
         instr = Instrument(symbol="XAUUSD", contract_size=Decimal("100"))
         # Use correct notional: 0.1 lot *100*2000=20000 >5000 → should veto
-        intent = OrderIntent(instrument=instr, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="c1", strategy_id="s")
+        intent = OrderIntent(
+            instrument=instr, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="c1", strategy_id="s"
+        )
         ctx = RiskContext(
-            account=Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)),
+            account=Account(
+                balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)
+            ),
             positions={},
             open_orders_count=0,
             daily_pnl=Decimal("0"),
@@ -475,7 +626,9 @@ def test_risk_uses_current_equity_not_stale():
         assert not d.allowed
         assert d.veto_reason.value == "EXCEEDS_NOTIONAL"
         # With smaller quantity should pass
-        intent_small = OrderIntent(instrument=instr, side=Side.BUY, quantity=Decimal("0.01"), client_order_id="c2", strategy_id="s")
+        intent_small = OrderIntent(
+            instrument=instr, side=Side.BUY, quantity=Decimal("0.01"), client_order_id="c2", strategy_id="s"
+        )
         d2 = risk.pre_trade(intent_small, ctx)
         # 0.01*100*2000=2000 <5000 pass
         assert d2.allowed
@@ -504,7 +657,13 @@ def test_idempotency_no_double_fill():
             close_time=datetime.now(UTC) + timedelta(hours=1),
             data_version="test",
         )
-        intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="dup-123", strategy_id="s")
+        intent = OrderIntent(
+            instrument=bar.instrument,
+            side=Side.BUY,
+            quantity=Decimal("0.1"),
+            client_order_id="dup-123",
+            strategy_id="s",
+        )
         o1, f1 = eng.submit_intent(intent, bar=bar)
         assert len(f1) == 1
         # duplicate
@@ -567,11 +726,25 @@ def test_quantity_lots_to_notional():
     with tempfile.TemporaryDirectory() as tmp:
         risk = RiskEngine(RiskLimits(max_notional=Decimal("500")), db_path=Path(tmp) / "db.sqlite")
         # For micro contract, 0.1 lot is 200 notional <500 → allow
-        intent_micro = OrderIntent(instrument=instr_micro, side=Side.BUY, quantity=qty, client_order_id="c1", strategy_id="s")
-        ctx = RiskContext(account=Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)), positions={}, open_orders_count=0, daily_pnl=Decimal("0"), drawdown=Decimal("0"), instrument_suspended=set(), reference_prices={"XAUUSD": Decimal("2000")})
+        intent_micro = OrderIntent(
+            instrument=instr_micro, side=Side.BUY, quantity=qty, client_order_id="c1", strategy_id="s"
+        )
+        ctx = RiskContext(
+            account=Account(
+                balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)
+            ),
+            positions={},
+            open_orders_count=0,
+            daily_pnl=Decimal("0"),
+            drawdown=Decimal("0"),
+            instrument_suspended=set(),
+            reference_prices={"XAUUSD": Decimal("2000")},
+        )
         assert risk.pre_trade(intent_micro, ctx).allowed
         # For std contract, same lots is 20000 >500 → veto
-        intent_std = OrderIntent(instrument=instr_std, side=Side.BUY, quantity=qty, client_order_id="c2", strategy_id="s")
+        intent_std = OrderIntent(
+            instrument=instr_std, side=Side.BUY, quantity=qty, client_order_id="c2", strategy_id="s"
+        )
         assert not risk.pre_trade(intent_std, ctx).allowed
 
 
@@ -593,7 +766,7 @@ def test_manifest_reproducibility():
         # Duplicate should be rejected
         try:
             store.write_bars(bars, version=m1.version)
-            assert False, "duplicate version should be rejected"
+            pytest.fail("duplicate version should be rejected")
         except ValueError:
             pass
 
@@ -613,7 +786,7 @@ def test_bar_interval_and_timezone():
             close_time=datetime.now() + timedelta(hours=1),
             data_version="test",
         )
-        assert False
+        pytest.fail("naive datetime should be rejected")
     except ValueError:
         pass
     # interval must be open < close
@@ -629,7 +802,7 @@ def test_bar_interval_and_timezone():
             close_time=datetime(2020, 1, 1, 1, tzinfo=UTC),
             data_version="test",
         )
-        assert False
+        pytest.fail("open_time == close_time should be rejected")
     except ValueError:
         pass
 
@@ -657,7 +830,9 @@ def test_no_trade_on_uncertainty():
             data_version="test",
         )
         # Quantity 0.1 > max 0.01 → veto → NO_TRADE
-        intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="c1", strategy_id="s")
+        intent = OrderIntent(
+            instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="c1", strategy_id="s"
+        )
         order, fills = eng.submit_intent(intent, bar=bar)
         assert order is None and fills == []
         assert len(portfolio.fills) == 0

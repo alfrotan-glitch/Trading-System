@@ -10,9 +10,9 @@ Avoids pytest strict-markers false positive by not touching pytest.mark via geta
 
 from __future__ import annotations
 
+import contextlib
 import gc
 import pathlib
-import sqlite3
 import tempfile
 
 import pytest
@@ -25,10 +25,8 @@ _tracked_stores: set[object] = set()
 
 
 def _register_store(obj: object) -> None:
-    try:
+    with contextlib.suppress(Exception):
         _tracked_stores.add(obj)
-    except Exception:
-        pass
 
 
 def _get_db_path(obj: object) -> str | None:
@@ -55,7 +53,19 @@ def _get_db_path(obj: object) -> str | None:
     # Only check for known store types by class name
     try:
         cls_name = type(obj).__name__
-        if cls_name in ("SqliteParquetDataStore", "RiskEngine", "IdempotencyStore", "ExperimentStore", "PromotionLedger", "LockedTestPartitioner", "ForwardObservatory", "RegimeObservatory", "SqliteAuditLog", "ExecutionEngine", "OrderManager"):
+        if cls_name in (
+            "SqliteParquetDataStore",
+            "RiskEngine",
+            "IdempotencyStore",
+            "ExperimentStore",
+            "PromotionLedger",
+            "LockedTestPartitioner",
+            "ForwardObservatory",
+            "RegimeObservatory",
+            "SqliteAuditLog",
+            "ExecutionEngine",
+            "OrderManager",
+        ):
             # Now safe to use getattr with try, but avoid triggering marker
             try:
                 # Use object.__getattribute__ to avoid __getattr__ on pytest.mark (already excluded)
@@ -117,7 +127,7 @@ def _close_tracked_in_dir(dir_path: str) -> None:
             # Check for ExecutionEngine holding om
             om = getattr(obj, "__dict__", {}).get("om") if hasattr(obj, "__dict__") else None
             if om is not None:
-                db2 = _get_db_path(om)
+                _db2 = _get_db_path(om)
                 # try idempotency inside om
                 try:
                     idem = om.__dict__.get("idempotency") if hasattr(om, "__dict__") else None
@@ -129,31 +139,17 @@ def _close_tracked_in_dir(dir_path: str) -> None:
                     pass
         except Exception:
             pass
-    # Checkpoint any .db files inside
-    try:
-        p = pathlib.Path(dir_path)
-        if p.exists():
-            for db_file in p.rglob("*.db"):
-                try:
-                    with sqlite3.connect(db_file) as con:
-                        try:
-                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                            con.commit()
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-    except Exception:
-        pass
+    # NOTE: we deliberately do NOT re-open *.db files here to "checkpoint" them.
+    # Stores close their connections deterministically per operation (qts.db.connect);
+    # re-opening a database that is being deleted recreates the file and re-acquires
+    # Windows file locks — the exact WinError 32 hazard this conftest exists to avoid.
     gc.collect()
 
 
 class SafeTemporaryDirectory(_original_TemporaryDirectory):  # type: ignore[misc]
     def cleanup(self) -> None:  # type: ignore[override]
-        try:
+        with contextlib.suppress(Exception):
             _close_tracked_in_dir(self.name)
-        except Exception:
-            pass
         try:
             super().cleanup()
         except PermissionError as e:
@@ -162,13 +158,11 @@ class SafeTemporaryDirectory(_original_TemporaryDirectory):  # type: ignore[misc
                 _close_tracked_in_dir(self.name)
                 super().cleanup()
             except Exception:
-                raise e
+                raise e from None
 
     def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore[override]
-        try:
+        with contextlib.suppress(Exception):
             _close_tracked_in_dir(self.name)
-        except Exception:
-            pass
         return super().__exit__(exc_type, exc_val, exc_tb)
 
 
@@ -188,6 +182,7 @@ tempfile.mkdtemp = _safe_mkdtemp  # type: ignore[assignment]
 def _patch_store_register():
     try:
         from qts.data.store import SqliteParquetDataStore
+
         orig = SqliteParquetDataStore.__init__
 
         def wrapped(self, *a, **kw):
@@ -199,6 +194,7 @@ def _patch_store_register():
         pass
     try:
         from qts.risk.engine import RiskEngine
+
         orig2 = RiskEngine.__init__
 
         def wrapped2(self, *a, **kw):
@@ -210,6 +206,7 @@ def _patch_store_register():
         pass
     try:
         from qts.execution.idempotency import IdempotencyStore
+
         orig3 = IdempotencyStore.__init__
 
         def wrapped3(self, *a, **kw):
@@ -221,6 +218,7 @@ def _patch_store_register():
         pass
     try:
         from qts.research.experiment import ExperimentStore
+
         orig4 = ExperimentStore.__init__
 
         def wrapped4(self, *a, **kw):
@@ -232,6 +230,7 @@ def _patch_store_register():
         pass
     try:
         from qts.data.locked_test import LockedTestPartitioner
+
         orig5 = LockedTestPartitioner.__init__
 
         def wrapped5(self, *a, **kw):
@@ -243,6 +242,7 @@ def _patch_store_register():
         pass
     try:
         from qts.edge.promotion import PromotionLedger
+
         orig6 = PromotionLedger.__init__
 
         def wrapped6(self, *a, **kw):
@@ -254,6 +254,7 @@ def _patch_store_register():
         pass
     try:
         from qts.execution.engine import ExecutionEngine
+
         orig7 = ExecutionEngine.__init__
 
         def wrapped7(self, *a, **kw):
@@ -290,3 +291,24 @@ def pytest_runtest_teardown(item):
         except Exception:
             pass
     gc.collect()
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-integration",
+        action="store_true",
+        default=False,
+        help="Explicitly request integration runs. Integration tests under tests/integration "
+        "run in the default suite as well; this flag makes the declared CI invocation "
+        "`pytest tests/integration --run-integration` valid and opts IN to any tests marked "
+        "`@pytest.mark.integration` (which are skipped when the flag is absent).",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--run-integration"):
+        return
+    skip_integration = pytest.mark.skip(reason="needs --run-integration")
+    for item in items:
+        if "integration" in item.keywords:
+            item.add_marker(skip_integration)

@@ -8,13 +8,13 @@ Code-level separation + audit of every access attempt.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
-import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
+from qts.db import connect as db_connect
 from qts.domain.value_objects import Bar
 
 
@@ -31,7 +31,7 @@ class LockedTestPartitioner:
         self._init_db()
 
     def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("""CREATE TABLE IF NOT EXISTS locked_partitions (
                 data_version TEXT PRIMARY KEY,
                 discovery_start TEXT, discovery_end TEXT,
@@ -44,7 +44,9 @@ class LockedTestPartitioner:
             )""")
             con.commit()
 
-    def partition(self, bars: list[Bar], data_version: str, discovery_ratio: float = 0.6, validation_ratio: float = 0.2) -> dict[str, list[Bar]]:
+    def partition(
+        self, bars: list[Bar], data_version: str, discovery_ratio: float = 0.6, validation_ratio: float = 0.2
+    ) -> dict[str, list[Bar]]:
         """Chronological split: discovery, validation, locked. Immutable once created."""
         if not bars:
             raise ValueError("no bars")
@@ -56,58 +58,92 @@ class LockedTestPartitioner:
         validation = bars[d_end:v_end]
         locked = bars[v_end:]
         # Check if already partitioned — immutable
-        with sqlite3.connect(self.db_path) as con:
-            row = con.execute("SELECT payload FROM locked_partitions WHERE data_version=?", (data_version,)).fetchone() if False else None
+        with db_connect(self.db_path) as con:
+            _row = (
+                con.execute("SELECT payload FROM locked_partitions WHERE data_version=?", (data_version,)).fetchone()
+                if False
+                else None
+            )
             # Actually query correct table
             row2 = con.execute("SELECT * FROM locked_partitions WHERE data_version=?", (data_version,)).fetchone()
             if row2:
                 # Verify same hash
                 h = self._hash_bars(locked)
                 if row2[8] != h:
-                    raise LockedTestViolation(f"locked test for {data_version} already exists with different hash — immutable")
+                    raise LockedTestViolation(
+                        f"locked test for {data_version} already exists with different hash — immutable"
+                    )
         # Store
         h = self._hash_bars(locked)
-        with sqlite3.connect(self.db_path) as con:
-            con.execute("INSERT OR IGNORE INTO locked_partitions VALUES (?,?,?,?,?,?,?,?,?)",
-                        (data_version,
-                         discovery[0].open_time.isoformat() if discovery else "",
-                         discovery[-1].close_time.isoformat() if discovery else "",
-                         validation[0].open_time.isoformat() if validation else "",
-                         validation[-1].close_time.isoformat() if validation else "",
-                         locked[0].open_time.isoformat() if locked else "",
-                         locked[-1].close_time.isoformat() if locked else "",
-                         datetime.now(UTC).isoformat(),
-                         h))
+        with db_connect(self.db_path) as con:
+            con.execute(
+                "INSERT OR IGNORE INTO locked_partitions VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    data_version,
+                    discovery[0].open_time.isoformat() if discovery else "",
+                    discovery[-1].close_time.isoformat() if discovery else "",
+                    validation[0].open_time.isoformat() if validation else "",
+                    validation[-1].close_time.isoformat() if validation else "",
+                    locked[0].open_time.isoformat() if locked else "",
+                    locked[-1].close_time.isoformat() if locked else "",
+                    datetime.now(UTC).isoformat(),
+                    h,
+                ),
+            )
             con.commit()
         return {"discovery": discovery, "validation": validation, "locked": locked}
 
-    def get_locked(self, bars: list[Bar], data_version: str, accessor: str = "unknown", purpose: str = "research", allow: bool = False) -> list[Bar]:
+    def get_locked(
+        self,
+        bars: list[Bar],
+        data_version: str,
+        accessor: str = "unknown",
+        purpose: str = "research",
+        allow: bool = False,
+    ) -> list[Bar]:
         """Access locked test — logs every attempt, requires explicit allow."""
         # Log attempt
         import uuid
+
         access_id = str(uuid.uuid4())[:8]
-        with sqlite3.connect(self.db_path) as con:
-            con.execute("INSERT INTO locked_access_log VALUES (?,?,?,?,?,?)",
-                        (access_id, data_version, accessor, purpose, datetime.now(UTC).isoformat(), int(allow)))
+        with db_connect(self.db_path) as con:
+            con.execute(
+                "INSERT INTO locked_access_log VALUES (?,?,?,?,?,?)",
+                (access_id, data_version, accessor, purpose, datetime.now(UTC).isoformat(), int(allow)),
+            )
             con.commit()
         if not allow:
-            raise LockedTestViolation(f"locked test access denied for {accessor}:{purpose} — requires allow=True and freeze")
+            raise LockedTestViolation(
+                f"locked test access denied for {accessor}:{purpose} — requires allow=True and freeze"
+            )
         # Return locked partition
         parts = self.partition(bars, data_version)
         return parts["locked"]
 
     def is_frozen(self, data_version: str) -> bool:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             row = con.execute("SELECT 1 FROM locked_partitions WHERE data_version=?", (data_version,)).fetchone()
             return row is not None
 
     def access_log(self, data_version: str | None = None) -> list[dict]:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             if data_version:
-                rows = con.execute("SELECT * FROM locked_access_log WHERE data_version=? ORDER BY timestamp", (data_version,)).fetchall()
+                rows = con.execute(
+                    "SELECT * FROM locked_access_log WHERE data_version=? ORDER BY timestamp", (data_version,)
+                ).fetchall()
             else:
                 rows = con.execute("SELECT * FROM locked_access_log ORDER BY timestamp").fetchall()
-            return [{"id": r[0], "data_version": r[1], "accessor": r[2], "purpose": r[3], "timestamp": r[4], "allowed": bool(r[5])} for r in rows]
+            return [
+                {
+                    "id": r[0],
+                    "data_version": r[1],
+                    "accessor": r[2],
+                    "purpose": r[3],
+                    "timestamp": r[4],
+                    "allowed": bool(r[5]),
+                }
+                for r in rows
+            ]
 
     def _hash_bars(self, bars: list[Bar]) -> str:
         h = hashlib.sha256()
@@ -120,39 +156,23 @@ class LockedTestPartitioner:
         # In real, we would check that param hash doesn't depend on locked test
         # Here we just ensure locked_hash not in params string
         return locked_hash not in json.dumps(strategy_params)
+
     def close(self) -> None:
-        try:
-            db = getattr(self, "db_path", getattr(self, "_db_path", None))
-            if db is not None:
-                db = Path(db)
-                if db.exists() and str(db) != ":memory:":
-                    import sqlite3
-                    with sqlite3.connect(db) as con:
-                        try:
-                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                            con.commit()
-                        except Exception:
-                            pass
+        with contextlib.suppress(Exception):
+            # File-backed connections are opened/closed per operation via qts.db.connect,
+            # so no persistent handle exists here. We must NOT re-open the database file
+            # in close()/__del__: that recreates deleted files and re-acquires Windows
+            # file locks during GC/shutdown (root cause of WinError 32 on cleanup).
             # close any memory connection if present
             mem = getattr(self, "_memory_con", None)
             if mem is not None:
-                try:
+                with contextlib.suppress(Exception):
                     mem.commit()
                     mem.close()
-                except Exception:
-                    pass
                 self._memory_con = None
-        except Exception:
-            pass
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-    def __del__(self):
-        try:
-            self.close()
-        except Exception:
-            pass

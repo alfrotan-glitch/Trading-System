@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
-import sqlite3
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -11,6 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from qts.db import connect as db_connect
 from qts.domain.value_objects import uuid7
 
 
@@ -36,7 +37,9 @@ class ExecutionObservation(BaseModel):
     cancellation_reason: str | None = None
     partial_fill: bool = False
     market_state: str = "unknown"  # e.g., "open", "high_vol", "low_liquidity"
-    source: str = "REAL"  # REAL, SYNTHETIC, SIMULATED, ESTIMATED, MODEL_DERIVED — must be explicit, never synthetic as real
+    source: str = (
+        "REAL"  # REAL, SYNTHETIC, SIMULATED, ESTIMATED, MODEL_DERIVED — must be explicit, never synthetic as real
+    )
 
     def compute_slippage(self):
         if self.realized_price and self.expected_price and self.expected_price != 0:
@@ -53,25 +56,35 @@ class ExecutionRealityStore:
         self._init()
 
     def _init(self):
-        with sqlite3.connect(self.db_path) as con:
-            con.execute("CREATE TABLE IF NOT EXISTS execution_observations (id TEXT PRIMARY KEY, payload TEXT, created_at TEXT)")
+        with db_connect(self.db_path) as con:
+            con.execute(
+                "CREATE TABLE IF NOT EXISTS execution_observations (id TEXT PRIMARY KEY, payload TEXT, created_at TEXT)"
+            )
             con.commit()
 
     def record(self, obs: ExecutionObservation):
         obs.compute_slippage()
-        with sqlite3.connect(self.db_path) as con:
-            con.execute("INSERT OR REPLACE INTO execution_observations VALUES (?,?,?)", (obs.id, obs.model_dump_json(), obs.timestamp.isoformat()))
+        with db_connect(self.db_path) as con:
+            con.execute(
+                "INSERT OR REPLACE INTO execution_observations VALUES (?,?,?)",
+                (obs.id, obs.model_dump_json(), obs.timestamp.isoformat()),
+            )
             con.commit()
 
     def list(self, limit: int = 100) -> list[ExecutionObservation]:
-        with sqlite3.connect(self.db_path) as con:
-            rows = con.execute("SELECT payload FROM execution_observations ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+        with db_connect(self.db_path) as con:
+            rows = con.execute(
+                "SELECT payload FROM execution_observations ORDER BY created_at DESC LIMIT ?", (limit,)
+            ).fetchall()
             return [ExecutionObservation.model_validate_json(r[0]) for r in rows]
 
     def summary(self) -> dict[str, Any]:
         obs = self.list(limit=1000)
         if not obs:
-            return {"count": 0, "note": "No real execution observations — cannot claim execution realism without actual observations. Synthetic may be used but must be labeled SYNTHETIC."}
+            return {
+                "count": 0,
+                "note": "No real execution observations — cannot claim execution realism without actual observations. Synthetic may be used but must be labeled SYNTHETIC.",
+            }
         real = [o for o in obs if o.source == "REAL"]
         synth = [o for o in obs if o.source != "REAL"]
         slippages = [o.slippage_bps for o in real if o.slippage_bps is not None]
@@ -79,7 +92,7 @@ class ExecutionRealityStore:
             "count": len(obs),
             "real_count": len(real),
             "synthetic_count": len(synth),
-            "avg_slippage_bps": float(sum(slippages)/len(slippages)) if slippages else None,
+            "avg_slippage_bps": float(sum(slippages) / len(slippages)) if slippages else None,
             "max_slippage_bps": float(max(slippages)) if slippages else None,
             "rejections": len([o for o in obs if o.rejection_reason]),
             "partial_fills": len([o for o in obs if o.partial_fill]),
@@ -89,41 +102,25 @@ class ExecutionRealityStore:
     def to_json(self, path: Path = Path("data/evidence/execution_reality.json")) -> dict[str, Any]:
         s = self.summary()
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(s, indent=2, default=str))
+        path.write_text(json.dumps(s, indent=2, default=str), encoding="utf-8")
         return s
+
     def close(self) -> None:
-        try:
-            db = getattr(self, "db_path", getattr(self, "_db_path", None))
-            if db is not None:
-                db = Path(db)
-                if db.exists() and str(db) != ":memory:":
-                    import sqlite3
-                    with sqlite3.connect(db) as con:
-                        try:
-                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                            con.commit()
-                        except Exception:
-                            pass
+        with contextlib.suppress(Exception):
+            # File-backed connections are opened/closed per operation via qts.db.connect,
+            # so no persistent handle exists here. We must NOT re-open the database file
+            # in close()/__del__: that recreates deleted files and re-acquires Windows
+            # file locks during GC/shutdown (root cause of WinError 32 on cleanup).
             # close any memory connection if present
             mem = getattr(self, "_memory_con", None)
             if mem is not None:
-                try:
+                with contextlib.suppress(Exception):
                     mem.commit()
                     mem.close()
-                except Exception:
-                    pass
                 self._memory_con = None
-        except Exception:
-            pass
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-    def __del__(self):
-        try:
-            self.close()
-        except Exception:
-            pass

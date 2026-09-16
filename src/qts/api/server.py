@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
-import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from qts.config.settings import load_settings
@@ -29,6 +28,7 @@ app.add_middleware(
 
 def _env() -> str:
     import os
+
     return os.getenv("QTS_ENV", "development")
 
 
@@ -49,7 +49,7 @@ def health() -> dict[str, Any]:
         versions = store.list_versions()
         data_ok = len(versions) > 0
         latest = versions[-1] if versions else None
-    except Exception as e:
+    except Exception:
         data_ok = False
         latest = None
         versions = []
@@ -67,16 +67,14 @@ def health() -> dict[str, Any]:
     try:
         from qts.edge.promotion import PromotionLedger
 
-        ledger = PromotionLedger()
+        _ledger = PromotionLedger()
         # pick latest strategy
         strategies = []
-        try:
+        with contextlib.suppress(Exception):
             from qts.research.registry import StrategyRegistry
 
             reg = StrategyRegistry()
             strategies = reg.list()
-        except Exception:
-            pass
         strategy_info = strategies[0].model_dump() if strategies else None
         lifecycle = strategy_info.get("lifecycle_state") if strategy_info else "RESEARCH"
     except Exception:
@@ -150,8 +148,9 @@ def dashboard() -> dict[str, Any]:
     """Clear professional dashboard — safety information first."""
     # Try to get equity, balance etc from portfolio or mock
     try:
-        from qts.portfolio.portfolio import Portfolio
         from decimal import Decimal
+
+        from qts.portfolio.portfolio import Portfolio
 
         pf = Portfolio(initial_balance=Decimal("10000"))
         equity = float(pf.equity())
@@ -212,7 +211,7 @@ def list_strategies() -> list[dict[str, Any]]:
             try:
                 ev_path = Path("data/evidence/edge_validation.json")
                 if ev_path.exists():
-                    ev = json.loads(ev_path.read_text())
+                    ev = json.loads(ev_path.read_text(encoding="utf-8"))
                     if ev.get("dataset", {}).get("manifest", {}).get("instrument") == r.symbol:
                         es = ev.get("edge_survival", {})
                         d["oos_sharpe"] = es.get("psr")
@@ -250,7 +249,7 @@ def strategy_scorecard(strategy_id: str) -> dict[str, Any]:
     ev_path = Path("data/evidence/edge_validation.json")
     if not ev_path.exists():
         raise HTTPException(404, "no evidence")
-    ev = json.loads(ev_path.read_text())
+    ev = json.loads(ev_path.read_text(encoding="utf-8"))
     from qts.edge.scorecard import EdgeScorecard
 
     # Inject strategy_id if not in evidence
@@ -276,7 +275,7 @@ def create_campaign(payload: dict[str, Any]) -> dict[str, Any]:
     try:
         cfg = CampaignConfig(**payload)
     except Exception as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     # Enforce caps
     if cfg.max_trials > 100:
         raise HTTPException(400, "max_trials exceeds campaign limit 100")
@@ -304,7 +303,7 @@ def validation_detail(strategy_id: str) -> dict[str, Any]:
     ev_path = Path("data/evidence/edge_validation.json")
     if not ev_path.exists():
         raise HTTPException(404, "no evidence file")
-    ev = json.loads(ev_path.read_text())
+    ev = json.loads(ev_path.read_text(encoding="utf-8"))
     # Return full edge validation with definitions
     definitions = {
         "wfe": "Walk-Forward Efficiency = OOS Sharpe / IS Sharpe, >0.3 indicates stability",
@@ -325,7 +324,11 @@ def validation_detail(strategy_id: str) -> dict[str, Any]:
 @app.get("/api/paper")
 def paper_center() -> dict[str, Any]:
     ev_path = Path("data/evidence/paper_trades.json")
-    paper = json.loads(ev_path.read_text()) if ev_path.exists() else {"fills": [], "positions": [], "pnl": 0, "drawdown": 0}
+    paper: dict[str, Any] = (
+        json.loads(ev_path.read_text(encoding="utf-8"))
+        if ev_path.exists()
+        else {"fills": [], "positions": [], "pnl": 0, "drawdown": 0}
+    )
     return {
         "simulated_positions": paper.get("fills", [])[:10],
         "fills": paper.get("fills", []),
@@ -339,8 +342,12 @@ def paper_center() -> dict[str, Any]:
 def shadow_center() -> dict[str, Any]:
     shadow_path = Path("data/evidence/shadow_intents.json")
     paper_path = Path("data/evidence/paper_trades.json")
-    shadow = json.loads(shadow_path.read_text()) if shadow_path.exists() else {"intents_sample": [], "skipped": []}
-    paper = json.loads(paper_path.read_text()) if paper_path.exists() else {"fills": []}
+    shadow = (
+        json.loads(shadow_path.read_text(encoding="utf-8"))
+        if shadow_path.exists()
+        else {"intents_sample": [], "skipped": []}
+    )
+    paper = json.loads(paper_path.read_text(encoding="utf-8")) if paper_path.exists() else {"fills": []}
     # compute discrepancy if both exist
     disc = None
     if shadow_path.exists() and paper_path.exists():
@@ -371,7 +378,14 @@ def execution_orders(limit: int = 20) -> list[dict[str, Any]]:
         orders = []
         for e in events:
             if "order" in e.event_type.value.lower() or "execution" in json.dumps(e.payload).lower():
-                orders.append({"time": e.event_time.isoformat(), "type": e.event_type.value, "payload": e.payload, "lifecycle": "INTENT→RISK→SUBMISSION→ACCEPTED→FILLED or REJECTED/CANCELLED/AMBIGUOUS"})
+                orders.append(
+                    {
+                        "time": e.event_time.isoformat(),
+                        "type": e.event_type.value,
+                        "payload": e.payload,
+                        "lifecycle": "INTENT→RISK→SUBMISSION→ACCEPTED→FILLED or REJECTED/CANCELLED/AMBIGUOUS",
+                    }
+                )
         return orders[:limit]
     except Exception as e:
         return [{"error": str(e)}]
@@ -387,20 +401,25 @@ def order_audit(order_id: str) -> dict[str, Any]:
         matched = [e for e in events if order_id in json.dumps(e.payload)]
         if not matched:
             raise HTTPException(404, "order not found")
-        return {"order_id": order_id, "trail": [{"time": e.event_time.isoformat(), "type": e.event_type.value, "payload": e.payload} for e in matched]}
+        return {
+            "order_id": order_id,
+            "trail": [
+                {"time": e.event_time.isoformat(), "type": e.event_type.value, "payload": e.payload} for e in matched
+            ],
+        }
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
 
 
 @app.get("/api/risk")
 def risk_center() -> dict[str, Any]:
-    from qts.risk.engine import RiskLimits
     from qts.risk.capital_policy import CapitalPolicy
+    from qts.risk.engine import RiskLimits
 
     limits = RiskLimits()
-    cap = CapitalPolicy()
+    _cap = CapitalPolicy()
     # Check emergency
     from qts.edge.emergency import EmergencyControls
 
@@ -410,18 +429,16 @@ def risk_center() -> dict[str, Any]:
     blocked_reasons = []
     if killed:
         blocked_reasons.append("KILL_SWITCH_ACTIVE")
-    try:
+    with contextlib.suppress(Exception):
         from qts.lifecycle.live_gate import live_readiness_report
 
         rpt = live_readiness_report()
         if not rpt.get("ready", False):
             blocked_reasons.extend(rpt.get("blocked_reasons", []))
-    except Exception:
-        pass
     # Always at least NO_VALIDATED_EDGE if no candidate passes
     if not blocked_reasons:
         try:
-            ev = json.loads(Path("data/evidence/edge_validation.json").read_text())
+            ev = json.loads(Path("data/evidence/edge_validation.json").read_text(encoding="utf-8"))
             if not ev.get("edge_survival", {}).get("passed"):
                 blocked_reasons.append("NO_VALIDATED_EDGE")
         except Exception:
@@ -460,8 +477,6 @@ def mt5_center() -> dict[str, Any]:
     mode = os.getenv("QTS_MT5_MODE", "MOCK")
     # Try real adapter status
     try:
-        from qts.adapters.mt5_adapter import MT5Adapter
-
         # Don't actually connect, just report mock
         connected = False
         terminal = "Mock terminal — no real broker connection"
@@ -532,31 +547,35 @@ def live_status() -> dict[str, Any]:
             "reconciliation": True,
             "human_approval": False,
         }
-        try:
-            ev = json.loads(Path("data/evidence/edge_validation.json").read_text())
+        with contextlib.suppress(Exception):
+            ev = json.loads(Path("data/evidence/edge_validation.json").read_text(encoding="utf-8"))
             if ev.get("edge_survival", {}).get("passed"):
                 checklist["validated_edge"] = True
             if ev.get("forward", {}).get("signals", 0) >= 10:
                 checklist["forward_observation"] = True
-        except Exception:
-            pass
         # MT5 connectivity from health — avoid recursive loop if health fails
-        try:
+        with contextlib.suppress(Exception):
             h = health()
             if h["mt5"] == "Connected":
                 checklist["mt5_connectivity"] = True
-        except Exception:
-            pass
         return {
             "live_trading": "LOCKED" if not eligible else "ELIGIBLE (GATED)",
             "eligible": eligible,
             "blocked_reasons": reasons,
             "checklist": checklist,
-            "message": "LIVE NOT AVAILABLE" if not eligible else "All prerequisites met — explicit confirmation required",
+            "message": "LIVE NOT AVAILABLE"
+            if not eligible
+            else "All prerequisites met — explicit confirmation required",
             "explicit_confirmation_required": True,
         }
     except Exception as e:
-        return {"live_trading": "LOCKED", "eligible": False, "blocked_reasons": [str(e)], "checklist": {}, "message": "LIVE NOT AVAILABLE"}
+        return {
+            "live_trading": "LOCKED",
+            "eligible": False,
+            "blocked_reasons": [str(e)],
+            "checklist": {},
+            "message": "LIVE NOT AVAILABLE",
+        }
 
 
 @app.get("/api/notifications")
@@ -564,22 +583,50 @@ def notifications() -> list[dict[str, Any]]:
     alerts = []
     h = health()
     if h["system_status"] == "Suspended":
-        alerts.append({"level": "critical", "title": "Trading suspended", "detail": "Kill switch or reconciliation drift", "persistent": True})
+        alerts.append(
+            {
+                "level": "critical",
+                "title": "Trading suspended",
+                "detail": "Kill switch or reconciliation drift",
+                "persistent": True,
+            }
+        )
     if h["market_data"] == "Stale":
-        alerts.append({"level": "warning", "title": "Stale data", "detail": "Market data not fresh", "persistent": True})
+        alerts.append(
+            {"level": "warning", "title": "Stale data", "detail": "Market data not fresh", "persistent": True}
+        )
     if h["reconciliation"] == "Drift Detected":
-        alerts.append({"level": "critical", "title": "Reconciliation drift", "detail": "Broker vs local state mismatch", "persistent": True})
+        alerts.append(
+            {
+                "level": "critical",
+                "title": "Reconciliation drift",
+                "detail": "Broker vs local state mismatch",
+                "persistent": True,
+            }
+        )
     # Live gate blocked
     live = live_status()
     if not live.get("eligible"):
-        alerts.append({"level": "info", "title": "Live gate blocked", "detail": "; ".join(live.get("blocked_reasons", [])[:2]), "persistent": False})
+        alerts.append(
+            {
+                "level": "info",
+                "title": "Live gate blocked",
+                "detail": "; ".join(live.get("blocked_reasons", [])[:2]),
+                "persistent": False,
+            }
+        )
     # Validation failure
-    try:
-        ev = json.loads(Path("data/evidence/edge_validation.json").read_text())
+    with contextlib.suppress(Exception):
+        ev = json.loads(Path("data/evidence/edge_validation.json").read_text(encoding="utf-8"))
         if not ev.get("edge_survival", {}).get("passed"):
-            alerts.append({"level": "warning", "title": "Validation failure", "detail": "Current strategy BLOCKED — keep NO_TRADE", "persistent": False})
-    except Exception:
-        pass
+            alerts.append(
+                {
+                    "level": "warning",
+                    "title": "Validation failure",
+                    "detail": "Current strategy BLOCKED — keep NO_TRADE",
+                    "persistent": False,
+                }
+            )
     return alerts
 
 
@@ -587,64 +634,87 @@ def notifications() -> list[dict[str, Any]]:
 @app.get("/api/research/thoughts")
 def research_thoughts(limit: int = 20) -> list[dict[str, Any]]:
     from qts.research.intelligence import IntelligenceOrchestrator
+
     intel = IntelligenceOrchestrator()
     thoughts = intel.all_thoughts(limit=limit)
     return [t.model_dump(mode="json") for t in thoughts]
 
+
 @app.get("/api/research/hypotheses")
 def research_hypotheses(limit: int = 20) -> list[dict[str, Any]]:
     from qts.research.intelligence import IntelligenceOrchestrator
+
     intel = IntelligenceOrchestrator()
     hyps = intel.all_hypotheses(limit=limit)
     return [h.model_dump(mode="json") for h in hyps]
 
+
 @app.get("/api/research/memory")
 def research_memory(limit: int = 20) -> list[dict[str, Any]]:
     from qts.research.memory import ResearchMemory
+
     mem = ResearchMemory()
     entries = mem.list_failures(limit=limit)
     return [e.model_dump(mode="json") for e in entries]
 
+
 @app.get("/api/research/novelty")
 def research_novelty() -> dict[str, Any]:
-    from qts.research.novelty import report_novelty
     from qts.research.experiment import ExperimentStore
+    from qts.research.novelty import report_novelty
+
     store = ExperimentStore()
-    trials = [{"family": e.strategy_id.split("_")[0] if "_" in e.strategy_id else e.strategy_id, "mechanism": e.strategy_id, "params": e.params, "feature_lineage": []} for e in store.all_experiments()]
+    trials = [
+        {
+            "family": e.strategy_id.split("_")[0] if "_" in e.strategy_id else e.strategy_id,
+            "mechanism": e.strategy_id,
+            "params": e.params,
+            "feature_lineage": [],
+        }
+        for e in store.all_experiments()
+    ]
     return report_novelty(trials)
+
 
 @app.get("/api/research/data-audit")
 def research_data_audit() -> dict[str, Any]:
     from qts.data.audit import audit_data_sources
+
     return audit_data_sources()
+
 
 @app.get("/api/research/features")
 def research_features() -> list[dict[str, Any]]:
     from qts.research.feature_discovery import FeatureStore
+
     fs = FeatureStore()
     feats = fs.list()
     if not feats:
         # register controlled defaults if empty
         from qts.research.feature_discovery import CONTROLLED_FEATURES
+
         for f in CONTROLLED_FEATURES:
-            try:
+            with contextlib.suppress(Exception):
                 fs.register(f)
-            except Exception:
-                pass
         feats = fs.list()
     return [f.model_dump(mode="json") for f in feats]
 
+
 @app.get("/api/research/adversarial/{strategy_id}")
 def research_adversarial(strategy_id: str) -> dict[str, Any]:
-    from qts.research.adversary import adversarial_attack
     import json as js
+
+    from qts.research.adversary import adversarial_attack
+
     ev_path = Path("data/evidence/edge_validation.json")
-    ev = js.loads(ev_path.read_text()) if ev_path.exists() else {}
+    ev = js.loads(ev_path.read_text(encoding="utf-8")) if ev_path.exists() else {}
     return adversarial_attack(strategy_id, ev)
+
 
 @app.post("/api/research/autonomous")
 def research_autonomous(payload: dict[str, Any]) -> dict[str, Any]:
     from qts.research.campaign_engine import run_autonomous_campaign
+
     name = payload.get("name", "autonomous-search")
     symbol = payload.get("symbol", "XAUUSD")
     timeframe = payload.get("timeframe", "1H")
@@ -657,42 +727,50 @@ def research_autonomous(payload: dict[str, Any]) -> dict[str, Any]:
     result = run_autonomous_campaign(name, symbol, timeframe, data_version, max_trials, max_runtime_s, seed)
     return result
 
+
 @app.get("/api/research/data-inventory")
 def research_data_inventory() -> list[dict[str, Any]]:
     p = Path("data/evidence/data_inventory.json")
-    return json.loads(p.read_text()) if p.exists() else []
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else []
+
 
 @app.get("/api/research/data-source-catalog")
 def research_data_source_catalog() -> list[dict[str, Any]]:
     p = Path("data/evidence/data_source_catalog.json")
-    return json.loads(p.read_text()) if p.exists() else []
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else []
+
 
 @app.get("/api/research/data-quality-summary")
 def research_data_quality_summary() -> dict[str, Any]:
     p = Path("data/evidence/data_quality_summary.json")
-    return json.loads(p.read_text()) if p.exists() else {}
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+
 
 @app.get("/api/research/forward-manifest")
 def research_forward_manifest() -> dict[str, Any]:
     p = Path("data/evidence/forward_observation_manifest.json")
-    return json.loads(p.read_text()) if p.exists() else {}
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+
 
 @app.get("/api/research/regime-observations")
 def research_regime_observations() -> dict[str, Any]:
     p = Path("data/evidence/market_regime_observations.json")
-    return json.loads(p.read_text()) if p.exists() else {}
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+
 
 @app.get("/api/research/execution-reality")
 def research_execution_reality() -> dict[str, Any]:
     p = Path("data/evidence/execution_reality.json")
-    return json.loads(p.read_text()) if p.exists() else {}
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+
 
 @app.get("/api/research/data-quality-adversarial")
 def research_data_quality_adversarial() -> dict[str, Any]:
     # Run lightweight adversarial quality stress and return result without failing closed (for monitoring)
+    from qts.data.quality import validate_bars
     from qts.data.store import SqliteParquetDataStore
     from qts.domain.value_objects import Instrument
-    from qts.data.quality import validate_bars
+
     store = SqliteParquetDataStore()
     versions = store.list_versions()
     results: dict[str, Any] = {}
@@ -703,6 +781,7 @@ def research_data_quality_adversarial() -> dict[str, Any]:
         bars = store.read_bars(Instrument(symbol=m.instrument, venue=m.venue), m.timeframe, version=v)
         # Simulate adversarial: duplicate
         import copy
+
         dup_bars = bars + [bars[0]] if bars else []
         rep = validate_bars(dup_bars)
         results["duplicate_corrupted_passed"] = rep.passed
@@ -710,16 +789,35 @@ def research_data_quality_adversarial() -> dict[str, Any]:
         if len(bars) > 5:
             missing = bars[:3] + bars[5:]
             rep2 = validate_bars(missing)
-            results["missing_corrupted_gap_check"] = next((c.passed for c in rep2.checks if c.name == "no_missing_bars"), None)
+            results["missing_corrupted_gap_check"] = next(
+                (c.passed for c in rep2.checks if c.name == "no_missing_bars"), None
+            )
         # zero price
         if bars:
             bad = copy.copy(bars[0])
-            bad = bad.model_copy(update={"close": __import__("decimal").Decimal("0")}) if hasattr(bad, "model_copy") else bars[0]
+            bad = (
+                bad.model_copy(update={"close": __import__("decimal").Decimal("0")})
+                if hasattr(bad, "model_copy")
+                else bars[0]
+            )
             # For Bar, directly construct
             from decimal import Decimal
+
             try:
                 from qts.domain.value_objects import Bar
-                bad_bar = Bar(instrument=bars[0].instrument, open=bars[0].open, high=bars[0].high, low=bars[0].low, close=Decimal("0"), volume=bars[0].volume, open_time=bars[0].open_time, close_time=bars[0].close_time, data_version=bars[0].data_version, source=bars[0].source)
+
+                bad_bar = Bar(
+                    instrument=bars[0].instrument,
+                    open=bars[0].open,
+                    high=bars[0].high,
+                    low=bars[0].low,
+                    close=Decimal("0"),
+                    volume=bars[0].volume,
+                    open_time=bars[0].open_time,
+                    close_time=bars[0].close_time,
+                    data_version=bars[0].data_version,
+                    source=bars[0].source,
+                )
                 rep3 = validate_bars([bad_bar])
                 results["zero_price_passed"] = rep3.passed
             except Exception as e:
@@ -727,32 +825,39 @@ def research_data_quality_adversarial() -> dict[str, Any]:
     results["fail_closed_principle"] = "Corrupted dataset fails validation — no manifest created"
     return results
 
+
 @app.get("/api/research/statistical")
 def research_statistical() -> dict[str, Any]:
     # Return example statistical extensions on dummy data
     import numpy as np
-    from qts.research.statistical import white_reality_check, hansen_spa, permutation_test, minimum_backtest_length
+
+    from qts.research.statistical import hansen_spa, minimum_backtest_length, permutation_test, white_reality_check
+
     rets = np.random.randn(100) * 0.01
     return {
         "white_reality_check": white_reality_check(rets, n_bootstrap=200),
-        "hansen_spa": hansen_spa([rets, rets*0.5], n_bootstrap=200),
+        "hansen_spa": hansen_spa([rets, rets * 0.5], n_bootstrap=200),
         "permutation": permutation_test(rets, n_perm=200),
         "min_backtest_length": minimum_backtest_length(0.5),
     }
+
 
 # --- Demo Forward & Safety Boundary ---
 @app.get("/api/demo/readiness")
 def demo_readiness() -> dict[str, Any]:
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
+
     # Try to inject mock MT5 if real not available — still reports checklist
     try:
         return demo_forward_readiness_report()
     except Exception as e:
         return {"passed": False, "demo_enabled": False, "blocked_reasons": [str(e)], "checks": {}}
 
+
 @app.get("/api/demo/safety")
 def demo_safety() -> dict[str, Any]:
     from qts.risk.demo_limits import DEMO_FORWARD_DEFAULTS, SAFETY_BOUNDARY
+
     return {
         "boundary": SAFETY_BOUNDARY,
         "demo_limits": DEMO_FORWARD_DEFAULTS.model_dump(),
@@ -760,21 +865,24 @@ def demo_safety() -> dict[str, Any]:
         "note": "No env can silently become another. LIVE remains LOCKED unless all scientific+safety gates pass.",
     }
 
+
 @app.get("/api/demo/comparison")
 def demo_comparison() -> dict[str, Any]:
     from qts.execution.demo_comparison import compare_paper_shadow_demo
+
     p = Path("data/evidence/paper_shadow_demo_comparison.json")
     if p.exists():
-        try:
-            return json.loads(p.read_text())
-        except Exception:
-            pass
+        with contextlib.suppress(Exception):
+            return json.loads(p.read_text(encoding="utf-8"))
     return compare_paper_shadow_demo()
+
 
 @app.post("/api/demo/comparison/refresh")
 def demo_comparison_refresh() -> dict[str, Any]:
     from qts.execution.demo_comparison import write_comparison
+
     return write_comparison()
+
 
 @app.get("/api/demo/observations")
 def demo_observations(limit: int = 20) -> list[dict[str, Any]]:
@@ -782,19 +890,22 @@ def demo_observations(limit: int = 20) -> list[dict[str, Any]]:
     if not p.exists():
         return []
     try:
-        data = json.loads(p.read_text())
+        data = json.loads(p.read_text(encoding="utf-8"))
         obs = data.get("observations", data) if isinstance(data, dict) else data
         return obs[-limit:][::-1] if isinstance(obs, list) else []
     except Exception:
         return []
 
+
 @app.get("/api/env/boundary")
 def env_boundary() -> dict[str, Any]:
     import os
+
     env = os.getenv("QTS_ENV", "development")
     mode = os.getenv("QTS_MT5_MODE", "MOCK")
     # Map to new safety table
     from qts.risk.demo_limits import SAFETY_BOUNDARY
+
     return {
         "env": env,
         "mode": mode,
@@ -805,6 +916,7 @@ def env_boundary() -> dict[str, Any]:
         "label_for_paper": "PAPER",
         "label_for_live": "LIVE",
     }
+
 
 @app.get("/api/demo/config")
 def demo_config() -> dict[str, Any]:
@@ -823,8 +935,17 @@ def demo_config() -> dict[str, Any]:
             "approved": settings.risk.approved,
         },
         "observation_mode": "OBSERVE_ONLY" if not settings.execution.demo_forward_enabled else "DEMO_EXECUTION_ENABLED",
-        "lifecycle": ["RESEARCH","VALIDATING","FORWARD_OBSERVATION","PAPER_VERIFIED","SHADOW_VERIFIED","DEMO_OBSERVATION","DEMO_EXECUTION"],
+        "lifecycle": [
+            "RESEARCH",
+            "VALIDATING",
+            "FORWARD_OBSERVATION",
+            "PAPER_VERIFIED",
+            "SHADOW_VERIFIED",
+            "DEMO_OBSERVATION",
+            "DEMO_EXECUTION",
+        ],
     }
+
 
 @app.post("/api/demo/enable")
 def demo_enable(payload: dict[str, Any]) -> dict[str, Any]:
@@ -834,19 +955,31 @@ def demo_enable(payload: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(400, "Demo forward requires explicit confirmed=true and risk_ack=true")
     # Verify readiness first
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
+
     rpt = demo_forward_readiness_report()
     # In sandbox/mock, terminal_running will be false — allow observe-only mode without real terminal for demo purposes?
     # Enforce demo_is_demo check strictly for safety
     if rpt.get("warn_live_in_demo"):
         raise HTTPException(400, "LIVE account supplied to DEMO mode — blocked")
-    # Record audit
+    # Record audit — demo enablement MUST be auditable; failure is surfaced, not swallowed
+    audit_error: str | None = None
     try:
-        from qts.observability.audit import SqliteAuditLog, AuditEvent, AuditEventType
+        from qts.domain.events import DomainEvent, EventType
+        from qts.observability.audit import SqliteAuditLog
+
         log = SqliteAuditLog()
-        log.emit(AuditEvent(event_type=AuditEventType.RISK, payload={"action":"demo_forward_enabled","confirmed":True,"readiness":rpt}))
-    except Exception:
-        pass
-    return {"demo_enabled": True, "mode": "DEMO_EXECUTION_ENABLED", "readiness": rpt, "label": "DEMO"}
+        log.emit(
+            DomainEvent(
+                event_type=EventType.LIFECYCLE,
+                payload={"action": "demo_forward_enabled", "confirmed": True, "readiness": rpt},
+            )
+        )
+    except Exception as e:  # noqa: BLE001
+        audit_error = f"demo-enablement audit emit failed: {e}"
+    resp: dict[str, Any] = {"demo_enabled": True, "mode": "DEMO_EXECUTION_ENABLED", "readiness": rpt, "label": "DEMO"}
+    if audit_error:
+        resp["audit_error"] = audit_error
+    return resp
 
 
 # Mount static UI if exists

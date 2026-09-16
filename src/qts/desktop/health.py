@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from qts.db import connect as db_connect
 
 
 def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
@@ -29,7 +30,7 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
         if not p.exists():
             return False, "qts.db missing — first run will create"
         try:
-            with sqlite3.connect(p) as con:
+            with db_connect(p) as con:
                 con.execute("SELECT 1 FROM promotion_state LIMIT 1")
                 con.execute("SELECT 1 FROM experiments LIMIT 1")
             return True, "durable state loaded"
@@ -40,6 +41,7 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
     def check_suspension():
         try:
             from qts.risk.engine import RiskEngine, RiskLimits
+
             eng = RiskEngine(RiskLimits())
             killed = eng.is_killed() if hasattr(eng, "is_killed") else False
             if killed:
@@ -65,8 +67,8 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
     # 4 data
     def check_data():
         try:
-            from qts.data.store import SqliteParquetDataStore
             from qts.data.quality import validate_bars
+            from qts.data.store import SqliteParquetDataStore
             from qts.domain.value_objects import Instrument
 
             store = SqliteParquetDataStore()
@@ -140,11 +142,16 @@ def shutdown_procedure() -> dict[str, Any]:
     """On shutdown: stop new orders, persist state, record shutdown event, safely disconnect, preserve audit state."""
     results: dict[str, Any] = {"timestamp": datetime.now(UTC).isoformat(), "steps": []}
     try:
-        from qts.observability.audit import SqliteAuditLog
         from qts.domain.events import DomainEvent, EventType
+        from qts.observability.audit import SqliteAuditLog
 
         log = SqliteAuditLog()
-        log.emit(DomainEvent(event_type=EventType.NO_TRADE, payload={"event": "SHUTDOWN", "reason": "orderly shutdown", "timestamp": datetime.now(UTC).isoformat()}))
+        log.emit(
+            DomainEvent(
+                event_type=EventType.NO_TRADE,
+                payload={"event": "SHUTDOWN", "reason": "orderly shutdown", "timestamp": datetime.now(UTC).isoformat()},
+            )
+        )
         results["steps"].append("persist state + audit shutdown event: ok")
     except Exception as e:
         results["steps"].append(f"persist state failed: {e}")

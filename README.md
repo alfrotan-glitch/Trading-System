@@ -55,7 +55,7 @@ powershell -ExecutionPolicy Bypass -File scripts/setup_windows.ps1
 # or double-click: scripts/setup_windows.bat
 ```
 
-This creates `.venv`, installs `qts`, validates CLI, runs quick tests. If Python/git missing, scripts fail clearly.
+This creates `.venv`, installs `qts`, runs **`qts data bootstrap`** (deterministic, fail-closed, idempotent — establishes a usable dataset from the tracked fixture, labeled `SYNTHETIC`; never fabricates data), validates the CLI + health, and runs quick tests. If Python/git is missing, or no usable dataset can be established, setup fails clearly with a non-zero exit code.
 
 See `docs/desktop_installation_windows.md`.
 
@@ -117,6 +117,7 @@ Demo safety limits (conservative): max 0.1 lot/order, 0.3 exposure, 3 open order
 ```bash
 python -m venv .venv && source .venv/bin/activate  # or scripts/setup_windows.ps1
 pip install -e ".[dev]"
+python -m qts data bootstrap   # deterministic, fail-closed, idempotent; labels the fixture SYNTHETIC
 python -m qts data synthetic --rows 10000 --out data/raw/synthetic_XAUUSD_1m.csv
 python -m qts data ingest --source csv --path data/raw/synthetic_XAUUSD_1m.csv --instrument XAUUSD --timeframe 1m
 python -m qts backtest --strategy sma_breakout --data-version <version> --seed 42 --determinism-check
@@ -129,6 +130,6 @@ Docs start `docs/00-overview.md` → `docs/13-adrs.md`. Build exe: `scripts/buil
 
 ## Current Status
 
-`BLOCK — KEEP NO_TRADE`, Live LOCKED, 199 tests, QTS.exe built via PyInstaller. Remaining limitations in `docs/release_readiness_report.md` K.
+`BLOCK — KEEP NO_TRADE`, Live LOCKED, 266 tests passing (Linux 3.11; deterministic under ASCII/C locale), static gates green (ruff, mypy), QTS.exe built via PyInstaller. `data/curated/` and `data/manifests/` are deliberately **not tracked** — a clean clone establishes its dataset via `qts data bootstrap` (truthful provenance, `SYNTHETIC` label). Remaining limitations in `docs/release_readiness_report.md` K.
 
 Never treat BACKTEST/PAPER/SHADOW/DEMO as LIVE. No profitability claimed.

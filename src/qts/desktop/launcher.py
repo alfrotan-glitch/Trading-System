@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import os
-import sys
-import time
 import threading
+import time
 import webbrowser
 from pathlib import Path
 
@@ -22,6 +21,7 @@ def _get_api_host_port() -> tuple[str, int]:
 
 def start_api_server(host: str = "127.0.0.1", port: int = 8000):
     import uvicorn
+
     from qts.api.server import app
 
     config = uvicorn.Config(app, host=host, port=port, log_level="info", loop="asyncio")
@@ -31,18 +31,18 @@ def start_api_server(host: str = "127.0.0.1", port: int = 8000):
     thread.start()
     # wait for health
     import urllib.request
-    import json
 
     url = f"http://{host}:{port}/api/health"
     for _ in range(30):
         try:
-            with urllib.request.urlopen(url, timeout=1) as resp:
+            # B310: health probe of local API, URL built from local host/port config
+            with urllib.request.urlopen(url, timeout=1) as resp:  # nosec B310
                 if resp.status == 200:
                     print(f"[launcher] API healthy at {url}")
                     return server, thread
         except Exception:
             time.sleep(0.5)
-    print(f"[launcher] API not healthy after 15s, continuing anyway")
+    print("[launcher] API not healthy after 15s, continuing anyway")
     return server, thread
 
 

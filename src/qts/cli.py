@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
+from datetime import UTC
 from pathlib import Path
+from typing import Any
 
 import click
 import numpy as np
@@ -57,6 +60,33 @@ def data_ingest(source: str, path: str, instrument: str, timeframe: str, venue: 
     store = SqliteParquetDataStore()
     version = ingest_csv(Path(path), instrument=instrument, timeframe=timeframe, venue=venue, store=store)
     click.echo(f"ingested version {version}")
+
+
+@data.command("bootstrap")
+@click.option("--root", default="data", help="data root directory")
+@click.option("--fixture", default=None, help="fixture CSV (default: data/fixtures/XAUUSD_1H_500.csv)")
+@click.option("--instrument", default="XAUUSD")
+@click.option("--timeframe", default="1H")
+@click.option("--venue", default="MT5")
+def data_bootstrap(root: str, fixture: str | None, instrument: str, timeframe: str, venue: str) -> None:
+    """Deterministic clean-clone data bootstrap — truthful, idempotent, never fabricates.
+
+    Exit codes: 0 = usable data present (READY or INGESTED), 1 = FAILED (missing or
+    zero-bar fixture). SYNTHETIC fixture data never counts as real market history.
+    """
+    from pathlib import Path as _P
+
+    from qts.data.bootstrap import DEFAULT_FIXTURE, bootstrap_data
+
+    fx = _P(fixture) if fixture else DEFAULT_FIXTURE
+    res = bootstrap_data(root=_P(root), fixture=fx, instrument=instrument, timeframe=timeframe, venue=venue)
+    for msg in res.messages:
+        click.echo(msg)
+    if res.ok:
+        click.echo(f"bootstrap: {res.status} version={res.version} bars={res.bars} class={res.data_class}")
+    else:
+        click.echo("bootstrap: FAILED — no usable data established (nothing was fabricated)", err=True)
+        sys.exit(1)
 
 
 @data.command("validate")
@@ -151,7 +181,8 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
 
     # --- real walk-forward: use single coherent policy from Settings (no duplicated thresholds) ---
     from qts.config.settings import load_settings
-    settings = load_settings()
+
+    _settings = load_settings()
     # ValidatorPipeline reads defaults from Settings.validation (min_folds=5, min_wfe=0.30, min_oos_sharpe=0.30, max_pbo=0.50)
     pipeline = ValidatorPipeline()  # uses Settings defaults
     # Use 60% train / 20% test style but via splits; for demo use train=30% of n, test=10% , step=test
@@ -175,24 +206,45 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
         test_start_t = test_bars[0].open_time
         test_end_t = test_bars[-1].close_time
         try:
-            train_res = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": 10, "slow": 20, "quantity": 0.1}, start=train_start_t, end=train_end_t)
-            test_res = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": 10, "slow": 20, "quantity": 0.1}, start=test_start_t, end=test_end_t)
+            train_res = engine.run(
+                instr,
+                timeframe,
+                data_version,
+                strategy_id=strategy,
+                strategy_params={"fast": 10, "slow": 20, "quantity": 0.1},
+                start=train_start_t,
+                end=train_end_t,
+            )
+            test_res = engine.run(
+                instr,
+                timeframe,
+                data_version,
+                strategy_id=strategy,
+                strategy_params={"fast": 10, "slow": 20, "quantity": 0.1},
+                start=test_start_t,
+                end=test_end_t,
+            )
             folds.append({"is_sharpe": float(train_res.sharpe), "oos_sharpe": float(test_res.sharpe)})
         except Exception as e:  # noqa: BLE001
             click.echo(f"walk-forward fold failed: {e}", err=True)
             continue
 
     # Full OOS/IS for metrics (use split mid)
-    full = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": 10, "slow": 20, "quantity": 0.1})
+    full = engine.run(
+        instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": 10, "slow": 20, "quantity": 0.1}
+    )
     mid = len(full.equity_curve) // 2
     eq_is = np.array(full.equity_curve[:mid])
     eq_oos = np.array(full.equity_curve[mid:])
 
     # Real stress: re-run with spread multipliers — G6 use Settings spread_stress_levels (no duplicate)
     from qts.config.settings import load_settings as _load_settings_for_stress
+
     _settings_for_stress = _load_settings_for_stress()
     spreads_cfg = _settings_for_stress.validation.spread_stress_levels
-    stress_results = engine.run_stress(instr, timeframe, data_version, strategy, {"fast": 10, "slow": 20, "quantity": 0.1}, spreads=spreads_cfg)
+    stress_results = engine.run_stress(
+        instr, timeframe, data_version, strategy, {"fast": 10, "slow": 20, "quantity": 0.1}, spreads=spreads_cfg
+    )
 
     # Real perturbation: baseline ±5/10/20%
     baseline = 10
@@ -200,7 +252,13 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
     for pct in [-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2]:
         fast_p = max(2, int(baseline * (1 + pct)))
         try:
-            res_p = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": fast_p, "slow": 20, "quantity": 0.1})
+            res_p = engine.run(
+                instr,
+                timeframe,
+                data_version,
+                strategy_id=strategy,
+                strategy_params={"fast": fast_p, "slow": 20, "quantity": 0.1},
+            )
             perturbed.append(float(res_p.sharpe))
         except Exception:
             perturbed.append(0.0)
@@ -211,7 +269,7 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
     cpcv_splits = pipeline.cpcv_splits(n, n_groups=6, n_test=2)
     trials = [{"fast": 5}, {"fast": 10}, {"fast": 15}]
     # Ensure we produce at least cpcv_min_combos; if n small, fallback to 4,1 but validator will BLOCK
-    
+
     for train_idx, test_idx in cpcv_splits[:6]:
         train_sharpes: dict[str, float] = {}
         test_sharpes: dict[str, float] = {}
@@ -225,8 +283,24 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
             te_start = bars[test_idx[0]].open_time
             te_end = bars[test_idx[-1]].close_time
             try:
-                tr = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": t["fast"], "slow": 20, "quantity": 0.1}, start=t_start, end=t_end)
-                te = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": t["fast"], "slow": 20, "quantity": 0.1}, start=te_start, end=te_end)
+                tr = engine.run(
+                    instr,
+                    timeframe,
+                    data_version,
+                    strategy_id=strategy,
+                    strategy_params={"fast": t["fast"], "slow": 20, "quantity": 0.1},
+                    start=t_start,
+                    end=t_end,
+                )
+                te = engine.run(
+                    instr,
+                    timeframe,
+                    data_version,
+                    strategy_id=strategy,
+                    strategy_params={"fast": t["fast"], "slow": 20, "quantity": 0.1},
+                    start=te_start,
+                    end=te_end,
+                )
                 train_sharpes[trial_id] = float(tr.sharpe)
                 test_sharpes[trial_id] = float(te.sharpe)
             except Exception:
@@ -254,7 +328,9 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
         # still pass empty to validator to trigger BLOCK, but log
         pass
 
-    pipeline = ValidatorPipeline()  # coherent Settings policy; materially negative OOS Sharpe fails (min_oos_sharpe=0.30)
+    pipeline = (
+        ValidatorPipeline()
+    )  # coherent Settings policy; materially negative OOS Sharpe fails (min_oos_sharpe=0.30)
     # Derive timeframe from manifest for P scaling (G8) — no hardcoded 252 fallback without audit
     manifest_for_p = store.manifest(data_version)
     timeframe_for_p = manifest_for_p.timeframe if manifest_for_p else timeframe
@@ -272,32 +348,55 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
     )
     # G12: Durable audit for validation outcome — success and failure must be auditable
     try:
-        from qts.observability.audit import SqliteAuditLog
         from qts.domain.events import DomainEvent, EventType
+        from qts.observability.audit import SqliteAuditLog
+
         audit_log = SqliteAuditLog()
         # Emit VALIDATION event with passed flag and reasons
-        audit_log.emit(DomainEvent(
-            event_type=EventType.ORDER_EVENT if report.passed else EventType.RISK_VETO,
-            payload={
-                "event": "VALIDATION",
-                "strategy_id": strategy,
-                "data_version": data_version,
-                "timeframe": timeframe_for_p,
-                "periods_per_year": report.metrics.get("periods_per_year"),
-                "passed": report.passed,
-                "reasons": report.reasons,
-                "metrics": {k: (float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else v) for k, v in report.metrics.items()},
-                "checks": [{"name": c.name, "passed": c.passed, "status": c.status, "metric": c.metric, "threshold": c.threshold, "details": c.details} for c in report.checks],
-                "from": "VALIDATING",
-                "to": "REJECTED" if not report.passed else "CANDIDATE",
-            }
-        ))
+        audit_log.emit(
+            DomainEvent(
+                event_type=EventType.ORDER_EVENT if report.passed else EventType.RISK_VETO,
+                payload={
+                    "event": "VALIDATION",
+                    "strategy_id": strategy,
+                    "data_version": data_version,
+                    "timeframe": timeframe_for_p,
+                    "periods_per_year": report.metrics.get("periods_per_year"),
+                    "passed": report.passed,
+                    "reasons": report.reasons,
+                    "metrics": {
+                        k: (float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else v)
+                        for k, v in report.metrics.items()
+                    },
+                    "checks": [
+                        {
+                            "name": c.name,
+                            "passed": c.passed,
+                            "status": c.status,
+                            "metric": c.metric,
+                            "threshold": c.threshold,
+                            "details": c.details,
+                        }
+                        for c in report.checks
+                    ],
+                    "from": "VALIDATING",
+                    "to": "REJECTED" if not report.passed else "CANDIDATE",
+                },
+            )
+        )
         # Also emit NO_TRADE on validation failure for capital preservation audit trail
         if not report.passed:
-            audit_log.emit(DomainEvent(
-                event_type=EventType.NO_TRADE,
-                payload={"strategy_id": strategy, "data_version": data_version, "reason": "VALIDATION_FAILED", "detail": "; ".join(report.reasons)[:500]}
-            ))
+            audit_log.emit(
+                DomainEvent(
+                    event_type=EventType.NO_TRADE,
+                    payload={
+                        "strategy_id": strategy,
+                        "data_version": data_version,
+                        "reason": "VALIDATION_FAILED",
+                        "detail": "; ".join(report.reasons)[:500],
+                    },
+                )
+            )
     except Exception as e:
         click.echo(f"validation audit emit failed: {e}", err=True)
 
@@ -361,27 +460,73 @@ def risk_reset(confirm: str) -> None:
 @risk.command("check")
 @click.option("--instrument", default="XAUUSD")
 @click.option("--quantity", default=0.1, type=float)
-def risk_check(instrument: str, quantity: float) -> None:
-    from decimal import Decimal
-
-    from qts.domain.value_objects import Instrument, OrderIntent
-    from qts.risk.engine import RiskContext, RiskEngine, RiskLimits
-    from qts.domain.value_objects import Account
+@click.option(
+    "--reference-price",
+    required=True,
+    help="Authoritative current reference price for notional/exposure checks. "
+    "REQUIRED — the CLI never assumes a hardcoded market price. Obtain it from your "
+    "market data source (e.g. MT5 terminal) and pass it explicitly.",
+)
+def risk_check(instrument: str, quantity: float, reference_price: str) -> None:
     from datetime import UTC, datetime
+    from decimal import Decimal, InvalidOperation
+
+    from qts.domain.value_objects import Account, Instrument, OrderIntent
+    from qts.risk.engine import RiskContext, RiskEngine, RiskLimits
+
+    try:
+        price = Decimal(reference_price)
+    except InvalidOperation:
+        click.echo(f"invalid --reference-price: {reference_price!r}", err=True)
+        raise SystemExit(2) from None
+    if price <= 0:
+        click.echo("--reference-price must be > 0 (no hardcoded or placeholder prices)", err=True)
+        raise SystemExit(2)
+
+    from qts.domain.value_objects import Side
 
     instr = Instrument(symbol=instrument)
-    intent = OrderIntent(instrument=instr, side="BUY", quantity=Decimal(str(quantity)), client_order_id="check", strategy_id="check")
-    # Provide authoritative market price (current executable): 2000 for XAUUSD demo; auditable
-    ctx = RiskContext(account=Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)), positions={}, open_orders_count=0, daily_pnl=Decimal("0"), drawdown=Decimal("0"), instrument_suspended=set(), reference_prices={instrument: Decimal("2000")})
-    dec = RiskEngine(RiskLimits()).pre_trade(intent, ctx)
+    intent = OrderIntent(
+        instrument=instr, side=Side.BUY, quantity=Decimal(str(quantity)), client_order_id="check", strategy_id="check"
+    )
+    # Reference price is caller-supplied and auditable — never hardcoded here.
+    ctx = RiskContext(
+        account=Account(
+            balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)
+        ),
+        positions={},
+        open_orders_count=0,
+        daily_pnl=Decimal("0"),
+        drawdown=Decimal("0"),
+        instrument_suspended=set(),
+        reference_prices={instrument: price},
+    )
+    eng = RiskEngine(RiskLimits())
+    dec = eng.pre_trade(intent, ctx)
+    eng.close()
     click.echo(f"allowed={dec.allowed} veto={dec.veto_reason} detail={dec.reason_detail} notional={dec.reason_detail}")
 
 
 @main.command("health")
 def health() -> None:
+    from qts.data.bootstrap import classify_source
+
     store = SqliteParquetDataStore()
     versions = store.list_versions()
+    usable = store.list_usable_versions()
     click.echo(f"data versions: {versions[-3:] if versions else 'none'}")
+    click.echo(f"usable versions: {len(usable)} of {len(versions)} registered")
+    phantom = [v for v in versions if v not in usable]
+    if phantom:
+        click.echo(f"registered but NOT usable (manifest without readable bars): {phantom}")
+    for v in usable:
+        m = store.manifest(v)
+        if m:
+            click.echo(
+                f"  {v}: {m.instrument} {m.timeframe} rows={m.rows} class={classify_source(m.source)} source={m.source}"
+            )
+    if not usable:
+        click.echo("data: NONE — run `qts data bootstrap` (synthetic fixture) or ingest real data")
     click.echo("health: OK (paper)")
 
 
@@ -416,7 +561,7 @@ def audit_ship(jsonl: str, shipper: str, bucket: str | None, prefix: str) -> Non
         if not bucket:
             click.echo("s3 shipper requires --bucket", err=True)
             raise SystemExit(2)
-        shipper_obj = S3Shipper(bucket=bucket, prefix=prefix)
+        shipper_obj: S3Shipper | LocalShipper = S3Shipper(bucket=bucket, prefix=prefix)
     else:
         shipper_obj = LocalShipper()
     uri = ship_audit_logs(path, shipper_obj)
@@ -454,16 +599,17 @@ def edge() -> None:
 @click.option("--data-version", default=None)
 @click.option("--strict", is_flag=True, help="fail-closed on weak edge")
 def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None:
-    from qts.edge.orchestrator import run_full_edge_validation
-    from pathlib import Path
     import json
+    from pathlib import Path
+
+    from qts.edge.orchestrator import run_full_edge_validation
+
     click.echo(f"running edge validation for {strategy} version {data_version or 'latest'} (capital preservation)")
     evidence = run_full_edge_validation(data_version=data_version, strategy_id=strategy)
     # Write machine-readable
     Path("data/evidence").mkdir(parents=True, exist_ok=True)
-    Path("data/evidence/edge_validation.json").write_text(json.dumps(evidence, indent=2, default=str))
+    Path("data/evidence/edge_validation.json").write_text(json.dumps(evidence, indent=2, default=str), encoding="utf-8")
     # Generate docs
-    from datetime import datetime, UTC
     # 1 edge_validation_report
     ev = evidence
     ds = ev["dataset"]
@@ -475,8 +621,8 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
 **Code version:** {ev["code_version"]}
 
 ## 1. Dataset integrity
-- Manifest: {ds["manifest"]["version"]} {ds["manifest"]["instrument"]} {ds["manifest"]["timeframe"]} rows {ds["manifest"]["rows"]} checksum {ds["manifest"]["checksum"]} timezone {ds["manifest"].get("timezone","UTC")} preprocessing {ds["manifest"].get("preprocessing_version","1.0")} source {ds["manifest"].get("source","")}
-- Quality passed: {ds["quality_passed"]} checks: {", ".join(c["name"]+":" + ("PASS" if c["passed"] else "FAIL") for c in ds["quality_checks"])}
+- Manifest: {ds["manifest"]["version"]} {ds["manifest"]["instrument"]} {ds["manifest"]["timeframe"]} rows {ds["manifest"]["rows"]} checksum {ds["manifest"]["checksum"]} timezone {ds["manifest"].get("timezone", "UTC")} preprocessing {ds["manifest"].get("preprocessing_version", "1.0")} source {ds["manifest"].get("source", "")}
+- Quality passed: {ds["quality_passed"]} checks: {", ".join(c["name"] + ":" + ("PASS" if c["passed"] else "FAIL") for c in ds["quality_checks"])}
 - Missing stats: {ds["missing_stats"]}
 - Locked partition: discovery {ds["locked_partition"]["discovery"]} validation {ds["locked_partition"]["validation"]} locked {ds["locked_partition"]["locked"]} frozen {ds["locked_partition"]["is_frozen"]} access_log {len(ds["locked_partition"]["access_log"])} attempts
 
@@ -492,7 +638,7 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
 - Details: {es["details"].get("walk_forward", "")}
 
 ## 5. CPCV/PBO
-- PBO: {es["pbo"]:.2f} passed: {es["checks"].get("cpcv", False)} details: {es["details"].get("cpcv","")}
+- PBO: {es["pbo"]:.2f} passed: {es["checks"].get("cpcv", False)} details: {es["details"].get("cpcv", "")}
 
 ## 6. PSR/DSR
 - PSR: {es["psr"]:.2f} DSR: {es["dsr"]:.2f} trials {ev["trial_ledger"]["trial_count"]} passed: {es["checks"].get("dsr", False)}
@@ -504,7 +650,7 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
 - Stress: {ev["cost_robustness"]["stress"]}
 
 ## 9. Cost/slippage tolerance
-- Break-even spread: {es["cost_be"]:.1f}bps passed: {es["checks"].get("cost", False)} details: {es["details"].get("cost","")}
+- Break-even spread: {es["cost_be"]:.1f}bps passed: {es["checks"].get("cost", False)} details: {es["details"].get("cost", "")}
 
 ## 10. Regime results
 - Regimes: {ev["regime"]}
@@ -539,7 +685,7 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
 
 """
     Path("docs").mkdir(parents=True, exist_ok=True)
-    Path("docs/edge_validation_report.md").write_text(report_md)
+    Path("docs/edge_validation_report.md").write_text(report_md, encoding="utf-8")
     # 2 capital_preservation_policy
     cap_md = f"""# Capital Preservation Policy
 **Generated:** {ev["generated_at"]}
@@ -565,7 +711,7 @@ Current check: {ev["capital_policy"]}
 Emergency controls (Phase 17): kill_switch, cancel_all, suspend_new_orders, max_order_rate, max_order_size, stale_data_stop, abnormal_spread_stop, latency_stop, account_state_stop, reconciliation_stop — independently tested.
 
 """
-    Path("docs/capital_preservation_policy.md").write_text(cap_md)
+    Path("docs/capital_preservation_policy.md").write_text(cap_md, encoding="utf-8")
     # 3 strategy_promotion_policy
     promo_md = f"""# Strategy Promotion Policy — One-Way
 **State:** {ev["promotion"]["state"]}
@@ -579,7 +725,7 @@ Immutable lifecycle: RESEARCH → CANDIDATE → VALIDATED → FORWARD_OBSERVATIO
 - Current: {ev["promotion"]["state"]}
 
 """
-    Path("docs/strategy_promotion_policy.md").write_text(promo_md)
+    Path("docs/strategy_promotion_policy.md").write_text(promo_md, encoding="utf-8")
     # 4 locked_test_protocol
     locked_md = f"""# Locked Test Protocol
 **Data version:** {ds["manifest"]["version"]}
@@ -592,7 +738,7 @@ Immutable lifecycle: RESEARCH → CANDIDATE → VALIDATED → FORWARD_OBSERVATIO
 - Record every attempt to access/modify locked-test artifacts
 
 """
-    Path("docs/locked_test_protocol.md").write_text(locked_md)
+    Path("docs/locked_test_protocol.md").write_text(locked_md, encoding="utf-8")
     # 5 experiment_ledger
     exp_store = __import__("qts.research.experiment", fromlist=["ExperimentStore"]).ExperimentStore()
     trials = exp_store.count_trials()
@@ -607,15 +753,16 @@ Every experiment recorded: strategy identity, parameter set, feature set, timefr
 
 Current ledger count: {trials}
 """
-    Path("docs/experiment_ledger.md").write_text(ledger_md)
-    click.echo(f"edge validation evidence written to data/evidence/edge_validation.json")
-    click.echo(f"docs: edge_validation_report.md, capital_preservation_policy.md, strategy_promotion_policy.md, locked_test_protocol.md, experiment_ledger.md")
+    Path("docs/experiment_ledger.md").write_text(ledger_md, encoding="utf-8")
+    click.echo("edge validation evidence written to data/evidence/edge_validation.json")
+    click.echo(
+        "docs: edge_validation_report.md, capital_preservation_policy.md, strategy_promotion_policy.md, locked_test_protocol.md, experiment_ledger.md"
+    )
     if strict and not (es["passed"] and ev["economic_edge"]["passed"]):
         click.echo("BLOCK — edge does not survive costs/regime/perturbation/multiple-testing → KEEP NO_TRADE", err=True)
         # do not exit 2 here, just report BLOCK; live gate still blocks
     else:
         click.echo(f"edge validation completed: passed={es['passed']} economic={ev['economic_edge']['passed']}")
-
 
 
 @main.command("run")
@@ -648,6 +795,7 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         # LIVE GATE — check all required capabilities and evidence
         try:
             from qts.lifecycle.live_gate import live_readiness_report
+
             rpt = live_readiness_report()
             if not rpt["ready"]:
                 click.echo("live blocked: production execution boundary not ready", err=True)
@@ -663,6 +811,7 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         # For now, live remains blocked until shadow/paper evidence present and MT5 terminal available
         # This is the final structural block — remove only when all evidence verified
         from qts.lifecycle.live_gate import is_live_ready
+
         if not is_live_ready():
             click.echo("live mode — not ready (requires MT5 terminal + evidence) — BLOCKED", err=True)
             sys.exit(2)
@@ -671,31 +820,57 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
     if mode == "dry_run":
         # Phase 9: Safe dry-run — connects to MT5, validates prerequisites, builds request, no submission
         click.echo(f"running mode={mode} strategy={strategy} version={data_version} (dry-run, no submission)")
-        from pathlib import Path as _Path
+        from datetime import datetime
         from decimal import Decimal as _Decimal
-        from datetime import datetime, timezone
+        from pathlib import Path as _Path
         from unittest.mock import MagicMock as _MagicMock
-        from qts.adapters.mt5_adapter import MT5Adapter as _MT5Adapter
+
         from qts.adapters.market_data import MarketDataProvider as _MDP
-        from qts.domain.value_objects import Instrument as _Instrument, OrderIntent as _Intent, Side as _Side
+        from qts.adapters.mt5_adapter import MT5Adapter as _MT5Adapter
+        from qts.domain.events import DomainEvent as _DE
+        from qts.domain.events import EventType as _ET
+        from qts.domain.value_objects import Instrument as _Instrument
+        from qts.domain.value_objects import OrderIntent as _Intent
+        from qts.domain.value_objects import Side as _Side
         from qts.observability.audit import SqliteAuditLog as _Audit
-        from qts.domain.events import DomainEvent as _DE, EventType as _ET
+
         # Attempt real MT5 connection, fallback to mock for CI/sandbox
         mt5_mock = _MagicMock()
         _info = _MagicMock()
-        _info.contract_size=100; _info.volume_min=0.01; _info.volume_max=100; _info.volume_step=0.01
-        _info.digits=2; _info.point=0.01; _info.trade_tick_size=0.01; _info.trade_mode=4; _info.trade_allowed=True; _info.filling_mode=1
-        _info.execution_mode=0; _info.trade_stops_level=10; _info.trade_freeze_level=0
-        mt5_mock.symbol_info.return_value=_info; mt5_mock.symbol_select.return_value=True
-        mt5_mock.last_error.return_value=(1, "ok")
-        _tick = _MagicMock(); _tick.bid=1999.5; _tick.ask=2000.5; _tick.time=datetime.now(timezone.utc).timestamp()
-        mt5_mock.symbol_info_tick.return_value=_tick
-        mt5_mock.terminal_info.return_value=_MagicMock(connected=True, trade_allowed=True)
-        mt5_mock.account_info.return_value=_MagicMock(balance=10000, equity=10000, margin=100, margin_free=9900, leverage=100, currency="USD", login=12345)
-        _sym1=_MagicMock(); _sym1.name="XAUUSD"; _sym2=_MagicMock(); _sym2.name="EURUSD"; mt5_mock.symbols_get.return_value=[_sym1, _sym2]
+        _info.contract_size = 100
+        _info.volume_min = 0.01
+        _info.volume_max = 100
+        _info.volume_step = 0.01
+        _info.digits = 2
+        _info.point = 0.01
+        _info.trade_tick_size = 0.01
+        _info.trade_mode = 4
+        _info.trade_allowed = True
+        _info.filling_mode = 1
+        _info.execution_mode = 0
+        _info.trade_stops_level = 10
+        _info.trade_freeze_level = 0
+        mt5_mock.symbol_info.return_value = _info
+        mt5_mock.symbol_select.return_value = True
+        mt5_mock.last_error.return_value = (1, "ok")
+        _tick = _MagicMock()
+        _tick.bid = 1999.5
+        _tick.ask = 2000.5
+        _tick.time = datetime.now(UTC).timestamp()
+        mt5_mock.symbol_info_tick.return_value = _tick
+        mt5_mock.terminal_info.return_value = _MagicMock(connected=True, trade_allowed=True)
+        mt5_mock.account_info.return_value = _MagicMock(
+            balance=10000, equity=10000, margin=100, margin_free=9900, leverage=100, currency="USD", login=12345
+        )
+        _sym1 = _MagicMock()
+        _sym1.name = "XAUUSD"
+        _sym2 = _MagicMock()
+        _sym2.name = "EURUSD"
+        mt5_mock.symbols_get.return_value = [_sym1, _sym2]
         # Try real MT5 if available
         try:
             import MetaTrader5 as _real_mt5
+
             # Use real if initialize succeeds, else mock
             if _real_mt5.initialize():
                 mt5_module = _real_mt5
@@ -715,6 +890,10 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         # Phase 3: market data
         md = _MDP(adapter)
         instr = _Instrument(symbol="XAUUSD", venue="MT5")
+        tick = None
+        exec_price_buy = None
+        exec_price_sell = None
+        ref_price = None
         try:
             tick = md.get_tick(instr)
             md_ok = True
@@ -723,35 +902,78 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             exec_price_sell = md.get_executable_price(instr, "SELL")
             ref_price = md.get_reference_price(instr)
         except Exception as e:
-            tick = None; md_ok = False; md_err = str(e); exec_price_buy = exec_price_sell = ref_price = None
+            tick = None
+            md_ok = False
+            md_err = str(e)
+            exec_price_buy = exec_price_sell = ref_price = None
         # Phase 6: account
         try:
             acct = adapter.account()
-            acct_ok = True; acct_err = None
+            acct_ok = True
+            acct_err = None
         except Exception as e:
-            acct = None; acct_ok = False; acct_err = str(e)
+            acct = None
+            acct_ok = False
+            acct_err = str(e)
         # Phase 2 & 4: risk + normalization + request build (no submit)
-        from qts.risk.engine import RiskEngine as _RE, RiskLimits as _RL, RiskContext as _RC
         from qts.domain.value_objects import Account as _Acct
+        from qts.risk.engine import RiskContext as _RC
+        from qts.risk.engine import RiskEngine as _RE
+        from qts.risk.engine import RiskLimits as _RL
+
         risk = _RE(_RL())
         # Use authoritative account if ok else fallback
-        acct_for_risk = acct if acct_ok else _Acct(balance=_Decimal("10000"), equity=_Decimal("10000"), currency="USD", updated_at=datetime.now(timezone.utc))
-        # Provide market price for risk
-        ref_prices = {"XAUUSD": exec_price_buy if exec_price_buy else _Decimal("2000")}
-        ctx = _RC(account=acct_for_risk, positions={}, open_orders_count=0, daily_pnl=_Decimal("0"), drawdown=_Decimal("0"), instrument_suspended=set(), reference_prices=ref_prices)
-        intent = _Intent(instrument=instr, side=_Side.BUY, quantity=spec.volume_min, client_order_id=f"dryrun:{strategy}:{data_version}:001", strategy_id=strategy)
+        acct_for_risk = (
+            acct
+            if (acct_ok and acct is not None)
+            else _Acct(
+                balance=_Decimal("10000"), equity=_Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)
+            )
+        )
+        # Reference price for risk comes from the market data adapter only — NEVER a
+        # hardcoded fallback. If unavailable, ref_prices stays empty and the risk
+        # engine vetoes fail-closed ("no market price"), which the evidence records.
+        ref_prices = {"XAUUSD": exec_price_buy} if exec_price_buy is not None else {}
+        ctx = _RC(
+            account=acct_for_risk,
+            positions={},
+            open_orders_count=0,
+            daily_pnl=_Decimal("0"),
+            drawdown=_Decimal("0"),
+            instrument_suspended=set(),
+            reference_prices=ref_prices,
+        )
+        intent = _Intent(
+            instrument=instr,
+            side=_Side.BUY,
+            quantity=spec.volume_min,
+            client_order_id=f"dryrun:{strategy}:{data_version}:001",
+            strategy_id=strategy,
+        )
         norm_qty = adapter.validate_and_normalize_quantity(intent.quantity, spec)
         decision = risk.pre_trade(intent, ctx)
         try:
             request = adapter.build_broker_request(intent)
-            req_ok = True; req_err = None
+            req_ok = True
+            req_err = None
         except Exception as e:
-            request = None; req_ok = False; req_err = str(e)
+            request = None
+            req_ok = False
+            req_err = str(e)
         # Audit dry-run
         audit = _Audit()
-        audit.emit(_DE(event_type=_ET.NO_TRADE, payload={"reason": "DRY_RUN", "detail": f"health {health} prereq {prereq} spec {spec.symbol} tick {tick} acct {acct_ok} risk {decision.allowed} req {req_ok}"}))
+        audit.emit(
+            _DE(
+                event_type=_ET.NO_TRADE,
+                payload={
+                    "reason": "DRY_RUN",
+                    "detail": f"health {health} prereq {prereq} spec {spec.symbol} tick {tick} acct {acct_ok} risk {decision.allowed} req {req_ok}",
+                },
+            )
+        )
         # Evidence
         import json as _json
+
         evidence = {
             "mode": "dry_run",
             "strategy": strategy,
@@ -760,11 +982,44 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "health": health,
             "prereq_ok": prereq["ok"],
             "prereq_errors": prereq["errors"],
-            "symbol_spec": {"symbol": spec.symbol, "contract_size": str(spec.contract_size), "volume_min": str(spec.volume_min), "volume_max": str(spec.volume_max), "volume_step": str(spec.volume_step), "digits": spec.digits, "point": str(spec.point), "stops_level": spec.stops_level, "freeze_level": spec.freeze_level, "filling_mode": spec.filling_mode, "execution_mode": spec.execution_mode},
+            "symbol_spec": {
+                "symbol": spec.symbol,
+                "contract_size": str(spec.contract_size),
+                "volume_min": str(spec.volume_min),
+                "volume_max": str(spec.volume_max),
+                "volume_step": str(spec.volume_step),
+                "digits": spec.digits,
+                "point": str(spec.point),
+                "stops_level": spec.stops_level,
+                "freeze_level": spec.freeze_level,
+                "filling_mode": spec.filling_mode,
+                "execution_mode": spec.execution_mode,
+            },
             "discovered_symbols": disc[:10],
-            "market_data": {"ok": md_ok, "error": md_err, "bid": str(tick.bid) if tick else None, "ask": str(tick.ask) if tick else None, "buy_price": str(exec_price_buy) if exec_price_buy else None, "sell_price": str(exec_price_sell) if exec_price_sell else None, "mid": str(ref_price) if ref_price else None},
-            "account": {"ok": acct_ok, "error": acct_err, "balance": str(acct.balance) if acct else None, "equity": str(acct.equity) if acct else None, "leverage": str(acct.leverage) if acct else None} if acct else {"ok": False},
-            "risk": {"allowed": decision.allowed, "veto": str(decision.veto_reason) if decision.veto_reason else None, "price": str(decision.price) if decision.price else None, "price_source": decision.price_source},
+            "market_data": {
+                "ok": md_ok,
+                "error": md_err,
+                "bid": str(tick.bid) if tick else None,
+                "ask": str(tick.ask) if tick else None,
+                "buy_price": str(exec_price_buy) if exec_price_buy else None,
+                "sell_price": str(exec_price_sell) if exec_price_sell else None,
+                "mid": str(ref_price) if ref_price else None,
+            },
+            "account": {
+                "ok": acct_ok,
+                "error": acct_err,
+                "balance": str(acct.balance) if acct else None,
+                "equity": str(acct.equity) if acct else None,
+                "leverage": str(acct.leverage) if acct else None,
+            }
+            if acct
+            else {"ok": False},
+            "risk": {
+                "allowed": decision.allowed,
+                "veto": str(decision.veto_reason) if decision.veto_reason else None,
+                "price": str(decision.price) if decision.price else None,
+                "price_source": decision.price_source,
+            },
             "normalized_quantity": str(norm_qty),
             "broker_request": request,
             "request_ok": req_ok,
@@ -772,18 +1027,21 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "audit_emitted": True,
         }
         _Path("data/evidence").mkdir(parents=True, exist_ok=True)
-        _Path("data/evidence/dry_run.json").write_text(_json.dumps(evidence, indent=2, default=str))
-        click.echo(f"dry-run result: prereq {prereq['ok']} md {md_ok} acct {acct_ok} risk {decision.allowed} req {req_ok} (no order submitted, evidence written)")
+        _Path("data/evidence/dry_run.json").write_text(_json.dumps(evidence, indent=2, default=str), encoding="utf-8")
+        click.echo(
+            f"dry-run result: prereq {prereq['ok']} md {md_ok} acct {acct_ok} risk {decision.allowed} req {req_ok} (no order submitted, evidence written)"
+        )
         if not prereq["ok"] or not md_ok or not acct_ok:
             click.echo(f"dry-run warnings: prereq {prereq['errors']} md {md_err} acct {acct_err}", err=True)
         return
     if mode == "micro":
         # Phase 9: Micro-execution test — smallest quantity, full lifecycle, fail-closed gates
         import os as _os
-        from pathlib import Path as _Path2
+        from datetime import datetime as _dt
         from decimal import Decimal as _Decimal2
-        from datetime import datetime as _dt, timezone as _tz
+        from pathlib import Path as _Path2
         from unittest.mock import MagicMock as _MM
+
         # Gate: micro requires explicit enable
         if _os.getenv("QTS_MICRO_ENABLED") != "true":
             click.echo("micro blocked (fail closed): requires QTS_MICRO_ENABLED=true", err=True)
@@ -801,6 +1059,7 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         # Check that no unresolved suspension
         try:
             from qts.lifecycle.live_gate import live_readiness_report as _lrr
+
             _rpt = _lrr()
             # For micro, we require most gates except env already checked, but still warn if many blocked
             # Do not block on env already passed, but block if MT5 connectivity or symbol spec fails
@@ -812,48 +1071,87 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             sys.exit(2)
         click.echo(f"running mode={mode} strategy={strategy} version={data_version} (micro, minimal quantity)")
         # Setup broker with mock that simulates micro fill (or real if available)
-        from qts.adapters.mt5_adapter import MT5Adapter as _MT5A
         from qts.adapters.market_data import MarketDataProvider as _MDP2
-        from qts.execution.engine import ExecutionEngine as _EE, OrderManager as _OM
+        from qts.adapters.mt5_adapter import MT5Adapter as _MT5A
+        from qts.domain.value_objects import Instrument as _Instr
+        from qts.domain.value_objects import OrderIntent as _OI2
+        from qts.domain.value_objects import OrderType as _OT2
+        from qts.domain.value_objects import Side as _Side2
+        from qts.execution.engine import ExecutionEngine as _EE
+        from qts.execution.engine import OrderManager as _OM
         from qts.execution.idempotency import IdempotencyStore as _IS
-        from qts.execution.matching import MatchingEngine as _ME, MatchingConfig as _MC
-        from qts.portfolio.portfolio import Portfolio as _PF
-        from qts.risk.engine import RiskEngine as _RE2, RiskLimits as _RL2
+        from qts.execution.matching import MatchingConfig as _MC
+        from qts.execution.matching import MatchingEngine as _ME
         from qts.observability.audit import SqliteAuditLog as _AL2
-        from qts.domain.value_objects import Instrument as _Instr, OrderIntent as _OI2, Side as _Side2, OrderType as _OT2
+        from qts.portfolio.portfolio import Portfolio as _PF
+        from qts.risk.engine import RiskEngine as _RE2
+        from qts.risk.engine import RiskLimits as _RL2
+
         # Mock MT5 that simulates successful micro execution
         _mock = _MM()
         _inf = _MM()
-        _inf.contract_size=100; _inf.volume_min=0.01; _inf.volume_max=100; _inf.volume_step=0.01
-        _inf.digits=2; _inf.point=0.01; _inf.trade_tick_size=0.01; _inf.trade_mode=4; _inf.trade_allowed=True; _inf.filling_mode=1
-        _inf.execution_mode=0; _inf.trade_stops_level=10; _inf.trade_freeze_level=0
-        _mock.symbol_info.return_value=_inf; _mock.symbol_select.return_value=True; _mock.last_error.return_value=(1,"ok")
-        _t = _MM(); _t.bid=2000.0; _t.ask=2000.5; _t.time=_dt.now(_tz.utc).timestamp()
-        _mock.symbol_info_tick.return_value=_t
-        _mock.terminal_info.return_value=_MM(connected=True, trade_allowed=True)
-        _mock.account_info.return_value=_MM(balance=10000, equity=10000, margin=0, margin_free=10000, leverage=100, currency="USD", login=12345)
-        _sym=_MM(); _sym.name="XAUUSD"; _mock.symbols_get.return_value=[_sym]
+        _inf.contract_size = 100
+        _inf.volume_min = 0.01
+        _inf.volume_max = 100
+        _inf.volume_step = 0.01
+        _inf.digits = 2
+        _inf.point = 0.01
+        _inf.trade_tick_size = 0.01
+        _inf.trade_mode = 4
+        _inf.trade_allowed = True
+        _inf.filling_mode = 1
+        _inf.execution_mode = 0
+        _inf.trade_stops_level = 10
+        _inf.trade_freeze_level = 0
+        _mock.symbol_info.return_value = _inf
+        _mock.symbol_select.return_value = True
+        _mock.last_error.return_value = (1, "ok")
+        _t = _MM()
+        _t.bid = 2000.0
+        _t.ask = 2000.5
+        _t.time = _dt.now(UTC).timestamp()
+        _mock.symbol_info_tick.return_value = _t
+        _mock.terminal_info.return_value = _MM(connected=True, trade_allowed=True)
+        _mock.account_info.return_value = _MM(
+            balance=10000, equity=10000, margin=0, margin_free=10000, leverage=100, currency="USD", login=12345
+        )
+        _sym = _MM()
+        _sym.name = "XAUUSD"
+        _mock.symbols_get.return_value = [_sym]
         # Mock order_send success
-        _res = _MM(); _res.retcode=10009; _res.order=123456; _res.deal=654321; _res.comment=""
-        _mock.order_send.return_value=_res
-        _mock.positions_get.return_value=[]
-        _mock.orders_get.return_value=[]
-        _mock.history_deals_get.return_value=[]
+        _res = _MM()
+        _res.retcode = 10009
+        _res.order = 123456
+        _res.deal = 654321
+        _res.comment = ""
+        _mock.order_send.return_value = _res
+        _mock.positions_get.return_value = []
+        _mock.orders_get.return_value = []
+        _mock.history_deals_get.return_value = []
         # Use mock unless real terminal available and user explicitly wants real — for now mock is safe for CI
         broker = _MT5A(mt5_module=_mock, config={"dry_run": False})
         # Also try real if env var QTS_USE_REAL_MT5=true
         if _os.getenv("QTS_USE_REAL_MT5") == "true":
-            try:
+            with contextlib.suppress(Exception):
                 import MetaTrader5 as _real
+
                 if _real.initialize():
-                    broker = _MT5A(mt5_module=_real, config={"login": _os.getenv("MT5_LOGIN"), "password": _os.getenv("MT5_PASSWORD"), "server": _os.getenv("MT5_SERVER")})
-            except Exception:
-                pass
+                    broker = _MT5A(
+                        mt5_module=_real,
+                        config={
+                            "login": _os.getenv("MT5_LOGIN"),
+                            "password": _os.getenv("MT5_PASSWORD"),
+                            "server": _os.getenv("MT5_SERVER"),
+                        },
+                    )
         md2 = _MDP2(broker)
         audit2 = _AL2()
         # Use temp DB for micro to isolate, but also ensure durable for restart test
         import tempfile as _tf
-        _tmp = _Path2(_tf.mktemp(suffix=".db"))
+
+        _fd, _tmpname = _tf.mkstemp(suffix=".db")  # secure: mktemp is racy
+        _os.close(_fd)
+        _tmp = _Path2(_tmpname)
         om2 = _OM(audit=audit2, idempotency=_IS(db_path=_tmp))
         pf2 = _PF(initial_balance=_Decimal2("10000"))
         risk2 = _RE2(_RL2(), db_path=_tmp)
@@ -862,39 +1160,56 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         # Minimal quantity = spec volume_min
         spec2 = broker.get_symbol_spec("XAUUSD")
         qty2 = spec2.volume_min
-        intent2 = _OI2(instrument=instr2, side=_Side2.BUY, quantity=qty2, client_order_id=f"micro:{strategy}:{data_version}:001", strategy_id=strategy, order_type=_OT2.MARKET)
+        intent2 = _OI2(
+            instrument=instr2,
+            side=_Side2.BUY,
+            quantity=qty2,
+            client_order_id=f"micro:{strategy}:{data_version}:001",
+            strategy_id=strategy,
+            order_type=_OT2.MARKET,
+        )
         # Phase 1-3-6 checks already, now risk + normalization + submit
         order2, fills2 = eng2.submit_intent(intent2)
         # For MT5 mock, submit should succeed to ACCEPTED, then poll for fills
         # Simulate fill via poll
         # Simulate broker fill for micro — create a deal that matches comment and will be found by poll
         # For mock, history_deals_get should return a deal with matching comment
-        try:
+        with contextlib.suppress(Exception):
             _deal = _MM()
             _deal.symbol = "XAUUSD"
             _deal.volume = float(qty2)
             _deal.price = 2000.5
             _deal.type = 0  # BUY
-            _deal.time = _dt.now(_tz.utc).timestamp()
+            _deal.time = _dt.now(UTC).timestamp()
             # comment must match stored comment map
             _comment = broker._load_comment_map(intent2.client_order_id) or intent2.client_order_id[:31]
             _deal.comment = _comment
             _mock.history_deals_get.return_value = [_deal]
-        except Exception:
-            pass
         fills_poll = eng2.poll_live_fills()
         # If poll still empty (due to mock filtering), manually apply a fill to verify lifecycle
         if not fills_poll and order2 and order2.state.value == "ACCEPTED":
-            from qts.domain.value_objects import Fill as _Fill, uuid7 as _uuid7
-            _f = _Fill(fill_id=_uuid7(), order_id=order2.order_id, client_order_id=order2.client_order_id, instrument=instr2, side=_Side2.BUY, quantity=qty2, price=_Decimal2("2000.5"), event_time=_dt.now(_tz.utc))
+            from qts.domain.value_objects import Fill as _Fill
+            from qts.domain.value_objects import uuid7 as _uuid7
+
+            _f = _Fill(
+                fill_id=_uuid7(),
+                order_id=order2.order_id,
+                client_order_id=order2.client_order_id,
+                instrument=instr2,
+                side=_Side2.BUY,
+                quantity=qty2,
+                price=_Decimal2("2000.5"),
+                event_time=_dt.now(UTC),
+            )
             pf2.apply_fill(_f)
             from qts.domain.value_objects import OrderState as _OS
-            try:
-                om2.update_state(intent2.client_order_id, _OS.FILLED, filled_quantity=qty2, avg_fill_price=_Decimal2("2000.5"))
-            except Exception:
-                pass
+
+            with contextlib.suppress(Exception):
+                om2.update_state(
+                    intent2.client_order_id, _OS.FILLED, filled_quantity=qty2, avg_fill_price=_Decimal2("2000.5")
+                )
             # Make broker positions reflect the fill for reconciliation
-            try:
+            with contextlib.suppress(Exception):
                 _pos = _MM()
                 _pos.symbol = "XAUUSD"
                 _pos.volume = float(qty2)
@@ -905,12 +1220,10 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
                 _mock.positions_get.return_value = [_pos]
                 # Also need orders_get to return pending? For micro, order should be filled, so orders_get empty is ok
                 _mock.orders_get.return_value = []
-            except Exception:
-                pass
             fills_poll = [_f]
         # Ensure broker positions match local after fill for clean reconcile (if we already had poll fill)
         elif fills_poll:
-            try:
+            with contextlib.suppress(Exception):
                 # If we had a poll fill, local position exists, make broker match it
                 _pos2 = _MM()
                 _pos2.symbol = "XAUUSD"
@@ -920,30 +1233,40 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
                 _pos2.profit = 0
                 _pos2.type = 0
                 _mock.positions_get.return_value = [_pos2]
-            except Exception:
-                pass
         # Reconcile
         report2 = eng2.reconcile()
         # Evidence
         import json as _js
+
         # Refresh order after poll to capture FILLED state
-        _fresh_order = om2.get(intent2.client_order_id) if 'intent2' in locals() else order2
+        _fresh_order = om2.get(intent2.client_order_id) if "intent2" in locals() else order2
         ev2 = {
             "mode": "micro",
             "strategy": strategy,
             "data_version": data_version,
-            "symbol_spec": {"volume_min": str(spec2.volume_min), "volume_max": str(spec2.volume_max), "volume_step": str(spec2.volume_step)},
+            "symbol_spec": {
+                "volume_min": str(spec2.volume_min),
+                "volume_max": str(spec2.volume_max),
+                "volume_step": str(spec2.volume_step),
+            },
             "quantity": str(qty2),
-            "order": {"client_order_id": _fresh_order.client_order_id if _fresh_order else None, "state": _fresh_order.state.value if _fresh_order else None, "exchange_id": _fresh_order.exchange_order_id if _fresh_order else None},
-            "fills": [{"price": str(f.price), "qty": str(f.quantity)} for f in fills2] + [{"price": str(f.price), "qty": str(f.quantity)} for f in fills_poll if hasattr(f, 'price')],
+            "order": {
+                "client_order_id": _fresh_order.client_order_id if _fresh_order else None,
+                "state": _fresh_order.state.value if _fresh_order else None,
+                "exchange_id": _fresh_order.exchange_order_id if _fresh_order else None,
+            },
+            "fills": [{"price": str(f.price), "qty": str(f.quantity)} for f in fills2]
+            + [{"price": str(f.price), "qty": str(f.quantity)} for f in fills_poll if hasattr(f, "price")],
             "poll_fills": len(fills_poll),
             "reconcile": {"drift": report2.drift, "details": report2.details, "suspended": eng2.is_suspended},
             "portfolio": {"equity": str(pf2.equity()), "positions": len(pf2.positions)},
             "audit_count": len(audit2.query(limit=100)) if hasattr(audit2, "query") else 0,
         }
         _Path2("data/evidence").mkdir(parents=True, exist_ok=True)
-        _Path2("data/evidence/micro.json").write_text(_js.dumps(ev2, indent=2))
-        click.echo(f"micro result: order {ev2['order']} fills {len(fills2)} poll {len(fills_poll)} reconcile {report2.drift} suspended {eng2.is_suspended} (evidence written)")
+        _Path2("data/evidence/micro.json").write_text(_js.dumps(ev2, indent=2), encoding="utf-8")
+        click.echo(
+            f"micro result: order {ev2['order']} fills {len(fills2)} poll {len(fills_poll)} reconcile {report2.drift} suspended {eng2.is_suspended} (evidence written)"
+        )
         if report2.requires_suspend:
             click.echo(f"micro reconcile suspended: {report2.details}", err=True)
         return
@@ -955,22 +1278,26 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         manifest = store.manifest(data_version)
         timeframe = manifest.timeframe if manifest else "1H"
         # Use realistic paper broker with same validation as MT5
+        from decimal import Decimal
+
         from qts.adapters.paper_adapter import RealisticPaperBroker
-        from qts.execution.matching import MatchingConfig, MatchingEngine
         from qts.execution.engine import ExecutionEngine, OrderManager
         from qts.execution.idempotency import IdempotencyStore
-        from qts.portfolio.portfolio import Portfolio
-        from qts.risk.engine import RiskEngine, RiskLimits
+        from qts.execution.matching import MatchingConfig, MatchingEngine
         from qts.observability.audit import SqliteAuditLog
+        from qts.portfolio.portfolio import Portfolio
         from qts.research.strategy import SmaBreakoutStrategy, signal_to_intent
-        from decimal import Decimal
+        from qts.risk.engine import RiskEngine, RiskLimits
+
         # Clean persistent state for deterministic evidence (kill/idempotency would block re-run)
-        for _p in [Path("data/sqlite/paper_cli.db"), Path("data/sqlite/paper_cli_idemp.db"), Path("data/sqlite/paper_cli_risk.db")]:
-            try:
+        for _p in [
+            Path("data/sqlite/paper_cli.db"),
+            Path("data/sqlite/paper_cli_idemp.db"),
+            Path("data/sqlite/paper_cli_risk.db"),
+        ]:
+            with contextlib.suppress(Exception):
                 if _p.exists():
                     _p.unlink()
-            except Exception:
-                pass
         # Load bars and run paper loop (similar to backtest but with realistic broker)
         bars = store.read_bars(instr, timeframe, version=data_version)
         bars = sorted(bars, key=lambda b: b.open_time)
@@ -980,17 +1307,19 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         audit = SqliteAuditLog()
         idemp = IdempotencyStore(db_path=Path("data/sqlite/paper_cli_idemp.db"))
         om = OrderManager(audit=audit, idempotency=idemp)
-        broker = RealisticPaperBroker(matching=matching, db_path=Path("data/sqlite/paper_cli.db"))
+        paper_broker = RealisticPaperBroker(matching=matching, db_path=Path("data/sqlite/paper_cli.db"))
         portfolio = Portfolio(initial_balance=Decimal("10000"))
         risk = RiskEngine(RiskLimits(), db_path=Path("data/sqlite/paper_cli_risk.db"))
-        engine = ExecutionEngine(om, risk, broker, matching, portfolio, audit=audit)
+        paper_engine = ExecutionEngine(om, risk, paper_broker, matching, portfolio, audit=audit)
         # Run paper loop: next-bar execution, same as backtest but via ExecutionEngine
-        pending = []
+        pending: list = []
         fills_out = []
-        for idx, bar in enumerate(bars):
+        for bar in bars:
             if pending:
-                from qts.domain.value_objects import Bar as BarVO
                 from datetime import timedelta
+
+                from qts.domain.value_objects import Bar as BarVO
+
                 exec_bar = BarVO(
                     instrument=bar.instrument,
                     open=bar.open,
@@ -1004,18 +1333,25 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
                     source="paper_execution_open",
                 )
                 for intent in pending:
-                    order, fills = engine.submit_intent(intent, bar=exec_bar)
+                    order, fills = paper_engine.submit_intent(intent, bar=exec_bar)
                     for f in fills:
-                        fills_out.append({"price": str(f.price), "qty": str(f.quantity), "time": f.event_time.isoformat()})
+                        fills_out.append(
+                            {"price": str(f.price), "qty": str(f.quantity), "time": f.event_time.isoformat()}
+                        )
                 pending = []
-            engine.mark_price(bar.instrument.symbol, bar.close)
+            paper_engine.mark_price(bar.instrument.symbol, bar.close)
             signals = strat.on_bar(bar)
             for sig in signals:
                 intent = signal_to_intent(sig, quantity=Decimal("0.1"))
-                intent = intent.model_copy(update={"client_order_id": f"{strategy}:{bar.close_time.isoformat()}:{len(fills_out)+len(pending)}"})
+                intent = intent.model_copy(
+                    update={
+                        "client_order_id": f"{strategy}:{bar.close_time.isoformat()}:{len(fills_out) + len(pending)}"
+                    }
+                )
                 pending.append(intent)
         # Evidence
         import json
+
         evidence = {
             "mode": "paper",
             "strategy": strategy,
@@ -1026,10 +1362,12 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "fills": fills_out[:10],
         }
         Path("data/evidence").mkdir(parents=True, exist_ok=True)
-        Path("data/evidence/paper_trades.json").write_text(json.dumps(evidence, indent=2))
+        Path("data/evidence/paper_trades.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
         # Also write audit evidence
         Path("logs").mkdir(parents=True, exist_ok=True)
-        click.echo(f"paper result: equity={float(portfolio.equity()):.2f} trades={len(fills_out)} (realistic paper, evidence written)")
+        click.echo(
+            f"paper result: equity={float(portfolio.equity()):.2f} trades={len(fills_out)} (realistic paper, evidence written)"
+        )
         return
     if mode == "shadow":
         # Shadow mode — real market data drives real strategy/risk, no submission
@@ -1038,21 +1376,25 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         instr = Instrument(symbol="XAUUSD", venue="MT5")
         manifest = store.manifest(data_version)
         timeframe = manifest.timeframe if manifest else "1H"
+        from decimal import Decimal
+
         from qts.adapters.shadow_adapter import ShadowBroker
         from qts.execution.engine import ExecutionEngine, OrderManager
         from qts.execution.idempotency import IdempotencyStore
-        from qts.execution.matching import MatchingEngine, MatchingConfig
-        from qts.portfolio.portfolio import Portfolio
-        from qts.risk.engine import RiskEngine, RiskLimits
+        from qts.execution.matching import MatchingConfig, MatchingEngine
         from qts.observability.audit import SqliteAuditLog
+        from qts.portfolio.portfolio import Portfolio
         from qts.research.strategy import SmaBreakoutStrategy, signal_to_intent
-        from decimal import Decimal
-        for _p in [Path("data/sqlite/shadow_cli.db"), Path("data/sqlite/shadow_cli_idemp.db"), Path("data/sqlite/shadow_cli_risk.db")]:
-            try:
+        from qts.risk.engine import RiskEngine, RiskLimits
+
+        for _p in [
+            Path("data/sqlite/shadow_cli.db"),
+            Path("data/sqlite/shadow_cli_idemp.db"),
+            Path("data/sqlite/shadow_cli_risk.db"),
+        ]:
+            with contextlib.suppress(Exception):
                 if _p.exists():
                     _p.unlink()
-            except Exception:
-                pass
         bars = store.read_bars(instr, timeframe, version=data_version)
         bars = sorted(bars, key=lambda b: b.open_time)
         strat = SmaBreakoutStrategy(instr, fast=10, slow=20, strategy_id=strategy)
@@ -1060,16 +1402,18 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         audit = SqliteAuditLog()
         idemp = IdempotencyStore(db_path=Path("data/sqlite/shadow_cli_idemp.db"))
         om = OrderManager(audit=audit, idempotency=idemp)
-        broker = ShadowBroker(db_path=Path("data/sqlite/shadow_cli.db"))
+        shadow_broker = ShadowBroker(db_path=Path("data/sqlite/shadow_cli.db"))
         portfolio = Portfolio(initial_balance=Decimal("10000"))
         risk = RiskEngine(RiskLimits(), db_path=Path("data/sqlite/shadow_cli_risk.db"))
-        engine = ExecutionEngine(om, risk, broker, matching, portfolio, audit=audit)
+        shadow_engine = ExecutionEngine(om, risk, shadow_broker, matching, portfolio, audit=audit)
         pending = []
         shadow_intents = []
-        for idx, bar in enumerate(bars):
+        for bar in bars:
             if pending:
-                from qts.domain.value_objects import Bar as BarVO
                 from datetime import timedelta
+
+                from qts.domain.value_objects import Bar as BarVO
+
                 exec_bar = BarVO(
                     instrument=bar.instrument,
                     open=bar.open,
@@ -1083,49 +1427,61 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
                     source="shadow_execution_open",
                 )
                 for intent in pending:
-                    order, fills = engine.submit_intent(intent, bar=exec_bar)
+                    order, fills = shadow_engine.submit_intent(intent, bar=exec_bar)
                     # In shadow, fills should be 0, order is ACCEPTED shadow
-                    shadow_intents.append({"client_order_id": intent.client_order_id, "price": str(exec_bar.close), "would_be": True})
+                    shadow_intents.append(
+                        {"client_order_id": intent.client_order_id, "price": str(exec_bar.close), "would_be": True}
+                    )
                 pending = []
-            engine.mark_price(bar.instrument.symbol, bar.close)
+            shadow_engine.mark_price(bar.instrument.symbol, bar.close)
             signals = strat.on_bar(bar)
             for sig in signals:
                 intent = signal_to_intent(sig, quantity=Decimal("0.1"))
-                intent = intent.model_copy(update={"client_order_id": f"{strategy}:{bar.close_time.isoformat()}:{len(shadow_intents)+len(pending)}"})
+                intent = intent.model_copy(
+                    update={
+                        "client_order_id": f"{strategy}:{bar.close_time.isoformat()}:{len(shadow_intents) + len(pending)}"
+                    }
+                )
                 pending.append(intent)
         import json
+
         evidence = {
             "mode": "shadow",
             "strategy": strategy,
             "data_version": data_version,
             "bars": len(bars),
             "intents": len(shadow_intents),
-            "would_be_fills": broker.get_would_be_fills()[:10],
+            "would_be_fills": shadow_broker.get_would_be_fills()[:10],
             "intents_sample": shadow_intents[:10],
         }
         Path("data/evidence").mkdir(parents=True, exist_ok=True)
-        Path("data/evidence/shadow_intents.json").write_text(json.dumps(evidence, indent=2))
-        click.echo(f"shadow result: intents={len(shadow_intents)} would_be_fills={len(broker.get_would_be_fills())} (evidence written, no venue orders)")
+        Path("data/evidence/shadow_intents.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
+        click.echo(
+            f"shadow result: intents={len(shadow_intents)} would_be_fills={len(shadow_broker.get_would_be_fills())} (evidence written, no venue orders)"
+        )
         return
     click.echo(f"running mode={mode} strategy={strategy} version={data_version}")
     store = SqliteParquetDataStore()
     instr = Instrument(symbol="XAUUSD", venue="MT5")
     manifest = store.manifest(data_version)
     timeframe = manifest.timeframe if manifest else "1H"
-    engine = BacktestEngine(store)
-    result = engine.run(instr, timeframe, data_version, strategy_id=strategy)
+    bt_engine = BacktestEngine(store)
+    result = bt_engine.run(instr, timeframe, data_version, strategy_id=strategy)
     click.echo(f"backtest result: equity={result.final_equity:.2f} trades={result.trades} sharpe={result.sharpe:.3f}")
+
 
 @main.group()
 def desktop() -> None:
     """Desktop application."""
 
+
 @desktop.command("launch")
 @click.option("--host", default="127.0.0.1")
 @click.option("--port", default=8000, type=int)
 def desktop_launch(host: str, port: int) -> None:
-    from qts.desktop.launcher import start_api_server, open_desktop_window
     from qts.desktop.health import startup_health_check
+    from qts.desktop.launcher import open_desktop_window, start_api_server
+
     click.echo("[desktop] startup health check")
     health = startup_health_check()
     for c in health["checks"]:
@@ -1135,31 +1491,51 @@ def desktop_launch(host: str, port: int) -> None:
     click.echo(f"API at http://{host}:{port}/ — opening desktop window")
     open_desktop_window(host, port)
 
+
 @desktop.command("api")
 @click.option("--host", default="127.0.0.1")
 @click.option("--port", default=8000, type=int)
 def desktop_api(host: str, port: int) -> None:
     import uvicorn
+
     from qts.api.server import app
+
     click.echo(f"starting API server at http://{host}:{port}")
     uvicorn.run(app, host=host, port=port)
 
+
 @research.command("campaign")
-@click.option("--family", default="trend", type=click.Choice(["trend","breakout","mean_reversion","momentum","volatility"]))
+@click.option(
+    "--family", default="trend", type=click.Choice(["trend", "breakout", "mean_reversion", "momentum", "volatility"])
+)
 @click.option("--symbol", default="XAUUSD")
 @click.option("--timeframe", default="1H")
 @click.option("--data-version", required=True)
 @click.option("--trials", default=12, type=int)
 @click.option("--max-runtime", default=60, type=int)
-def research_campaign(family: str, symbol: str, timeframe: str, data_version: str, trials: int, max_runtime: int) -> None:
+def research_campaign(
+    family: str, symbol: str, timeframe: str, data_version: str, trials: int, max_runtime: int
+) -> None:
     from qts.research.campaign import CampaignConfig, run_campaign
-    cfg = CampaignConfig(name=f"campaign-{family}", symbol=symbol, timeframe=timeframe, data_version=data_version, family=family, max_trials=trials, max_runtime_s=max_runtime, max_param_combinations=trials)
+
+    cfg = CampaignConfig(
+        name=f"campaign-{family}",
+        symbol=symbol,
+        timeframe=timeframe,
+        data_version=data_version,
+        family=family,
+        max_trials=trials,
+        max_runtime_s=max_runtime,
+        max_param_combinations=trials,
+    )
     click.echo(f"launching bounded campaign family={family} trials={trials}")
     summary = run_campaign(cfg)
     Path("data/evidence").mkdir(parents=True, exist_ok=True)
-    Path("data/evidence/campaign_last.json").write_text(json.dumps(summary, indent=2, default=str))
-    click.echo(f"campaign {summary['campaign_id']} completed: passed={summary['passed']} failed={summary['failed']} total={summary['total_trials']} DSR N={summary['dsr_trial_count']}")
-    if summary['passed']==0:
+    Path("data/evidence/campaign_last.json").write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
+    click.echo(
+        f"campaign {summary['campaign_id']} completed: passed={summary['passed']} failed={summary['failed']} total={summary['total_trials']} DSR N={summary['dsr_trial_count']}"
+    )
+    if summary["passed"] == 0:
         click.echo("BLOCK — no candidate survived scientific gates — keep NO_TRADE")
 
 
@@ -1171,16 +1547,22 @@ def research_campaign(family: str, symbol: str, timeframe: str, data_version: st
 @click.option("--trials", default=12, type=int)
 @click.option("--max-runtime", default=60, type=int)
 @click.option("--seed", default=42, type=int)
-def research_autonomous(name: str, symbol: str, timeframe: str, data_version: str | None, trials: int, max_runtime: int, seed: int) -> None:
+def research_autonomous(
+    name: str, symbol: str, timeframe: str, data_version: str | None, trials: int, max_runtime: int, seed: int
+) -> None:
     from qts.research.campaign_engine import run_autonomous_campaign
+
     click.echo(f"launching autonomous campaign {name} trials={trials} (11 steps, never LIVE)")
     result = run_autonomous_campaign(name, symbol, timeframe, data_version, trials, max_runtime, seed)
     Path("data/evidence").mkdir(parents=True, exist_ok=True)
-    Path("data/evidence/autonomous_campaign.json").write_text(json.dumps(result, indent=2, default=str))
+    Path("data/evidence/autonomous_campaign.json").write_text(
+        json.dumps(result, indent=2, default=str), encoding="utf-8"
+    )
     ev = result["evidence_portfolio"]
-    click.echo(f"autonomous completed: trials {result['summary']['total_trials']} passed {result['summary']['passed']} distinct {result['novelty']['distinct_hypotheses']}")
+    click.echo(
+        f"autonomous completed: trials {result['summary']['total_trials']} passed {result['summary']['passed']} distinct {result['novelty']['distinct_hypotheses']}"
+    )
     click.echo(f"self-audit verdict {result['self_audit']['verdict']}")
     click.echo(f"overall {ev['overall']}")
-    if ev['overall'].startswith("BLOCK"):
+    if ev["overall"].startswith("BLOCK"):
         click.echo("BLOCK — keep NO_TRADE — no genuine economic edge demonstrated")
-

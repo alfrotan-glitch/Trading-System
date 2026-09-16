@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-import sqlite3
-from typing import Any
 
 from pydantic import BaseModel, Field
 
-from qts.domain.value_objects import uuid7, Bar
+from qts.db import connect as db_connect
+from qts.domain.value_objects import Bar, uuid7
 
 
 class FeatureSpec(BaseModel):
@@ -28,7 +28,10 @@ class FeatureSpec(BaseModel):
     code_hash: str = ""
 
     def compute_hash(self) -> str:
-        payload = json.dumps({"name": self.name, "definition": self.definition, "source": self.source, "lookback": self.lookback}, sort_keys=True)
+        payload = json.dumps(
+            {"name": self.name, "definition": self.definition, "source": self.source, "lookback": self.lookback},
+            sort_keys=True,
+        )
         return hashlib.sha256(payload.encode()).hexdigest()[:12]
 
 
@@ -39,9 +42,11 @@ class FeatureStore:
         self._init()
 
     def _init(self):
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("CREATE TABLE IF NOT EXISTS features (id TEXT PRIMARY KEY, payload TEXT, created_at TEXT)")
-            con.execute("CREATE TABLE IF NOT EXISTS feature_lineage (parent TEXT, child TEXT, relation TEXT, PRIMARY KEY(parent, child))")
+            con.execute(
+                "CREATE TABLE IF NOT EXISTS feature_lineage (parent TEXT, child TEXT, relation TEXT, PRIMARY KEY(parent, child))"
+            )
             con.commit()
 
     def register(self, spec: FeatureSpec) -> FeatureSpec:
@@ -49,62 +54,40 @@ class FeatureStore:
         if "future" in spec.definition.lower() or "post-trade" in spec.definition.lower():
             raise ValueError(f"feature {spec.name} definition suggests future leakage")
         spec.code_hash = spec.compute_hash()
-        with sqlite3.connect(self.db_path) as con:
-            con.execute("INSERT OR REPLACE INTO features VALUES (?,?,?)", (spec.id, spec.model_dump_json(), spec.created_at.isoformat()))
+        with db_connect(self.db_path) as con:
+            con.execute(
+                "INSERT OR REPLACE INTO features VALUES (?,?,?)",
+                (spec.id, spec.model_dump_json(), spec.created_at.isoformat()),
+            )
             con.commit()
         return spec
 
     def get(self, fid: str) -> FeatureSpec | None:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             row = con.execute("SELECT payload FROM features WHERE id=?", (fid,)).fetchone()
             return FeatureSpec.model_validate_json(row[0]) if row else None
 
     def list(self) -> list[FeatureSpec]:
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             rows = con.execute("SELECT payload FROM features").fetchall()
             return [FeatureSpec.model_validate_json(r[0]) for r in rows]
 
     def lineage(self, parent: str, child: str, relation: str = "derived"):
-        with sqlite3.connect(self.db_path) as con:
+        with db_connect(self.db_path) as con:
             con.execute("INSERT OR IGNORE INTO feature_lineage VALUES (?,?,?)", (parent, child, relation))
             con.commit()
 
-
-# Predefined controlled features (no leakage)
-CONTROLLED_FEATURES: list[FeatureSpec] = [
-    FeatureSpec(name="returns_1", definition="close-to-close return at bar N computed from close_{N-1} to close_N", source="price", timestamp_semantics="close_time of N, uses only closes <=N", lookback=1, data_dependencies=["close"]),
-    FeatureSpec(name="range_5", definition="high-low range over last 5 bars ending at N", source="range", timestamp_semantics="close_time N, uses bars N-4..N", lookback=5, data_dependencies=["high","low"]),
-    FeatureSpec(name="volatility_20", definition="std of returns over 20 bars ending at N", source="volatility", timestamp_semantics="close_time N, uses returns N-19..N", lookback=20, data_dependencies=["close"]),
-    FeatureSpec(name="spread_proxy", definition="high-low as spread proxy at N", source="spread", timestamp_semantics="close_time N", lookback=1, data_dependencies=["high","low"]),
-    FeatureSpec(name="session_hour", definition="hour of day extracted from close_time UTC", source="time-of-day", timestamp_semantics="close_time N", lookback=1, data_dependencies=["close_time"]),
-    FeatureSpec(name="range_compression", definition="range_5 / range_20 ratio", source="range", timestamp_semantics="close_time N, uses bars N-19..N", lookback=20, data_dependencies=["high","low"]),
-]
-
-
     def close(self) -> None:
-        try:
-            db = getattr(self, "db_path", getattr(self, "_db_path", None))
-            if db is not None:
-                db = Path(db)
-                if db.exists() and str(db) != ":memory:":
-                    import sqlite3
-                    with sqlite3.connect(db) as con:
-                        try:
-                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                            con.commit()
-                        except Exception:
-                            pass
-            # close any memory connection if present
-            mem = getattr(self, "_memory_con", None)
-            if mem is not None:
-                try:
-                    mem.commit()
-                    mem.close()
-                except Exception:
-                    pass
-                self._memory_con = None
-        except Exception:
-            pass
+        # File-backed connections are opened/closed per operation via qts.db.connect,
+        # so no persistent handle exists here. We must NOT re-open the database file
+        # in close()/__del__: that recreates deleted files and re-acquires Windows
+        # file locks during GC/shutdown (root cause of WinError 32 on cleanup).
+        mem = getattr(self, "_memory_con", None)
+        if mem is not None:
+            with contextlib.suppress(Exception):
+                mem.commit()
+                mem.close()
+            self._memory_con = None
 
     def __enter__(self):
         return self
@@ -112,26 +95,76 @@ CONTROLLED_FEATURES: list[FeatureSpec] = [
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def __del__(self):
-        try:
-            self.close()
-        except Exception:
-            pass
+
+# Predefined controlled features (no leakage)
+CONTROLLED_FEATURES: list[FeatureSpec] = [
+    FeatureSpec(
+        name="returns_1",
+        definition="close-to-close return at bar N computed from close_{N-1} to close_N",
+        source="price",
+        timestamp_semantics="close_time of N, uses only closes <=N",
+        lookback=1,
+        data_dependencies=["close"],
+    ),
+    FeatureSpec(
+        name="range_5",
+        definition="high-low range over last 5 bars ending at N",
+        source="range",
+        timestamp_semantics="close_time N, uses bars N-4..N",
+        lookback=5,
+        data_dependencies=["high", "low"],
+    ),
+    FeatureSpec(
+        name="volatility_20",
+        definition="std of returns over 20 bars ending at N",
+        source="volatility",
+        timestamp_semantics="close_time N, uses returns N-19..N",
+        lookback=20,
+        data_dependencies=["close"],
+    ),
+    FeatureSpec(
+        name="spread_proxy",
+        definition="high-low as spread proxy at N",
+        source="spread",
+        timestamp_semantics="close_time N",
+        lookback=1,
+        data_dependencies=["high", "low"],
+    ),
+    FeatureSpec(
+        name="session_hour",
+        definition="hour of day extracted from close_time UTC",
+        source="time-of-day",
+        timestamp_semantics="close_time N",
+        lookback=1,
+        data_dependencies=["close_time"],
+    ),
+    FeatureSpec(
+        name="range_compression",
+        definition="range_5 / range_20 ratio",
+        source="range",
+        timestamp_semantics="close_time N, uses bars N-19..N",
+        lookback=20,
+        data_dependencies=["high", "low"],
+    ),
+]
+
+
 def compute_feature(spec: FeatureSpec, bars: list[Bar], idx: int) -> float | None:
     """Compute feature at index idx using only bars <= idx (no future)."""
     if idx < spec.lookback:
         return None
-    window = bars[idx - spec.lookback + 1: idx + 1]
+    window = bars[idx - spec.lookback + 1 : idx + 1]
     if spec.name == "returns_1":
         if idx == 0:
             return None
-        prev = float(bars[idx-1].close)
+        prev = float(bars[idx - 1].close)
         cur = float(bars[idx].close)
         return (cur - prev) / prev if prev else 0.0
     if spec.name == "range_5":
         return float(max(b.high for b in window) - min(b.low for b in window))
     if spec.name == "volatility_20":
         import numpy as np
+
         closes = [float(b.close) for b in window]
         rets = np.diff(closes) / np.array(closes[:-1])
         return float(np.std(rets)) if len(rets) else 0.0
@@ -140,7 +173,11 @@ def compute_feature(spec: FeatureSpec, bars: list[Bar], idx: int) -> float | Non
     if spec.name == "session_hour":
         return float(bars[idx].close_time.hour)
     if spec.name == "range_compression":
-        r5 = max(float(b.high) for b in bars[idx-4:idx+1]) - min(float(b.low) for b in bars[idx-4:idx+1]) if idx >=4 else 1.0
-        r20 = max(float(b.high) for b in window) - min(float(b.low) for b in window) if len(window)>=20 else r5
+        r5 = (
+            max(float(b.high) for b in bars[idx - 4 : idx + 1]) - min(float(b.low) for b in bars[idx - 4 : idx + 1])
+            if idx >= 4
+            else 1.0
+        )
+        r20 = max(float(b.high) for b in window) - min(float(b.low) for b in window) if len(window) >= 20 else r5
         return r5 / r20 if r20 else 1.0
     return None

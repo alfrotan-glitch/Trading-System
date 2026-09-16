@@ -4,6 +4,7 @@ Shadow mode drives real strategy/risk decisions from live market data,
 records what WOULD have happened, but never calls broker.submit.
 It records intents, would-be fills, and compares with paper.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -11,7 +12,6 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from qts.adapters.mt5_adapter import SymbolSpec
 from qts.domain.value_objects import Account, Instrument, Order, OrderIntent, OrderState, Position, Tick
 from qts.execution.engine import BrokerAdapter
 
@@ -88,10 +88,7 @@ class ShadowBroker(BrokerAdapter):
     def ticks(self, instrument: Instrument) -> Tick | None:
         return None
 
-    @property
-    def is_live(self) -> bool:
-        return False
-
-    @property
-    def is_shadow(self) -> bool:
-        return True
+    # class attributes (not properties): the BrokerAdapter base declares these as
+    # writable attributes; overriding with read-only properties is a Liskov violation
+    is_live = False
+    is_shadow = True

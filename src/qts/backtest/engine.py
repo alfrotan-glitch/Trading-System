@@ -106,6 +106,7 @@ class BacktestEngine:
         # If strategy_id looks like family trial (contains family name), try to instantiate via strategies.py
         try:
             from qts.research.strategies import StrategyFamily, create_strategy
+
             # infer family from strategy_params hint or id
             inferred_family = None
             if strategy_params.get("_family"):
@@ -136,8 +137,8 @@ class BacktestEngine:
                 )
             elif strategy_id == "hold_long":
                 # simple hold for testing P&L
-                from qts.research.strategy import Signal as Sig
                 from qts.domain.value_objects import Side
+                from qts.research.strategy import Signal as Sig
 
                 class HoldLong:
                     strategy_id = "hold_long"
@@ -169,7 +170,7 @@ class BacktestEngine:
                         strategy_id=strategy_id,
                     )
                 except Exception as e:
-                    raise ValueError(f"unknown strategy {strategy_id}: {e}")
+                    raise ValueError(f"unknown strategy {strategy_id}: {e}") from e
 
         matching = MatchingEngine(self.matching_config)
         # Isolated idempotency: backtest must NOT mutate live/shared lineage (G2)
@@ -200,8 +201,9 @@ class BacktestEngine:
                 # For more realism we could use open, but we use bar's open as price for matching
                 # MatchingEngine.price_for uses bar.close; for execution at open we need to treat
                 # bar.open as the price. So we create a execution_bar with open=close=open
-                from qts.domain.value_objects import Bar as BarVO
                 from datetime import timedelta
+
+                from qts.domain.value_objects import Bar as BarVO
 
                 exec_bar = BarVO(
                     instrument=bar.instrument,
@@ -244,7 +246,9 @@ class BacktestEngine:
                 intent = signal_to_intent(sig, quantity=Decimal(str(strategy_params.get("quantity", "0.1"))))
                 # deterministic id: strategy:bar_time:seq
                 intent = intent.model_copy(
-                    update={"client_order_id": f"{strategy_id}:{bar.close_time.isoformat()}:{len(fills_out) + len(pending_intents)}"}
+                    update={
+                        "client_order_id": f"{strategy_id}:{bar.close_time.isoformat()}:{len(fills_out) + len(pending_intents)}"
+                    }
                 )
                 # queue for next bar execution
                 pending_intents.append(intent)
@@ -276,7 +280,9 @@ class BacktestEngine:
             sort_keys=True,
         )
         manifest_hash = hashlib.sha256(payload.encode()).hexdigest()[:12]
-        config_hash = hashlib.sha256(json.dumps({"matching": self.matching_config.__dict__}, sort_keys=True, default=str).encode()).hexdigest()[:8]
+        config_hash = hashlib.sha256(
+            json.dumps({"matching": self.matching_config.__dict__}, sort_keys=True, default=str).encode()
+        ).hexdigest()[:8]
         return BacktestResult(
             strategy_id=strategy_id,
             data_version=data_version,
@@ -295,7 +301,13 @@ class BacktestEngine:
         )
 
     def run_stress(
-        self, instrument: Instrument, timeframe: str, data_version: str, strategy_id: str, strategy_params: dict[str, Any] | None, spreads: list[float]
+        self,
+        instrument: Instrument,
+        timeframe: str,
+        data_version: str,
+        strategy_id: str,
+        strategy_params: dict[str, Any] | None,
+        spreads: list[float],
     ) -> dict[float, float]:
         """Re-run strategy under different spread stress (real trades, not PF multiplication)."""
         results: dict[float, float] = {}

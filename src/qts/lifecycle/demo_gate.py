@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from qts.risk.demo_limits import DEMO_FORWARD_DEFAULTS
@@ -27,11 +26,17 @@ def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: An
     try:
         if mt5_module is None:
             import importlib
+
             try:
                 mt5_module = importlib.import_module("MetaTrader5")
                 check("mt5_installed", True, "MetaTrader5 module found")
             except ImportError:
-                check("mt5_installed", False, "MetaTrader5 not installed — install MT5 terminal and pip install MetaTrader5", "MT5 not installed")
+                check(
+                    "mt5_installed",
+                    False,
+                    "MetaTrader5 not installed — install MT5 terminal and pip install MetaTrader5",
+                    "MT5 not installed",
+                )
                 mt5_module = None
         else:
             check("mt5_installed", True, "MT5 module injected (mock)")
@@ -48,7 +53,12 @@ def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: An
             check("terminal_running", False, str(e), "Terminal not running")
     else:
         # In mock/sandbox, treat as not running but not blocker for demo observation
-        check("terminal_running", False, "MT5 terminal not running — demo_forward requires real terminal", "Terminal not running")
+        check(
+            "terminal_running",
+            False,
+            "MT5 terminal not running — demo_forward requires real terminal",
+            "Terminal not running",
+        )
 
     # 3 Account connected?
     account_info = None
@@ -57,7 +67,9 @@ def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: An
             ai = mt5_module.account_info()
             if ai:
                 account_info = ai
-                check("account_connected", True, f"login={getattr(ai,'login', '?')} server={getattr(ai,'server','?')}")
+                check(
+                    "account_connected", True, f"login={getattr(ai, 'login', '?')} server={getattr(ai, 'server', '?')}"
+                )
             else:
                 check("account_connected", False, "account_info is None", "Account not connected")
         except Exception as e:
@@ -73,7 +85,12 @@ def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: An
         # Also check string "demo" in server name
         server = str(getattr(account_info, "server", "")).lower()
         is_demo = (trade_mode == 0) or ("demo" in server)
-        check("account_is_demo", is_demo, f"trade_mode={trade_mode} server={server}", None if is_demo else "Account is not DEMO — LIVE account supplied to DEMO mode blocked")
+        check(
+            "account_is_demo",
+            is_demo,
+            f"trade_mode={trade_mode} server={server}",
+            None if is_demo else "Account is not DEMO — LIVE account supplied to DEMO mode blocked",
+        )
         if not is_demo:
             blocked.append("LIVE account accidentally supplied to DEMO mode — blocked")
     else:
@@ -88,20 +105,33 @@ def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: An
     # 8 Symbol specification valid?
     # Need symbol selection — default XAUUSD
     symbol = "XAUUSD"
-    symbol_info = None
     if mt5_module is not None and hasattr(mt5_module, "symbol_info"):
         try:
             si = mt5_module.symbol_info(symbol)
-            symbol_info = si
             available = si is not None
-            check("symbol_available", available, f"symbol_info for {symbol} exists={available}", None if available else f"Symbol {symbol} not available")
+            check(
+                "symbol_available",
+                available,
+                f"symbol_info for {symbol} exists={available}",
+                None if available else f"Symbol {symbol} not available",
+            )
             if si:
                 tradable = bool(getattr(si, "trade_allowed", getattr(si, "tradable", True)))
-                check("symbol_tradable", tradable, f"trade_allowed={tradable}", None if tradable else "Symbol not tradable")
+                check(
+                    "symbol_tradable",
+                    tradable,
+                    f"trade_allowed={tradable}",
+                    None if tradable else "Symbol not tradable",
+                )
                 # spec valid: check required fields
-                needed = ["contract_size","volume_min","volume_max","volume_step","digits","point"]
+                needed = ["contract_size", "volume_min", "volume_max", "volume_step", "digits", "point"]
                 missing = [f for f in needed if not hasattr(si, f)]
-                check("symbol_spec_valid", len(missing)==0, f"missing fields {missing}" if missing else "spec valid 13 fields", None if not missing else "Symbol specification invalid")
+                check(
+                    "symbol_spec_valid",
+                    len(missing) == 0,
+                    f"missing fields {missing}" if missing else "spec valid 13 fields",
+                    None if not missing else "Symbol specification invalid",
+                )
             else:
                 check("symbol_tradable", False, "no symbol_info", "Symbol not tradable")
                 check("symbol_spec_valid", False, "no symbol_info", "Symbol specification invalid")
@@ -117,11 +147,9 @@ def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: An
     # 9 Market data fresh?
     # 10 Bid/ask valid?
     # 11 Spread acceptable?
-    tick = None
     if mt5_module is not None and hasattr(mt5_module, "symbol_info_tick"):
         try:
             t = mt5_module.symbol_info_tick(symbol)
-            tick = t
             if t is None:
                 check("market_data_fresh", False, "tick is None", "Market data not fresh")
                 check("bid_ask_valid", False, "no tick", "Bid/ask invalid")
@@ -130,20 +158,25 @@ def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: An
                 # Freshness: time must be within 60s
                 tick_time = getattr(t, "time", getattr(t, "time_msc", 0))
                 # mt5 time is seconds since epoch
-                if isinstance(tick_time, (int,float)) and tick_time>1e9:
-                    age = time.time() - float(tick_time)/1000 if tick_time>1e12 else time.time() - float(tick_time)
+                if isinstance(tick_time, (int, float)) and tick_time > 1e9:
+                    age = time.time() - float(tick_time) / 1000 if tick_time > 1e12 else time.time() - float(tick_time)
                 else:
                     age = 0
                 fresh = age < 60
                 check("market_data_fresh", fresh, f"age {age:.1f}s", None if fresh else "Market data stale")
                 bid = getattr(t, "bid", 0)
                 ask = getattr(t, "ask", 0)
-                valid = bid>0 and ask>0 and ask>=bid
+                valid = bid > 0 and ask > 0 and ask >= bid
                 check("bid_ask_valid", valid, f"bid={bid} ask={ask}", None if valid else "Bid/ask invalid")
                 if valid:
-                    spread_bps = (ask-bid)/((ask+bid)/2)*10000 if (ask+bid)>0 else 999
+                    spread_bps = (ask - bid) / ((ask + bid) / 2) * 10000 if (ask + bid) > 0 else 999
                     acceptable = spread_bps <= DEMO_FORWARD_DEFAULTS.max_spread_bps
-                    check("spread_acceptable", acceptable, f"spread {spread_bps:.1f}bps limit {DEMO_FORWARD_DEFAULTS.max_spread_bps}bps", None if acceptable else "Spread too wide")
+                    check(
+                        "spread_acceptable",
+                        acceptable,
+                        f"spread {spread_bps:.1f}bps limit {DEMO_FORWARD_DEFAULTS.max_spread_bps}bps",
+                        None if acceptable else "Spread too wide",
+                    )
                 else:
                     check("spread_acceptable", False, "bid/ask invalid", "Spread unacceptable")
         except Exception as e:
@@ -159,30 +192,54 @@ def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: An
     if account_info is not None:
         bal = getattr(account_info, "balance", getattr(account_info, "equity", 0))
         margin = getattr(account_info, "margin", 0)
-        valid = bal>0
-        check("account_state_valid", valid, f"balance={bal} margin={margin}", None if valid else "Account state invalid")
+        valid = bal > 0
+        check(
+            "account_state_valid", valid, f"balance={bal} margin={margin}", None if valid else "Account state invalid"
+        )
     else:
         check("account_state_valid", False, "no account_info", "Account state invalid")
 
     # 13 Risk configuration valid?
     try:
         from qts.risk.demo_limits import DEMO_FORWARD_DEFAULTS as lim
+
         # Check that demo limits are conservative
         ok = lim.max_volume_per_order <= 0.5 and lim.max_daily_loss_usd <= 100
-        check("risk_config_valid", ok, f"demo limits volume {lim.max_volume_per_order} daily loss {lim.max_daily_loss_usd}", None if ok else "Risk configuration invalid")
+        check(
+            "risk_config_valid",
+            ok,
+            f"demo limits volume {lim.max_volume_per_order} daily loss {lim.max_daily_loss_usd}",
+            None if ok else "Risk configuration invalid",
+        )
     except Exception as e:
         check("risk_config_valid", False, str(e), "Risk configuration invalid")
 
     # 14 Reconciliation healthy?
     try:
         from qts.lifecycle.live_gate import check_reconciliation
+
         ok, detail = check_reconciliation()
         check("reconciliation_healthy", ok, detail, None if ok else "Reconciliation not healthy")
     except Exception as e:
         check("reconciliation_healthy", False, str(e), "Reconciliation not healthy")
 
     # Overall
-    required = ["mt5_installed","terminal_running","account_connected","account_is_demo","broker_identified","symbol_available","symbol_tradable","symbol_spec_valid","market_data_fresh","bid_ask_valid","spread_acceptable","account_state_valid","risk_config_valid","reconciliation_healthy"]
+    required = [
+        "mt5_installed",
+        "terminal_running",
+        "account_connected",
+        "account_is_demo",
+        "broker_identified",
+        "symbol_available",
+        "symbol_tradable",
+        "symbol_spec_valid",
+        "market_data_fresh",
+        "bid_ask_valid",
+        "spread_acceptable",
+        "account_state_valid",
+        "risk_config_valid",
+        "reconciliation_healthy",
+    ]
     passed = all(checks.get(k, False) for k in required)
     demo_enabled = passed  # only after all required pass
     return {

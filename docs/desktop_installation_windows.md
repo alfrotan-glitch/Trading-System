@@ -35,8 +35,9 @@ What it does:
 3. `pip install --upgrade pip`
 4. `pip install -e ".[dev]"` (installs qts + dev deps)
 5. Creates `data/raw, curated, sqlite, evidence, logs` dirs
-6. Validates `qts --help` and `qts health`
-7. Runs `pytest -q` quick tests
+6. Runs `qts data bootstrap` — deterministic, fail-closed, idempotent. Establishes a **usable** dataset (manifest + curated parquet + readable bars) from the tracked fixture `data/fixtures/XAUUSD_1H_500.csv`, labeled `SYNTHETIC:fixture`. If no usable dataset can be established, setup **fails** with a clear message — it never fabricates data or reports phantom availability.
+7. Validates `qts --help` and `qts health`
+8. Runs `pytest -q` quick tests (fail-closed: any test failure aborts setup with exit 1)
 
 If it fails, see `docs/troubleshooting_windows.md`.
 
