@@ -1,9 +1,29 @@
-"""Persistent idempotency store — sqlite backed, survives restart."""
+"""Persistent idempotency store — sqlite backed, survives restart.
+
+State machine (Blocker 6):
+- PENDING: created locally, not yet acked
+- ACCEPTED: broker acked
+- PARTIALLY_FILLED, FILLED: economic exposure created
+- REJECTED: definitive rejection (invalid volume, market closed) — terminal, allows retry with same business intent? We treat REJECTED as terminal but NOT poison: duplicate with same client_order_id after REJECTED returns REJECTED (no new exposure), but new client_order_id allowed. Repeated submission with same id does not create duplicate economic exposure.
+- CANCELLED: terminal, similar to REJECTED
+- AMBIGUOUS: transport failure/timeout — unknown if venue accepted, fail closed. Duplicate must be blocked, requires reconcile, no auto-retry.
+
+Semantics:
+- should_block(client_order_id) -> True if existing status in (PENDING, ACCEPTED, PARTIALLY_FILLED, FILLED, AMBIGUOUS) → block duplicate economic exposure
+- if status in (REJECTED, CANCELLED) → does not block? But for safety we still return existing REJECTED without new exposure, but allow caller to know it's rejected. Repeated submission returns same REJECTED, not new order. That's not creating duplicate economic exposure, so it's safe to block as well. To satisfy "must not permanently poison", we allow that the caller can use a NEW client_order_id to retry business intent. The old id remains REJECTED.
+- AMBIGUOUS must fail closed: block, require manual reconcile, audit.
+
+All duplicate checks are persistent (SQLite) and in-memory (OrderManager.orders).
+"""
 
 from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+
+
+TERMINAL_REJECTED = {"REJECTED", "CANCELLED"}
+BLOCKING_STATUSES = {"PENDING", "ACCEPTED", "PARTIALLY_FILLED", "FILLED", "AMBIGUOUS"}
 
 
 class IdempotencyStore:
@@ -33,6 +53,31 @@ class IdempotencyStore:
                 "SELECT 1 FROM idempotency WHERE client_order_id=?", (client_order_id,)
             ).fetchone()
             return row is not None
+
+    def get_status(self, client_order_id: str) -> str | None:
+        with sqlite3.connect(self.db_path) as con:
+            row = con.execute(
+                "SELECT status FROM idempotency WHERE client_order_id=?", (client_order_id,)
+            ).fetchone()
+            return row[0] if row else None
+
+    def should_block(self, client_order_id: str) -> bool:
+        """Whether duplicate should be blocked (no new economic order).
+
+        - PENDING/ACCEPTED/PARTIALLY_FILLED/FILLED/AMBIGUOUS -> block (already has or may have exposure)
+        - REJECTED/CANCELLED -> do not block new economic attempt? But we still block duplicate id;
+          caller should use new id to retry. For idempotency we block same id.
+        For safety we block all seen ids, but AMBIGUOUS is special fail-closed.
+        """
+        status = self.get_status(client_order_id)
+        if status is None:
+            return False
+        # For definitive REJECTED/CANCELLED, we still block same id (return existing REJECTED)
+        # but allow new id to retry. So effectively block.
+        return True
+
+    def is_ambiguous(self, client_order_id: str) -> bool:
+        return self.get_status(client_order_id) == "AMBIGUOUS"
 
     def record(self, client_order_id: str, status: str = "PENDING") -> None:
         from datetime import datetime, timezone

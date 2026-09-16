@@ -45,6 +45,7 @@ class RiskConfig(BaseModel):
 
 
 class ValidationConfig(BaseModel):
+    # Single coherent policy — all gates (ValidatorPipeline, CLI, Lifecycle, docs) must use these
     train_ratio: float = 0.6
     val_ratio: float = 0.2
     holdout_ratio: float = 0.2
@@ -52,11 +53,15 @@ class ValidationConfig(BaseModel):
     walk_forward_test: str = "3M"
     walk_forward_step: str = "3M"
     min_folds: int = 5
-    min_wfe: float = 0.3
-    min_oos_sharpe: float = 0.0
-    max_pbo: float = 0.5
+    min_wfe: float = 0.30
+    min_oos_sharpe: float = 0.30  # blocks materially negative or flat OOS; null/no-edge ~0 fails
+    max_pbo: float = 0.50
+    max_perturbation_drop: float = 0.30  # 30% Sharpe drop under ±10/20% fragility
+    min_spread_pf: float = 1.0  # PF at 1.5× spread must remain >=1.0
     spread_stress_levels: list[float] = Field(default_factory=lambda: [1.0, 1.5, 2.0])  # type: ignore[arg-type]
     slippage_stress_bps: list[float] = Field(default_factory=lambda: [0, 2, 5, 10])  # type: ignore[arg-type]
+    cpcv_min_combos: int = 6  # must match cpcv_splits generation (n_groups=6,n_test=2 ->15 combos)
+    perturbation_min_variants: int = 7  # ±5/10/20% + baseline
 
 
 class ShipperConfig(BaseModel):

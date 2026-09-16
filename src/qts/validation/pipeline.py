@@ -61,14 +61,22 @@ def _returns_from_equity(equity: np.ndarray) -> np.ndarray:
 
 
 class ValidatorPipeline:
-    """Composable validators. No dummy metrics."""
+    """Composable validators. No dummy metrics. Single coherent policy from Settings.ValidationConfig."""
 
     def __init__(self, config: dict[str, Any] | None = None):
-        self.config = config or {}
-        self.min_wfe: float = float(self.config.get("min_wfe", 0.3))
-        self.min_oos_sharpe: float = float(self.config.get("min_oos_sharpe", 0.0))
-        self.max_pbo: float = float(self.config.get("max_pbo", 0.5))
-        self.min_folds: int = int(self.config.get("min_folds", 5))
+        # Single source of truth: Settings.validation — do not duplicate thresholds
+        from qts.config.settings import Settings
+
+        defaults = Settings().validation
+        cfg = config or {}
+        self.config = cfg
+        self.min_wfe: float = float(cfg.get("min_wfe", defaults.min_wfe))
+        self.min_oos_sharpe: float = float(cfg.get("min_oos_sharpe", defaults.min_oos_sharpe))
+        self.max_pbo: float = float(cfg.get("max_pbo", defaults.max_pbo))
+        self.min_folds: int = int(cfg.get("min_folds", defaults.min_folds))
+        self.cpcv_min_combos: int = int(cfg.get("cpcv_min_combos", defaults.cpcv_min_combos))
+        self.max_perturbation_drop: float = float(cfg.get("max_perturbation_drop", defaults.max_perturbation_drop))
+        self.min_spread_pf: float = float(cfg.get("min_spread_pf", defaults.min_spread_pf))
 
     # ---------- helpers for real walk-forward ----------
     def walk_forward_splits(
@@ -213,14 +221,14 @@ class ValidatorPipeline:
 
         If cpcv_folds is None or insufficient, mark NOT_IMPLEMENTED and block.
         """
-        if cpcv_folds is None or len(cpcv_folds) < 5:
+        if cpcv_folds is None or len(cpcv_folds) < self.cpcv_min_combos:
             return [
                 Check(
                     "pbo_cpcv",
                     False,
                     None,
                     self.max_pbo,
-                    f"PBO CPCV not executed (need >=5 combos, got {0 if cpcv_folds is None else len(cpcv_folds)}) → BLOCKS",
+                    f"PBO CPCV not executed (need >={self.cpcv_min_combos} combos, got {0 if cpcv_folds is None else len(cpcv_folds)}) → BLOCKS",
                     required=True,
                     status="NOT_IMPLEMENTED",
                 )
@@ -282,10 +290,10 @@ class ValidatorPipeline:
         checks.append(
             Check(
                 "perturbation_stability",
-                bool(drop <= 0.3),
+                bool(drop <= self.max_perturbation_drop),
                 float(drop),
-                0.3,
-                f"Sharpe drops {drop:.1%} under ±20% perturbation → fragile" if drop > 0.3 else f"drop {drop:.1%}",
+                self.max_perturbation_drop,
+                f"Sharpe drops {drop:.1%} under ±20% perturbation → fragile (>{self.max_perturbation_drop:.0%})" if drop > self.max_perturbation_drop else f"drop {drop:.1%}",
                 required=True,
             )
         )
@@ -320,7 +328,7 @@ class ValidatorPipeline:
                 )
             ]
         checks: list[Check] = []
-        # check 1.5x still profitable (PF>1 or Sharpe>0)
+        # check 1.5x still profitable (PF threshold from Settings)
         pf_1_5 = stress_results.get(1.5, stress_results.get(1.0))
         if pf_1_5 is not None:
             # PF could be inf
@@ -328,10 +336,10 @@ class ValidatorPipeline:
             checks.append(
                 Check(
                     "stress_spread_1_5x",
-                    bool(pf_1_5_f >= 1.0),
+                    bool(pf_1_5_f >= self.min_spread_pf),
                     float(pf_1_5_f),
-                    1.0,
-                    f"PF at 1.5x spread {pf_1_5_f:.2f} <1.0" if pf_1_5_f < 1.0 else f"PF 1.5x {pf_1_5_f:.2f}",
+                    self.min_spread_pf,
+                    f"PF at 1.5x spread {pf_1_5_f:.2f} <{self.min_spread_pf}" if pf_1_5_f < self.min_spread_pf else f"PF 1.5x {pf_1_5_f:.2f}",
                     required=True,
                 )
             )

@@ -1,38 +1,36 @@
-"""Metrics: Sharpe, Sortino, max DD, PF, PSR/DSR.
+"""Metrics: Sharpe, Sortino, max DD, PF, PSR/DSR — Bailey & López de Prado.
 
-Formulas — authoritative references:
+References:
+- Bailey & López de Prado (2012) The Sharpe Ratio Efficient Frontier, PSR.
+- Bailey & López de Prado (2014) The Deflated Sharpe Ratio, DSR.
+- Prado (2018) Advances in Financial Machine Learning, Chapter 14.
 
-- Sharpe: (mean_excess / std) * sqrt(periods_per_year)
-- PSR (Bailey & Lopez de Prado 2012): PSR(SR*) = Φ[(SR̂ - SR*) / σ̂_SR]
-    where σ̂_SR = sqrt((1 - γ̂1*SR̂ + (γ̂2-1)/4 * SR̂²) / (T-1))
-    γ̂1 = skewness, γ̂2 = kurtosis (not excess), T = n observations.
-    PSR is probability that true Sharpe > benchmark.
+Units and scaling — EXPLICIT (Blocker 4):
+- `sharpe_ratio` returns **annualized** Sharpe: mean_excess/std * sqrt(periods_per_year).
+- `probabilistic_sharpe_ratio` and `deflated_sharpe_ratio` work in **same units** as
+  `observed_sr` and `benchmark`. We support both per-period and annualized, but
+  you must be consistent: if observed_sr is annualized, benchmark must be annualized
+  and `periods_per_year` must be supplied so variance is scaled correctly.
+- Risk: silently mixing annualized Sharpe (e.g., 1.5) with per-period standard
+  error sqrt(1/(n-1)) (≈0.1 for n=100) understates variance by sqrt(P) and
+  overstates PSR/DSR. We avoid this by explicitly scaling.
 
-- DSR (Bailey & Lopez de Prado 2014): DSR = PSR with benchmark = SR0,
-    SR0 = E[max SR under null across N trials].
-    Under null SR=0, the max across N i.i.d. SR̂ has expected value:
-      E[max] = (1-γ) Φ⁻¹(1-1/N) + γ Φ⁻¹(1-1/(N*e))
-    where γ = Euler-Mascheroni ≈0.5772, Φ⁻¹ = norm.ppf, e = Euler's number.
-    This is for SR̂ distribution under null (mean 0, var=1).
-    The SR0 is expressed in SR units (not standardized); to use with PSR,
-    we set benchmark = E[max] * σ̂_SR_null where σ̂_SR_null = sqrt(1/(T-1)).
-    However many implementations treat E[max] directly as SR benchmark when SR is
-    already in SR units (annualized). Our implementation follows Bailey 2014
-    implementation where DSR = Φ[(SR̂ - SR0) / σ̂_SR] with SR0 as above (not scaled),
-    but we document that scaling by σ̂_SR_null is debated. We choose:
-      benchmark = E[max] * sqrt( (1)/(T-1) )? No — we keep benchmark = E[max] / sqrt(T)
-    For transparency, we expose both and test against reference values from
-    Bailey paper: with N=10, T=1000, SR̂=1, DSR should be ~0.6 (example). We tune
-    so that DSR < PSR for N>1, DSR == PSR for N=1, and DSR decreases with N.
+Formulas:
+- Sharpe (annualized): SR_ann = mean(R - rf)/std(R) * sqrt(P)
+- PSR: PSR(SR*) = Φ[ (SR̂ - SR*) / σ̂_SR ]
+    σ̂_SR = sqrt( (1 - γ̂1*SR̂_per + (γ̂2-1)/4 * SR̂_per²) * P / (T-1) )  if SR̂ is annualized
+           = sqrt( (1 - γ̂1*SR̂ + (γ̂2-1)/4 * SR̂²) / (T-1) )                 if per-period
+  where SR̂_per = SR̂_ann / sqrt(P), γ̂1=skew, γ̂2=kurtosis raw, T=n.
+  Implementation converts to per-period internally to keep variance correct.
 
-    **Assumptions & limitations:**
-    - Returns are assumed stationary enough for Sharpe to be meaningful.
-    - Annualization factor is periods_per_year; DSR uses n = len(returns) (effective sample size).
-    - Skewness/kurtosis are sample estimates.
-    - N = number of trials (including discarded), tracked via ExperimentStore.
-    - If N or n small (<30), DSR is noisy — we flag not required.
+- Expected maximum Sharpe under null (N iid):
+    E[max] = μ + σ * ((1-γ) Φ⁻¹(1-1/N) + γ Φ⁻¹(1-1/(Ne)))
+  where μ=0, σ = sqrt(P/(T-1)) for annualized, σ = sqrt(1/(T-1)) for per-period,
+  γ≈0.5772. This is SR0 (benchmark) for DSR.
 
-All formulas use raw (non-annualized) Sharpe scaled consistently.
+- DSR = PSR(SR0) with σ̂ computed from observed SR (same formula).
+
+No heuristic constants. No mixing.
 """
 
 from __future__ import annotations
@@ -44,7 +42,11 @@ from scipy.stats import norm
 
 
 def sharpe_ratio(returns: np.ndarray, risk_free: float = 0.0, periods_per_year: int = 252 * 24) -> float:
-    """Annualized Sharpe: mean_excess / std * sqrt(periods_per_year)."""
+    """Annualized Sharpe: mean_excess / std * sqrt(periods_per_year).
+
+    periods_per_year: 252*24 for 1H XAUUSD (24h, 252 trading days), 252*24*60 for 1m, etc.
+    For daily: 252. For 24/7 crypto hourly: 8760.
+    """
     if len(returns) < 2:
         return 0.0
     excess = returns - risk_free
@@ -52,6 +54,17 @@ def sharpe_ratio(returns: np.ndarray, risk_free: float = 0.0, periods_per_year: 
     if std == 0 or not np.isfinite(std):
         return 0.0
     return float(np.mean(excess) / std * math.sqrt(periods_per_year))
+
+
+def sharpe_ratio_per_period(returns: np.ndarray, risk_free: float = 0.0) -> float:
+    """Per-period Sharpe (not annualized): mean/std."""
+    if len(returns) < 2:
+        return 0.0
+    excess = returns - risk_free
+    std = np.std(excess, ddof=1)
+    if std == 0 or not np.isfinite(std):
+        return 0.0
+    return float(np.mean(excess) / std)
 
 
 def sortino_ratio(returns: np.ndarray, periods_per_year: int = 252 * 24) -> float:
@@ -82,55 +95,125 @@ def profit_factor(returns: np.ndarray) -> float:
     return float(gains / losses)
 
 
-def probabilistic_sharpe_ratio(observed_sr: float, n: int, skewness: float = 0.0, kurtosis: float = 3.0, benchmark: float = 0.0) -> float:
-    """PSR: Prob[SR > benchmark]. Bailey & Lopez de Prado 2012."""
+def probabilistic_sharpe_ratio(
+    observed_sr: float,
+    n: int,
+    skewness: float = 0.0,
+    kurtosis: float = 3.0,
+    benchmark: float = 0.0,
+    periods_per_year: int = 252 * 24,
+    annualized: bool = True,
+) -> float:
+    """PSR: Prob[SR > benchmark]. Bailey & López de Prado 2012.
+
+    observed_sr and benchmark must be in same units (both annualized if annualized=True,
+    both per-period if False). n = number of return observations (T).
+    skewness, kurtosis are of returns (sample estimates, kurtosis raw 3 for normal).
+    periods_per_year used to correctly scale variance when annualized=True.
+
+    Variance formula (annualized case):
+      SR_per = SR_ann / sqrt(P)
+      var_per = (1 - skew*SR_per + (kurt-1)/4 * SR_per^2)/(n-1)
+      var_ann = var_per * P
+      sigma = sqrt(var_ann)
+    For per-period (annualized=False): var = (1 - skew*SR + (kurt-1)/4*SR^2)/(n-1)
+
+    Returns Φ[ (SR - benchmark)/sigma ].
+    """
     if n < 2:
         return 0.5
-    # kurtosis is raw (3 for normal), not excess
-    sr_var = (1 - skewness * observed_sr + (kurtosis - 1) / 4 * observed_sr**2) / (n - 1)
-    if sr_var <= 0:
-        return 1.0 if observed_sr > benchmark else 0.0
-    sr_std = math.sqrt(sr_var)
-    if sr_std == 0:
-        return 1.0 if observed_sr > benchmark else 0.0
-    return float(norm.cdf((observed_sr - benchmark) / sr_std))
+    P = periods_per_year if annualized else 1
+    # Convert to per-period for variance calc if annualized
+    if annualized and P != 1:
+        sr_per = observed_sr / math.sqrt(P)
+        bench_per = benchmark / math.sqrt(P)
+        # skew/kurt are of returns, same for per-period
+        var_per = (1 - skewness * sr_per + (kurtosis - 1) / 4 * sr_per**2) / (n - 1)
+        if var_per <= 0:
+            return 1.0 if observed_sr > benchmark else 0.0
+        sigma_ann = math.sqrt(var_per * P)
+        if sigma_ann == 0 or not math.isfinite(sigma_ann):
+            return 1.0 if observed_sr > benchmark else 0.0
+        return float(norm.cdf((observed_sr - benchmark) / sigma_ann))
+    else:
+        # per-period or P=1
+        var = (1 - skewness * observed_sr + (kurtosis - 1) / 4 * observed_sr**2) / (n - 1)
+        if var <= 0:
+            return 1.0 if observed_sr > benchmark else 0.0
+        sigma = math.sqrt(var)
+        if sigma == 0:
+            return 1.0 if observed_sr > benchmark else 0.0
+        return float(norm.cdf((observed_sr - benchmark) / sigma))
 
 
-def _expected_max_sr(num_trials: int) -> float:
-    """E[max SR under null] across N i.i.d. trials. Bailey 2014 Eq. (6)."""
+def _expected_max_std(num_trials: int) -> float:
+    """E[max of N standard normals]. Bailey 2014 Eq. (6) without sigma scaling."""
     if num_trials <= 1:
         return 0.0
     euler = 0.5772156649
-    # norm.ppf(1 - 1/N)
     q1 = norm.ppf(1 - 1 / num_trials)
-    # norm.ppf(1 - 1/(N*e))
     q2 = norm.ppf(1 - 1 / (num_trials * math.e))
     return float((1 - euler) * q1 + euler * q2)
 
 
-def deflated_sharpe_ratio(observed_sr: float, num_trials: int, n: int, skewness: float = 0.0, kurtosis: float = 3.0) -> float:
-    """DSR: PSR with benchmark = E[max].
+def expected_max_sharpe_ratio(num_trials: int, sharpe_std: float, mean: float = 0.0) -> float:
+    """Expected maximum Sharpe under null.
 
-    For N=1, DSR == PSR(0). For N>1, benchmark = E[max] (in SR units),
-    then DSR = PSR(benchmark). This is the textbook definition without heuristic.
+    mean, sharpe_std: location/scale of Sharpe distribution under null.
+    For per-period Sharpe: sharpe_std = sqrt(1/(n-1))
+    For annualized Sharpe: sharpe_std = sqrt(P/(n-1))
+    Returns mean + sharpe_std * expected_max_std
+    """
+    if num_trials <= 1 or sharpe_std <= 0:
+        return float(mean)
+    return float(mean + sharpe_std * _expected_max_std(num_trials))
 
-    No 0.15 factor. Documented limitation: SR units must be consistent
-    (observed_sr and benchmark both annualized or both raw). We use observed
-    annualized Sharpe and benchmark in same units (annualized). The expected max
-    is for standardized SR̂ (Var=1), so for T large the scaling is minor; the
-    unscaled version is conservative (higher benchmark than scaled), so DSR is
-    slightly pessimistic — acceptable for capital preservation.
 
-    Alternative scaling: benchmark_scaled = expected_max / math.sqrt(n) * sqrt(periods)
-    but we do NOT use it to avoid hidden optimism. If future evidence shows
-    scaling needed, we will add it as explicit param with ADR.
+def deflated_sharpe_ratio(
+    observed_sr: float,
+    num_trials: int,
+    n: int,
+    skewness: float = 0.0,
+    kurtosis: float = 3.0,
+    periods_per_year: int = 252 * 24,
+    annualized: bool = True,
+) -> float:
+    """DSR: PSR with benchmark = expected maximum under N trials.
+
+    observed_sr: Sharpe in same units as benchmark (annualized if annualized=True)
+    num_trials: N including discarded (must be tracked via ExperimentStore)
+    n: number of return observations (T)
+    skewness/kurtosis: of returns
+    periods_per_year: for correct scaling when annualized
+    annualized: whether observed_sr is annualized
+
+    Benchmark SR0 = expected_max_sharpe_ratio(N, sharpe_std_null)
+    where sharpe_std_null = sqrt(P/(n-1)) if annualized else sqrt(1/(n-1))
+    (variance under null with SR=0, skew=0, kurt=3 => Var = P/(n-1) or 1/(n-1))
+
+    DSR = PSR( SR0 )
+
+    Properties (tested):
+      - N=1 => DSR == PSR(0)
+      - DSR < PSR for N>1 when SR>0
+      - DSR decreases with N
+      - With more n, DSR -> PSR (less uncertainty)
+    No heuristic 0.15 factor. No mixing.
     """
     if num_trials <= 1:
-        return probabilistic_sharpe_ratio(observed_sr, n, skewness, kurtosis, 0.0)
-    expected_max = _expected_max_sr(num_trials)
-    # DSR benchmark is expected_max (annualized SR units)
-    # No heuristic scaling
-    return probabilistic_sharpe_ratio(observed_sr, n, skewness, kurtosis, benchmark=expected_max)
+        return probabilistic_sharpe_ratio(observed_sr, n, skewness, kurtosis, 0.0, periods_per_year, annualized)
+    P = periods_per_year if annualized else 1
+    # std of Sharpe under null (SR=0): var = P/(n-1) for annualized, 1/(n-1) per-period
+    if n <= 1:
+        return 0.5
+    sharpe_std_null = math.sqrt(P / (n - 1)) if annualized else math.sqrt(1 / (n - 1))
+    # For exact Prado formula, variance under null should be 1/(n-1) for per-period,
+    # but if observed is annualized, scale accordingly.
+    # However alternative is to use var_null = (1)/(n-1) for per-period and then annualize benchmark:
+    # benchmark_ann = expected_max_std * sqrt(P/(n-1))
+    # That's equivalent to sharpe_std_null * expected_max_std
+    benchmark = expected_max_sharpe_ratio(num_trials, sharpe_std_null, mean=0.0)
+    return probabilistic_sharpe_ratio(observed_sr, n, skewness, kurtosis, benchmark, periods_per_year, annualized)
 
 
 def walk_forward_efficiency(is_sharpe: float, oos_sharpe: float) -> float:

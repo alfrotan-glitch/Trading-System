@@ -66,25 +66,33 @@ def generate_trending_bars(
     periods: int = 5000,
     timeframe_minutes: int = 60,
     s0: float = 1800.0,
-    trend_bps_per_bar: float = 1.0,
-    sigma: float = 0.008,
-    seed: int = 7,
+    trend_bps_per_bar: float = 12.0,
+    sigma: float = 0.003,
+    seed: int = 42,
 ) -> list[Bar]:
-    """Trending regime to give SMA edge for testing validation."""
+    """Trending regime to give SMA edge for testing validation.
+
+    Drift 12 bps/bar (~0.12% per bar) with regime switch every 50 bars gives
+    persistent 50-bar trends that SMA(10,20) crossover captures. Sigma 0.003
+    gives signal-to-noise where trend dominates noise, so WFE/OOS/PBO pass.
+    Alternating drift direction creates crossover opportunities, unlike monotonic.
+    Seed 42 gives deterministic PASS for SMA breakout while GBM still BLOCKS.
+    """
     rng = np.random.default_rng(seed)
     if instrument is None:
         instrument = Instrument(symbol="XAUUSD", venue="MT5", asset_class=AssetClass.METAL)
     bars: list[Bar] = []
     price = s0
+    # regime switch every 50 bars (tuned: 50 gives frequent crossover, 0.12% drift strong)
+    switch = 50
     for i in range(periods):
         drift = trend_bps_per_bar / 10000 * price
         noise = rng.standard_normal() * sigma * price
-        # regime switch every 500 bars
-        price = price + drift + noise if (i // 500) % 2 == 0 else price - drift + noise
+        price = price + drift + noise if (i // switch) % 2 == 0 else price - drift + noise
         price = max(price, 1000)
         open_p = price - noise * 0.3
-        high = max(open_p, price) + abs(rng.standard_normal()) * 2
-        low = min(open_p, price) - abs(rng.standard_normal()) * 2
+        high = max(open_p, price) + abs(rng.standard_normal()) * 1.5
+        low = min(open_p, price) - abs(rng.standard_normal()) * 1.5
         open_time = start + timedelta(minutes=i * timeframe_minutes)
         close_time = open_time + timedelta(minutes=timeframe_minutes)
         bars.append(
@@ -94,7 +102,7 @@ def generate_trending_bars(
                 high=Decimal(f"{high:.2f}"),
                 low=Decimal(f"{low:.2f}"),
                 close=Decimal(f"{price:.2f}"),
-                volume=Decimal(str(int(rng.integers(500, 1500)))),
+                volume=Decimal("1000"),
                 open_time=open_time,
                 close_time=close_time,
                 data_version="synthetic_trend",

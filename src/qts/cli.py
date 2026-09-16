@@ -149,8 +149,11 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
         click.echo("not enough bars for validation")
         sys.exit(1)
 
-    # --- real walk-forward: split data into folds, run independent backtests ---
-    pipeline = ValidatorPipeline(config={"min_folds": 3, "min_wfe": 0.3, "min_oos_sharpe": 0.0})
+    # --- real walk-forward: use single coherent policy from Settings (no duplicated thresholds) ---
+    from qts.config.settings import load_settings
+    settings = load_settings()
+    # ValidatorPipeline reads defaults from Settings.validation (min_folds=5, min_wfe=0.30, min_oos_sharpe=0.30, max_pbo=0.50)
+    pipeline = ValidatorPipeline()  # uses Settings defaults
     # Use 60% train / 20% test style but via splits; for demo use train=30% of n, test=10% , step=test
     train = max(50, n // 3)
     test = max(20, n // 9)
@@ -199,12 +202,13 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
         except Exception:
             perturbed.append(0.0)
 
-    # CPCV: try to build cpcv folds — need trials; we generate trials as fast variants
-    # For CPCV we need multiple trials per split; we will generate trials as fast in [5,10,15]
+    # CPCV: combinatorial splits — must meet ValidatorPipeline.cpcv_min_combos (6) with sufficient trials
+    # Use n_groups=6,n_test=2 => C(6,2)=15 combos >=6, each fold evaluated across trials [5,10,15]
     cpcv_folds: list[dict[str, Any]] = []
-    # Use pipeline.cpcv_splits to get train/test indices
-    cpcv_splits = pipeline.cpcv_splits(n, n_groups=4, n_test=1)
+    cpcv_splits = pipeline.cpcv_splits(n, n_groups=6, n_test=2)
     trials = [{"fast": 5}, {"fast": 10}, {"fast": 15}]
+    # Ensure we produce at least cpcv_min_combos; if n small, fallback to 4,1 but validator will BLOCK
+    
     for train_idx, test_idx in cpcv_splits[:6]:
         train_sharpes: dict[str, float] = {}
         test_sharpes: dict[str, float] = {}
@@ -240,10 +244,14 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
 
     exp_store = ExperimentStore(db_path=store.db_path)
     num_trials = max(1, exp_store.count_trials())
-    # include cpcv trials in count
-    num_trials = max(num_trials, len(trials) * len(cpcv_folds) if cpcv_folds else num_trials)
+    # include cpcv trials in count for DSR N (must count all trials including discarded)
+    num_trials = max(num_trials, len(trials) * max(1, len(cpcv_folds)) if cpcv_folds else num_trials)
+    # If CPCV insufficient, validator will return NOT_IMPLEMENTED → BLOCKED (explicit)
+    if len(cpcv_folds) < pipeline.cpcv_min_combos:
+        # still pass empty to validator to trigger BLOCK, but log
+        pass
 
-    pipeline = ValidatorPipeline(config={"min_folds": 3, "min_wfe": 0.3, "min_oos_sharpe": -1.0, "max_pbo": 0.5})
+    pipeline = ValidatorPipeline()  # coherent Settings policy; materially negative OOS Sharpe fails (min_oos_sharpe=0.30)
     report = pipeline.validate(
         strategy_id=strategy,
         data_version=data_version,
@@ -325,9 +333,10 @@ def risk_check(instrument: str, quantity: float) -> None:
 
     instr = Instrument(symbol=instrument)
     intent = OrderIntent(instrument=instr, side="BUY", quantity=Decimal(str(quantity)), client_order_id="check", strategy_id="check")
-    ctx = RiskContext(account=Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)), positions={}, open_orders_count=0, daily_pnl=Decimal("0"), drawdown=Decimal("0"), instrument_suspended=set())
+    # Provide authoritative market price (current executable): 2000 for XAUUSD demo; auditable
+    ctx = RiskContext(account=Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)), positions={}, open_orders_count=0, daily_pnl=Decimal("0"), drawdown=Decimal("0"), instrument_suspended=set(), reference_prices={instrument: Decimal("2000")})
     dec = RiskEngine(RiskLimits()).pre_trade(intent, ctx)
-    click.echo(f"allowed={dec.allowed} veto={dec.veto_reason} detail={dec.reason_detail}")
+    click.echo(f"allowed={dec.allowed} veto={dec.veto_reason} detail={dec.reason_detail} notional={dec.reason_detail}")
 
 
 @main.command("health")

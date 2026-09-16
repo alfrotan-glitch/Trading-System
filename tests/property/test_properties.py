@@ -69,6 +69,7 @@ def test_risk_never_exceeds_after_veto(qty):
             daily_pnl=Decimal("0"),
             drawdown=Decimal("0"),
             instrument_suspended=set(),
+            reference_prices={"XAUUSD": Decimal("2000")},
         )
         d = eng.pre_trade(intent, ctx)
         if d.allowed:

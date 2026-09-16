@@ -52,6 +52,7 @@ class OrderState(StrEnum):
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
     REJECTED = "REJECTED"
+    AMBIGUOUS = "AMBIGUOUS"  # transport failure/timeout — unknown if venue accepted, fail closed
     PARTIALLY_FILLED = "PARTIALLY_FILLED"
     FILLED = "FILLED"
     CANCELLED = "CANCELLED"

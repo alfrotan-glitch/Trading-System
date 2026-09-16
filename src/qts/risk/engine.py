@@ -30,6 +30,7 @@ class RiskVetoReason(StrEnum):
     VOL_RESIZE = "VOL_RESIZE"
     QUANTITY_STEP_VIOLATION = "QUANTITY_STEP_VIOLATION"
     MIN_QUANTITY_VIOLATION = "MIN_QUANTITY_VIOLATION"
+    MISSING_MARKET_PRICE = "MISSING_MARKET_PRICE"
 
 
 class RiskLimits(BaseModel):
@@ -69,6 +70,13 @@ class RiskContext:
     drawdown: Decimal  # USD peak - current
     instrument_suspended: set[str]
     realized_vol: Decimal | None = None
+    # Authoritative market snapshot — must be provided for market orders (Blocker 5)
+    reference_prices: dict[str, Decimal] | None = None
+
+    def reference_price_for(self, symbol: str) -> Decimal | None:
+        if self.reference_prices is None:
+            return None
+        return self.reference_prices.get(symbol)
 
 
 class RiskDecision(BaseModel):
@@ -165,13 +173,22 @@ class RiskEngine:
                 reason_detail=f"{intent.quantity} > {self.limits.max_quantity}",
             )
 
-        # notional (use limit price if available, else est 2000 for XAUUSD, but better to require price)
+        # notional — must use authoritative market price, not hard-coded fallback (Blocker 5)
+        # Priority: limit/stop price if set (explicit), else reference_prices[symbol] from market snapshot
         est_price = intent.limit_price or intent.stop_price
+        price_source = "limit/stop"
         if est_price is None:
-            # estimate from context: use last position avg or 2000
-            # For risk, we need price; use instrument tick_size based? Use 2000 as fallback but document
-            est_price = Decimal("2000")
+            est_price = ctx.reference_price_for(sym) if ctx.reference_prices else None
+            price_source = "reference_prices"
+        if est_price is None:
+            # No market price available — fail closed, do not trade, auditable
+            return RiskDecision(
+                allowed=False,
+                veto_reason=RiskVetoReason.MISSING_MARKET_PRICE,
+                reason_detail=f"no market price for {sym}: need limit_price or reference_prices[{sym}]",
+            )
         notional = self._notional_for(intent, est_price)
+        # audit detail includes price_source for traceability
         if notional > self.limits.max_notional:
             return RiskDecision(
                 allowed=False,

@@ -7,7 +7,7 @@ from qts.domain.value_objects import Account, Instrument, OrderIntent, OrderType
 from qts.risk.engine import RiskContext, RiskEngine, RiskLimits
 
 
-def _ctx(balance=Decimal("10000"), daily_pnl=Decimal("0"), drawdown=Decimal("0"), open_orders=0):
+def _ctx(balance=Decimal("10000"), daily_pnl=Decimal("0"), drawdown=Decimal("0"), open_orders=0, price=Decimal("2000")):
     return RiskContext(
         account=Account(balance=balance, equity=balance, currency="USD", updated_at=datetime.now(UTC)),
         positions={},
@@ -15,6 +15,7 @@ def _ctx(balance=Decimal("10000"), daily_pnl=Decimal("0"), drawdown=Decimal("0")
         daily_pnl=daily_pnl,
         drawdown=drawdown,
         instrument_suspended=set(),
+        reference_prices={"XAUUSD": price},
     )
 
 
@@ -123,12 +124,13 @@ def test_exposure_veto():
 
         pos = Position(instrument=instr, quantity=Decimal("0.15"), avg_price=Decimal("2000"))
         ctx = RiskContext(
-            account=Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD"),
+            account=Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)),
             positions={"XAUUSD": pos},
             open_orders_count=0,
             daily_pnl=Decimal("0"),
             drawdown=Decimal("0"),
             instrument_suspended=set(),
+            reference_prices={"XAUUSD": Decimal("2000")},
         )
         intent = OrderIntent(
             instrument=instr,

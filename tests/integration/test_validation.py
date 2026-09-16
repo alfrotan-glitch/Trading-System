@@ -19,6 +19,7 @@ def test_validation_pass_with_real_evidence():
         {"best_is_test_sharpe": 0.8, "median_test_sharpe": 0.5},
         {"best_is_test_sharpe": 0.6, "median_test_sharpe": 0.5},
         {"best_is_test_sharpe": 0.7, "median_test_sharpe": 0.5},
+        {"best_is_test_sharpe": 0.6, "median_test_sharpe": 0.5},
     ]
     # perturbed stable around 0 (flat)
     perturbed = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -73,6 +74,7 @@ def test_validation_fail_wfe():
         {"best_is_test_sharpe": 0.8, "median_test_sharpe": 0.5},
         {"best_is_test_sharpe": 0.6, "median_test_sharpe": 0.5},
         {"best_is_test_sharpe": 0.7, "median_test_sharpe": 0.5},
+        {"best_is_test_sharpe": 0.6, "median_test_sharpe": 0.5},
     ]
     perturbed = [0.5, 0.4, 0.6, 0.5, 0.45, 0.55, 0.48]
     stress = {1.0: 1.2, 1.5: 1.1}
