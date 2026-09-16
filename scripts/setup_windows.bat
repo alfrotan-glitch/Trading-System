@@ -52,6 +52,18 @@ if not exist data\sqlite mkdir data\sqlite
 if not exist data\evidence mkdir data\evidence
 if not exist logs mkdir logs
 
+echo Checking data versions ...
+if not exist data\manifests\manifest_20260916-010-572728d9.json (
+  if exist data\fixtures\XAUUSD_1H_500.csv (
+    echo Ingesting fixture XAUUSD_1H_500.csv ...
+    .\.venv\Scripts\python.exe -m qts data ingest --path data/fixtures/XAUUSD_1H_500.csv --instrument XAUUSD --timeframe 1H
+  )
+)
+if not exist data\raw\synthetic_XAUUSD_1m.csv (
+  echo Generating synthetic 1m data ...
+  .\.venv\Scripts\python.exe -m qts data synthetic --rows 2000 --out data/raw/synthetic_XAUUSD_1m.csv
+)
+
 echo Verifying qts CLI ...
 .\.venv\Scripts\python.exe -m qts --help >nul
 if %ERRORLEVEL% NEQ 0 (

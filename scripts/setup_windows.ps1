@@ -52,13 +52,28 @@ QTS_MT5_MODE=MOCK
   Write-Host "Created .env.example — copy to .env and edit for demo_forward/live"
 }
 
-# 8. Validate install
+# 8. Ensure data (ingest fixture if no versions)
+Write-Host "Checking data versions ..."
+$hasData = & $venvPython -m qts health 2>&1 | Select-String -Pattern "data_versions"
+if (-not (Test-Path "data/manifests/manifest_20260916-010-572728d9.json")) {
+  if (Test-Path "data/fixtures/XAUUSD_1H_500.csv") {
+    Write-Host "Ingesting fixture XAUUSD_1H_500.csv ..."
+    & $venvPython -m qts data ingest --path data/fixtures/XAUUSD_1H_500.csv --instrument XAUUSD --timeframe 1H
+  }
+}
+# Also ensure synthetic for 1m if needed
+if (-not (Test-Path "data/raw/synthetic_XAUUSD_1m.csv")) {
+  Write-Host "Generating synthetic 1m data ..."
+  & $venvPython -m qts data synthetic --rows 2000 --out data/raw/synthetic_XAUUSD_1m.csv
+}
+
+# 9. Validate install
 Write-Host "Verifying qts CLI ..."
 & $venvPython -m qts --help | Out-Null
 if ($LASTEXITCODE -ne 0) { Fail "qts CLI not working" }
 & $venvPython -m qts health 2>&1 | Select-Object -First 20
 
-# 9. Run quick tests
+# 10. Run quick tests
 Write-Host "Running quick tests (pytest -q) ..."
 & $venvPython -m pytest tests -q --tb=short
 
