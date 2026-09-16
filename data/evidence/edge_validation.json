@@ -1,0 +1,254 @@
+{
+  "dataset": {
+    "manifest": {
+      "version": "20260916-010-572728d9",
+      "schema_version": 1,
+      "created_at": "2026-09-16 12:08:58.678569+00:00",
+      "code_version": "0.1.0",
+      "instrument": "XAUUSD",
+      "venue": "MT5",
+      "timeframe": "1H",
+      "start": "2020-01-01 00:00:00+00:00",
+      "end": "2020-01-21 20:00:00+00:00",
+      "rows": 500,
+      "checksum": "sha256:572728d92ebb5c2a",
+      "source_file": "data/fixtures/XAUUSD_1H_500.csv",
+      "source": "synthetic_or_csv",
+      "ingestion_timestamp": null,
+      "preprocessing_version": "1.0",
+      "timezone": "UTC",
+      "missing_data_stats": null,
+      "session_stats": null
+    },
+    "quality_passed": true,
+    "quality_checks": [
+      {
+        "name": "monotonic_time",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "tz_aware",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_future",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "ohlc_invariants",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "positive_prices",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "abnormal_spreads",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_duplicates",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "single_symbol",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_missing_bars",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "session_boundaries",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_broker_artifacts",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "volume_non_negative",
+        "passed": true,
+        "details": ""
+      }
+    ],
+    "missing_stats": {
+      "expected": 501,
+      "actual": 500,
+      "missing": 1,
+      "gap_count": 0,
+      "max_gap_s": 0,
+      "missing_pct": 0.2,
+      "timezone": "UTC"
+    },
+    "locked_partition": {
+      "discovery": 300,
+      "validation": 100,
+      "locked": 100,
+      "is_frozen": true,
+      "access_log": []
+    }
+  },
+  "trial_ledger": {
+    "trial_count": 6,
+    "disk_trial_count": 6
+  },
+  "edge_survival": {
+    "passed": false,
+    "checks": {
+      "walk_forward": true,
+      "spread": true,
+      "cost": false,
+      "perturbation": false,
+      "time_window": true,
+      "regime": false,
+      "randomized_control": false,
+      "walk_forward_K": true,
+      "cpcv": false,
+      "pbo": false,
+      "psr": true,
+      "dsr": false,
+      "placebo": false,
+      "expectancy": false,
+      "economic_edge": false
+    },
+    "details": {
+      "walk_forward": "walk_forward_min_folds=True; walk_forward_wfe=True; walk_forward_oos_sharpe=True",
+      "spread": "spread 1.5x pf 1.0320169672876036",
+      "cost": "net_sharpe 0.02 pf 1.00 be_spread 3.0bps tol 0.0bps",
+      "perturbation": "Sharpe drops 69.6% under \u00b120% perturbation \u2192 fragile (>30%); perturbed std 0.08 large vs mean 0.16",
+      "time_window": "walk_forward_min_folds=True; walk_forward_wfe=True; walk_forward_oos_sharpe=True",
+      "regime": "3 regimes, dependent=True",
+      "randomized_control": "controls [0.14901424590336979, -0.0414792903513554, 0.19430656143020775, 0.45690895692240757, -0.07024601241700079]",
+      "cpcv": "PBO 0.83 > 0.5",
+      "psr": "psr 0.85",
+      "dsr": "dsr 0.40 trials 6",
+      "placebo": "placebo [-0.07024108708475416, 0.47376384465221744, 0.23023041874587263, -0.14084231578048562, 0.1627680130757894]",
+      "expectancy": "net_exp -48.3223 pf 0.98",
+      "economic_edge": "remaining = expectancy -48.3223 - cost 0.3000 - uncertainty 0.0200 - penalty 0.0100 = -48.6523 > threshold 0.0 and >20% cost"
+    },
+    "psr": 0.8521213918219743,
+    "dsr": 0.39862622671202935,
+    "pbo": 0.8333333333333334,
+    "wfe": 0.590024108432362,
+    "cost_be": 3.0
+  },
+  "null_control": {
+    "control_sharpes": [
+      0.14901424590336979,
+      -0.0414792903513554,
+      0.19430656143020775,
+      0.45690895692240757,
+      -0.07024601241700079
+    ],
+    "rejected": false
+  },
+  "placebo": {
+    "placebo_sharpes": [
+      -0.07024108708475416,
+      0.47376384465221744,
+      0.23023041874587263,
+      -0.14084231578048562,
+      0.1627680130757894
+    ],
+    "rejected": false
+  },
+  "cost_robustness": {
+    "stress": {
+      "1.0": 1.0322221474267004,
+      "1.5": 1.0320169672876036,
+      "2.0": 1.031813412459434
+    }
+  },
+  "regime": [
+    {
+      "regime": "trend",
+      "sharpe": 4.466737959747593,
+      "passed": true
+    },
+    {
+      "regime": "range",
+      "sharpe": -5.179791746655208,
+      "passed": false
+    },
+    {
+      "regime": "high_vol",
+      "sharpe": 1.6003123126448962,
+      "passed": true
+    }
+  ],
+  "forward": {
+    "signals": 10,
+    "no_trades": 90,
+    "invalidated": false
+  },
+  "shadow_paper": {
+    "missed_entries": 4,
+    "unexpected_fills": 0,
+    "avg_price_diff_bps": 144.7310040068556,
+    "max_price_diff_bps": 850.8872468975351,
+    "avg_timing_diff_s": 0.5,
+    "rejected_trades": 0,
+    "partial_fills": 0,
+    "slippage_error_bps": 144.7310040068556,
+    "error_distribution": [
+      3.4987754285990134,
+      3.5012254288998457,
+      3.498775428599632,
+      3.5012254288994793,
+      3.498775428600666,
+      850.8872468975351
+    ],
+    "paper_represents_live": false
+  },
+  "capital_policy": {
+    "passed": true,
+    "reason": null
+  },
+  "expectancy": {
+    "expectancy_per_trade": -48.322339795877525,
+    "profit_factor": 0.9763406556135362,
+    "avg_win": 276.4818810817307,
+    "avg_loss": -280.48480695238095,
+    "win_rate": 0.4168336673346693,
+    "loss_rate": 0.5831663326653307,
+    "max_drawdown": 8418.6,
+    "expected_shortfall": -559.3799999999999,
+    "turnover": 499.0,
+    "cost_per_trade": 0.0,
+    "net_expectancy": -48.322339795877525,
+    "net_expectancy_after_costs": -48.322339795877525,
+    "trades": 499
+  },
+  "economic_edge": {
+    "expected_net_edge": -48.322339795877525,
+    "conservative_cost": 0.01,
+    "statistical_uncertainty": 0.02,
+    "model_penalty": 0.01,
+    "remaining_edge": -48.362339795877524,
+    "passed": false,
+    "criterion": "remaining = expectancy -48.3223 - cost 0.0100 - uncertainty 0.0200 - penalty 0.0100 = -48.3623 > threshold 0.0 and >20% cost"
+  },
+  "promotion": {
+    "state": "RESEARCH"
+  },
+  "emergency": {
+    "kill_switch": true
+  },
+  "order_check": {
+    "ok": true
+  },
+  "code_version": "0.1.0",
+  "generated_at": "2026-09-16T13:49:19.328123+00:00"
+}

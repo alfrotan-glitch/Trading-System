@@ -18,7 +18,7 @@ from qts.domain.value_objects import Bar, Instrument
 
 class Manifest(BaseModel):
     version: str
-    schema_version: int = 1
+    schema_version: int = 2
     created_at: datetime
     code_version: str
     instrument: str
@@ -29,6 +29,13 @@ class Manifest(BaseModel):
     rows: int
     checksum: str
     source_file: str | None = None
+    # Phase 1 extended fields — with defaults for backward compat
+    source: str = "synthetic_or_csv"
+    ingestion_timestamp: datetime | None = None
+    preprocessing_version: str = "1.0"
+    timezone: str = "UTC"
+    missing_data_stats: dict | None = None
+    session_stats: dict | None = None
 
 
 class DataStore(Protocol):
@@ -140,6 +147,28 @@ class SqliteParquetDataStore:
         out_dir.mkdir(parents=True, exist_ok=True)
         table = pa.Table.from_pandas(df, preserve_index=False)
         pq.write_table(table, out_dir / "part-0.parquet", compression="snappy")
+        # Phase 1: compute missing data stats
+        missing_stats = None
+        session_stats = None
+        try:
+            # estimate expected bars based on timeframe
+            tf_seconds = {"1m": 60, "5m": 300, "15m": 900, "1H": 3600, "1D": 86400}.get(timeframe)
+            if tf_seconds:
+                total_seconds = (bars[-1].close_time - bars[0].open_time).total_seconds()
+                expected = int(total_seconds // tf_seconds) + 1 if total_seconds > 0 else len(bars)
+                missing = max(0, expected - len(bars))
+                gap_count = 0
+                max_gap_s = 0
+                for i in range(len(bars)-1):
+                    gap = (bars[i+1].open_time - bars[i].close_time).total_seconds()
+                    if gap > tf_seconds * 1.5:
+                        gap_count += 1
+                        max_gap_s = max(max_gap_s, gap)
+                missing_stats = {"expected": expected, "actual": len(bars), "missing": missing, "gap_count": gap_count, "max_gap_s": max_gap_s, "missing_pct": round(missing/expected*100,2) if expected else 0}
+                # session boundaries: count weekend gaps (market closures)
+                session_stats = {"timezone": "UTC", "weekend_gaps": gap_count}
+        except Exception:
+            pass
         manifest = Manifest(
             version=version,
             created_at=datetime.now(UTC),
@@ -152,6 +181,12 @@ class SqliteParquetDataStore:
             rows=len(bars),
             checksum=checksum,
             source_file=source_file,
+            source=source_file or "synthetic_or_csv",
+            ingestion_timestamp=datetime.now(UTC),
+            preprocessing_version="1.0",
+            timezone="UTC",
+            missing_data_stats=missing_stats,
+            session_stats=session_stats,
         )
         # persist quality report
         import json
