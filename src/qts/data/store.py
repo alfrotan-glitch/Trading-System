@@ -302,6 +302,31 @@ class SqliteParquetDataStore:
             return "1D"
         return f"{secs}s"
 
+    def close(self) -> None:
+        # Deterministic closure for Windows file-lock semantics: checkpoint WAL and close any handles
+        try:
+            if self.db_path.exists() and str(self.db_path) != ":memory:":
+                with sqlite3.connect(self.db_path) as con:
+                    try:
+                        con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                        con.commit()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
     def _bars_to_df(self, bars: list[Bar]) -> pd.DataFrame:
         return pd.DataFrame(
             [

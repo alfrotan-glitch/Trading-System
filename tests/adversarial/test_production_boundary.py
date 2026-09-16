@@ -45,11 +45,13 @@ def _tick(bid=Decimal("1999.5"), ask=Decimal("2000.5"), age_s=0):
 
 
 def _make_engine(broker=None, tmp=None):
+    # Windows-safe: use mktemp file instead of TemporaryDirectory to avoid WinError32
+    # If tmp is provided (for tests that need isolation), use it but ensure caller closes
     if tmp is None:
-        tmp = tempfile.TemporaryDirectory()
-        # Keep reference to avoid cleanup during test
-        _make_engine._tmp = tmp
-    db = Path(tmp.name) / "test.db" if hasattr(tmp, "name") else Path(tempfile.mktemp(suffix=".db"))
+        db = Path(tempfile.mktemp(suffix=".db"))
+        tmp = None
+    else:
+        db = Path(tmp.name) / "test.db" if hasattr(tmp, "name") else Path(tempfile.mktemp(suffix=".db"))
     # Use file for risk/idempotency to avoid :memory: issues
     risk = RiskEngine(RiskLimits(), db_path=db)
     audit = InMemoryAuditLog()
@@ -339,14 +341,31 @@ def test_insufficient_free_margin():
     om2 = OrderManager(audit=audit2, idempotency=IdempotencyStore(db_path=db2))
     portfolio2 = Portfolio(initial_balance=Decimal("100"))
     eng = ExecutionEngine(om2, risk2, broker, MatchingEngine(MatchingConfig()), portfolio2, audit=audit2, db_path=db2)
-    bar = _bar(close=Decimal("2000"))
-    intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("1.0"), client_order_id="margin1", strategy_id="s")
-    order, _ = eng.submit_intent(intent, bar=bar)
-    # Broker should reject due to insufficient margin
-    assert order is None
-    stored = eng.om.get("margin1")
-    assert stored is not None and stored.state == OrderState.REJECTED
-    tmp2.cleanup()
+    try:
+        bar = _bar(close=Decimal("2000"))
+        intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("1.0"), client_order_id="margin1", strategy_id="s")
+        order, _ = eng.submit_intent(intent, bar=bar)
+        # Broker should reject due to insufficient margin
+        assert order is None
+        stored = eng.om.get("margin1")
+        assert stored is not None and stored.state == OrderState.REJECTED
+    finally:
+        try:
+            eng.close()
+        except Exception:
+            pass
+        try:
+            risk2.close()
+        except Exception:
+            pass
+        try:
+            om2.idempotency.close()
+        except Exception:
+            pass
+        try:
+            tmp2.cleanup()
+        except Exception:
+            pass
 
 
 # ---------- 12. Broker restart/disconnect ----------
@@ -378,28 +397,59 @@ def test_local_restart_after_fill():
     matching = MatchingEngine(MatchingConfig())
     portfolio1 = Portfolio(initial_balance=Decimal("10000"))
     eng1 = ExecutionEngine(om1, risk1, broker, matching, portfolio1, audit=audit1, db_path=db)
-    bar = _bar()
-    intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="restart_fill", strategy_id="s")
-    order, fills = eng1.submit_intent(intent, bar=bar)
-    assert order.state == OrderState.FILLED
-    # Simulate restart: new engine with same DB, same broker (which has position)
-    risk2 = RiskEngine(RiskLimits(), db_path=db)
-    audit2 = InMemoryAuditLog()
-    om2 = OrderManager(audit=audit2, idempotency=IdempotencyStore(db_path=db))
-    portfolio2 = Portfolio(initial_balance=Decimal("10000"))
-    # Copy broker positions to new? For paper, broker is same in-memory, but after restart portfolio is empty, so reconcile should detect
-    # For this test, we want to verify idempotency: duplicate after restart should be blocked
-    eng2 = ExecutionEngine(om2, risk2, broker, matching, portfolio2, audit=audit2, db_path=db)
-    # Try duplicate
-    order2, fills2 = eng2.submit_intent(intent, bar=bar)
-    assert order2 is not None
-    assert order2.state == OrderState.FILLED
-    assert fills2 == []
-    # Also reconcile should detect quantity mismatch if we don't copy portfolio
-    # Portfolio2 is empty but broker has position 0.1 -> MISSING_POSITION or QUANTITY_MISMATCH?
-    # Actually broker has position, portfolio2 empty, so reconcile should detect MISSING_POSITION or UNKNOWN?
-    # For this test, we just check idempotency
-    tmp.cleanup()
+    try:
+        bar = _bar()
+        intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="restart_fill", strategy_id="s")
+        order, fills = eng1.submit_intent(intent, bar=bar)
+        assert order.state == OrderState.FILLED
+        # Simulate restart: new engine with same DB, same broker (which has position)
+        risk2 = RiskEngine(RiskLimits(), db_path=db)
+        audit2 = InMemoryAuditLog()
+        om2 = OrderManager(audit=audit2, idempotency=IdempotencyStore(db_path=db))
+        portfolio2 = Portfolio(initial_balance=Decimal("10000"))
+        # Copy broker positions to new? For paper, broker is same in-memory, but after restart portfolio is empty, so reconcile should detect
+        # For this test, we want to verify idempotency: duplicate after restart should be blocked
+        eng2 = ExecutionEngine(om2, risk2, broker, matching, portfolio2, audit=audit2, db_path=db)
+        try:
+            # Try duplicate
+            order2, fills2 = eng2.submit_intent(intent, bar=bar)
+            assert order2 is not None
+            assert order2.state == OrderState.FILLED
+            assert fills2 == []
+            # Also reconcile should detect quantity mismatch if we don't copy portfolio
+            # Portfolio2 is empty but broker has position 0.1 -> MISSING_POSITION or QUANTITY_MISMATCH?
+            # Actually broker has position, portfolio2 empty, so reconcile should detect MISSING_POSITION or UNKNOWN?
+            # For this test, we just check idempotency
+        finally:
+            try:
+                eng2.close()
+            except Exception:
+                pass
+            try:
+                risk2.close()
+            except Exception:
+                pass
+            try:
+                om2.idempotency.close()
+            except Exception:
+                pass
+    finally:
+        try:
+            eng1.close()
+        except Exception:
+            pass
+        try:
+            risk1.close()
+        except Exception:
+            pass
+        try:
+            om1.idempotency.close()
+        except Exception:
+            pass
+        try:
+            tmp.cleanup()
+        except Exception:
+            pass
 
 
 # ---------- 14. Local restart after ambiguous ----------
@@ -419,27 +469,58 @@ def test_local_restart_after_ambiguous():
     om1 = OrderManager(audit=audit1, idempotency=IdempotencyStore(db_path=db))
     portfolio1 = Portfolio(initial_balance=Decimal("10000"))
     eng1 = ExecutionEngine(om1, risk1, broker, MatchingEngine(), portfolio1, audit=audit1, db_path=db)
-    bar = _bar()
-    intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="amb_restart", strategy_id="s")
-    eng1.submit_intent(intent, bar=bar)
-    assert eng1.om.get("amb_restart").state == OrderState.AMBIGUOUS
-    assert eng1.is_suspended
-    # Restart
-    risk2 = RiskEngine(RiskLimits(), db_path=db)
-    audit2 = InMemoryAuditLog()
-    om2 = OrderManager(audit=audit2, idempotency=IdempotencyStore(db_path=db))
-    portfolio2 = Portfolio(initial_balance=Decimal("10000"))
-    eng2 = ExecutionEngine(om2, risk2, broker, MatchingEngine(), portfolio2, audit=audit2, db_path=db)
-    # Should restore suspended and AMBIGUOUS
-    assert eng2.is_suspended
-    assert eng2._suspend_reason is not None
-    stored = eng2.om.get("amb_restart")
-    # On restart, the order is not in memory, but idempotency should have it
-    # Try duplicate - should be blocked and return AMBIGUOUS placeholder
-    order2, fills2 = eng2.submit_intent(intent, bar=bar)
-    assert order2.state == OrderState.AMBIGUOUS
-    assert fills2 == []
-    tmp.cleanup()
+    try:
+        bar = _bar()
+        intent = OrderIntent(instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="amb_restart", strategy_id="s")
+        eng1.submit_intent(intent, bar=bar)
+        assert eng1.om.get("amb_restart").state == OrderState.AMBIGUOUS
+        assert eng1.is_suspended
+        # Restart
+        risk2 = RiskEngine(RiskLimits(), db_path=db)
+        audit2 = InMemoryAuditLog()
+        om2 = OrderManager(audit=audit2, idempotency=IdempotencyStore(db_path=db))
+        portfolio2 = Portfolio(initial_balance=Decimal("10000"))
+        eng2 = ExecutionEngine(om2, risk2, broker, MatchingEngine(), portfolio2, audit=audit2, db_path=db)
+        try:
+            # Should restore suspended and AMBIGUOUS
+            assert eng2.is_suspended
+            assert eng2._suspend_reason is not None
+            stored = eng2.om.get("amb_restart")
+            # On restart, the order is not in memory, but idempotency should have it
+            # Try duplicate - should be blocked and return AMBIGUOUS placeholder
+            order2, fills2 = eng2.submit_intent(intent, bar=bar)
+            assert order2.state == OrderState.AMBIGUOUS
+            assert fills2 == []
+        finally:
+            try:
+                eng2.close()
+            except Exception:
+                pass
+            try:
+                risk2.close()
+            except Exception:
+                pass
+            try:
+                om2.idempotency.close()
+            except Exception:
+                pass
+    finally:
+        try:
+            eng1.close()
+        except Exception:
+            pass
+        try:
+            risk1.close()
+        except Exception:
+            pass
+        try:
+            om1.idempotency.close()
+        except Exception:
+            pass
+        try:
+            tmp.cleanup()
+        except Exception:
+            pass
 
 
 # ---------- 15. Reconciliation drift ----------

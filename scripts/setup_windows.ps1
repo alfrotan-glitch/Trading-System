@@ -6,13 +6,14 @@ Write-Host "=== QTS Trading System — Windows Setup ===" -ForegroundColor Cyan
 
 function Fail($msg) { Write-Host "ERROR: $msg" -ForegroundColor Red; exit 1 }
 
-# 1. Check Python
+# 1. Check Python (supported 3.11, 3.12, 3.13 — 3.14 not yet verified)
 $py = Get-Command python -ErrorAction SilentlyContinue
 if (-not $py) { $py = Get-Command py -ErrorAction SilentlyContinue }
-if (-not $py) { Fail "Python not found. Install Python 3.11+ from https://www.python.org and add to PATH." }
+if (-not $py) { Fail "Python not found. Install Python 3.11, 3.12, or 3.13 from https://www.python.org and add to PATH." }
 $ver = python --version 2>&1
 Write-Host "Found $ver at $($py.Source)"
-python -c "import sys; assert sys.version_info >= (3,11), 'Python 3.11+ required'; print(f'Python {sys.version} OK')"
+python -c "import sys; major, minor = sys.version_info[:2]; assert (3,11) <= (major, minor) < (3,14), f'Python {major}.{minor} not supported — supported: 3.11, 3.12, 3.13 (3.14 not yet verified)'; print(f'Python {sys.version} OK')"
+if ($LASTEXITCODE -ne 0) { Fail "Python version not supported — install Python 3.11, 3.12, or 3.13 (3.14 not yet verified, see docs/desktop_installation_windows.md)" }
 
 # 2. Check git
 try { git --version | Out-Null } catch { Fail "git not found. Install git from https://git-scm.com" }
@@ -73,12 +74,18 @@ Write-Host "Verifying qts CLI ..."
 if ($LASTEXITCODE -ne 0) { Fail "qts CLI not working" }
 & $venvPython -m qts health 2>&1 | Select-Object -First 20
 
-# 10. Run quick tests
+# 10. Run quick tests (fail-closed — do not print Setup Complete on failure)
 Write-Host "Running quick tests (pytest -q) ..."
 & $venvPython -m pytest tests -q --tb=short
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "ERROR: tests failed (pytest exit $LASTEXITCODE) — see output above. Setup NOT complete." -ForegroundColor Red
+  Write-Host "Fix failures and re-run setup_windows.ps1 (idempotent) — see docs/troubleshooting_windows.md" -ForegroundColor Yellow
+  exit 1
+}
+Write-Host "Tests passed ($LASTEXITCODE)" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "=== Setup Complete ===" -ForegroundColor Green
+Write-Host "=== Setup Complete ===`nSecond run is idempotent — re-run to verify." -ForegroundColor Green
 Write-Host "Next steps:"
 Write-Host "  1. .\scripts\run_qts.bat    — launch desktop (MOCK, no MT5)"
 Write-Host "  2. See docs/desktop_installation_windows.md for MT5 DEMO setup"

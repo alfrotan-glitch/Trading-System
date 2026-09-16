@@ -343,9 +343,48 @@ def test_expectancy_and_economic_edge():
 # Final gate: if edge does not demonstrate meaningful forward-tested cost-adjusted edge, keep NO_TRADE
 def test_final_gate_keeps_no_trade_when_blocked():
     from qts.edge.orchestrator import run_full_edge_validation
-    # Use sma_breakout which is known to be BLOCKED
-    evidence = run_full_edge_validation(data_version="20260916-010-572728d9", strategy_id="sma_breakout")
-    assert not evidence["edge_survival"]["passed"]
-    assert evidence["promotion"]["state"] == "RESEARCH"
-    # System should keep NO_TRADE — promotion not advanced
-    assert evidence["edge_survival"]["checks"]["economic_edge"] is False
+    from qts.data.store import SqliteParquetDataStore
+    from pathlib import Path
+    # Self-contained: ensure required data version exists via fixture/manifest creation
+    store = SqliteParquetDataStore()
+    target_version = "20260916-010-572728d9"
+    try:
+        if store.manifest(target_version) is None:
+            # Fresh clone: ingest fixture if available, otherwise synthesize
+            fixture = Path("data/fixtures/XAUUSD_1H_500.csv")
+            if fixture.exists():
+                from qts.data.ingest import ingest_csv
+                try:
+                    new_ver = ingest_csv(fixture, instrument="XAUUSD", timeframe="1H", store=store)
+                    # Verify new version is readable; use it if hardcoded still missing
+                    if store.manifest(target_version) is None:
+                        target_version = new_ver
+                except Exception:
+                    pass
+            if store.manifest(target_version) is None:
+                # Fallback: synthesize 500 bars deterministically
+                from decimal import Decimal
+                from datetime import UTC, datetime, timedelta
+                from qts.domain.value_objects import Instrument, Bar
+                instr = Instrument(symbol="XAUUSD")
+                base = datetime(2020, 1, 1, tzinfo=UTC)
+                bars = []
+                for i in range(500):
+                    ot = base + timedelta(hours=i)
+                    ct = ot + timedelta(hours=1)
+                    price = Decimal(str(2000 + i*0.1))
+                    bars.append(Bar(instrument=instr, open=price, high=price+Decimal("5"), low=price-Decimal("5"), close=price, volume=Decimal("1000"), open_time=ot, close_time=ct))
+                manifest = store.write_bars(bars, source_file="synthetic_fallback")
+                if store.manifest(target_version) is None:
+                    target_version = manifest.version
+        # Use sma_breakout which is known to be BLOCKED
+        evidence = run_full_edge_validation(data_version=target_version, strategy_id="sma_breakout")
+        assert not evidence["edge_survival"]["passed"]
+        assert evidence["promotion"]["state"] == "RESEARCH"
+        # System should keep NO_TRADE — promotion not advanced
+        assert evidence["edge_survival"]["checks"]["economic_edge"] is False
+    finally:
+        try:
+            store.close()
+        except Exception:
+            pass

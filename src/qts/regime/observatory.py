@@ -89,3 +89,39 @@ class RegimeObservatory:
             obs = RegimeObservation(symbol=symbol, trend_strength=random.uniform(-1,1), realized_volatility=random.uniform(0.005, 0.02), volatility_regime=vol, range_chop=random.uniform(0,1), spread_regime=random.choice(["tight","normal","wide"]), session=random.choice(["London","NY","Asian"]), acceleration=random.uniform(-0.5,0.5), compression_expansion=random.choice(["compression","expansion"]), shock_event=random.choice([None, "shock"]) if random.random()<0.1 else None, liquidity_proxy=random.uniform(0.5,1.5))
             self.record(obs)
         return self.summary()
+    def close(self) -> None:
+        try:
+            db = getattr(self, "db_path", getattr(self, "_db_path", None))
+            if db is not None:
+                db = Path(db)
+                if db.exists() and str(db) != ":memory:":
+                    import sqlite3
+                    with sqlite3.connect(db) as con:
+                        try:
+                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                            con.commit()
+                        except Exception:
+                            pass
+            # close any memory connection if present
+            mem = getattr(self, "_memory_con", None)
+            if mem is not None:
+                try:
+                    mem.commit()
+                    mem.close()
+                except Exception:
+                    pass
+                self._memory_con = None
+        except Exception:
+            pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass

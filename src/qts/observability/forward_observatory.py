@@ -131,3 +131,39 @@ class ForwardObservatory:
             self.record_signal(sig)
         self.end_session(session)
         return self.summary()
+    def close(self) -> None:
+        try:
+            db = getattr(self, "db_path", getattr(self, "_db_path", None))
+            if db is not None:
+                db = Path(db)
+                if db.exists() and str(db) != ":memory:":
+                    import sqlite3
+                    with sqlite3.connect(db) as con:
+                        try:
+                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                            con.commit()
+                        except Exception:
+                            pass
+            # close any memory connection if present
+            mem = getattr(self, "_memory_con", None)
+            if mem is not None:
+                try:
+                    mem.commit()
+                    mem.close()
+                except Exception:
+                    pass
+                self._memory_con = None
+        except Exception:
+            pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass

@@ -12,9 +12,9 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 python --version
-python -c "import sys; assert sys.version_info >= (3,11), 'Python 3.11+ required'" 2>&1
+python -c "import sys; major, minor = sys.version_info[:2]; assert (3,11) <= (major, minor) < (3,14), f'Python {major}.{minor} not supported — supported 3.11/3.12/3.13 (3.14 not yet verified)'" 2>&1
 if %ERRORLEVEL% NEQ 0 (
-  echo ERROR: Python 3.11+ required
+  echo ERROR: Python version not supported — install Python 3.11, 3.12, or 3.13 (Python 3.14 not yet verified; see docs/desktop_installation_windows.md)
   exit /b 1
 )
 
@@ -73,8 +73,14 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo Running quick tests ...
 .\.venv\Scripts\python.exe -m pytest tests -q --tb=short
+if %ERRORLEVEL% NEQ 0 (
+  echo ERROR: tests failed (pytest exit %ERRORLEVEL%) -- Setup NOT complete.
+  echo Fix failures and re-run setup_windows.bat (idempotent) -- see docs/troubleshooting_windows.md
+  exit /b 1
+)
+echo Tests passed.
 
 echo.
-echo === Setup Complete ===
+echo === Setup Complete === -- second run is idempotent, re-run to verify.
 echo Next: scripts\run_qts.bat  — launch desktop
 echo See docs\desktop_installation_windows.md

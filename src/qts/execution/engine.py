@@ -968,3 +968,48 @@ class ExecutionEngine:
     @property
     def is_suspended(self) -> bool:
         return self._suspended or self.risk.killed
+    def close(self) -> None:
+        try:
+            from pathlib import Path
+            import sqlite3
+            db = getattr(self, "_db_path", getattr(self, "db_path", None))
+            if db is not None:
+                db = Path(db)
+                if db.exists() and str(db) != ":memory:":
+                    with sqlite3.connect(db) as con:
+                        try:
+                            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                            con.commit()
+                        except Exception:
+                            pass
+            # close subcomponents if they have close
+            for attr in ("risk", "om", "_risk", "_om"):
+                obj = getattr(self, attr, None)
+                if obj is not None and hasattr(obj, "close"):
+                    try:
+                        obj.close()
+                    except Exception:
+                        pass
+            # also close order manager's idempotency
+            om = getattr(self, "om", None)
+            if om is not None:
+                idem = getattr(om, "idempotency", None)
+                if idem is not None and hasattr(idem, "close"):
+                    try:
+                        idem.close()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass

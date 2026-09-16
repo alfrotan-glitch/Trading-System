@@ -35,10 +35,12 @@ def _tick(bid=Decimal("1999.5"), ask=Decimal("2000.5"), age_s=0, symbol="XAUUSD"
     return Tick(instrument=instr, bid=bid, ask=ask, event_time=now)
 
 def _make_engine(broker=None, tmpdir=None):
+    # Windows-safe: avoid TemporaryDirectory leak — use mktemp file
     if tmpdir is None:
-        tmpdir = tempfile.TemporaryDirectory()
-        _make_engine._tmp = tmpdir  # keep ref
-    db = Path(tmpdir.name) / "test.db" if hasattr(tmpdir, "name") else Path(tempfile.mktemp(suffix=".db"))
+        db = Path(tempfile.mktemp(suffix=".db"))
+        tmpdir = None
+    else:
+        db = Path(tmpdir.name) / "test.db" if hasattr(tmpdir, "name") else Path(tempfile.mktemp(suffix=".db"))
     risk = RiskEngine(RiskLimits(), db_path=db)
     audit = InMemoryAuditLog()
     om = OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db))

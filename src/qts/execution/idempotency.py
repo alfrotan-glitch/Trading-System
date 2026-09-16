@@ -151,3 +151,18 @@ class IdempotencyStore:
         with sqlite3.connect(self.db_path) as con:
             con.execute("DELETE FROM idempotency")
             con.commit()
+
+    def close(self) -> None:
+        if self._memory_con is not None:
+            try:
+                self._memory_con.commit()
+                self._memory_con.close()
+            except Exception:
+                pass
+            self._memory_con = None
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
