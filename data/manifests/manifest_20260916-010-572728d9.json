@@ -1,0 +1,14 @@
+{
+  "version": "20260916-010-572728d9",
+  "schema_version": 1,
+  "created_at": "2026-09-16T12:08:58.678569Z",
+  "code_version": "0.1.0",
+  "instrument": "XAUUSD",
+  "venue": "MT5",
+  "timeframe": "1H",
+  "start": "2020-01-01T00:00:00Z",
+  "end": "2020-01-21T20:00:00Z",
+  "rows": 500,
+  "checksum": "sha256:572728d92ebb5c2a",
+  "source_file": "data/fixtures/XAUUSD_1H_500.csv"
+}

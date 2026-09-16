@@ -1,0 +1,17 @@
+# Copy to live.yaml and fill — never commit live.yaml (gitignored)
+env: live
+data:
+  root: data
+execution:
+  mode: live
+  reconcile_interval_s: 30
+  order_timeout_s: 10
+risk:
+  max_quantity: 0.2
+  max_notional: 2000
+  max_exposure: 0.5
+  daily_loss_limit: 50
+  max_drawdown: 150
+  approved: true  # must be true AND validation_passed for LIVE
+  kill_switch_enabled: true
+  flatten_on_kill: false

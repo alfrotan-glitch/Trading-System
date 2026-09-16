@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qts"
+version = "0.1.0"
+description = "Autonomous Quant Research & Trading System — XAUUSD/MT5 modular monolith"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Proprietary — internal research use"}
+dependencies = [
+  "pydantic>=2.5",
+  "pydantic-settings>=2.1",
+  "pandas>=2.0",
+  "numpy>=1.25",
+  "pyarrow>=14",
+  "python-dateutil>=2.8",
+  "pyyaml>=6.0",
+  "click>=8.1",
+  "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "pytest-cov>=4",
+  "hypothesis>=6.90",
+  "mypy>=1.8",
+  "ruff>=0.3",
+  "bandit>=1.7",
+  "pandas-stubs",
+]
+
+[project.scripts]
+qts = "qts.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+[tool.ruff.lint]
+select = ["E","F","I","UP","B","C4","SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_return_any = false
+warn_unused_configs = false
+ignore_missing_imports = true
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "integration: integration tests requiring fixtures",
+]
+
+[tool.coverage.run]
+source = ["qts"]
+branch = true
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]
