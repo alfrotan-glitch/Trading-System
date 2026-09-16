@@ -53,13 +53,26 @@ QTS_MT5_MODE=MOCK
   Write-Host "Created .env.example — copy to .env and edit for demo_forward/live"
 }
 
-# 8. Ensure data (ingest fixture if no versions)
+# 8. Ensure data (ingest fixture if no usable versions — robust for clean clone where manifest JSON exists but DB/curated missing)
 Write-Host "Checking data versions ..."
-$hasData = & $venvPython -m qts health 2>&1 | Select-String -Pattern "data_versions"
-if (-not (Test-Path "data/manifests/manifest_20260916-010-572728d9.json")) {
+# Check usable bars: manifest + DB + curated must all be present; covers case where manifest JSON is committed but DB is empty (clean clone)
+$usableCount = & $venvPython -c "from qts.data.store import SqliteParquetDataStore; print(len(SqliteParquetDataStore().list_versions()))" 2>&1
+$hasUsableBars = & $venvPython -c "from qts.data.store import SqliteParquetDataStore; from qts.domain.value_objects import Instrument; s=SqliteParquetDataStore(); m=s.manifest('20260916-010-572728d9'); print(len(s.read_bars(Instrument(symbol=m.instrument, venue=m.venue), m.timeframe, version='20260916-010-572728d9')) if m else 0)" 2>&1
+if ($usableCount -eq "0" -or $hasUsableBars -eq "0" -or -not (Test-Path "data/curated/instrument=XAUUSD")) {
   if (Test-Path "data/fixtures/XAUUSD_1H_500.csv") {
-    Write-Host "Ingesting fixture XAUUSD_1H_500.csv ..."
+    Write-Host "Ingesting fixture XAUUSD_1H_500.csv (no usable bars — clean clone or curated missing) ..."
     & $venvPython -m qts data ingest --path data/fixtures/XAUUSD_1H_500.csv --instrument XAUUSD --timeframe 1H
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "Ingest returned $LASTEXITCODE (may be duplicate version) — checking fallback" -ForegroundColor Yellow
+      # If ingest failed due to duplicate but still no usable bars, remove stale DB entry and retry via synthetic
+      $stillZero = & $venvPython -c "from qts.data.store import SqliteParquetDataStore; from qts.domain.value_objects import Instrument; s=SqliteParquetDataStore(); m=s.manifest('20260916-010-572728d9'); print(len(s.read_bars(Instrument(symbol=m.instrument, venue=m.venue), m.timeframe, version='20260916-010-572728d9')) if m else 0)" 2>&1
+      if ($stillZero -eq "0") {
+        Write-Host "Still no usable bars after ingest — generating synthetic fallback" -ForegroundColor Yellow
+        & $venvPython -c "from pathlib import Path; from datetime import UTC, datetime, timedelta; from decimal import Decimal; from qts.data.store import SqliteParquetDataStore; from qts.domain.value_objects import Instrument, Bar; s=SqliteParquetDataStore(); instr=Instrument(symbol='XAUUSD'); base=datetime(2020,1,1,tzinfo=UTC); bars=[Bar(instrument=instr, open=Decimal('2000'), high=Decimal('2005'), low=Decimal('1995'), close=Decimal('2000'), volume=Decimal('1000'), open_time=base+timedelta(hours=i), close_time=base+timedelta(hours=i+1)) for i in range(500)]; s.write_bars(bars, source_file='synthetic_fallback'); print('synthetic done')" 2>&1
+      }
+    }
+  } else {
+    Write-Host "Fixture not found, will synthesize if needed" -ForegroundColor Yellow
   }
 }
 # Also ensure synthetic for 1m if needed

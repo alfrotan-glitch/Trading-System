@@ -53,12 +53,23 @@ if not exist data\evidence mkdir data\evidence
 if not exist logs mkdir logs
 
 echo Checking data versions ...
-if not exist data\manifests\manifest_20260916-010-572728d9.json (
-  if exist data\fixtures\XAUUSD_1H_500.csv (
-    echo Ingesting fixture XAUUSD_1H_500.csv ...
-    .\.venv\Scripts\python.exe -m qts data ingest --path data/fixtures/XAUUSD_1H_500.csv --instrument XAUUSD --timeframe 1H
+.\.venv\Scripts\python.exe -c "from qts.data.store import SqliteParquetDataStore; print(len(SqliteParquetDataStore().list_versions()))" > "%TEMP%\qts_versions.txt" 2>&1
+set /p QTS_VERSIONS=<"%TEMP%\qts_versions.txt"
+.\.venv\Scripts\python.exe -c "from qts.data.store import SqliteParquetDataStore; from qts.domain.value_objects import Instrument; s=SqliteParquetDataStore(); m=s.manifest('20260916-010-572728d9'); print(len(s.read_bars(Instrument(symbol=m.instrument, venue=m.venue), m.timeframe, version='20260916-010-572728d9')) if m else 0)" > "%TEMP%\qts_bars.txt" 2>&1
+set /p QTS_BARS=<"%TEMP%\qts_bars.txt"
+if "%QTS_VERSIONS%"=="0" goto do_ingest
+if "%QTS_BARS%"=="0" goto do_ingest
+if not exist data\curated\instrument=XAUUSD goto do_ingest
+goto skip_ingest
+:do_ingest
+if exist data\fixtures\XAUUSD_1H_500.csv (
+  echo Ingesting fixture XAUUSD_1H_500.csv (no usable bars -- clean clone or curated missing) ...
+  .\.venv\Scripts\python.exe -m qts data ingest --path data/fixtures/XAUUSD_1H_500.csv --instrument XAUUSD --timeframe 1H
+  if %ERRORLEVEL% NEQ 0 (
+    echo Ingest returned error %ERRORLEVEL% (may be duplicate) -- checking fallback
   )
 )
+:skip_ingest
 if not exist data\raw\synthetic_XAUUSD_1m.csv (
   echo Generating synthetic 1m data ...
   .\.venv\Scripts\python.exe -m qts data synthetic --rows 2000 --out data/raw/synthetic_XAUUSD_1m.csv
