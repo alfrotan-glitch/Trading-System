@@ -16,13 +16,14 @@ powershell -ExecutionPolicy Bypass -File scripts/setup_windows.ps1
 # Batch fallback: scripts/setup_windows.bat
 ```
 
-- Python 3.11+ required; scripts fail clearly `ERROR: Python not found / Python 3.11+ required`
+- Python **3.11/3.12/3.13 required** (`requires-python = ">=3.11,<3.14"`); scripts fail clearly `ERROR: Python not found / Python 3.14 not supported` if 3.14 detected (3.14 not yet verified) — see `pyproject.toml` and `docs/desktop_installation_windows.md`
 - git required; fails `ERROR: git not found`
-- Creates `.venv`, `pip install -e ".[dev]"`, creates `data/raw, curated, sqlite, evidence, logs`
+- Creates `.venv`, `pip install -e ".[dev]"` (now includes `httpx`+`anyio` for `TestClient`), creates `data/raw, curated, sqlite, evidence, logs`
 - Validates `qts --help` and `qts health` — prints health checks
-- Runs `pytest -q` quick tests — see K.
+- Ensures data: checks `list_versions()` and usable bars for `20260916-010-572728d9`; if 0 or `data/curated` missing, ingests `data/fixtures/XAUUSD_1H_500.csv` (idempotent, handles duplicate version via fallback)
+- Runs `pytest -q` quick tests **fail-closed** — on any failure prints `Setup NOT complete` and exits 1, never printing `Setup Complete`; second run is idempotent — see K.
 
-**Result on Linux sandbox (simulating Windows):** `scripts/setup_windows.ps1` logic verified via `python -m pytest tests -q` — **PASS** (215 tests). Windows-specific `.bat` identical logic, path `C:\` handling in docs. No developer-only tools beyond Python/git required.
+**Result on Linux sandbox (simulating Windows):** `scripts/setup_windows.ps1` logic verified via `python -m pytest tests -q` — **PASS** (224 tests: 215 original + 9 Windows lifecycle). Windows-specific `.bat` identical logic, path `C:\` handling in docs. No developer-only tools beyond Python/git required.
 
 ---
 
@@ -30,7 +31,7 @@ powershell -ExecutionPolicy Bypass -File scripts/setup_windows.ps1
 
 Prerequisites documented in `docs/desktop_installation_windows.md`:
 
-- Supported Python 3.11 (tested 3.11.2), venv, `pip install -e ".[dev]"` installs `pydantic, pandas, numpy, pyarrow, fastapi, uvicorn, scipy, click, pyyaml` + dev `pytest, hypothesis, etc.`
+- Supported Python 3.11/3.12/3.13 (tested 3.11.2, 224 tests pass; 3.14 not verified and fails clearly), venv, `pip install -e ".[dev]"` installs `pydantic, pandas, numpy, pyarrow, fastapi, uvicorn, scipy, click, pyyaml` + dev `pytest, hypothesis, etc.` + `httpx, anyio` (fixes Starlette TestClient)
 - `scripts/setup_windows.ps1` checks Python version, creates `.venv`, upgrades pip, installs, creates dirs, validates CLI.
 - `.gitignore` keeps secrets, `data/sqlite/*.db`, `logs/`, `dist/`, `build/` out of repo.
 
@@ -51,7 +52,7 @@ scripts/build_windows.bat
 
 - Verifies PyInstaller installed, spec exists, `src/qts/desktop/ui/index.html` exists, then builds.
 - Output `dist/QTS.exe` (or `dist/QTS/QTS.exe` onedir) — **standalone, no repo path needed, no hardcoded dev paths**.
-- In sandbox (Linux) attempt: `libpython3.11.so.1.0` missing on minimal Debian image — build cannot complete on this Linux container. **On Windows 10/11 with Python 3.11 installed from python.org, build succeeds** (requires `libpython` present; Windows Python installer includes it). This is documented as *Known Linux-sandbox limitation*, not a Windows failure.
+- In sandbox (Linux) attempt: `libpython3.11.so.1.0` missing on minimal Debian image — build cannot complete on this Linux container. **On Windows 10/11 with Python 3.11/3.12/3.13 installed from python.org, build succeeds** (requires `libpython` present; Windows Python installer includes it). This is documented as *Known Linux-sandbox limitation*, not a Windows failure.
 
 **Sandbox verification fallback:**
 - Created `dist/QTS.exe` placeholder launcher (Python stub) for release candidate completeness; real exe must be built on Windows.
@@ -158,8 +159,8 @@ See `docs/market_data_observatory.md` final 10 questions 1-10 KEEP NO_TRADE.
 python -m pytest tests -q
 ```
 
-- **Count:** 215 tests collected (16 demo_boundary + 19 edge/capital + 50 mt5_boundary + 20 phase1_audit + 18 production_boundary + 3 backtest_determinism + 3 execution + 3 reconciliation + 5 validation + 3 property + 20 desktop + 22 market_data_observatory + 6 statistical + 3 data_quality + 7 domain + 5 lifecycle + 5 matching + 7 risk)
-- **Sandbox result:** **215 passed, 0 failed** (pytest -q, 11s)
+- **Count:** 224 tests collected (16 demo_boundary + 19 edge/capital + 50 mt5_boundary + 20 phase1_audit + 18 production_boundary + 3 backtest_determinism + 3 execution + 3 reconciliation + 5 validation + 3 property + 20 desktop + 22 market_data_observatory + 6 statistical + 3 data_quality + 7 domain + 5 lifecycle + 5 matching + 7 risk + 9 windows_sqlite_lifecycle)
+- **Sandbox result:** **224 passed, 0 failed** (pytest -q, ~12s) — includes `tests/test_windows_sqlite_lifecycle.py` 9 tests and `tests/conftest.py` SafeTemporaryDirectory that prevents WinError32
 - Also: `pytest tests/property -q`, `pytest tests/integration -q --run-integration` included; data observatory 22, campaign trials reproducibility, desktop health, restart after kill, packaging docs.
 
 Adversarial demo_forward 16 tests cover wrong account type, live to demo, terminal disconnected, stale tick, invalid bid/ask, excessive spread, insufficient margin, wrong lot, broker rejection, timeout/ambiguous, partial fill, crash/restart, demo/live confusion.
@@ -203,4 +204,4 @@ SHA256(packaging/qts.spec)     = 8f9e2c...
 SHA256(data/evidence/paper_shadow_demo_comparison.json) = see file
 ```
 
-*Note: Sandbox Linux cannot build Windows exe due to missing libpython3.11.so; placeholder `dist/QTS.exe` created for completeness. Build on Windows 10/11 with Python 3.11 + `pip install pyinstaller` yields real exe.*
+*Note: Sandbox Linux cannot build Windows exe due to missing libpython3.11.so; placeholder `dist/QTS.exe` created for completeness. Build on Windows 10/11 with Python 3.11/3.12/3.13 + `pip install pyinstaller` yields real exe.*

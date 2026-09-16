@@ -46,7 +46,7 @@ System currently reports `BLOCK — KEEP NO_TRADE` (DSR 0.12, no validated edge,
 
 ## How do I install on Windows? (Clean Clone)
 
-**Prerequisites:** Windows 10/11, Python 3.11+, git
+**Prerequisites:** Windows 10/11, Python **3.11/3.12/3.13** (3.14 not yet verified — see `pyproject.toml` and `docs/desktop_installation_windows.md`), git
 
 ```powershell
 git clone <repository-url>   # your fork
