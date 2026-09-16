@@ -34,7 +34,11 @@ DATA_CLASSES = (
     "MODEL-DERIVED",  # output of a model, not an observation
 )
 
-DEFAULT_FIXTURE = Path("data/fixtures/XAUUSD_1H_500.csv")
+FIXTURE_RELPATH = Path("fixtures/XAUUSD_1H_500.csv")
+# Kept for backward compatibility (repo-CWD default). bootstrap_data() itself
+# resolves the fixture RELATIVE TO `root` so non-default roots never silently
+# read the repository's fixture.
+DEFAULT_FIXTURE = Path("data") / FIXTURE_RELPATH
 
 
 def classify_source(source: str | None) -> str:
@@ -87,7 +91,7 @@ def _stale_version_for(exc: ValueError, store: SqliteParquetDataStore) -> str | 
 
 def bootstrap_data(
     root: Path | str = "data",
-    fixture: Path | str = DEFAULT_FIXTURE,
+    fixture: Path | str | None = None,
     instrument: str = "XAUUSD",
     timeframe: str = "1H",
     venue: str = "MT5",
@@ -102,6 +106,8 @@ def bootstrap_data(
       3. Fixture missing/empty/invalid -> FAILED. Never fabricate bars.
     """
     store = store if store is not None else SqliteParquetDataStore(root=root)
+    if fixture is None:
+        fixture = Path(root) / FIXTURE_RELPATH
     fixture = Path(fixture)
     result = BootstrapResult(status="FAILED")
     instr = Instrument(symbol=instrument, venue=venue)

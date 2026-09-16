@@ -122,10 +122,15 @@ def test_ingest_tolerates_utf8_bom_and_crlf(tmp_path):
     from qts.data.store import SqliteParquetDataStore
 
     src = (REPO_ROOT / "data" / "fixtures" / "XAUUSD_1H_500.csv").read_bytes()
-    assert src.count(b"\r\n") > 0  # fixture itself is CRLF
+    # Construct the Windows-authored variant explicitly (BOM + CRLF). Do not
+    # depend on how the local checkout materialized the fixture's line endings
+    # (.gitattributes governs fresh checkouts, not restored workspaces).
+    src_lf = src.replace(b"\r\n", b"\n")
+    src_crlf = src_lf.replace(b"\n", b"\r\n")
+    assert src_crlf.count(b"\r\n") > 0
 
     bom_path = tmp_path / "with_bom.csv"
-    bom_path.write_bytes(b"\xef\xbb\xbf" + src)
+    bom_path.write_bytes(b"\xef\xbb\xbf" + src_crlf)
 
     store = SqliteParquetDataStore(root=tmp_path / "data")
     try:

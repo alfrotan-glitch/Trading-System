@@ -76,9 +76,10 @@ def data_bootstrap(root: str, fixture: str | None, instrument: str, timeframe: s
     """
     from pathlib import Path as _P
 
-    from qts.data.bootstrap import DEFAULT_FIXTURE, bootstrap_data
+    from qts.data.bootstrap import bootstrap_data
 
-    fx = _P(fixture) if fixture else DEFAULT_FIXTURE
+    # fixture=None resolves RELATIVE TO root (default: <root>/fixtures/XAUUSD_1H_500.csv)
+    fx = _P(fixture) if fixture else None
     res = bootstrap_data(root=_P(root), fixture=fx, instrument=instrument, timeframe=timeframe, venue=venue)
     for msg in res.messages:
         click.echo(msg)
@@ -586,6 +587,68 @@ def research_propose(n: int) -> None:
         click.echo(f"{h.id}: {h.statement} | falsifiability: {h.falsifiability}")
         store = ExperimentStore()
         store.put_hypothesis(h)
+
+
+@research.command("impulse")
+@click.option("--data-version", default=None, help="usable data version (default: latest usable)")
+@click.option("--root", default="data", help="data root directory")
+@click.option("--ledger-db", default=None, help="trial ledger SQLite (default: <root>/sqlite/qts.db)")
+@click.option("--out", default=None, help="evidence JSON (default: <root>/evidence/impulse_research.json)")
+@click.option("--report-out", default=None, help="optional markdown report path")
+@click.option("--seed", default=42, type=int)
+def research_impulse(
+    data_version: str | None, root: str, ledger_db: str | None, out: str | None, report_out: str | None, seed: int
+) -> None:
+    """Impulse-continuation event study (RESEARCH ONLY — never enables trading).
+
+    Fail-closed: exits non-zero with an honest message when no usable dataset
+    exists. Never fabricates data, never promotes anything, never touches
+    live eligibility or order submission.
+    """
+    from qts.research.impulse import ImpulseResearchConfig, render_markdown_report, run_impulse_research
+
+    root_p = Path(root)
+    ledger_path = Path(ledger_db) if ledger_db else root_p / "sqlite" / "qts.db"
+    out_path = Path(out) if out else root_p / "evidence" / "impulse_research.json"
+    store = SqliteParquetDataStore(root=root_p)
+    try:
+        try:
+            evidence = run_impulse_research(
+                store,
+                data_version=data_version,
+                cfg=ImpulseResearchConfig(seed=seed),
+                ledger_db_path=ledger_path,
+                partition_db_path=ledger_path,
+                evidence_dir=root_p / "evidence",
+            )
+        except ValueError as e:
+            raise click.ClickException(str(e)) from e
+    finally:
+        store.close()
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(evidence, indent=2, default=str), encoding="utf-8")
+    if report_out:
+        rp = Path(report_out)
+        rp.parent.mkdir(parents=True, exist_ok=True)
+        rp.write_text(render_markdown_report(evidence), encoding="utf-8")
+
+    concl = evidence["conclusion"]
+    t = evidence["analysis"]["totals"]
+    click.echo(f"mode: {evidence['mode']}")
+    click.echo(
+        f"data: {evidence['provenance']['data_version']} class={evidence['provenance']['data_class']} "
+        f"bars={evidence['provenance']['bars_read']}"
+    )
+    click.echo(
+        f"events: detected={t['events_detected_total']} measured={t['events_measured_total']} "
+        f"excluded={t['events_excluded_total']} trials_recorded={t['trials_recorded']}"
+    )
+    click.echo(f"conclusion: {concl['conclusion']} (research {concl['go_block']})")
+    for reason in concl["reasons"]:
+        click.echo(f"  - {reason}")
+    click.echo(f"evidence: {out_path}")
+    click.echo("promotion: BLOCKED — research artifact only; live eligibility untouched")
 
 
 @main.group()

@@ -19,7 +19,7 @@ A modular desktop app with a local FastAPI backend + native window (pywebview) t
 ## What does it do?
 
 1. **Data Observatory** — what data you have, what’s missing, which external source can fill it, historical depth needed, execution realism.
-2. **Research Lab** — generate falsifiable hypotheses, run 11-step autonomous campaigns, track failures, prevent rediscovery.
+2. **Research Lab** — generate falsifiable hypotheses, run 11-step autonomous campaigns, track failures, prevent rediscovery. Includes the pre-registered **impulse-continuation event study** (`qts research impulse` — research-only, fail-closed data-adequacy gate, Holm/DSR multiple-testing penalties, locked test never touched; see `docs/research/impulse_continuation_report.md`).
 3. **Validation** — walk-forward, purged CPCV, costs 1.0/1.5/2.0×, slippage, regime, null/placebo, expectancy — only survivors become candidates.
 4. **Forward Observation** — runs live market data without capital, recording quotes/spreads/signals/NO_TRADE/hypothetical fills.
 5. **Execution & Risk** — order lifecycle INTENT→RISK→SUBMISSION→ACCEPTED→FILLED/REJECTED, hard limits, kill switch, reconciliation.
