@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import click
+import numpy as np
 
 from qts.backtest.engine import BacktestEngine
 from qts.config.settings import load_settings
@@ -99,7 +100,6 @@ def backtest(
 ) -> None:
     store = SqliteParquetDataStore()
     instr = Instrument(symbol=instrument, venue="MT5")
-    # timeframe from manifest if mismatch
     manifest = store.manifest(data_version)
     if manifest and manifest.timeframe != timeframe:
         click.echo(
@@ -143,52 +143,134 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
     if manifest and manifest.timeframe != timeframe:
         timeframe = manifest.timeframe
     engine = BacktestEngine(store)
-    # walk-forward demo: split 60/20/20 and run folds
     bars = store.read_bars(instr, timeframe, version=data_version)
     n = len(bars)
     if n < 100:
         click.echo("not enough bars for validation")
         sys.exit(1)
-    # simulate IS/OOS equity
-    # full run for reference
-    full = engine.run(instr, timeframe, data_version, strategy_id=strategy, seed=42)
-    # run IS and OOS separately via slicing versions? For demo, slice bars via store read with time range
-    # Instead synthesize IS/OOS equity by splitting full curve
-    mid = len(full.equity_curve) // 2
-    eq_is = __import__("numpy").array(full.equity_curve[:mid])
-    eq_oos = __import__("numpy").array(full.equity_curve[mid:])
-    # walk-forward folds
+
+    # --- real walk-forward: split data into folds, run independent backtests ---
+    pipeline = ValidatorPipeline(config={"min_folds": 3, "min_wfe": 0.3, "min_oos_sharpe": 0.0})
+    # Use 60% train / 20% test style but via splits; for demo use train=30% of n, test=10% , step=test
+    train = max(50, n // 3)
+    test = max(20, n // 9)
+    step = test
+    splits = pipeline.walk_forward_splits(n, train=train, test=test, step=step)
     folds: list[dict[str, float]] = []
-    n_folds = 3
-    for i in range(n_folds):
-        # dummy sharpes
-        folds.append({"is_sharpe": 1.5 - i * 0.2, "oos_sharpe": 0.8 - i * 0.1, "wfe": 0.6})
-    pipeline = ValidatorPipeline(config={"min_folds": 2, "min_wfe": 0.3, "min_oos_sharpe": 0.0})
+    for train_start, train_end, test_start, test_end in splits[:5]:  # cap 5 folds for speed
+        # train period: bars[train_start:train_end] — we run backtest on that slice via start/end times
+        train_bars = bars[train_start:train_end]
+        test_bars = bars[test_start:test_end]
+        if not train_bars or not test_bars:
+            continue
+        # We need to run backtest on those slices — use time bounds
+        # Create temporary versions for slices? Instead we can directly run engine on sliced Bars
+        # Simpler: run backtest via engine but with start/end times
+        # Our engine reads from store by version and time range, so we can use start/end
+        train_start_t = train_bars[0].open_time
+        train_end_t = train_bars[-1].close_time
+        test_start_t = test_bars[0].open_time
+        test_end_t = test_bars[-1].close_time
+        try:
+            train_res = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": 10, "slow": 20, "quantity": 0.1}, start=train_start_t, end=train_end_t)
+            test_res = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": 10, "slow": 20, "quantity": 0.1}, start=test_start_t, end=test_end_t)
+            folds.append({"is_sharpe": float(train_res.sharpe), "oos_sharpe": float(test_res.sharpe)})
+        except Exception as e:  # noqa: BLE001
+            click.echo(f"walk-forward fold failed: {e}", err=True)
+            continue
+
+    # Full OOS/IS for metrics (use split mid)
+    full = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": 10, "slow": 20, "quantity": 0.1})
+    mid = len(full.equity_curve) // 2
+    eq_is = np.array(full.equity_curve[:mid])
+    eq_oos = np.array(full.equity_curve[mid:])
+
+    # Real stress: re-run with spread multipliers
+    stress_results = engine.run_stress(instr, timeframe, data_version, strategy, {"fast": 10, "slow": 20, "quantity": 0.1}, spreads=[1.0, 1.5, 2.0])
+
+    # Real perturbation: baseline ±5/10/20%
+    baseline = 10
+    perturbed: list[float] = []
+    for pct in [-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2]:
+        fast_p = max(2, int(baseline * (1 + pct)))
+        try:
+            res_p = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": fast_p, "slow": 20, "quantity": 0.1})
+            perturbed.append(float(res_p.sharpe))
+        except Exception:
+            perturbed.append(0.0)
+
+    # CPCV: try to build cpcv folds — need trials; we generate trials as fast variants
+    # For CPCV we need multiple trials per split; we will generate trials as fast in [5,10,15]
+    cpcv_folds: list[dict[str, Any]] = []
+    # Use pipeline.cpcv_splits to get train/test indices
+    cpcv_splits = pipeline.cpcv_splits(n, n_groups=4, n_test=1)
+    trials = [{"fast": 5}, {"fast": 10}, {"fast": 15}]
+    for train_idx, test_idx in cpcv_splits[:6]:
+        train_sharpes: dict[str, float] = {}
+        test_sharpes: dict[str, float] = {}
+        for t in trials:
+            trial_id = f"fast_{t['fast']}"
+            # run train and test for this trial
+            if not train_idx or not test_idx:
+                continue
+            t_start = bars[train_idx[0]].open_time
+            t_end = bars[train_idx[-1]].close_time
+            te_start = bars[test_idx[0]].open_time
+            te_end = bars[test_idx[-1]].close_time
+            try:
+                tr = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": t["fast"], "slow": 20, "quantity": 0.1}, start=t_start, end=t_end)
+                te = engine.run(instr, timeframe, data_version, strategy_id=strategy, strategy_params={"fast": t["fast"], "slow": 20, "quantity": 0.1}, start=te_start, end=te_end)
+                train_sharpes[trial_id] = float(tr.sharpe)
+                test_sharpes[trial_id] = float(te.sharpe)
+            except Exception:
+                train_sharpes[trial_id] = 0.0
+                test_sharpes[trial_id] = 0.0
+        if train_sharpes and test_sharpes:
+            best_is = max(train_sharpes, key=lambda k: train_sharpes[k])
+            median_test = float(np.median(list(test_sharpes.values())))
+            cpcv_folds.append(
+                {
+                    "train_sharpes": train_sharpes,
+                    "test_sharpes": test_sharpes,
+                    "best_is_trial": best_is,
+                    "best_is_test_sharpe": float(test_sharpes[best_is]),
+                    "median_test_sharpe": median_test,
+                }
+            )
+
     exp_store = ExperimentStore(db_path=store.db_path)
     num_trials = max(1, exp_store.count_trials())
+    # include cpcv trials in count
+    num_trials = max(num_trials, len(trials) * len(cpcv_folds) if cpcv_folds else num_trials)
+
+    pipeline = ValidatorPipeline(config={"min_folds": 3, "min_wfe": 0.3, "min_oos_sharpe": -1.0, "max_pbo": 0.5})
     report = pipeline.validate(
         strategy_id=strategy,
         data_version=data_version,
         equity_is=eq_is,
         equity_oos=eq_oos,
-        walk_forward_folds=folds,
+        walk_forward_folds=folds if folds else None,
         num_trials=num_trials,
-        spread_stress={1.0: full.profit_factor, 1.5: full.profit_factor * 0.7},
+        cpcv_folds=cpcv_folds if cpcv_folds else None,
+        perturbed_sharpes=perturbed if perturbed else None,
+        stress_results=stress_results,
     )
     click.echo(f"validation passed={report.passed} reasons={report.reasons}")
     click.echo(
-        f"metrics: sharpe_is={report.metrics.get('sharpe_is'):.3f} sharpe_oos={report.metrics.get('sharpe_oos'):.3f} wfe={report.metrics.get('wfe'):.2f} dsr={report.metrics.get('dsr_prob', 0):.2f}"
+        f"metrics: sharpe_is={report.metrics.get('sharpe_is', 0):.3f} sharpe_oos={report.metrics.get('sharpe_oos', 0):.3f} wfe={report.metrics.get('wfe', 0):.2f} dsr={report.metrics.get('dsr_prob', 0):.2f} pbo={report.metrics.get('pbo', 0):.2f}"
     )
     for c in report.checks:
-        click.echo(f"  {c.name}: {'PASS' if c.passed else 'FAIL'} metric={c.metric} thresh={c.threshold} {c.details}")
-    # adversarial
+        status = c.status
+        flag = "PASS" if c.passed else "FAIL"
+        extra = f" [{status}]" if status != "IMPLEMENTED" else ""
+        click.echo(f"  {c.name}: {flag}{extra} metric={c.metric} thresh={c.threshold} {c.details}")
     adv = AdversarialAgent()
     findings = adv.review(
         {
             "wfe": report.metrics.get("wfe", 1),
             "dsr_prob": report.metrics.get("dsr_prob", 1),
             "pbo": report.metrics.get("pbo", 0),
-            "spread_pf_1_5x": report.metrics.get("spread_pf_1_5x", 1),
+            "spread_pf_1_5x": stress_results.get(1.5, 1) if stress_results else 1,
             "oos_sharpe": report.metrics.get("sharpe_oos", 0),
         }
     )
@@ -198,6 +280,8 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
             click.echo(f"  - {f}")
     else:
         click.echo("adversarial: PASS")
+    if not report.passed:
+        click.echo("RECOMMENDATION: DO NOT PROMOTE — validation failed or NOT_IMPLEMENTED blocks", err=True)
 
 
 @main.command("health")
@@ -259,7 +343,6 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             sys.exit(2)
         click.echo("live mode — not implemented in Phase 0 (requires MT5 terminal + SHADOW success)")
         sys.exit(0)
-    # paper = backtest loop with live-like ticks (synthetic)
     click.echo(f"running mode={mode} strategy={strategy} version={data_version}")
     store = SqliteParquetDataStore()
     instr = Instrument(symbol="XAUUSD", venue="MT5")

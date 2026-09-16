@@ -1,4 +1,4 @@
-"""Independent Risk Engine — fail closed."""
+"""Independent Risk Engine — fail closed, quantity in lots, notional in USD."""
 
 from __future__ import annotations
 
@@ -28,32 +28,45 @@ class RiskVetoReason(StrEnum):
     KILL_SWITCH_ACTIVE = "KILL_SWITCH_ACTIVE"
     INSTRUMENT_SUSPENDED = "INSTRUMENT_SUSPENDED"
     VOL_RESIZE = "VOL_RESIZE"
+    QUANTITY_STEP_VIOLATION = "QUANTITY_STEP_VIOLATION"
+    MIN_QUANTITY_VIOLATION = "MIN_QUANTITY_VIOLATION"
 
 
 class RiskLimits(BaseModel):
-    max_quantity: Decimal = Decimal("1.0")
-    max_notional: Decimal = Decimal("10000")
+    max_quantity: Decimal = Decimal("1.0")  # lots
+    min_quantity: Decimal = Decimal("0.01")  # lots
+    quantity_step: Decimal = Decimal("0.01")  # lots
+    max_notional: Decimal = Decimal("50000")  # USD
     max_risk_per_trade_bps: Decimal = Decimal("50")
     stop_loss_required: bool = False
-    max_exposure: Decimal = Decimal("2.0")
-    max_leverage: Decimal = Decimal("5")
+    max_exposure_lots: Decimal = Decimal("2.0")  # lots net abs
+    max_exposure_notional: Decimal | None = None  # optional USD
+    max_leverage: Decimal = Decimal("5")  # notional/equity
     max_correlated_exposure: Decimal = Decimal("1.5")
     max_open_orders: int = 5
-    daily_loss_limit: Decimal = Decimal("200")
-    max_drawdown: Decimal = Decimal("500")
+    daily_loss_limit: Decimal = Decimal("200")  # USD loss (positive = max loss allowed)
+    max_drawdown: Decimal = Decimal("500")  # USD drawdown
     volatility_target: Decimal | None = None
     kill_switch_enabled: bool = True
     approved: bool = False
     version: int = 1
+    # legacy alias
+    @property
+    def max_exposure(self) -> Decimal:
+        return self.max_exposure_lots
+
+    @property
+    def max_notional_alias(self) -> Decimal:
+        return self.max_notional
 
 
 @dataclass
 class RiskContext:
     account: Account
-    positions: dict[str, Position]  # symbol -> Position
+    positions: dict[str, Position]  # symbol -> Position (qty lots)
     open_orders_count: int
-    daily_pnl: Decimal
-    drawdown: Decimal
+    daily_pnl: Decimal  # can be negative
+    drawdown: Decimal  # USD peak - current
     instrument_suspended: set[str]
     realized_vol: Decimal | None = None
 
@@ -66,7 +79,7 @@ class RiskDecision(BaseModel):
 
 
 class RiskEngine:
-    """Independent authority. Persists kill flag."""
+    """Independent authority. Persists kill flag. Quantity canonical: lots."""
 
     def __init__(self, limits: RiskLimits, db_path: Path | str = "data/sqlite/qts.db"):
         self.limits = limits
@@ -106,6 +119,10 @@ class RiskEngine:
             con.execute("DELETE FROM risk_state WHERE k=1")
             con.commit()
 
+    def _notional_for(self, intent: OrderIntent, est_price: Decimal) -> Decimal:
+        """Notional USD = lots * contract_size(oz/lot) * price(USD/oz)."""
+        return intent.quantity * intent.instrument.contract_size * est_price
+
     def pre_trade(self, intent: OrderIntent, ctx: RiskContext) -> RiskDecision:
         if self._killed:
             return RiskDecision(
@@ -116,40 +133,63 @@ class RiskEngine:
         sym = intent.instrument.symbol
         if sym in ctx.instrument_suspended:
             return RiskDecision(allowed=False, veto_reason=RiskVetoReason.INSTRUMENT_SUSPENDED)
-        # quantity
+
+        # quantity step / min
+        if intent.quantity < self.limits.min_quantity:
+            return RiskDecision(
+                allowed=False,
+                veto_reason=RiskVetoReason.MIN_QUANTITY_VIOLATION,
+                reason_detail=f"{intent.quantity} < min {self.limits.min_quantity}",
+            )
+        # step: quantity must be multiple of step (within tolerance)
+        # check (quantity / step) is integer
+        step = self.limits.quantity_step
+        # use quantize check
+        remainder = (intent.quantity / step) % 1
+        # tolerate 1e-9
+        if remainder != 0 and abs(remainder) > Decimal("0.0000001") and abs(1 - remainder) > Decimal("0.0000001"):
+            # also allow instrument's lot_size as step? Use instrument.lot_size as ground truth if stricter
+            instr_step = intent.instrument.lot_size
+            rem2 = (intent.quantity / instr_step) % 1
+            if rem2 != 0 and abs(rem2) > Decimal("0.0000001") and abs(1 - rem2) > Decimal("0.0000001"):
+                return RiskDecision(
+                    allowed=False,
+                    veto_reason=RiskVetoReason.QUANTITY_STEP_VIOLATION,
+                    reason_detail=f"{intent.quantity} not multiple of {instr_step}",
+                )
+
         if intent.quantity > self.limits.max_quantity:
             return RiskDecision(
                 allowed=False,
                 veto_reason=RiskVetoReason.EXCEEDS_MAX_QUANTITY,
                 reason_detail=f"{intent.quantity} > {self.limits.max_quantity}",
             )
-        # notional: quantity * price (use limit or estimate) — approximate with 2000 for XAUUSD if no price
-        est_price = intent.limit_price or intent.stop_price or Decimal("2000")
-        notional = (
-            intent.quantity * est_price * intent.instrument.contract_size / Decimal("100")
-        )  # lot semantics approx
-        # simpler: for XAUUSD quantity in lots already vs oz confusion -> just quantity*price
-        # For domain quantity = lots, notional = qty * 100 * price
-        # We'll compute both interpretations and take larger
-        notional2 = intent.quantity * est_price
-        notional = max(notional, notional2)
+
+        # notional (use limit price if available, else est 2000 for XAUUSD, but better to require price)
+        est_price = intent.limit_price or intent.stop_price
+        if est_price is None:
+            # estimate from context: use last position avg or 2000
+            # For risk, we need price; use instrument tick_size based? Use 2000 as fallback but document
+            est_price = Decimal("2000")
+        notional = self._notional_for(intent, est_price)
         if notional > self.limits.max_notional:
             return RiskDecision(
                 allowed=False,
                 veto_reason=RiskVetoReason.EXCEEDS_NOTIONAL,
-                reason_detail=f"{notional} > {self.limits.max_notional}",
+                reason_detail=f"notional {notional} > {self.limits.max_notional}",
             )
+
         if (
             self.limits.stop_loss_required
             and intent.stop_price is None
             and intent.order_type.value not in ("STOP", "STOP_LIMIT")
         ):
-            # missing stop — if required
             return RiskDecision(allowed=False, veto_reason=RiskVetoReason.MISSING_STOP)
-        # open orders
+
         if ctx.open_orders_count >= self.limits.max_open_orders:
             return RiskDecision(allowed=False, veto_reason=RiskVetoReason.TOO_MANY_ORDERS)
-        # daily loss
+
+        # daily loss: ctx.daily_pnl is negative if losing
         if ctx.daily_pnl <= -self.limits.daily_loss_limit:
             return RiskDecision(
                 allowed=False,
@@ -158,36 +198,62 @@ class RiskEngine:
             )
         if ctx.drawdown >= self.limits.max_drawdown:
             return RiskDecision(allowed=False, veto_reason=RiskVetoReason.DRAWDOWN_BREACH)
-        # exposure (net quantity)
+
+        # exposure lots: net quantity + new delta
         current_qty = sum((p.quantity for p in ctx.positions.values()), Decimal("0"))
-        # signed by side
         delta = intent.quantity if intent.side.value == "BUY" else -intent.quantity
-        new_exposure = abs(current_qty + delta)
-        if new_exposure > self.limits.max_exposure:
+        new_exposure_lots = abs(current_qty + delta)
+        if new_exposure_lots > self.limits.max_exposure_lots:
             return RiskDecision(
                 allowed=False,
                 veto_reason=RiskVetoReason.EXCEEDS_EXPOSURE,
-                reason_detail=f"{new_exposure} > {self.limits.max_exposure}",
+                reason_detail=f"exposure lots {new_exposure_lots} > {self.limits.max_exposure_lots}",
             )
-        # leverage: notional / equity
-        equity = ctx.account.equity if ctx.account.equity != 0 else Decimal("10000")
-        lev = notional / equity
+        # exposure notional (optional)
+        if self.limits.max_exposure_notional is not None:
+            # estimate total notional after trade: sum of abs(qty)*contract*price
+            # approximate using est_price for new position
+            current_notional = sum(
+                (abs(p.quantity) * p.instrument.contract_size * est_price for p in ctx.positions.values()),
+                Decimal("0"),
+            )
+            # new notional approx
+            new_notional = current_notional + notional  # overestimates but safe
+            if new_notional > self.limits.max_exposure_notional:
+                return RiskDecision(
+                    allowed=False,
+                    veto_reason=RiskVetoReason.EXCEEDS_EXPOSURE,
+                    reason_detail=f"exposure notional {new_notional} > {self.limits.max_exposure_notional}",
+                )
+
+        # leverage: total notional / equity
+        equity = ctx.account.equity if ctx.account.equity != Decimal("0") else Decimal("10000")
+        # total notional for leverage: exposure notional
+        total_notional_for_lev = sum(
+            (abs(p.quantity) * p.instrument.contract_size * est_price for p in ctx.positions.values()),
+            Decimal("0"),
+        ) + notional
+        # if flat, leverage is just new notional/equity
+        if total_notional_for_lev == notional and not ctx.positions:
+            lev = notional / equity
+        else:
+            lev = total_notional_for_lev / equity
         if lev > self.limits.max_leverage:
             return RiskDecision(
                 allowed=False,
                 veto_reason=RiskVetoReason.EXCEEDS_LEVERAGE,
-                reason_detail=f"{lev:.2f} > {self.limits.max_leverage}",
+                reason_detail=f"leverage {lev:.2f} > {self.limits.max_leverage}",
             )
+
         # vol-aware resize (not veto)
         if self.limits.volatility_target is not None and ctx.realized_vol is not None and ctx.realized_vol > 0:
             target = self.limits.volatility_target
-            # reduce size if vol high
             factor = target / ctx.realized_vol
             factor = max(Decimal("0.25"), min(Decimal("1.0"), factor))
             if factor < Decimal("0.99"):
                 resized = (intent.quantity * factor).quantize(Decimal("0.01"))
-                if resized < Decimal("0.01"):
-                    resized = Decimal("0.01")
+                if resized < self.limits.min_quantity:
+                    resized = self.limits.min_quantity
                 return RiskDecision(
                     allowed=True,
                     resized_quantity=resized,
@@ -197,7 +263,6 @@ class RiskEngine:
         return RiskDecision(allowed=True)
 
     def post_trade(self, fill: Fill, ctx: RiskContext) -> None:
-        # update daily PnL/drawdown handled by caller; here check kill triggers
         if not self.limits.kill_switch_enabled:
             return
         if ctx.daily_pnl <= -self.limits.daily_loss_limit:
@@ -207,10 +272,13 @@ class RiskEngine:
 
     def check_portfolio(self, ctx: RiskContext) -> list[RiskDecision]:
         out: list[RiskDecision] = []
-        # exposure check
         total = sum((abs(p.quantity) for p in ctx.positions.values()), Decimal("0"))
-        if total > self.limits.max_exposure:
+        if total > self.limits.max_exposure_lots:
             out.append(RiskDecision(allowed=False, veto_reason=RiskVetoReason.EXCEEDS_EXPOSURE))
         if ctx.daily_pnl <= -self.limits.daily_loss_limit:
             out.append(RiskDecision(allowed=False, veto_reason=RiskVetoReason.DAILY_LOSS_BREACH))
+        if ctx.drawdown >= self.limits.max_drawdown:
+            out.append(RiskDecision(allowed=False, veto_reason=RiskVetoReason.DRAWDOWN_BREACH))
+        if self._killed:
+            out.append(RiskDecision(allowed=False, veto_reason=RiskVetoReason.KILL_SWITCH_ACTIVE))
         return out

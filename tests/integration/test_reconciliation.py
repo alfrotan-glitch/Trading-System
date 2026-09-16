@@ -6,14 +6,15 @@ from pathlib import Path
 from qts.domain.value_objects import Account, Bar, Instrument, OrderIntent, Position, Side
 from qts.execution.engine import BrokerAdapter, ExecutionEngine, OrderManager, PaperBrokerAdapter
 from qts.execution.matching import MatchingEngine
+from qts.portfolio.portfolio import Portfolio
 from qts.risk.engine import RiskEngine, RiskLimits
 
 
 class FakeVenueAdapter(BrokerAdapter):
     def __init__(self):
-        self._positions = {}
+        self._positions: dict[str, Position] = {}
 
-    def submit(self, intent):
+    def submit(self, intent):  # type: ignore[no-untyped-def]
         from qts.domain.value_objects import Order, OrderState, uuid7
 
         return Order(
@@ -27,10 +28,10 @@ class FakeVenueAdapter(BrokerAdapter):
             strategy_id=intent.strategy_id,
         )
 
-    def positions(self):
+    def positions(self):  # type: ignore[no-untyped-def]
         return list(self._positions.values())
 
-    def account(self):
+    def account(self):  # type: ignore[no-untyped-def]
         return Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD")
 
     def set_position(self, pos: Position):
@@ -58,7 +59,8 @@ def test_reconcile_none():
         matching = MatchingEngine()
         risk = RiskEngine(RiskLimits(), db_path=Path(tmp) / "db.sqlite")
         broker = PaperBrokerAdapter(matching=matching)
-        eng = ExecutionEngine(om, risk, broker, matching)
+        portfolio = Portfolio(initial_balance=Decimal("10000"))
+        eng = ExecutionEngine(om, risk, broker, matching, portfolio)
         bar = _bar()
         intent = OrderIntent(
             instrument=bar.instrument,
@@ -70,6 +72,7 @@ def test_reconcile_none():
         eng.submit_intent(intent, bar=bar)
         report = eng.reconcile()
         assert report.drift == "NONE"
+        assert not report.requires_suspend
 
 
 def test_reconcile_mismatch_detected():
@@ -78,7 +81,8 @@ def test_reconcile_mismatch_detected():
         matching = MatchingEngine()
         risk = RiskEngine(RiskLimits(), db_path=Path(tmp) / "db.sqlite")
         venue = FakeVenueAdapter()
-        eng = ExecutionEngine(om, risk, venue, matching)
+        portfolio = Portfolio(initial_balance=Decimal("10000"))
+        eng = ExecutionEngine(om, risk, venue, matching, portfolio)
         bar = _bar()
         intent = OrderIntent(
             instrument=bar.instrument,
@@ -88,13 +92,27 @@ def test_reconcile_mismatch_detected():
             strategy_id="s",
         )
         eng.submit_intent(intent, bar=bar)
-        # locally we have position via Paper? But FakeVenue doesn't auto-apply fills, so eng.positions has 0.1, venue has 0
-        # Actually ExecutionEngine only fills for PaperBrokerAdapter, not FakeVenue. So eng.positions stays 0 for FakeVenue.
-        # Inject mismatch: set venue position to different qty
+        # For FakeVenue, fills are not auto-applied (only PaperBroker), so portfolio stays flat unless we manually apply.
+        # Inject mismatch: set venue position to 0.5, local to 0.1 via portfolio
         instr = bar.instrument
         venue.set_position(Position(instrument=instr, quantity=Decimal("0.5"), avg_price=Decimal("2000")))
-        # force local to have 0.1
-
-        eng.positions["XAUUSD"] = Position(instrument=instr, quantity=Decimal("0.1"), avg_price=Decimal("2000"))
+        portfolio.positions["XAUUSD"] = Position(instrument=instr, quantity=Decimal("0.1"), avg_price=Decimal("2000"))
+        # portfolio also needs mark price for notional, but reconcile only checks qty
         report = eng.reconcile()
         assert report.drift == "QUANTITY_MISMATCH"
+        assert report.requires_suspend
+
+
+def test_reconcile_unknown_position():
+    with tempfile.TemporaryDirectory() as tmp:
+        om = OrderManager()
+        matching = MatchingEngine()
+        risk = RiskEngine(RiskLimits(), db_path=Path(tmp) / "db.sqlite")
+        venue = FakeVenueAdapter()
+        portfolio = Portfolio(initial_balance=Decimal("10000"))
+        eng = ExecutionEngine(om, risk, venue, matching, portfolio)
+        instr = Instrument(symbol="XAUUSD")
+        venue.set_position(Position(instrument=instr, quantity=Decimal("0.3"), avg_price=Decimal("2000")))
+        report = eng.reconcile()
+        assert report.drift == "UNKNOWN_POSITION"
+        assert report.requires_suspend

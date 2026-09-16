@@ -117,7 +117,7 @@ def test_kill_persists():
 
 def test_exposure_veto():
     with tempfile.TemporaryDirectory() as tmp:
-        eng = RiskEngine(RiskLimits(max_exposure=Decimal("0.2")), db_path=Path(tmp) / "db.sqlite")
+        eng = RiskEngine(RiskLimits(max_exposure_lots=Decimal("0.2")), db_path=Path(tmp) / "db.sqlite")
         instr = Instrument(symbol="XAUUSD")
         from qts.domain.value_objects import Position
 

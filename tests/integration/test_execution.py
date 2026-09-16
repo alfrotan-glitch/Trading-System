@@ -7,6 +7,7 @@ from qts.domain.value_objects import Bar, Instrument, OrderIntent, Side
 from qts.execution.engine import ExecutionEngine, OrderManager, PaperBrokerAdapter
 from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.observability.audit import InMemoryAuditLog
+from qts.portfolio.portfolio import Portfolio
 from qts.risk.engine import RiskEngine, RiskLimits
 
 
@@ -32,7 +33,8 @@ def test_execution_full_flow():
         matching = MatchingEngine(MatchingConfig(spread_bps=3, slippage_bps=2))
         risk = RiskEngine(RiskLimits(), db_path=Path(tmp) / "db.sqlite")
         broker = PaperBrokerAdapter(matching=matching)
-        eng = ExecutionEngine(om, risk, broker, matching, audit=audit)
+        portfolio = Portfolio(initial_balance=Decimal("10000"))
+        eng = ExecutionEngine(om, risk, broker, matching, portfolio, audit=audit)
         bar = _bar()
         intent = OrderIntent(
             instrument=bar.instrument,
@@ -45,12 +47,14 @@ def test_execution_full_flow():
         assert order is not None
         assert len(fills) == 1
         assert order.client_order_id == "c1"
-        # idempotency
+        # idempotency - second submit same id should not create new economic order
         order2, fills2 = eng.submit_intent(intent, bar=bar)
         assert order2.client_order_id == order.client_order_id
+        assert fills2 == []  # duplicate → no new fill
         # risk veto
         risk2 = RiskEngine(RiskLimits(max_quantity=Decimal("0.01")), db_path=Path(tmp) / "db2.sqlite")
-        eng2 = ExecutionEngine(OrderManager(), risk2, broker, matching)
+        portfolio2 = Portfolio(initial_balance=Decimal("10000"))
+        eng2 = ExecutionEngine(OrderManager(), risk2, broker, matching, portfolio2)
         intent_big = OrderIntent(
             instrument=bar.instrument,
             side=Side.BUY,

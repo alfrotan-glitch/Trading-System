@@ -1,4 +1,18 @@
-"""Deterministic backtest engine — event-driven, sorted by time."""
+"""Deterministic backtest engine — event-driven, sorted by time.
+
+Execution convention (explicit, documented):
+  Signal generated on bar N's close (event_time = close_time) uses ONLY information
+  available at N's close. Order is created at close_time of N. Fill is at
+  bar N+1's open (or with delay), using N+1's market data (open + spread/slippage).
+  This eliminates look-ahead: same-bar close cannot be used to fill at same close.
+
+  For tick-based replay, ticks are replayed in time order and fill uses tick at fill_time.
+
+Tick replay not yet; bar-based only. For stress tests, matching engine is swapped
+with different spread/slippage configs and strategy re-run (not PF multiplied).
+
+Portfolio is single source of truth for PnL (lots canonical, contract_size, fees).
+"""
 
 from __future__ import annotations
 
@@ -14,8 +28,10 @@ import numpy as np
 from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
 from qts.execution.engine import ExecutionEngine, OrderManager, PaperBrokerAdapter
+from qts.execution.idempotency import IdempotencyStore
 from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.observability.audit import AuditLog, InMemoryAuditLog
+from qts.portfolio.portfolio import Portfolio
 from qts.research.strategy import SmaBreakoutStrategy, signal_to_intent
 from qts.risk.engine import RiskEngine, RiskLimits
 
@@ -35,6 +51,7 @@ class BacktestResult:
     sharpe: float = 0.0
     max_dd: float = 0.0
     profit_factor: float = 0.0
+    config_hash: str = ""
 
     def hash(self) -> str:
         payload = json.dumps({"equity": self.equity_curve, "fills": self.fills}, sort_keys=True)
@@ -71,9 +88,9 @@ class BacktestEngine:
         bars = self.data_store.read_bars(instrument, timeframe, start, end, version=data_version)
         if not bars:
             raise ValueError(f"no bars for {instrument.symbol} {timeframe} version {data_version}")
-        # deterministic: sort by open_time
         bars = sorted(bars, key=lambda b: b.open_time)
-        # strategy
+
+        # strategy factory
         if strategy_id == "sma_breakout":
             strat = SmaBreakoutStrategy(
                 instrument,
@@ -81,112 +98,127 @@ class BacktestEngine:
                 slow=strategy_params.get("slow", 20),
                 strategy_id=strategy_id,
             )
+        elif strategy_id == "hold_long":
+            # simple hold for testing P&L
+            from qts.research.strategy import Signal as Sig
+            from qts.domain.value_objects import Side
+
+            class HoldLong:
+                strategy_id = "hold_long"
+
+                def on_bar(self, bar):
+                    if len(getattr(self, "_seen", [])) == 0:
+                        self._seen = [1]
+                        return [
+                            Sig(
+                                instrument=bar.instrument,
+                                side=Side.BUY,
+                                strength=1.0,
+                                event_time=bar.close_time,
+                                hypothesis_id="H-HOLD",
+                                strategy_id="hold_long",
+                            )
+                        ]
+                    return []
+
+            strat = HoldLong()  # type: ignore
         else:
             raise ValueError(f"unknown strategy {strategy_id}")
-        # engines
-        matching = MatchingEngine(self.matching_config)
-        risk = RiskEngine(self.risk_limits, db_path=self.data_store.db_path)
-        # ensure kill not persisted across backtests
-        risk.reset_kill()
-        om = OrderManager(audit=self.audit)
-        broker = PaperBrokerAdapter(matching=matching)
-        from qts.domain.value_objects import Account
 
-        account = Account(
-            balance=Decimal(str(self.initial_balance)),
-            equity=Decimal(str(self.initial_balance)),
-            currency="USD",
-        )
-        exec_engine = ExecutionEngine(om, risk, broker, matching, audit=self.audit, account=account)
-        # run
-        equity = [float(self.initial_balance)]
+        matching = MatchingEngine(self.matching_config)
+        # use temp db for idempotency to keep backtests isolated but persistent check works
+        # use same db_path but with unique prefix via temp? For determinism use same path but clear
+        risk = RiskEngine(self.risk_limits, db_path=self.data_store.db_path)
+        risk.reset_kill()
+        # idempotency store per backtest run (cleared)
+        idemp = IdempotencyStore(db_path=self.data_store.db_path)
+        # clear previous idempotency for deterministic replay? We want each backtest to be independent,
+        # so clear before run
+        idemp.clear()
+        om = OrderManager(audit=self.audit, idempotency=idemp)
+        broker = PaperBrokerAdapter(matching=matching)
+        portfolio = Portfolio(initial_balance=Decimal(str(self.initial_balance)), currency="USD")
+        exec_engine = ExecutionEngine(om, risk, broker, matching, portfolio, audit=self.audit)
+
+        equity: list[float] = []
         fills_out: list[dict[str, Any]] = []
-        # position tracking for PnL
-        # For backtest PnL, simulate mark-to-market on close
-        # Simplify: equity changes only on fill realized? Use trade PnL approximation:
-        # We'll compute equity as initial + cumulative trade PnL (long/short closed on opposite signal)
-        # For determinism and simplicity, compute returns from equity curve as 0 for now and update equity via fill PnL
-        # Better: track position and close on opposite signal
-        # We'll implement simple long/short flat logic: each signal closes opposite and opens new
-        # For metrics, we need equity curve — hack: treat each bar's return as 0 then jumps on fills
-        # Instead compute equity curve as step function: equity stays flat exceptfills add fee
-        # To get meaningful Sharpe, we generate synthetic returns from fills
-        # For proper backtest, we should compute PnL from price moves while holding
-        # Let's do FIFO: hold position, equity = initial + unrealized + realized
-        position_qty = Decimal("0")
-        avg_price = Decimal("0")
-        realized = Decimal("0")
-        for bar in bars:
+
+        # Execution convention: next-bar open
+        # We maintain pending intents to be executed on next bar
+        pending_intents: list[Any] = []  # OrderIntent list
+
+        for idx, bar in enumerate(bars):
+            # 1) execute pending intents from previous bar at this bar's open
+            if pending_intents:
+                # For each pending intent, create a synthetic execution bar at this bar's open
+                # Use current bar's open as execution price basis (open ± spread)
+                # For more realism we could use open, but we use bar's open as price for matching
+                # MatchingEngine.price_for uses bar.close; for execution at open we need to treat
+                # bar.open as the price. So we create a execution_bar with open=close=open
+                from qts.domain.value_objects import Bar as BarVO
+                from datetime import timedelta
+
+                exec_bar = BarVO(
+                    instrument=bar.instrument,
+                    open=bar.open,
+                    high=bar.open,
+                    low=bar.open,
+                    close=bar.open,
+                    volume=bar.volume,
+                    open_time=bar.open_time,
+                    close_time=bar.open_time + timedelta(milliseconds=1),
+                    data_version=bar.data_version,
+                    source="execution_open",
+                )
+                for intent in pending_intents:
+                    # idempotency already handled via OrderManager
+                    order, fills = exec_engine.submit_intent(intent, bar=exec_bar)
+                    for fill in fills:
+                        fills_out.append(
+                            {
+                                "price": str(fill.price),
+                                "qty": str(fill.quantity),
+                                "side": fill.side.value,
+                                "time": fill.event_time.isoformat(),
+                                "bar_open": str(bar.open),
+                                "bar_idx": idx,
+                            }
+                        )
+                pending_intents = []
+
+            # 2) mark to market at bar close before signal? Position unrealized at close
+            # But signal is generated after close, so mark at close first
+            exec_engine.mark_price(bar.instrument.symbol, bar.close)
+            eq = float(portfolio.equity())
+            equity.append(eq)
+
+            # 3) strategy sees bar (with only information up to this close)
+            # Ensure strategy never sees future bars — it only receives current bar
             signals = strat.on_bar(bar)
             for sig in signals:
                 intent = signal_to_intent(sig, quantity=Decimal(str(strategy_params.get("quantity", "0.1"))))
-                # ensure deterministic client_order_id includes bar time
+                # deterministic id: strategy:bar_time:seq
                 intent = intent.model_copy(
-                    update={"client_order_id": f"{strategy_id}:{bar.open_time.isoformat()}:{len(fills_out)}"}
+                    update={"client_order_id": f"{strategy_id}:{bar.close_time.isoformat()}:{len(fills_out) + len(pending_intents)}"}
                 )
-                order, fills = exec_engine.submit_intent(intent, bar=bar)
-                for fill in fills:
-                    # update position and realized
-                    qty_delta = fill.quantity if fill.side.value == "BUY" else -fill.quantity
-                    # if flipping, realize
-                    if position_qty != 0 and (position_qty > 0) != (qty_delta > 0):
-                        # closing portion
-                        close_qty = min(abs(position_qty), abs(qty_delta))
-                        # PnL = (fill_price - avg_price) * close_qty * direction
-                        # long: sell higher -> profit
-                        if position_qty > 0:
-                            pnl = (fill.price - avg_price) * close_qty
-                        else:
-                            pnl = (avg_price - fill.price) * close_qty
-                        realized += pnl - fill.fee
-                        # remaining
-                        remaining_qty = position_qty + qty_delta
-                        if remaining_qty == 0:
-                            avg_price = Decimal("0")
-                        elif (remaining_qty > 0) == (position_qty > 0):
-                            # partial close
-                            pass
-                        else:
-                            # flip
-                            avg_price = fill.price
-                        position_qty = remaining_qty
-                    else:
-                        # adding
-                        total_cost = avg_price * abs(position_qty) + fill.price * abs(qty_delta)
-                        total_qty = abs(position_qty) + abs(qty_delta)
-                        avg_price = total_cost / total_qty if total_qty != 0 else Decimal("0")
-                        position_qty = position_qty + qty_delta
-                        realized -= fill.fee
-                    fills_out.append(
-                        {
-                            "price": str(fill.price),
-                            "qty": str(fill.quantity),
-                            "side": fill.side.value,
-                            "time": fill.event_time.isoformat(),
-                        }
-                    )
-            # mark-to-market equity at bar close
-            if position_qty != 0:
-                unrealized = (
-                    (bar.close - avg_price) * position_qty
-                    if position_qty > 0
-                    else (avg_price - bar.close) * abs(position_qty)
-                )
-            else:
-                unrealized = Decimal("0")
-            eq = float(Decimal(str(self.initial_balance)) + realized + unrealized)
-            equity.append(eq)
-        # metrics
+                # queue for next bar execution
+                pending_intents.append(intent)
+
+            # if this is last bar, pending intents would not be executed (no next bar) — they expire
+
+        # after loop, equity already includes last bar's mark
+        # final equity is last equity after mark
+        if not equity:
+            equity = [float(self.initial_balance)]
+
         eq_arr = np.array(equity, dtype=float)
         rets = np.diff(eq_arr) / np.where(eq_arr[:-1] == 0, 1, eq_arr[:-1])
-        # remove nan
         rets = rets[np.isfinite(rets)]
         from qts.validation.metrics import max_drawdown, profit_factor, sharpe_ratio
 
         sharpe = sharpe_ratio(rets) if len(rets) else 0.0
         dd = max_drawdown(eq_arr)
         pf = profit_factor(rets) if len(rets) else 0.0
-        # manifest hash
         payload = json.dumps(
             {
                 "strategy_id": strategy_id,
@@ -194,10 +226,12 @@ class BacktestEngine:
                 "data_version": data_version,
                 "seed": seed,
                 "bars": len(bars),
+                "execution": "next_bar_open",
             },
             sort_keys=True,
         )
         manifest_hash = hashlib.sha256(payload.encode()).hexdigest()[:12]
+        config_hash = hashlib.sha256(json.dumps({"matching": self.matching_config.__dict__}, sort_keys=True, default=str).encode()).hexdigest()[:8]
         return BacktestResult(
             strategy_id=strategy_id,
             data_version=data_version,
@@ -212,4 +246,36 @@ class BacktestEngine:
             sharpe=float(sharpe),
             max_dd=float(dd),
             profit_factor=float(pf),
+            config_hash=config_hash,
         )
+
+    def run_stress(
+        self, instrument: Instrument, timeframe: str, data_version: str, strategy_id: str, strategy_params: dict[str, Any] | None, spreads: list[float]
+    ) -> dict[float, float]:
+        """Re-run strategy under different spread stress (real trades, not PF multiplication)."""
+        results: dict[float, float] = {}
+        for spread in spreads:
+            cfg = MatchingConfig(
+                spread_bps=spread * 3.0,  # base 3 bps * multiplier? For stress, multiplier applied
+                slippage_bps=self.matching_config.slippage_bps,
+                execution_delay_ms=self.matching_config.execution_delay_ms,
+                commission_per_lot=self.matching_config.commission_per_lot,
+            )
+            # For stress, we treat spread input as multiplier? Actually caller passes [1.0, 1.5, 2.0] multipliers.
+            # We need to map multiplier to spread_bps.
+            # If spreads are multipliers, convert.
+            if spread in (1.0, 1.5, 2.0, 3.0):
+                # multiplier
+                stress_cfg = MatchingConfig(
+                    spread_bps=self.matching_config.spread_bps * spread,
+                    slippage_bps=self.matching_config.slippage_bps * spread,
+                    execution_delay_ms=self.matching_config.execution_delay_ms,
+                    commission_per_lot=self.matching_config.commission_per_lot,
+                )
+            else:
+                stress_cfg = cfg
+            engine = BacktestEngine(self.data_store, self.risk_limits, stress_cfg, initial_balance=self.initial_balance)
+            res = engine.run(instrument, timeframe, data_version, strategy_id, strategy_params)
+            # use PF as stress metric (or sharpe)
+            results[spread] = res.profit_factor
+        return results
