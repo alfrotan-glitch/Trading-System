@@ -1,8 +1,44 @@
 {
-  "generated_at": "2026-09-16T14:08:44.687316+00:00",
-  "registry_count": 39,
-  "trial_count": 45,
+  "generated_at": "2026-09-16T14:28:01.087690+00:00",
+  "registry_count": 69,
+  "trial_count": 75,
   "campaigns": [
+    {
+      "id": "C-e4300c64",
+      "family": "trend",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-4d425a4e",
+      "family": "trend",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-8ebb2e2e",
+      "family": "trend",
+      "trials": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-6eaed82d",
+      "family": "volatility",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-c6cd8c31",
+      "family": "trend",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-cc07319a",
+      "family": "trend",
+      "trials": 3,
+      "status": "COMPLETED"
+    },
     {
       "id": "C-71172fb9",
       "family": "trend",
@@ -57,134 +93,5 @@
       "trials": 6,
       "status": "COMPLETED"
     }
-  ],
-  "strategies_sample": [
-    {
-      "strategy_id": "trend_a154c1",
-      "name": "trend campaign C-85ee6935",
-      "version": "1.0.0",
-      "hypothesis": "Test trend with {'fast': 5, 'slow': 20, 'ma_type': 'sma'}",
-      "market": "XAUUSD",
-      "symbol": "XAUUSD",
-      "timeframe": "1H",
-      "data_manifest": "20260916-010-572728d9",
-      "feature_definition": {
-        "family": "trend",
-        "params": {
-          "fast": 5,
-          "slow": 20,
-          "ma_type": "sma"
-        },
-        "features": {
-          "sma_fast": 5,
-          "sma_slow": 20,
-          "crossover": "fast crosses slow"
-        }
-      },
-      "parameter_definition": {
-        "fast": 5,
-        "slow": 20,
-        "ma_type": "sma"
-      },
-      "execution_assumptions": {
-        "spread_bps": 10,
-        "slippage": "realistic",
-        "latency": "100ms"
-      },
-      "risk_assumptions": {
-        "risk_per_trade": "1%",
-        "max_exposure": "2 lots"
-      },
-      "creation_timestamp": "2026-09-16T14:05:00.130366Z",
-      "code_revision": "0.1.0",
-      "lifecycle_state": "RESEARCH",
-      "family": "trend",
-      "created_by": "system"
-    },
-    {
-      "strategy_id": "trend_313315",
-      "name": "trend campaign C-85ee6935",
-      "version": "1.0.0",
-      "hypothesis": "Test trend with {'fast': 5, 'slow': 30, 'ma_type': 'sma'}",
-      "market": "XAUUSD",
-      "symbol": "XAUUSD",
-      "timeframe": "1H",
-      "data_manifest": "20260916-010-572728d9",
-      "feature_definition": {
-        "family": "trend",
-        "params": {
-          "fast": 5,
-          "slow": 30,
-          "ma_type": "sma"
-        },
-        "features": {
-          "sma_fast": 5,
-          "sma_slow": 30,
-          "crossover": "fast crosses slow"
-        }
-      },
-      "parameter_definition": {
-        "fast": 5,
-        "slow": 30,
-        "ma_type": "sma"
-      },
-      "execution_assumptions": {
-        "spread_bps": 10,
-        "slippage": "realistic",
-        "latency": "100ms"
-      },
-      "risk_assumptions": {
-        "risk_per_trade": "1%",
-        "max_exposure": "2 lots"
-      },
-      "creation_timestamp": "2026-09-16T14:05:00.399466Z",
-      "code_revision": "0.1.0",
-      "lifecycle_state": "RESEARCH",
-      "family": "trend",
-      "created_by": "system"
-    },
-    {
-      "strategy_id": "trend_65df83",
-      "name": "trend campaign C-85ee6935",
-      "version": "1.0.0",
-      "hypothesis": "Test trend with {'fast': 5, 'slow': 50, 'ma_type': 'sma'}",
-      "market": "XAUUSD",
-      "symbol": "XAUUSD",
-      "timeframe": "1H",
-      "data_manifest": "20260916-010-572728d9",
-      "feature_definition": {
-        "family": "trend",
-        "params": {
-          "fast": 5,
-          "slow": 50,
-          "ma_type": "sma"
-        },
-        "features": {
-          "sma_fast": 5,
-          "sma_slow": 50,
-          "crossover": "fast crosses slow"
-        }
-      },
-      "parameter_definition": {
-        "fast": 5,
-        "slow": 50,
-        "ma_type": "sma"
-      },
-      "execution_assumptions": {
-        "spread_bps": 10,
-        "slippage": "realistic",
-        "latency": "100ms"
-      },
-      "risk_assumptions": {
-        "risk_per_trade": "1%",
-        "max_exposure": "2 lots"
-      },
-      "creation_timestamp": "2026-09-16T14:05:00.661211Z",
-      "code_revision": "0.1.0",
-      "lifecycle_state": "RESEARCH",
-      "family": "trend",
-      "created_by": "system"
-    }
-  ],
-  "note": "no candidate promoted solely on high return"
+  ]
 }

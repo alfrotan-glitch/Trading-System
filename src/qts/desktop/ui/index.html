@@ -17,6 +17,16 @@
   <button data-view="home" class="active">Home</button>
   <button data-view="dashboard">Dashboard</button>
   <button data-view="research">Research</button>
+  <button data-view="research-lab">Research Lab</button>
+  <button data-view="hypothesis">Hypothesis Explorer</button>
+  <button data-view="campaign-runner">Campaign Runner</button>
+  <button data-view="experiment-ledger">Experiment Ledger</button>
+  <button data-view="candidate">Candidate Explorer</button>
+  <button data-view="failure">Failure Analysis</button>
+  <button data-view="evidence">Evidence Viewer</button>
+  <button data-view="data-observatory">Data Observatory</button>
+  <button data-view="lifecycle">Strategy Lifecycle</button>
+  <button data-view="research-memory">Research Memory</button>
   <button data-view="strategies">Strategies</button>
   <button data-view="validation">Validation</button>
   <button data-view="paper">Paper/Shadow</button>
@@ -148,6 +158,93 @@
     <div id="live-reasons" class="pre"></div>
     <p class="muted">MT5 connected ≠ safe to trade. All scientific, risk, reconciliation gates must pass + human approval. No convenience override.</p>
     <button id="btn-request-live" disabled>Enable Live — Requires Explicit Confirmation (Gated)</button>
+  </section>
+
+  <!-- Research Lab -->
+  <section id="view-research-lab" class="view">
+    <h2>Research Lab — Autonomous Scientist</h2>
+    <div class="card">
+      <h3>What Is The System Thinking?</h3>
+      <div id="lab-thinking" class="pre"></div>
+      <button id="btn-run-autonomous">Run Autonomous Campaign: Search durable XAUUSD edge (conservative execution)</button>
+      <div id="autonomous-result" class="pre"></div>
+    </div>
+    <div class="two-col">
+      <div class="card"><h3>Why Hypotheses Created</h3><div id="lab-why"></div></div>
+      <div class="card"><h3>What Failed &amp; What Learned</h3><div id="lab-learned"></div></div>
+    </div>
+    <div class="card"><h3>What Will Test Next</h3><div id="lab-next"></div></div>
+    <div class="card"><h3>Human Controls</h3><p class="muted">Human for direction/campaign config/inspection/approval of stages — cannot override failed scientific gates.</p></div>
+  </section>
+
+  <!-- Hypothesis Explorer -->
+  <section id="view-hypothesis" class="view">
+    <h2>Hypothesis Explorer</h2>
+    <div class="card"><h3>Generated Hypotheses (falsifiable, with lineage)</h3><div id="hypothesis-list" class="pre"></div></div>
+    <div class="card"><h3>Mechanism Pool (23 falsifiable)</h3><div id="mechanism-pool" class="pre"></div></div>
+  </section>
+
+  <!-- Campaign Runner -->
+  <section id="view-campaign-runner" class="view">
+    <h2>Campaign Runner — 11 Steps</h2>
+    <div class="card"><h3>Autonomous Steps</h3><div class="pre">1 review data → 2 review failures → 3 generate bounded plan → 4 create hypotheses → 5 execute experiments → 6 store results → 7 attack candidates → 8 eliminate weak → 9 refine surviving → 10 re-test → 11 produce evidence portfolio. Never moves to LIVE.</div></div>
+    <div class="card"><h3>Budget</h3><div id="campaign-budget" class="pre"></div></div>
+    <div class="card"><h3>Latest Autonomous Campaign Evidence</h3><div id="campaign-evidence" class="pre"></div></div>
+  </section>
+
+  <!-- Experiment Ledger -->
+  <section id="view-experiment-ledger" class="view">
+    <h2>Experiment Ledger — No Hidden Trials</h2>
+    <div class="card"><h3>All Trials (winners/losers/discarded/param/feature variants/failed)</h3><div id="exp-ledger" class="pre"></div></div>
+    <div class="card"><h3>Experiment Governance</h3><div id="exp-governance" class="pre"></div></div>
+  </section>
+
+  <!-- Candidate Explorer -->
+  <section id="view-candidate" class="view">
+    <h2>Candidate Explorer — Survival Standard</h2>
+    <div class="card"><h3>Survival Requires All: OOS, DSR, costs, perturbation, regime, null, expectancy, forward, execution</h3><div id="candidate-list"></div></div>
+    <div class="card"><h3>Adversarial Report (Best For / Best Against)</h3><div id="candidate-adversarial" class="pre"></div></div>
+  </section>
+
+  <!-- Failure Analysis -->
+  <section id="view-failure" class="view">
+    <h2>Failure Analysis — Why Failed</h2>
+    <div class="card"><h3>Failures by Stage</h3><div id="failure-by-stage" class="pre"></div></div>
+    <div class="card"><h3>What Assumptions Disproven</h3><div id="failure-assumptions" class="pre"></div></div>
+    <div class="card"><h3>Unstable Param Ranges &amp; Useless Features</h3><div id="failure-params" class="pre"></div></div>
+  </section>
+
+  <!-- Evidence Viewer -->
+  <section id="view-evidence" class="view">
+    <h2>Evidence Viewer — Self-Audit</h2>
+    <div class="card"><h3>Discovery Report (per campaign)</h3><div id="evidence-discovery" class="pre"></div></div>
+    <div class="card"><h3>Self-Audit: 9 Questions</h3><div id="evidence-audit" class="pre"></div></div>
+    <div class="card"><h3>Confidence Calibration</h3><div id="evidence-calibration" class="pre"></div></div>
+  </section>
+
+  <!-- Data Observatory -->
+  <section id="view-data-observatory" class="view">
+    <h2>Data Observatory</h2>
+    <div class="card"><h3>Available Data Sources Audit</h3><div id="data-audit" class="pre"></div></div>
+    <div class="card"><h3>Minimum Expansion Needed</h3><div id="data-expansion" class="pre"></div></div>
+    <div class="card"><h3>Feature Discovery (controlled, no leakage)</h3><div id="data-features" class="pre"></div></div>
+    <div class="card"><h3>Market Microstructure / Execution-Aware</h3><div id="data-micro" class="pre"></div></div>
+  </section>
+
+  <!-- Strategy Lifecycle -->
+  <section id="view-lifecycle" class="view">
+    <h2>Strategy Lifecycle — RESEARCH→LIVE_ELIGIBLE</h2>
+    <div class="flow">RESEARCH → CANDIDATE → VALIDATING → VALIDATED → FORWARD_OBSERVATION → PAPER_VERIFIED → SHADOW_VERIFIED → MICRO_ELIGIBLE → MICRO_VALIDATED → LIVE_ELIGIBLE (SUSPENDED/REJECTED)</div>
+    <div id="lifecycle-view" class="pre"></div>
+    <div class="card"><h3>NO-TRADE as Research Variable</h3><div id="lifecycle-notrade" class="pre"></div></div>
+  </section>
+
+  <!-- Research Memory -->
+  <section id="view-research-memory" class="view">
+    <h2>Research Memory — Durable, Prevents Rediscovery</h2>
+    <div class="card"><h3>What Was Tested, Why Failed, What Unstable</h3><div id="memory-list" class="pre"></div></div>
+    <div class="card"><h3>Novelty / Diversity Control</h3><div id="memory-novelty" class="pre"></div></div>
+    <div class="card"><h3>Statistical Stack Extensions</h3><div id="memory-stat" class="pre"></div></div>
   </section>
 </main>
 

@@ -1,5 +1,5 @@
 # Edge Validation Report
-**Generated:** 2026-09-16T14:08:36.444539+00:00
+**Generated:** 2026-09-16T14:09:25.844765+00:00
 **Strategy:** sma_breakout
 **Data version:** 20260916-010-572728d9
 **Code version:** 0.1.0
@@ -11,7 +11,7 @@
 - Locked partition: discovery 300 validation 100 locked 100 frozen True access_log 0 attempts
 
 ## 2. Trial count
-- Trials: 45 (all materially tested variants counted, DSR uses N=45)
+- Trials: 48 (all materially tested variants counted, DSR uses N=48)
 
 ## 3. Locked-test status
 - Frozen: True — locked test never influenced design/params/thresholds/feature selection
@@ -25,7 +25,7 @@
 - PBO: 0.33 passed: True details: PBO 0.33
 
 ## 6. PSR/DSR
-- PSR: 0.85 DSR: 0.12 trials 45 passed: False
+- PSR: 0.85 DSR: 0.11 trials 48 passed: False
 
 ## 7. Null controls
 - Control sharpes: [0.14901424590336979, -0.0414792903513554, 0.19430656143020775, 0.45690895692240757, -0.07024601241700079] rejected: False

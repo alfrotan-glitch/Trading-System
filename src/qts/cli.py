@@ -1162,3 +1162,25 @@ def research_campaign(family: str, symbol: str, timeframe: str, data_version: st
     if summary['passed']==0:
         click.echo("BLOCK — no candidate survived scientific gates — keep NO_TRADE")
 
+
+@research.command("autonomous")
+@click.option("--name", default="autonomous-search")
+@click.option("--symbol", default="XAUUSD")
+@click.option("--timeframe", default="1H")
+@click.option("--data-version", default=None)
+@click.option("--trials", default=12, type=int)
+@click.option("--max-runtime", default=60, type=int)
+@click.option("--seed", default=42, type=int)
+def research_autonomous(name: str, symbol: str, timeframe: str, data_version: str | None, trials: int, max_runtime: int, seed: int) -> None:
+    from qts.research.campaign_engine import run_autonomous_campaign
+    click.echo(f"launching autonomous campaign {name} trials={trials} (11 steps, never LIVE)")
+    result = run_autonomous_campaign(name, symbol, timeframe, data_version, trials, max_runtime, seed)
+    Path("data/evidence").mkdir(parents=True, exist_ok=True)
+    Path("data/evidence/autonomous_campaign.json").write_text(json.dumps(result, indent=2, default=str))
+    ev = result["evidence_portfolio"]
+    click.echo(f"autonomous completed: trials {result['summary']['total_trials']} passed {result['summary']['passed']} distinct {result['novelty']['distinct_hypotheses']}")
+    click.echo(f"self-audit verdict {result['self_audit']['verdict']}")
+    click.echo(f"overall {ev['overall']}")
+    if ev['overall'].startswith("BLOCK"):
+        click.echo("BLOCK — keep NO_TRADE — no genuine economic edge demonstrated")
+

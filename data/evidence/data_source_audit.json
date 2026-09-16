@@ -1,0 +1,60 @@
+{
+  "available_sources": [
+    {
+      "version": "20260916-010-86ca2f9c",
+      "instrument": "XAUUSD",
+      "timeframe": "1H",
+      "rows": 2000,
+      "start": "2020-01-01 00:00:00+00:00",
+      "end": "2020-03-24 08:00:00+00:00",
+      "checksum": "sha256:86ca2f9c35a3518f",
+      "source": "synthetic_or_csv",
+      "bid_ask_available": false,
+      "spread_available": "proxy via high-low only",
+      "tick_available": false,
+      "timestamp_quality": "UTC",
+      "survivorship": "single symbol XAUUSD, no survivorship issue for FX/metal",
+      "corporate_adjustments": "not applicable (XAUUSD)",
+      "broker_differences": "mock vs real MT5 not distinguished in sample \u2014 limitation",
+      "historical_depth": "2000 bars (~83.3 days for 1H)",
+      "market_regimes": "limited to 2020-01 sample, not multi-regime",
+      "execution_conditions": "not real tick, spread proxy only",
+      "licensing": "synthetic_or_csv \u2014 internal, no external licensing, not production market data"
+    },
+    {
+      "version": "20260916-010-572728d9",
+      "instrument": "XAUUSD",
+      "timeframe": "1H",
+      "rows": 500,
+      "start": "2020-01-01 00:00:00+00:00",
+      "end": "2020-01-21 20:00:00+00:00",
+      "checksum": "sha256:572728d92ebb5c2a",
+      "source": "synthetic_or_csv",
+      "bid_ask_available": false,
+      "spread_available": "proxy via high-low only",
+      "tick_available": false,
+      "timestamp_quality": "UTC",
+      "survivorship": "single symbol XAUUSD, no survivorship issue for FX/metal",
+      "corporate_adjustments": "not applicable (XAUUSD)",
+      "broker_differences": "mock vs real MT5 not distinguished in sample \u2014 limitation",
+      "historical_depth": "500 bars (~20.8 days for 1H)",
+      "market_regimes": "limited to 2020-01 sample, not multi-regime",
+      "execution_conditions": "not real tick, spread proxy only",
+      "licensing": "synthetic_or_csv \u2014 internal, no external licensing, not production market data"
+    }
+  ],
+  "count": 2,
+  "limitation": "Only 1-2 XAUUSD 1H 500-row samples available \u2014 minimum depth for credible research is >> 5000 bars across multiple years/regimes. Current data insufficient for generality; results are illustrative, not production. Do not increase data until strategy looks good \u2014 expansion only for reducing uncertainty.",
+  "recommendation": "Acquire at least 2 years XAUUSD 1H (or 1M) with real bid/ask, true spread, tick, multiple symbols (EURUSD, BTC), multiple timeframes, from broker MT5 history or dukascopy/first-rate, with licensing cleared, timestamp UTC, survivorship documented.",
+  "minimum_expansion_needed": {
+    "historical_depth": "5000+ bars (6 months 1H) ideally 2 years",
+    "symbols": "XAUUSD + 1-2 majors for cross-asset check",
+    "timeframes": "1H + 15m or 1M for multi-timeframe structure",
+    "regimes": "include 2020-2024 varied volatility",
+    "execution": "real spread/bid-ask/tick for execution-aware research"
+  },
+  "never_substitute": "Do not silently substitute convenient synthetic for real market data \u2014 structural difference (GBM vs real microstructure) invalidates execution assumptions.",
+  "raw_files": [
+    "data/raw/synth.csv"
+  ]
+}

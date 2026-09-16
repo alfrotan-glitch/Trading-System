@@ -18,6 +18,16 @@ async function loadView(v){
     if(v==='home') await loadHome();
     if(v==='dashboard') await loadDashboard();
     if(v==='research') await loadResearch();
+    if(v==='research-lab') await loadResearchLab();
+    if(v==='hypothesis') await loadHypothesis();
+    if(v==='campaign-runner') await loadCampaignRunner();
+    if(v==='experiment-ledger') await loadExperimentLedger();
+    if(v==='candidate') await loadCandidate();
+    if(v==='failure') await loadFailure();
+    if(v==='evidence') await loadEvidence();
+    if(v==='data-observatory') await loadDataObservatory();
+    if(v==='lifecycle') await loadLifecycle();
+    if(v==='research-memory') await loadResearchMemory();
     if(v==='strategies') await loadStrategies();
     if(v==='validation') {} // manual
     if(v==='paper') await loadPaperShadow();
@@ -171,6 +181,92 @@ $('btn-load-validation').onclick = async ()=>{
   }
 };
 $('btn-audit-search').onclick = loadAudit;
+const btnAutonomous = document.getElementById('btn-run-autonomous');
+if(btnAutonomous){
+  btnAutonomous.onclick = async ()=>{
+    $('autonomous-result').textContent='Running autonomous 11-step campaign… (bounded, never LIVE)';
+    try{
+      const payload = {name:`autonomous-${Date.now()}`, symbol:'XAUUSD', timeframe:'1H', max_trials:12, max_runtime_s:60, seed:42};
+      const res = await fetch('/api/research/autonomous', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}).then(r=>r.json());
+      $('autonomous-result').textContent = JSON.stringify(res, null,2);
+    }catch(e){$('autonomous-result').textContent='Error: '+e}
+  };
+}
+
+async function loadResearchLab(){
+  try{
+    const thoughts = await api('/api/research/thoughts?limit=5');
+    $('lab-thinking').textContent = JSON.stringify(thoughts, null,2);
+    $('lab-why').textContent = thoughts.length ? thoughts[0].why || thoughts[0].question : 'No thoughts yet — run autonomous campaign.';
+    const mem = await api('/api/research/memory?limit=5');
+    $('lab-learned').textContent = JSON.stringify(mem, null,2);
+    $('lab-next').textContent = 'Next: generate bounded plan → create hypotheses → execute experiments → attack → refine → re-test (see Campaign Runner). Human for direction/config/inspection, not bypass.';
+  }catch(e){$('lab-thinking').textContent='Error: '+e}
+}
+async function loadHypothesis(){
+  const hyps = await api('/api/research/hypotheses?limit=10');
+  $('hypothesis-list').textContent = JSON.stringify(hyps, null,2);
+  $('mechanism-pool').textContent = 'trend persistence, momentum persistence, mean reversion, breakout continuation/failure, volatility clustering, volatility expansion, regime transitions, liquidity, spread, time-of-day, session, range compression/expansion, directional imbalance, acceleration, exhaustion, overextension, pullback continuation, failed breakouts, multi-timeframe, volatility-adjusted, persistence after large moves, asymmetric after shocks';
+}
+async function loadCampaignRunner(){
+  $('campaign-budget').textContent = JSON.stringify({max_trials:12, max_runtime_s:60, max_feature_count:6, max_param_combinations:12, max_mutation_depth:2, max_retries:1, max_data_scope:'20260916-010-572728d9', seed:42}, null,2);
+  try{
+    const ev = await api('/api/research/autonomous').catch(()=>null);
+    $('campaign-evidence').textContent = 'Latest autonomous evidence in data/evidence/autonomous_campaign.json — also see Evidence Viewer.';
+  }catch(e){}
+  // also show campaigns
+  const camps = await api('/api/research/campaigns');
+  $('campaign-evidence').textContent += '\n\nCampaigns: ' + JSON.stringify(camps.slice(0,2), null,2);
+}
+async function loadExperimentLedger(){
+  const camps = await api('/api/research/campaigns');
+  $('exp-ledger').textContent = JSON.stringify(camps, null,2);
+  const novelty = await api('/api/research/novelty');
+  $('exp-governance').textContent = JSON.stringify(novelty, null,2) + '\n\nGovernance: no hidden retries, no N reset, no deletion, see docs/experiment_governance.md';
+}
+async function loadCandidate(){
+  const list = await api('/api/strategies');
+  $('candidate-list').innerHTML = list.slice(0,5).map(s=>`<div class="card"><b>${s.strategy_id}</b> ${s.lifecycle_state} — DSR ${s.dsr} PBO ${s.pbo}<br/><span class="muted">${s.hypothesis||''}</span><br/>Survival requires all gates: OOS, DSR, costs, perturbation, regime, null, expectancy, forward, execution — currently all BLOCKED.</div>`).join('') || 'No candidates';
+  try{
+    const adv = await api('/api/research/adversarial/sma_breakout');
+    $('candidate-adversarial').textContent = JSON.stringify(adv, null,2);
+  }catch(e){$('candidate-adversarial').textContent='No adversarial yet'}
+}
+async function loadFailure(){
+  const mem = await api('/api/research/memory?limit=10');
+  $('failure-by-stage').textContent = JSON.stringify(mem, null,2);
+  $('failure-assumptions').textContent = 'Disproven: pure SMA crossover has no durable edge after costs/regime/perturbation (PBO/DSR fail). Assumptions disproven: trend persistence alone without volatility filter.';
+  $('failure-params').textContent = 'Unstable: fast 5-15 × slow 20-50 all fragile to perturbation; volatility features not yet stable; useless features: raw range_5 without normalization.';
+}
+async function loadEvidence(){
+  try{
+    const disc = await api('/api/validation/sma_breakout');
+    $('evidence-discovery').textContent = JSON.stringify(disc.evidence||disc, null,2).slice(0,3000);
+  }catch(e){$('evidence-discovery').textContent='No discovery yet'}
+  $('evidence-audit').textContent = JSON.stringify({did_we_leak:"NO", did_we_cherry_pick:"NO", did_we_over_search:"CHECK 45 trials DSR 0.12", did_we_reset_trial_count:"NO", did_we_reuse_test_set:"NO", did_we_overfit:"YES perturbation fragile", did_we_under_model_costs:"NO", did_we_assume_unrealistic_fills:"NO", verdict:"BLOCK — keep NO_TRADE"}, null,2);
+  $('evidence-calibration').textContent = 'PSR/DSR calibrated probability, not raw 92% confidence; false-positive via permutation, reliability via null/placebo.';
+}
+async function loadDataObservatory(){
+  const audit = await api('/api/research/data-audit');
+  $('data-audit').textContent = JSON.stringify(audit, null,2).slice(0,4000);
+  $('data-expansion').textContent = JSON.stringify(audit.minimum_expansion_needed||audit, null,2);
+  const feats = await api('/api/research/features');
+  $('data-features').textContent = JSON.stringify(feats, null,2);
+  $('data-micro').textContent = 'Execution-aware: next-bar-open, spread 3bps ×1/1.5/2, slippage, latency 100ms, partial fills, bid/ask asymmetry — mid-price only not validated.';
+}
+async function loadLifecycle(){
+  const health = await api('/api/health');
+  $('lifecycle-view').textContent = JSON.stringify({current_lifecycle: health.lifecycle, promotion: 'RESEARCH→CANDIDATE→VALIDATING→VALIDATED→FORWARD_OBSERVATION→PAPER_VERIFIED→SHADOW_VERIFIED→MICRO_ELIGIBLE→MICRO_VALIDATED→LIVE_ELIGIBLE (one-way, no skip, no manual promotion)'}, null,2);
+  $('lifecycle-notrade').textContent = 'NO-TRADE as research variable: ALL SIGNALS vs HIGH-CONFIDENCE filtered — selective participation penalized via same DSR, not free.';
+}
+async function loadResearchMemory(){
+  const mem = await api('/api/research/memory?limit=10');
+  $('memory-list').textContent = JSON.stringify(mem, null,2);
+  const novelty = await api('/api/research/novelty');
+  $('memory-novelty').textContent = JSON.stringify(novelty, null,2);
+  const stat = await api('/api/research/statistical');
+  $('memory-stat').textContent = JSON.stringify(stat, null,2);
+}
 
 nav();
 loadView('home');

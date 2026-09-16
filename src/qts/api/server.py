@@ -583,6 +583,94 @@ def notifications() -> list[dict[str, Any]]:
     return alerts
 
 
+# --- Autonomous Research endpoints ---
+@app.get("/api/research/thoughts")
+def research_thoughts(limit: int = 20) -> list[dict[str, Any]]:
+    from qts.research.intelligence import IntelligenceOrchestrator
+    intel = IntelligenceOrchestrator()
+    thoughts = intel.all_thoughts(limit=limit)
+    return [t.model_dump(mode="json") for t in thoughts]
+
+@app.get("/api/research/hypotheses")
+def research_hypotheses(limit: int = 20) -> list[dict[str, Any]]:
+    from qts.research.intelligence import IntelligenceOrchestrator
+    intel = IntelligenceOrchestrator()
+    hyps = intel.all_hypotheses(limit=limit)
+    return [h.model_dump(mode="json") for h in hyps]
+
+@app.get("/api/research/memory")
+def research_memory(limit: int = 20) -> list[dict[str, Any]]:
+    from qts.research.memory import ResearchMemory
+    mem = ResearchMemory()
+    entries = mem.list_failures(limit=limit)
+    return [e.model_dump(mode="json") for e in entries]
+
+@app.get("/api/research/novelty")
+def research_novelty() -> dict[str, Any]:
+    from qts.research.novelty import report_novelty
+    from qts.research.experiment import ExperimentStore
+    store = ExperimentStore()
+    trials = [{"family": e.strategy_id.split("_")[0] if "_" in e.strategy_id else e.strategy_id, "mechanism": e.strategy_id, "params": e.params, "feature_lineage": []} for e in store.all_experiments()]
+    return report_novelty(trials)
+
+@app.get("/api/research/data-audit")
+def research_data_audit() -> dict[str, Any]:
+    from qts.data.audit import audit_data_sources
+    return audit_data_sources()
+
+@app.get("/api/research/features")
+def research_features() -> list[dict[str, Any]]:
+    from qts.research.feature_discovery import FeatureStore
+    fs = FeatureStore()
+    feats = fs.list()
+    if not feats:
+        # register controlled defaults if empty
+        from qts.research.feature_discovery import CONTROLLED_FEATURES
+        for f in CONTROLLED_FEATURES:
+            try:
+                fs.register(f)
+            except Exception:
+                pass
+        feats = fs.list()
+    return [f.model_dump(mode="json") for f in feats]
+
+@app.get("/api/research/adversarial/{strategy_id}")
+def research_adversarial(strategy_id: str) -> dict[str, Any]:
+    from qts.research.adversary import adversarial_attack
+    import json as js
+    ev_path = Path("data/evidence/edge_validation.json")
+    ev = js.loads(ev_path.read_text()) if ev_path.exists() else {}
+    return adversarial_attack(strategy_id, ev)
+
+@app.post("/api/research/autonomous")
+def research_autonomous(payload: dict[str, Any]) -> dict[str, Any]:
+    from qts.research.campaign_engine import run_autonomous_campaign
+    name = payload.get("name", "autonomous-search")
+    symbol = payload.get("symbol", "XAUUSD")
+    timeframe = payload.get("timeframe", "1H")
+    data_version = payload.get("data_version")
+    max_trials = int(payload.get("max_trials", 12))
+    max_runtime_s = float(payload.get("max_runtime_s", 60))
+    seed = int(payload.get("seed", 42))
+    if max_trials > 100:
+        raise HTTPException(400, "max_trials >100 not allowed")
+    result = run_autonomous_campaign(name, symbol, timeframe, data_version, max_trials, max_runtime_s, seed)
+    return result
+
+@app.get("/api/research/statistical")
+def research_statistical() -> dict[str, Any]:
+    # Return example statistical extensions on dummy data
+    import numpy as np
+    from qts.research.statistical import white_reality_check, hansen_spa, permutation_test, minimum_backtest_length
+    rets = np.random.randn(100) * 0.01
+    return {
+        "white_reality_check": white_reality_check(rets, n_bootstrap=200),
+        "hansen_spa": hansen_spa([rets, rets*0.5], n_bootstrap=200),
+        "permutation": permutation_test(rets, n_perm=200),
+        "min_backtest_length": minimum_backtest_length(0.5),
+    }
+
+
 # Mount static UI if exists
 _ui_dir = Path(__file__).parent.parent / "desktop" / "ui"
 if _ui_dir.exists():

@@ -101,8 +101,8 @@
     }
   },
   "trial_ledger": {
-    "trial_count": 45,
-    "disk_trial_count": 45
+    "trial_count": 48,
+    "disk_trial_count": 48
   },
   "edge_survival": {
     "passed": false,
@@ -133,13 +133,13 @@
       "randomized_control": "controls [0.14901424590336979, -0.0414792903513554, 0.19430656143020775, 0.45690895692240757, -0.07024601241700079]",
       "cpcv": "PBO 0.33",
       "psr": "psr 0.85",
-      "dsr": "dsr 0.12 trials 45",
+      "dsr": "dsr 0.11 trials 48",
       "placebo": "placebo [-0.07024108708475416, 0.47376384465221744, 0.23023041874587263, -0.14084231578048562, 0.1627680130757894]",
       "expectancy": "net_exp -48.3223 pf 0.98",
       "economic_edge": "remaining = expectancy -48.3223 - cost 0.3000 - uncertainty 0.0200 - penalty 0.0100 = -48.6523 > threshold 0.0 and >20% cost"
     },
     "psr": 0.8521213918219743,
-    "dsr": 0.11622198827344066,
+    "dsr": 0.11140148017997192,
     "pbo": 0.3333333333333333,
     "wfe": 0.590024108432362,
     "cost_be": 3.0
@@ -250,5 +250,5 @@
     "ok": true
   },
   "code_version": "0.1.0",
-  "generated_at": "2026-09-16T14:08:36.444539+00:00"
+  "generated_at": "2026-09-16T14:09:25.844765+00:00"
 }
