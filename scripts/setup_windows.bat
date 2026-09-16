@@ -1,0 +1,68 @@
+@echo off
+REM QTS Trading System — Windows Setup (Batch fallback)
+REM Usage: scripts\setup_windows.bat
+REM Requires Python 3.11+, git
+
+echo === QTS Trading System — Windows Setup (Batch) ===
+
+where python >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  echo ERROR: python not found. Install Python 3.11+ and add to PATH.
+  exit /b 1
+)
+
+python --version
+python -c "import sys; assert sys.version_info >= (3,11), 'Python 3.11+ required'" 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  echo ERROR: Python 3.11+ required
+  exit /b 1
+)
+
+where git >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  echo ERROR: git not found. Install from https://git-scm.com
+  exit /b 1
+)
+
+if not exist .venv (
+  echo Creating virtual environment .venv ...
+  python -m venv .venv
+  if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: venv creation failed
+    exit /b 1
+  )
+) else (
+  echo .venv already exists — reusing
+)
+
+echo Upgrading pip ...
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+if %ERRORLEVEL% NEQ 0 exit /b 1
+
+echo Installing QTS ...
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+if %ERRORLEVEL% NEQ 0 (
+  echo ERROR: pip install failed
+  exit /b 1
+)
+
+if not exist data\raw mkdir data\raw
+if not exist data\curated mkdir data\curated
+if not exist data\sqlite mkdir data\sqlite
+if not exist data\evidence mkdir data\evidence
+if not exist logs mkdir logs
+
+echo Verifying qts CLI ...
+.\.venv\Scripts\python.exe -m qts --help >nul
+if %ERRORLEVEL% NEQ 0 (
+  echo ERROR: qts CLI not working
+  exit /b 1
+)
+
+echo Running quick tests ...
+.\.venv\Scripts\python.exe -m pytest tests -q --tb=short
+
+echo.
+echo === Setup Complete ===
+echo Next: scripts\run_qts.bat  — launch desktop
+echo See docs\desktop_installation_windows.md

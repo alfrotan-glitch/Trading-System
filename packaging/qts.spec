@@ -5,7 +5,10 @@
 from pathlib import Path
 block_cipher = None
 # Resolve relative to spec file location (packaging/)
-ROOT = Path(__file__).parent.parent.resolve()
+try:
+    ROOT = Path(__file__).parent.parent.resolve()
+except NameError:
+    ROOT = Path.cwd()
 a = Analysis(
     [str(ROOT / 'src' / 'qts' / 'desktop' / 'launcher.py')],
     pathex=[str(ROOT / 'src')],
@@ -18,6 +21,17 @@ a = Analysis(
         'qts.api.server',
         'qts.desktop.health',
         'qts.desktop.state',
+        'qts.config.settings',
+        'qts.risk.demo_limits',
+        'qts.lifecycle.demo_gate',
+        'qts.lifecycle.live_gate',
+        'qts.execution.demo_comparison',
+        'qts.execution.reality',
+        'qts.observability.forward_observatory',
+        'qts.regime.observatory',
+        'qts.data.provider',
+        'qts.data.inventory',
+        'qts.data.store',
         'uvicorn',
         'fastapi',
         'pydantic',
@@ -25,6 +39,8 @@ a = Analysis(
         'numpy',
         'pyarrow',
         'scipy',
+        'click',
+        'yaml',
     ],
     hookspath=[],
     runtime_hooks=[],

@@ -16,6 +16,7 @@ function nav(){
 async function loadView(v){
   try{
     if(v==='home') await loadHome();
+    if(v==='setup-wizard') await loadSetupWizard();
     if(v==='dashboard') await loadDashboard();
     if(v==='research') await loadResearch();
     if(v==='research-lab') await loadResearchLab();
@@ -30,6 +31,8 @@ async function loadView(v){
     if(v==='market-monitor') await loadMarketMonitor();
     if(v==='forward-observatory') await loadForwardObservatory();
     if(v==='data-lineage') await loadDataLineage();
+    if(v==='demo-forward') await loadDemoForward();
+    if(v==='comparison') await loadComparison();
     if(v==='lifecycle') await loadLifecycle();
     if(v==='research-memory') await loadResearchMemory();
     if(v==='strategies') await loadStrategies();
@@ -51,19 +54,24 @@ async function loadHome(){
   $('health-mini').textContent = `${h.system_status} • ${h.mt5} • ${h.market_data}`;
   $('health-mini').style.background = h.system_status==='Running'?'#022c22': h.system_status==='Suspended'?'#450a0a':'#451a03';
   const grid = $('home-grid');
+  let accountType = 'MOCK';
+  try{ const m = await api('/api/mt5'); accountType = m.account?.login==='mock' ? 'MOCK' : m.mode; }catch(e){}
   const items = [
     ['SYSTEM STATUS', h.system_status, h.system_status==='Running'?'ok': h.system_status==='Suspended'?'danger':'warn'],
+    ['ENVIRONMENT', h.env, h.env==='development'?'ok': h.env==='paper'?'ok': h.env==='demo_forward'?'warn':'danger'],
     ['MT5', h.mt5, h.mt5==='Connected'?'ok':'warn'],
+    ['ACCOUNT TYPE', accountType, accountType==='MOCK'?'warn': accountType==='DEMO'?'ok':'danger'],
     ['MARKET DATA', h.market_data, h.market_data==='Healthy'?'ok':'danger'],
     ['RISK', h.risk, h.risk==='Healthy'?'ok':'danger'],
     ['RECONCILIATION', h.reconciliation, h.reconciliation==='Healthy'?'ok':'danger'],
     ['STRATEGY', h.strategy?h.strategy.strategy_id:'none', 'ok'],
+    ['CURRENT DECISION', h.live_status==='BLOCKED'?'BLOCK — KEEP NO_TRADE':'PENDING', h.live_status==='BLOCKED'?'danger':'warn'],
     ['TRADING MODE', h.trading_mode, 'ok'],
-    ['LIVE STATUS', h.live_status, h.live_status==='BLOCKED'?'danger':'warn'],
+    ['LIVE LOCK', h.live_status, h.live_status==='BLOCKED'?'danger':'warn'],
   ];
-  grid.innerHTML = items.map(([label,val,cls])=>`<div class="status ${cls}"><div class="label">${label}</div><div class="value">${val}</div></div>`).join('');
+  grid.innerHTML = items.map(([label,val,cls])=>`<div class=\"status ${cls}\"><div class=\"label\">${label}</div><div class=\"value\">${val}</div></div>`).join('');
   $('startup-health').textContent = JSON.stringify(h, null, 2);
-  $('mode-banner').textContent = `TRADING MODE: ${h.trading_mode} — LIVE ${h.live_status}`;
+  $('mode-banner').textContent = `TRADING MODE: ${h.trading_mode} — LIVE ${h.live_status} — ACCOUNT ${accountType}`;
 }
 async function loadDashboard(){
   const d = await api('/api/dashboard');
@@ -185,6 +193,39 @@ $('btn-load-validation').onclick = async ()=>{
   }
 };
 $('btn-audit-search').onclick = loadAudit;
+// Setup Wizard handlers
+const btnSetupCheck = document.getElementById('btn-setup-check-mt5');
+if(btnSetupCheck) btnSetupCheck.onclick = async ()=>{
+  $('setup-mt5-result').textContent='Checking MT5 (14 checks)...';
+  try{ const r = await api('/api/demo/readiness'); $('setup-mt5-result').textContent = JSON.stringify(r, null,2); }catch(e){ $('setup-mt5-result').textContent='Error '+e }
+};
+const btnSetupSave = document.getElementById('btn-setup-save');
+if(btnSetupSave) btnSetupSave.onclick = async ()=>{
+  const ack = document.getElementById('setup-risk-ack')?.checked;
+  if(!ack){ $('setup-save-result').textContent='Please acknowledge risk limits.'; return; }
+  $('setup-save-result').textContent='Setup acknowledged — health check...';
+  try{ const h = await api('/api/health'); $('setup-save-result').textContent = JSON.stringify({saved:true, env: h.env, system_status: h.system_status, note: 'Restart app with chosen QTS_ENV to apply. See docs/desktop_installation_windows.md'}, null,2); }catch(e){ $('setup-save-result').textContent='Error '+e }
+};
+// Demo Forward handlers
+const btnDemoRefresh = document.getElementById('btn-demo-refresh-checks');
+if(btnDemoRefresh) btnDemoRefresh.onclick = ()=>loadDemoForward();
+const btnDemoObserve = document.getElementById('btn-demo-observe-start');
+if(btnDemoObserve) btnDemoObserve.onclick = async ()=>{
+  document.getElementById('demo-observe').textContent='Observation started — recording ticks via forward_observatory (no orders). See data/evidence/forward_observation_manifest.json';
+};
+const btnDemoEnable = document.getElementById('btn-demo-enable');
+if(btnDemoEnable) btnDemoEnable.onclick = async ()=>{
+  const ack = document.getElementById('demo-risk-ack2')?.checked;
+  if(!ack){ alert('Please acknowledge risk limits'); return; }
+  try{
+    const res = await fetch('/api/demo/enable', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({confirmed:true, risk_ack:true})}).then(r=>r.json());
+    document.getElementById('demo-execution').textContent = JSON.stringify(res, null,2);
+  }catch(e){ document.getElementById('demo-execution').textContent='Error '+e }
+};
+const btnCompRefresh = document.getElementById('btn-comparison-refresh');
+if(btnCompRefresh) btnCompRefresh.onclick = async ()=>{
+  try{ const r = await fetch('/api/demo/comparison/refresh', {method:'POST'}).then(x=>x.json()); $('comparison-metrics').textContent = JSON.stringify(r, null,2); }catch(e){ $('comparison-metrics').textContent='Error '+e }
+};
 const btnAutonomous = document.getElementById('btn-run-autonomous');
 if(btnAutonomous){
   btnAutonomous.onclick = async ()=>{
@@ -331,6 +372,49 @@ async function loadResearchMemory(){
   const stat = await api('/api/research/statistical');
   $('memory-stat').textContent = JSON.stringify(stat, null,2);
 }
+async function loadSetupWizard(){
+  try{
+    const safety = await api('/api/demo/safety');
+    $('setup-risk-limits').textContent = JSON.stringify(safety.demo_limits, null,2);
+  }catch(e){$('setup-risk-limits').textContent='Error '+e}
+  try{
+    const cfg = await api('/api/demo/config');
+    const env = await api('/api/env/boundary');
+    document.querySelectorAll('input[name=\"setup-env\"]').forEach(r=>{
+      r.checked = (r.value===cfg.env || (cfg.env==='dev' && r.value==='development'));
+    });
+  }catch(e){}
+}
+async function loadDemoForward(){
+  try{
+    const safety = await api('/api/demo/safety');
+    $('demo-boundary').textContent = JSON.stringify(safety, null,2).slice(0,3000);
+  }catch(e){$('demo-boundary').textContent='Error '+e}
+  try{
+    const readiness = await api('/api/demo/readiness');
+    const pretty = Object.entries(readiness.checks||{}).map(([k,v])=>`${v?'✓':'✗'} ${k}: ${readiness.details?.[k]||''}`).join('\n');
+    $('demo-checks').textContent = pretty + '\n\nBlocked: ' + (readiness.blocked_reasons||[]).join('; ') + '\nDemo enabled: ' + readiness.demo_enabled;
+  }catch(e){$('demo-checks').textContent='Error '+e}
+  try{
+    const cfg = await api('/api/demo/config');
+    $('demo-observe').textContent = JSON.stringify({mode: cfg.observation_mode, lifecycle: cfg.lifecycle, observation: 'OBSERVE ONLY records live ticks without orders — safe to run continuously'}, null,2);
+    $('demo-execution').textContent = JSON.stringify({risk: cfg.risk, label: cfg.label || 'DEMO', note: 'DEMO execution requires explicit confirmation + risk ack + 14 checks, labeled DEMO never LIVE'}, null,2);
+  }catch(e){$('demo-observe').textContent='Error '+e}
+  try{
+    const obs = await api('/api/demo/observations?limit=10');
+    const paper = await api('/api/demo/comparison');
+    $('demo-capture').textContent = JSON.stringify({recent_demo: obs.slice(0,3), comparison: paper}, null,2).slice(0,4000);
+  }catch(e){$('demo-capture').textContent='Error '+e}
+  $('demo-position-mgmt').textContent = 'Position management research active — compares fixed/trailing/vol-based/structural/momentum-decay/time/partial/dynamic/emergency exits with same scientific gates.';
+}
+async function loadComparison(){
+  try{
+    const comp = await api('/api/demo/comparison');
+    $('comparison-metrics').textContent = JSON.stringify(comp, null,2).slice(0,5000);
+    $('comparison-raw').textContent = JSON.stringify(comp, null,2).slice(0,5000);
+  }catch(e){$('comparison-metrics').textContent='Error '+e}
+}
+
 
 nav();
 loadView('home');

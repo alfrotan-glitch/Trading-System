@@ -17,6 +17,8 @@ class PromotionState(StrEnum):
     FORWARD_OBSERVATION = "FORWARD_OBSERVATION"
     PAPER_VERIFIED = "PAPER_VERIFIED"
     SHADOW_VERIFIED = "SHADOW_VERIFIED"
+    DEMO_OBSERVATION = "DEMO_OBSERVATION"
+    DEMO_EXECUTION = "DEMO_EXECUTION"
     MICRO_ELIGIBLE = "MICRO_ELIGIBLE"
     MICRO_VALIDATED = "MICRO_VALIDATED"
     LIVE_ELIGIBLE = "LIVE_ELIGIBLE"
@@ -25,13 +27,14 @@ class PromotionState(StrEnum):
 
 _ALLOWED = {
     PromotionState.RESEARCH: {PromotionState.CANDIDATE, PromotionState.REJECTED},
-    # VALIDATING is the scientifically disciplined step; keep CANDIDATE->VALIDATED for backward compat but primary path is via VALIDATING
     PromotionState.CANDIDATE: {PromotionState.VALIDATING, PromotionState.VALIDATED, PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.VALIDATING: {PromotionState.VALIDATED, PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.VALIDATED: {PromotionState.FORWARD_OBSERVATION, PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.FORWARD_OBSERVATION: {PromotionState.PAPER_VERIFIED, PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.PAPER_VERIFIED: {PromotionState.SHADOW_VERIFIED, PromotionState.REJECTED, PromotionState.SUSPENDED},
-    PromotionState.SHADOW_VERIFIED: {PromotionState.MICRO_ELIGIBLE, PromotionState.REJECTED, PromotionState.SUSPENDED},
+    PromotionState.SHADOW_VERIFIED: {PromotionState.DEMO_OBSERVATION, PromotionState.MICRO_ELIGIBLE, PromotionState.REJECTED, PromotionState.SUSPENDED},
+    PromotionState.DEMO_OBSERVATION: {PromotionState.DEMO_EXECUTION, PromotionState.REJECTED, PromotionState.SUSPENDED},
+    PromotionState.DEMO_EXECUTION: {PromotionState.REJECTED, PromotionState.SUSPENDED},  # DEMO success does NOT automatically become LIVE — explicit separate gate required
     PromotionState.MICRO_ELIGIBLE: {PromotionState.MICRO_VALIDATED, PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.MICRO_VALIDATED: {PromotionState.LIVE_ELIGIBLE, PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.LIVE_ELIGIBLE: {PromotionState.SUSPENDED, PromotionState.REJECTED},

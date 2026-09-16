@@ -16,7 +16,7 @@ class DataConfig(BaseModel):
 
 
 class ExecutionConfig(BaseModel):
-    mode: Literal["backtest", "paper", "shadow", "live", "dry_run", "micro"] = "backtest"
+    mode: Literal["backtest", "paper", "shadow", "demo_forward", "live", "dry_run", "micro"] = "backtest"
     reconcile_interval_s: int = 30
     order_timeout_s: int = 10
     max_retries: int = 3
@@ -25,6 +25,8 @@ class ExecutionConfig(BaseModel):
     execution_delay_ms: int = 500
     commission_per_lot: float = 0.0
     partial_fill_model: Literal["none", "volume_based"] = "none"
+    # DEMO_FORWARD is distinct env/mode, never LIVE — labeled DEMO, conservative limits
+    demo_forward_enabled: bool = False
 
 
 class RiskConfig(BaseModel):
@@ -79,7 +81,7 @@ class ObservabilityConfig(BaseModel):
 
 
 class Settings(BaseModel):
-    env: Literal["dev", "paper", "live"] = "dev"
+    env: Literal["dev", "development", "paper", "shadow", "demo_forward", "live"] = "dev"
     data: DataConfig = Field(default_factory=DataConfig)
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     risk: RiskConfig = Field(default_factory=RiskConfig)
@@ -96,6 +98,13 @@ class Settings(BaseModel):
                 raise ValueError("live mode requires --confirm live")
             if not self.risk.approved:
                 raise ValueError("live mode requires risk.approved=true")
+
+    def assert_demo_forward_allowed(self) -> None:
+        if self.execution.mode == "demo_forward":
+            if self.env not in ("demo_forward", "demo", "paper"):
+                raise ValueError("demo_forward mode requires env=demo_forward (fail closed)")
+            if not self.execution.demo_forward_enabled:
+                raise ValueError("demo_forward mode requires execution.demo_forward_enabled=true and explicit user confirmation in UI")
 
     def assert_micro_allowed(self) -> None:
         if self.execution.mode == "micro":

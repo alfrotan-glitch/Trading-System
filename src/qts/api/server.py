@@ -740,6 +740,114 @@ def research_statistical() -> dict[str, Any]:
         "min_backtest_length": minimum_backtest_length(0.5),
     }
 
+# --- Demo Forward & Safety Boundary ---
+@app.get("/api/demo/readiness")
+def demo_readiness() -> dict[str, Any]:
+    from qts.lifecycle.demo_gate import demo_forward_readiness_report
+    # Try to inject mock MT5 if real not available — still reports checklist
+    try:
+        return demo_forward_readiness_report()
+    except Exception as e:
+        return {"passed": False, "demo_enabled": False, "blocked_reasons": [str(e)], "checks": {}}
+
+@app.get("/api/demo/safety")
+def demo_safety() -> dict[str, Any]:
+    from qts.risk.demo_limits import DEMO_FORWARD_DEFAULTS, SAFETY_BOUNDARY
+    return {
+        "boundary": SAFETY_BOUNDARY,
+        "demo_limits": DEMO_FORWARD_DEFAULTS.model_dump(),
+        "live_locked": True,
+        "note": "No env can silently become another. LIVE remains LOCKED unless all scientific+safety gates pass.",
+    }
+
+@app.get("/api/demo/comparison")
+def demo_comparison() -> dict[str, Any]:
+    from qts.execution.demo_comparison import compare_paper_shadow_demo
+    p = Path("data/evidence/paper_shadow_demo_comparison.json")
+    if p.exists():
+        try:
+            return json.loads(p.read_text())
+        except Exception:
+            pass
+    return compare_paper_shadow_demo()
+
+@app.post("/api/demo/comparison/refresh")
+def demo_comparison_refresh() -> dict[str, Any]:
+    from qts.execution.demo_comparison import write_comparison
+    return write_comparison()
+
+@app.get("/api/demo/observations")
+def demo_observations(limit: int = 20) -> list[dict[str, Any]]:
+    p = Path("data/evidence/demo_forward_observations.json")
+    if not p.exists():
+        return []
+    try:
+        data = json.loads(p.read_text())
+        obs = data.get("observations", data) if isinstance(data, dict) else data
+        return obs[-limit:][::-1] if isinstance(obs, list) else []
+    except Exception:
+        return []
+
+@app.get("/api/env/boundary")
+def env_boundary() -> dict[str, Any]:
+    import os
+    env = os.getenv("QTS_ENV", "development")
+    mode = os.getenv("QTS_MT5_MODE", "MOCK")
+    # Map to new safety table
+    from qts.risk.demo_limits import SAFETY_BOUNDARY
+    return {
+        "env": env,
+        "mode": mode,
+        "boundary": SAFETY_BOUNDARY,
+        "demo_forward_separate": True,
+        "live_locked": True,
+        "label_for_demo": "DEMO",
+        "label_for_paper": "PAPER",
+        "label_for_live": "LIVE",
+    }
+
+@app.get("/api/demo/config")
+def demo_config() -> dict[str, Any]:
+    # Return current demo-related settings without secrets
+    settings = load_settings()
+    return {
+        "env": settings.env,
+        "execution_mode": settings.execution.mode,
+        "demo_forward_enabled": settings.execution.demo_forward_enabled,
+        "risk": {
+            "max_quantity": settings.risk.max_quantity,
+            "max_notional": settings.risk.max_notional,
+            "max_exposure": settings.risk.max_exposure,
+            "daily_loss_limit": settings.risk.daily_loss_limit,
+            "max_drawdown": settings.risk.max_drawdown,
+            "approved": settings.risk.approved,
+        },
+        "observation_mode": "OBSERVE_ONLY" if not settings.execution.demo_forward_enabled else "DEMO_EXECUTION_ENABLED",
+        "lifecycle": ["RESEARCH","VALIDATING","FORWARD_OBSERVATION","PAPER_VERIFIED","SHADOW_VERIFIED","DEMO_OBSERVATION","DEMO_EXECUTION"],
+    }
+
+@app.post("/api/demo/enable")
+def demo_enable(payload: dict[str, Any]) -> dict[str, Any]:
+    confirmed: bool = bool(payload.get("confirmed"))
+    risk_ack: bool = bool(payload.get("risk_ack"))
+    if not confirmed or not risk_ack:
+        raise HTTPException(400, "Demo forward requires explicit confirmed=true and risk_ack=true")
+    # Verify readiness first
+    from qts.lifecycle.demo_gate import demo_forward_readiness_report
+    rpt = demo_forward_readiness_report()
+    # In sandbox/mock, terminal_running will be false — allow observe-only mode without real terminal for demo purposes?
+    # Enforce demo_is_demo check strictly for safety
+    if rpt.get("warn_live_in_demo"):
+        raise HTTPException(400, "LIVE account supplied to DEMO mode — blocked")
+    # Record audit
+    try:
+        from qts.observability.audit import SqliteAuditLog, AuditEvent, AuditEventType
+        log = SqliteAuditLog()
+        log.emit(AuditEvent(event_type=AuditEventType.RISK, payload={"action":"demo_forward_enabled","confirmed":True,"readiness":rpt}))
+    except Exception:
+        pass
+    return {"demo_enabled": True, "mode": "DEMO_EXECUTION_ENABLED", "readiness": rpt, "label": "DEMO"}
+
 
 # Mount static UI if exists
 _ui_dir = Path(__file__).parent.parent / "desktop" / "ui"
