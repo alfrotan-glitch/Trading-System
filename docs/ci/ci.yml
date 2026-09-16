@@ -2,12 +2,20 @@ name: ci
 on: [push, pull_request]
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-latest is a required matrix entry: Windows-only file-handle
+        # lifecycle failures (e.g. WinError 32 during temp-dir cleanup) must
+        # gate merges, not surface on developer machines after the fact.
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
       - run: ruff check src tests
       - run: ruff format --check src tests

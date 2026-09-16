@@ -4,7 +4,6 @@ Validates that the system protects capital when edge is weak and correctly handl
 """
 
 import contextlib
-import sqlite3
 import tempfile
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -374,8 +373,14 @@ def test_one_way_promotion():
         ledger.transition(sid, PromotionState.RESEARCH)
         assert ledger.get_state(sid) == PromotionState.RESEARCH
         # No manual edit: direct SQL update would bypass ledger, but ledger's can_transition would still enforce
-        # Simulate manual edit attempt by writing directly to DB without ledger
-        with sqlite3.connect(db) as con:
+        # Simulate manual edit attempt by writing directly to DB without ledger.
+        # Uses the sanctioned qts.db.connect opener: `with sqlite3.connect(path)`
+        # commits but does NOT close — the leaked handle kept promo.db locked and
+        # broke TemporaryDirectory cleanup on Windows (WinError 32). The manual-edit
+        # semantics (bypassing the ledger API) are unchanged.
+        from qts.db import connect as db_connect
+
+        with db_connect(db) as con:
             con.execute(
                 "UPDATE promotion_state SET state=? WHERE strategy_id=?", (PromotionState.LIVE_ELIGIBLE.value, sid)
             )
@@ -384,7 +389,7 @@ def test_one_way_promotion():
         # However, the point is that promotion should only be via ledger.transition, not manual SQL — we detect by checking log
         # The state is now LIVE_ELIGIBLE without proper history, but the test is that ledger.transition from SUSPENDED to LIVE_ELIGIBLE is not allowed
         # So we reset to RESEARCH and try to jump
-        with sqlite3.connect(db) as con:
+        with db_connect(db) as con:
             con.execute("UPDATE promotion_state SET state=? WHERE strategy_id=?", (PromotionState.RESEARCH.value, sid))
             con.commit()
         with pytest.raises(ValueError):

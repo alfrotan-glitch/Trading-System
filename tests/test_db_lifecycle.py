@@ -29,11 +29,33 @@ SRC = REPO_ROOT / "src" / "qts"
 # Modules allowed to call sqlite3.connect directly:
 #  - qts/db.py: the single sanctioned wrapper
 #  - qts/execution/idempotency.py: persistent ":memory:" connection by design
-ALLOWED_DIRECT_SQLITE3 = {"db.py", "idempotency.py"}
+#  - tests/test_promotion_db_release.py: negative control that intentionally
+#    leaks ONE connection (closed in finally) to prove the leak detector works
+ALLOWED_DIRECT_SQLITE3 = {"db.py", "idempotency.py", "test_promotion_db_release.py"}
+
+
+TESTS = REPO_ROOT / "tests"
 
 
 def _py_files():
-    return sorted(p for p in SRC.rglob("*.py"))
+    # The connection policy applies to src AND tests: a raw file-backed
+    # sqlite3.connect() in a test leaks an OS handle exactly like one in src
+    # (root cause of the Windows-only test_one_way_promotion WinError 32).
+    return sorted(p for p in SRC.rglob("*.py")) + sorted(p for p in TESTS.rglob("*.py"))
+
+
+def _is_memory_only_connect(attr_node: ast.Attribute, tree: ast.Module) -> bool:
+    """True when this sqlite3.connect attribute is only ever called with ':memory:'."""
+    found_call = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and node.func is attr_node:
+            found_call = True
+            if not node.args:
+                return False
+            a0 = node.args[0]
+            if not (isinstance(a0, ast.Constant) and a0.value == ":memory:"):
+                return False
+    return found_call
 
 
 class TestStructuralGuards:
@@ -47,6 +69,9 @@ class TestStructuralGuards:
                 if isinstance(node, ast.Attribute) and node.attr == "connect":
                     base = node.value
                     if isinstance(base, ast.Name) and base.id == "sqlite3":
+                        # ":memory:" connections hold no file handle and are allowed
+                        if _is_memory_only_connect(node, tree):
+                            continue
                         offenders.append(f"{p.relative_to(REPO_ROOT)}:{node.lineno}")
         assert not offenders, (
             "file-backed sqlite3.connect() must go through qts.db.connect so the "
