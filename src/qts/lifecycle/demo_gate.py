@@ -10,6 +10,17 @@ from typing import Any
 
 from qts.risk.demo_limits import DEMO_FORWARD_DEFAULTS
 
+# Canonical QTS spec field -> accepted attribute names on the raw MT5
+# SymbolInfo object (real API name first, legacy/mock alias second).
+_SPEC_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
+    "contract_size": ("trade_contract_size", "contract_size"),
+    "volume_min": ("volume_min",),
+    "volume_max": ("volume_max",),
+    "volume_step": ("volume_step",),
+    "digits": ("digits",),
+    "point": ("point",),
+}
+
 
 def _resolve_symbol_map(symbol_map: dict[str, str] | None) -> dict[str, str]:
     """Broker symbol map (e.g. XAUUSD -> XAUUSD@): explicit param or QTS_MT5_SYMBOL_MAP env.
@@ -198,9 +209,15 @@ def demo_forward_readiness_report(
                     f"trade_allowed={tradable}",
                     None if tradable else "Symbol not tradable",
                 )
-                # spec valid: check required fields
+                # spec valid: required CANONICAL fields, resolved through the
+                # real MetaTrader5 SymbolInfo attribute names. The real API
+                # exposes contract size as `trade_contract_size` (there is no
+                # `contract_size` attribute); mocks historically use
+                # `contract_size`. A field counts present only if an accepted
+                # alias exists AND is not None (stricter than the previous
+                # hasattr check — None no longer passes as present).
                 needed = ["contract_size", "volume_min", "volume_max", "volume_step", "digits", "point"]
-                missing = [f for f in needed if not hasattr(si, f)]
+                missing = [f for f in needed if all(getattr(si, a, None) is None for a in _SPEC_FIELD_ALIASES[f])]
                 check(
                     "symbol_spec_valid",
                     len(missing) == 0,

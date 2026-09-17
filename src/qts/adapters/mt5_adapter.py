@@ -26,7 +26,7 @@ from __future__ import annotations
 import contextlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -70,6 +70,33 @@ class SymbolSpec:
     session_close: str | None = None
     # raw mt5 info for audit
     raw: dict[str, Any] | None = None
+
+
+def _resolve_contract_size(info: Any, symbol: str) -> Decimal:
+    """Map the MT5 SymbolInfo contract size to the QTS canonical contract_size.
+
+    The real MetaTrader5 API exposes ``trade_contract_size`` (SymbolInfo has
+    no ``contract_size`` attribute); injected mocks/tests historically use
+    ``contract_size``. Accept either alias, but NEVER invent a default: if
+    neither yields a finite positive number, fail closed. (The previous
+    ``getattr(info, "contract_size", 100)`` silently fabricated 100 for every
+    real broker symbol — a wrong, unaudited contract size feeding notional,
+    margin, and risk math.)
+    """
+    for field in ("trade_contract_size", "contract_size"):
+        raw = getattr(info, field, None)
+        if raw is None:
+            continue
+        try:
+            value = Decimal(str(raw))
+        except (InvalidOperation, ValueError):
+            continue  # not a number (e.g. auto-generated MagicMock attribute)
+        if value.is_finite() and value > 0:
+            return value
+    raise RuntimeError(
+        f"MT5 symbol {symbol}: no usable contract size (trade_contract_size/contract_size "
+        "missing, None, or non-positive) — refusing to default (fail-closed)"
+    )
 
 
 class MT5Adapter(BrokerAdapter):
@@ -196,7 +223,7 @@ class MT5Adapter(BrokerAdapter):
         info = mt5.symbol_info(mt5_sym)
         if info is None:
             raise RuntimeError(f"MT5 symbol_info not found for {symbol} (mapped {mt5_sym}): {mt5.last_error()}")
-        contract_size = Decimal(str(getattr(info, "contract_size", 100)))
+        contract_size = _resolve_contract_size(info, symbol)
         volume_min = Decimal(str(getattr(info, "volume_min", 0.01)))
         volume_max = Decimal(str(getattr(info, "volume_max", 100)))
         volume_step = Decimal(str(getattr(info, "volume_step", 0.01)))
