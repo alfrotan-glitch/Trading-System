@@ -1240,14 +1240,16 @@ def test_dry_run_no_submission(cli_workspace):
 
 
 def test_micro_minimal_quantity_no_scaling(cli_workspace):
-    # Micro must use volume_min and not scale
+    # Micro must use volume_min and not scale (spec-level contract)
     mock = _mock_mt5_for_spec(volume_min=0.01, volume_max=1.0)
     adapter = MT5Adapter(mt5_module=mock)
     spec = adapter.get_symbol_spec("XAUUSD")
     assert spec.volume_min == Decimal("0.01")
-    # Micro evidence should show quantity == volume_min
-    # Use existing micro.json if present, else simulate via CLI with approved
-    # Create live.yaml temporarily
+    # LIVE-family honest gate (finding #20): micro requires REAL MT5
+    # connectivity. In a sandbox without a real terminal the CLI must FAIL
+    # CLOSED (exit 2, explicit blocker) — mock-based connectivity never
+    # counted. The quantity==volume_min evidence path only runs where a real
+    # terminal exists (skip-guarded below).
     live_yaml = Path("configs/live.yaml")
     created = False
     if not live_yaml.exists():
@@ -1257,12 +1259,21 @@ def test_micro_minimal_quantity_no_scaling(cli_workspace):
         from click.testing import CliRunner
 
         from qts.cli import main
+        from qts.lifecycle.live_gate import check_mt5_connectivity
 
         runner = CliRunner()
         with patch.dict(os.environ, {"QTS_MICRO_ENABLED": "true", "QTS_ENV": "live"}):
             result = runner.invoke(
                 main, ["run", "--mode", "micro", "--data-version", cli_workspace.version, "--confirm", "live"]
             )
+            real_terminal, _detail = check_mt5_connectivity()
+            if not real_terminal:
+                assert result.exit_code == 2, "micro must fail closed without REAL MT5 connectivity"
+                assert "blocked" in (result.output or "").lower()
+                assert not Path("data/evidence/micro.json").exists() or _micro_json_stale(
+                    cli_workspace.version
+                ), "no micro execution evidence may be produced without a real terminal"
+                return
             assert result.exit_code == 0
             import json
 
@@ -1276,7 +1287,26 @@ def test_micro_minimal_quantity_no_scaling(cli_workspace):
             live_yaml.unlink()
 
 
+def _micro_json_stale(data_version: str) -> bool:
+    """True when micro.json predates this test workspace (not produced by it)."""
+    import json as _json
+
+    p = Path("data/evidence/micro.json")
+    if not p.exists():
+        return True
+    try:
+        ev = _json.loads(p.read_text(encoding="utf-8"))
+        return data_version not in str(ev.get("data_version", ""))
+    except Exception:
+        return True
+
+
 def test_micro_full_lifecycle(cli_workspace):
+    """Full micro lifecycle requires a REAL terminal (real-environment proof).
+
+    Without one, the gate must refuse (exit 2) and no execution evidence may
+    be produced. The lifecycle assertions run only in a real MT5 environment.
+    """
     live_yaml = Path("configs/live.yaml")
     created = False
     if not live_yaml.exists():
@@ -1288,12 +1318,17 @@ def test_micro_full_lifecycle(cli_workspace):
         from click.testing import CliRunner
 
         from qts.cli import main
+        from qts.lifecycle.live_gate import check_mt5_connectivity
 
         runner = CliRunner()
         with patch.dict(os.environ, {"QTS_MICRO_ENABLED": "true", "QTS_ENV": "live"}):
-            runner.invoke(
+            result = runner.invoke(
                 main, ["run", "--mode", "micro", "--data-version", cli_workspace.version, "--confirm", "live"]
             )
+            real_terminal, _detail = check_mt5_connectivity()
+            if not real_terminal:
+                assert result.exit_code == 2, "micro lifecycle must fail closed without REAL MT5"
+                return
             ev = json.loads(Path("data/evidence/micro.json").read_text(encoding="utf-8"))
             assert ev["order"]["state"] == "FILLED"
             assert ev["reconcile"]["drift"] == "NONE"

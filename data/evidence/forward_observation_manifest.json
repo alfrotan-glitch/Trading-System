@@ -9,7 +9,7 @@
   "safety": "No live trading \u2014 only hypothetical executions recorded",
   "sample_ticks": [],
   "sample_signals": [],
-  "generated_at": "2026-09-17T13:58:27.008074+00:00",
+  "generated_at": "2026-09-17T14:16:23.860325+00:00",
   "derived_from": "data/sqlite/forward_observatory.db",
   "forward_observation_protocol": "docs/forward_observation_protocol.md"
 }

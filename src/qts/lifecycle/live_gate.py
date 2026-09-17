@@ -223,47 +223,44 @@ def check_manifest() -> tuple[bool, str]:
 
 
 def check_mt5_connectivity() -> tuple[bool, str]:
-    try:
-        from unittest.mock import MagicMock
+    """REAL MT5 connectivity — evidence tiers are explicit (finding #20).
 
+    A MagicMock-based probe was previously counted as connectivity evidence;
+    that is test proof at best and can never satisfy a live gate. Now:
+
+    * REAL terminal reachable (health_check connected) -> PASS (integration
+      proof, real environment).
+    * MetaTrader5 importable but terminal unreachable -> FAIL with the reason.
+    * MetaTrader5 not installed (development without MT5) -> FAIL "UNAVAILABLE
+      in this environment" — honest, never faked.
+    Structural/test-level guarantees are reported by the other checks; this
+    check demands REAL infrastructure.
+    """
+    try:
+        import importlib
+
+        try:
+            importlib.import_module("MetaTrader5")
+        except ImportError:
+            return (
+                False,
+                "UNAVAILABLE: MetaTrader5 package not installed in this environment — "
+                "no connectivity claim is possible (mock-based connectivity evidence is not valid)",
+            )
         from qts.adapters.mt5_adapter import MT5Adapter
 
-        # Use mock if no real terminal — check that health_check and discovery exist and work with mock
-        mock = MagicMock()
-        info = MagicMock()
-        info.contract_size = 100
-        info.volume_min = 0.01
-        info.volume_max = 100
-        info.volume_step = 0.01
-        info.digits = 2
-        info.point = 0.01
-        info.trade_tick_size = 0.01
-        info.trade_mode = 4
-        info.trade_allowed = True
-        info.filling_mode = 1
-        info.execution_mode = 0
-        info.trade_stops_level = 0
-        info.trade_freeze_level = 0
-        mock.symbol_info.return_value = info
-        mock.symbol_select.return_value = True
-        mock.terminal_info.return_value = MagicMock(connected=True, trade_allowed=True)
-        mock.account_info.return_value = MagicMock(
-            balance=10000, equity=10000, margin=0, margin_free=10000, leverage=100, currency="USD"
+        adapter = MT5Adapter()
+        health = adapter.health_check()
+        if health.get("connected"):
+            login = (health.get("account") or {}).get("login")
+            return True, f"REAL MT5 terminal connected (login={login})"
+        return (
+            False,
+            f"MT5 terminal not connected: terminal_ok={health.get('terminal_ok')} "
+            f"account_ok={health.get('account_ok')} — real connectivity required for LIVE",
         )
-        mock.last_error.return_value = (1, "ok")
-        mock.symbols_get.return_value = [MagicMock(name="XAUUSD")]
-        adapter = MT5Adapter(mt5_module=mock)
-        h = adapter.health_check()
-        if not h["connected"]:
-            return False, f"MT5 health not connected: {h}"
-        if not adapter.is_symbol_tradable("XAUUSD"):
-            return False, "XAUUSD not tradable"
-        disc = adapter.discover_symbols()
-        if not disc:
-            return False, "symbol discovery empty"
-        return True, f"MT5 connectivity OK health {h['connected']} symbols {len(disc)}"
     except Exception as e:
-        return False, f"MT5 connectivity failed: {e}"
+        return False, f"MT5 connectivity check failed: {e}"
 
 
 def check_symbol_spec() -> tuple[bool, str]:
@@ -361,12 +358,38 @@ def live_readiness_report() -> dict[str, Any]:
     }
     report: dict[str, Any] = {}
     all_pass = True
+    #: Proof-tier classification (finding #20): structural checks prove source
+    #: architecture; integration checks prove real-component behavior. A gate
+    #: must never present test/mock evidence as real-environment proof.
+    PROOF_TIERS = {
+        "environment": "structural",
+        "manifest": "structural",
+        "mt5_submit": "structural",
+        "mt5_connectivity": "real_environment",
+        "symbol_spec": "structural",
+        "account_authoritative": "structural",
+        "market_data_safety": "structural",
+        "order_lifecycle": "structural",
+        "restart_recovery": "structural",
+        "reconciliation": "structural",
+        "reconciliation_health": "integration",
+        "paper_evidence": "integration",
+        "shadow_evidence": "integration",
+        "audit_evidence": "integration",
+        "validation_evidence": "integration",
+    }
     for k, (passed, detail) in checks.items():
-        report[k] = {"passed": passed, "detail": detail}
+        report[k] = {"passed": passed, "detail": detail, "proof_tier": PROOF_TIERS.get(k, "structural")}
         if not passed:
             all_pass = False
     report["ready"] = all_pass
     report["blocked_reasons"] = [k for k, v in checks.items() if not v[0]]
+    report["proof_tiers"] = PROOF_TIERS
+    report["tier_note"] = (
+        "structural = source architecture guarantees; integration = verified against real "
+        "components in-process; real_environment = verified against real broker infrastructure. "
+        "Mock-based evidence is never accepted for a tier."
+    )
     return report
 
 

@@ -456,10 +456,10 @@ def risk_center() -> dict[str, Any]:
     """
     from qts.domain.modes import resolve_mode
     from qts.edge.emergency import EmergencyControls
-    from qts.risk.authority import resolve_risk_limits
+    from qts.risk.authority import resolve_risk_limits_from_settings
 
     mode = resolve_mode()
-    snap = resolve_risk_limits(mode)
+    snap = resolve_risk_limits_from_settings(mode)
     lim = snap.limits
     emer = EmergencyControls()
     killed = emer.is_killed()
@@ -1161,10 +1161,10 @@ def demo_config() -> dict[str, Any]:
     ONE risk authority. No cosmetic ``demo_forward_enabled`` flag: permission
     is what the durable authority says, decayed by freshness."""
     from qts.domain.modes import resolve_mode
-    from qts.risk.authority import demo_forward_limits_from, resolve_risk_limits
+    from qts.risk.authority import demo_forward_limits_from, resolve_risk_limits_from_settings
 
     mode = resolve_mode()
-    snapshot = resolve_risk_limits(mode)
+    snapshot = resolve_risk_limits_from_settings(mode)
     limits = demo_forward_limits_from(snapshot)
     decision = _demo_authority().current()
     return {
@@ -1213,7 +1213,7 @@ def _demo_authority() -> Any:
 
 
 @app.post("/api/demo/enable")
-def demo_enable(payload: dict[str, Any]) -> dict[str, Any]:
+def demo_enable(payload: dict[str, Any]) -> Any:  # dict on success, JSONResponse on 409
     """Request DEMO_EXECUTION enablement — ONE authoritative gate.
 
     Contract (finding A/B): enablement requires a FRESH readiness report

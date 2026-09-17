@@ -245,6 +245,17 @@ def resolve_risk_limits(
     return snap
 
 
+def resolve_risk_limits_from_settings(mode: ExecutionMode | str | None = None) -> ResolvedRiskSnapshot:
+    """Resolve effective risk with YAML/settings risk config as the override
+    layer — so configuration flows through the ONE authority instead of a
+    parallel consumer path."""
+    from qts.config.settings import load_settings
+
+    settings = load_settings()
+    overrides = settings.risk.model_dump()
+    return resolve_risk_limits(mode, config_overrides=overrides)
+
+
 # Backwards-compatible adapter: the demo boundary now derives from the one
 # authority instead of defining its own numbers.
 def demo_forward_limits_from(snapshot: ResolvedRiskSnapshot | None = None) -> dict[str, Any]:

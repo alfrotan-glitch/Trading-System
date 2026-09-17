@@ -37,7 +37,7 @@ _SHADOW_ID_TS = re.compile(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})")
 #: Two decision events are the SAME event when their bar timestamps fall in
 #: this window (paper fills are stamped next-bar-open, +1h vs the decision
 #: bar on 1H data; shadow intents carry the decision bar itself).
-_EVENT_MATCH_WINDOW_S = 3600.0
+_EVENT_MATCH_WINDOW_S = 3700.0  # 1H bar + sub-second receipt drift
 
 
 def _parse_iso(ts: Any) -> datetime | None:

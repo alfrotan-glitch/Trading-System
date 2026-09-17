@@ -242,27 +242,33 @@ class ObservationCollector:
 
         Returns the poll thread so the CALLER can join it outside the lock.
         """
+        # Persist BEFORE flipping state: an observer that sees the terminal
+        # state must be able to rely on the session end already being durable
+        # (state transition == persistence point, never the reverse). The
+        # manifest records the TERMINAL state explicitly — it is written
+        # during the transition, before `state` itself flips.
         self._stop.set()
-        self.state = new_state
-        self.stopped_at = datetime.now(UTC).isoformat()
         if self.session_id:
             self.observatory.end_session(
                 self.session_id,
                 status="ENDED" if new_state == "STOPPED" else "ENDED_ON_ERRORS",
                 error=self.last_error,
             )
+        self.write_manifest(state_override=new_state)
+        self.state = new_state
+        self.stopped_at = datetime.now(UTC).isoformat()
         thread = self._thread
         self._thread = None
-        self.write_manifest()
         return thread
 
     # -------------------------------------------------------------- manifest
 
-    def write_manifest(self) -> dict[str, Any]:
+    def write_manifest(self, state_override: str | None = None) -> dict[str, Any]:
         """Aggregate the DEMO-class collected records into the DERIVED manifest.
 
         The canonical source is the observatory SQLite store; this JSON is a
         regenerable export (finding #5) and never the primary evidence.
+        ``state_override`` records the terminal state during a transition.
         """
         session = self.observatory.session(self.session_id) if self.session_id else None
         with db_connect(self.observatory.db_path) as con:
@@ -295,6 +301,8 @@ class ObservationCollector:
                 last_event = str(ev)
         with self._lock:
             status_snapshot = self.status()
+        if state_override is not None:
+            status_snapshot = {**status_snapshot, "state": state_override}
         manifest: dict[str, Any] = {
             "class": "DEMO",
             "data_class_note": (
