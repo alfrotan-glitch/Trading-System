@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import math
 import os
 import time
 from datetime import UTC, datetime
@@ -20,6 +21,139 @@ _SPEC_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "digits": ("digits",),
     "point": ("point",),
 }
+
+
+MAX_TICK_AGE_S = 60.0  # existing freshness contract — unchanged, never weakened
+FUTURE_TOLERANCE_S = 5.0  # minor same-basis clock skew only; NOT a clamp for timezone-scale futures
+_MIN_VALID_EPOCH_S = 1e9  # ~2001-09-09; anything at/below is garbage (0, missing, wrong units)
+
+
+def _as_epoch_seconds(raw: Any) -> float | None:
+    """Normalize an MT5 timestamp to epoch seconds, or None if unusable.
+
+    Accepts Python ints/floats and numpy scalars (structured-array fields).
+    Values > 1e12 are milliseconds (``time_msc``). Garbage never becomes a
+    usable timestamp — the caller fails closed instead of assuming fresh.
+    """
+    if raw is None or isinstance(raw, bool):
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(value) or value <= _MIN_VALID_EPOCH_S:
+        return None
+    if value > 1e12:  # milliseconds
+        value /= 1000.0
+    return value
+
+
+def _tick_epoch_seconds(tick: Any) -> float | None:
+    """MT5 Tick timestamp -> epoch seconds (``time`` preferred, ``time_msc`` fallback)."""
+    epoch = _as_epoch_seconds(getattr(tick, "time", None))
+    if epoch is None:
+        epoch = _as_epoch_seconds(getattr(tick, "time_msc", None))
+    return epoch
+
+
+def _probe_current_bar_time(mt5_module: Any, symbol: str) -> float | None:
+    """Open time (epoch seconds, SERVER basis) of the latest M1 bar, or None.
+
+    The MetaTrader5 Python API exposes no server-time or server-UTC-offset
+    call (verified against MetaQuotes docs/forums). While the market is open
+    the latest M1 bar is the one currently forming, so
+    ``server_now in [bar_time, bar_time + 60)`` — the only authoritative
+    server-clock probe available. Bar open times share the tick timestamp
+    basis (server timezone), so comparisons between them need no offset.
+    """
+    getter = getattr(mt5_module, "copy_rates_from_pos", None)
+    if getter is None:
+        return None
+    timeframe_m1 = getattr(mt5_module, "TIMEFRAME_M1", 1)
+    try:
+        rates = getter(symbol, timeframe_m1, 0, 1)
+        if rates is None or len(rates) == 0:
+            return None
+        bar = rates[0]
+        try:
+            raw = bar["time"]
+        except (TypeError, KeyError, IndexError):
+            raw = getattr(bar, "time", None)
+    except Exception:
+        return None  # probe unavailable -> caller falls back to the same-basis contract
+    return _as_epoch_seconds(raw)
+
+
+def _fmt_offset(seconds: float) -> str:
+    sign = "+" if seconds >= 0 else "-"
+    total_min = int(abs(seconds)) // 60
+    hh, mm = divmod(total_min, 60)
+    return f"{sign}{hh}h{mm:02d}m"
+
+
+def _evaluate_tick_freshness(tick: Any, mt5_module: Any, symbol: str, now: float) -> tuple[bool, str, str | None]:
+    """Freshness under an explicit, fail-closed time contract.
+
+    Background (proven on a real WMMarkets-Demo terminal): MT5 stamps ticks
+    in TRADE-SERVER local time (Unix epoch on the server's timezone basis,
+    e.g. UTC+3) while ``time.time()`` is true UTC. Comparing them directly
+    produced ``age = -10537.1s`` (a tick ~3h minus its true age "in the
+    future") and the old ``age < 60`` test ACCEPTED it — along with any
+    quote up to ~3h stale. Rules, in order:
+
+    1. Unusable timestamp -> FAIL (never age=0/fresh; the old ``else: age=0``
+       branch fabricated freshness for garbage).
+    2. ``raw_age > 60s`` -> STALE. Sound for any server offset >= 0 because
+       true_age = raw_age + offset >= raw_age. Also rejects closed-market
+       quotes (hours old) regardless of basis.
+    3. Server-clock probe (latest M1 bar) available:
+       - tick before the current bar open -> provably older than the forming
+         bar -> STALE (no false accept; near minute boundaries a genuinely
+         fresh tick can be conservatively rejected — re-checking passes);
+       - tick stamped beyond ``bar_time + 60 + tol`` -> corrupt/future -> FAIL;
+       - tick inside the current bar -> true age < 60s PROVABLY
+         (server_now < bar_time + 60) -> FRESH, reported with the raw local
+         age and implied server offset for auditability.
+    4. No probe (mocks/legacy modules): require a same-basis timestamp,
+       ``-5s <= raw_age <= 60s``. Future timestamps beyond tolerance FAIL —
+       never clamped to zero, never assumed fresh.
+    """
+    epoch = _tick_epoch_seconds(tick)
+    if epoch is None:
+        return False, "tick timestamp missing/invalid — fail-closed, never assumed fresh", "Market data not fresh"
+    raw_age = now - epoch
+    if raw_age > MAX_TICK_AGE_S:
+        return (
+            False,
+            f"age {raw_age:.1f}s > {MAX_TICK_AGE_S:.0f}s (stale on any clock basis)",
+            "Market data stale",
+        )
+    bar_time = _probe_current_bar_time(mt5_module, symbol)
+    if bar_time is not None:
+        implied_offset = bar_time + 30.0 - now
+        audit = f"raw local age {raw_age:.1f}s, implied server offset {_fmt_offset(implied_offset)}"
+        if epoch < bar_time:
+            return (
+                False,
+                f"last tick precedes the current M1 bar by {bar_time - epoch:.0f}s — server-clock age "
+                f">= {bar_time - epoch:.0f}s, provably not fresh ({audit})",
+                "Market data stale",
+            )
+        if epoch > bar_time + 60.0 + FUTURE_TOLERANCE_S:
+            return (
+                False,
+                f"tick stamped beyond the current M1 bar — corrupt/inconsistent timestamps ({audit})",
+                "Market data not fresh",
+            )
+        return True, f"age <{MAX_TICK_AGE_S:.0f}s on server clock: tick within current M1 bar ({audit})", None
+    if raw_age < -FUTURE_TOLERANCE_S:
+        return (
+            False,
+            f"tick timestamp {-raw_age:.0f}s in the future with no server-clock probe available — "
+            "clock/timezone inconsistency, fail-closed (not clamped, not assumed fresh)",
+            "Market data not fresh",
+        )
+    return True, f"age {raw_age:.1f}s", None
 
 
 def _resolve_symbol_map(symbol_map: dict[str, str] | None) -> dict[str, str]:
@@ -247,15 +381,11 @@ def demo_forward_readiness_report(
                 check("bid_ask_valid", False, "no tick", "Bid/ask invalid")
                 check("spread_acceptable", False, "no tick", "Spread unacceptable")
             else:
-                # Freshness: time must be within 60s
-                tick_time = getattr(t, "time", getattr(t, "time_msc", 0))
-                # mt5 time is seconds since epoch
-                if isinstance(tick_time, (int, float)) and tick_time > 1e9:
-                    age = time.time() - float(tick_time) / 1000 if tick_time > 1e12 else time.time() - float(tick_time)
-                else:
-                    age = 0
-                fresh = age < 60
-                check("market_data_fresh", fresh, f"age {age:.1f}s", None if fresh else "Market data stale")
+                # Freshness under the explicit fail-closed time contract (see
+                # _evaluate_tick_freshness): MT5 tick stamps are server-timezone
+                # based, so a single local-clock subtraction is not a valid age.
+                fresh, fresh_detail, fresh_blocker = _evaluate_tick_freshness(t, mt5_module, broker_symbol, time.time())
+                check("market_data_fresh", fresh, fresh_detail, fresh_blocker)
                 bid = getattr(t, "bid", 0)
                 ask = getattr(t, "ask", 0)
                 valid = bid > 0 and ask > 0 and ask >= bid
