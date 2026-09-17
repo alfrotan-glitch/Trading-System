@@ -152,6 +152,10 @@ class Tick(BaseModel):
     tick_type: str = "unknown"  # e.g., quote, trade, bid, ask
     session: str = "unknown"  # e.g., London, NY, Asian, weekend_closed
     source: str = "REAL"  # REAL/SYNTHETIC/SIMULATED/ESTIMATED/IMPUTED/BROKER_DERIVED/MODEL_DERIVED — must be explicit, never synthetic as REAL
+    # Broker-timestamp provenance (optional): raw server-basis stamps, the
+    # measured server<->UTC offset and its basis, broker symbol, receipt time.
+    # Makes the normalized event_time auditable; None for non-broker ticks.
+    provenance: dict[str, Any] | None = None
 
     @field_validator("event_time")
     @classmethod

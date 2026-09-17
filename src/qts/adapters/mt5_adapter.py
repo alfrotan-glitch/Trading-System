@@ -24,6 +24,8 @@ history_deals (not assumed), cancel via TRADE_ACTION_REMOVE.
 from __future__ import annotations
 
 import contextlib
+import math
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -70,6 +72,17 @@ class SymbolSpec:
     session_close: str | None = None
     # raw mt5 info for audit
     raw: dict[str, Any] | None = None
+
+
+def _numeric_or_none(raw: Any) -> float | None:
+    """Finite float from an MT5 timestamp field, else None (never fabricate)."""
+    if raw is None or isinstance(raw, bool):
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if math.isfinite(value) else None
 
 
 def _resolve_contract_size(info: Any, symbol: str) -> Decimal:
@@ -123,6 +136,14 @@ class MT5Adapter(BrokerAdapter):
     # Ambiguous retcodes that imply unknown broker state
     AMBIGUOUS_RETCODES = {10012, 10011}  # TIMEOUT, etc.
 
+    # --- Canonical timestamp contract (server-basis MT5 stamps -> true UTC) ---
+    # All real-world UTC offsets are multiples of 15 minutes; the forming-M1-bar
+    # probe window is 60s wide, so it contains at most one grid point and the
+    # offset is recovered EXACTLY (no guessing, no clamping).
+    _OFFSET_QUANTUM_S = 900.0
+    _OFFSET_TTL_S = 300.0  # re-measure cadence; offsets only shift on DST changes
+    _MAX_PLAUSIBLE_OFFSET_S = 14 * 3600.0
+
     def __init__(
         self,
         config: dict[str, Any] | None = None,
@@ -136,6 +157,8 @@ class MT5Adapter(BrokerAdapter):
         # client_order_id <-> MT5 comment mapping persisted for restart recovery
         self._db_path = Path(db_path) if db_path else Path(self.config.get("db_path", "data/sqlite/qts.db"))
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        # symbol -> (offset_seconds, basis, measured_at_epoch); see server_utc_offset
+        self._server_offset_cache: dict[str, tuple[float, str, float]] = {}
         self._init_comment_db()
 
     def _init_comment_db(self) -> None:
@@ -850,20 +873,107 @@ class MT5Adapter(BrokerAdapter):
         except Exception as e:
             raise RuntimeError(f"MT5 account_info malformed: {e} raw={info}") from e
 
+    def _latest_bar_time(self, symbol: str) -> float | None:
+        """Latest M1 bar open time (epoch seconds, SERVER basis) or None.
+
+        Same authoritative probe as the DEMO readiness gate: while the market
+        is open the latest M1 bar is the one forming now, so
+        server_now in [bar_time, bar_time + 60).
+        """
+        getter = getattr(self._mt5, "copy_rates_from_pos", None)
+        if getter is None:
+            return None
+        timeframe_m1 = getattr(self._mt5, "TIMEFRAME_M1", 1)
+        try:
+            rates = getter(symbol, timeframe_m1, 0, 1)
+            if rates is None or len(rates) == 0:
+                return None
+            bar = rates[0]
+            try:
+                raw = bar["time"]
+            except (TypeError, KeyError, IndexError):
+                raw = getattr(bar, "time", None)
+            value = _numeric_or_none(raw)
+        except Exception:
+            return None
+        if value is None:
+            return None
+        if value > 1e12:  # milliseconds
+            value /= 1000.0
+        if value <= 1e9:  # garbage/zero — never a plausible bar time
+            return None
+        return value
+
+    def server_utc_offset(self, symbol: str) -> tuple[float, str]:
+        """Measured trade-server<->UTC offset in seconds (east positive) + basis.
+
+        MT5 stamps ticks in trade-server local time and the Python API exposes
+        no server-time/offset call. Measurement: offset lies in
+        [bar_time - utc_now, bar_time + 60 - utc_now) and must be a multiple
+        of 15 minutes — a 60s window holds at most one such grid point, so a
+        match is EXACT. No grid point (market closed/frozen series/inconsistent
+        data) -> refuse to guess -> legacy same-basis fallback (0.0,
+        'assumed-utc-fallback'); MarketDataProvider's UNCHANGED future/stale
+        validation then loudly rejects server-basis stamps instead of silently
+        mis-dating them. Cached per broker symbol for _OFFSET_TTL_S.
+        """
+        now_epoch = time.time()
+        cached = self._server_offset_cache.get(symbol)
+        if cached is not None and (now_epoch - cached[2]) < self._OFFSET_TTL_S:
+            return cached[0], cached[1]
+        offset, basis = 0.0, "assumed-utc-fallback"
+        bar_time = self._latest_bar_time(symbol)
+        if bar_time is not None:
+            lo = bar_time - now_epoch
+            hi = lo + 60.0
+            grid = math.ceil(lo / self._OFFSET_QUANTUM_S) * self._OFFSET_QUANTUM_S
+            if lo <= grid < hi and abs(grid) <= self._MAX_PLAUSIBLE_OFFSET_S:
+                offset, basis = float(grid), "measured-m1-bar"
+        self._server_offset_cache[symbol] = (offset, basis, now_epoch)
+        return offset, basis
+
     def ticks(self, instrument: Instrument) -> Tick | None:
+        """Raw broker tick, normalized to the canonical QTS time basis (true UTC).
+
+        event_time = broker stamp - measured server offset; the raw stamps and
+        the offset/basis travel in Tick.provenance so every downstream
+        observation is auditable. Freshness/integrity validation remains
+        MarketDataProvider's job (unchanged, fail-closed).
+        """
         mt5 = self._require_mt5()
         sym = self._map_symbol(instrument.symbol)
         tick = mt5.symbol_info_tick(sym)
         if tick is None:
             return None
-        from datetime import datetime
-
-        # Validate tick freshness and integrity will be done by MarketDataProvider
+        received_at = datetime.now(UTC)
+        raw_s = _numeric_or_none(getattr(tick, "time", None))
+        raw_msc = _numeric_or_none(getattr(tick, "time_msc", None))
+        base: float | None = None
+        if raw_msc is not None and raw_msc > 1e12:
+            base = raw_msc / 1000.0  # millisecond precision when available
+        elif raw_s is not None:
+            base = raw_s / 1000.0 if raw_s > 1e12 else raw_s
+        if base is None or base <= 1e9:
+            raise RuntimeError(
+                f"MT5 tick for {sym} carries no usable timestamp (time={raw_s!r} time_msc={raw_msc!r}) — "
+                "refusing to fabricate event_time (fail-closed)"
+            )
+        offset, basis = self.server_utc_offset(sym)
+        event_time = datetime.fromtimestamp(base - offset, tz=UTC)
+        provenance: dict[str, Any] = {
+            "mt5_time": raw_s,
+            "mt5_time_msc": raw_msc,
+            "server_utc_offset_s": offset,
+            "offset_basis": basis,
+            "broker_symbol": sym,
+            "received_at": received_at.isoformat(),
+        }
         return Tick(
             instrument=instrument,
             bid=Decimal(str(tick.bid)),
             ask=Decimal(str(tick.ask)),
-            event_time=datetime.fromtimestamp(tick.time, tz=UTC),
+            event_time=event_time,
+            provenance=provenance,
         )
 
     def history_deals(self, client_order_id: str | None = None) -> list[Any]:

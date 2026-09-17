@@ -15,7 +15,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from qts.db import connect as db_connect
-from qts.domain.value_objects import uuid7
+from qts.domain.value_objects import Tick, uuid7
 
 
 class ObservationTick(BaseModel):
@@ -31,6 +31,33 @@ class ObservationTick(BaseModel):
     regime: str = "unknown"
     data_freshness_ms: float | None = None
     anomaly: str | None = None
+    # Broker-timestamp provenance — every stored observation must expose its
+    # timestamp basis (canonical contract: MT5 server-basis stamps normalized
+    # to true UTC via the measured server offset).
+    broker_event_time: datetime | None = None  # normalized true-UTC quote time
+    broker_time_raw: float | None = None  # raw MT5 server-basis epoch seconds, as received
+    server_utc_offset_s: float | None = None  # offset applied during normalization
+    timestamp_basis: str = "ingest-utc"  # ingest-utc | broker-normalized(<offset basis>)
+
+    @classmethod
+    def from_domain_tick(cls, tick: Tick, symbol: str | None = None) -> ObservationTick:
+        """Build from a domain Tick (e.g. validated MT5Adapter output), carrying
+        the broker-timestamp provenance so persisted evidence is auditable."""
+        prov = tick.provenance or {}
+        mid = tick.mid
+        spread_bps = float((tick.ask - tick.bid) / mid * Decimal("10000")) if mid else None
+        basis_src = prov.get("offset_basis", "unknown") if prov else "no-provenance"
+        return cls(
+            symbol=symbol or tick.instrument.symbol,
+            bid=tick.bid,
+            ask=tick.ask,
+            mid=mid,
+            spread_bps=spread_bps,
+            broker_event_time=tick.event_time,
+            broker_time_raw=prov.get("mt5_time"),
+            server_utc_offset_s=prov.get("server_utc_offset_s"),
+            timestamp_basis=f"broker-normalized({basis_src})",
+        )
 
 
 class ObservationSignal(BaseModel):

@@ -54,6 +54,28 @@ Initialize failure is fail-closed: it blocks with `last_error()` surfaced, never
 Symbol checks use the broker's actual name (`QTS_MT5_SYMBOL`/`QTS_MT5_SYMBOL_MAP`,
 e.g. `XAUUSD@`) and `symbol_select` before querying.
 
+## Canonical timestamp contract (ticks / observations)
+
+MT5 stamps ticks and bars in **trade-server local time** (e.g. WMMarkets-Demo
+≈ UTC+3) and the Python API exposes no server-time/offset call. QTS canonical
+time is **true UTC**. `MT5Adapter.ticks()` therefore normalizes
+`event_time = broker_stamp − measured_server_offset`, where the offset is
+**measured, never guessed**: the forming M1 bar gives
+`server_now ∈ [bar_time, bar_time+60)`, and since every real-world UTC offset
+is a multiple of 15 minutes, that 60-second window contains at most one grid
+point — a match recovers the offset exactly (`offset_basis=measured-m1-bar`).
+No grid point (market closed/frozen series) → no measurement is invented: the
+legacy same-basis fallback (`offset_basis=assumed-utc-fallback`) applies and
+`MarketDataProvider`'s unchanged future/stale validation loudly rejects
+server-basis stamps. Garbage timestamps fail closed (never fabricated).
+Every `Tick` carries `provenance` (raw `mt5_time`/`mt5_time_msc`, offset,
+basis, broker symbol, receipt time) and `ObservationTick.from_domain_tick`
+persists that basis (`timestamp_basis`, `broker_time_raw`,
+`server_utc_offset_s`, `broker_event_time`) so stored observations are
+auditable. Offsets are cached per symbol for 300s (they only shift on DST);
+during a DST transition the unchanged validation fails closed until the
+re-measurement.
+
 Config precedence (readiness AND demo-enablement resolve identically):
 request/wizard param → saved wizard file (`QTS_SETUP_FILE`, default
 `data/setup/mt5_setup.json`) → `QTS_MT5_PATH`/`QTS_MT5_SYMBOL` env →
