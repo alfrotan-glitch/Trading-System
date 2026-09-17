@@ -52,8 +52,10 @@ class RealisticSymbolInfo:
     digits = 2
     point = 0.01
     trade_tick_size = 0.01
-    trade_mode = 4  # SYMBOL_TRADE_MODE_FULL
+    trade_mode = 4  # SYMBOL_TRADE_MODE_FULL — the authoritative tradability signal
+    trade_allowed = True
     filling_mode = 1
+    trade_exemode = 2  # SYMBOL_TRADE_EXECUTION_MARKET (WMMarkets-Demo)
     trade_stops_level = 0
     trade_freeze_level = 0
 
@@ -84,6 +86,9 @@ class LegacyMockSymbolInfo:
     trade_mode = 4
     trade_allowed = True
     filling_mode = 1
+    trade_exemode = 0
+    trade_stops_level = 0
+    trade_freeze_level = 0
 
 
 class _Tick:
@@ -185,7 +190,7 @@ def test_adapter_uses_trade_contract_size_when_alias_is_explicit_none(tmp_path: 
 
 def test_adapter_never_invents_a_default_contract_size(tmp_path: Path):
     adapter = _adapter(FakeMT5(NoContractSizeAnywhere()), tmp_path)
-    with pytest.raises(RuntimeError, match="refusing to default"):
+    with pytest.raises(RuntimeError, match="refusing to fabricate broker metadata"):
         adapter.get_symbol_spec("XAUUSD@")
     # and the broken symbol is therefore not tradable (fail-closed, no raise)
     assert adapter.is_symbol_tradable("XAUUSD@") is False
@@ -196,7 +201,7 @@ def test_adapter_rejects_non_positive_contract_size(tmp_path: Path):
         trade_contract_size = 0.0
 
     adapter = _adapter(FakeMT5(ZeroContract()), tmp_path)
-    with pytest.raises(RuntimeError, match="refusing to default"):
+    with pytest.raises(RuntimeError, match="refusing to fabricate broker metadata"):
         adapter.get_symbol_spec("XAUUSD@")
 
 
@@ -223,6 +228,9 @@ def test_adapter_magicmock_with_contract_size_still_works(tmp_path: Path):
         trade_mode=4,
         trade_allowed=True,
         filling_mode=1,
+        execution_mode=0,
+        trade_stops_level=0,
+        trade_freeze_level=0,
     )
     fake = FakeMT5(info)
     adapter = _adapter(fake, tmp_path)
@@ -233,5 +241,5 @@ def test_adapter_bare_magicmock_fails_closed_instead_of_defaulting(tmp_path: Pat
     """A fully unspecified mock previously got a fabricated 100 — now it must
     fail closed rather than feed invented numbers into risk math."""
     adapter = _adapter(FakeMT5(MagicMock()), tmp_path)
-    with pytest.raises(RuntimeError, match="refusing to default"):
+    with pytest.raises(RuntimeError, match="refusing to fabricate broker metadata"):
         adapter.get_symbol_spec("XAUUSD")

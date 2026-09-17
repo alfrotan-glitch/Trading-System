@@ -282,7 +282,8 @@ class RealisticPaperBroker(BrokerAdapter):
             margin=total_margin,
             free_margin=free_margin,
             leverage=self._leverage,
-            currency="USD",
+            currency="PAPER_SIM",  # labeled simulation — never broker truth
+            source="PAPER_SIMULATION",
             updated_at=datetime.now(UTC),
         )
 

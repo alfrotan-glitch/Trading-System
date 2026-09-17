@@ -12,7 +12,6 @@ tests. It is fail-closed at every step:
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -31,25 +30,23 @@ from qts.research.impulse.conclusions import ResearchConclusion, classify_conclu
 MIN_FORWARD_OBSERVATIONS = 10
 
 
-def _forward_evidence_available(evidence_dir: Path) -> bool:
-    """Forward observation evidence must EXIST and contain real observations.
+def _forward_evidence_available(evidence_dir: Path, *, instrument: str | None = None) -> bool:
+    """Forward observation evidence must exist IN THE CANONICAL STORE with
+    real-market provenance.
 
-    Absence of the file, an empty list, or any read error => False (fail
-    closed). We never treat paper/shadow/demo simulation as forward evidence
-    for real-market impulse claims unless the observatory recorded it.
+    The canonical source is the ForwardObservatory SQLite store; only ticks
+    with DEMO/REAL provenance count (SYNTHETIC/PAPER/UNVERIFIED never do).
+    The legacy ``demo_forward_observations.json`` export is deliberately NOT
+    consulted: it once contained fabricated demo fills, and a derived file's
+    existence must never satisfy a forward-evidence requirement (findings
+    #5/#6/#22). Absence or any read error => False (fail closed).
     """
-    p = evidence_dir / "demo_forward_observations.json"
     try:
-        if not p.exists():
-            return False
-        data = json.loads(p.read_text(encoding="utf-8"))
-        if isinstance(data, dict):
-            obs = data.get("observations", [])
-        elif isinstance(data, list):
-            obs = data
-        else:
-            return False
-        return isinstance(obs, list) and len(obs) >= MIN_FORWARD_OBSERVATIONS
+        from qts.observability.forward_observatory import ForwardObservatory
+
+        obs = ForwardObservatory()
+        # 10+ real-market-class observations, symbol-consistent when known.
+        return obs.real_observation_count(symbol=instrument) >= MIN_FORWARD_OBSERVATIONS
     except Exception:  # noqa: BLE001 - absence of forward evidence must never crash research
         return False
 
@@ -146,7 +143,7 @@ def run_impulse_research(
             for c in adequacy.unmet_requirements
         ],
         sensitivity=analysis.sensitivity,
-        forward_evidence_available=_forward_evidence_available(Path(evidence_dir)),
+        forward_evidence_available=_forward_evidence_available(Path(evidence_dir), instrument=manifest.instrument),
     )
 
     evidence: dict[str, Any] = {

@@ -11,9 +11,11 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from qts.config.settings import load_settings
+from qts.domain.modes import effective_mode_report
 
 app = FastAPI(title="QTS Desktop API", version="0.1.0")
 
@@ -62,8 +64,27 @@ def health() -> dict[str, Any]:
         killed = risk.is_killed() if hasattr(risk, "is_killed") else False
     except Exception:
         killed = False
-    # Reconciliation health (mock: check audit log drift)
+    # Reconciliation health — REAL check (unresolved reconcile suspension or
+    # an ambiguous-order trail must surface), never a constant True.
     recon_healthy = True
+    recon_detail = "no reconcile state"
+    try:
+        from qts.db import connect as db_connect
+
+        dbp = _db_path()
+        if dbp.exists():
+            with db_connect(dbp) as con:
+                try:
+                    row = con.execute("SELECT suspended FROM reconcile_state WHERE k=1").fetchone()
+                except Exception:
+                    row = None
+                if row and row[0]:
+                    recon_healthy = False
+                    recon_detail = "unresolved reconciliation SUSPENDED — broker/local state diverged"
+                else:
+                    recon_detail = "no unresolved reconciliation suspension"
+    except Exception as e:
+        recon_detail = f"reconciliation health probe failed: {e}"
     # Strategy lifecycle
     try:
         from qts.edge.promotion import PromotionLedger
@@ -108,11 +129,14 @@ def health() -> dict[str, Any]:
         live_status = "LOCKED"
         live_reasons = [str(e)]
 
+    mode_report = effective_mode_report(config_env=env)
     return {
         "timestamp": datetime.now(UTC).isoformat(),
         "env": env,
+        "effective_mode": mode_report,
         "system_status": system_status,  # Running/Stopped/Suspended/Blocked
         "mt5": "Disconnected",  # mock vs real determined below
+        "reconciliation_detail": recon_detail,
         "market_data": "Healthy" if data_ok else "Blocked",
         "risk": "Suspended" if killed else "Healthy",
         "reconciliation": "Healthy" if recon_healthy else "Drift Detected",
@@ -146,19 +170,26 @@ def _env_mode() -> str:
 
 @app.get("/api/dashboard")
 def dashboard() -> dict[str, Any]:
-    """Clear professional dashboard — safety information first."""
-    # Try to get equity, balance etc from portfolio or mock
+    """Clear professional dashboard — safety information first, NO fabricated
+    account state. Account figures that require a broker connection and are
+    not available are UNAVAILABLE (never a 10000 placeholder)."""
+    equity: dict[str, Any]
+    balance: dict[str, Any]
     try:
-        from decimal import Decimal
+        from qts.adapters.mt5_adapter import MT5Adapter
+        from qts.config.wizard import load_setup
 
-        from qts.portfolio.portfolio import Portfolio
-
-        pf = Portfolio(initial_balance=Decimal("10000"))
-        equity = float(pf.equity())
-        balance = float(pf.balance)
-    except Exception:
-        equity = 10000.0
-        balance = 10000.0
+        setup = load_setup()
+        adapter = MT5Adapter(config={"path": setup.get("terminal_path") or ""})
+        acct = adapter.account()
+        equity = {"status": "MEASURED", "value": float(acct.equity), "source": acct.source}
+        balance = {"status": "MEASURED", "value": float(acct.balance), "source": acct.source}
+    except Exception as e:
+        equity = {"status": "UNAVAILABLE", "value": None, "reason": f"no authoritative broker account: {type(e).__name__}"}
+        balance = {"status": "UNAVAILABLE", "value": None, "reason": f"no authoritative broker account: {type(e).__name__}"}
+    unrealized = {"status": "UNAVAILABLE", "value": None, "reason": "requires broker positions + authoritative marks"}
+    realized = {"status": "UNAVAILABLE", "value": None, "reason": "requires broker deal history"}
+    drawdown = {"status": "UNAVAILABLE", "value": None, "reason": "requires authoritative equity series"}
     # Positions
     try:
         # check latest execution via audit
@@ -178,16 +209,16 @@ def dashboard() -> dict[str, Any]:
     return {
         "equity": equity,
         "balance": balance,
-        "unrealized_pnl": 0.0,
-        "realized_pnl": 0.0,
-        "drawdown": 0.0,
-        "exposure": 0.0,
+        "unrealized_pnl": unrealized,
+        "realized_pnl": realized,
+        "drawdown": drawdown,
+        "exposure": {"status": "UNAVAILABLE", "value": None, "reason": "requires broker positions"},
         "open_positions": [],
         "market_status": h["market_data"],
-        "spread": "1.2 pips (mock)",
+        "spread": {"status": "UNAVAILABLE", "value": None, "reason": "live spread requires an active broker tick session"},
         "account_state": "Active" if h["system_status"] == "Running" else h["system_status"],
         "current_strategy": h["strategy"],
-        "current_regime": "trend" if h["system_status"] == "Running" else "unknown",
+        "current_regime": {"status": "UNAVAILABLE", "value": None, "reason": "regime requires observed market data; it is never inferred from system status"},
         "latest_decision": latest_decision,
         "latest_order": latest_order,
         "latest_fill": None,
@@ -416,18 +447,23 @@ def order_audit(order_id: str) -> dict[str, Any]:
 
 @app.get("/api/risk")
 def risk_center() -> dict[str, Any]:
-    from qts.risk.capital_policy import CapitalPolicy
-    from qts.risk.engine import RiskLimits
+    """Effective risk — THE resolved snapshot from the unified Risk Authority.
 
-    limits = RiskLimits()
-    _cap = CapitalPolicy()
-    # Check emergency
+    The previous response invented display values ("1%", "2 lots", "$500",
+    "2/sec", "5 losses → suspend") that existed nowhere in the risk engine.
+    Every value now comes from resolve_risk_limits() with its source and a
+    config hash; the reconciliation state is the REAL health probe.
+    """
+    from qts.domain.modes import resolve_mode
     from qts.edge.emergency import EmergencyControls
+    from qts.risk.authority import resolve_risk_limits
 
+    mode = resolve_mode()
+    snap = resolve_risk_limits(mode)
+    lim = snap.limits
     emer = EmergencyControls()
     killed = emer.is_killed()
-    # Block reasons
-    blocked_reasons = []
+    blocked_reasons: list[str] = []
     if killed:
         blocked_reasons.append("KILL_SWITCH_ACTIVE")
     with contextlib.suppress(Exception):
@@ -436,7 +472,6 @@ def risk_center() -> dict[str, Any]:
         rpt = live_readiness_report()
         if not rpt.get("ready", False):
             blocked_reasons.extend(rpt.get("blocked_reasons", []))
-    # Always at least NO_VALIDATED_EDGE if no candidate passes
     if not blocked_reasons:
         try:
             ev = json.loads(Path("data/evidence/edge_validation.json").read_text(encoding="utf-8"))
@@ -445,71 +480,124 @@ def risk_center() -> dict[str, Any]:
         except Exception:
             blocked_reasons.append("NO_VALIDATED_EDGE")
 
+    recon_state = "Healthy"
+    try:
+        h = health()
+        recon_state = h.get("reconciliation", "Unknown")
+    except Exception:
+        recon_state = "UNAVAILABLE"
     return {
+        "mode": mode.value,
+        "config_hash": snap.config_hash,
         "limits": {
-            "risk_per_trade": str(limits.risk_per_trade) if hasattr(limits, "risk_per_trade") else "1%",
-            "maximum_exposure": str(limits.max_exposure) if hasattr(limits, "max_exposure") else "2 lots",
-            "maximum_daily_loss": str(limits.max_daily_loss) if hasattr(limits, "max_daily_loss") else "$500",
-            "maximum_drawdown": str(limits.max_drawdown) if hasattr(limits, "max_drawdown") else "10%",
-            "spread_limit_bps": getattr(limits, "max_spread_bps", 100),
-            "slippage_limit_bps": getattr(limits, "max_slippage_bps", 50),
-            "stale_data_limit_s": getattr(limits, "stale_data_limit_s", 60),
-            "order_frequency": "2/sec",
-            "consecutive_loss_protection": "5 losses → suspend",
+            "max_quantity_lots": str(lim.max_quantity),
+            "min_quantity_lots": str(lim.min_quantity),
+            "quantity_step_lots": str(lim.quantity_step),
+            "max_notional_usd": str(lim.max_notional),
+            "risk_per_trade_bps": str(lim.max_risk_per_trade_bps),
+            "max_exposure_lots": str(lim.max_exposure_lots),
+            "max_leverage": str(lim.max_leverage),
+            "max_open_orders": lim.max_open_orders,
+            "max_orders_per_minute": lim.max_orders_per_minute,
+            "daily_loss_limit_usd": str(lim.daily_loss_limit),
+            "max_drawdown_usd": str(lim.max_drawdown),
+            "max_drawdown_pct": str(lim.max_drawdown_pct),
+            "spread_limit_bps": str(lim.max_spread_bps),
+            "slippage_limit_bps": str(lim.max_slippage_bps),
+            "stale_data_limit_s": str(lim.stale_data_limit_s),
+            "stop_loss_required": lim.stop_loss_required,
             "kill_switch": "ACTIVE" if killed else "ARMED",
-            "reconciliation_state": "Healthy",
+            "risk_approved": lim.approved,
+            "reconciliation_state": recon_state,
+            "sources": snap.sources,
         },
+        "overrides_applied": {k: str(v) for k, v in snap.overrides_applied.items()},
+        "warnings": snap.warnings,
         "blocked": len(blocked_reasons) > 0,
-        "blocked_reasons": blocked_reasons,
-        "status_text": "TRADING BLOCKED" if blocked_reasons else "TRADING ALLOWED (DEMO)",
+        "blocked_reasons": sorted(set(blocked_reasons)),
+        "status_text": "TRADING BLOCKED" if blocked_reasons else "TRADING ALLOWED (demo-family only)",
         "explanations": {
             "MISSING_MARKET_PRICE": "Market data stale or unavailable — no authoritative price for risk check",
+            "ACCOUNT_STATE_UNAVAILABLE": "Authoritative account equity unavailable — order vetoed, never computed against guessed capital",
             "RECONCILIATION_DRIFT": "Broker positions vs local state diverge — suspend to prevent overexposure",
             "NO_VALIDATED_EDGE": "No strategy has passed scientific+economic gates — capital preservation blocks trading",
         },
     }
 
 
+def _unavailable(reason: str) -> dict[str, Any]:
+    return {"status": "UNAVAILABLE", "value": None, "reason": reason}
+
+
 @app.get("/api/mt5")
 def mt5_center() -> dict[str, Any]:
-    # Distinguish MOCK/PAPER/DRY_RUN/REAL
-    import os
+    """MT5 status with AUTHORITATIVE values only.
 
-    mode = os.getenv("QTS_MT5_MODE", "MOCK")
-    # Try real adapter status
+    Symbol spec, account state, and connectivity come from a live adapter
+    probe against the saved wizard connection. When the terminal is not
+    reachable, every broker-derived value is UNAVAILABLE — the previous
+    fabricated mock spec (contract_size=100, balance=10000, "12 points
+    (mock)") is gone: a UI must never display invented broker metadata.
+    """
+    from qts.adapters.mt5_adapter import MT5Adapter
+
+    setup = _wizard_setup_kwargs(None, None)
+    terminal_path = setup.get("terminal_path") or ""
+    requested_symbol = setup.get("symbol") or "XAUUSD"
+    broker_symbol = (setup.get("symbol_map") or {}).get(requested_symbol, requested_symbol)
+    adapter = MT5Adapter(config={"path": terminal_path})
+    connected = False
+    health: dict[str, Any] = {}
+    spec: dict[str, Any] = {}
+    account: dict[str, Any] = {}
     try:
-        # Don't actually connect, just report mock
-        connected = False
-        terminal = "Mock terminal — no real broker connection"
-        if mode == "REAL":
-            # attempt to check
-            connected = False
-            terminal = "Real MT5 requested but not connected (fail-closed)"
+        health = adapter.health_check()
+        connected = bool(health.get("connected"))
     except Exception as e:
-        connected = False
-        terminal = str(e)
-
-    spec = {
-        "symbol": "XAUUSD",
-        "contract_size": 100,
-        "min_volume": 0.01,
-        "max_volume": 100,
-        "volume_step": 0.01,
-        "digits": 2,
-        "tick_size": 0.01,
-        "spread": "12 points (mock)",
-        "margin": "1000 (mock)",
-        "free_margin": "9000 (mock)",
-        "server_time": datetime.now(UTC).isoformat(),
-        "data_freshness": "1s (mock)",
-    }
+        health = {"error": str(e)}
+    if connected:
+        try:
+            s = adapter.get_symbol_spec(requested_symbol)
+            spec = {
+                "symbol": requested_symbol,
+                "broker_symbol": broker_symbol,
+                "contract_size": str(s.contract_size),
+                "min_volume": str(s.volume_min),
+                "max_volume": str(s.volume_max),
+                "volume_step": str(s.volume_step),
+                "digits": s.digits,
+                "tick_size": str(s.tick_size),
+                "trade_mode": s.trade_mode,
+                "filling_mode": s.filling_mode,
+                "stops_level": s.stops_level,
+                "freeze_level": s.freeze_level,
+                "source": "MT5 SymbolInfo (authoritative)",
+            }
+        except Exception as e:
+            spec = {"status": "UNAVAILABLE", "value": None, "reason": f"symbol spec unavailable: {e}"}
+        try:
+            a = adapter.account()
+            account = {
+                "login": health.get("account", {}).get("login"),
+                "balance": str(a.balance),
+                "currency": a.currency,  # may be None = UNAVAILABLE
+                "leverage": str(a.leverage) if a.leverage is not None else None,
+                "source": a.source,
+            }
+        except Exception as e:
+            account = _unavailable(f"account unavailable: {e}")
+    else:
+        reason = "MT5 terminal not connected — no broker metadata is invented"
+        spec = _unavailable(reason)
+        account = _unavailable(reason)
     return {
-        "mode": mode,  # MOCK/PAPER/DRY_RUN/REAL
+        "mode": "REAL_TERMINAL" if connected else "DISCONNECTED",
         "connected": connected,
-        "terminal_status": terminal,
-        "account": {"login": "mock", "balance": 10000, "broker": "MockBroker"},
+        "terminal_status": health.get("terminal_error") or ("connected" if connected else "not connected"),
+        "health": health,
+        "account": account,
         "spec": spec,
-        "warning": "Never let UI imply mock is real — this is MOCK" if mode == "MOCK" else "",
+        "warning": "" if connected else "Values are UNAVAILABLE, not zero — connect the MT5 terminal for real data",
     }
 
 
@@ -929,20 +1017,26 @@ def demo_comparison_refresh() -> dict[str, Any]:
 
 @app.get("/api/demo/observations")
 def demo_observations(limit: int = 20) -> list[dict[str, Any]]:
-    p = Path("data/evidence/demo_forward_observations.json")
-    if not p.exists():
-        return []
+    """Recent observations from the ONE canonical store (SQLite).
+
+    The previous implementation read ``demo_forward_observations.json`` — a
+    fabricated, quarantined artifact. Records carry their provenance class;
+    only DEMO/REAL-class observations are returned as market evidence.
+    """
+    from qts.observability.forward_observatory import ForwardObservatory
+
     try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-        obs = data.get("observations", data) if isinstance(data, dict) else data
-        return obs[-limit:][::-1] if isinstance(obs, list) else []
-    except Exception:
-        return []
+        obs = ForwardObservatory()
+        return obs.list_ticks(limit=max(1, min(int(limit), 500)))
+    except Exception as e:
+        return [{"error": f"canonical observation store unavailable: {e}", "provenance": "UNVERIFIED"}]
 
 
 # --- OBSERVE-ONLY live collection (REAL market data, ZERO orders) ---
 _OBSERVE_LOCK = threading.Lock()
 _OBSERVE_STATE: dict[str, Any] = {"collector": None}
+_DEMO_AUTHORITY: Any = None
+_DEMO_AUTHORITY_LOCK = threading.Lock()
 
 
 def _resolve_observe_symbol(setup_kwargs: dict[str, Any]) -> tuple[str, str]:
@@ -1047,16 +1141,11 @@ def observe_stop() -> dict[str, Any]:
 
 @app.get("/api/env/boundary")
 def env_boundary() -> dict[str, Any]:
-    import os
-
-    env = os.getenv("QTS_ENV", "development")
-    mode = os.getenv("QTS_MT5_MODE", "MOCK")
-    # Map to new safety table
+    """Canonical environment/mode resolution — ONE authority (finding #14)."""
     from qts.risk.demo_limits import SAFETY_BOUNDARY
 
     return {
-        "env": env,
-        "mode": mode,
+        "resolution": effective_mode_report(),
         "boundary": SAFETY_BOUNDARY,
         "demo_forward_separate": True,
         "live_locked": True,
@@ -1068,21 +1157,23 @@ def env_boundary() -> dict[str, Any]:
 
 @app.get("/api/demo/config")
 def demo_config() -> dict[str, Any]:
-    # Return current demo-related settings without secrets
-    settings = load_settings()
+    """Demo configuration — state read from the ONE authority, risk from the
+    ONE risk authority. No cosmetic ``demo_forward_enabled`` flag: permission
+    is what the durable authority says, decayed by freshness."""
+    from qts.domain.modes import resolve_mode
+    from qts.risk.authority import demo_forward_limits_from, resolve_risk_limits
+
+    mode = resolve_mode()
+    snapshot = resolve_risk_limits(mode)
+    limits = demo_forward_limits_from(snapshot)
+    decision = _demo_authority().current()
     return {
-        "env": settings.env,
-        "execution_mode": settings.execution.mode,
-        "demo_forward_enabled": settings.execution.demo_forward_enabled,
-        "risk": {
-            "max_quantity": settings.risk.max_quantity,
-            "max_notional": settings.risk.max_notional,
-            "max_exposure": settings.risk.max_exposure,
-            "daily_loss_limit": settings.risk.daily_loss_limit,
-            "max_drawdown": settings.risk.max_drawdown,
-            "approved": settings.risk.approved,
-        },
-        "observation_mode": "OBSERVE_ONLY" if not settings.execution.demo_forward_enabled else "DEMO_EXECUTION_ENABLED",
+        "env": load_settings().env,
+        "mode": mode.value,
+        "mode_can_submit_orders": mode.can_submit_broker_orders,
+        "demo_execution": decision.as_dict(),
+        "risk": limits,
+        "observation_mode": "OBSERVE_ONLY",  # observe endpoint is physically order-free
         "lifecycle": [
             "RESEARCH",
             "VALIDATING",
@@ -1095,41 +1186,100 @@ def demo_config() -> dict[str, Any]:
     }
 
 
+def _demo_authority() -> Any:
+    """The ONE demo-execution permission authority for this API process.
+
+    Audited through the standard domain-event log; the mode passed to the
+    authority is the canonical resolved mode, so a DEMO_FORWARD (observe-only)
+    process can never hold demo-execution permission.
+    """
+    global _DEMO_AUTHORITY
+    with _DEMO_AUTHORITY_LOCK:
+        if _DEMO_AUTHORITY is None:
+            from qts.domain.modes import resolve_mode
+            from qts.lifecycle.demo_authority import DemoExecutionAuthority
+            from qts.observability.audit import SqliteAuditLog
+
+            try:
+                audit: Any = SqliteAuditLog()
+            except Exception:
+                audit = None
+            _DEMO_AUTHORITY = DemoExecutionAuthority(
+                db_path=_db_path(),
+                audit=audit,
+                mode=resolve_mode().value,
+            )
+        return _DEMO_AUTHORITY
+
+
 @app.post("/api/demo/enable")
 def demo_enable(payload: dict[str, Any]) -> dict[str, Any]:
-    confirmed: bool = bool(payload.get("confirmed"))
-    risk_ack: bool = bool(payload.get("risk_ack"))
+    """Request DEMO_EXECUTION enablement — ONE authoritative gate.
+
+    Contract (finding A/B): enablement requires a FRESH readiness report
+    computed in THIS request over the SAME resolved connection the user
+    tested, with passed=true across every required check. The decision is a
+    durable state transition (SQLite + audit log), not a response string:
+    /api/demo/state, /api/demo/config and the execution boundary read the
+    same authority. When readiness fails the API answers 409 with the FULL
+    blocked-reason list and the persisted state stays DISABLED — permission
+    can never exist while a required readiness condition is unsatisfied.
+    """
+    confirmed = bool(payload.get("confirmed"))
+    risk_ack = bool(payload.get("risk_ack"))
     if not confirmed or not risk_ack:
-        raise HTTPException(400, "Demo forward requires explicit confirmed=true and risk_ack=true")
-    # Verify readiness first — using the SAME resolved connection config as
-    # the readiness endpoint (saved wizard setup), so enablement can never
-    # evaluate a different terminal than the one the user tested.
+        # Client error — refused BEFORE any readiness evaluation or state write.
+        raise HTTPException(400, "DEMO execution requires explicit confirmed=true and risk_ack=true")
+    from qts.lifecycle.demo_authority import readiness_age_seconds
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
 
-    rpt = demo_forward_readiness_report(**_wizard_setup_kwargs(None, None))
-    # In sandbox/mock, terminal_running will be false — allow observe-only mode without real terminal for demo purposes?
-    # Enforce demo_is_demo check strictly for safety
-    if rpt.get("warn_live_in_demo"):
-        raise HTTPException(400, "LIVE account supplied to DEMO mode — blocked")
-    # Record audit — demo enablement MUST be auditable; failure is surfaced, not swallowed
-    audit_error: str | None = None
+    setup = _wizard_setup_kwargs(None, None)
+    # Fresh readiness in THIS request — the authoritative gate input.
     try:
-        from qts.domain.events import DomainEvent, EventType
-        from qts.observability.audit import SqliteAuditLog
+        rpt = demo_forward_readiness_report(**setup)
+    except Exception as e:
+        rpt = {"passed": False, "demo_enabled": False, "blocked_reasons": [f"readiness probe failed: {e}"], "checks": {}}
+    age = readiness_age_seconds(rpt)
+    authority = _demo_authority()
+    decision = authority.enable(
+        readiness=rpt,
+        confirmed=confirmed,
+        risk_ack=risk_ack,
+        readiness_age_s=age,
+        actor="api",
+    )
+    body = decision.as_dict()
+    body["readiness"] = rpt
+    body["label"] = "DEMO" if decision.enabled else None
+    if not decision.enabled:
+        # 409 Conflict: the request was well-formed but the safety gate refused.
+        return JSONResponse(status_code=409, content=body)
+    return body
 
-        log = SqliteAuditLog()
-        log.emit(
-            DomainEvent(
-                event_type=EventType.LIFECYCLE,
-                payload={"action": "demo_forward_enabled", "confirmed": True, "readiness": rpt},
-            )
-        )
-    except Exception as e:  # noqa: BLE001
-        audit_error = f"demo-enablement audit emit failed: {e}"
-    resp: dict[str, Any] = {"demo_enabled": True, "mode": "DEMO_EXECUTION_ENABLED", "readiness": rpt, "label": "DEMO"}
-    if audit_error:
-        resp["audit_error"] = audit_error
-    return resp
+
+@app.get("/api/demo/state")
+def demo_state() -> dict[str, Any]:
+    """The authoritative DEMO execution permission state (single source)."""
+    from qts.lifecycle.demo_gate import demo_forward_readiness_report
+
+    setup = _wizard_setup_kwargs(None, None)
+    try:
+        rpt = demo_forward_readiness_report(**setup)
+    except Exception as e:
+        rpt = {"passed": False, "blocked_reasons": [f"readiness probe failed: {e}"], "checks": {}}
+    decision = _demo_authority().current(fresh_readiness=rpt)
+    out = decision.as_dict()
+    out["current_readiness"] = {
+        "passed": bool(rpt.get("passed")),
+        "blocked_reasons": rpt.get("blocked_reasons", []),
+    }
+    return out
+
+
+@app.post("/api/demo/disable")
+def demo_disable() -> dict[str, Any]:
+    decision = _demo_authority().disable(reason="operator requested via API")
+    return decision.as_dict()
 
 
 # Mount static UI if exists

@@ -69,14 +69,15 @@ class ShadowBroker(BrokerAdapter):
         return list(self._would_be_orders.values())
 
     def account(self) -> Account:
-        # Shadow uses paper-like account but marked as shadow
+        # Shadow uses a paper-like account, explicitly LABELED as simulation.
         return Account(
             balance=Decimal("10000"),
             equity=Decimal("10000"),
             margin=Decimal("0"),
             free_margin=Decimal("10000"),
-            leverage=Decimal("100"),
-            currency="USD",
+            leverage=None,  # UNAVAILABLE in simulation — never guessed
+            currency="SHADOW_SIM",
+            source="SHADOW_SIMULATION",
             updated_at=datetime.now(UTC),
         )
 

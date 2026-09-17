@@ -319,8 +319,16 @@ class Account(BaseModel):
     equity: Decimal
     margin: Decimal = Decimal("0")
     free_margin: Decimal = Decimal("0")
-    leverage: Decimal = Decimal("100")
-    currency: str = "USD"
+    # NO fabricated defaults: ``None`` means UNAVAILABLE (broker did not
+    # provide it). Safety-critical consumers must treat None as unknown and
+    # fail closed — never substitute a guessed leverage or currency.
+    leverage: Decimal | None = None
+    currency: str | None = None
+    #: Provenance of this account state: BROKER | PAPER_SIMULATION | UNKNOWN.
+    source: str = "UNKNOWN"
+    #: Local RECEIPT time. NOT a broker timestamp — MT5 account_info carries
+    #: no server stamp, so account freshness is bounded by receipt time; this
+    #: limitation is explicit and documented (docs/mt5_demo_setup.md).
     updated_at: datetime = Field(default_factory=_utc_now)
 
     @field_validator("updated_at")

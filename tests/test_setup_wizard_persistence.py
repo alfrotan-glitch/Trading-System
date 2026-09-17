@@ -161,15 +161,30 @@ def test_readiness_uses_saved_setup(client: TestClient, captured: dict[str, Any]
 def test_demo_enable_evaluates_the_same_saved_connection(client: TestClient, captured: dict[str, Any]):
     client.post("/api/setup/mt5", json={"terminal_path": TERMINAL_PATH, "symbol": "XAUUSD@"})
     r = client.post("/api/demo/enable", json={"confirmed": True, "risk_ack": True})
-    assert r.status_code == 200
+    # In this sandbox readiness cannot pass (no real terminal): the endpoint
+    # must REFUSE with 409, return disabled=false and the blocked reasons —
+    # never a 200 with demo_enabled=true (the old fabricated enablement).
+    assert r.status_code == 409
+    body = r.json()
+    assert body["enabled"] is False
+    assert body["execution_permitted"] is False
+    assert body["state"] == "DISABLED"
+    assert body["reasons"], "refusal must carry reasons"
+    # ... and it must evaluate the SAME saved connection the user configured.
     assert captured["terminal_path"] == TERMINAL_PATH
     assert captured["symbol"] == "XAUUSD@"
 
-    # missing acks still refused before any readiness evaluation
+    # missing acks refused BEFORE any readiness evaluation
     captured.clear()
     r2 = client.post("/api/demo/enable", json={"confirmed": False, "risk_ack": True})
     assert r2.status_code == 400
     assert captured == {}
+
+    # the authoritative state endpoint agrees: nothing was enabled
+    st = client.get("/api/demo/state")
+    assert st.status_code == 200
+    assert st.json()["enabled"] is False
+    assert st.json()["execution_permitted"] is False
 
 
 def test_ui_wires_save_to_the_endpoint():

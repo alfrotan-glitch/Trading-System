@@ -1,42 +1,69 @@
-"""DEMO_FORWARD safety boundary — independent conservative hard limits, never live capital assumptions."""
+"""DEMO_FORWARD/DEMO_EXECUTION safety boundary — DERIVED from the unified Risk Authority.
+
+This module no longer owns its own numbers (the old duplication that let
+demo limits and risk-engine limits drift apart). Every limit is resolved by
+:data:`qts.risk.authority.resolve_risk_limits` for DEMO_EXECUTION mode and
+re-exported here under the historical names so the readiness gate, docs, and
+UI keep one vocabulary.
+"""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from qts.domain.modes import ExecutionMode
+from qts.risk.authority import demo_forward_limits_from, resolve_risk_limits
+
+_DEMO_SNAPSHOT = resolve_risk_limits(ExecutionMode.DEMO_EXECUTION)
+_L = _DEMO_SNAPSHOT.limits
 
 
-class DemoForwardLimits(BaseModel):
-    """Explicit safety boundary for DEMO_FORWARD. No env can silently become another."""
+class DemoForwardLimits:
+    """View over the authoritative DEMO risk resolution (read-only).
 
-    # Order / position
-    max_volume_per_order: float = 0.1  # lots, conservative (vs live 0.2)
-    max_simultaneous_exposure: float = 0.3  # lots total
-    max_open_orders: int = 3
-    max_orders_per_minute: int = 4  # frequency
-    # Risk
-    max_daily_loss_usd: float = 50.0
-    max_drawdown_usd: float = 100.0
-    max_drawdown_pct: float = 5.0
-    # Market
-    max_spread_bps: float = 30.0  # 3.0 pips for XAUUSD
-    max_slippage_bps: float = 20.0
-    # Kill switch always armed
-    kill_switch_enabled: bool = True
+    Attribute names preserved for existing consumers (readiness gate, docs,
+    UI). Values come from the ONE canonical risk authority — never edited
+    locally.
+    """
 
-    # Env boundary
-    allowed_envs: list[str] = Field(default_factory=lambda: ["demo_forward", "demo", "paper"])
-    label: str = "DEMO"  # every result labeled DEMO, never LIVE
-    # LIVE remains separately gated — this file never grants LIVE
-    live_requires: list[str] = Field(
-        default_factory=lambda: [
-            "env=live",
-            "--confirm live",
-            "risk.approved",
-            "validation.passed",
-            "reconciliation.healthy",
-            "human_approval",
-        ]
-    )
+    mode: str = ExecutionMode.DEMO_EXECUTION.value
+
+    def __init__(self) -> None:
+        d = demo_forward_limits_from(_DEMO_SNAPSHOT)
+        # Order / position
+        self.max_volume_per_order: float = d["max_volume_per_order"]
+        self.max_simultaneous_exposure: float = d["max_simultaneous_exposure"]
+        self.max_open_orders: int = d["max_open_orders"]
+        self.max_orders_per_minute: int = d["max_orders_per_minute"]
+        # Risk
+        self.max_daily_loss_usd: float = d["max_daily_loss_usd"]
+        self.max_drawdown_usd: float = d["max_drawdown_usd"]
+        self.max_drawdown_pct: float = d["max_drawdown_pct"]
+        # Market
+        self.max_spread_bps: float = d["max_spread_bps"]
+        self.max_slippage_bps: float = d["max_slippage_bps"]
+        # Kill switch always armed for demo execution
+        self.kill_switch_enabled: bool = d["kill_switch_enabled"]
+        # Provenance
+        self.config_hash: str = d["config_hash"]
+        # Env boundary
+        self.allowed_envs: list[str] = ["demo_forward", "demo", "paper"]
+        self.label: str = "DEMO"  # every result labeled DEMO, never LIVE
+
+    def model_dump(self) -> dict:  # duck-typed for the old pydantic usage
+        return {
+            "max_volume_per_order": self.max_volume_per_order,
+            "max_simultaneous_exposure": self.max_simultaneous_exposure,
+            "max_open_orders": self.max_open_orders,
+            "max_orders_per_minute": self.max_orders_per_minute,
+            "max_daily_loss_usd": self.max_daily_loss_usd,
+            "max_drawdown_usd": self.max_drawdown_usd,
+            "max_drawdown_pct": self.max_drawdown_pct,
+            "max_spread_bps": self.max_spread_bps,
+            "max_slippage_bps": self.max_slippage_bps,
+            "kill_switch_enabled": self.kill_switch_enabled,
+            "label": self.label,
+            "config_hash": self.config_hash,
+            "authority": "qts.risk.authority.resolve_risk_limits(DEMO_EXECUTION)",
+        }
 
 
 DEMO_FORWARD_DEFAULTS = DemoForwardLimits()
@@ -46,7 +73,8 @@ SAFETY_BOUNDARY = {
     "DEVELOPMENT": "backtest only, no broker, mock data",
     "PAPER": "simulated fills, no broker orders, next-bar-open",
     "SHADOW": "would-be intents, no submission",
-    "DEMO_FORWARD": "REAL MT5 terminal + REAL market data + REAL DEMO account + REAL demo order lifecycle — labeled DEMO, independent conservative limits, kill switch, never LIVE",
+    "DEMO_FORWARD": "REAL MT5 terminal + REAL market data + REAL DEMO account + observation ONLY — no order path exists in this mode",
+    "DEMO_EXECUTION": "REAL MT5 terminal + REAL DEMO account + REAL demo order lifecycle — labeled DEMO, authoritative conservative limits, kill switch, never LIVE; requires fresh 14/14 readiness pass",
     "LIVE": "REAL money, separately gated, requires env=live + --confirm live + risk.approved + validation.passed + reconciliation + human approval — LOCKED unless all pass",
 }
 
@@ -66,8 +94,28 @@ def assert_demo_limits(volume: float, exposure: float, spread_bps: float, slippa
 
 def env_boundary_check(current_env: str, requested_mode: str) -> tuple[bool, str]:
     """No environment can silently become another."""
-    if requested_mode == "live" and current_env != "live":
+    from qts.domain.modes import resolve_mode
+
+    try:
+        current = resolve_mode(current_env)
+    except Exception:
+        return False, f"unknown current env {current_env!r} — fail closed"
+    try:
+        requested = resolve_mode(requested_mode)
+    except Exception:
+        return False, f"unknown requested mode {requested_mode!r} — fail closed"
+    if requested is ExecutionMode.LIVE and current is not ExecutionMode.LIVE:
         return False, f"live mode requires env=live, got env={current_env}"
-    if requested_mode == "demo_forward" and current_env not in ("demo_forward", "demo", "paper"):
-        return False, f"demo_forward requires env=demo_forward, got {current_env}"
+    if requested is ExecutionMode.DEMO_EXECUTION and current not in (
+        ExecutionMode.DEMO_EXECUTION,
+        ExecutionMode.DEMO_FORWARD,
+        ExecutionMode.PAPER,
+    ):
+        return False, f"demo_execution requires a demo-family env, got {current_env}"
+    if requested is ExecutionMode.DEMO_FORWARD and current not in (
+        ExecutionMode.DEMO_FORWARD,
+        ExecutionMode.DEMO_EXECUTION,
+        ExecutionMode.PAPER,
+    ):
+        return False, f"demo_forward requires a demo-family env, got {current_env}"
     return True, "env boundary ok"

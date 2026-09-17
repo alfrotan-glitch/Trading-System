@@ -109,12 +109,32 @@ class ObservationCollector:
                     "readiness not passed"
                 ]
                 return self.status()
+            from qts.domain.modes import resolve_mode
+            from qts.observability.lineage import code_version
+
+            mode = resolve_mode()
             self.readiness_at_start = {
                 "passed": True,
                 "timestamp": readiness.get("timestamp"),
                 "checks_passed": sum(1 for v in (readiness.get("checks") or {}).values() if v),
             }
-            self.session_id = self.observatory.start_session()
+            # Canonical session identity (finding #5): environment, broker,
+            # symbol, timestamp basis, code version — bound at session start.
+            self.session_id = self.observatory.start_session(
+                meta={
+                    "kind": "LIVE_OBSERVATION",
+                    "mode": mode.value,
+                    "environment": mode.value,
+                    "canonical_symbol": self.instrument.symbol,
+                    "broker_symbol": self.broker_symbol,
+                    "broker": "MT5",
+                    "data_source": "MT5Adapter.ticks -> MarketDataProvider.get_tick",
+                    "timestamp_basis": "broker-normalized(measured-m1-bar|assumed-utc-fallback)",
+                    "code_version": code_version(),
+                    "readiness_checks_passed": self.readiness_at_start["checks_passed"],
+                    "orders_possible": False,  # observe-only runtime has no order path
+                }
+            )
             self._stop.clear()
             self.state = "OBSERVING"
             self.started_at = datetime.now(UTC).isoformat()
@@ -186,6 +206,12 @@ class ObservationCollector:
                 return  # same standing quote — not a new observation
             self._last_raw_key = raw_key
         obs = ObservationTick.from_domain_tick(tick, symbol=self.broker_symbol)
+        # Provenance stamping: this collector only runs behind a PASSED 14/14
+        # readiness gate whose checks include account_is_demo on the live
+        # terminal — the observation class is DEMO (real broker, demo account).
+        # No code path may stamp REAL from a demo session.
+        obs.provenance = "DEMO"
+        obs.session_id = self.session_id
         self.observatory.record_tick(obs)
         with self._lock:
             self.ticks_recorded += 1
@@ -220,7 +246,11 @@ class ObservationCollector:
         self.state = new_state
         self.stopped_at = datetime.now(UTC).isoformat()
         if self.session_id:
-            self.observatory.end_session(self.session_id)
+            self.observatory.end_session(
+                self.session_id,
+                status="ENDED" if new_state == "STOPPED" else "ENDED_ON_ERRORS",
+                error=self.last_error,
+            )
         thread = self._thread
         self._thread = None
         self.write_manifest()
@@ -229,15 +259,15 @@ class ObservationCollector:
     # -------------------------------------------------------------- manifest
 
     def write_manifest(self) -> dict[str, Any]:
-        """Aggregate the REAL collected records into the forward-observation manifest."""
-        rows: list[Any] = []
-        session_rows: list[Any] = []
+        """Aggregate the DEMO-class collected records into the DERIVED manifest.
+
+        The canonical source is the observatory SQLite store; this JSON is a
+        regenerable export (finding #5) and never the primary evidence.
+        """
+        session = self.observatory.session(self.session_id) if self.session_id else None
         with db_connect(self.observatory.db_path) as con:
             rows = con.execute("SELECT payload FROM observation_ticks ORDER BY created_at").fetchall()
-            if self.session_id:
-                session_rows = con.execute(
-                    "SELECT id, start, end, status FROM observation_sessions WHERE id=?", (self.session_id,)
-                ).fetchall()
+        all_payloads: list[dict[str, Any]] = []
         bases: dict[str, int] = {}
         offsets: set[float] = set()
         spreads: list[float] = []
@@ -249,6 +279,7 @@ class ObservationCollector:
                 p = json.loads(payload_json)
             except ValueError:
                 continue
+            all_payloads.append(p)
             symbols.add(str(p.get("symbol", "")))
             basis = str(p.get("timestamp_basis", "unknown"))
             bases[basis] = bases.get(basis, 0) + 1
@@ -264,26 +295,25 @@ class ObservationCollector:
                 last_event = str(ev)
         with self._lock:
             status_snapshot = self.status()
-        session = None
-        if session_rows:
-            sid, start, end, sstatus = session_rows[0]
-            session = {"id": sid, "start": start, "end": end, "status": sstatus}
         manifest: dict[str, Any] = {
-            "class": "REAL",
+            "class": "DEMO",
             "data_class_note": (
-                "live MT5 DEMO feed via OBSERVE-ONLY ObservationCollector; "
-                "no synthetic, no simulation, no fixture data in this manifest"
+                "live MT5 DEMO feed via OBSERVE-ONLY ObservationCollector behind a PASSED readiness gate; "
+                "no synthetic, no simulation, no fixture data in this manifest; "
+                "provenance class DEMO (real broker, demo account) — never presented as LIVE/REAL-money evidence"
             ),
             "mode": "OBSERVE_ONLY",
             "orders_submitted": 0,
             "order_send_called": False,
+            "canonical_store": str(self.observatory.db_path),
+            "derived_export": True,
             "symbols": sorted(s for s in symbols if s),
             "session": session,
             "state": status_snapshot["state"],
             "started_at": status_snapshot["started_at"],
             "stopped_at": status_snapshot["stopped_at"],
             "readiness_at_start": status_snapshot["readiness_at_start"],
-            "ticks_recorded": len(rows),
+            "ticks_recorded": len(all_payloads),
             "duplicates_skipped": status_snapshot["duplicates_skipped"],
             "first_event_time": first_event,
             "last_event_time": last_event,

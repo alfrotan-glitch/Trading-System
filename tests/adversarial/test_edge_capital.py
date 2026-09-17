@@ -479,14 +479,20 @@ def test_mt5_order_check():
     intent = OrderIntent(
         instrument=instr, side=Side.BUY, quantity=Decimal("0.01"), client_order_id="oc_test", strategy_id="s"
     )
-    result = mt5_order_check(adapter, intent)
+    # Fail-closed contract: a market order WITHOUT an authoritative price must
+    # be refused (the old implementation fabricated price=2000 for margin math).
+    result_no_price = mt5_order_check(adapter, intent)
+    assert not result_no_price.ok
+    assert "MISSING_MARKET_PRICE" in result_no_price.comment
+    # With an authoritative market price the check passes (never an execution guarantee).
+    result = mt5_order_check(adapter, intent, market_price=Decimal("2000"))
     assert result.ok
     assert "not execution guarantee" in result.comment
     # Invalid volume should fail
     intent2 = OrderIntent(
         instrument=instr, side=Side.BUY, quantity=Decimal("1000"), client_order_id="oc_test2", strategy_id="s"
     )
-    result2 = mt5_order_check(adapter, intent2)
+    result2 = mt5_order_check(adapter, intent2, market_price=Decimal("2000"))
     assert not result2.ok
     assert result2.retcode == 10014
 

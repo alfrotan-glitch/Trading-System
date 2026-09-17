@@ -263,6 +263,9 @@ def test_stale_quote_blocks():
     mock_info.trade_mode = 4
     mock_info.trade_allowed = True
     mock_info.filling_mode = 1
+    mock_info.trade_exemode = 0
+    mock_info.trade_stops_level = 0
+    mock_info.trade_freeze_level = 0
     mock_mt5.symbol_info.return_value = mock_info
     mock_mt5.symbol_select.return_value = True
     # Tick that is stale
@@ -322,6 +325,9 @@ def test_spread_explosion_blocks():
     mock_info.trade_mode = 4
     mock_info.trade_allowed = True
     mock_info.filling_mode = 1
+    mock_info.trade_exemode = 0
+    mock_info.trade_stops_level = 0
+    mock_info.trade_freeze_level = 0
     mock_mt5.symbol_info.return_value = mock_info
     mock_mt5.symbol_select.return_value = True
     # Tick with huge spread: bid 1900 ask 2100 => spread 200 /2000 =10% =1000bps >100
@@ -393,6 +399,9 @@ def test_invalid_price_precision():
     mock_info.trade_mode = 4
     mock_info.trade_allowed = True
     mock_info.filling_mode = 1
+    mock_info.trade_exemode = 0
+    mock_info.trade_stops_level = 0
+    mock_info.trade_freeze_level = 0
     mock_mt5.symbol_info.return_value = mock_info
     mock_mt5.symbol_select.return_value = True
     mock_mt5.last_error.return_value = (1, "ok")
@@ -669,6 +678,9 @@ def test_market_data_correct_side():
     mock_info.trade_mode = 4
     mock_info.trade_allowed = True
     mock_info.filling_mode = 1
+    mock_info.trade_exemode = 0
+    mock_info.trade_stops_level = 0
+    mock_info.trade_freeze_level = 0
     mock_mt5.symbol_info.return_value = mock_info
     mock_mt5.symbol_select.return_value = True
     tick = MagicMock()
@@ -707,6 +719,9 @@ def test_paper_uses_same_lifecycle_as_live():
     mock_info.trade_mode = 4
     mock_info.trade_allowed = True
     mock_info.filling_mode = 1
+    mock_info.trade_exemode = 0
+    mock_info.trade_stops_level = 0
+    mock_info.trade_freeze_level = 0
     mt5_mock.symbol_info.return_value = mock_info
     mt5_mock.symbol_select.return_value = True
     mt5_mock.last_error.return_value = (1, "ok")

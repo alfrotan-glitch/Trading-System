@@ -336,11 +336,20 @@ def demo_forward_readiness_report(
                 None if available else f"Symbol {broker_symbol} not available",
             )
             if si:
-                tradable = bool(getattr(si, "trade_allowed", getattr(si, "tradable", True)))
+                # Tradability is AUTHORITATIVE from trade_mode (0=disabled);
+                # an explicit trade_allowed/tradable attribute must be True
+                # when present. The old ``default True`` fabricated consent
+                # for symbols whose tradability could not be read.
+                tm = getattr(si, "trade_mode", None)
+                explicit_allowed = getattr(si, "trade_allowed", getattr(si, "tradable", None))
+                if explicit_allowed is not None:
+                    tradable = bool(explicit_allowed) and tm != 0
+                else:
+                    tradable = tm is not None and tm != 0
                 check(
                     "symbol_tradable",
                     tradable,
-                    f"trade_allowed={tradable}",
+                    f"trade_mode={tm} trade_allowed={explicit_allowed!r} -> tradable={tradable}",
                     None if tradable else "Symbol not tradable",
                 )
                 # spec valid: required CANONICAL fields, resolved through the

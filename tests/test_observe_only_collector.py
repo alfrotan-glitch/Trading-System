@@ -92,6 +92,7 @@ class _SI:
     volume_step = 0.01
     spread = 25
     trade_exemode = 2
+    filling_mode = 1
 
 
 class LiveFakeMT5:
@@ -193,14 +194,14 @@ def _tick_rows(db_path: Path) -> list[dict[str, Any]]:
 
 
 def _session_rows(db_path: Path) -> list[dict[str, Any]]:
-    """observation_sessions schema: (id, start, end, status)."""
+    """observation_sessions schema: (id, start, end, status, meta)."""
     with db_connect(db_path) as con:
-        rows = con.execute("select id, start, end, status from observation_sessions").fetchall()
-    return [{"id": r[0], "start": r[1], "end": r[2], "status": r[3]} for r in rows]
+        rows = con.execute("select id, start, end, status, meta from observation_sessions").fetchall()
+    return [{"id": r[0], "start": r[1], "end": r[2], "status": r[3], "meta": r[4]} for r in rows]
 
 
 # ---------------------------------------------------------------------------
-# happy path: REAL session + fully auditable rows + REAL manifest
+# happy path: DEMO-class session + fully auditable rows + derived manifest
 # ---------------------------------------------------------------------------
 
 
@@ -227,6 +228,12 @@ def test_start_creates_session_and_persists_real_ticks_with_full_audit(tmp_path:
     sessions = _session_rows(db)
     assert len(sessions) == 1
     assert sessions[0]["status"] == "ENDED" and sessions[0]["end"]
+    # Canonical session identity (finding #5): env/broker/symbol/lineage meta
+    meta = json.loads(sessions[0]["meta"])
+    assert meta.get("kind") == "LIVE_OBSERVATION"
+    assert meta.get("broker_symbol") == "XAUUSD@"
+    assert meta.get("orders_possible") is False
+    assert meta.get("code_version")
 
     ticks = _tick_rows(db)
     assert len(ticks) == stopped["ticks_recorded"] >= 2
@@ -246,7 +253,7 @@ def test_start_creates_session_and_persists_real_ticks_with_full_audit(tmp_path:
         assert row["data_freshness_ms"] is not None and row["data_freshness_ms"] < 5000.0
 
     manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["class"] == "REAL"
+    assert manifest["class"] == "DEMO"
     assert manifest["orders_submitted"] == 0
     assert manifest["order_send_called"] is False
     assert manifest["ticks_recorded"] == len(ticks)
@@ -329,10 +336,13 @@ def test_terminal_disconnect_auto_stops_fail_closed(tmp_path: Path) -> None:
     assert fake.order_send_calls == []
 
     sessions = _session_rows(tmp_path / "obs.db")
-    assert len(sessions) == 1 and sessions[0]["status"] == "ENDED"
+    # Honest terminal status: an error auto-stop is ENDED_ON_ERRORS, not a
+    # clean ENDED (session completion must not be misrepresented, finding #36).
+    assert len(sessions) == 1 and sessions[0]["status"] == "ENDED_ON_ERRORS"
+    assert sessions[0]["meta"]
     assert _tick_rows(tmp_path / "obs.db") == []
     manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["class"] == "REAL" and manifest["ticks_recorded"] == 0
+    assert manifest["class"] == "DEMO" and manifest["ticks_recorded"] == 0
     assert manifest["orders_submitted"] == 0
 
 
@@ -344,7 +354,7 @@ def test_stale_quotes_are_never_persisted(tmp_path: Path) -> None:
     assert collector.ticks_recorded == 0
     assert _tick_rows(tmp_path / "obs.db") == []
     sessions = _session_rows(tmp_path / "obs.db")
-    assert sessions[0]["status"] == "ENDED"
+    assert sessions[0]["status"] == "ENDED_ON_ERRORS"  # honest terminal status
 
 
 def test_frozen_duplicate_quotes_recorded_once(tmp_path: Path) -> None:

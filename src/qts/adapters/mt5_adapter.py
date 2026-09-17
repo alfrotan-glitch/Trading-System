@@ -85,31 +85,88 @@ def _numeric_or_none(raw: Any) -> float | None:
     return value if math.isfinite(value) else None
 
 
-def _resolve_contract_size(info: Any, symbol: str) -> Decimal:
-    """Map the MT5 SymbolInfo contract size to the QTS canonical contract_size.
+#: Canonical SymbolSpec field -> accepted attribute names on the raw MT5
+#: SymbolInfo object (real MetaTrader5 API name FIRST, legacy/mock alias
+#: second). Resolution is by explicit alias list; there are NO default values
+#: anywhere in this table — a missing/None/non-finite field fails closed.
+_SPEC_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
+    "contract_size": ("trade_contract_size", "contract_size"),
+    "volume_min": ("volume_min",),
+    "volume_max": ("volume_max",),
+    "volume_step": ("volume_step",),
+    "digits": ("digits",),
+    "point": ("point",),
+    "tick_size": ("trade_tick_size", "tick_size"),
+    "trade_mode": ("trade_mode",),
+    "filling_mode": ("filling_mode",),
+    "execution_mode": ("trade_exemode", "execution_mode", "trade_execution"),
+    "stops_level": ("trade_stops_level", "stops_level"),
+    "freeze_level": ("trade_freeze_level", "freeze_level"),
+}
 
-    The real MetaTrader5 API exposes ``trade_contract_size`` (SymbolInfo has
-    no ``contract_size`` attribute); injected mocks/tests historically use
-    ``contract_size``. Accept either alias, but NEVER invent a default: if
-    neither yields a finite positive number, fail closed. (The previous
-    ``getattr(info, "contract_size", 100)`` silently fabricated 100 for every
-    real broker symbol — a wrong, unaudited contract size feeding notional,
-    margin, and risk math.)
+#: Fields whose absence makes execution impossible (mission-critical broker
+#: metadata). Mock compatibility exists only via explicitly populated test
+#: doubles — never via defaults leaking into the real path.
+REQUIRED_SPEC_FIELDS = (
+    "contract_size",
+    "volume_min",
+    "volume_max",
+    "volume_step",
+    "digits",
+    "point",
+    "tick_size",
+    "trade_mode",
+    "filling_mode",
+)
+
+
+def _required_numeric(info: Any, field: str, symbol: str, *, positive: bool = True) -> Decimal:
+    """Resolve a required numeric spec field through aliases — fail closed.
+
+    The previous ``getattr(info, "volume_min", 0.01)``-style defaults
+    fabricated broker metadata (a wrong contract size fed notional, margin,
+    and risk math). Now: missing alias, None, non-finite, or non-positive
+    (where positivity is required) raises — execution cannot proceed on
+    guessed symbol parameters.
     """
-    for field in ("trade_contract_size", "contract_size"):
-        raw = getattr(info, field, None)
-        if raw is None:
+    for attr in _SPEC_FIELD_ALIASES[field]:
+        raw = getattr(info, attr, None)
+        if raw is None or isinstance(raw, bool):
             continue
         try:
             value = Decimal(str(raw))
         except (InvalidOperation, ValueError):
-            continue  # not a number (e.g. auto-generated MagicMock attribute)
-        if value.is_finite() and value > 0:
-            return value
+            continue  # non-numeric (e.g. auto-generated mock attribute) == absent
+        if not value.is_finite():
+            continue
+        if positive and value <= 0:
+            continue
+        return value
     raise RuntimeError(
-        f"MT5 symbol {symbol}: no usable contract size (trade_contract_size/contract_size "
-        "missing, None, or non-positive) — refusing to default (fail-closed)"
+        f"MT5 symbol {symbol}: required spec field '{field}' "
+        f"(aliases {list(_SPEC_FIELD_ALIASES[field])}) missing/invalid "
+        f"— refusing to fabricate broker metadata (fail-closed)"
     )
+
+
+def _required_int(info: Any, field: str, symbol: str, *, min_value: int | None = None) -> int:
+    value = _required_numeric(info, field, symbol, positive=False)
+    ivalue = int(value)
+    if value != Decimal(ivalue):
+        raise RuntimeError(
+            f"MT5 symbol {symbol}: spec field '{field}' must be an integer, got {value} (fail-closed)"
+        )
+    if min_value is not None and ivalue < min_value:
+        raise RuntimeError(
+            f"MT5 symbol {symbol}: spec field '{field}'={ivalue} below minimum {min_value} (fail-closed)"
+        )
+    return ivalue
+
+
+def _resolve_contract_size(info: Any, symbol: str) -> Decimal:
+    """Authoritative contract size via the alias table — thin wrapper kept
+    for backward-compatible imports; semantics identical to _required_numeric."""
+    return _required_numeric(info, "contract_size", symbol, positive=True)
 
 
 class MT5Adapter(BrokerAdapter):
@@ -235,7 +292,14 @@ class MT5Adapter(BrokerAdapter):
     # ---------- Symbol metadata (authoritative) ----------
 
     def get_symbol_spec(self, symbol: str) -> SymbolSpec:
-        """Fetch and cache authoritative symbol spec — canonical single source (Phase 2)."""
+        """Fetch and cache authoritative symbol spec — single canonical source.
+
+        EVERY field is resolved from broker SymbolInfo through the explicit
+        alias table (real API name first, legacy/mock alias second). A
+        missing/None/non-finite required field raises — execution can never
+        proceed on guessed contract sizes, volume bounds, tick geometry, or
+        trade permissions (mission-critical broker metadata, fail-closed).
+        """
         if symbol in self._spec_cache:
             return self._spec_cache[symbol]
         mt5 = self._require_mt5()
@@ -247,22 +311,40 @@ class MT5Adapter(BrokerAdapter):
         if info is None:
             raise RuntimeError(f"MT5 symbol_info not found for {symbol} (mapped {mt5_sym}): {mt5.last_error()}")
         contract_size = _resolve_contract_size(info, symbol)
-        volume_min = Decimal(str(getattr(info, "volume_min", 0.01)))
-        volume_max = Decimal(str(getattr(info, "volume_max", 100)))
-        volume_step = Decimal(str(getattr(info, "volume_step", 0.01)))
-        digits = int(getattr(info, "digits", 2))
-        point = Decimal(str(getattr(info, "point", 0.01)))
-        tick_size = Decimal(str(getattr(info, "trade_tick_size", point)))
-        trade_mode = int(getattr(info, "trade_mode", 4))
-        trade_allowed = bool(getattr(info, "trade_allowed", True))
-        filling = int(getattr(info, "filling_mode", 1))
-        execution_mode = int(getattr(info, "execution_mode", getattr(info, "trade_execution", 0)))
-        stops_level = int(getattr(info, "trade_stops_level", getattr(info, "stops_level", 0)))
-        freeze_level = int(getattr(info, "trade_freeze_level", getattr(info, "freeze_level", 0)))
+        volume_min = _required_numeric(info, "volume_min", symbol, positive=True)
+        volume_max = _required_numeric(info, "volume_max", symbol, positive=True)
+        volume_step = _required_numeric(info, "volume_step", symbol, positive=True)
+        digits = _required_int(info, "digits", symbol, min_value=0)
+        point = _required_numeric(info, "point", symbol, positive=True)
+        tick_size = _required_numeric(info, "tick_size", symbol, positive=True)
+        trade_mode = _required_int(info, "trade_mode", symbol, min_value=0)
+        # Tradability: the AUTHORITATIVE broker signal is trade_mode
+        # (0=disabled, 1=longonly, 2=shortonly, 3=closeonly, 4=full) — the
+        # real MetaTrader5 SymbolInfo carries trade_mode on every symbol.
+        # An explicit trade_allowed attribute (present on some builds/mocks)
+        # must be True when present. The old ``getattr(info,
+        # "trade_allowed", True)`` fabricated consent when the attribute was
+        # absent — removed: absence now defers to trade_mode, never to a
+        # guessed True.
+        explicit_allowed = getattr(info, "trade_allowed", None)
+        trade_allowed = bool(explicit_allowed) if explicit_allowed is not None else trade_mode != 0
+        if not trade_allowed:
+            raise RuntimeError(
+                f"MT5 symbol {symbol}: not tradable (trade_mode={trade_mode},"
+                f" trade_allowed={explicit_allowed!r}) — fail-closed"
+            )
+        filling = _required_int(info, "filling_mode", symbol, min_value=0)
+        execution_mode = _required_int(info, "execution_mode", symbol, min_value=0)
+        stops_level = _required_int(info, "stops_level", symbol, min_value=0)
+        freeze_level = _required_int(info, "freeze_level", symbol, min_value=0)
         if trade_mode == 0:
             raise RuntimeError(f"MT5 symbol {symbol} trade disabled (mode 0)")
-        if not trade_allowed:
-            raise RuntimeError(f"MT5 symbol {symbol} trade not allowed")
+        # Contradiction guard: volume bounds must be coherent
+        if volume_min > volume_max or volume_step > volume_max:
+            raise RuntimeError(
+                f"MT5 symbol {symbol}: contradictory volume geometry "
+                f"(min {volume_min}, max {volume_max}, step {volume_step}) — fail-closed"
+            )
         spec = SymbolSpec(
             symbol=symbol,
             contract_size=contract_size,
@@ -285,15 +367,19 @@ class MT5Adapter(BrokerAdapter):
                 "volume_step": str(volume_step),
                 "digits": digits,
                 "point": str(point),
+                "tick_size": str(tick_size),
                 "trade_mode": trade_mode,
+                "trade_allowed": trade_allowed,
                 "filling_mode": filling,
                 "execution_mode": execution_mode,
                 "stops_level": stops_level,
                 "freeze_level": freeze_level,
+                "source": "MT5 SymbolInfo (authoritative)",
             },
         )
         self._spec_cache[symbol] = spec
         return spec
+
 
     # ---------- Phase 1: Connectivity & health ----------
 
@@ -831,35 +917,31 @@ class MT5Adapter(BrokerAdapter):
         info = mt5.account_info()
         if info is None:
             raise ConnectionError(f"MT5 account_info unavailable: {mt5.last_error()}")
-        # Validate required fields — fail closed on missing/stale/malformed
+        # Authoritative broker account state — fail closed on missing/malformed.
+        # Unknown OPTIONAL fields (leverage, currency) stay UNAVAILABLE (None):
+        # they are never replaced with guesses. Receipt time is local and is
+        # explicitly NOT a broker timestamp (documented limitation).
         try:
             balance = Decimal(str(info.balance))
             equity = Decimal(str(info.equity))
-            margin = Decimal(str(info.margin))
-            # free_margin may be named margin_free or free_margin
-            free_margin = Decimal(str(getattr(info, "margin_free", getattr(info, "free_margin", equity - margin))))
-            # leverage is often not directly in account_info, but margin_leverage
-            leverage = Decimal(str(getattr(info, "leverage", getattr(info, "margin_leverage", 100))))
-            currency = getattr(info, "currency", "USD")
-            # Additional checks
-            if balance is None or equity is None:
-                raise ValueError("account balance/equity missing")
-            # Check for NaN or inf
+            margin = Decimal(str(getattr(info, "margin", 0) or 0))
+            raw_free = getattr(info, "margin_free", None)
+            free_margin = Decimal(str(raw_free)) if raw_free is not None else equity - margin
+            raw_lev = getattr(info, "leverage", None)
+            if raw_lev is None or str(raw_lev).strip() in ("", "0"):
+                leverage: Decimal | None = None  # UNAVAILABLE — never guessed
+            else:
+                leverage = Decimal(str(raw_lev))
+                if leverage <= 0:
+                    leverage = None  # nonsensical broker leverage -> unknown, not fabricated
+            raw_cur = getattr(info, "currency", None)
+            currency: str | None = str(raw_cur) if raw_cur else None
             for v in (balance, equity, margin, free_margin):
                 if not v.is_finite():
                     raise ValueError(f"account value not finite: {v}")
-            # Staleness: account_info may have no timestamp, so we use now as updated_at
-            # But we can check if equity is 0 and balance non-zero → contradictory?
-            # For XAUUSD, equity should be >=0
             if equity < Decimal("0") or balance < Decimal("0"):
                 raise ValueError(f"account equity/balance negative: {equity}/{balance}")
-            # Leverage sanity: should be >0
-            if leverage <= 0:
-                raise ValueError(f"account leverage invalid: {leverage}")
-            # Free margin sanity: should not be > equity*leverage?
-            # For now, just ensure free_margin is not negative beyond margin
             if free_margin < Decimal("0") - Decimal("1"):
-                # Allow small negative due to rounding, but large negative is error
                 raise ValueError(f"account free_margin negative large: {free_margin}")
             return Account(
                 balance=balance,
@@ -868,6 +950,7 @@ class MT5Adapter(BrokerAdapter):
                 free_margin=free_margin,
                 leverage=leverage,
                 currency=currency,
+                source="BROKER",
                 updated_at=datetime.now(UTC),
             )
         except Exception as e:

@@ -248,13 +248,16 @@ def test_mt5_status_display():
     r = c.get("/api/mt5")
     j = r.json()
     assert "mode" in j
-    assert j["mode"] in ("MOCK", "PAPER", "DRY_RUN", "REAL")
+    # Honest modes only: REAL_TERMINAL (verified connection) or DISCONNECTED.
+    # The old fabricated "MOCK" presentation (invented spec/balance) is gone.
+    assert j["mode"] in ("REAL_TERMINAL", "DISCONNECTED")
     assert "connected" in j
     assert "spec" in j
-    # Must distinguish mock
     assert "warning" in j
-    if j["mode"] == "MOCK":
-        assert "MOCK" in j["warning"]
+    if j["mode"] == "DISCONNECTED":
+        # No invented broker metadata: spec/account must be explicit UNAVAILABLE
+        assert j["spec"].get("status") == "UNAVAILABLE"
+        assert j["account"].get("status") == "UNAVAILABLE"
 
 
 def test_application_restart():

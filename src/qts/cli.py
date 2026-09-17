@@ -491,9 +491,15 @@ def risk_check(instrument: str, quantity: float, reference_price: str) -> None:
         instrument=instr, side=Side.BUY, quantity=Decimal(str(quantity)), client_order_id="check", strategy_id="check"
     )
     # Reference price is caller-supplied and auditable — never hardcoded here.
+    # The account is an explicit LABELED synthetic state for offline checks
+    # (this command never reaches a broker).
     ctx = RiskContext(
         account=Account(
-            balance=Decimal("10000"), equity=Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)
+            balance=Decimal("10000"),
+            equity=Decimal("10000"),
+            currency="OFFLINE_CHECK",
+            source="CLI_SYNTHETIC",
+            updated_at=datetime.now(UTC),
         ),
         positions={},
         open_orders_count=0,

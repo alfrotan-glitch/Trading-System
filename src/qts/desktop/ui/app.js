@@ -54,13 +54,16 @@ async function loadHome(){
   $('health-mini').textContent = `${h.system_status} • ${h.mt5} • ${h.market_data}`;
   $('health-mini').style.background = h.system_status==='Running'?'#022c22': h.system_status==='Suspended'?'#450a0a':'#451a03';
   const grid = $('home-grid');
-  let accountType = 'MOCK';
-  try{ const m = await api('/api/mt5'); accountType = m.account?.login==='mock' ? 'MOCK' : m.mode; }catch(e){}
+  let accountType = 'UNAVAILABLE';
+  try{
+    const m = await api('/api/mt5');
+    accountType = m.connected ? (m.mode || 'REAL_TERMINAL') : 'DISCONNECTED';
+  }catch(e){}
   const items = [
     ['SYSTEM STATUS', h.system_status, h.system_status==='Running'?'ok': h.system_status==='Suspended'?'danger':'warn'],
     ['ENVIRONMENT', h.env, h.env==='development'?'ok': h.env==='paper'?'ok': h.env==='demo_forward'?'warn':'danger'],
     ['MT5', h.mt5, h.mt5==='Connected'?'ok':'warn'],
-    ['ACCOUNT TYPE', accountType, accountType==='MOCK'?'warn': accountType==='DEMO'?'ok':'danger'],
+    ['ACCOUNT TYPE', accountType, accountType==='DISCONNECTED'||accountType==='UNAVAILABLE'?'warn':'ok'],
     ['MARKET DATA', h.market_data, h.market_data==='Healthy'?'ok':'danger'],
     ['RISK', h.risk, h.risk==='Healthy'?'ok':'danger'],
     ['RECONCILIATION', h.reconciliation, h.reconciliation==='Healthy'?'ok':'danger'],
@@ -84,15 +87,22 @@ async function loadDashboard(){
     safety.className='banner ok';
     safety.textContent = `SAFETY: Running — risk healthy — reconciliation healthy`;
   }
+  const fmtMetric = m => {
+    if (m && typeof m === 'object' && 'status' in m) {
+      if (m.status === 'MEASURED') return String(m.value);
+      return m.status + (m.reason ? ' — ' + m.reason : '');
+    }
+    return String(m);
+  };
   $('kpi-grid').innerHTML = [
-    ['Equity', d.equity?.toFixed?.(2)??d.equity],
-    ['Balance', d.balance?.toFixed?.(2)??d.balance],
-    ['Unrealized PnL', d.unrealized_pnl],
-    ['Realized PnL', d.realized_pnl],
-    ['Drawdown', d.drawdown],
-    ['Exposure', d.exposure],
+    ['Equity', fmtMetric(d.equity)],
+    ['Balance', fmtMetric(d.balance)],
+    ['Unrealized PnL', fmtMetric(d.unrealized_pnl)],
+    ['Realized PnL', fmtMetric(d.realized_pnl)],
+    ['Drawdown', fmtMetric(d.drawdown)],
+    ['Exposure', fmtMetric(d.exposure)],
     ['Market', d.market_status],
-    ['Spread', d.spread],
+    ['Spread', fmtMetric(d.spread)],
   ].map(([k,v])=>`<div class="kpi"><div class="label">${k}</div><div class="value">${v}</div></div>`).join('');
   $('positions').textContent = (d.open_positions && d.open_positions.length) ? JSON.stringify(d.open_positions, null,2) : 'No open positions (paper/mock)';
   $('decisions').textContent = d.latest_decision? JSON.stringify(d.latest_decision,null,2) : 'No recent decisions';
@@ -275,10 +285,20 @@ const btnDemoEnable = document.getElementById('btn-demo-enable');
 if(btnDemoEnable) btnDemoEnable.onclick = async ()=>{
   const ack = document.getElementById('demo-risk-ack2')?.checked;
   if(!ack){ alert('Please acknowledge risk limits'); return; }
+  const el = document.getElementById('demo-execution');
+  el.textContent = 'Requesting DEMO_EXECUTION enablement (fresh 14-check gate)...';
   try{
-    const res = await fetch('/api/demo/enable', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({confirmed:true, risk_ack:true})}).then(r=>r.json());
-    document.getElementById('demo-execution').textContent = JSON.stringify(res, null,2);
-  }catch(e){ document.getElementById('demo-execution').textContent='Error '+e }
+    const r = await fetch('/api/demo/enable', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({confirmed:true, risk_ack:true})});
+    const res = await r.json();
+    if(r.status === 409 || res.enabled === false){
+      el.textContent = 'REFUSED — DEMO execution NOT enabled.\n' +
+        'Reasons: ' + JSON.stringify(res.reasons || [], null, 2) + '\n' +
+        'Authoritative state: ' + (res.state || 'DISABLED') + '\n' +
+        'Readiness must pass all 14 checks before enablement.';
+    } else {
+      el.textContent = 'ENABLED (audited, durable) — expires for execution purposes after reverify_ttl_s unless re-verified.\n' + JSON.stringify(res, null, 2);
+    }
+  }catch(e){ el.textContent = 'Error ' + e }
 };
 const btnCompRefresh = document.getElementById('btn-comparison-refresh');
 if(btnCompRefresh) btnCompRefresh.onclick = async ()=>{
@@ -457,12 +477,17 @@ async function loadDemoForward(){
   try{
     const readiness = await api('/api/demo/readiness');
     const pretty = Object.entries(readiness.checks||{}).map(([k,v])=>`${v?'✓':'✗'} ${k}: ${readiness.details?.[k]||''}`).join('\n');
-    $('demo-checks').textContent = pretty + '\n\nBlocked: ' + (readiness.blocked_reasons||[]).join('; ') + '\nDemo enabled: ' + readiness.demo_enabled;
+    $('demo-checks').textContent = pretty + '\n\nBlocked: ' + (readiness.blocked_reasons||[]).join('; ') + '\nReadiness passed: ' + readiness.passed;
   }catch(e){$('demo-checks').textContent='Error '+e}
+  try{
+    // Authoritative permission state — what the execution boundary enforces,
+    // not a UI flag. Shown verbatim so the operator sees decay/blocks.
+    const st = await api('/api/demo/state');
+    $('demo-execution').textContent = JSON.stringify(st, null, 2);
+  }catch(e){$('demo-execution').textContent='Error '+e}
   try{
     const cfg = await api('/api/demo/config');
     $('demo-observe').textContent = JSON.stringify({mode: cfg.observation_mode, lifecycle: cfg.lifecycle, observation: 'OBSERVE ONLY records live ticks without orders — safe to run continuously'}, null,2);
-    $('demo-execution').textContent = JSON.stringify({risk: cfg.risk, label: cfg.label || 'DEMO', note: 'DEMO execution requires explicit confirmation + risk ack + 14 checks, labeled DEMO never LIVE'}, null,2);
   }catch(e){$('demo-observe').textContent='Error '+e}
   try{
     const obs = await api('/api/demo/observations?limit=10');

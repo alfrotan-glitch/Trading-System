@@ -32,6 +32,9 @@ class RiskVetoReason(StrEnum):
     QUANTITY_STEP_VIOLATION = "QUANTITY_STEP_VIOLATION"
     MIN_QUANTITY_VIOLATION = "MIN_QUANTITY_VIOLATION"
     MISSING_MARKET_PRICE = "MISSING_MARKET_PRICE"
+    #: Authoritative account equity unavailable — leverage/loss checks cannot
+    #: be computed honestly. UNKNOWN -> BLOCK, never UNKNOWN -> GUESS.
+    ACCOUNT_STATE_UNAVAILABLE = "ACCOUNT_STATE_UNAVAILABLE"
 
 
 class RiskLimits(BaseModel):
@@ -285,8 +288,21 @@ class RiskEngine:
                     symbol=sym,
                 )
 
-        # leverage: total notional / equity
-        equity = ctx.account.equity if ctx.account.equity != Decimal("0") else Decimal("10000")
+        # leverage: total notional / equity — FAIL CLOSED on unknown equity.
+        # The previous fallback `equity = 10000` when account equity was 0
+        # fabricated the denominator of the leverage check (finding #9):
+        # unknown equity now vetoes the order instead of guessing capital.
+        equity = ctx.account.equity
+        if equity is None or equity <= Decimal("0"):
+            return RiskDecision(
+                allowed=False,
+                veto_reason=RiskVetoReason.ACCOUNT_STATE_UNAVAILABLE,
+                reason_detail=f"authoritative account equity unavailable ({equity}) — leverage check cannot run, fail-closed",
+                price=est_price,
+                price_source=price_source,
+                notional=notional,
+                symbol=sym,
+            )
         # total notional for leverage: exposure notional
         total_notional_for_lev = (
             sum(

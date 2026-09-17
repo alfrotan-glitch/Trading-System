@@ -61,6 +61,9 @@ class _SI:
     trade_tick_size = 0.01
     trade_mode = 4
     filling_mode = 1
+    trade_exemode = 0
+    trade_stops_level = 0
+    trade_freeze_level = 0
 
 
 class FakeMT5:

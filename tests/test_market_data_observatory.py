@@ -440,13 +440,16 @@ def test_research_quality_gate_blocks_if_insufficient():
 
 
 def test_forward_manifest_has_required_fields():
-    p = Path("data/evidence/forward_observation_manifest.json")
-    assert p.exists()
-    m = json.loads(p.read_text(encoding="utf-8"))
+    # The manifest is a DERIVED export regenerated from the canonical SQLite
+    # store (finding #5) — never a hand-maintained committed file.
+    from qts.observability.forward_observatory import ForwardObservatory
+
+    m = ForwardObservatory().to_manifest()
     assert "ticks_recorded" in m
     assert "signals_recorded" in m
     assert "no_capital_exposure" in m
     assert m["no_capital_exposure"] is True
+    assert m.get("canonical_store")
 
 
 def test_market_regime_observations_has_required():

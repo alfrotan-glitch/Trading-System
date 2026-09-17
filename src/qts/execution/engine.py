@@ -152,7 +152,14 @@ class BrokerAdapter:
         return []
 
     def account(self) -> Account:
-        return Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD")
+        """NO fabricated account. Adapters that cannot provide authoritative
+        broker state must override and either return a labeled simulation
+        account or raise — a silent ``balance=10000`` default is a fabricated
+        fallback in a safety-critical path (removed, fail-closed)."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not provide authoritative account state — "
+            "refusing to fabricate one (fail-closed)"
+        )
 
     def orders(self) -> list[Order]:
         return []
@@ -170,7 +177,13 @@ class PaperBrokerAdapter(BrokerAdapter):
 
     def __init__(self, matching: MatchingEngine | None = None, account: Account | None = None):
         self.matching = matching or MatchingEngine()
-        self._account = account or Account(balance=Decimal("10000"), equity=Decimal("10000"), currency="USD")
+        # Explicit, LABELED simulation capital (never presented as broker truth).
+        self._account = account or Account(
+            balance=Decimal("10000"),
+            equity=Decimal("10000"),
+            currency="PAPER_SIM",
+            source="PAPER_SIMULATION",
+        )
         # Paper broker mirrors Portfolio but also tracks its own for reconciliation test
         self._positions: dict[str, Position] = {}
         self._orders: dict[str, Order] = {}
@@ -343,9 +356,12 @@ class ExecutionEngine:
                 # For live, free_margin should be consistent with margin
                 # Basic sanity: margin <= equity*leverage approx
                 # margin should not exceed equity * leverage * 1.5
+                # (leverage may be UNAVAILABLE (None) — the consistency check
+                # is then skipped, never computed against a guessed leverage)
                 if (
                     account.margin
                     and account.equity
+                    and account.leverage is not None
                     and account.margin > account.equity * account.leverage * Decimal("1.5") + Decimal("1")
                 ):
                     raise ValueError(
@@ -363,8 +379,9 @@ class ExecutionEngine:
                 equity=equity,
                 margin=Decimal("0"),
                 free_margin=equity,
-                leverage=Decimal("100"),
+                leverage=None,  # UNAVAILABLE in simulation — never guessed
                 currency=self.portfolio.currency,
+                source="PORTFOLIO_SIMULATION",
             )
         daily_pnl = (
             equity - self._day_start_equity if not use_broker_account else account.equity - self._day_start_equity
