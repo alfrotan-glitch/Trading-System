@@ -991,12 +991,18 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         from qts.risk.engine import RiskLimits as _RL
 
         risk = _RE(_RL())
-        # Use authoritative account if ok else fallback
+        # Authoritative account when reachable; otherwise an EXPLICITLY
+        # LABELED synthetic state (dry-run never trades, but its evidence
+        # must not present fabricated capital as broker truth).
         acct_for_risk = (
             acct
             if (acct_ok and acct is not None)
             else _Acct(
-                balance=_Decimal("10000"), equity=_Decimal("10000"), currency="USD", updated_at=datetime.now(UTC)
+                balance=_Decimal("10000"),
+                equity=_Decimal("10000"),
+                currency="DRYRUN_SIM",
+                source="CLI_SYNTHETIC",
+                updated_at=datetime.now(UTC),
             )
         )
         # Reference price for risk comes from the market data adapter only — NEVER a
