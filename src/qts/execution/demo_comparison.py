@@ -159,10 +159,8 @@ def compare_paper_shadow_demo(
         # explicit UNAVAILABLE; a zero is NEVER a stand-in for "not measured".
         "expected_entry_difference_bps": MetricValue.unavailable(
             "NOT_MEASURED",
-            "requires simultaneous paper + demo execution of the SAME signal; no paired events recorded",
-        ).as_dict()
-        if not demo_fills
-        else MetricValue.unavailable("NOT_MEASURED", "paired paper/demo entry comparison not yet implemented for recorded fills").as_dict(),
+            "requires paired paper+demo execution of the SAME signal; no paired events recorded",
+        ).as_dict(),
         "actual_entry_difference_bps": MetricValue.unavailable(
             "NO_DATA", "no demo fills recorded in the canonical store"
         ).as_dict()

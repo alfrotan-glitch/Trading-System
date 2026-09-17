@@ -128,44 +128,50 @@ class ForwardObservatory:
             )
             # Canonical accessor columns (added for provenance-first queries;
             # older databases are migrated in place, payload stays immutable).
-            self._ensure_column(con, "observation_ticks", "provenance", "TEXT")
-            self._ensure_column(con, "observation_ticks", "session_id", "TEXT")
-            self._ensure_column(con, "observation_ticks", "symbol", "TEXT")
-            self._ensure_column(con, "observation_ticks", "event_time", "TEXT")
-            self._ensure_column(con, "observation_signals", "provenance", "TEXT")
-            self._ensure_column(con, "observation_signals", "session_id", "TEXT")
-            self._ensure_column(
-                con,
-                "observation_sessions",
-                "meta",
-                "TEXT",
-            )
-            # Backfill accessor columns from immutable payloads (idempotent).
-            con.execute(
-                "UPDATE observation_ticks SET provenance="
-                "COALESCE(provenance, json_extract(payload, '$.provenance'), 'UNVERIFIED')"
-            )
-            con.execute(
-                "UPDATE observation_ticks SET session_id=COALESCE(session_id, json_extract(payload, '$.session_id'))"
-            )
-            con.execute("UPDATE observation_ticks SET symbol=COALESCE(symbol, json_extract(payload, '$.symbol'))")
-            con.execute(
-                "UPDATE observation_ticks SET event_time=COALESCE(event_time, json_extract(payload, '$.broker_event_time'))"
-            )
-            con.execute(
-                "UPDATE observation_signals SET provenance="
-                "COALESCE(provenance, json_extract(payload, '$.provenance'), 'UNVERIFIED')"
-            )
-            con.execute(
-                "UPDATE observation_signals SET session_id=COALESCE(session_id, json_extract(payload, '$.session_id'))"
-            )
+            # Backfill runs ONCE, only when a column was just added — never a
+            # full-table scan on every construction.
+            added = {
+                ("observation_ticks", "provenance"): self._ensure_column(con, "observation_ticks", "provenance", "TEXT"),
+                ("observation_ticks", "session_id"): self._ensure_column(con, "observation_ticks", "session_id", "TEXT"),
+                ("observation_ticks", "symbol"): self._ensure_column(con, "observation_ticks", "symbol", "TEXT"),
+                ("observation_ticks", "event_time"): self._ensure_column(con, "observation_ticks", "event_time", "TEXT"),
+                ("observation_signals", "provenance"): self._ensure_column(con, "observation_signals", "provenance", "TEXT"),
+                ("observation_signals", "session_id"): self._ensure_column(con, "observation_signals", "session_id", "TEXT"),
+                ("observation_sessions", "meta"): self._ensure_column(con, "observation_sessions", "meta", "TEXT"),
+            }
+            if any(added.values()):
+                con.execute(
+                    "UPDATE observation_ticks SET provenance="
+                    "COALESCE(provenance, json_extract(payload, '$.provenance'), 'UNVERIFIED')"
+                )
+                con.execute(
+                    "UPDATE observation_ticks SET session_id="
+                    "COALESCE(session_id, json_extract(payload, '$.session_id'))"
+                )
+                con.execute("UPDATE observation_ticks SET symbol=COALESCE(symbol, json_extract(payload, '$.symbol'))")
+                con.execute(
+                    "UPDATE observation_ticks SET event_time="
+                    "COALESCE(event_time, json_extract(payload, '$.broker_event_time'))"
+                )
+                con.execute(
+                    "UPDATE observation_signals SET provenance="
+                    "COALESCE(provenance, json_extract(payload, '$.provenance'), 'UNVERIFIED')"
+                )
+                con.execute(
+                    "UPDATE observation_signals SET session_id="
+                    "COALESCE(session_id, json_extract(payload, '$.session_id'))"
+                )
             con.commit()
 
     @staticmethod
-    def _ensure_column(con: Any, table: str, column: str, decl: str) -> None:
+    def _ensure_column(con: Any, table: str, column: str, decl: str) -> bool:
+        """Add the column if missing. Returns True when JUST added (so callers
+        can backfill once instead of scanning the table on every open)."""
         cols = {r[1] for r in con.execute(f"PRAGMA table_info({table})").fetchall()}
         if column not in cols:
             con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+            return True
+        return False
 
     # ---------------------------------------------------------------- writes
     def record_tick(self, tick: ObservationTick):

@@ -103,26 +103,24 @@ MODE_RESTRICTIONS: dict[ExecutionMode, dict[str, Any]] = {
 }
 
 
-class _CapDirections(BaseModel):
-    """Cap-fields (lower is safer) that mode restrictions may only tighten."""
-
-    @staticmethod
-    def fields_capped() -> dict[str, str]:
-        return {
-            "max_quantity": "Decimal",
-            "max_exposure_lots": "Decimal",
-            "max_open_orders": "int",
-            "max_orders_per_minute": "int",
-            "daily_loss_limit": "Decimal",
-            "max_drawdown": "Decimal",
-            "max_drawdown_pct": "Decimal",
-            "max_spread_bps": "Decimal",
-            "max_slippage_bps": "Decimal",
-        }
+#: Cap fields (lower is safer) that mode restrictions may only tighten.
+_CAP_FIELDS = frozenset(
+    {
+        "max_quantity",
+        "max_exposure_lots",
+        "max_open_orders",
+        "max_orders_per_minute",
+        "daily_loss_limit",
+        "max_drawdown",
+        "max_drawdown_pct",
+        "max_spread_bps",
+        "max_slippage_bps",
+    }
+)
 
 
 def _assert_restriction_tightens(mode: ExecutionMode, overrides: dict[str, Any]) -> None:
-    for key in _CapDirections.fields_capped():
+    for key in _CAP_FIELDS:
         if key not in overrides:
             continue
         base_v = getattr(BASE_LIMITS, key)
@@ -248,11 +246,20 @@ def resolve_risk_limits(
 def resolve_risk_limits_from_settings(mode: ExecutionMode | str | None = None) -> ResolvedRiskSnapshot:
     """Resolve effective risk with YAML/settings risk config as the override
     layer — so configuration flows through the ONE authority instead of a
-    parallel consumer path."""
+    parallel consumer path.
+
+    Only values that actually DIFFER from the canonical base are passed as
+    overrides: pydantic model defaults would otherwise be mislabeled as
+    "config_override" in the snapshot's per-field provenance.
+    """
     from qts.config.settings import load_settings
 
     settings = load_settings()
-    overrides = settings.risk.model_dump()
+    overrides = {
+        k: v
+        for k, v in settings.risk.model_dump().items()
+        if k != "version" and v is not None and getattr(BASE_LIMITS, k, None) != v
+    }
     return resolve_risk_limits(mode, config_overrides=overrides)
 
 

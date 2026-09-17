@@ -862,14 +862,11 @@ def research_execution_reality() -> dict[str, Any]:
     try:
         summary = ExecutionRealityStore().summary()
     except Exception as e:
-        summary = {"status": "UNAVAILABLE", "reason": f"execution-reality store unavailable: {e}"}
-    if isinstance(summary, dict) and not summary.get("real_count"):
-        summary.setdefault(
-            "measured_metrics",
-            {
-                "avg_slippage_bps": {"status": "UNAVAILABLE", "value": None, "reason": "no REAL execution observations"},
-            },
-        )
+        return {"status": "UNAVAILABLE", "reason": f"execution-reality store unavailable: {e}"}
+    if summary.get("count") == 0:
+        summary["measured_metrics"] = {
+            "avg_slippage_bps": {"status": "UNAVAILABLE", "value": None, "reason": "no REAL execution observations"},
+        }
     return summary
 
 

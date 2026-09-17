@@ -121,13 +121,6 @@ class MetricValue:
         return f"MetricValue({self.status}, reason={self.reason!r})"
 
 
-def mean_or_unavailable(values: list[float], name: str) -> MetricValue:
-    """Mean of real measurements, or an explicit UNAVAILABLE — never 0.0."""
-    if not values:
-        return MetricValue.unavailable(UnavailableReason.NO_DATA, f"no {name} observations")
-    return MetricValue.ok(sum(values) / len(values))
-
-
 def classify_record_provenance(
     *,
     recorded_provenance: str | None,
