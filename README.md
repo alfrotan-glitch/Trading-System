@@ -15,6 +15,7 @@ A modular desktop app with a local FastAPI backend + native window (pywebview) t
 - Validate strategies with strict scientific gates (DSR, PBO, PSR, costs, regime, perturbation, null/placebo)
 - Paper-trade (simulated), shadow-trade (would-be), and **demo-forward trade** (real MT5 demo) — all compared automatically
 - See everything in a clean desktop UI with audit, risk, reconciliation, and live-lock
+- Work inside a coherent 8-area interface (Overview · Research · Market · Trading · Risk · Evidence · System · Governance) with a command palette (`Ctrl+K`), a guided setup journey, and honest states everywhere — `UNAVAILABLE` is never shown as `0`, and LIVE is always visibly LOCKED. See `docs/ui_design_system.md`
 
 ## What does it do?
 

@@ -491,11 +491,11 @@ def test_desktop_5_views_exist():
     from qts.api.server import app
 
     _c = TestClient(app)
-    # Check UI static contains 5 views ids
-    html = Path("src/qts/desktop/ui/index.html").read_text(encoding="utf-8")
-    for view in ["data-observatory", "data-source-lab", "market-monitor", "forward-observatory", "data-lineage"]:
-        assert f"view-{view}" in html, f"missing view {view}"
-        assert view in html
+    # The data/monitoring views exist as routes in the grouped IA (js/main.js)
+    ia = Path("src/qts/desktop/ui/js/main.js").read_text(encoding="utf-8")
+    for view in ["data", "monitor", "observations", "quality", "lineage"]:
+        assert f'{{ id: "{view}",' in ia, f"missing IA route {view}"
+    assert 'id: "market"' in ia and 'id: "research"' in ia
 
 
 def test_clean_room_reproducibility():

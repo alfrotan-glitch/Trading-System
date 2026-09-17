@@ -520,11 +520,11 @@ def test_api_start_blocked_when_readiness_fails(
 
 def test_ui_wires_observe_endpoints() -> None:
     ui_dir = Path(__file__).resolve().parents[1] / "src" / "qts" / "desktop" / "ui"
-    app_js = (ui_dir / "app.js").read_text(encoding="utf-8")
-    index_html = (ui_dir / "index.html").read_text(encoding="utf-8")
-    assert "'/api/observe/start'" in app_js
-    assert "'/api/observe/stop'" in app_js
-    assert "'/api/observe/status'" in app_js
-    assert "refreshObserveStatus" in app_js
-    assert "btn-demo-observe-stop" in index_html
-    assert "observe-status" in index_html
+    market_js = (ui_dir / "js" / "views" / "market.js").read_text(encoding="utf-8")
+    main_js = (ui_dir / "js" / "main.js").read_text(encoding="utf-8")
+    assert '"/api/observe/start"' in market_js
+    assert '"/api/observe/stop"' in market_js
+    assert '"/api/observe/status"' in market_js
+    assert "refresh" in market_js  # live refresh loop for observation state
+    assert '"observations"' in main_js  # observations route registered in the IA
+    assert "Start Observation" in market_js

@@ -56,8 +56,10 @@ def test_ui_assets_readable_under_ascii_locale():
     snippet = (
         "from pathlib import Path;"
         "html = Path('src/qts/desktop/ui/index.html').read_text(encoding='utf-8');"
-        "js = Path('src/qts/desktop/ui/app.js').read_text(encoding='utf-8');"
-        "print(len(html), len(js))"
+        "js = Path('src/qts/desktop/ui/js/main.js').read_text(encoding='utf-8');"
+        "js2 = Path('src/qts/desktop/ui/js/components.js').read_text(encoding='utf-8');"
+        "js3 = Path('src/qts/desktop/ui/js/format.js').read_text(encoding='utf-8');"
+        "print(len(html), len(js), len(js2), len(js3))"
     )
     p = _run_ascii_locale(snippet)
     assert p.returncode == 0, p.stderr

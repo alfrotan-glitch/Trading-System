@@ -188,10 +188,12 @@ def test_demo_enable_evaluates_the_same_saved_connection(client: TestClient, cap
 
 
 def test_ui_wires_save_to_the_endpoint():
-    js = Path("src/qts/desktop/ui/app.js").read_text(encoding="utf-8")
-    assert "'/api/setup/mt5'" in js
-    assert "method:'POST'" in js
-    assert "if(saved && saved.detail){ throw new Error(saved.detail); }" in js  # never claim success on 4xx
-    assert "Environment selection is NOT persisted" in js  # truthful about what is saved
-    html = Path("src/qts/desktop/ui/index.html").read_text(encoding="utf-8")
-    assert "XAUUSD@" in html  # broker-suffix hint next to the symbol field
+    js = Path("src/qts/desktop/ui/js/views/system.js").read_text(encoding="utf-8")
+    api_js = Path("src/qts/desktop/ui/js/api.js").read_text(encoding="utf-8")
+    assert '"/api/setup/mt5"' in js
+    assert "api.post" in js  # save issues a POST
+    # never claim success on 4xx — structurally: the api layer throws non-2xx
+    assert "if (!resp.ok) throw" in api_js
+    assert "toast(\"err\", \"Could not save setup\"" in js  # failure surfaced, not swallowed
+    assert "Nothing is enabled from this page" in js  # truthful about what save does
+    assert "XAUUSD@" in js  # broker-suffix hint next to the symbol field

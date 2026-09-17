@@ -361,24 +361,24 @@ def test_scorecard_independent_dimensions():
 def test_desktop_ui_static_files():
     ui_dir = Path("src/qts/desktop/ui")
     assert (ui_dir / "index.html").exists()
-    assert (ui_dir / "style.css").exists()
-    assert (ui_dir / "app.js").exists()
-    html = (ui_dir / "index.html").read_text(encoding="utf-8")
-    # Must contain required views
+    # design-system shell (tokens/base/layout/components) + ES-module app
+    for css in ("tokens.css", "base.css", "layout.css", "components.css"):
+        assert (ui_dir / "css" / css).exists(), f"missing design-system file css/{css}"
+    assert (ui_dir / "js" / "main.js").exists()
+    assert (ui_dir / "index.html").read_text(encoding="utf-8")  # shell parses as text (UTF-8)
+    # Must cover the primary IA areas (defined in js/main.js)
+    main_js = (ui_dir / "js" / "main.js").read_text(encoding="utf-8")
     for view in [
-        "Home",
-        "Dashboard",
+        "Overview",
         "Research",
-        "Strategies",
-        "Validation",
-        "Paper/Shadow",
-        "Execution",
+        "Market",
+        "Trading",
         "Risk",
-        "MT5",
-        "Audit",
-        "Live",
+        "Evidence",
+        "System",
+        "Governance",
     ]:
-        assert view in html, f"missing {view} in UI"
+        assert view in main_js, f"missing IA area {view}"
 
 
 def test_packaging_docs():

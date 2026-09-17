@@ -1,0 +1,9 @@
+{
+  "name": "qts-ui-tests",
+  "private": true,
+  "description": "Dev-dependency harness for QTS UI tests (Node unit + jsdom functional). The product itself has no Node dependency.",
+  "type": "module",
+  "devDependencies": {
+    "jsdom": "^25.0.1"
+  }
+}
