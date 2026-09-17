@@ -197,7 +197,19 @@ $('btn-audit-search').onclick = loadAudit;
 const btnSetupCheck = document.getElementById('btn-setup-check-mt5');
 if(btnSetupCheck) btnSetupCheck.onclick = async ()=>{
   $('setup-mt5-result').textContent='Checking MT5 (14 checks)...';
-  try{ const r = await api('/api/demo/readiness'); $('setup-mt5-result').textContent = JSON.stringify(r, null,2); }catch(e){ $('setup-mt5-result').textContent='Error '+e }
+  try{
+    // Send the entered terminal path and symbol so the backend initializes
+    // MT5 with them (previously the inputs were inert — the backend never
+    // received them and never called mt5.initialize at all).
+    const q = new URLSearchParams();
+    const p = (document.getElementById('setup-mt5-path')?.value || '').trim();
+    const s = (document.getElementById('setup-mt5-symbol')?.value || '').trim();
+    if(p) q.set('terminal_path', p);
+    if(s) q.set('symbol', s);
+    const qs = q.toString();
+    const r = await api('/api/demo/readiness' + (qs ? '?' + qs : ''));
+    $('setup-mt5-result').textContent = JSON.stringify(r, null,2);
+  }catch(e){ $('setup-mt5-result').textContent='Error '+e }
 };
 const btnSetupSave = document.getElementById('btn-setup-save');
 if(btnSetupSave) btnSetupSave.onclick = async ()=>{

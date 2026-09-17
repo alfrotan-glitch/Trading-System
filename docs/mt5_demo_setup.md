@@ -23,7 +23,9 @@ Set via Windows Credential Manager or `.env` (gitignored, never commit):
 | `MT5_LOGIN` | `1234567` | Credential Manager or `.env` |
 | `MT5_PASSWORD` | `***` | Credential Manager or `.env` |
 | `MT5_SERVER` | `ICMarkets-Demo` | `.env` |
-| `MT5_PATH` | `C:\Program Files\MetaTrader 5\terminal64.exe` | Setup Wizard |
+| `QTS_MT5_PATH` (or `MT5_PATH`) | `C:\Program Files\MetaTrader 5\terminal64.exe` | Setup Wizard field (sent with Test MT5 Connection) or `.env` |
+| `QTS_MT5_SYMBOL` | broker's actual symbol, e.g. `XAUUSD@` | Setup Wizard field or `.env` (default `XAUUSD`) |
+| `QTS_MT5_SYMBOL_MAP` | `XAUUSD=XAUUSD@` | `.env` — maps requested symbol to broker symbol |
 
 **.env example** (copy from `.env.example`, never commit):
 ```
@@ -33,6 +35,7 @@ MT5_LOGIN=1234567
 MT5_PASSWORD=your_demo_password
 MT5_SERVER=ICMarkets-Demo
 MT5_PATH=C:\Program Files\MetaTrader 5\terminal64.exe
+QTS_MT5_SYMBOL=XAUUSD@
 ```
 
 Or use PowerShell to set env for session:
@@ -43,6 +46,14 @@ $env:QTS_ENV="demo_forward"; $env:MT5_LOGIN="123..."; .\scripts\run_qts.bat
 **Do NOT** put live passwords in `configs/live.yaml` and commit — it is gitignored. See `docs/10-security-model.md`.
 
 ## Connect Wizard (14 Checks)
+The readiness gate calls `mt5.initialize(path=...)` itself (path: wizard field →
+`QTS_MT5_PATH` → `MT5_PATH` → auto-detect) because MetaTrader5 returns
+`None` from `terminal_info`/`account_info`/`symbol_info` until `initialize()`
+succeeds **in the same process** — importing the package is not enough.
+Initialize failure is fail-closed: it blocks with `last_error()` surfaced, never mocked.
+Symbol checks use the broker's actual name (`QTS_MT5_SYMBOL`/`QTS_MT5_SYMBOL_MAP`,
+e.g. `XAUUSD@`) and `symbol_select` before querying.
+
 In QTS: **Setup Wizard → Test MT5 Connection** or **Demo Forward → Refresh Checks** runs:
 
 1. MT5 installed? 2. Terminal running? 3. Account connected? 4. Account is DEMO? 5. Broker identified? 6. Symbol available? 7. Symbol tradable? 8. Symbol spec valid? 9. Market data fresh? 10. Bid/ask valid? 11. Spread acceptable? 12. Account state valid? 13. Risk config valid? 14. Reconciliation healthy?

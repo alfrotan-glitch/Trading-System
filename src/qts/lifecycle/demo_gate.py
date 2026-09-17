@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import os
 import time
 from datetime import UTC, datetime
 from typing import Any
@@ -9,8 +11,46 @@ from typing import Any
 from qts.risk.demo_limits import DEMO_FORWARD_DEFAULTS
 
 
-def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: Any | None = None) -> dict[str, Any]:
-    """Run 14 checks. Returns dict with checklist, passed, blocked_reasons, demo_enabled."""
+def _resolve_symbol_map(symbol_map: dict[str, str] | None) -> dict[str, str]:
+    """Broker symbol map (e.g. XAUUSD -> XAUUSD@): explicit param or QTS_MT5_SYMBOL_MAP env.
+
+    Env form: ``QTS_MT5_SYMBOL_MAP="XAUUSD=XAUUSD@,EURUSD=EURUSD.m"``.
+    """
+    if symbol_map is not None:
+        return symbol_map
+    env_map = os.getenv("QTS_MT5_SYMBOL_MAP", "")
+    out: dict[str, str] = {}
+    for kv in env_map.split(","):
+        if "=" in kv:
+            k, v = kv.split("=", 1)
+            if k.strip() and v.strip():
+                out[k.strip()] = v.strip()
+    return out
+
+
+def demo_forward_readiness_report(
+    mt5_module: Any | None = None,
+    risk_limits: Any | None = None,
+    terminal_path: str | None = None,
+    symbol: str | None = None,
+    symbol_map: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Run 14 checks. Returns dict with checklist, passed, blocked_reasons, demo_enabled.
+
+    ``terminal_path`` (or ``QTS_MT5_PATH``/``MT5_PATH`` env) is passed to
+    ``mt5.initialize(path=...)``: the MetaTrader5 package returns None from
+    terminal_info/account_info/symbol_info until initialize() succeeds IN THIS
+    PROCESS — importing the module is not enough. This was the root cause of
+    "wizard reports terminal_info=None while a direct CLI test with
+    initialize(path=...) works".
+
+    ``symbol`` (or ``QTS_MT5_SYMBOL`` env) and ``symbol_map``
+    (or ``QTS_MT5_SYMBOL_MAP`` env) resolve the broker's actual symbol name
+    (e.g. XAUUSD@ instead of XAUUSD) before symbol_info/tick checks.
+
+    Fail-closed: initialize failure is surfaced with last_error and blocks —
+    never mocked, never skipped. The 14-check contract is unchanged.
+    """
     checks: dict[str, bool] = {}
     details: dict[str, str] = {}
     blocked: list[str] = []
@@ -43,14 +83,39 @@ def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: An
     except Exception as e:
         check("mt5_installed", False, str(e), "MT5 check failed")
 
+    # 1b Establish the IPC link to the terminal (root-cause fix, Windows).
+    # MetaTrader5 data functions (terminal_info/account_info/symbol_info/
+    # symbol_info_tick) return None until initialize() succeeds IN THIS
+    # PROCESS; importing the module is not enough. Injected test mocks may
+    # lack initialize entirely — skip then (backward compatible).
+    init_detail = ""
+    if mt5_module is not None and hasattr(mt5_module, "initialize"):
+        path = terminal_path or os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH")
+        kwargs: dict[str, Any] = {"path": path} if path else {}
+        try:
+            initialized = bool(mt5_module.initialize(**kwargs))
+            init_detail = f"initialize(path={'configured' if path else 'auto'})={initialized}"
+            if not initialized:
+                with contextlib.suppress(Exception):
+                    init_detail += f" last_error={mt5_module.last_error()}"
+                blocked.append("MT5 initialize failed — terminal link not established")
+        except Exception as e:
+            init_detail = f"initialize error: {e}"
+            blocked.append("MT5 initialize failed — terminal link not established")
+
     # 2 Terminal running?
     if mt5_module is not None and hasattr(mt5_module, "terminal_info"):
         try:
             ti = mt5_module.terminal_info()
             running = ti is not None
-            check("terminal_running", running, f"terminal_info={ti}", None if running else "Terminal not running")
+            check(
+                "terminal_running",
+                running,
+                f"{init_detail} terminal_info={ti}".strip(),
+                None if running else "Terminal not running",
+            )
         except Exception as e:
-            check("terminal_running", False, str(e), "Terminal not running")
+            check("terminal_running", False, f"{init_detail} {e}".strip(), "Terminal not running")
     else:
         # In mock/sandbox, treat as not running but not blocker for demo observation
         check(
@@ -103,17 +168,27 @@ def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: An
     # 6 Symbol available?
     # 7 Symbol tradable?
     # 8 Symbol specification valid?
-    # Need symbol selection — default XAUUSD
-    symbol = "XAUUSD"
+    # Symbol resolution: explicit param > QTS_MT5_SYMBOL env > default XAUUSD.
+    # Broker symbol mapping (e.g. XAUUSD -> XAUUSD@) via symbol_map param or
+    # QTS_MT5_SYMBOL_MAP env — the raw requested name is often NOT the broker's
+    # actual symbol, which made symbol_info return None even on a working link.
+    # ternary form: mypy 2.x mis-infers `x or os.getenv(k, default)` as str | None
+    requested_symbol = os.getenv("QTS_MT5_SYMBOL", "XAUUSD") if symbol is None else symbol
+    broker_symbol = _resolve_symbol_map(symbol_map).get(requested_symbol, requested_symbol)
+    # Make the symbol visible in Market Watch before querying (mirrors
+    # MT5Adapter.get_symbol_spec); suppress: unsupported by some mocks/brokers.
+    if mt5_module is not None and hasattr(mt5_module, "symbol_select"):
+        with contextlib.suppress(Exception):
+            mt5_module.symbol_select(broker_symbol, True)
     if mt5_module is not None and hasattr(mt5_module, "symbol_info"):
         try:
-            si = mt5_module.symbol_info(symbol)
+            si = mt5_module.symbol_info(broker_symbol)
             available = si is not None
             check(
                 "symbol_available",
                 available,
-                f"symbol_info for {symbol} exists={available}",
-                None if available else f"Symbol {symbol} not available",
+                f"symbol_info for {requested_symbol} (broker {broker_symbol}) exists={available}",
+                None if available else f"Symbol {broker_symbol} not available",
             )
             if si:
                 tradable = bool(getattr(si, "trade_allowed", getattr(si, "tradable", True)))
@@ -149,7 +224,7 @@ def demo_forward_readiness_report(mt5_module: Any | None = None, risk_limits: An
     # 11 Spread acceptable?
     if mt5_module is not None and hasattr(mt5_module, "symbol_info_tick"):
         try:
-            t = mt5_module.symbol_info_tick(symbol)
+            t = mt5_module.symbol_info_tick(broker_symbol)
             if t is None:
                 check("market_data_fresh", False, "tick is None", "Market data not fresh")
                 check("bid_ask_valid", False, "no tick", "Bid/ask invalid")

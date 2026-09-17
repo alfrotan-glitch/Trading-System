@@ -844,12 +844,14 @@ def research_statistical() -> dict[str, Any]:
 
 # --- Demo Forward & Safety Boundary ---
 @app.get("/api/demo/readiness")
-def demo_readiness() -> dict[str, Any]:
+def demo_readiness(terminal_path: str | None = None, symbol: str | None = None) -> dict[str, Any]:
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
 
-    # Try to inject mock MT5 if real not available — still reports checklist
+    # Optional query params let the Setup Wizard send the entered terminal path
+    # and symbol; env (QTS_MT5_PATH/QTS_MT5_SYMBOL) remains the fallback.
+    # Fail-closed: the gate itself initializes MT5 and surfaces last_error.
     try:
-        return demo_forward_readiness_report()
+        return demo_forward_readiness_report(terminal_path=terminal_path or None, symbol=symbol or None)
     except Exception as e:
         return {"passed": False, "demo_enabled": False, "blocked_reasons": [str(e)], "checks": {}}
 
