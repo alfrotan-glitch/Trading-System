@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 import json
 import sys
-from datetime import UTC
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -469,7 +469,7 @@ def risk_reset(confirm: str) -> None:
     "market data source (e.g. MT5 terminal) and pass it explicitly.",
 )
 def risk_check(instrument: str, quantity: float, reference_price: str) -> None:
-    from datetime import UTC, datetime
+    from datetime import UTC
     from decimal import Decimal, InvalidOperation
 
     from qts.domain.value_objects import Account, Instrument, OrderIntent
@@ -1422,6 +1422,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
                 pending.append(intent)
         # Evidence
         import json
+        from datetime import datetime as _dt_lineage
+
+        from qts.observability.lineage import code_version as _code_version
 
         evidence = {
             "mode": "paper",
@@ -1431,6 +1434,11 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "trades": len(fills_out),
             "final_equity": float(portfolio.equity()),
             "fills": fills_out[:10],
+            # Evidence lineage (findings #21/#42): results that cannot be
+            # traced to code/config/time are not promotion-grade evidence.
+            "generated_at": _dt_lineage.now(UTC).isoformat(),
+            "code_version": _code_version(),
+            "data_class": "PAPER",
         }
         Path("data/evidence").mkdir(parents=True, exist_ok=True)
         Path("data/evidence/paper_trades.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
@@ -1515,6 +1523,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
                 )
                 pending.append(intent)
         import json
+        from datetime import datetime as _dt_lineage
+
+        from qts.observability.lineage import code_version as _code_version
 
         evidence = {
             "mode": "shadow",
@@ -1524,6 +1535,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "intents": len(shadow_intents),
             "would_be_fills": shadow_broker.get_would_be_fills()[:10],
             "intents_sample": shadow_intents[:10],
+            "generated_at": _dt_lineage.now(UTC).isoformat(),
+            "code_version": _code_version(),
+            "data_class": "SHADOW",
         }
         Path("data/evidence").mkdir(parents=True, exist_ok=True)
         Path("data/evidence/shadow_intents.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")

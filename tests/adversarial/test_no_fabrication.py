@@ -375,3 +375,76 @@ def test_impulse_forward_gate_reads_canonical_store_not_json(tmp_path, monkeypat
     fo = ForwardObservatory(db_path="data/sqlite/forward_observatory.db")
     fo.simulate_observation("XAUUSD", n_ticks=10)
     assert _forward_evidence_available(evidence_dir) is False
+
+
+# ---------------------------------------------------------------------------
+# Live-gate evidence: existence-only acceptance is banned (finding #22)
+# ---------------------------------------------------------------------------
+
+
+def test_paper_evidence_requires_lineage_not_mere_existence(tmp_path, monkeypatch):
+    """A parseable but lineage-less file must FAIL — 'file exists && size>10'
+    proves nothing about what produced it (old check accepted that)."""
+    import tempfile
+
+    from qts.lifecycle.live_gate import check_paper_evidence
+
+    monkeypatch.chdir(tempfile.mkdtemp())
+    ev_dir = tmp_path / "data" / "evidence"
+    ev_dir.mkdir(parents=True)
+    target = ev_dir / "paper_trades.json"
+    monkeypatch.chdir(tmp_path)
+
+    # existence + size only (no lineage) -> FAIL with precise reason
+    target.write_text(json.dumps({"mode": "paper", "fills": [{"price": 1, "qty": 1}]}), encoding="utf-8")
+    ok, detail = check_paper_evidence()
+    assert not ok
+    assert "lineage" in detail
+
+    # wrong mode label -> FAIL
+    target.write_text(
+        json.dumps(
+            {
+                "mode": "backtest",
+                "data_version": "v1",
+                "generated_at": "2026-01-01T00:00:00+00:00",
+                "code_version": "test",
+                "fills": [{"price": 1, "qty": 1}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    ok2, detail2 = check_paper_evidence()
+    assert not ok2
+    assert "mode" in detail2
+
+    # full lineage + real records -> PASS
+    target.write_text(
+        json.dumps(
+            {
+                "mode": "paper",
+                "data_version": "20260917-010-abc123",
+                "generated_at": "2026-09-17T00:00:00+00:00",
+                "code_version": "0.1.0+test",
+                "fills": [{"price": "2000", "qty": "0.1"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    ok3, detail3 = check_paper_evidence()
+    assert ok3, detail3
+    assert "data_version=" in detail3
+
+
+def test_shadow_evidence_requires_lineage(tmp_path, monkeypatch):
+    import tempfile
+
+    from qts.lifecycle.live_gate import check_shadow_evidence
+
+    monkeypatch.chdir(tempfile.mkdtemp())
+    target = Path("data/evidence/shadow_intents.json")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps({"mode": "shadow", "intents_sample": []}), encoding="utf-8")
+    ok, detail = check_shadow_evidence()
+    assert not ok
+    assert "lineage" in detail or "no intents_sample" in detail

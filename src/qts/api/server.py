@@ -366,7 +366,13 @@ def paper_center() -> dict[str, Any]:
         "fills": paper.get("fills", []),
         "pnl": paper.get("pnl", 0),
         "drawdown": paper.get("drawdown", 0),
-        "execution_statistics": {"total_fills": len(paper.get("fills", [])), "avg_slippage_bps": 1.5},
+        "execution_statistics": {
+            "total_fills": len(paper.get("fills", [])),
+            # PAPER fills are MODEL expectations — slippage is modeled, never
+            # observed. The old fabricated 1.5 bps placeholder is removed.
+            "avg_slippage_bps": {"status": "UNAVAILABLE", "value": None, "reason": "slippage is a MODEL assumption for paper fills; observed slippage requires real broker executions (DEMO_EXECUTION)"},
+            "label": "PAPER",
+        },
     }
 
 
@@ -849,8 +855,22 @@ def research_regime_observations() -> dict[str, Any]:
 
 @app.get("/api/research/execution-reality")
 def research_execution_reality() -> dict[str, Any]:
-    p = Path("data/evidence/execution_reality.json")
-    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    """Execution-reality summary from the CANONICAL store; the JSON export is
+    derived. Distinguishes MEASURED (real observations) from UNAVAILABLE."""
+    from qts.execution.reality import ExecutionRealityStore
+
+    try:
+        summary = ExecutionRealityStore().summary()
+    except Exception as e:
+        summary = {"status": "UNAVAILABLE", "reason": f"execution-reality store unavailable: {e}"}
+    if isinstance(summary, dict) and not summary.get("real_count"):
+        summary.setdefault(
+            "measured_metrics",
+            {
+                "avg_slippage_bps": {"status": "UNAVAILABLE", "value": None, "reason": "no REAL execution observations"},
+            },
+        )
+    return summary
 
 
 @app.get("/api/research/data-quality-adversarial")
@@ -999,13 +1019,17 @@ def demo_safety() -> dict[str, Any]:
 
 @app.get("/api/demo/comparison")
 def demo_comparison() -> dict[str, Any]:
+    """Fresh comparison — computed from current inputs, never a stale file.
+
+    The JSON file is a derived export refreshed by /api/demo/comparison/refresh;
+    serving it as live truth could present outdated metrics as current.
+    """
     from qts.execution.demo_comparison import compare_paper_shadow_demo
 
-    p = Path("data/evidence/paper_shadow_demo_comparison.json")
-    if p.exists():
-        with contextlib.suppress(Exception):
-            return json.loads(p.read_text(encoding="utf-8"))
-    return compare_paper_shadow_demo()
+    try:
+        return compare_paper_shadow_demo()
+    except Exception as e:
+        return {"status": "UNAVAILABLE", "reason": f"comparison computation failed: {e}"}
 
 
 @app.post("/api/demo/comparison/refresh")
