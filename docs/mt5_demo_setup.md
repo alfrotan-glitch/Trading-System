@@ -90,6 +90,61 @@ In QTS: **Setup Wizard → Test MT5 Connection** or **Demo Forward → Refresh C
 
 Only after all ✓ is *Demo Execution Enabled* allowed. Blocked reasons shown explicitly.
 
+## DEMO FORWARD vs LIVE
+
+- DEMO_FORWARD promotion requires a **passed** readiness report (14/14) plus a
+  successful order-placement dry run; LIVE stays disabled by policy.
+- Promotion ladder is one-way: `OBSERVE_ONLY -> DEMO_FORWARD -> LIVE (disabled by policy)`.
+- Demo execution order flow: `validate -> plan -> preflight -> gate -> submit -> poll-fill -> reconcile`.
+- Kill switch: `qts risk kill` halts new order submission independently of the desktop UI.
+- Symbol contract size: QTS `SymbolSpec.contract_size` maps from MT5
+  `SymbolInfo.trade_contract_size` (the real MT5 object has **no**
+  `contract_size` attribute; pinned by `tests/test_mt5_boundary_contract.py`).
+
+## OBSERVE-ONLY runtime collection (REAL ticks, ZERO orders)
+
+DEMO readiness passing proves the terminal is connected; it does **not** prove
+ticks are flowing *now*, and historical `recent_demo` JSON records are never
+treated as proof of current observation. The OBSERVE-ONLY runtime closes that
+gap:
+
+| Endpoint | Effect |
+| --- | --- |
+| `POST /api/observe/start` | Runs the 14-check DEMO readiness gate, resolves the symbol from the saved wizard config (`XAUUSD` -> broker `XAUUSD@`), starts ONE `ObservationCollector` polling `MarketDataProvider.get_tick()` at a controlled interval (default 1s, `QTS_OBSERVE_INTERVAL_S`), and persists every accepted tick through `ForwardObservatory.record_tick()` into `data/sqlite/forward_observatory.db`. |
+| `GET /api/observe/status` | `OBSERVING` / `STOPPED` / `BLOCKED` / `STOPPED_ON_ERRORS`, tick count, last tick time (UTC), symbol, timestamp basis, last validation error, session id, `orders_submitted: 0`. |
+| `POST /api/observe/stop` | Deterministic: signals the poll thread, joins it, persists `end_session`, rewrites the evidence manifest. |
+
+Safety properties (pinned by `tests/test_observe_only_collector.py`):
+
+- **Zero orders.** The collector's only broker touchpoint is `get_tick()`.
+  An AST scan of the collector module and the observe endpoints proves no
+  `order_send` / order-submission / simulation call exists on any path; the
+  test MT5 double additionally raises `AssertionError` from `order_send` as
+  a runtime sentinel.
+- **Readiness-gated.** `start()` refuses and records state `BLOCKED` unless
+  the readiness report says `passed: true` — fail-closed.
+- **Idempotent.** A duplicate start returns the existing session; there is
+  never more than one collector thread or open session. A restart after a
+  completed stop creates a NEW session (never resumes a closed one).
+- **Only REAL data.** Every tick flows through the unchanged validation path
+  and the canonical timestamp contract (`Tick.provenance` -> `ObservationTick`
+  broker fields). The observatory's simulation helper is not referenced by
+  this runtime path; fixtures cannot enter it.
+- **Fail-closed.** Terminal disconnect (`get_tick` errors), stale quotes,
+  conversion failures and symbol loss all count as consecutive failures;
+  after `max_consecutive_failures` the collector stops itself
+  (`STOPPED_ON_ERRORS`) and persists the session end. Repeated identical
+  quotes (unchanged raw MT5 stamp — a dead feed) are recorded once and
+  counted as `duplicates_skipped`, never fabricated into new observations.
+- **Evidence.** `data/evidence/forward_observation_manifest.json` is
+  regenerated from the actually-stored session rows with `class: "REAL"`,
+  `orders_submitted: 0`, the audited timestamp bases and spread/event-time
+  ranges.
+
+Desktop UI: the **DEMO FORWARD & EXECUTION** card exposes *Start Observation
+(No Orders)*, *Stop Observation* and *Refresh Status*, with a live status
+panel refreshing every 5s while `OBSERVING`.
+
 ## Troubleshooting
 - *MT5 not installed* → install terminal, `pip install MetaTrader5` in `.venv`.
 - *Terminal not running* → launch MT5 terminal before QTS.

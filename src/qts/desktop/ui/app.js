@@ -234,10 +234,43 @@ if(btnSetupSave) btnSetupSave.onclick = async ()=>{
 // Demo Forward handlers
 const btnDemoRefresh = document.getElementById('btn-demo-refresh-checks');
 if(btnDemoRefresh) btnDemoRefresh.onclick = ()=>loadDemoForward();
+async function refreshObserveStatus(){
+  try{
+    const st = await api('/api/observe/status');
+    $('observe-status').textContent = JSON.stringify({
+      state: st.state, symbol: st.symbol, ticks: st.ticks_recorded,
+      last_tick_time: st.last_tick_time, timestamp_basis: st.timestamp_basis,
+      last_error: st.last_error, session_id: st.session_id,
+      orders_submitted: st.orders_submitted, duplicates_skipped: st.duplicates_skipped,
+      consecutive_failures: st.consecutive_failures, blocked_reasons: st.blocked_reasons
+    }, null, 2);
+    if(st.state==='OBSERVING' && !window._obsTimer){ window._obsTimer = setInterval(refreshObserveStatus, 5000); }
+    if(st.state!=='OBSERVING' && window._obsTimer){ clearInterval(window._obsTimer); window._obsTimer=null; }
+  }catch(e){ const el=$('observe-status'); if(el) el.textContent='Error '+e }
+}
 const btnDemoObserve = document.getElementById('btn-demo-observe-start');
 if(btnDemoObserve) btnDemoObserve.onclick = async ()=>{
-  document.getElementById('demo-observe').textContent='Observation started — recording ticks via forward_observatory (no orders). See data/evidence/forward_observation_manifest.json';
+  $('demo-observe').textContent='Starting OBSERVE-ONLY collection (readiness-gated, no orders)...';
+  try{
+    const r = await api('/api/observe/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    if(r.started){
+      $('demo-observe').textContent='OBSERVING — session '+(r.status&&r.status.session_id)+' — REAL ticks, ZERO orders. Manifest: data/evidence/forward_observation_manifest.json';
+    }else{
+      $('demo-observe').textContent='NOT STARTED ('+(r.state||(r.status&&r.status.state)||r.reason||'refused')+') — BLOCKED reasons: '+JSON.stringify(r.blocked_reasons||(r.status&&r.status.blocked_reasons)||[]);
+    }
+    refreshObserveStatus();
+  }catch(e){ $('demo-observe').textContent='Error '+e }
 };
+const btnDemoObserveStop = document.getElementById('btn-demo-observe-stop');
+if(btnDemoObserveStop) btnDemoObserveStop.onclick = async ()=>{
+  try{
+    const r = await api('/api/observe/stop', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    $('demo-observe').textContent='Stop requested — '+(r.stopped?('session ended and persisted ('+(r.status&&r.status.ticks_recorded)+' ticks)'):'no active session');
+    refreshObserveStatus();
+  }catch(e){ $('demo-observe').textContent='Error '+e }
+};
+const btnDemoObserveStatus = document.getElementById('btn-demo-observe-status');
+if(btnDemoObserveStatus) btnDemoObserveStatus.onclick = ()=>refreshObserveStatus();
 const btnDemoEnable = document.getElementById('btn-demo-enable');
 if(btnDemoEnable) btnDemoEnable.onclick = async ()=>{
   const ack = document.getElementById('demo-risk-ack2')?.checked;
@@ -437,6 +470,7 @@ async function loadDemoForward(){
     $('demo-capture').textContent = JSON.stringify({recent_demo: obs.slice(0,3), comparison: paper}, null,2).slice(0,4000);
   }catch(e){$('demo-capture').textContent='Error '+e}
   $('demo-position-mgmt').textContent = 'Position management research active — compares fixed/trailing/vol-based/structural/momentum-decay/time/partial/dynamic/emergency exits with same scientific gates.';
+  refreshObserveStatus();
 }
 async function loadComparison(){
   try{

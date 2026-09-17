@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -937,6 +938,111 @@ def demo_observations(limit: int = 20) -> list[dict[str, Any]]:
         return obs[-limit:][::-1] if isinstance(obs, list) else []
     except Exception:
         return []
+
+
+# --- OBSERVE-ONLY live collection (REAL market data, ZERO orders) ---
+_OBSERVE_LOCK = threading.Lock()
+_OBSERVE_STATE: dict[str, Any] = {"collector": None}
+
+
+def _resolve_observe_symbol(setup_kwargs: dict[str, Any]) -> tuple[str, str]:
+    """(requested, broker) symbol from saved wizard config/env (XAUUSD -> XAUUSD@)."""
+    import os
+
+    requested = setup_kwargs.get("symbol") or os.getenv("QTS_MT5_SYMBOL", "XAUUSD")
+    symbol_map = setup_kwargs.get("symbol_map")
+    broker = symbol_map.get(requested, requested) if isinstance(symbol_map, dict) else requested
+    return str(requested), str(broker)
+
+
+def _build_observe_collector(terminal_path: str | None, requested: str, broker: str, interval_s: float) -> Any:
+    """Real collector wiring. Module-level factory = test injection seam."""
+    from qts.adapters.market_data import MarketDataProvider
+    from qts.adapters.mt5_adapter import MT5Adapter
+    from qts.domain.value_objects import Instrument
+    from qts.observability.demo_collector import ObservationCollector
+    from qts.observability.forward_observatory import ForwardObservatory
+
+    symbol_map = {requested: broker} if broker != requested else {}
+    adapter = MT5Adapter(config={"path": terminal_path or "", "symbol_map": symbol_map})
+    provider = MarketDataProvider(broker=adapter)
+    observatory = ForwardObservatory()
+    return ObservationCollector(
+        provider=provider,
+        observatory=observatory,
+        instrument=Instrument(symbol=requested, venue="MT5"),
+        broker_symbol=broker,
+        interval_s=interval_s,
+    )
+
+
+@app.post("/api/observe/start")
+def observe_start(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Start OBSERVE-ONLY collection of REAL MT5 ticks. Zero orders.
+
+    Refuses unless DEMO readiness passes (14/14). Idempotent: repeated start
+    returns the running session instead of creating a duplicate collector.
+    The collector only reaches market-data APIs; order_send is not on any
+    code path (pinned by tests/test_observe_only_collector.py).
+    """
+    import os
+
+    from qts.lifecycle.demo_gate import demo_forward_readiness_report
+
+    body = payload if isinstance(payload, dict) else {}
+    try:
+        interval_s = float(body.get("interval_s", os.getenv("QTS_OBSERVE_INTERVAL_S", "1.0")))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "interval_s must be a number") from None
+    with _OBSERVE_LOCK:
+        existing = _OBSERVE_STATE.get("collector")
+        if existing is not None and existing.state == "OBSERVING":
+            return {"started": False, "reason": "already_running", "status": existing.status()}
+    # readiness OUTSIDE the lock so /api/observe/status stays responsive
+    setup = _wizard_setup_kwargs(None, None)
+    readiness = demo_forward_readiness_report(**setup)
+    requested, broker = _resolve_observe_symbol(setup)
+    with _OBSERVE_LOCK:  # double-check: a concurrent start may have won the race
+        existing = _OBSERVE_STATE.get("collector")
+        if existing is not None and existing.state == "OBSERVING":
+            return {"started": False, "reason": "already_running", "status": existing.status()}
+        collector = _build_observe_collector(setup.get("terminal_path"), requested, broker, interval_s)
+        # start() refuses internally unless readiness passed -> state BLOCKED is
+        # recorded in the collector so /api/observe/status surfaces it to the UI.
+        status = collector.start(readiness)
+        _OBSERVE_STATE["collector"] = collector
+        resp: dict[str, Any] = {"started": status["state"] == "OBSERVING", "status": status}
+        if not resp["started"]:
+            resp["note"] = "OBSERVE-ONLY refused: DEMO readiness must pass all 14 checks (fail-closed)"
+        return resp
+
+
+@app.get("/api/observe/status")
+def observe_status() -> dict[str, Any]:
+    """Operator status: OBSERVING / STOPPED / BLOCKED / STOPPED_ON_ERRORS + counters."""
+    with _OBSERVE_LOCK:
+        collector = _OBSERVE_STATE.get("collector")
+        if collector is None:
+            return {
+                "state": "STOPPED",
+                "mode": "OBSERVE_ONLY",
+                "orders_submitted": 0,
+                "ticks_recorded": 0,
+                "note": "no observation session has been started",
+            }
+        return collector.status()
+
+
+@app.post("/api/observe/stop")
+def observe_stop() -> dict[str, Any]:
+    """Deterministic stop: thread join, persisted session end, final manifest."""
+    with _OBSERVE_LOCK:
+        collector = _OBSERVE_STATE.get("collector")
+        if collector is None:
+            return {"stopped": False, "status": {"state": "STOPPED", "ticks_recorded": 0}}
+        if collector.state != "OBSERVING":
+            return {"stopped": False, "status": collector.status()}
+        return {"stopped": True, "status": collector.stop()}
 
 
 @app.get("/api/env/boundary")

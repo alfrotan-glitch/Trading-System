@@ -318,7 +318,7 @@
     <div class="card"><h3>MT5 Demo Connection Checker — 14 Checks</h3><div id="demo-checks" class="pre"></div><button id="btn-demo-refresh-checks">Refresh Checks</button><div class="pre">Only after all 14 pass should DEMO_FORWARD be enabled. LIVE account supplied to DEMO blocked.</div></div>
     <div class="card"><h3>Forward Research Protocol — Observe Only vs Demo Execution</h3>
       <div class="two-col">
-        <div class="card"><h4>OBSERVE ONLY (safe)</h4><div id="demo-observe" class="pre"></div><button id="btn-demo-observe-start">Start Observation (No Orders)</button></div>
+        <div class="card"><h4>OBSERVE ONLY (safe) — REAL ticks, ZERO orders</h4><div id="demo-observe" class="pre"></div><button id="btn-demo-observe-start">Start Observation (No Orders)</button> <button id="btn-demo-observe-stop">Stop Observation</button> <button id="btn-demo-observe-status">Refresh Status</button><div id="observe-status" class="pre"></div></div>
         <div class="card"><h4>DEMO EXECUTION ENABLED (requires confirmation + risk ack + 14 checks)</h4><div id="demo-execution" class="pre"></div><label><input type="checkbox" id="demo-risk-ack2"> Risk ack</label> <button id="btn-demo-enable">Enable Demo Execution</button></div>
       </div>
       <div class="pre">Lifecycle: RESEARCH → VALIDATING → FORWARD_OBSERVATION → PAPER_VERIFIED → SHADOW_VERIFIED → DEMO_OBSERVATION / DEMO_EXECUTION — demo success does NOT become LIVE eligible.</div>

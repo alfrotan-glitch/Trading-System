@@ -38,6 +38,7 @@ class ObservationTick(BaseModel):
     broker_time_raw: float | None = None  # raw MT5 server-basis epoch seconds, as received
     server_utc_offset_s: float | None = None  # offset applied during normalization
     timestamp_basis: str = "ingest-utc"  # ingest-utc | broker-normalized(<offset basis>)
+    tick_provenance: dict[str, Any] | None = None  # full Tick.provenance (receipt time, stamps, basis)
 
     @classmethod
     def from_domain_tick(cls, tick: Tick, symbol: str | None = None) -> ObservationTick:
@@ -53,10 +54,12 @@ class ObservationTick(BaseModel):
             ask=tick.ask,
             mid=mid,
             spread_bps=spread_bps,
+            data_freshness_ms=(datetime.now(UTC) - tick.event_time).total_seconds() * 1000.0,
             broker_event_time=tick.event_time,
             broker_time_raw=prov.get("mt5_time"),
             server_utc_offset_s=prov.get("server_utc_offset_s"),
             timestamp_basis=f"broker-normalized({basis_src})",
+            tick_provenance=dict(prov) if prov else None,
         )
 
 
