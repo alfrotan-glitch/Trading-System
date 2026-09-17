@@ -48,6 +48,10 @@ data/setup/
 # "versions" that resolve to zero usable bars on a clean clone)
 data/manifests/
 
+# Desktop-produced session-evidence exports — machine-local artifacts, transferred
+# deliberately for audit; never committed accidentally.
+data/evidence/exports/
+
 # Node (UI dev-test harness only — the product has no Node dependency)
 node_modules/
 

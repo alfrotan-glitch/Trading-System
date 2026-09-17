@@ -580,6 +580,48 @@ def audit_ship(jsonl: str, shipper: str, bucket: str | None, prefix: str) -> Non
 
 
 @main.group()
+def evidence() -> None:
+    """Sanitized session-evidence export/verify (Desktop -> auditable artifact)."""
+
+
+@evidence.command("export-session")
+@click.argument("session_id")
+@click.option("--db", default="data/sqlite/forward_observatory.db", help="canonical observation store")
+@click.option("--out", default=None, help="output path (default data/evidence/exports/<id>.session_evidence.json)")
+def evidence_export_session(session_id: str, db: str, out: str | None) -> None:
+    """Recompute ONE session's evidence from the canonical store and write a
+    sanitized, digest-bound artifact. Run this ON THE DESKTOP that observed."""
+    from qts.observability.session_export import SessionExportError, write_session_evidence
+
+    try:
+        art, path = write_session_evidence(session_id, db_path=db, out_path=out)
+    except SessionExportError as e:
+        click.echo(f"export refused (fail-closed): {e}", err=True)
+        raise SystemExit(1) from e
+    c = art["counters"]
+    click.echo(f"exported session {session_id} -> {path}")
+    click.echo(
+        f"  ticks={c['tick_count']} provenance={c['ticks_by_provenance']} "
+        f"duplicates_in_store={c['duplicate_raw_stamps_in_store']} status={art['session']['status']}"
+    )
+    click.echo(f"  chain_root={art['digest']['chain_root']}")
+    click.echo("  NOTE: transfer only this artifact; it contains no credentials.")
+
+
+@evidence.command("verify")
+@click.argument("artifact_path")
+def evidence_verify(artifact_path: str) -> None:
+    """Structurally verify an exported session-evidence artifact. Proves internal
+    consistency + contract conformance, never the Desktop origin by itself."""
+    from qts.observability.session_export import verify_session_export
+
+    rpt = verify_session_export(Path(artifact_path))
+    click.echo(json.dumps(rpt, indent=2, default=str))
+    if rpt["verdict"] != "CONSISTENT":
+        raise SystemExit(1)
+
+
+@main.group()
 def research() -> None:
     pass
 

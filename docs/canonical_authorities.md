@@ -107,6 +107,12 @@ full payload JSON is immutable).
   impulse forward-evidence gate consumes THIS, never a JSON file.
 - `forward_observation_manifest.json` is a DERIVED export (regenerable).
   It is never the primary source and never satisfies a gate by existing.
+- Desktop -> audit transfer: `qts evidence export-session <id>` recomputes a
+  sanitized, digest-bound artifact from the canonical store
+  (`qts.observability.session_export`); `qts evidence verify <file>` checks
+  it anywhere. See `docs/forward_observation_protocol.md` (Desktop Evidence
+  Transfer). A consistent artifact proves internal coherence, never Desktop
+  origin by itself.
 
 ## 5. Provenance model — `qts.domain.provenance`
 
