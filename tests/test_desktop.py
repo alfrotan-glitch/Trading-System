@@ -388,3 +388,22 @@ def test_packaging_docs():
     assert Path("docs/user_operation_guide.md").exists()
     assert Path("docs/research_campaign_protocol.md").exists()
     assert Path("docs/edge_discovery_report.md").exists()
+
+
+def test_health_config_reports_canonical_mode_not_fabricated_default():
+    """The startup health config check must report the mode resolved by the
+    ONE canonical authority (qts.domain.modes) — never the old fabricated
+    'research' default that named a mode which does not exist."""
+    from qts.desktop.health import startup_health_check
+
+    health = startup_health_check()
+    cfg = next((c for c in health["checks"] if c["name"] == "verify_configuration"), None)
+    assert cfg is not None
+    detail = cfg["detail"]
+    assert "mode=" in detail
+    assert "mode=research" not in detail, "fabricated 'research' mode default reappeared"
+    # The reported mode must be a real canonical ExecutionMode value.
+    from qts.domain.modes import ExecutionMode
+
+    reported = detail.split("mode=")[-1].strip()
+    assert reported in {m.value for m in ExecutionMode}, f"non-canonical mode reported: {reported!r}"

@@ -8,6 +8,7 @@ Asserts the structural product decisions that must never silently regress:
 * the UI is self-contained: no CDN/external dependencies (offline desktop)
 * the old flat 28-tab navigation is gone
 """
+
 from __future__ import annotations
 
 import re
@@ -56,7 +57,7 @@ def test_no_external_cdn_dependencies(client):
     """Offline desktop product — no external origins anywhere in the UI."""
     for p in list(UI.rglob("*.html")) + list(JS.rglob("*.js")) + list((UI / "css").glob("*.css")):
         src = p.read_text(encoding="utf-8")
-        external = re.findall(r'https?://[a-z0-9.-]+\.[a-z]{2,}', src, re.I)
+        external = re.findall(r"https?://[a-z0-9.-]+\.[a-z]{2,}", src, re.I)
         external = [u for u in external if "www.w3.org" not in u]  # SVG namespace only
         assert not external, f"{p.name} references external origin(s): {external}"
 
@@ -65,7 +66,7 @@ def test_flat_tab_navigation_is_gone(client):
     html = _get(client, "/").text
     assert "data-view=" not in html, "old flat nav markup still present"
     src = (JS / "main.js").read_text(encoding="utf-8")
-    top_level_groups = re.findall(r'^  \{', src, re.M)
+    top_level_groups = re.findall(r"^  \{", src, re.M)
     assert len(top_level_groups) == 8, "IA must have exactly 8 primary areas"
 
 
@@ -103,17 +104,39 @@ def test_views_cover_all_legacy_functionality():
     for p in JS.rglob("*.js"):
         endpoints_used |= set(re.findall(r'"/api/[^"]+"', p.read_text(encoding="utf-8")))
     required = [
-        "/api/health", "/api/dashboard", "/api/risk", "/api/mt5", "/api/audit",
-        "/api/live/status", "/api/paper", "/api/shadow", "/api/execution/orders",
-        "/api/demo/readiness", "/api/demo/state", "/api/demo/safety", "/api/demo/config",
-        "/api/demo/observations", "/api/demo/comparison",
-        "/api/observe/status", "/api/observe/start", "/api/observe/stop",
-        "/api/setup/mt5", "/api/env/boundary", "/api/notifications",
-        "/api/research/campaigns", "/api/research/hypotheses", "/api/research/memory",
-        "/api/research/novelty", "/api/research/statistical", "/api/research/data-audit",
-        "/api/research/data-inventory", "/api/research/data-quality-adversarial",
-        "/api/research/data-source-catalog", "/api/research/forward-manifest",
-        "/api/research/execution-reality", "/api/research/regime-observations",
+        "/api/health",
+        "/api/dashboard",
+        "/api/risk",
+        "/api/mt5",
+        "/api/audit",
+        "/api/live/status",
+        "/api/paper",
+        "/api/shadow",
+        "/api/execution/orders",
+        "/api/demo/readiness",
+        "/api/demo/state",
+        "/api/demo/safety",
+        "/api/demo/config",
+        "/api/demo/observations",
+        "/api/demo/comparison",
+        "/api/observe/status",
+        "/api/observe/start",
+        "/api/observe/stop",
+        "/api/setup/mt5",
+        "/api/env/boundary",
+        "/api/notifications",
+        "/api/research/campaigns",
+        "/api/research/hypotheses",
+        "/api/research/memory",
+        "/api/research/novelty",
+        "/api/research/statistical",
+        "/api/research/data-audit",
+        "/api/research/data-inventory",
+        "/api/research/data-quality-adversarial",
+        "/api/research/data-source-catalog",
+        "/api/research/forward-manifest",
+        "/api/research/execution-reality",
+        "/api/research/regime-observations",
     ]
     missing = [e for e in required if f'"{e}' not in " ".join(endpoints_used)]
     assert not missing, f"legacy endpoints with no UI home: {missing}"

@@ -204,9 +204,7 @@ def resolve_risk_limits(
     applied: dict[str, Any] = dict(mode_over)
     approved_ack = False
     if config_overrides:
-        approved_ack = bool(config_overrides.get("approved", False)) or (
-            os.getenv("QTS_RISK_LOOSEN_ACK") == "accepted"
-        )
+        approved_ack = bool(config_overrides.get("approved", False)) or (os.getenv("QTS_RISK_LOOSEN_ACK") == "accepted")
         allowed = set(CanonicalRiskLimits.model_fields.keys()) - {"version"}
         unknown = sorted(set(config_overrides) - allowed - {"approved"})
         if unknown:
@@ -220,9 +218,7 @@ def resolve_risk_limits(
             except Exception:
                 loosening = False
             if loosening and not (approved_ack or bool(BASE_LIMITS.approved)):
-                warnings.append(
-                    f"override {k}={v} loosens {base_v} and was REJECTED (requires risk.approved)"
-                )
+                warnings.append(f"override {k}={v} loosens {base_v} and was REJECTED (requires risk.approved)")
                 continue
             values[k] = v
             sources[k] = "config_override"

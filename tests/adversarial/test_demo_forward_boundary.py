@@ -409,10 +409,19 @@ def test_demo_safety_independent_limits():
 
 
 def test_demo_comparison_label_never_live():
+    """The derived comparison artifact must label DEMO as never-LIVE.
+
+    Current canonical shape: the label lives in the explicit `provenance`
+    block (legacy top-level `label` predates the provenance-first redesign).
+    The regenerated artifact is pinned here so a revert to either the legacy
+    shape or an unlabeled file fails loudly.
+    """
     p = Path("data/evidence/paper_shadow_demo_comparison.json")
     assert p.exists()
     import json
 
     data = json.loads(p.read_text(encoding="utf-8"))
-    assert data.get("label") == "DEMO never LIVE"
+    prov = data.get("provenance") or {}
+    label = prov.get("label") or data.get("label")
+    assert label == "DEMO never LIVE"
     assert data.get("demo_observations", 0) >= 0

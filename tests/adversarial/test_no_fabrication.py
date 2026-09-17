@@ -100,13 +100,16 @@ def test_mt5_adapter_source_has_no_metadata_defaults():
                 field, default = args[1].value, args[2]
                 # A default of None means UNAVAILABLE (honest). A literal
                 # number/string default would fabricate broker truth.
-                if field in BANNED_FIELDS and isinstance(default, ast.Constant) and isinstance(
-                    default.value, (int, float)
-                ) or (
+                if (
                     field in BANNED_FIELDS
                     and isinstance(default, ast.Constant)
-                    and isinstance(default.value, str)
-                    and default.value != ""
+                    and isinstance(default.value, (int, float))
+                    or (
+                        field in BANNED_FIELDS
+                        and isinstance(default, ast.Constant)
+                        and isinstance(default.value, str)
+                        and default.value != ""
+                    )
                 ):
                     offenders.append(f'getattr(x, "{field}", {default.value!r})')
     assert offenders == [], f"fabricated metadata defaults reappeared: {offenders}"
@@ -298,30 +301,39 @@ def test_signal_agreement_uses_event_alignment_not_count_ratio():
 
 
 def test_unknown_provenance_string_is_unverified():
-    assert classify_record_provenance(
-        recorded_provenance="SOMETHING_ELSE",
-        symbol_ok=True,
-        timestamps_fresh_and_ordered=True,
-        lineage_bound=True,
-    ) is EvidenceProvenance.UNVERIFIED
+    assert (
+        classify_record_provenance(
+            recorded_provenance="SOMETHING_ELSE",
+            symbol_ok=True,
+            timestamps_fresh_and_ordered=True,
+            lineage_bound=True,
+        )
+        is EvidenceProvenance.UNVERIFIED
+    )
 
 
 def test_none_provenance_is_unverified():
-    assert classify_record_provenance(
-        recorded_provenance=None,
-        symbol_ok=True,
-        timestamps_fresh_and_ordered=True,
-        lineage_bound=True,
-    ) is EvidenceProvenance.UNVERIFIED
+    assert (
+        classify_record_provenance(
+            recorded_provenance=None,
+            symbol_ok=True,
+            timestamps_fresh_and_ordered=True,
+            lineage_bound=True,
+        )
+        is EvidenceProvenance.UNVERIFIED
+    )
 
 
 def test_broken_lineage_downgrades_real_to_unverified():
-    assert classify_record_provenance(
-        recorded_provenance="REAL",
-        symbol_ok=False,
-        timestamps_fresh_and_ordered=True,
-        lineage_bound=True,
-    ) is EvidenceProvenance.UNVERIFIED
+    assert (
+        classify_record_provenance(
+            recorded_provenance="REAL",
+            symbol_ok=False,
+            timestamps_fresh_and_ordered=True,
+            lineage_bound=True,
+        )
+        is EvidenceProvenance.UNVERIFIED
+    )
 
 
 def test_real_only_supports_real_claims():
@@ -448,3 +460,60 @@ def test_shadow_evidence_requires_lineage(tmp_path, monkeypatch):
     ok, detail = check_shadow_evidence()
     assert not ok
     assert "lineage" in detail or "no intents_sample" in detail
+
+
+# ---------------------------------------------------------------------------
+# The DERIVED comparison artifact must stay in the current honest shape:
+# MetricValue dicts (MEASURED or UNAVAILABLE), never the legacy raw scalars
+# (slippage 2.5 bps / latency 120 ms / fabricated demo fills+PnL) that came
+# from the quarantined fabricated observations.
+# ---------------------------------------------------------------------------
+
+
+def test_comparison_artifact_never_reverts_to_fabricated_raw_scalars():
+    from qts.execution.demo_comparison import compare_paper_shadow_demo
+
+    res = compare_paper_shadow_demo(paper_fills=[], shadow_intents=[], demo_observations=[])
+    # Every execution-reality metric must be a MetricValue dict, never a bare
+    # number that could be mistaken for a measurement.
+    for key in (
+        "expected_entry_difference_bps",
+        "actual_entry_difference_bps",
+        "spread_difference_bps",
+        "slippage_demo_bps",
+        "latency_demo_ms",
+        "exit_differences",
+        "signal_agreement",
+    ):
+        v = res[key]
+        assert isinstance(v, dict) and v.get("status") in (
+            "MEASURED",
+            "UNAVAILABLE",
+            "INSUFFICIENT_EVIDENCE",
+        ), f"{key} reverted to a non-MetricValue shape: {v!r}"
+        if v["status"] != "MEASURED":
+            assert v["value"] is None, f"{key} unmeasured but carries a value: {v!r}"
+            assert v.get("reason"), f"{key} UNAVAILABLE without a machine-readable reason: {v!r}"
+    # The fabricated legacy constants must never reappear as measurements.
+    assert res["slippage_demo_bps"]["status"] == "UNAVAILABLE"
+    assert res["latency_demo_ms"]["status"] == "UNAVAILABLE"
+    assert res["demo_fills_recorded"] == 0
+
+
+def test_tracked_comparison_evidence_is_current_shape():
+    """The tracked derived export, when present, must be the honest
+    MetricValue shape — not the stale fabricated scalar file it replaced."""
+    p = Path(__file__).resolve().parents[2] / "data" / "evidence" / "paper_shadow_demo_comparison.json"
+    if not p.exists():
+        return  # derived export regenerable; absence is fine
+    data = json.loads(p.read_text(encoding="utf-8"))
+    # Legacy fabricated fields that must NOT come back.
+    for banned in ("demo_fills", "pnl_demo", "pnl_paper", "fill_difference"):
+        assert banned not in data, f"legacy fabricated field {banned!r} reappeared in comparison evidence"
+    for key in ("slippage_demo_bps", "latency_demo_ms"):
+        v = data.get(key)
+        assert isinstance(v, dict) and "status" in v, f"{key} is not a MetricValue dict: {v!r}"
+        # The exact fabricated constants from the quarantined records are banned
+        # unless a real measurement replaced them (status MEASURED + reason absent).
+        if v.get("status") != "MEASURED":
+            assert v.get("value") is None, f"{key} carries a fabricated value: {v!r}"

@@ -17,8 +17,11 @@ invents its own**.
 | Location | `src/qts/desktop/ui/` | `index.html`, `css/` (4 layers), `js/` (core + `views/`) |
 
 DOM-free logic (`format.js`, `status.js`) is unit-tested with Node
-(`node --test tests/ui/js/`); the full shell is exercised by a jsdom
-functional tour against a **real** backend (`tests/test_ui_logic.py`);
+(`node --test tests/ui/js/format.test.mjs tests/ui/js/status.test.mjs`); the
+full shell is exercised by a jsdom
+functional tour against a **real** backend (`tests/test_ui_logic.py`, which
+starts uvicorn itself; running `tests/ui/js/shell.test.mjs` directly needs a
+backend on `QTS_UI_BASE`, default `http://127.0.0.1:8901`);
 Playwright/Chromium specs run wherever a browser is available
 (`tests/ui/test_browser.py`) and capture screenshots of the key screens.
 

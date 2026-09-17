@@ -9,6 +9,7 @@ Skip-guarded: requires `playwright` + a Chromium install
 (`pip install playwright && playwright install chromium`).
 Starts a real uvicorn server on a free port with isolated setup state.
 """
+
 from __future__ import annotations
 
 import os
@@ -39,9 +40,22 @@ def server():
     env["QTS_SETUP_FILE"] = str(Path(os.getenv("QTS_TEST_TMP", "/tmp")) / "browser-test-setup.json")
     env["QTS_API_PORT"] = str(port)
     proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "qts.api.server:app", "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning"],
-        cwd=REPO, env=env,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "qts.api.server:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+            "--log-level",
+            "warning",
+        ],
+        cwd=REPO,
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     import urllib.request
 

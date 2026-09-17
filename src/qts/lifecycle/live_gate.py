@@ -138,9 +138,7 @@ def check_reconciliation() -> tuple[bool, str]:
         return False, f"reconcile check failed: {e}"
 
 
-def _lineage_checked_evidence(
-    candidates: list[Path], expected_mode: str, required_list_key: str
-) -> tuple[bool, str]:
+def _lineage_checked_evidence(candidates: list[Path], expected_mode: str, required_list_key: str) -> tuple[bool, str]:
     """Lineage-checked mode evidence — NEVER mere file existence (finding #22).
 
     Evidence passes only when it proves WHAT produced it, WHEN, with WHICH
@@ -170,9 +168,7 @@ def _lineage_checked_evidence(
         if data.get("mode") != expected_mode:
             reasons.append(f"{p}: mode={data.get('mode')!r} != {expected_mode!r}")
             continue
-        missing_lineage = [
-            k for k in ("data_version", "generated_at", "code_version") if not data.get(k)
-        ]
+        missing_lineage = [k for k in ("data_version", "generated_at", "code_version") if not data.get(k)]
         if missing_lineage:
             reasons.append(f"{p}: lacks lineage {missing_lineage} — regenerate with current CLI")
             continue

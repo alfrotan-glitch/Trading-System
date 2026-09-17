@@ -185,8 +185,16 @@ def dashboard() -> dict[str, Any]:
         equity = {"status": "MEASURED", "value": float(acct.equity), "source": acct.source}
         balance = {"status": "MEASURED", "value": float(acct.balance), "source": acct.source}
     except Exception as e:
-        equity = {"status": "UNAVAILABLE", "value": None, "reason": f"no authoritative broker account: {type(e).__name__}"}
-        balance = {"status": "UNAVAILABLE", "value": None, "reason": f"no authoritative broker account: {type(e).__name__}"}
+        equity = {
+            "status": "UNAVAILABLE",
+            "value": None,
+            "reason": f"no authoritative broker account: {type(e).__name__}",
+        }
+        balance = {
+            "status": "UNAVAILABLE",
+            "value": None,
+            "reason": f"no authoritative broker account: {type(e).__name__}",
+        }
     unrealized = {"status": "UNAVAILABLE", "value": None, "reason": "requires broker positions + authoritative marks"}
     realized = {"status": "UNAVAILABLE", "value": None, "reason": "requires broker deal history"}
     drawdown = {"status": "UNAVAILABLE", "value": None, "reason": "requires authoritative equity series"}
@@ -215,10 +223,18 @@ def dashboard() -> dict[str, Any]:
         "exposure": {"status": "UNAVAILABLE", "value": None, "reason": "requires broker positions"},
         "open_positions": [],
         "market_status": h["market_data"],
-        "spread": {"status": "UNAVAILABLE", "value": None, "reason": "live spread requires an active broker tick session"},
+        "spread": {
+            "status": "UNAVAILABLE",
+            "value": None,
+            "reason": "live spread requires an active broker tick session",
+        },
         "account_state": "Active" if h["system_status"] == "Running" else h["system_status"],
         "current_strategy": h["strategy"],
-        "current_regime": {"status": "UNAVAILABLE", "value": None, "reason": "regime requires observed market data; it is never inferred from system status"},
+        "current_regime": {
+            "status": "UNAVAILABLE",
+            "value": None,
+            "reason": "regime requires observed market data; it is never inferred from system status",
+        },
         "latest_decision": latest_decision,
         "latest_order": latest_order,
         "latest_fill": None,
@@ -370,7 +386,11 @@ def paper_center() -> dict[str, Any]:
             "total_fills": len(paper.get("fills", [])),
             # PAPER fills are MODEL expectations — slippage is modeled, never
             # observed. The old fabricated 1.5 bps placeholder is removed.
-            "avg_slippage_bps": {"status": "UNAVAILABLE", "value": None, "reason": "slippage is a MODEL assumption for paper fills; observed slippage requires real broker executions (DEMO_EXECUTION)"},
+            "avg_slippage_bps": {
+                "status": "UNAVAILABLE",
+                "value": None,
+                "reason": "slippage is a MODEL assumption for paper fills; observed slippage requires real broker executions (DEMO_EXECUTION)",
+            },
             "label": "PAPER",
         },
     }
@@ -1259,7 +1279,12 @@ def demo_enable(payload: dict[str, Any]) -> Any:  # dict on success, JSONRespons
     try:
         rpt = demo_forward_readiness_report(**setup)
     except Exception as e:
-        rpt = {"passed": False, "demo_enabled": False, "blocked_reasons": [f"readiness probe failed: {e}"], "checks": {}}
+        rpt = {
+            "passed": False,
+            "demo_enabled": False,
+            "blocked_reasons": [f"readiness probe failed: {e}"],
+            "checks": {},
+        }
     age = readiness_age_seconds(rpt)
     authority = _demo_authority()
     decision = authority.enable(
@@ -1280,7 +1305,23 @@ def demo_enable(payload: dict[str, Any]) -> Any:  # dict on success, JSONRespons
 
 @app.get("/api/demo/state")
 def demo_state() -> dict[str, Any]:
-    """The authoritative DEMO execution permission state (single source)."""
+    """The authoritative DEMO execution permission state (single source).
+
+    Two readiness facts are reported and may LEGITIMATELY disagree:
+
+    * ``readiness_passed`` / ``readiness_evidence`` — the PERSISTED decision
+      record: the readiness report bound to the latest authority transition
+      (enable/refusal/disable). ``readiness_passed=false`` with
+      ``readiness_evidence="none"`` simply means no passing readiness was ever
+      durably recorded (e.g. never enabled) — not that the terminal now fails.
+    * ``current_readiness.passed`` — a FRESH 14-check probe of the terminal
+      computed in THIS request.
+
+    So ``readiness_passed=false`` + ``current_readiness.passed=true`` is a
+    coherent state: the environment is ready now, but no enablement decision
+    carries passing readiness evidence. Execution stays forbidden until
+    ``/api/demo/enable`` binds a fresh pass to a durable decision.
+    """
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
 
     setup = _wizard_setup_kwargs(None, None)

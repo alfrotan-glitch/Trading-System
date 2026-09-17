@@ -194,6 +194,6 @@ def test_ui_wires_save_to_the_endpoint():
     assert "api.post" in js  # save issues a POST
     # never claim success on 4xx — structurally: the api layer throws non-2xx
     assert "if (!resp.ok) throw" in api_js
-    assert "toast(\"err\", \"Could not save setup\"" in js  # failure surfaced, not swallowed
+    assert 'toast("err", "Could not save setup"' in js  # failure surfaced, not swallowed
     assert "Nothing is enabled from this page" in js  # truthful about what save does
     assert "XAUUSD@" in js  # broker-suffix hint next to the symbol field

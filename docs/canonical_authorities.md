@@ -49,11 +49,30 @@ An ENABLED authority whose evidence has expired reports
 re-verifies it. Real broker conditions can change; permission must be
 re-proven, never assumed.
 
+Two distinct readiness facts (they may legitimately disagree — this is NOT a
+contradiction or stale state):
+
+* `readiness_passed` / `readiness_evidence` (`/api/demo/state`) describe the
+  PERSISTED DECISION RECORD — the readiness report bound to the latest
+  authority transition. `readiness_evidence` is `none` (no report bound —
+  never enabled, or a disable/refusal without one), `failed`, or `passed`.
+* `current_readiness.passed` is a FRESH 14-check probe computed in the same
+  request.
+
+Therefore `readiness_passed=false` + `current_readiness.passed=true` is
+coherent: the terminal is ready now, but no durable decision carries passing
+evidence (typical for a never-enabled authority). Execution remains forbidden
+either way — only `/api/demo/enable` with a fresh pass creates permission,
+and it decays per the TTL.
+
 Audit-first: enablement is audited BEFORE the state write — an enablement
 that cannot be audited does not exist.
 
-Mode bound: a DEMO_FORWARD (observe-only) process can never hold execution
-permission, even if the stored row is tampered to `enabled=1`.
+Mode bound (checked TWICE, fail-closed): enablement requires the process's
+resolved mode to be broker-capable, and EVERY read re-checks BOTH the
+authority's live mode and the stored row's mode. A DEMO_FORWARD (observe-only)
+process can never hold execution permission, even if the stored row is
+tampered to `enabled=1` with a broker-capable or NULL mode.
 
 ## 3. Risk authority — `qts.risk.authority`
 

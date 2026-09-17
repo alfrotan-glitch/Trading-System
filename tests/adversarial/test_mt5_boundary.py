@@ -1328,9 +1328,9 @@ def test_micro_minimal_quantity_no_scaling(cli_workspace):
             if not real_terminal:
                 assert result.exit_code == 2, "micro must fail closed without REAL MT5 connectivity"
                 assert "blocked" in (result.output or "").lower()
-                assert not Path("data/evidence/micro.json").exists() or _micro_json_stale(
-                    cli_workspace.version
-                ), "no micro execution evidence may be produced without a real terminal"
+                assert not Path("data/evidence/micro.json").exists() or _micro_json_stale(cli_workspace.version), (
+                    "no micro execution evidence may be produced without a real terminal"
+                )
                 return
             assert result.exit_code == 0
             import json

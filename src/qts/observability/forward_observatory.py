@@ -131,12 +131,22 @@ class ForwardObservatory:
             # Backfill runs ONCE, only when a column was just added — never a
             # full-table scan on every construction.
             added = {
-                ("observation_ticks", "provenance"): self._ensure_column(con, "observation_ticks", "provenance", "TEXT"),
-                ("observation_ticks", "session_id"): self._ensure_column(con, "observation_ticks", "session_id", "TEXT"),
+                ("observation_ticks", "provenance"): self._ensure_column(
+                    con, "observation_ticks", "provenance", "TEXT"
+                ),
+                ("observation_ticks", "session_id"): self._ensure_column(
+                    con, "observation_ticks", "session_id", "TEXT"
+                ),
                 ("observation_ticks", "symbol"): self._ensure_column(con, "observation_ticks", "symbol", "TEXT"),
-                ("observation_ticks", "event_time"): self._ensure_column(con, "observation_ticks", "event_time", "TEXT"),
-                ("observation_signals", "provenance"): self._ensure_column(con, "observation_signals", "provenance", "TEXT"),
-                ("observation_signals", "session_id"): self._ensure_column(con, "observation_signals", "session_id", "TEXT"),
+                ("observation_ticks", "event_time"): self._ensure_column(
+                    con, "observation_ticks", "event_time", "TEXT"
+                ),
+                ("observation_signals", "provenance"): self._ensure_column(
+                    con, "observation_signals", "provenance", "TEXT"
+                ),
+                ("observation_signals", "session_id"): self._ensure_column(
+                    con, "observation_signals", "session_id", "TEXT"
+                ),
                 ("observation_sessions", "meta"): self._ensure_column(con, "observation_sessions", "meta", "TEXT"),
             }
             if any(added.values()):
@@ -236,13 +246,18 @@ class ForwardObservatory:
             if row and row[0]:
                 try:
                     merged = {**json.loads(row[0]), **body}
-                    con.execute("UPDATE observation_sessions SET meta=? WHERE id=?", (json.dumps(merged, default=str), session_id))
+                    con.execute(
+                        "UPDATE observation_sessions SET meta=? WHERE id=?",
+                        (json.dumps(merged, default=str), session_id),
+                    )
                 except ValueError:
                     pass
             con.commit()
 
     # ---------------------------------------------------------------- reads
-    def list_ticks(self, limit: int = 100, *, session_id: str | None = None, provenance: str | None = None) -> list[dict[str, Any]]:
+    def list_ticks(
+        self, limit: int = 100, *, session_id: str | None = None, provenance: str | None = None
+    ) -> list[dict[str, Any]]:
         """Canonical tick reader (dicts, newest first)."""
         q = "SELECT payload FROM observation_ticks"
         conds: list[str] = []

@@ -64,7 +64,25 @@ CREATE TABLE IF NOT EXISTS demo_execution_state (
 
 
 class DemoPermissionDecision:
-    """The single authoritative answer consumed by API, UI, and execution."""
+    """The single authoritative answer consumed by API, UI, and execution.
+
+    Field semantics (two DIFFERENT questions — they may legitimately disagree):
+
+    * ``readiness_passed`` / ``readiness_evidence`` describe the PERSISTED
+      DECISION STATE: the readiness report attached to the latest recorded
+      authority transition (enablement, refusal, or disable). ``false`` /
+      ``none_recorded`` means no passing readiness evidence is durably bound
+      to a decision — it is NOT a live statement about the terminal right now.
+    * ``current_readiness`` (added by the API layer) describes a FRESH probe
+      of the terminal/account/symbol computed in the same request.
+
+    Example of a legitimate, non-contradictory combination: an authority that
+    has never been enabled (or whose last recorded decision was a refusal)
+    reports ``readiness_passed=false`` while the fresh probe passes and
+    ``current_readiness.passed=true``. Execution remains forbidden either way:
+    only a FRESH passing report supplied to ``enable()`` can create a durable
+    enablement, and permission decays per ``REVERIFY_TTL_S``.
+    """
 
     def __init__(
         self,
@@ -100,6 +118,18 @@ class DemoPermissionDecision:
             "decided_at": self.decided_at,
             "reasons": self.reasons,
             "readiness_passed": bool(self.readiness and self.readiness.get("passed")),
+            # Disambiguates the two readiness facts that can legitimately
+            # disagree. `readiness_evidence` describes the PERSISTED decision
+            # record only:
+            #   "none"   -> no readiness report is bound to the latest decision
+            #               (never enabled, or a disable/refusal with no report).
+            #   "failed" -> a readiness report IS recorded and it did not pass.
+            #   "passed" -> a readiness report IS recorded and it passed.
+            # It is NOT a live probe; `current_readiness.passed` (API layer)
+            # is the fresh probe. Both can be true/false independently.
+            "readiness_evidence": (
+                "none" if not self.readiness else ("passed" if self.readiness.get("passed") else "failed")
+            ),
             "readiness_age_s": self.readiness_age_s,
             "readiness_expired": self.readiness_expired,
             "mode": self.mode,
@@ -133,9 +163,7 @@ class DemoExecutionAuthority:
             return
         from qts.domain.events import DomainEvent, EventType
 
-        self._audit.emit(
-            DomainEvent(event_type=EventType.LIFECYCLE, payload={"action": action, **payload})
-        )
+        self._audit.emit(DomainEvent(event_type=EventType.LIFECYCLE, payload={"action": action, **payload}))
 
     # ------------------------------------------------------------- storage
     def _init_db(self) -> None:
@@ -293,12 +321,30 @@ class DemoExecutionAuthority:
             if age is None:
                 reasons.append("enablement timestamp unreadable — fail closed")
             elif age > REVERIFY_TTL_S:
-                reasons.append(f"readiness evidence expired ({age:.0f}s old > {REVERIFY_TTL_S:.0f}s) — re-verify required")
+                reasons.append(
+                    f"readiness evidence expired ({age:.0f}s old > {REVERIFY_TTL_S:.0f}s) — re-verify required"
+                )
 
         permitted = not reasons
-        if row.get("mode") is not None:
-            from qts.domain.modes import ExecutionMode
+        from qts.domain.modes import ExecutionMode
 
+        # LIVE mode binding (fail-closed): the process ASKING whether execution
+        # is permitted must itself run in a mode that may submit broker orders.
+        # This is checked against the authority's CURRENTLY resolved mode, not
+        # only the stored row: a DEMO_FORWARD (observe-only) process can never
+        # hold execution permission, even if the stored row is tampered to
+        # enabled=1 with a broker-capable or NULL mode (documented contract).
+        if self._mode is not None:
+            try:
+                live_mode = ExecutionMode(str(self._mode))
+                if not live_mode.can_submit_broker_orders:
+                    permitted = False
+                    reasons.append(f"live mode {live_mode.value} cannot submit broker orders")
+            except ValueError:
+                permitted = False
+                reasons.append(f"live mode {self._mode!r} unresolvable — fail closed")
+
+        if row.get("mode") is not None:
             try:
                 mode = ExecutionMode(str(row["mode"]))
                 if not mode.can_submit_broker_orders:
@@ -316,8 +362,11 @@ class DemoExecutionAuthority:
             reasons=reasons,
             readiness=row["readiness"],
             readiness_age_s=stored_age,
-            readiness_expired=bool(stored_age is not None and stored_age > REVERIFY_TTL_S)
-            or (fresh_readiness is None and not permitted),
+            # Expiry is ONLY about evidence age. A refusal for a different
+            # reason (mode not broker-capable, unreadable timestamp, tampering)
+            # must not masquerade as "readiness expired" — distinct blockers,
+            # distinct operator actions.
+            readiness_expired=bool(age is not None and age > REVERIFY_TTL_S),
             mode=row["mode"],
         )
 
@@ -352,14 +401,18 @@ class DemoExecutionAuthority:
                 readiness_age_s=readiness_age_s,
                 actor=actor,
             )
-            return self._refused("explicit confirmation (confirmed=true) and risk acknowledgement (risk_ack=true) required")
+            return self._refused(
+                "explicit confirmation (confirmed=true) and risk acknowledgement (risk_ack=true) required"
+            )
 
         checks = readiness.get("checks") or {}
         required = readiness.get("required_checks") or []
         if not readiness.get("passed"):
-            blocked = readiness.get("blocked_reasons") or [
-                k for k, v in checks.items() if not v
-            ] or ["readiness report does not show passed=true"]
+            blocked = (
+                readiness.get("blocked_reasons")
+                or [k for k, v in checks.items() if not v]
+                or ["readiness report does not show passed=true"]
+            )
             self._record(
                 enabled=False,
                 reason=f"refused: DEMO readiness failed ({len(blocked)} blocker(s))",
@@ -513,6 +566,6 @@ def readiness_age_seconds(report: dict[str, Any], *, now: datetime | None = None
         t = datetime.fromisoformat(str(ts))
         if t.tzinfo is None:
             t = t.replace(tzinfo=UTC)
-        return max(( (now or datetime.now(UTC)) - t).total_seconds(), 0.0)
+        return max(((now or datetime.now(UTC)) - t).total_seconds(), 0.0)
     except (TypeError, ValueError):
         return 0.0

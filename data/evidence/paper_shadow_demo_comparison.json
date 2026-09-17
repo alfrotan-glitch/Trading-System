@@ -1,21 +1,49 @@
 {
-  "generated_at": "2026-09-16T14:57:21.289201+00:00",
+  "generated_at": "2026-09-17T18:00:16.964657+00:00",
+  "provenance": {
+    "paper_source": "data/evidence/paper_trades.json (PAPER class)",
+    "shadow_source": "data/evidence/shadow_intents.json (SHADOW class)",
+    "demo_source": "canonical observation store (DEMO class)",
+    "label": "DEMO never LIVE"
+  },
   "paper_trades": 6,
   "shadow_intents": 10,
-  "demo_observations": 10,
-  "demo_fills": 4,
-  "signal_agreement": 0.6,
-  "expected_entry_difference_bps": 0.0,
-  "actual_entry_difference_bps": 0.0,
-  "spread_difference_bps": 0.0,
-  "slippage_demo_bps": 2.5,
-  "latency_demo_ms": 120.0,
-  "fill_difference": 2,
+  "demo_observations": 0,
+  "demo_fills_recorded": 0,
+  "signal_agreement": {
+    "status": "MEASURED",
+    "value": 0.5
+  },
+  "expected_entry_difference_bps": {
+    "status": "UNAVAILABLE",
+    "value": null,
+    "reason": "NOT_MEASURED: requires paired paper+demo execution of the SAME signal; no paired events recorded"
+  },
+  "actual_entry_difference_bps": {
+    "status": "UNAVAILABLE",
+    "value": null,
+    "reason": "NO_DATA: no demo fills recorded in the canonical store"
+  },
+  "spread_difference_bps": {
+    "status": "UNAVAILABLE",
+    "value": null,
+    "reason": "NO_DATA: no paired paper/demo spread observations"
+  },
+  "slippage_demo_bps": {
+    "status": "UNAVAILABLE",
+    "value": null,
+    "reason": "NO_DATA: no demo fill slippage observations"
+  },
+  "latency_demo_ms": {
+    "status": "UNAVAILABLE",
+    "value": null,
+    "reason": "NO_DATA: no demo fill latency observations"
+  },
   "rejected_orders_demo": 0,
   "partial_fills_demo": 0,
-  "exit_differences": 0,
-  "pnl_difference": 4.8,
-  "pnl_paper": 0.0,
-  "pnl_demo": 4.8,
-  "label": "DEMO never LIVE"
+  "exit_differences": {
+    "status": "UNAVAILABLE",
+    "value": null,
+    "reason": "NOT_MEASURED: exit comparison requires paired paper+demo position lifecycles; none recorded"
+  }
 }

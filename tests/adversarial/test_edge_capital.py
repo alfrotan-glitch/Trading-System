@@ -301,24 +301,49 @@ def test_placebo_rejected():
     assert not result.checks["placebo"]  # placebo sharpe 0.8 >0.3 should make placebo check fail
 
 
-# Phase 10: Forward observation — no retune, record all, invalidate on intervention
-def test_forward_observation_no_retune():
-    from qts.edge.forward import ForwardObserver
+# Phase 10: Forward observation — the CANONICAL path is the provenance-gated
+# observatory (qts.observability.forward_observatory). The legacy
+# ``qts.edge.forward.ForwardObserver`` was REMOVED: it fabricated execution
+# metrics (actual_fills = intended*0.95, spread 3.0 bps, slippage 2.0 bps,
+# latency 500 ms, zero PnL) that could be mistaken for forward evidence.
+def test_legacy_fabricated_forward_observer_is_gone():
+    import importlib
 
-    obs = ForwardObserver()
-    instr = Instrument(symbol="XAUUSD")
-    from qts.research.strategy import SmaBreakoutStrategy
+    try:
+        importlib.import_module("qts.edge.forward")
+        raise AssertionError(
+            "qts.edge.forward reappeared — its ForwardObserver fabricated execution "
+            "metrics and must not be reintroduced (canonical forward evidence is the "
+            "provenance-gated observatory, see qts.observability.forward_observatory)"
+        )
+    except ModuleNotFoundError:
+        pass  # expected: the fabricated legacy scaffold stays removed
 
-    strat = SmaBreakoutStrategy(instrument=instr, fast=2, slow=3)
-    bars = _bars(50)
-    forward_bars = _bars(100)[50:]
-    # Observer should not modify strategy params
-    before = strat.fast
-    result = obs.observe(strat, bars, None, None, "v1", forward_bars)
-    assert strat.fast == before
-    assert result.signals >= 0
-    assert result.no_trades + result.signals == len(forward_bars) or True  # approximate
-    assert not result.invalidated
+
+def test_forward_evidence_count_is_provenance_gated(tmp_path: Path):
+    """The forward-evidence gate consumes ONLY real-market-class observations:
+    SYNTHETIC simulation never counts; DEMO (real broker, demo account) does."""
+    from qts.domain.provenance import EvidenceProvenance
+    from qts.observability.forward_observatory import ForwardObservatory, ObservationTick
+
+    obs = ForwardObservatory(db_path=tmp_path / "fwd.db")
+    obs.simulate_observation(n_ticks=25)  # writes SYNTHETIC-class records
+    assert obs.real_observation_count() == 0, "synthetic simulation must never count as forward evidence"
+    sid = obs.start_session(meta={"kind": "LIVE_OBSERVATION", "orders_possible": False})
+    for _i in range(12):
+        obs.record_tick(
+            ObservationTick(
+                symbol="XAUUSD@",
+                bid=Decimal("2000"),
+                ask=Decimal("2000.5"),
+                provenance=EvidenceProvenance.DEMO.value,
+                session_id=sid,
+            )
+        )
+    assert obs.real_observation_count() == 12, "DEMO-class observations are the qualifying forward evidence"
+    from qts.research.impulse.report import MIN_FORWARD_OBSERVATIONS
+
+    assert obs.real_observation_count() >= MIN_FORWARD_OBSERVATIONS
 
 
 # Phase 11: Shadow vs paper consistency — error distribution

@@ -93,9 +93,7 @@ def test_mode_restrictions_never_loosen_base():
             base_v = getattr(base, key)
             got_v = getattr(snap.limits, key)
             if isinstance(base_v, (int, Decimal)) and not isinstance(base_v, bool):
-                assert Decimal(str(got_v)) <= Decimal(str(base_v)), (
-                    f"{mode.value}.{key}={got_v} loosens base {base_v}"
-                )
+                assert Decimal(str(got_v)) <= Decimal(str(base_v)), f"{mode.value}.{key}={got_v} loosens base {base_v}"
 
 
 def test_demo_limits_match_the_risk_authority():

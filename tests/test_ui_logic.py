@@ -11,6 +11,7 @@ tests only (logic tests still run). This keeps the standard suite green on
 machines without a Node toolchain while exercising the real UI everywhere
 Node is available.
 """
+
 from __future__ import annotations
 
 import os
@@ -68,8 +69,22 @@ def test_ui_shell_functional_tour():
     env["QTS_SETUP_FILE"] = str(Path(os.getenv("QTS_TEST_TMP", "/tmp")) / "ui-shell-setup.json")
     env["QTS_UI_BASE"] = f"http://127.0.0.1:{port}"
     proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "qts.api.server:app", "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning"],
-        cwd=REPO, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "qts.api.server:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+            "--log-level",
+            "warning",
+        ],
+        cwd=REPO,
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     import urllib.request
 

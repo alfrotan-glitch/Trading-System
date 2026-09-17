@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import contextlib
 import os
-import subprocess
+
+# Only used for the fixed-argv `git rev-parse` probe below (no shell, no user input).
+import subprocess  # nosec B404
 from functools import lru_cache
 from pathlib import Path
 
@@ -24,7 +26,10 @@ def git_commit() -> str | None:
         git_dir = candidate / ".git"
         if git_dir.exists():
             with contextlib.suppress(Exception):
-                out = subprocess.run(
+                # Fixed argv ("git -C <repo> rev-parse HEAD"), no shell, no
+                # untrusted input: candidate is this process's cwd/package
+                # dir, never user-controlled data.
+                out = subprocess.run(  # nosec B603 B607
                     ["git", "-C", str(candidate), "rev-parse", "HEAD"],
                     capture_output=True,
                     text=True,

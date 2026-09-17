@@ -90,9 +90,17 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
     def check_config():
         try:
             from qts.config.settings import load_settings
+            from qts.domain.modes import resolve_mode
 
             s = load_settings()
-            return True, f"config loaded env={s.env} mode={getattr(s, 'mode', 'research')}"
+            # Mode comes from the ONE canonical authority (qts.domain.modes) —
+            # never from a guessed/defaulted string (the old 'research' default
+            # named a mode that does not exist).
+            try:
+                mode = resolve_mode(config_env=s.env).value
+            except Exception as e:
+                return False, f"config failed: mode resolution fail-closed ({e})"
+            return True, f"config loaded env={s.env} mode={mode}"
         except Exception as e:
             return False, f"config failed: {e}"
 

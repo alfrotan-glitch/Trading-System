@@ -1,5 +1,5 @@
 /* Node unit tests — format.js truthfulness rules (no DOM needed).
-   Run: node --test tests/ui/js/  */
+   Run: node --test tests/ui/js/format.test.mjs tests/ui/js/status.test.mjs  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fmtMetric, metricTone, fmtNum, fmtAge, fmtUtc, humanStatus, provInfo, fmtDuration, fmtInt } from "../../../src/qts/desktop/ui/js/format.js";

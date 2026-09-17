@@ -153,9 +153,7 @@ def _required_int(info: Any, field: str, symbol: str, *, min_value: int | None =
     value = _required_numeric(info, field, symbol, positive=False)
     ivalue = int(value)
     if value != Decimal(ivalue):
-        raise RuntimeError(
-            f"MT5 symbol {symbol}: spec field '{field}' must be an integer, got {value} (fail-closed)"
-        )
+        raise RuntimeError(f"MT5 symbol {symbol}: spec field '{field}' must be an integer, got {value} (fail-closed)")
     if min_value is not None and ivalue < min_value:
         raise RuntimeError(
             f"MT5 symbol {symbol}: spec field '{field}'={ivalue} below minimum {min_value} (fail-closed)"
@@ -379,7 +377,6 @@ class MT5Adapter(BrokerAdapter):
         )
         self._spec_cache[symbol] = spec
         return spec
-
 
     # ---------- Phase 1: Connectivity & health ----------
 
