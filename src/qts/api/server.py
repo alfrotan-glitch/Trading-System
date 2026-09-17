@@ -843,15 +843,55 @@ def research_statistical() -> dict[str, Any]:
 
 
 # --- Demo Forward & Safety Boundary ---
+def _wizard_setup_kwargs(terminal_path: str | None, symbol: str | None) -> dict[str, Any]:
+    """Merge wizard inputs with the persisted (saved) setup.
+
+    Precedence: explicit request param > saved wizard file > (inside the
+    gate) QTS_MT5_PATH/QTS_MT5_SYMBOL env > MT5_PATH > auto-detect.
+    The same resolution is used by readiness AND demo-enablement so the two
+    can never evaluate different connections.
+    """
+    from qts.config.wizard import load_setup
+
+    saved = load_setup()
+    sm = saved.get("symbol_map")
+    return {
+        "terminal_path": terminal_path or saved.get("terminal_path") or None,
+        "symbol": symbol or saved.get("symbol") or None,
+        "symbol_map": sm if isinstance(sm, dict) else None,
+    }
+
+
+@app.get("/api/setup/mt5")
+def setup_mt5_get() -> dict[str, Any]:
+    from qts.config.wizard import load_setup, setup_file
+
+    return {
+        "setup": load_setup(),
+        "stored_at": str(setup_file()),
+        "note": "Credential-free connection metadata only; credentials belong in env/OS credential store.",
+    }
+
+
+@app.post("/api/setup/mt5")
+def setup_mt5_save(payload: dict[str, Any]) -> dict[str, Any]:
+    from qts.config.wizard import save_setup
+
+    try:
+        return save_setup(payload)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
 @app.get("/api/demo/readiness")
 def demo_readiness(terminal_path: str | None = None, symbol: str | None = None) -> dict[str, Any]:
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
 
-    # Optional query params let the Setup Wizard send the entered terminal path
-    # and symbol; env (QTS_MT5_PATH/QTS_MT5_SYMBOL) remains the fallback.
-    # Fail-closed: the gate itself initializes MT5 and surfaces last_error.
+    # Wizard inputs (query params) override the saved setup; env fallbacks
+    # live inside the gate. Fail-closed: the gate itself initializes MT5 and
+    # surfaces last_error — never mocked, never skipped.
     try:
-        return demo_forward_readiness_report(terminal_path=terminal_path or None, symbol=symbol or None)
+        return demo_forward_readiness_report(**_wizard_setup_kwargs(terminal_path, symbol))
     except Exception as e:
         return {"passed": False, "demo_enabled": False, "blocked_reasons": [str(e)], "checks": {}}
 
@@ -955,10 +995,12 @@ def demo_enable(payload: dict[str, Any]) -> dict[str, Any]:
     risk_ack: bool = bool(payload.get("risk_ack"))
     if not confirmed or not risk_ack:
         raise HTTPException(400, "Demo forward requires explicit confirmed=true and risk_ack=true")
-    # Verify readiness first
+    # Verify readiness first — using the SAME resolved connection config as
+    # the readiness endpoint (saved wizard setup), so enablement can never
+    # evaluate a different terminal than the one the user tested.
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
 
-    rpt = demo_forward_readiness_report()
+    rpt = demo_forward_readiness_report(**_wizard_setup_kwargs(None, None))
     # In sandbox/mock, terminal_running will be false — allow observe-only mode without real terminal for demo purposes?
     # Enforce demo_is_demo check strictly for safety
     if rpt.get("warn_live_in_demo"):

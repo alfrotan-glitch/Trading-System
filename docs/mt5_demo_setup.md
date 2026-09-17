@@ -23,7 +23,7 @@ Set via Windows Credential Manager or `.env` (gitignored, never commit):
 | `MT5_LOGIN` | `1234567` | Credential Manager or `.env` |
 | `MT5_PASSWORD` | `***` | Credential Manager or `.env` |
 | `MT5_SERVER` | `ICMarkets-Demo` | `.env` |
-| `QTS_MT5_PATH` (or `MT5_PATH`) | `C:\Program Files\MetaTrader 5\terminal64.exe` | Setup Wizard field (sent with Test MT5 Connection) or `.env` |
+| `QTS_MT5_PATH` (or `MT5_PATH`) | `C:\Program Files\MetaTrader 5\terminal64.exe` | Setup Wizard (saved via **Save Setup** to `data/setup/mt5_setup.json`, gitignored; sent per-click with **Test MT5 Connection**) or `.env` |
 | `QTS_MT5_SYMBOL` | broker's actual symbol, e.g. `XAUUSD@` | Setup Wizard field or `.env` (default `XAUUSD`) |
 | `QTS_MT5_SYMBOL_MAP` | `XAUUSD=XAUUSD@` | `.env` — maps requested symbol to broker symbol |
 
@@ -53,6 +53,14 @@ succeeds **in the same process** — importing the package is not enough.
 Initialize failure is fail-closed: it blocks with `last_error()` surfaced, never mocked.
 Symbol checks use the broker's actual name (`QTS_MT5_SYMBOL`/`QTS_MT5_SYMBOL_MAP`,
 e.g. `XAUUSD@`) and `symbol_select` before querying.
+
+Config precedence (readiness AND demo-enablement resolve identically):
+request/wizard param → saved wizard file (`QTS_SETUP_FILE`, default
+`data/setup/mt5_setup.json`) → `QTS_MT5_PATH`/`QTS_MT5_SYMBOL` env →
+`MT5_PATH` env → auto-detect. The wizard store is credential-free:
+login/password/server are rejected and never persisted — use
+`QTS_MT5_LOGIN`/`QTS_MT5_PASSWORD`/`QTS_MT5_SERVER` (legacy unprefixed
+`MT5_*` names still accepted as fallback).
 
 In QTS: **Setup Wizard → Test MT5 Connection** or **Demo Forward → Refresh Checks** runs:
 

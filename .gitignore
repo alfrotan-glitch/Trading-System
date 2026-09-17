@@ -40,6 +40,9 @@ htmlcov/
 # OS
 .DS_Store
 
+# Machine-local Setup Wizard persistence (credential-free MT5 connection metadata)
+data/setup/
+
 # Generated dataset registries — recreated deterministically by `qts data bootstrap`
 # (committing manifests without the gitignored curated/DB data creates phantom
 # "versions" that resolve to zero usable bars on a clean clone)

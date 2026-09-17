@@ -77,7 +77,7 @@
       <label>Broker (auto-detected after connect) <input id="setup-mt5-broker" placeholder="e.g., ICMarkets-Demo" /></label><br>
       <label>Account Type <span class="badge">DEMO only for Demo Forward — LIVE blocked</span></label>
       <div class="pre">Credentials belong in OS environment / credential store, NOT plain-text files. Set QTS_MT5_LOGIN / QTS_MT5_PASSWORD / QTS_MT5_SERVER via Windows Credential Manager or .env (gitignored). See docs/mt5_demo_setup.md.</div>
-      <label>Symbol <input id="setup-mt5-symbol" value="XAUUSD" /></label>
+      <label>Symbol <input id="setup-mt5-symbol" value="XAUUSD" /> <small>broker's actual name, e.g. <code>XAUUSD@</code> — or set QTS_MT5_SYMBOL_MAP=XAUUSD=XAUUSD@</small></label>
       <button id="btn-setup-check-mt5">Test MT5 Connection (14 checks)</button>
       <div id="setup-mt5-result" class="pre"></div>
     </div>

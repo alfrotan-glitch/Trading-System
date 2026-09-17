@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-const api = p => fetch(p).then(r=>r.json());
+const api = (p, opts) => fetch(p, opts).then(r=>r.json());
 
 function nav(){
   document.querySelectorAll('.nav button').forEach(b=>{
@@ -215,8 +215,21 @@ const btnSetupSave = document.getElementById('btn-setup-save');
 if(btnSetupSave) btnSetupSave.onclick = async ()=>{
   const ack = document.getElementById('setup-risk-ack')?.checked;
   if(!ack){ $('setup-save-result').textContent='Please acknowledge risk limits.'; return; }
-  $('setup-save-result').textContent='Setup acknowledged — health check...';
-  try{ const h = await api('/api/health'); $('setup-save-result').textContent = JSON.stringify({saved:true, env: h.env, system_status: h.system_status, note: 'Restart app with chosen QTS_ENV to apply. See docs/desktop_installation_windows.md'}, null,2); }catch(e){ $('setup-save-result').textContent='Error '+e }
+  $('setup-save-result').textContent='Saving MT5 connection setup...';
+  try{
+    // Persist the MT5 connection fields (credential-free) so readiness,
+    // Demo Forward refresh, and demo-enablement all use the same config.
+    const payload = {};
+    const p = (document.getElementById('setup-mt5-path')?.value || '').trim();
+    const sym = (document.getElementById('setup-mt5-symbol')?.value || '').trim();
+    if(p) payload.terminal_path = p;
+    if(sym) payload.symbol = sym;
+    const saved = await api('/api/setup/mt5', {method:'POST', body: JSON.stringify(payload), headers:{'Content-Type':'application/json'}});
+    if(saved && saved.detail){ throw new Error(saved.detail); }  // FastAPI 4xx: surface, never claim success
+    $('setup-save-result').textContent='Saved — health check...';
+    const h = await api('/api/health');
+    $('setup-save-result').textContent = JSON.stringify({saved: saved.saved, stored_at: saved.stored_at, rejected_fields: saved.rejected_fields, credentials: saved.credentials_note, env: h.env, system_status: h.system_status, note: 'Environment selection is NOT persisted (fail-closed): restart the app with the chosen QTS_ENV to apply it. See docs/desktop_installation_windows.md'}, null,2);
+  }catch(e){ $('setup-save-result').textContent='Error '+e }
 };
 // Demo Forward handlers
 const btnDemoRefresh = document.getElementById('btn-demo-refresh-checks');
@@ -389,6 +402,12 @@ async function loadSetupWizard(){
     const safety = await api('/api/demo/safety');
     $('setup-risk-limits').textContent = JSON.stringify(safety.demo_limits, null,2);
   }catch(e){$('setup-risk-limits').textContent='Error '+e}
+  try{
+    // Prefill previously saved MT5 connection setup (credential-free)
+    const st = await api('/api/setup/mt5');
+    if(st.setup && st.setup.terminal_path){ const el=document.getElementById('setup-mt5-path'); if(el && !el.value) el.value = st.setup.terminal_path; }
+    if(st.setup && st.setup.symbol){ const el=document.getElementById('setup-mt5-symbol'); if(el) el.value = st.setup.symbol; }
+  }catch(e){}
   try{
     const cfg = await api('/api/demo/config');
     const env = await api('/api/env/boundary');

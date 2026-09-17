@@ -1202,9 +1202,11 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
                     broker = _MT5A(
                         mt5_module=_real,
                         config={
-                            "login": _os.getenv("MT5_LOGIN"),
-                            "password": _os.getenv("MT5_PASSWORD"),
-                            "server": _os.getenv("MT5_SERVER"),
+                            # canonical QTS_MT5_* names (docs/UI); legacy
+                            # unprefixed MT5_* accepted as fallback
+                            "login": _os.getenv("QTS_MT5_LOGIN") or _os.getenv("MT5_LOGIN"),
+                            "password": _os.getenv("QTS_MT5_PASSWORD") or _os.getenv("MT5_PASSWORD"),
+                            "server": _os.getenv("QTS_MT5_SERVER") or _os.getenv("MT5_SERVER"),
                         },
                     )
         md2 = _MDP2(broker)
