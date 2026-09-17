@@ -82,8 +82,10 @@ Desktop shows: Home (System Status, Environment, MT5, Account Type, Market Data,
 
 ## How do I start observation?
 
-- **Observe Only** (safe, no orders): Demo Forward → *Start Observation*. Records live ticks (timestamp/bid/ask/spread/symbol/timeframe/tick/session/strategy_state/regime/signal/NO_TRADE/hypothetical order) with provenance to `data/evidence/forward_observation_manifest.json` and `demo_forward_observations.json`.
-- Then, only after explicit confirmation + risk ack + 14 checks, **Enable Demo Execution** submits real demo orders and captures requested vs actual price, slippage, latency, broker response, fills, positions, exits, P&L with `label=DEMO`.
+- **Observe Only** (safe, no orders): Demo Forward → *Start Observation*. Requires all 14 readiness checks to pass; then records REAL MT5 ticks with full provenance into the **canonical observation store** (`data/sqlite/forward_observatory.db`) bound to an audited session (environment, broker, symbol, timestamp basis, code version). `data/evidence/forward_observation_manifest.json` is a derived, regenerable export.
+- Observation is physically order-free: the observe runtime has no order path at all (structurally pinned by tests).
+- **Enable Demo Execution** requires a FRESH 14/14 readiness pass computed in the same request; the decision is a durable, audited state (`/api/demo/state`) consumed by the API, UI and execution boundary. Permission decays (`reverify_ttl_s`): expired readiness evidence reports `ENABLED_BUT_BLOCKED` until a fresh pass re-verifies it. When the gate refuses, the API answers **409 with reasons** — never a fabricated `demo_enabled=true`.
+- Fabricated legacy "demo observations" were quarantined to `data/evidence/quarantine/` with documented violations; they satisfy no gate and no claim.
 
 ## How do I enable demo execution?
 
@@ -99,8 +101,19 @@ Demo safety limits (conservative): max 0.1 lot/order, 0.3 exposure, 3 open order
 ## Where are logs & evidence?
 
 - Logs: `logs/audit.jsonl` (redacted) + `data/sqlite/qts.db` audit_events
-- Evidence: `data/evidence/*.json` — `edge_validation`, `paper_trades`, `shadow_intents`, `paper_shadow_demo_comparison`, `demo_forward_observations`, `data_inventory`, `market_regime_observations`, `execution_reality`, `historical_depth`
+- **Canonical observation store**: `data/sqlite/forward_observatory.db` (provenance-first; sessions carry environment/broker/symbol/timestamp-basis/code-version identity)
+- Derived exports: `data/evidence/*.json` — always regenerable from canonical stores, never gate-satisfying by existing
+- Quarantine: `data/evidence/quarantine/` — fabricated/mismatched legacy records, excluded from all claims (see its README)
 - Config: `configs/dev.yaml`, `configs/paper.yaml`, `configs/demo_forward.yaml`; `configs/live.yaml` **never committed** (use `.example`)
+
+## Canonical authorities (read this before touching limits/modes/gates)
+
+- **Mode**: `qts.domain.modes` — DEVELOPMENT / PAPER / SHADOW / DEMO_FORWARD / DEMO_EXECUTION / LIVE; unknown selections fail closed
+- **DEMO execution permission**: `qts.lifecycle.demo_authority` — one durable audited state; API/UI/execution all consume it
+- **Risk limits**: `qts.risk.authority` — one canonical set; mode restrictions may only tighten; every snapshot carries a config hash
+- **Broker metadata**: `qts.adapters.mt5_adapter` — alias-resolved, zero defaults, fail-closed
+- **Metrics**: `qts.domain.provenance.MetricValue` — MEASURED or UNAVAILABLE/INSUFFICIENT_EVIDENCE, never a placeholder zero
+- See `docs/canonical_authorities.md` for the full contract.
 
 ## What should never be changed manually?
 
@@ -130,6 +143,6 @@ Docs start `docs/00-overview.md` → `docs/13-adrs.md`. Build exe: `scripts/buil
 
 ## Current Status
 
-`BLOCK — KEEP NO_TRADE`, Live LOCKED, 266 tests passing (Linux 3.11; deterministic under ASCII/C locale), static gates green (ruff, mypy), QTS.exe built via PyInstaller. `data/curated/` and `data/manifests/` are deliberately **not tracked** — a clean clone establishes its dataset via `qts data bootstrap` (truthful provenance, `SYNTHETIC` label). Remaining limitations in `docs/release_readiness_report.md` K.
+`BLOCK — KEEP NO_TRADE`, Live LOCKED, 491+ tests passing (Linux 3.11; deterministic under ASCII/C locale), static gates green (ruff, mypy). LIVE gate evidence is tiered (structural / integration / real-environment); MT5 connectivity passes only with a REAL terminal — mock-based connectivity evidence is banned. `data/curated/` and `data/manifests/` are deliberately **not tracked** — a clean clone establishes its dataset via `qts data bootstrap` (truthful provenance, `SYNTHETIC` label). Remaining limitations in `docs/release_readiness_report.md` K.
 
 Never treat BACKTEST/PAPER/SHADOW/DEMO as LIVE. No profitability claimed.

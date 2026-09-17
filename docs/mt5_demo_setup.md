@@ -90,6 +90,23 @@ In QTS: **Setup Wizard → Test MT5 Connection** or **Demo Forward → Refresh C
 
 Only after all ✓ is *Demo Execution Enabled* allowed. Blocked reasons shown explicitly.
 
+## Account authority (explicit limitation)
+
+`MT5Adapter.account()` returns broker-authoritative balance/equity/margin with
+`source="BROKER"`. Two explicit honesty rules:
+
+* `updated_at` is the LOCAL RECEIPT time. The MT5 Python API exposes no
+  server timestamp on `account_info()`, so account freshness is bounded by
+  receipt time — it is never presented as broker event time.
+* `leverage` and `currency` are `None` (= UNAVAILABLE) when the broker does
+  not provide them. They are never substituted with defaults; consumers that
+  need them (e.g. margin pre-checks) fail closed with an explicit
+  UNAVAILABLE reason instead of computing against a guessed value.
+
+Unknown account equity vetoes orders (`ACCOUNT_STATE_UNAVAILABLE`) — the
+`equity → 10000` fallback that once fabricated the leverage-check denominator
+was removed.
+
 ## DEMO FORWARD vs LIVE
 
 - DEMO_FORWARD promotion requires a **passed** readiness report (14/14) plus a
