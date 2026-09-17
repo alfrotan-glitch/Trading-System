@@ -887,8 +887,12 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         click.echo("live mode — gate passed but live trading still requires final manual approval", err=True)
         sys.exit(2)
     if mode == "dry_run":
-        # Phase 9: Safe dry-run — connects to MT5, validates prerequisites, builds request, no submission
-        click.echo(f"running mode={mode} strategy={strategy} version={data_version} (dry-run, no submission)")
+        # Phase 9: Safe dry-run — OFFLINE pipeline rehearsal against an
+        # EXPLICITLY LABELED synthetic module. dry_run NEVER imports or
+        # contacts the MetaTrader5 package/terminal and NEVER submits orders;
+        # real-terminal validation is the 14-check readiness gate's job
+        # (demo_forward_readiness_report).
+        click.echo(f"running mode={mode} strategy={strategy} version={data_version} (dry-run, offline, no submission)")
         from datetime import datetime
         from decimal import Decimal as _Decimal
         from pathlib import Path as _Path
@@ -903,7 +907,14 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         from qts.domain.value_objects import Side as _Side
         from qts.observability.audit import SqliteAuditLog as _Audit
 
-        # Attempt real MT5 connection, fallback to mock for CI/sandbox
+        # Explicit OFFLINE dependency boundary (root-cause fix for the
+        # Windows dry_run regression): the previous "use the real MT5 module
+        # when initialize() succeeds" escalation made dry_run depend on live
+        # broker-session state — on a machine with the terminal installed it
+        # silently switched to the real module and then crashed on
+        # symbol_info (broker symbol/login not usable in-process). Dry-run
+        # now uses the labeled synthetic module UNCONDITIONALLY: executable
+        # and testable with zero broker dependency, never submitting.
         mt5_mock = _MagicMock()
         _info = _MagicMock()
         _info.contract_size = 100
@@ -936,20 +947,8 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         _sym2 = _MagicMock()
         _sym2.name = "EURUSD"
         mt5_mock.symbols_get.return_value = [_sym1, _sym2]
-        # Try real MT5 if available
-        try:
-            import MetaTrader5 as _real_mt5
-
-            # Use real if initialize succeeds, else mock
-            if _real_mt5.initialize():
-                mt5_module = _real_mt5
-                is_mock = False
-            else:
-                mt5_module = mt5_mock
-                is_mock = True
-        except Exception:
-            mt5_module = mt5_mock
-            is_mock = True
+        mt5_module = mt5_mock  # ALWAYS the labeled synthetic module — see boundary note above
+        is_mock = True
         adapter = _MT5Adapter(mt5_module=mt5_module, config={"path": "", "login": 12345})
         # Phase 1: connectivity
         health = adapter.health_check()
@@ -995,7 +994,7 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         # LABELED synthetic state (dry-run never trades, but its evidence
         # must not present fabricated capital as broker truth).
         acct_for_risk = (
-            acct
+            acct.model_copy(update={"source": "DRY_RUN_SYNTHETIC"})
             if (acct_ok and acct is not None)
             else _Acct(
                 balance=_Decimal("10000"),
@@ -1054,6 +1053,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "strategy": strategy,
             "data_version": data_version,
             "is_mock": is_mock,
+            "terminal_contacted": False,
+            "broker_dependency": "OFFLINE_DRY_RUN — dry_run never imports/contacts MetaTrader5 or the terminal",
+            "data_class": "SYNTHETIC",
             "health": health,
             "prereq_ok": prereq["ok"],
             "prereq_errors": prereq["errors"],
@@ -1069,6 +1071,7 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
                 "freeze_level": spec.freeze_level,
                 "filling_mode": spec.filling_mode,
                 "execution_mode": spec.execution_mode,
+                "source": "DRY_RUN_SYNTHETIC (offline module — a real authoritative spec requires the readiness gate)",
             },
             "discovered_symbols": disc[:10],
             "market_data": {
@@ -1086,6 +1089,7 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
                 "balance": str(acct.balance) if acct else None,
                 "equity": str(acct.equity) if acct else None,
                 "leverage": str(acct.leverage) if acct else None,
+                "source": "DRY_RUN_SYNTHETIC (offline module — never broker state)",
             }
             if acct
             else {"ok": False},

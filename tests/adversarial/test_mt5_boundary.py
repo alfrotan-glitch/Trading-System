@@ -1239,6 +1239,64 @@ def test_dry_run_no_submission(cli_workspace):
     assert data["prereq_ok"] is True
 
 
+def test_dry_run_never_depends_on_real_terminal(cli_workspace, monkeypatch):
+    """Windows regression root-cause pin (dry_run, commits through e6b623e).
+
+    Failure shape on the operator's machine: the MetaTrader5 package is
+    installed and ``initialize()`` SUCCEEDS (terminal installed), but
+    ``symbol_info("XAUUSD")`` returns None in-process (broker serves
+    "XAUUSD@" / no login attached). The old dry-run path escalated to the
+    real module on initialize() success and then CRASHED.
+
+    Contract now pinned: dry_run is structurally offline — it never even
+    imports the real package, so a present-but-unusable terminal cannot
+    affect it. Real-terminal validation belongs to the readiness gate.
+    """
+    import json
+    import sys
+
+    from click.testing import CliRunner
+
+    from qts.cli import main
+
+    calls = {"initialize": 0}
+
+    class _FakeRealMT5:
+        """The exact Windows shape: importable, initialize() succeeds,
+        symbol resolution unusable. If dry_run ever imports it again, the
+        escalation bug is back — this test must fail."""
+
+        def initialize(self, **kwargs):  # noqa: ANN001
+            calls["initialize"] += 1
+            return True
+
+        def symbol_info(self, sym):  # noqa: ANN001
+            return None
+
+        def last_error(self):  # noqa: ANN001
+            return (-6, "Terminal: Not found")
+
+    monkeypatch.setitem(sys.modules, "MetaTrader5", _FakeRealMT5())
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["run", "--mode", "dry_run", "--data-version", cli_workspace.version])
+    assert result.exit_code == 0, result.output
+    assert "no order submitted" in result.output.lower()
+
+    # dry_run never touched the real package — not even initialize()
+    assert calls["initialize"] == 0
+
+    evidence = json.loads(Path("data/evidence/dry_run.json").read_text(encoding="utf-8"))
+    assert evidence["is_mock"] is True
+    assert evidence["terminal_contacted"] is False
+    assert evidence["data_class"] == "SYNTHETIC"
+    assert evidence["prereq_ok"] is True
+    assert evidence["request_ok"] is True
+    # labeled synthetic metadata — never presented as broker state
+    assert "DRY_RUN_SYNTHETIC" in evidence["symbol_spec"]["source"]
+    assert "DRY_RUN_SYNTHETIC" in evidence["account"]["source"]
+
+
 def test_micro_minimal_quantity_no_scaling(cli_workspace):
     # Micro must use volume_min and not scale (spec-level contract)
     mock = _mock_mt5_for_spec(volume_min=0.01, volume_max=1.0)

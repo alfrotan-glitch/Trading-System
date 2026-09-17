@@ -17,7 +17,10 @@ These tests pin the fix without touching any safety gate:
   and symbol_select before symbol_info
 - mocks without initialize() keep working (backward compatible)
 - a LIVE account fed to DEMO mode is still blocked even when initialize succeeds
-- the API forwards terminal_path/symbol query params
+- the API forwards terminal_path/symbol query params — tested against an
+  ISOLATED QTS_SETUP_FILE so the operator's real persisted setup is never
+  read or written by tests (explicit > saved > env/auto-detect precedence
+  is itself pinned end-to-end)
 """
 
 from __future__ import annotations
@@ -210,11 +213,27 @@ def test_live_account_still_blocked_when_initialize_succeeds():
     assert rpt["demo_enabled"] is False
 
 
-def test_api_forwards_terminal_path_and_symbol(monkeypatch):
+def test_api_forwards_terminal_path_and_symbol(monkeypatch, tmp_path):
+    """Parameter forwarding is pinned against an ISOLATED setup store, so the
+    operator's real persisted setup (their actual terminal path/symbol on
+    Windows) can never leak into — or be altered by — this test.
+
+    Regression note: this test previously asserted ``None`` forwarding for a
+    no-argument call and only passed on machines WITHOUT a persisted setup.
+    The production precedence is correct and unchanged:
+        explicit request > saved setup > environment/auto-detect
+    so the test now isolates ``QTS_SETUP_FILE`` and proves the WHOLE
+    precedence chain end-to-end instead of asserting the absence of saved
+    state.
+    """
     from fastapi.testclient import TestClient
 
     import qts.lifecycle.demo_gate as dg
     from qts.api.server import app
+
+    # Isolate persisted setup state — the operator's real mt5_setup.json is
+    # never read or written here.
+    monkeypatch.setenv("QTS_SETUP_FILE", str(tmp_path / "isolated_setup.json"))
 
     captured: dict[str, Any] = {}
 
@@ -224,13 +243,35 @@ def test_api_forwards_terminal_path_and_symbol(monkeypatch):
 
     monkeypatch.setattr(dg, "demo_forward_readiness_report", fake_report)
     client = TestClient(app)
+
+    # 1) Explicit request params are forwarded verbatim.
     r = client.get("/api/demo/readiness", params={"terminal_path": TERMINAL_PATH, "symbol": "XAUUSD@"})
     assert r.status_code == 200
     assert captured["terminal_path"] == TERMINAL_PATH
     assert captured["symbol"] == "XAUUSD@"
 
+    # 2) With isolated (empty) persisted state, a no-argument call forwards
+    #    None — the GATE then applies its documented env/auto-detect
+    #    fallbacks. Nothing is invented at the API layer.
     captured.clear()
     r2 = client.get("/api/demo/readiness")
     assert r2.status_code == 200
     assert captured["terminal_path"] is None
     assert captured["symbol"] is None
+
+    # 3) A SAVED setup (stored through the API itself) becomes the resolution
+    #    for a no-argument call — persisted setup remains authoritative.
+    saved = client.post("/api/setup/mt5", json={"terminal_path": TERMINAL_PATH, "symbol": "XAUUSD@"})
+    assert saved.status_code == 200
+    captured.clear()
+    r3 = client.get("/api/demo/readiness")
+    assert r3.status_code == 200
+    assert captured["terminal_path"] == TERMINAL_PATH
+    assert captured["symbol"] == "XAUUSD@"
+
+    # 4) An explicit request still beats the saved setup.
+    captured.clear()
+    r4 = client.get("/api/demo/readiness", params={"symbol": "XAUUSD"})
+    assert r4.status_code == 200
+    assert captured["terminal_path"] == TERMINAL_PATH  # resolved from saved setup
+    assert captured["symbol"] == "XAUUSD"  # explicit request wins
