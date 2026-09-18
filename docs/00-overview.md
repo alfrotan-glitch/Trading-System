@@ -4,6 +4,8 @@
 
 This directory contains the scientific, architectural, and engineering foundation for an enterprise-grade autonomous quant research & trading platform targeting XAUUSD on MT5, designed to be instrument-, broker-, and venue-pluggable.
 
+> **Current-state authority:** Read [`current_state.md`](current_state.md) first for the verified repository status and forward roadmap. It supersedes stale snapshot wording without rewriting historical evidence artifacts.
+
 ## Documents
 
 | # | Document | Purpose |
@@ -23,10 +25,21 @@ This directory contains the scientific, architectural, and engineering foundatio
 | 13 | [ADRs](13-adrs.md) | Technology selection, reuse/adapt/rewrite/reject |
 | 14 | [Implementation Plan](14-implementation-plan.md) | Phased roadmap, milestones |
 | 15 | [Assumptions & Unknowns](15-assumptions.md) | Explicit uncertainties, experiments needed |
+| CS | [Current State & Research Roadmap](current_state.md) | Single current status authority and staged next steps |
 
 ## Reading Order
 
-For reviewers: 00 → 13 (ADRs) → 01 → 02 → 04 → 09 → 05 → 06 → 07 → rest.
+For reviewers: current state → 00 → 13 (ADRs) → 01 → 02 → 04 → 09 → 05 → 06 → 07 → rest.
+
+## Current project posture
+
+The foundation and provenance/quality work are strong; REAL XAUUSD 15m history
+has been acquired; the preregistered REAL impulse research has run and returned
+`REGIME_DEPENDENT / BLOCK`; event-level outcome transparency is implemented; and
+FO-R1 observation infrastructure is engineered and hardened. A real Windows/MT5
+observation session has not yet run, R5 continuous execution-cost history is
+still FAIL/non-blocking, broad research is incomplete, no profitable edge is
+validated, DEMO execution is disabled by policy, and LIVE is locked.
 
 ## Invariant
 

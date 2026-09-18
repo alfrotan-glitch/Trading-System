@@ -37,5 +37,7 @@ the raw source and checksum, ingest through `DataProvider`, validate it, create
 an immutable manifest, and regenerate inventory/source-audit/readiness evidence.
 The provider catalog is a plan only; no catalog row is proof of acquisition.
 
-**Next action:** declare the target hypothesis timeframe and acquire its
-provenance-qualified history before testing timeframe or multi-timeframe edge.
+**Next action:** keep the registered REAL 15m history immutable. For any
+additional timeframe or multi-timeframe hypothesis, declare the target first,
+acquire an independent provenance-qualified history, and test it only under a
+new preregistration; do not infer it from the 15m or synthetic 1H records.

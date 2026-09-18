@@ -4,14 +4,22 @@ Updated 2026-09-18. **Observation only; DEMO execution disabled, LIVE locked.**
 
 ## Current objective
 
-The next phase is **FO-R1: research-grade market observation**, not strategy execution or simulated fills. Its design, launch prerequisites, duration, coverage, quality criteria and research handoff are specified in:
+The next phase is **FO-R1: research-grade market observation**, not strategy execution or simulated fills. Its design, launch scope, quality criteria and research handoff are specified in:
 
+- [Current state and research roadmap](current_state.md)
 - [FO-R1 research observation plan](forward_observation_research_plan.md)
+- [Current FO-R1 boundary status](forward_observation_status.md)
 - [Hardened evidence-verification boundary](session_evidence_verification_boundary.md)
 - [Raw-evidence history hygiene](session_evidence_history_hygiene.md)
 - [Canonical authorities](canonical_authorities.md)
 
-FO-R1 is **design-only and blocked on acquisition prerequisites**. In particular, short tick IDs with replace-on-conflict writes, missing durable per-poll accounting and incomplete full-payload research export must be addressed before a multi-week research campaign. Passing session-artifact verification is not sufficient to clear these requirements.
+The FO-R1 **engineering boundary is hardened**: collision-safe append-only storage,
+durable acquisition accounting, research snapshot support, integrity checks and
+bounded publication are implemented. FO-R1 is not yet a completed real-market
+observation campaign: no real Windows/MT5 session is present in repository
+evidence, and the operator must still run the readiness-gated order-free
+protocol. The research-plan document retains its historical design checklist;
+this page and `forward_observation_status.md` state what is closed today.
 
 ## Existing real-source observation path
 
@@ -62,7 +70,12 @@ The hardened verifier derives available summaries from rows, checks duplicated r
 
 The hash chain detects inconsistencies relative to its supplied root; it cannot detect a fully rewritten self-consistent file without an independent trust anchor. Exported monotonicity does not establish arrival-order monotonicity because the exporter sorts rows.
 
-A private, complete, independently verifiable research snapshot plus durable acquisition diagnostics is a **separate planned deliverable**, not something v1 already supplies. Do not extend v1 ad hoc; preserve compatibility or introduce an explicitly versioned contract.
+A private, complete, independently verifiable research snapshot plus durable
+acquisition diagnostics is a **separate versioned contract** from the v1 audit
+artifact. Snapshot support and the acquisition ledger are implemented in the
+repository, but no real observation session has been captured or independently
+reviewed here. Do not extend v1 ad hoc; preserve compatibility and use the
+versioned research-snapshot contract.
 
 ## Transfer and safety policy
 

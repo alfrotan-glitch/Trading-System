@@ -1,5 +1,7 @@
 # Impulse Continuation Research — Evidence Pointer
 
+> Current project status and sequencing: [`docs/current_state.md`](../current_state.md).
+
 **Updated:** 2026-09-18
 **Current (REAL) artifact:** `data/evidence/impulse_research_xauusd_dukascopy_15m.json`
 **Current (REAL) report:** `docs/research/impulse_continuation_report_xauusd_dukascopy_15m.md`

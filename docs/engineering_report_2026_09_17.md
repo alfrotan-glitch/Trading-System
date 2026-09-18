@@ -1,12 +1,14 @@
 # QTS Engineering Report — Authority, Evidence, and Safety Boundaries
 
-**Status:** superseded audit report reconciled with the current checkout
+**Status:** historical superseded audit snapshot; not the current-state authority
 **Updated:** 2026-09-18
-**Branch:** `arena/01a0b358-trading-system`
+**Snapshot branch:** `arena/01a0b358-trading-system`
 **Inspected base:** `a885f65d252e`
+**Current-state authority:** [`docs/current_state.md`](current_state.md)
 **Environment:** Linux development sandbox; no MT5 terminal or broker session.
 
-This report records the current engineering contract. It does not claim that
+This report records the engineering contract as inspected in its snapshot. It
+does not claim that
 the sandbox has produced real broker observations or a validated trading edge.
 The release-level operator summary is `docs/release_readiness_report.md`.
 
@@ -137,6 +139,9 @@ outputs as explicit `MEASURED_INVALID` blocking checks. It never replaces
    external dependencies/flags and are not silently counted as passed.
 5. DEMO_EXECUTION remains intentionally disabled and LIVE remains locked.
 
-The next operator action is to acquire and register provenance-qualified
-history, then regenerate and inspect the falsification/evidence bundle. No
-execution mode should be enabled to satisfy a test or demonstration.
+The next-action wording above is retained as historical snapshot context. For
+current sequencing, use [`docs/current_state.md`](current_state.md): the REAL
+history is already registered; the remaining milestones are R5 execution-cost
+evidence, a real Windows/MT5 observation session, unchanged research rerun on
+improved evidence, and later breadth/governance. No execution mode should be
+enabled to satisfy a test or demonstration.

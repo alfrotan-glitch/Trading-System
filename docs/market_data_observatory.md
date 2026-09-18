@@ -1,8 +1,10 @@
 # Market Data Observatory
 
 **Updated:** 2026-09-18
-**Decision:** `KEEP NO_TRADE`; acquire claim-eligible data before interpreting
-strategy results.
+**Current-state authority:** [`docs/current_state.md`](current_state.md)
+**Decision:** `KEEP NO_TRADE`; the REAL XAUUSD 15m history is acquired and the
+registered impulse result is `REGIME_DEPENDENT / BLOCK`. R5 execution-cost
+history and broader evidence remain incomplete.
 
 ## Purpose
 
@@ -64,7 +66,7 @@ An aggregated 1H series derived from the real 15m bars was exported and
 documentation. Duplicate raw/curated representations are not independent
 observations.
 
-Machine-readable exports:
+Machine-readable exports include:
 
 - `data/evidence/data_inventory.json`
 - `data/evidence/data_source_audit.json`
@@ -72,10 +74,17 @@ Machine-readable exports:
 - `data/evidence/historical_depth.json`
 - `data/evidence/data_source_catalog.json`
 
-`data_quality_summary.json` and `historical_depth.json` were generated for the
-synthetic-fixture era and do not yet include the REAL dataset; the per-dataset
-canonical records are `data_inventory.json`, `data_source_audit.json`, and the
-research artifacts under `data/evidence/`.
+The inventory/quality/depth exports are derived snapshots, not substitutes
+for the underlying canonical stores and research artifacts. The tracked
+`data_inventory.json` includes both registered versions, including the REAL
+15m dataset. `data_quality_summary.json` and `historical_depth.json`, however,
+were generated for the synthetic-fixture era and do not provide the complete
+post-acquisition quality/depth summary. Use
+[`docs/data_provenance_xauusd_dukascopy.md`](data_provenance_xauusd_dukascopy.md)
+and the REAL impulse evidence at
+`data/evidence/impulse_research_xauusd_dukascopy_15m.json` for the current
+dataset claim, and treat the older quality/depth exports as explicitly limited
+snapshots until regenerated.
 
 ## Requirements and missing evidence
 

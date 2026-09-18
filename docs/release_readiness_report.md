@@ -1,8 +1,8 @@
 # QTS Release Readiness Report — Research-First, Observation-Only Boundary
 
 **Date:** 2026-09-18
-**Branch:** `arena/01a0b358-trading-system`
-**Base revision inspected:** `a885f65d252e`
+**Branch:** `arena/01a0b574-trading-system`
+**Current-state authority:** [`docs/current_state.md`](current_state.md)
 **Environment:** Linux development sandbox; no MT5 terminal, broker account, or live market session is available here.
 
 ## Executive verdict
@@ -65,9 +65,11 @@ raw/curated representations as independent evidence:
   - Bid/ask (continuous), tick, measured spread, broker session, fill, latency,
     and real volume semantics: `UNAVAILABLE` in the canonical bars; a
     supplementary 23-event bid/ask spread study exists but is not a gate input
-  - Research eligibility: REAL-claims adequacy gate passed on provenance,
-    depth, span, freshness, and event count; inventory field-semantics label
-    remains `BLOCKED_UNTIL_PROVENANCE_AND_FIELD_SEMANTICS_VERIFIED`
+  - Research eligibility: REAL-claims adequacy passed R1–R4 and R6;
+    execution-cost requirement R5 remains **FAIL/non-blocking** because the
+    canonical bars contain no continuous bid/ask/tick history. Older derived
+    inventory exports are snapshot-time artifacts, not a replacement for the
+    REAL impulse evidence.
   - Provenance record: `docs/data_provenance_xauusd_dukascopy.md`
 
 The `data_quality_summary.json` and `historical_depth.json` exports were
@@ -164,37 +166,42 @@ The UI has no DEMO execution enable control. It presents the policy refusal,
 readiness blockers, observation action, provenance, and next operator action.
 Safety limits are shown as non-authorizing metadata.
 
-## F. Verification performed
+## F. Verification boundary
 
-The current working tree was checked with:
+Historical test counts in older release snapshots are not current-state evidence
+and are intentionally not repeated here. Documentation convergence does not
+claim a new research run, a real MT5 session, a browser screenshot run, or
+claim-grade execution validation.
 
-- `ruff check .` — clean
-- `python -m compileall -q src tests` — clean
-- `pytest -q` — `720 passed, 27 skipped` in the default environment
-  (integration tests require the explicit `--run-integration` flag; browser
-  screenshots require Playwright/Chromium)
-- Node UI logic tests (`format.test.mjs`, `status.test.mjs`) — `25 passed`
-- targeted authority, data-inventory, comparison, setup, timestamp,
-  observation, and validation tests — passing
+The repository's executable tests remain the authority for code behavior. A
+real-environment MT5 observation run remains a separate operator requirement;
+skipped or controlled-environment tests cannot satisfy it.
 
-Skipped checks are not promoted to evidence. In particular, this report does
-not claim a real MT5 session, a browser screenshot run, or claim-grade
-historical validation.
+## G. Remaining blockers and staged roadmap
 
-## G. Remaining blockers and one next operator action
+The first provenance-qualified REAL historical dataset is already acquired; the
+next tasks must not send an operator back to that completed milestone. The
+canonical sequence is maintained in [`docs/current_state.md`](current_state.md):
 
-1. Acquire provenance-qualified, licensed market history with the declared
-   population, horizon, timestamp/session semantics, and enough depth/span.
-2. Re-run quality, source audit, readiness, walk-forward, OOS, cost, null,
-   placebo, regime, forward, and comparison evidence from that canonical
-   dataset without resetting the cumulative trial ledger.
-3. On a real Windows/MT5 demo terminal, run the documented readiness probe and
-   `DEMO_FORWARD` observation protocol. Store raw/provenance-bound sessions in
-   the canonical observatory; do not use the derived manifest as a source.
-4. Keep `DEMO_EXECUTION` disabled and `LIVE` locked until an explicitly
-   governed product decision changes that boundary; no test or demo should
-   weaken it.
+1. **Immediate operator/engineering milestone:** on a real Windows/MT5 demo
+   terminal, run the readiness-gated `DEMO_FORWARD/OBSERVE_ONLY` protocol and
+   retain canonical observation evidence. This is zero-order observation, not
+   execution or a profitability test.
+2. **Historical execution-realism milestone:** acquire or license continuous,
+   provenance-qualified bid/ask/tick and broker execution-cost history where
+   possible. This is the remaining R5 problem; the supplementary 23-window
+   spread study is not sufficient.
+3. **Research milestone:** only after improved evidence exists, rerun the
+   existing preregistered impulse design unchanged, preserving its hypothesis,
+   gates, locked partition and cumulative trial ledger.
+4. **Later breadth milestone:** mature feature/regime research and add
+   independent licensed populations/timeframes with new preregistration and
+   falsification controls.
+5. **Future validation/governance:** paper/shadow validation and candidate
+   lifecycle review occur only after sufficient evidence; they do not create
+   execution permission.
 
-**Next operator action:** acquire and register the first provenance-qualified
-historical dataset, then regenerate the evidence bundle and inspect its
-falsification results before considering any lifecycle change.
+**What remains blocked:** R5 is `FAIL`/non-blocking; no real MT5 observation
+session is present in repository evidence; no validated profitable edge exists;
+the REAL result remains `REGIME_DEPENDENT / BLOCK`; `DEMO_EXECUTION` remains
+disabled by policy; and `LIVE` remains locked.

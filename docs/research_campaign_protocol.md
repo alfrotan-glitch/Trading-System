@@ -1,6 +1,8 @@
 # Research Campaign Protocol
 Version: 0.1.0
 
+> Current status and sequencing are maintained in [`docs/current_state.md`](current_state.md). This protocol describes the campaign machinery; it is not the authority for the latest dataset or research conclusion.
+
 ## Purpose
 Controlled research engine for discovering genuine edge, not optimising backtest profit. Golden principle: edge survives attempts to disprove it.
 
@@ -96,7 +98,11 @@ Exceeded → campaign status COMPLETED with partial results, never silent infini
 Objective is NOT "find most money historically" — that is overfitting.
 Objective IS "find edge surviving attempts to disprove it" — walk-forward, CPCV, PBO, PSR/DSR, cost/regime/perturbation, null/placebo, expectancy, economic, forward/shadow.
 
-If insufficient evidence → KEEP NO_TRADE. The current canonical campaign and edge artifacts are blocked by synthetic provenance and insufficient depth/span; no candidate is promoted.
+If insufficient evidence → KEEP NO_TRADE. The bounded campaign and edge
+artifacts remain blocked by synthetic provenance and insufficient depth/span; no
+candidate is promoted. Separately, the REAL XAUUSD 15m impulse study has run and
+returned `REGIME_DEPENDENT / go_block = BLOCK`; it does not override this
+protocol or establish a validated edge.
 
 ## Evidence
 - Canonical campaign artifact: `data/evidence/campaign_last.json`; compact pointer: `data/evidence/campaigns_summary.json`.

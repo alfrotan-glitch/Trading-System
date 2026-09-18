@@ -1,102 +1,135 @@
-# 14 — Phased Implementation Plan
+# 14 — Current Implementation and Research Roadmap
 
-**Approach:** Foundations first — data integrity → research correctness → validation → execution → risk → observability → AI → UX. No dashboard before decisions are trustworthy.
+**Status:** current roadmap; use `docs/current_state.md` as the single status
+summary. Historical phase labels from the original bootstrap plan are not used
+to describe unfinished work. This document records what is complete and what
+remains, without changing research mathematics, gates, execution boundaries or
+provenance.
 
-## Phase 0 — Foundation (Week 1) ✅ Done
+## 1. Completed foundation
 
-- [x] ADRs, architecture, domain model, lifecycles, data/execution/risk/validation/security/observability/testing docs
-- [x] Repo scaffolding: `pyproject.toml`, `src/qts`, `tests`, `configs`, CI
-- [x] Domain value objects (Pydantic, Decimal, UTC, Instrument lot_size/contract_size)
-- [x] DataStore (Parquet+SQLite, manifests, quality_reports, synthetic) — quality gate enforced `write_bars(strict_quality=True)`, staleness/duplicate/tz checks
-- [x] Deterministic event loop + Bar/Tick bus + next-bar `exec_bar` (open_time+1ms)
-- [x] Strategy interface + SMA breakout + hold_long test harness
-- [x] RiskEngine (per-trade lots×contract×price, step/min lots, exposure, daily loss, drawdown, kill-switch persisted SQLite)
-- [x] ExecutionEngine + MatchingEngine + Paper/Replay/MT5Adapter (lots_to_mt5_volume, idempotency SQLite + placeholder, reconcile requires_suspend, NO_TRADE explicit)
-- [x] Validation pipeline (real walk-forward splits, CPCV+PBO, perturbation ±10/20% re-run, stress run_stress multipliers, PSR/DSR Bailey, NOT_IMPLEMENTED blocks)
-- [x] Experiment memory (SQLite lineage, Hypothesis/Experiment) + ResearchLoop (NullAgent → validate → AdversarialAgent)
-- [x] Audit log (JSONL+SQLite, redaction) + Shipper (Local+S3 bucket/prefix/content-hash)
-- [x] Lifecycle state machine + gates + NO_TRADE sentinel (NoTradeReason)
-- [x] Unit + determinism + 20 adversarial tests (64 passed), CI, ruff/mypy
+The following are implemented and are not future tasks:
 
-**Exit:** `qts backtest --strategy sma_breakout --data-version <ver>` deterministic (hash stable), risk vetoes lots-aware, reconciliation suspends on drift, validation fails closed on placeholder, audit durable.
+- modular-monolith architecture, domain model, lifecycle boundaries, canonical
+  authorities and fail-closed defaults;
+- SQLite + Parquet data storage, immutable manifests, provenance, strict OHLC
+  quality validation and synthetic fixtures;
+- deterministic bar replay and next-bar execution semantics;
+- strategy interfaces, paper/shadow infrastructure, generic execution/risk/
+  reconciliation boundaries and durable NO_TRADE/audit behavior;
+- walk-forward, CPCV/PBO, PSR/DSR, perturbation, stress, null/placebo and
+  cumulative-trial governance where implemented by the existing validation
+  pipeline;
+- bounded research campaigns, experiment lineage, research memory and
+  adversarial research machinery;
+- hardened FO-R1 observation boundary: canonical SQLite observatory, durable
+  acquisition accounting, research snapshot support, integrity checks,
+  long-session protections and structural order-free enforcement;
+- REAL XAUUSD 15m data acquisition and provenance record:
+  `20260918-010+8f120133-1ba57af7`, 26,038 rows, approximately 407 days,
+  class `REAL`;
+- execution of the unchanged preregistered REAL impulse study;
+- event-level outcome transparency using existing measured directional outcomes.
 
-## Phase 0.1 — Fidelity Patch (Phase 1 Audit Fix) ✅ This PR (907d8dc)
+These completed items must not be reintroduced as work for future agents. See
+`docs/current_state.md` and the linked evidence for the current proof boundary.
 
-- next-bar proven via `test_next_bar_execution_no_lookahead` (hold_long bar_idx 1, price==next open), zigzag PF inf no longer mis-flagged
-- Portfolio PnL weighted avg / partial 0.4 / flip + contract×lots formula + mark_to_market
-- Idempotency persistent placeholder survives restart
-- Kill persists across RiskEngine restarts
-- Docs updated for lots, next-bar, PSR/DSR, CPCV, gates, shipper, NO_TRADE
+## 2. Immutable current decision boundary
 
-## Phase 1 — Research Hardening (Week 2-3) ▲ In Progress
+The REAL impulse result is:
 
-- [x] Adversarial suite (20 audits) + determinism
-- [x] Purged/CPCV splits (cpcv_splits + embargo via walk_forward_splits), PBO blocking
-- [x] Reconciler drift SUSPEND (`requires_suspend`) + kill persistence
-- [x] MT5 symbol/lot mapping (MT5Adapter.lots_to_mt5_volume, 0.01 step, contract_size 100) — live send stubbed for Phase 2
-- [x] Data quality hooks enforced (validate_bars on write, quality_reports SQLite, `qts data validate`)
-- [x] Shipper local+S3, NO_TRADE explicit, AI loop (ResearchLoop)
-- [ ] Feature Store (`fit`/`transform`, leakage guards, IC) — vectorized isolated, not for execution
-- [ ] MT5 history ingest from terminal API (CSV path done, MT5 API polling next)
-- [ ] Paper trading on live MT5 ticks (MT5DataFeed + PaperAdapter) — Paper on synthetic done, MT5 ticks pending terminal
-- [ ] Property tests & failure injection (hypothesis already in tests/property for portfolio, need walk-forward + execution property)
+```text
+conclusion = REGIME_DEPENDENT
+go_block   = BLOCK
+```
 
-**Exit:** Walk-forward + adversarial report for SMA ✅ + paper trading 1 week without drift (paper on synthetic done, MT5 paper pending)
+R5 remains **FAIL/non-blocking** because continuous historical bid/ask,
+measured spread, fill, latency and slippage evidence is unavailable in the
+canonical dataset. The supplementary event-selected spread study is not an R5
+replacement. The locked research partition remains untouched.
 
-## Phase 2 — Live Readiness (Week 4-5)
+`DEMO_EXECUTION = DISABLED BY POLICY`. `DEMO_FORWARD` is observation-only and
+structurally order-free. `LIVE = LOCKED`. No roadmap item changes these states.
 
-- [ ] MT5Adapter (live) with ZeroMQ/EA bridge, symbol/lot mapping, error mapping
-- [ ] Shadow mode (live vs paper divergence metrics)
-- [ ] Kill-switch persistence + manual reset
-- [ ] SecretsProvider (Vault/1Password), env isolation
-- [ ] Security audit (bandit, redaction)
-- [ ] Docs for `LIVE_CANDIDATE` promotion checklist
+## 3. Staged roadmap
 
-**Exit:** SHADOW 2 weeks, divergence < threshold, kill-switch tested, security review PASS.
+### Stage A — Documentation/state convergence
 
-## Phase 3 — Intelligence (Week 6-8)
+**Completed in this documentation change.** `docs/current_state.md` is the
+current-state authority; stale status/roadmap references are corrected and
+historical reports are labelled as snapshots where they are retained.
 
-- [ ] Regime detectors (vol quantile, HMM) as hypotheses, WFA-conditioned evaluation
-- [ ] ResearchAgent (Null + LLM-optional) + AdversarialAgent
-- [ ] Portfolio vol-aware sizing, correlated exposure
-- [ ] Experiment memory semantic search (embedding)
-- [ ] Observability dashboard (read-only, derived from audit)
+### Stage B — Next engineering/operator milestone: real observation
 
-**Exit:** Regime-conditioned validation shows measured uplift or rejection with evidence; agents produce hypotheses that pass validation at > random baseline.
+On a real Windows/MT5 operator machine, run the existing readiness-gated
+`DEMO_FORWARD/OBSERVE_ONLY` protocol. Preserve the canonical SQLite store,
+durable acquisition ledger, snapshot/export lineage and order-free checks.
 
-## Phase 4 — Scale & Polish (Week 9+)
+Acceptance is a real, provenance-bound observation session and its independently
+reviewed evidence. It is not an order, fill, profitability result, or LIVE gate.
+No real session is currently present in repository evidence.
 
-- [ ] DuckDB/Postgres option, Timescale if needed (behind DataStore)
-- [ ] Rust engine spike (behind Engine interface, benchmark)
-- [ ] Additional instruments/venues (XAGUSD, EURUSD) to prove plugability
-- [ ] Monte Carlo price paths, White's Reality Check
-- [ ] Chaos tests, latency profiling, alerting (webhook)
+### Stage C — Historical execution realism / R5
 
-**Exit:** Multi-instrument backtest, no core change for new venue; performance profile justifies or rejects Rust.
+Acquire or license a provenance-qualified source with continuous historical
+bid/ask/tick and, where available, broker-session/execution-cost fields. Register
+it as a new immutable dataset or explicitly versioned evidence source. Do not
+rewrite the current REAL mid history or infer continuous spread from OHLC.
 
-## Milestones & Gates
+### Stage D — Re-run existing research on improved evidence
 
-| Milestone | Gate | Evidence |
-|-----------|------|----------|
-| M1: Deterministic backtest | CI green, determinism hash | `tests/integration/test_determinism.py` PASS |
-| M2: Validation report | Full pipeline on synthetic + real | `ValidationReport` JSON artifact |
-| M3: Paper week | No drift, audit complete | `ReconcileReport` 7 days clean |
-| M4: Shadow week | Live/paper delta < thresh | Divergence metrics |
-| M5: LIVE_CANDIDATE | Manual approval + risk approved | Signed `ValidationReport` + `RiskLimits` |
-| M6: LIVE | Kill-switch armed, reconciler live | Health checks green |
+After a valid R5-capable dataset exists, re-run the same preregistered impulse
+hypothesis and design. Preserve definitions, costs, gates, locked partition
+rules, cumulative trial ledger and REAL/SYNTHETIC lineage. Do not change the
+hypothesis or search parameters merely to seek a positive result. The present
+`REGIME_DEPENDENT / BLOCK` remains authoritative until a new run supersedes it
+with its own artifact.
 
-## Risk & Mitigation
+### Stage E — Research breadth
 
-| Risk | Mitigation |
-|------|------------|
-| MT5 API instability | Adapter isolation + Fake/Paper + reconciliation |
-| Overfitting despite WFA | DSR/PBO + adversarial + holdout discipline |
-| Scope creep to microservices | Modular monolith, interfaces first, distribution only with evidence |
-| AI hallucinating edge | AI is hypothesis only, never bypasses validation |
+As a separate research program, mature the feature store, investigate causal
+regimes, extend licensed history, add independent timeframes/instruments, and
+register additional hypothesis families with falsification, null/placebo,
+OOS and multiple-testing controls. Breadth is not a substitute for R5.
 
-## What We Will NOT Do
+### Stage F — Paper and shadow validation
 
-- No live capital before M5 gate.
-- No new instrument before XAUUSD validation passes.
-- No dashboard before audit log.
-- No performance optimization before correctness tests.
+Only after a candidate hypothesis has sufficient research evidence, run paper
+and shadow comparisons under declared immutable assumptions. Keep simulated fills,
+shadow intents, DEMO observations and broker fills as separate evidence classes.
+No paper or shadow result grants execution permission.
+
+### Stage G — Candidate lifecycle
+
+Only after the required research, cost, regime, OOS, forward, risk and
+reconciliation evidence exists may human governance review a candidate
+lifecycle transition. A positive event-level outcome row alone is insufficient.
+
+### Stage H — Future governed execution
+
+Any future DEMO execution or LIVE decision requires a separately approved human
+policy change and all applicable gates. This roadmap does not add an order path,
+enable DEMO execution or unlock LIVE.
+
+## 4. Explicit non-goals
+
+- Do not reacquire the already registered REAL history as if no dataset exists.
+- Do not redo FO-R1 storage hardening that is already closed in the current
+  observation boundary.
+- Do not rerun the impulse study merely for documentation.
+- Do not promote the supplementary spread windows into R5.
+- Do not call event-study outcomes executed trades, fills or realized P&L.
+- Do not interpret synthetic campaign artifacts as REAL research.
+- Do not reset cumulative trial accounting or alter R1–R6, DSR, PBO or CPCV logic.
+
+## 5. Roadmap ownership and evidence
+
+| Milestone | Owner / environment | Required evidence | Current state |
+|---|---|---|---|
+| Documentation convergence | Repository maintainers | Current-state page and consistent references | **This mission** |
+| Real observation session | Windows/MT5 operator | Canonical session, acquisition ledger, reviewed snapshot | **Pending** |
+| R5 execution-cost history | Licensed data/research owner | Immutable continuous bid/ask/tick lineage | **Pending; R5 FAIL** |
+| Unchanged research rerun | Research owner | New bound artifact and unchanged design/gates | **Future, after R5 evidence** |
+| Breadth research | Research owner | New preregistration and independent datasets | **Future** |
+| Paper/shadow validation | Research + governance | Separate simulation/intention comparison evidence | **Future, candidate-dependent** |
+| Candidate/execution governance | Human approval + all authorities | Full gate evidence and explicit approval | **Not eligible** |
