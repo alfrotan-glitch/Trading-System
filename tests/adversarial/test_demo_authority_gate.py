@@ -202,6 +202,7 @@ def test_readiness_passed_false_with_fresh_probe_passing_is_coherent(authority: 
     assert d["state"] == "DISABLED"
     assert d["enabled"] is False
     assert d["execution_permitted"] is False
+    assert "DEMO_EXECUTION = DISABLED BY POLICY" in d["reasons"]
     assert d["readiness_passed"] is False
     assert d["readiness_evidence"] == "none"
     assert d["readiness_expired"] is False

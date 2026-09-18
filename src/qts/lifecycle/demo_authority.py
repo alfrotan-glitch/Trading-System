@@ -269,16 +269,21 @@ class DemoExecutionAuthority:
         """
         row = self._latest()
         if row is None or not row["enabled"]:
+            policy_reasons = (
+                [str(row["reason"] or "disabled")]
+                if row and not row["enabled"]
+                else ["never enabled"]
+            )
+            if DEMO_EXECUTION_DISABLED:
+                policy_reason = f"DEMO_EXECUTION = {DEMO_EXECUTION_POLICY}"
+                if policy_reason not in policy_reasons:
+                    policy_reasons.insert(0, policy_reason)
             return DemoPermissionDecision(
                 enabled=bool(row and row["enabled"]),
                 execution_permitted=False,
                 state="DISABLED",
                 decided_at=row["decided_at"] if row else None,
-                reasons=(
-                    [str(row["reason"] or "disabled")]
-                    if row and not row["enabled"]
-                    else ["never enabled"]
-                ),
+                reasons=policy_reasons,
                 readiness=row["readiness"] if row else None,
                 readiness_age_s=None,
                 readiness_expired=False,
