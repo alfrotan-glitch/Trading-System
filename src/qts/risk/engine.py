@@ -97,14 +97,29 @@ class RiskDecision(BaseModel):
 
 
 class RiskEngine:
-    """Independent authority. Persists kill flag. Quantity canonical: lots."""
+    """Independent authority. Persists kill flag. Quantity canonical: lots.
 
-    def __init__(self, limits: RiskLimits, db_path: Path | str = "data/sqlite/qts.db"):
+    ``persist_kill`` is disabled for isolated research/simulation runs.  A
+    backtest must not clear or overwrite a durable production kill switch just
+    because it shares the repository's SQLite data store.  Live, paper, and
+    shadow callers retain the durable default.
+    """
+
+    def __init__(
+        self,
+        limits: RiskLimits,
+        db_path: Path | str = "data/sqlite/qts.db",
+        persist_kill: bool = True,
+    ):
         self.limits = limits
         self.db_path = Path(db_path)
+        self.persist_kill = persist_kill
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._init_db()
-        self._killed = self._load_killed()
+        if self.persist_kill:
+            self._init_db()
+            self._killed = self._load_killed()
+        else:
+            self._killed = False
 
     def _init_db(self) -> None:
         with db_connect(self.db_path) as con:
@@ -124,6 +139,8 @@ class RiskEngine:
 
     def kill_switch(self, reason: str) -> None:
         self._killed = True
+        if not self.persist_kill:
+            return
         with db_connect(self.db_path) as con:
             con.execute(
                 "INSERT OR REPLACE INTO risk_state VALUES (1,1,?,?)",
@@ -133,6 +150,8 @@ class RiskEngine:
 
     def reset_kill(self) -> None:
         self._killed = False
+        if not self.persist_kill:
+            return
         with db_connect(self.db_path) as con:
             con.execute("DELETE FROM risk_state WHERE k=1")
             con.commit()

@@ -46,12 +46,17 @@ class BacktestResult:
     equity_curve: list[float] = field(default_factory=list)
     returns: list[float] = field(default_factory=list)
     fills: list[dict[str, Any]] = field(default_factory=list)
+    # This is the immutable checksum from the selected dataset manifest, not a
+    # hash of the run configuration.  Keep the field name for compatibility.
     manifest_hash: str = ""
     final_equity: float = 10000.0
     sharpe: float = 0.0
     max_dd: float = 0.0
     profit_factor: float = 0.0
+    # Full run configuration identity (strategy, parameters, seed, data,
+    # matching/risk settings, and code version).
     config_hash: str = ""
+    code_version: str = ""
 
     def hash(self) -> str:
         payload = json.dumps({"equity": self.equity_curve, "fills": self.fills}, sort_keys=True)
@@ -85,6 +90,15 @@ class BacktestEngine:
         end: datetime | None = None,
     ) -> BacktestResult:
         strategy_params = strategy_params or {}
+        dataset_manifest = self.data_store.manifest(data_version)
+        if dataset_manifest is None:
+            raise ValueError(f"dataset manifest unavailable for version {data_version}")
+        if dataset_manifest.instrument != instrument.symbol or dataset_manifest.timeframe != timeframe:
+            raise ValueError(
+                "dataset manifest does not match requested instrument/timeframe: "
+                f"manifest={dataset_manifest.instrument}/{dataset_manifest.timeframe}, "
+                f"requested={instrument.symbol}/{timeframe}"
+            )
         bars = self.data_store.read_bars(instrument, timeframe, start, end, version=data_version)
         if not bars:
             raise ValueError(f"no bars for {instrument.symbol} {timeframe} version {data_version}")
@@ -176,15 +190,24 @@ class BacktestEngine:
         # Isolated idempotency: backtest must NOT mutate live/shared lineage (G2)
         # Use isolated in-memory store (or per-run temp file) so live records remain untouched
         # Previously this cleared the shared DB (idemp.clear()) which destroyed live lineage.
-        risk = RiskEngine(self.risk_limits, db_path=self.data_store.db_path)
-        risk.reset_kill()
-        # Backtest idempotency is isolated - use :memory: SQLite so it never touches live DB
-        # Each backtest run gets a fresh isolated namespace
+        # Research/simulation state must not mutate the durable risk authority
+        # or reconciliation state used by paper/shadow/live.  Idempotency was
+        # already isolated; the kill switch and suspend state are isolated here
+        # as well.  A backtest therefore cannot clear a production kill switch.
+        risk = RiskEngine(self.risk_limits, db_path=self.data_store.db_path, persist_kill=False)
         idemp = IdempotencyStore(db_path=":memory:")
         om = OrderManager(audit=self.audit, idempotency=idemp)
         broker = PaperBrokerAdapter(matching=matching)
         portfolio = Portfolio(initial_balance=Decimal(str(self.initial_balance)), currency="USD")
-        exec_engine = ExecutionEngine(om, risk, broker, matching, portfolio, audit=self.audit)
+        exec_engine = ExecutionEngine(
+            om,
+            risk,
+            broker,
+            matching,
+            portfolio,
+            audit=self.audit,
+            persist_reconcile_state=False,
+        )
 
         equity: list[float] = []
         fills_out: list[dict[str, Any]] = []
@@ -268,21 +291,27 @@ class BacktestEngine:
         sharpe = sharpe_ratio(rets) if len(rets) else 0.0
         dd = max_drawdown(eq_arr)
         pf = profit_factor(rets) if len(rets) else 0.0
-        payload = json.dumps(
-            {
-                "strategy_id": strategy_id,
-                "params": strategy_params,
-                "data_version": data_version,
-                "seed": seed,
-                "bars": len(bars),
-                "execution": "next_bar_open",
-            },
-            sort_keys=True,
-        )
-        manifest_hash = hashlib.sha256(payload.encode()).hexdigest()[:12]
+        from qts.observability.lineage import code_version
+
+        run_code_version = code_version()
+        run_configuration = {
+            "strategy_id": strategy_id,
+            "params": strategy_params,
+            "data_version": data_version,
+            "dataset_manifest_hash": dataset_manifest.checksum,
+            "seed": seed,
+            "start": start.isoformat() if start else None,
+            "end": end.isoformat() if end else None,
+            "bars": len(bars),
+            "execution": "next_bar_open",
+            "matching": self.matching_config.__dict__,
+            "risk_limits": self.risk_limits.model_dump(mode="json"),
+            "initial_balance": str(self.initial_balance),
+            "code_version": run_code_version,
+        }
         config_hash = hashlib.sha256(
-            json.dumps({"matching": self.matching_config.__dict__}, sort_keys=True, default=str).encode()
-        ).hexdigest()[:8]
+            json.dumps(run_configuration, sort_keys=True, default=str, separators=(",", ":")).encode()
+        ).hexdigest()[:12]
         return BacktestResult(
             strategy_id=strategy_id,
             data_version=data_version,
@@ -292,12 +321,13 @@ class BacktestEngine:
             equity_curve=equity,
             returns=rets.tolist(),
             fills=fills_out,
-            manifest_hash=manifest_hash,
+            manifest_hash=dataset_manifest.checksum,
             final_equity=float(equity[-1]) if equity else self.initial_balance,
             sharpe=float(sharpe),
             max_dd=float(dd),
             profit_factor=float(pf),
             config_hash=config_hash,
+            code_version=run_code_version,
         )
 
     def run_stress(

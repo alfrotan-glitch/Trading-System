@@ -148,7 +148,9 @@ class SqliteAuditLog:
                     recorded_at=datetime.fromisoformat(row[3]),
                     source=row[4],
                     payload=payload,
-                    code_version=row[6] or "0.1.0",
+                    # Older rows may predate lineage stamping; preserve that
+                    # uncertainty instead of fabricating a package version.
+                    code_version=row[6] or "UNAVAILABLE",
                     data_version=row[7],
                 )
             )

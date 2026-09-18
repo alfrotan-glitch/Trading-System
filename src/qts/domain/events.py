@@ -15,6 +15,13 @@ def _utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+def _code_version() -> str:
+    """Resolve the producing revision without inventing a package-only identity."""
+    from qts.observability.lineage import code_version
+
+    return code_version()
+
+
 class EventType(StrEnum):
     BAR = "BarReceived"
     TICK = "TickReceived"
@@ -42,7 +49,7 @@ class DomainEvent(BaseModel):
     source: str = "qts"
     version: int = 1
     payload: dict[str, Any] = Field(default_factory=dict)
-    code_version: str = "0.1.0"
+    code_version: str = Field(default_factory=_code_version)
     data_version: str | None = None
 
     @field_validator("event_time", "recorded_at")

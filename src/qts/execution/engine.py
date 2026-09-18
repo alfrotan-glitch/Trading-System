@@ -266,6 +266,7 @@ class ExecutionEngine:
         audit: AuditLog | None = None,
         db_path: Path | str | None = None,
         market_data: Any | None = None,
+        persist_reconcile_state: bool = True,
     ):
         self.om = order_manager
         self.risk = risk_engine
@@ -277,13 +278,17 @@ class ExecutionEngine:
         self.drawdown = Decimal("0")
         self._day_start_equity = portfolio.equity()
         self._db_path = Path(db_path) if db_path else Path(getattr(risk_engine, "db_path", "data/sqlite/qts.db"))
+        self.persist_reconcile_state = persist_reconcile_state
         self.market_data = market_data
         # stable fill ids already applied this process — poll dedupe (never apply the
         # same economic fill twice); portfolio.fills covers cross-restart dedupe
         self._applied_fill_ids: set[str] = set()
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._init_reconcile_db()
-        loaded_suspended, loaded_reason = self._load_reconcile_suspend()
+        if self.persist_reconcile_state:
+            self._init_reconcile_db()
+            loaded_suspended, loaded_reason = self._load_reconcile_suspend()
+        else:
+            loaded_suspended, loaded_reason = False, None
         self._suspended = loaded_suspended
         self._suspend_reason: str | None = loaded_reason
         if self._suspended and self.audit:
@@ -313,6 +318,8 @@ class ExecutionEngine:
         return False, None
 
     def _persist_reconcile_suspend(self, suspended: bool, reason: str | None) -> None:
+        if not self.persist_reconcile_state:
+            return
         with db_connect(self._db_path) as con:
             con.execute(
                 "INSERT OR REPLACE INTO reconcile_state VALUES (1,?,?,?)",
@@ -1302,7 +1309,7 @@ class ExecutionEngine:
             from pathlib import Path
 
             db = getattr(self, "_db_path", getattr(self, "db_path", None))
-            if db is not None:
+            if db is not None and self.persist_reconcile_state:
                 db = Path(db)
                 if db.exists() and str(db) != ":memory:":
                     with db_connect(db) as con, contextlib.suppress(Exception):

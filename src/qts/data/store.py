@@ -132,12 +132,12 @@ class SqliteParquetDataStore:
         if strict_quality and not quality.passed:
             details = "; ".join(f"{c.name}: {c.details}" for c in quality.checks if not c.passed)
             raise ValueError(f"data quality failed: {details}")
-        import qts
+        from qts.observability.lineage import code_version as current_code_version
 
-        code_version = getattr(qts, "__version__", "0.1.0")
+        code_version = current_code_version()
         if version is None:
             content_hash = _checksum_bars(bars)[7:15]
-            short = code_version.replace(".", "")[:6]
+            short = code_version.replace(".", "")[:12]
             version = f"{datetime.now(UTC).strftime('%Y%m%d')}-{short}-{content_hash}"
         with db_connect(self.db_path) as con:
             row = con.execute("SELECT 1 FROM manifests WHERE version=?", (version,)).fetchone()

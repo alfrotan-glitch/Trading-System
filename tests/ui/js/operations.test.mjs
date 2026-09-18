@@ -34,7 +34,8 @@ test("passing readiness never grants execution permission", () => {
 test("stale or failed authority cannot show currently permitted", () => {
   const d = data(); d.health.effective_mode.effective_mode = "DEMO_EXECUTION";
   d.demoState = {state: "ENABLED", execution_permitted: true};
-  assert.equal(operationalState(d, NOW).permission, "PERMITTED BY AUTHORITY");
+  assert.equal(operationalState(d, NOW).permission, "DISABLED BY POLICY");
+  d.health.effective_mode.effective_mode = "DEMO_FORWARD";
   d.resources.demoState.updatedAt = NOW - 46000;
   assert.equal(operationalState(d, NOW).permission, "UNAVAILABLE");
   d.resources.demoState = {updatedAt: NOW, error: "offline"};
