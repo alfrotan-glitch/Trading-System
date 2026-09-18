@@ -131,3 +131,9 @@ body { background: var(--bg-0); }
   .quote { flex-direction: column; gap: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Skeleton — honest loading, no decorative shimmer */
+.skeleton { background: var(--bg-2); border: 1px solid var(--line); }
+.skeleton::after { display: none; }
+.skl-stat { height: 56px; border-radius: 6px; }
+.skl-line { height: 10px; border-radius: 4px; }

@@ -1,5 +1,5 @@
 /* System — setup, MT5, diagnostics: plumbing made calm and explicit */
-import { api, store, RESOURCES, syncResource } from "../api.js";
+import { api, store, RESOURCES, syncResource, measurements } from "../api.js";
 import { operationalState, freshness } from "../operations.js";
 import { h } from "../dom.js";
 import {
@@ -257,6 +257,7 @@ export async function renderDiagnostics(root) {
       ),
     }));
 
+    content.appendChild(card({ title: "UI performance — last 100 local measurements", sub: "browser request/render/route durations, not broker latency", icon: "activity", body: h("div", { class: "stack" }, h("p", { class: "text-dim small" }, "Bounded to 100 records. No response payloads stored. Heap growth requires separate browser profiling."), h("details", null, h("summary", null, "Show measurements / technical"), tech(measurements.slice(-100), "Measurements")))}));
     host.replaceChildren(content);
   }
 
