@@ -231,7 +231,7 @@ def test_forward_observatory_safe_no_capital():
     assert s["ticks_recorded"] == 5
     assert s["no_capital_exposure"] is True
     manifest = fo.to_manifest(Path(tempfile.mktemp(suffix=".json")))
-    assert manifest["safety"] == "No live trading — only hypothetical executions recorded"
+    assert manifest["safety"] == "No live trading — OBSERVE_ONLY market observations only; no orders or executions recorded"
     assert manifest["ticks_recorded"] == 5
 
 

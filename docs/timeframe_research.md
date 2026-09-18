@@ -17,7 +17,7 @@ higher/lower timeframe data.
 
 ## Eligibility contract
 
-A multi-timeframe or timeframe-specific hypothesis must have an independent,
+A timeframe is **eligible only if quality sufficient**: a multi-timeframe or timeframe-specific hypothesis must have an independent,
 provenance-bound dataset for every timeframe it uses. Each version must pass
 timestamp/quality checks and meet the declared depth/span/population contract.
 Cost-sensitive claims also require measured bid/ask/tick or explicitly declared

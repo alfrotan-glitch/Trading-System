@@ -34,6 +34,7 @@ from pydantic import BaseModel, Field
 from qts.db import connect as db_connect
 from qts.domain.provenance import EvidenceProvenance
 from qts.domain.value_objects import Tick, uuid7
+from qts.observability.lineage import code_version
 
 
 class ObservationTick(BaseModel):
@@ -409,7 +410,8 @@ class ForwardObservatory:
             "ticks_by_provenance": by_prov,
             "divergence": divergence,
             "no_capital_exposure": True,
-            "safety": "No live trading — only hypothetical executions recorded",
+            "code_version": code_version(),
+            "safety": "No live trading — OBSERVE_ONLY market observations only; no orders or executions recorded",
             "measurement_limits": "Hypothetical price divergence may be measured; realized execution/PnL is UNAVAILABLE",
         }
 

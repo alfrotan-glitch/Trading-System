@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from qts.domain.provenance import MetricValue
+from qts.observability.lineage import code_version
 
 _SHADOW_ID_TS = re.compile(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})")
 
@@ -140,6 +141,7 @@ def compare_paper_shadow_demo(
 
     result: dict[str, Any] = {
         "generated_at": datetime.now(UTC).isoformat(),
+        "code_version": code_version(),
         "provenance": {
             "paper_source": "data/evidence/paper_trades.json (PAPER class)",
             "shadow_source": "data/evidence/shadow_intents.json (SHADOW class)",
