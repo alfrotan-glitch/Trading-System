@@ -1,0 +1,222 @@
+[
+  {
+    "source": "data/raw/synth.csv",
+    "provider": "synthetic",
+    "instrument": "XAUUSD",
+    "timeframe": "1H",
+    "date_range": {
+      "start": "2020-01-01T00:00:00+00:00",
+      "end": "2020-03-24T08:00:00+00:00"
+    },
+    "row_count": 2000,
+    "tick_count": 2000,
+    "timezone": "UTC",
+    "timestamp_resolution": "1 minute inferred, bar open_time second precision",
+    "ohlc_availability": true,
+    "bid_availability": false,
+    "ask_availability": false,
+    "spread_availability": "proxy via high-low (SYNTHETIC)",
+    "volume_availability": true,
+    "tick_volume_vs_real_volume": "tick volume proxy (SYNTHETIC), not real volume",
+    "missingness": {
+      "missing_pct": 0.2,
+      "gap_info": {
+        "gap_count": 0,
+        "max_gap_s": 3600,
+        "missing_pct": 0.0,
+        "common_delta_s": 3600
+      },
+      "details": "1 bar missing out of 501 expected for 1H"
+    },
+    "duplicates": false,
+    "gaps": {
+      "gap_count": 0,
+      "max_gap_s": 3600,
+      "missing_pct": 0.0,
+      "common_delta_s": 3600
+    },
+    "session_coverage": "XAUUSD 24h minus weekend (Fri 22:00 UTC close to Sun 22:00 open) \u2014 synthetic includes continuous, real should exclude",
+    "market_closure_handling": "synthetic ignores closures \u2014 real must handle",
+    "broker_artifacts": "none detected",
+    "checksum": "sha256:86ca2f9c35a3518f",
+    "ingestion_method": "Provider synthetic \u2192 Raw Storage \u2192 Validation \u2192 Normalization \u2192 Canonical 20260916-010-86ca2f9c",
+    "preprocessing_version": "1.0",
+    "provenance": "Raw data/raw/synth.csv checksum sha256:86ca2f9c35a3518f \u2192 normalized UTC \u2192 curated data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260916-010-86ca2f9c/part-0.parquet",
+    "schema_version": 1,
+    "quality_report": [
+      {
+        "name": "monotonic_time",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "tz_aware",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_future",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "ohlc_invariants",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "positive_prices",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "abnormal_spreads",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_duplicates",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "single_symbol",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_missing_bars",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "session_boundaries",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_broker_artifacts",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "volume_non_negative",
+        "passed": true,
+        "details": ""
+      }
+    ],
+    "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260916-010-86ca2f9c/part-0.parquet",
+    "raw_preserved": "data/raw/synth.csv",
+    "research_eligibility": "eligible for 1H trend/breakout research only \u2014 not for microstructure/tick/spread research (synthetic spread)"
+  },
+  {
+    "source": "data/fixtures/XAUUSD_1H_500.csv",
+    "provider": "csv",
+    "instrument": "XAUUSD",
+    "timeframe": "1H",
+    "date_range": {
+      "start": "2020-01-01T00:00:00+00:00",
+      "end": "2020-01-21T20:00:00+00:00"
+    },
+    "row_count": 500,
+    "tick_count": 500,
+    "timezone": "UTC",
+    "timestamp_resolution": "1 minute inferred, bar open_time second precision",
+    "ohlc_availability": true,
+    "bid_availability": false,
+    "ask_availability": false,
+    "spread_availability": "proxy via high-low (SYNTHETIC)",
+    "volume_availability": true,
+    "tick_volume_vs_real_volume": "tick volume proxy (SYNTHETIC), not real volume",
+    "missingness": {
+      "missing_pct": 0.2,
+      "gap_info": {
+        "gap_count": 0,
+        "max_gap_s": 3600,
+        "missing_pct": 0.0,
+        "common_delta_s": 3600
+      },
+      "details": "1 bar missing out of 501 expected for 1H"
+    },
+    "duplicates": false,
+    "gaps": {
+      "gap_count": 0,
+      "max_gap_s": 3600,
+      "missing_pct": 0.0,
+      "common_delta_s": 3600
+    },
+    "session_coverage": "XAUUSD 24h minus weekend (Fri 22:00 UTC close to Sun 22:00 open) \u2014 synthetic includes continuous, real should exclude",
+    "market_closure_handling": "synthetic ignores closures \u2014 real must handle",
+    "broker_artifacts": "none detected",
+    "checksum": "sha256:572728d92ebb5c2a",
+    "ingestion_method": "Provider csv \u2192 Raw Storage \u2192 Validation \u2192 Normalization \u2192 Canonical 20260916-010-572728d9",
+    "preprocessing_version": "1.0",
+    "provenance": "Raw data/fixtures/XAUUSD_1H_500.csv checksum sha256:572728d92ebb5c2a \u2192 normalized UTC \u2192 curated data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260916-010-572728d9/part-0.parquet",
+    "schema_version": 1,
+    "quality_report": [
+      {
+        "name": "monotonic_time",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "tz_aware",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_future",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "ohlc_invariants",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "positive_prices",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "abnormal_spreads",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_duplicates",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "single_symbol",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_missing_bars",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "session_boundaries",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_broker_artifacts",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "volume_non_negative",
+        "passed": true,
+        "details": ""
+      }
+    ],
+    "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260916-010-572728d9/part-0.parquet",
+    "raw_preserved": "data/fixtures/XAUUSD_1H_500.csv",
+    "research_eligibility": "eligible for 1H trend/breakout research only \u2014 not for microstructure/tick/spread research (synthetic spread)"
+  }
+]

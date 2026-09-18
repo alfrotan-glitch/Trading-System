@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-09-16T14:57:21.289201+00:00",
+  "paper_trades": 6,
+  "shadow_intents": 10,
+  "demo_observations": 10,
+  "demo_fills": 4,
+  "signal_agreement": 0.6,
+  "expected_entry_difference_bps": 0.0,
+  "actual_entry_difference_bps": 0.0,
+  "spread_difference_bps": 0.0,
+  "slippage_demo_bps": 2.5,
+  "latency_demo_ms": 120.0,
+  "fill_difference": 2,
+  "rejected_orders_demo": 0,
+  "partial_fills_demo": 0,
+  "exit_differences": 0,
+  "pnl_difference": 4.8,
+  "pnl_paper": 0.0,
+  "pnl_demo": 4.8,
+  "label": "DEMO never LIVE"
+}

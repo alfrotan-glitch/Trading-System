@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+*.egg
+
+# Data — large, reproducible via ingest
+data/curated/
+data/raw/*.csv
+data/raw/*.parquet
+data/sqlite/*.db
+data/sqlite/*.db-wal
+data/sqlite/*.db-shm
+logs/
+*.parquet
+!data/fixtures/*.parquet
+!data/fixtures/*.csv
+
+# Secrets / env
+.env
+.env.*
+*.key
+configs/live.yaml
+configs/*live*.yaml
+audit.jsonl
+logs/audit.jsonl
+
+# Tool
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.hypothesis/
+
+# OS
+.DS_Store

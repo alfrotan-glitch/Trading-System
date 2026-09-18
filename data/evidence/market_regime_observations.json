@@ -1,0 +1,150 @@
+{
+  "count": 22,
+  "volatility_distribution": {
+    "low": 15,
+    "high": 5,
+    "normal": 2
+  },
+  "trend_strength_avg": -0.03188325837259243,
+  "transitions": [
+    {
+      "time": "2026-09-16T14:39:29.209034+00:00",
+      "from": "high",
+      "to": "low",
+      "symbol": "XAUUSD"
+    },
+    {
+      "time": "2026-09-16T14:39:29.211579+00:00",
+      "from": "low",
+      "to": "normal",
+      "symbol": "XAUUSD"
+    },
+    {
+      "time": "2026-09-16T14:39:29.212843+00:00",
+      "from": "normal",
+      "to": "low",
+      "symbol": "XAUUSD"
+    },
+    {
+      "time": "2026-09-16T14:39:29.214055+00:00",
+      "from": "low",
+      "to": "high",
+      "symbol": "XAUUSD"
+    },
+    {
+      "time": "2026-09-16T14:39:29.215216+00:00",
+      "from": "high",
+      "to": "low",
+      "symbol": "XAUUSD"
+    },
+    {
+      "time": "2026-09-16T14:39:29.217525+00:00",
+      "from": "low",
+      "to": "normal",
+      "symbol": "XAUUSD"
+    },
+    {
+      "time": "2026-09-16T14:39:29.218603+00:00",
+      "from": "normal",
+      "to": "low",
+      "symbol": "XAUUSD"
+    },
+    {
+      "time": "2026-09-16T14:39:29.227235+00:00",
+      "from": "low",
+      "to": "high",
+      "symbol": "XAUUSD"
+    },
+    {
+      "time": "2026-09-16T14:39:29.228424+00:00",
+      "from": "high",
+      "to": "low",
+      "symbol": "XAUUSD"
+    },
+    {
+      "time": "2026-09-16T14:39:29.229563+00:00",
+      "from": "low",
+      "to": "high",
+      "symbol": "XAUUSD"
+    }
+  ],
+  "question": "How did this strategy behave during each observed state? \u2014 join with forward_observatory signals by timestamp",
+  "generated_at": "2026-09-16T14:39:29.235604+00:00",
+  "observations_sample": [
+    {
+      "id": "RG-dc28d2",
+      "timestamp": "2026-09-16T14:39:29.233179Z",
+      "symbol": "XAUUSD",
+      "trend_strength": 0.1588287280720424,
+      "realized_volatility": 0.01083164765670006,
+      "volatility_regime": "low",
+      "range_chop": 0.2540949962585003,
+      "spread_regime": "normal",
+      "session": "NY",
+      "acceleration": 0.3506893250236687,
+      "compression_expansion": "compression",
+      "shock_event": null,
+      "liquidity_proxy": 0.8569125385166209
+    },
+    {
+      "id": "RG-371172",
+      "timestamp": "2026-09-16T14:39:29.232091Z",
+      "symbol": "XAUUSD",
+      "trend_strength": -0.8246510287739266,
+      "realized_volatility": 0.019972181827768134,
+      "volatility_regime": "low",
+      "range_chop": 0.04499833570608802,
+      "spread_regime": "tight",
+      "session": "Asian",
+      "acceleration": 0.39770282722364303,
+      "compression_expansion": "compression",
+      "shock_event": null,
+      "liquidity_proxy": 0.6316883929193631
+    },
+    {
+      "id": "RG-603ec3",
+      "timestamp": "2026-09-16T14:39:29.231046Z",
+      "symbol": "XAUUSD",
+      "trend_strength": 0.5773424087598682,
+      "realized_volatility": 0.017623999486178814,
+      "volatility_regime": "high",
+      "range_chop": 0.6448356352335641,
+      "spread_regime": "tight",
+      "session": "London",
+      "acceleration": -0.45775766683450714,
+      "compression_expansion": "expansion",
+      "shock_event": null,
+      "liquidity_proxy": 0.8417655310425031
+    },
+    {
+      "id": "RG-592bea",
+      "timestamp": "2026-09-16T14:39:29.229563Z",
+      "symbol": "XAUUSD",
+      "trend_strength": 0.04597362192820831,
+      "realized_volatility": 0.01664446101619773,
+      "volatility_regime": "high",
+      "range_chop": 0.39229373517940525,
+      "spread_regime": "tight",
+      "session": "London",
+      "acceleration": -0.4213999131415872,
+      "compression_expansion": "expansion",
+      "shock_event": null,
+      "liquidity_proxy": 0.9463261220649936
+    },
+    {
+      "id": "RG-9bd507",
+      "timestamp": "2026-09-16T14:39:29.228424Z",
+      "symbol": "XAUUSD",
+      "trend_strength": -0.4359266322134119,
+      "realized_volatility": 0.017545413409951822,
+      "volatility_regime": "low",
+      "range_chop": 0.5545192875260873,
+      "spread_regime": "tight",
+      "session": "NY",
+      "acceleration": 0.3120574619330809,
+      "compression_expansion": "expansion",
+      "shock_event": null,
+      "liquidity_proxy": 1.202798202510835
+    }
+  ]
+}

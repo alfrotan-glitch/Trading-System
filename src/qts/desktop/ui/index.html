@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>QTS Trading System</title>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">QTS <span>Trading System</span> <span id="env-badge" class="badge">development</span></div>
+  <div class="env-note">MOCK / PAPER / SHADOW — not real broker unless explicitly REAL MT5</div>
+  <div class="health-mini" id="health-mini">Loading…</div>
+</header>
+
+<nav class="nav">
+  <button data-view="home" class="active">Home</button>
+  <button data-view="setup-wizard">Setup Wizard</button>
+  <button data-view="dashboard">Dashboard</button>
+  <button data-view="research">Research</button>
+  <button data-view="research-lab">Research Lab</button>
+  <button data-view="hypothesis">Hypothesis Explorer</button>
+  <button data-view="campaign-runner">Campaign Runner</button>
+  <button data-view="experiment-ledger">Experiment Ledger</button>
+  <button data-view="candidate">Candidate Explorer</button>
+  <button data-view="failure">Failure Analysis</button>
+  <button data-view="evidence">Evidence Viewer</button>
+  <button data-view="data-observatory">Data Observatory</button>
+  <button data-view="data-source-lab">Data Source Lab</button>
+  <button data-view="market-monitor">Market Monitor</button>
+  <button data-view="forward-observatory">Forward Observatory</button>
+  <button data-view="data-lineage">Data Lineage</button>
+  <button data-view="demo-forward">Demo Forward</button>
+  <button data-view="comparison">Paper/Shadow/Demo</button>
+  <button data-view="lifecycle">Strategy Lifecycle</button>
+  <button data-view="research-memory">Research Memory</button>
+  <button data-view="strategies">Strategies</button>
+  <button data-view="validation">Validation</button>
+  <button data-view="paper">Paper/Shadow</button>
+  <button data-view="execution">Execution</button>
+  <button data-view="risk">Risk</button>
+  <button data-view="mt5">MT5</button>
+  <button data-view="audit">Audit</button>
+  <button data-view="live">Live Control</button>
+</nav>
+
+<main id="content">
+  <!-- Home / System Status -->
+  <section id="view-home" class="view active">
+    <h2>System Status</h2>
+    <div id="home-grid" class="status-grid"></div>
+    <div class="card">
+      <h3>Startup Health Check</h3>
+      <pre id="startup-health" class="pre"></pre>
+    </div>
+    <div class="card">
+      <h3>Trading Mode</h3>
+      <div id="mode-banner" class="banner">Research / Backtest</div>
+      <p class="muted">No live execution unless all gates pass and human approval confirms.</p>
+    </div>
+  </section>
+
+  <!-- First-Run Setup Wizard -->
+  <section id="view-setup-wizard" class="view">
+    <h2>First-Run Setup Wizard — Guided Configuration (No Code Editing Required)</h2>
+    <div class="card"><h3>Environment</h3>
+      <p class="muted">Choose how QTS will run. All modes preserve capital by default.</p>
+      <label><input type="radio" name="setup-env" value="development" checked> <b>Development</b> — backtest only, mock data, no broker</label><br>
+      <label><input type="radio" name="setup-env" value="paper"> <b>Paper</b> — simulated fills, next-bar-open, no real orders</label><br>
+      <label><input type="radio" name="setup-env" value="shadow"> <b>Shadow</b> — would-be intents, checks risk/spread without submission</label><br>
+      <label><input type="radio" name="setup-env" value="demo_forward"> <b>Demo Forward</b> — REAL MT5 DEMO terminal + REAL market data + REAL DEMO account + REAL demo order lifecycle — labeled DEMO, never LIVE</label><br>
+      <div class="banner warn">LIVE is separately gated and remains LOCKED until every scientific & safety gate passes + human approval.</div>
+      <div class="pre">Configs: configs/dev.yaml / paper.yaml / demo_forward.yaml — edit via UI or copy configs/demo_forward.yaml to configs/live.yaml (gitignored). No secrets in repo.</div>
+    </div>
+    <div class="card"><h3>MT5 — Terminal Path & Broker/Account</h3>
+      <label>MT5 Terminal Path <input id="setup-mt5-path" placeholder="C:\\Program Files\\MetaTrader 5\\terminal64.exe" style="width:420px"/></label><br>
+      <label>Broker (auto-detected after connect) <input id="setup-mt5-broker" placeholder="e.g., ICMarkets-Demo" /></label><br>
+      <label>Account Type <span class="badge">DEMO only for Demo Forward — LIVE blocked</span></label>
+      <div class="pre">Credentials belong in OS environment / credential store, NOT plain-text files. Set QTS_MT5_LOGIN / QTS_MT5_PASSWORD / QTS_MT5_SERVER via Windows Credential Manager or .env (gitignored). See docs/mt5_demo_setup.md.</div>
+      <label>Symbol <input id="setup-mt5-symbol" value="XAUUSD" /></label>
+      <button id="btn-setup-check-mt5">Test MT5 Connection (14 checks)</button>
+      <div id="setup-mt5-result" class="pre"></div>
+    </div>
+    <div class="card"><h3>Research — Data / Evidence / Strategy</h3>
+      <label>Data Directory <input id="setup-data-dir" value="data" /></label>
+      <label>Evidence Directory <input id="setup-evidence-dir" value="data/evidence" /></label>
+      <label>Default Strategy Config <input id="setup-strategy" value="sma_breakout, 10/20, XAUUSD 1H" /></label>
+      <div class="pre">Research never edits code: campaigns/hypotheses via Research Center → Campaign Runner. Data ingestion via provider-neutral pipeline (Provider→Raw→Validation→Canonical→Manifest→Evidence). See docs/market_data_observatory.md</div>
+    </div>
+    <div class="card"><h3>Risk — Hard Limits (Require Explicit Acknowledgement)</h3>
+      <div id="setup-risk-limits" class="pre"></div>
+      <label><input type="checkbox" id="setup-risk-ack"> I acknowledge hard limits: max 0.1 lot/demo order, 0.3 exposure, 50 USD daily loss, 30bps spread, kill switch armed. I will not bypass gates.</label><br>
+      <div class="banner danger">LIVE = LOCKED. Demo_forward does NOT grant live eligibility. All demo results labeled DEMO.</div>
+    </div>
+    <div class="card"><h3>Where Are Logs & Evidence?</h3><div class="pre">Logs: logs/audit.jsonl (redacted) + SQLite audit_events. Evidence: data/evidence/*.json (edge_validation, paper_trades, shadow_intents, paper_shadow_demo_comparison, demo_forward_observations, data_inventory, etc.) Never edit manually — UI shows them.</div></div>
+    <button id="btn-setup-save" class="primary">Save Setup & Run Health Check</button>
+    <div id="setup-save-result" class="pre"></div>
+  </section>
+
+  <!-- Dashboard -->
+  <section id="view-dashboard" class="view">
+    <h2>Dashboard — Safety First</h2>
+    <div id="safety-banner" class="banner warn">Loading safety…</div>
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="two-col">
+      <div class="card"><h3>Open Positions</h3><div id="positions"></div></div>
+      <div class="card"><h3>Latest Decisions</h3><div id="decisions"></div></div>
+    </div>
+    <div class="card"><h3>Reconciliation</h3><div id="recon"></div></div>
+  </section>
+
+  <!-- Research Center -->
+  <section id="view-research" class="view">
+    <h2>Research Center</h2>
+    <div class="card">
+      <h3>Create Research Campaign</h3>
+      <label>Family <select id="campaign-family">
+        <option value="trend">trend following</option>
+        <option value="breakout">breakout</option>
+        <option value="mean_reversion">mean reversion</option>
+        <option value="momentum">momentum</option>
+        <option value="volatility">volatility</option>
+      </select></label>
+      <label>Symbol <input id="campaign-symbol" value="XAUUSD"/></label>
+      <label>Timeframe <input id="campaign-timeframe" value="1H"/></label>
+      <label>Data Version <input id="campaign-version" placeholder="auto latest if blank"/></label>
+      <label>Max Trials <input id="campaign-trials" type="number" value="12" min="1" max="100"/></label>
+      <button id="btn-start-campaign">Start Bounded Campaign</button>
+      <div id="campaign-result" class="pre"></div>
+    </div>
+    <div class="card">
+      <h3>Campaigns</h3>
+      <div id="campaigns-list"></div>
+    </div>
+    <div class="card">
+      <h3>Trial Ledger</h3>
+      <div id="trial-ledger"></div>
+      <p class="muted">Every variation recorded — winners, losers, discarded variants, parameter/feature variants, failed experiments. No hidden trials. DSR uses N.</p>
+    </div>
+  </section>
+
+  <!-- Strategy Library -->
+  <section id="view-strategies" class="view">
+    <h2>Strategy Library</h2>
+    <div id="strategy-cards" class="cards"></div>
+  </section>
+
+  <!-- Validation View -->
+  <section id="view-validation" class="view">
+    <h2>Backtest / Validation View</h2>
+    <label>Strategy <input id="val-strategy" value="sma_breakout"/></label>
+    <button id="btn-load-validation">Load Validation</button>
+    <div id="validation-detail" class="pre"></div>
+    <div id="scorecard" class="card"></div>
+  </section>
+
+  <!-- Paper/Shadow -->
+  <section id="view-paper" class="view">
+    <h2>Paper / Shadow Center</h2>
+    <div class="two-col">
+      <div class="card"><h3>PAPER — Simulated</h3><div id="paper-view"></div></div>
+      <div class="card"><h3>SHADOW — Would-Be</h3><div id="shadow-view"></div></div>
+    </div>
+    <div class="card"><h3>Shadow vs Paper Discrepancy</h3><div id="shadow-paper-diff" class="pre"></div></div>
+  </section>
+
+  <!-- Execution Center -->
+  <section id="view-execution" class="view">
+    <h2>Execution Center — Order Lifecycle</h2>
+    <div class="flow">INTENT → RISK → SUBMISSION → ACCEPTED → PARTIAL → FILLED <span class="muted"> or REJECTED / CANCELLED / AMBIGUOUS</span></div>
+    <div id="orders"></div>
+    <div id="order-trail" class="pre"></div>
+  </section>
+
+  <!-- Risk Center -->
+  <section id="view-risk" class="view">
+    <h2>Risk Center — Hard Limits</h2>
+    <div id="risk-limits"></div>
+    <div id="risk-block" class="banner warn">Loading…</div>
+  </section>
+
+  <!-- MT5 Center -->
+  <section id="view-mt5" class="view">
+    <h2>MT5 Center</h2>
+    <div id="mt5-view"></div>
+    <div class="banner warn">Never imply mock is real — check MOCK vs REAL badge.</div>
+  </section>
+
+  <!-- Audit -->
+  <section id="view-audit" class="view">
+    <h2>Audit / Evidence Center</h2>
+    <input id="audit-q" placeholder="search decisions, risk vetoes, orders, fills, reconciliations…"/>
+    <button id="btn-audit-search">Search</button>
+    <div id="audit-list" class="pre"></div>
+  </section>
+
+  <!-- Live Control -->
+  <section id="view-live" class="view">
+    <h2>Live Control</h2>
+    <div id="live-badge" class="banner danger">LIVE TRADING LOCKED</div>
+    <div id="live-checklist"></div>
+    <div id="live-reasons" class="pre"></div>
+    <p class="muted">MT5 connected ≠ safe to trade. All scientific, risk, reconciliation gates must pass + human approval. No convenience override.</p>
+    <button id="btn-request-live" disabled>Enable Live — Requires Explicit Confirmation (Gated)</button>
+  </section>
+
+  <!-- Research Lab -->
+  <section id="view-research-lab" class="view">
+    <h2>Research Lab — Autonomous Scientist</h2>
+    <div class="card">
+      <h3>What Is The System Thinking?</h3>
+      <div id="lab-thinking" class="pre"></div>
+      <button id="btn-run-autonomous">Run Autonomous Campaign: Search durable XAUUSD edge (conservative execution)</button>
+      <div id="autonomous-result" class="pre"></div>
+    </div>
+    <div class="two-col">
+      <div class="card"><h3>Why Hypotheses Created</h3><div id="lab-why"></div></div>
+      <div class="card"><h3>What Failed &amp; What Learned</h3><div id="lab-learned"></div></div>
+    </div>
+    <div class="card"><h3>What Will Test Next</h3><div id="lab-next"></div></div>
+    <div class="card"><h3>Human Controls</h3><p class="muted">Human for direction/campaign config/inspection/approval of stages — cannot override failed scientific gates.</p></div>
+  </section>
+
+  <!-- Hypothesis Explorer -->
+  <section id="view-hypothesis" class="view">
+    <h2>Hypothesis Explorer</h2>
+    <div class="card"><h3>Generated Hypotheses (falsifiable, with lineage)</h3><div id="hypothesis-list" class="pre"></div></div>
+    <div class="card"><h3>Mechanism Pool (23 falsifiable)</h3><div id="mechanism-pool" class="pre"></div></div>
+  </section>
+
+  <!-- Campaign Runner -->
+  <section id="view-campaign-runner" class="view">
+    <h2>Campaign Runner — 11 Steps</h2>
+    <div class="card"><h3>Autonomous Steps</h3><div class="pre">1 review data → 2 review failures → 3 generate bounded plan → 4 create hypotheses → 5 execute experiments → 6 store results → 7 attack candidates → 8 eliminate weak → 9 refine surviving → 10 re-test → 11 produce evidence portfolio. Never moves to LIVE.</div></div>
+    <div class="card"><h3>Budget</h3><div id="campaign-budget" class="pre"></div></div>
+    <div class="card"><h3>Latest Autonomous Campaign Evidence</h3><div id="campaign-evidence" class="pre"></div></div>
+  </section>
+
+  <!-- Experiment Ledger -->
+  <section id="view-experiment-ledger" class="view">
+    <h2>Experiment Ledger — No Hidden Trials</h2>
+    <div class="card"><h3>All Trials (winners/losers/discarded/param/feature variants/failed)</h3><div id="exp-ledger" class="pre"></div></div>
+    <div class="card"><h3>Experiment Governance</h3><div id="exp-governance" class="pre"></div></div>
+  </section>
+
+  <!-- Candidate Explorer -->
+  <section id="view-candidate" class="view">
+    <h2>Candidate Explorer — Survival Standard</h2>
+    <div class="card"><h3>Survival Requires All: OOS, DSR, costs, perturbation, regime, null, expectancy, forward, execution</h3><div id="candidate-list"></div></div>
+    <div class="card"><h3>Adversarial Report (Best For / Best Against)</h3><div id="candidate-adversarial" class="pre"></div></div>
+  </section>
+
+  <!-- Failure Analysis -->
+  <section id="view-failure" class="view">
+    <h2>Failure Analysis — Why Failed</h2>
+    <div class="card"><h3>Failures by Stage</h3><div id="failure-by-stage" class="pre"></div></div>
+    <div class="card"><h3>What Assumptions Disproven</h3><div id="failure-assumptions" class="pre"></div></div>
+    <div class="card"><h3>Unstable Param Ranges &amp; Useless Features</h3><div id="failure-params" class="pre"></div></div>
+  </section>
+
+  <!-- Evidence Viewer -->
+  <section id="view-evidence" class="view">
+    <h2>Evidence Viewer — Self-Audit</h2>
+    <div class="card"><h3>Discovery Report (per campaign)</h3><div id="evidence-discovery" class="pre"></div></div>
+    <div class="card"><h3>Self-Audit: 9 Questions</h3><div id="evidence-audit" class="pre"></div></div>
+    <div class="card"><h3>Confidence Calibration</h3><div id="evidence-calibration" class="pre"></div></div>
+  </section>
+
+  <!-- Data Observatory -->
+  <section id="view-data-observatory" class="view">
+    <h2>Data Observatory — Machine-Readable Inventory (26 provenance fields, REAL vs SYNTHETIC explicit)</h2>
+    <div class="card"><h3>Available Data Sources Audit (12 checks, fail-closed)</h3><div id="data-audit" class="pre"></div></div>
+    <div class="card"><h3>Data Inventory (machine-readable data_inventory.json + data_quality_summary.json)</h3><div id="data-inventory" class="pre"></div></div>
+    <div class="card"><h3>Minimum Expansion Needed</h3><div id="data-expansion" class="pre"></div></div>
+    <div class="card"><h3>Feature Discovery (controlled, no leakage)</h3><div id="data-features" class="pre"></div></div>
+    <div class="card"><h3>Market Microstructure / Execution-Aware (bid/ask SYNTHETIC proxy labeled)</h3><div id="data-micro" class="pre"></div></div>
+    <div class="card"><h3>Data Labeling — REAL/SYNTHETIC/SIMULATED/ESTIMATED/IMPUTED/BROKER-DERIVED/MODEL-DERIVED</h3><div class="pre">OHLC: REAL proxy via CSV import (but limited depth) — bid/ask: SYNTHETIC via high-low — volume: SYNTHETIC tick proxy — spread: SYNTHETIC — regime: OBSERVED via ForwardObservatory — execution: NO REAL observations yet (SIMULATED hypothetical) — All UI badges prefix source.</div></div>
+  </section>
+
+  <!-- Data Source Lab -->
+  <section id="view-data-source-lab" class="view">
+    <h2>Data Source Lab — External Source Research (docs/data_source_comparison.md + data_source_catalog.json)</h2>
+    <div class="card"><h3>External Provider Catalog (5 providers, historical depth/granularity/bid-ask/tick/timezone/licensing/API/reliability/quality/mapping/timestamp/limitations/cost/suitability)</h3><div id="source-catalog" class="pre"></div></div>
+    <div class="card"><h3>Recommendation & Next Acquisition</h3><div id="source-reco" class="pre"></div></div>
+    <div class="card"><h3>Provider-Neutral Ingestion (Provider→Raw Storage→Validation→Normalization→Canonical→Manifest→Evidence, immutable dataset ID)</h3><div class="pre">CSV/Synthetic implemented; Dukascopy/FirstRate/MT5/Binance/TrueFX cataloged. Raw preserved, checksum, timezone UTC, quality report before canonical. See docs/market_data_observatory.md docs/data_quality_protocol.md.</div></div>
+  </section>
+
+  <!-- Market Monitor -->
+  <section id="view-market-monitor" class="view">
+    <h2>Market Monitor — Live Quotes / Spreads / Volatility / Sessions / Regime / Freshness / Anomalies</h2>
+    <div class="card"><h3>Live Quotes (bid/ask/mid/spread, no capital exposure)</h3><div id="monitor-quotes" class="pre"></div></div>
+    <div class="card"><h3>Regime Observations (trend/vol/session/spread/acceleration/compression/expansion/shock)</h3><div id="monitor-regime" class="pre"></div></div>
+    <div class="card"><h3>Data Quality — Adversarial Stress (fail-closed, corrupted → BLOCK)</h3><div id="monitor-quality" class="pre"></div></div>
+  </section>
+
+  <!-- Forward Observatory -->
+  <section id="view-forward-observatory" class="view">
+    <h2>Forward Observatory — Safe Forward Observation (no real orders, recording live quotes/spreads/vol/sessions/signals/NO_TRADE/hypothetical fills/latency/regime/interruptions)</h2>
+    <div class="card"><h3>Active Sessions</h3><div id="forward-sessions" class="pre"></div></div>
+    <div class="card"><h3>Ticks Recorded (bid/ask/mid/spread_bps/session/regime/freshness/anomaly)</h3><div id="forward-ticks" class="pre"></div></div>
+    <div class="card"><h3>Signals vs NO_TRADE (theoretical vs executable, hypothetical fill, slippage, latency)</h3><div id="forward-signals" class="pre"></div></div>
+    <div class="card"><h3>Execution Reality (signal vs expected vs actual, bid/ask at decision, timestamps/volumes/spread/slippage/latency/rejection)</h3><div id="forward-execution" class="pre"></div></div>
+    <div class="card"><h3>Timeframe & Cross-Market Eligibility (1m/5m/15m/1H/4H/1D/tick — eligible only if quality sufficient, cost/frequency/slippage quantified)</h3><div id="forward-timeframe" class="pre"></div></div>
+  </section>
+
+  <!-- Data Lineage -->
+  <section id="view-data-lineage" class="view">
+    <h2>Data Lineage — Raw→Canonical→Manifest→Evidence→Experiment→Strategy (immutable, checksum, preprocessing version, locked-test)</h2>
+    <div class="card"><h3>Lineage Graph (per dataset)</h3><div id="lineage-graph" class="pre"></div></div>
+    <div class="card"><h3>Versioning / Locking (new version on preprocessing change, evidence references exact checksum, locked test inaccessible)</h3><div id="lineage-versioning" class="pre"></div></div>
+    <div class="card"><h3>Research Quality Gate (DATA QUALITY/DEPTH/DIVERSITY/EXECUTION REALISM/REGIME COVERAGE/OOS COVERAGE/TRIAL COUNT/STAT EVIDENCE → BLOCK if insufficient, keep NO_TRADE, never unlock LIVE)</h3><div id="lineage-gate" class="pre"></div></div>
+  </section>
+
+  <!-- Demo Forward -->
+  <section id="view-demo-forward" class="view">
+    <h2>Demo Forward — REAL MT5 DEMO + REAL Market Data + REAL Demo Orders (Labeled DEMO, Never LIVE)</h2>
+    <div class="card"><h3>Safety Boundary</h3><div id="demo-boundary" class="pre"></div><div class="banner warn">DEVELOPMENT / PAPER / SHADOW / DEMO_FORWARD / LIVE — no silent conversion. LIVE remains LOCKED. Demo_forward has independent conservative limits: 0.1 lot, 0.3 exposure, 4 orders/min, 50 USD daily loss, 30bps spread, kill switch.</div></div>
+    <div class="card"><h3>MT5 Demo Connection Checker — 14 Checks</h3><div id="demo-checks" class="pre"></div><button id="btn-demo-refresh-checks">Refresh Checks</button><div class="pre">Only after all 14 pass should DEMO_FORWARD be enabled. LIVE account supplied to DEMO blocked.</div></div>
+    <div class="card"><h3>Forward Research Protocol — Observe Only vs Demo Execution</h3>
+      <div class="two-col">
+        <div class="card"><h4>OBSERVE ONLY (safe)</h4><div id="demo-observe" class="pre"></div><button id="btn-demo-observe-start">Start Observation (No Orders)</button></div>
+        <div class="card"><h4>DEMO EXECUTION ENABLED (requires confirmation + risk ack + 14 checks)</h4><div id="demo-execution" class="pre"></div><label><input type="checkbox" id="demo-risk-ack2"> Risk ack</label> <button id="btn-demo-enable">Enable Demo Execution</button></div>
+      </div>
+      <div class="pre">Lifecycle: RESEARCH → VALIDATING → FORWARD_OBSERVATION → PAPER_VERIFIED → SHADOW_VERIFIED → DEMO_OBSERVATION / DEMO_EXECUTION — demo success does NOT become LIVE eligible.</div>
+    </div>
+    <div class="card"><h3>Real Market Data Capture (DEMO)</h3><div id="demo-capture" class="pre"></div><div class="pre">Every tick persists with provenance: timestamp/bid/ask/spread/symbol/timeframe/tick/session/strategy_state/regime/signal/NO_TRADE/hypothetical order/actual demo order/requested/actual price/slippage/latency/broker response/fill/position/exit/P&L — labeled DEMO.</div></div>
+    <div class="card"><h3>Position Management Research (Entry/Position/Exit)</h3><div class="pre">Research compares: fixed TP/SL, trailing, volatility-based, structural, momentum-decay, time, partial, dynamic risk reduction, emergency exit — all must pass same scientific controls (DSR/PBO/PSR/cost/regime/null/placebo). No demo result auto-validates.</div><div id="demo-position-mgmt" class="pre"></div></div>
+  </section>
+
+  <!-- Paper/Shadow/Demo Comparison -->
+  <section id="view-comparison" class="view">
+    <h2>Paper / Shadow / Demo Comparison — Automatic</h2>
+    <div class="card"><h3>Comparison Metrics</h3><div id="comparison-metrics" class="pre"></div><button id="btn-comparison-refresh">Refresh Comparison</button></div>
+    <div class="card"><h3>Evidence File</h3><div class="pre">data/evidence/paper_shadow_demo_comparison.json — persisted, labeled DEMO never LIVE. Measures signal agreement, expected vs actual entry, spread/slippage/latency, fill/rejected/partial/exit/P&L differences.</div><div id="comparison-raw" class="pre"></div></div>
+  </section>
+
+  <!-- Strategy Lifecycle -->
+  <section id="view-lifecycle" class="view">
+    <h2>Strategy Lifecycle — RESEARCH→LIVE_ELIGIBLE</h2>
+    <div class="flow">RESEARCH → CANDIDATE → VALIDATING → VALIDATED → FORWARD_OBSERVATION → PAPER_VERIFIED → SHADOW_VERIFIED → MICRO_ELIGIBLE → MICRO_VALIDATED → LIVE_ELIGIBLE (SUSPENDED/REJECTED)</div>
+    <div id="lifecycle-view" class="pre"></div>
+    <div class="card"><h3>NO-TRADE as Research Variable</h3><div id="lifecycle-notrade" class="pre"></div></div>
+  </section>
+
+  <!-- Research Memory -->
+  <section id="view-research-memory" class="view">
+    <h2>Research Memory — Durable, Prevents Rediscovery</h2>
+    <div class="card"><h3>What Was Tested, Why Failed, What Unstable</h3><div id="memory-list" class="pre"></div></div>
+    <div class="card"><h3>Novelty / Diversity Control</h3><div id="memory-novelty" class="pre"></div></div>
+    <div class="card"><h3>Statistical Stack Extensions</h3><div id="memory-stat" class="pre"></div></div>
+  </section>
+</main>
+
+<div id="notifications" class="notifications"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

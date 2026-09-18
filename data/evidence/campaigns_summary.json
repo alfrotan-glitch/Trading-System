@@ -1,0 +1,97 @@
+{
+  "generated_at": "2026-09-16T14:28:01.087690+00:00",
+  "registry_count": 69,
+  "trial_count": 75,
+  "campaigns": [
+    {
+      "id": "C-e4300c64",
+      "family": "trend",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-4d425a4e",
+      "family": "trend",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-8ebb2e2e",
+      "family": "trend",
+      "trials": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-6eaed82d",
+      "family": "volatility",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-c6cd8c31",
+      "family": "trend",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-cc07319a",
+      "family": "trend",
+      "trials": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-71172fb9",
+      "family": "trend",
+      "trials": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-cc2a2c4f",
+      "family": "trend",
+      "trials": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-b7bbbdd1",
+      "family": "trend",
+      "trials": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-519a9a7d",
+      "family": "trend",
+      "trials": 3,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-99305d7d",
+      "family": "volatility",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-766d1c21",
+      "family": "momentum",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-08b269cc",
+      "family": "mean_reversion",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-05672610",
+      "family": "breakout",
+      "trials": 6,
+      "status": "COMPLETED"
+    },
+    {
+      "id": "C-85ee6935",
+      "family": "trend",
+      "trials": 6,
+      "status": "COMPLETED"
+    }
+  ]
+}
