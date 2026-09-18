@@ -360,6 +360,12 @@ def render_markdown_report(evidence: dict[str, Any]) -> str:
     )
     lines.append("")
     lines.append(
+        "No single all-family win/loss rate is reported: the 10 families are separate "
+        "pre-registered hypotheses and their detections can overlap. The aggregate count "
+        "above is a record count only, not a pooled independent trade population."
+    )
+    lines.append("")
+    lines.append(
         "| Family | measured events | outcome status | wins | losses | break-even | win rate (W/N) | "
         "avg winner (net bps) | avg loser (net bps) | profit factor | expectancy / event (trade-equivalent, net bps) | "
         "aggregate net (bps) | 10 W/L/BE | 100 W/L/BE |"

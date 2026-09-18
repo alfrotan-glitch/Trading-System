@@ -68,6 +68,8 @@ This research records **event-study directional outcomes**, not executed broker 
 
 Win-rate denominator: **all measured event outcomes in the row (wins + losses + break-even)**. The proportional 10/100 columns answer how the historical rate maps onto that many comparable events; they are not a forecast and are not a claim of trade execution.
 
+No single all-family win/loss rate is reported: the 10 families are separate pre-registered hypotheses and their detections can overlap. The aggregate count above is a record count only, not a pooled independent trade population.
+
 | Family | measured events | outcome status | wins | losses | break-even | win rate (W/N) | avg winner (net bps) | avg loser (net bps) | profit factor | expectancy / event (trade-equivalent, net bps) | aggregate net (bps) | 10 W/L/BE | 100 W/L/BE |
 |--------|-----------------|----------------|------|--------|------------|----------------|-----------------------|---------------------|---------------|------------------------------|--------------------|------------|--------------|
 | IMP-BE-B | 427 | AVAILABLE | 199 | 228 | 0 | +0.466 | +53.19 | -47.63 | +0.97 | -0.65 | -275.95 | 4.7 / 5.3 / 0.0 | 46.6 / 53.4 / 0.0 |

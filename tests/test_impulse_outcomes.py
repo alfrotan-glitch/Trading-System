@@ -102,6 +102,7 @@ class TestResearchReportOutcomeTransparency:
         assert "100 W/L/BE" in report
         assert "profit factor" in report
         assert "aggregate net" in report
+        assert "No single all-family win/loss rate" in report
 
     def test_synthetic_provenance_and_block_are_not_changed_by_report(self):
         evidence_path = Path("data/evidence/impulse_research.json")
