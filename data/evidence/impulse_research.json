@@ -1,9 +1,36 @@
 {
   "research": "impulse_continuation",
-  "generated_at": "2026-09-18T10:07:59.563961+00:00",
+  "generated_at": "2026-09-18T10:20:45.242523+00:00",
   "mode": "MECHANISM_VALIDATION",
   "mode_note": "Dataset failed the pre-registered data-adequacy gate. All numbers below describe the RESEARCH MECHANISM operating on this dataset, NOT real-market behavior. No real-market claim is permitted and nothing was promoted.",
   "hypothesis": "When price begins an unusually strong directional movement, the conditional distribution of the next short horizon is sufficiently directional and persistent to create positive net expectancy after spread, commission, slippage, and latency.",
+  "hypothesis_specification": {
+    "question": "Does an unusually strong directional movement predict positive net expectancy at the declared short horizons?",
+    "mechanism": "short-horizon directional persistence after an impulse, rather than unconditional continuation",
+    "measurable_prediction": "impulse events have higher continuation and net-return distributions than the matched non-event baseline after declared costs",
+    "null_hypothesis": "impulse events have no incremental predictive value versus the matched baseline after costs and timing controls",
+    "competing_explanations": [
+      "selection or trial-count bias",
+      "timestamp/look-ahead leakage",
+      "single-regime or single-instrument artifact",
+      "cost assumptions masking unavailable broker execution evidence"
+    ],
+    "falsification_criteria": [
+      "chronological validation does not replicate the effect",
+      "the effect disappears under declared cost or latency sensitivity",
+      "the effect is not separated from baseline/placebo controls",
+      "event counts or regime coverage remain insufficient for the claim"
+    ],
+    "required_data": [
+      "immutable provenance-qualified OHLC history",
+      "measured bid/ask or tick spread and execution-cost fields",
+      "enough events per direction across multiple regimes",
+      "untouched chronological validation and forward observation"
+    ],
+    "horizon": "primary=12 bars; sensitivity=[12, 4]",
+    "population": "XAUUSD 1H bars from the declared venue/source",
+    "regime": "all declared volatility regimes; no unmeasured regime may be silently excluded"
+  },
   "provenance": {
     "data_version": "20260918-010-572728d9",
     "checksum": "sha256:572728d92ebb5c2a",
@@ -25,7 +52,8 @@
       "gap_count": 0,
       "max_gap_s": 0.0,
       "missing_pct": 0.2
-    }
+    },
+    "code_version": "0.1.0+64fab8dae9dc"
   },
   "data_adequacy": {
     "data_version": "20260918-010-572728d9",
@@ -109,7 +137,8 @@
         "gap_count": 0,
         "max_gap_s": 0.0,
         "missing_pct": 0.2
-      }
+      },
+      "code_version": "0.1.0+64fab8dae9dc"
     },
     "config_snapshot": {
       "seed": 42,
@@ -383,7 +412,7 @@
           356.0169589548608
         ],
         "net_sharpe_per_event": -0.20491586106128368,
-        "dsr_per_event": 0.001419186172572119,
+        "dsr_per_event": 0.0004910527731533558,
         "mfe_mean_bps": 254.78045119600736,
         "mae_mean_bps": 186.88525551422205,
         "race_counts": {
@@ -1224,7 +1253,7 @@
           320.9466034129329
         ],
         "net_sharpe_per_event": -0.2864049128759494,
-        "dsr_per_event": 0.0007610636019213587,
+        "dsr_per_event": 0.00024477138219588385,
         "mfe_mean_bps": 163.3982494944936,
         "mae_mean_bps": 314.85367991882663,
         "race_counts": {
@@ -2688,7 +2717,7 @@
           70.78985793758542
         ],
         "net_sharpe_per_event": -0.31050728805228694,
-        "dsr_per_event": 6.354447384299318e-05,
+        "dsr_per_event": 1.6119490695288055e-05,
         "mfe_mean_bps": 181.57798064307408,
         "mae_mean_bps": 218.74576340388796,
         "race_counts": {
@@ -3438,7 +3467,7 @@
           306.48875036288825
         ],
         "net_sharpe_per_event": -0.03721193896298656,
-        "dsr_per_event": 0.0037050586148245843,
+        "dsr_per_event": 0.0013617436870927866,
         "mfe_mean_bps": 257.92974489665005,
         "mae_mean_bps": 206.34686649223733,
         "race_counts": {
@@ -4040,7 +4069,7 @@
           71.4130360692334
         ],
         "net_sharpe_per_event": -0.48668616969150275,
-        "dsr_per_event": 1.663076980243356e-05,
+        "dsr_per_event": 3.3523321903814458e-06,
         "mfe_mean_bps": 195.99321979037668,
         "mae_mean_bps": 212.2198398977005,
         "race_counts": {
@@ -4548,7 +4577,7 @@
           274.4665984523891
         ],
         "net_sharpe_per_event": 0.17312287959335948,
-        "dsr_per_event": 0.014137004990735494,
+        "dsr_per_event": 0.006292540499278274,
         "mfe_mean_bps": 344.75564864656025,
         "mae_mean_bps": 95.47490430336232,
         "race_counts": {
@@ -4991,8 +5020,8 @@
     },
     "ledger": {
       "recorded": 40,
-      "ledger_trials_total": 112,
-      "hypothesis_id": "H-80767b85"
+      "ledger_trials_total": 295,
+      "hypothesis_id": "H-aef76663"
     },
     "totals": {
       "bars": 500,
@@ -5006,7 +5035,7 @@
       "events_measured_total": 106,
       "events_excluded_total": 0,
       "events_locked_discarded": 11,
-      "num_trials_for_dsr": 112
+      "num_trials_for_dsr": 295
     }
   },
   "conclusion": {

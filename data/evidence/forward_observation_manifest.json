@@ -30,11 +30,12 @@
     }
   },
   "no_capital_exposure": true,
-  "safety": "No live trading \u2014 only hypothetical executions recorded",
+  "code_version": "0.1.0+64fab8dae9dc",
+  "safety": "No live trading \u2014 OBSERVE_ONLY market observations only; no orders or executions recorded",
   "measurement_limits": "Hypothetical price divergence may be measured; realized execution/PnL is UNAVAILABLE",
   "sample_ticks": [],
   "sample_signals": [],
-  "generated_at": "2026-09-18T10:14:13.448656+00:00",
+  "generated_at": "2026-09-18T10:20:58.376059+00:00",
   "derived_from": "data/sqlite/forward_observatory.db",
   "forward_observation_protocol": "docs/forward_observation_protocol.md"
 }

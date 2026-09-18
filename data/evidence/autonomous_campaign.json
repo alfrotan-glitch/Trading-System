@@ -1,6 +1,6 @@
 {
   "plan": {
-    "name": "canonical-refresh",
+    "name": "canonical-final-source",
     "data_version": "20260918-010-572728d9",
     "weaknesses": [
       "PBO unavailable \u2014 CPCV evidence is missing",
@@ -29,9 +29,9 @@
     ]
   },
   "summary": {
-    "campaign_id": "C-7a302357",
+    "campaign_id": "C-9bbe8aa4",
     "config": {
-      "name": "canonical-refresh",
+      "name": "canonical-final-source",
       "symbol": "XAUUSD",
       "timeframe": "1H",
       "data_version": "20260918-010-572728d9",
@@ -52,9 +52,9 @@
     "discarded": 0,
     "trials": [
       {
-        "campaign_id": "C-7a302357",
-        "trial_id": "T-7a302357-0000",
-        "strategy_id": "trend_7a302357_0000",
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0000",
+        "strategy_id": "trend_9bbe8aa4_0000",
         "params": {
           "fast": 5,
           "slow": 20,
@@ -96,21 +96,21 @@
             ]
           }
         },
-        "experiment_id": "E-2df25015",
-        "configuration_hash": "b5455fd8488c8572",
+        "experiment_id": "E-bfc25cac",
+        "configuration_hash": "364fe6023bba4745",
         "dataset_provenance": "SYNTHETIC",
         "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-        "code_version": "0.1.0+a885f65d252e",
+        "code_version": "0.1.0+64fab8dae9dc",
         "evidence": {
           "status": "BLOCKED",
           "reason": "claim-eligible execution was not attempted"
         },
-        "created_at": "2026-09-18 08:12:58.233590+00:00"
+        "created_at": "2026-09-18 10:20:48.871061+00:00"
       },
       {
-        "campaign_id": "C-7a302357",
-        "trial_id": "T-7a302357-0001",
-        "strategy_id": "trend_7a302357_0001",
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0001",
+        "strategy_id": "trend_9bbe8aa4_0001",
         "params": {
           "fast": 5,
           "slow": 30,
@@ -152,21 +152,21 @@
             ]
           }
         },
-        "experiment_id": "E-8c0aa24f",
-        "configuration_hash": "f287e8691a4cbb7e",
+        "experiment_id": "E-dc703662",
+        "configuration_hash": "35e136f37a5b9e72",
         "dataset_provenance": "SYNTHETIC",
         "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-        "code_version": "0.1.0+a885f65d252e",
+        "code_version": "0.1.0+64fab8dae9dc",
         "evidence": {
           "status": "BLOCKED",
           "reason": "claim-eligible execution was not attempted"
         },
-        "created_at": "2026-09-18 08:12:58.241731+00:00"
+        "created_at": "2026-09-18 10:20:48.878506+00:00"
       },
       {
-        "campaign_id": "C-7a302357",
-        "trial_id": "T-7a302357-0002",
-        "strategy_id": "trend_7a302357_0002",
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0002",
+        "strategy_id": "trend_9bbe8aa4_0002",
         "params": {
           "fast": 5,
           "slow": 50,
@@ -208,21 +208,21 @@
             ]
           }
         },
-        "experiment_id": "E-348accbe",
-        "configuration_hash": "8a2f3f64f117f5d5",
+        "experiment_id": "E-6754df0e",
+        "configuration_hash": "984ff046c979417c",
         "dataset_provenance": "SYNTHETIC",
         "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-        "code_version": "0.1.0+a885f65d252e",
+        "code_version": "0.1.0+64fab8dae9dc",
         "evidence": {
           "status": "BLOCKED",
           "reason": "claim-eligible execution was not attempted"
         },
-        "created_at": "2026-09-18 08:12:58.250391+00:00"
+        "created_at": "2026-09-18 10:20:48.886626+00:00"
       },
       {
-        "campaign_id": "C-7a302357",
-        "trial_id": "T-7a302357-0003",
-        "strategy_id": "trend_7a302357_0003",
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0003",
+        "strategy_id": "trend_9bbe8aa4_0003",
         "params": {
           "fast": 10,
           "slow": 20,
@@ -264,21 +264,21 @@
             ]
           }
         },
-        "experiment_id": "E-65c50213",
-        "configuration_hash": "7e3c029fefc9fa96",
+        "experiment_id": "E-a7126a53",
+        "configuration_hash": "4d031e296a72a37e",
         "dataset_provenance": "SYNTHETIC",
         "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-        "code_version": "0.1.0+a885f65d252e",
+        "code_version": "0.1.0+64fab8dae9dc",
         "evidence": {
           "status": "BLOCKED",
           "reason": "claim-eligible execution was not attempted"
         },
-        "created_at": "2026-09-18 08:12:58.257722+00:00"
+        "created_at": "2026-09-18 10:20:48.893437+00:00"
       },
       {
-        "campaign_id": "C-7a302357",
-        "trial_id": "T-7a302357-0004",
-        "strategy_id": "trend_7a302357_0004",
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0004",
+        "strategy_id": "trend_9bbe8aa4_0004",
         "params": {
           "fast": 10,
           "slow": 30,
@@ -320,21 +320,21 @@
             ]
           }
         },
-        "experiment_id": "E-f528b33a",
-        "configuration_hash": "dbac5aef7459c31e",
+        "experiment_id": "E-73abd2c6",
+        "configuration_hash": "48d295a0372c3324",
         "dataset_provenance": "SYNTHETIC",
         "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-        "code_version": "0.1.0+a885f65d252e",
+        "code_version": "0.1.0+64fab8dae9dc",
         "evidence": {
           "status": "BLOCKED",
           "reason": "claim-eligible execution was not attempted"
         },
-        "created_at": "2026-09-18 08:12:58.266130+00:00"
+        "created_at": "2026-09-18 10:20:48.900870+00:00"
       },
       {
-        "campaign_id": "C-7a302357",
-        "trial_id": "T-7a302357-0005",
-        "strategy_id": "trend_7a302357_0005",
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0005",
+        "strategy_id": "trend_9bbe8aa4_0005",
         "params": {
           "fast": 10,
           "slow": 50,
@@ -376,23 +376,23 @@
             ]
           }
         },
-        "experiment_id": "E-95c01851",
-        "configuration_hash": "8bf1666702c49ab3",
+        "experiment_id": "E-0f8caca5",
+        "configuration_hash": "adcee91e422954b5",
         "dataset_provenance": "SYNTHETIC",
         "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-        "code_version": "0.1.0+a885f65d252e",
+        "code_version": "0.1.0+64fab8dae9dc",
         "evidence": {
           "status": "BLOCKED",
           "reason": "claim-eligible execution was not attempted"
         },
-        "created_at": "2026-09-18 08:12:58.274192+00:00"
+        "created_at": "2026-09-18 10:20:48.907982+00:00"
       }
     ],
     "ranked_for_inspection": [
       {
-        "campaign_id": "C-7a302357",
-        "trial_id": "T-7a302357-0000",
-        "strategy_id": "trend_7a302357_0000",
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0000",
+        "strategy_id": "trend_9bbe8aa4_0000",
         "params": {
           "fast": 5,
           "slow": 20,
@@ -434,21 +434,21 @@
             ]
           }
         },
-        "experiment_id": "E-2df25015",
-        "configuration_hash": "b5455fd8488c8572",
+        "experiment_id": "E-bfc25cac",
+        "configuration_hash": "364fe6023bba4745",
         "dataset_provenance": "SYNTHETIC",
         "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-        "code_version": "0.1.0+a885f65d252e",
+        "code_version": "0.1.0+64fab8dae9dc",
         "evidence": {
           "status": "BLOCKED",
           "reason": "claim-eligible execution was not attempted"
         },
-        "created_at": "2026-09-18 08:12:58.233590+00:00"
+        "created_at": "2026-09-18 10:20:48.871061+00:00"
       },
       {
-        "campaign_id": "C-7a302357",
-        "trial_id": "T-7a302357-0001",
-        "strategy_id": "trend_7a302357_0001",
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0001",
+        "strategy_id": "trend_9bbe8aa4_0001",
         "params": {
           "fast": 5,
           "slow": 30,
@@ -490,21 +490,21 @@
             ]
           }
         },
-        "experiment_id": "E-8c0aa24f",
-        "configuration_hash": "f287e8691a4cbb7e",
+        "experiment_id": "E-dc703662",
+        "configuration_hash": "35e136f37a5b9e72",
         "dataset_provenance": "SYNTHETIC",
         "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-        "code_version": "0.1.0+a885f65d252e",
+        "code_version": "0.1.0+64fab8dae9dc",
         "evidence": {
           "status": "BLOCKED",
           "reason": "claim-eligible execution was not attempted"
         },
-        "created_at": "2026-09-18 08:12:58.241731+00:00"
+        "created_at": "2026-09-18 10:20:48.878506+00:00"
       },
       {
-        "campaign_id": "C-7a302357",
-        "trial_id": "T-7a302357-0002",
-        "strategy_id": "trend_7a302357_0002",
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0002",
+        "strategy_id": "trend_9bbe8aa4_0002",
         "params": {
           "fast": 5,
           "slow": 50,
@@ -546,21 +546,21 @@
             ]
           }
         },
-        "experiment_id": "E-348accbe",
-        "configuration_hash": "8a2f3f64f117f5d5",
+        "experiment_id": "E-6754df0e",
+        "configuration_hash": "984ff046c979417c",
         "dataset_provenance": "SYNTHETIC",
         "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-        "code_version": "0.1.0+a885f65d252e",
+        "code_version": "0.1.0+64fab8dae9dc",
         "evidence": {
           "status": "BLOCKED",
           "reason": "claim-eligible execution was not attempted"
         },
-        "created_at": "2026-09-18 08:12:58.250391+00:00"
+        "created_at": "2026-09-18 10:20:48.886626+00:00"
       },
       {
-        "campaign_id": "C-7a302357",
-        "trial_id": "T-7a302357-0003",
-        "strategy_id": "trend_7a302357_0003",
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0003",
+        "strategy_id": "trend_9bbe8aa4_0003",
         "params": {
           "fast": 10,
           "slow": 20,
@@ -602,21 +602,21 @@
             ]
           }
         },
-        "experiment_id": "E-65c50213",
-        "configuration_hash": "7e3c029fefc9fa96",
+        "experiment_id": "E-a7126a53",
+        "configuration_hash": "4d031e296a72a37e",
         "dataset_provenance": "SYNTHETIC",
         "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-        "code_version": "0.1.0+a885f65d252e",
+        "code_version": "0.1.0+64fab8dae9dc",
         "evidence": {
           "status": "BLOCKED",
           "reason": "claim-eligible execution was not attempted"
         },
-        "created_at": "2026-09-18 08:12:58.257722+00:00"
+        "created_at": "2026-09-18 10:20:48.893437+00:00"
       },
       {
-        "campaign_id": "C-7a302357",
-        "trial_id": "T-7a302357-0004",
-        "strategy_id": "trend_7a302357_0004",
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0004",
+        "strategy_id": "trend_9bbe8aa4_0004",
         "params": {
           "fast": 10,
           "slow": 30,
@@ -658,20 +658,20 @@
             ]
           }
         },
-        "experiment_id": "E-f528b33a",
-        "configuration_hash": "dbac5aef7459c31e",
+        "experiment_id": "E-73abd2c6",
+        "configuration_hash": "48d295a0372c3324",
         "dataset_provenance": "SYNTHETIC",
         "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-        "code_version": "0.1.0+a885f65d252e",
+        "code_version": "0.1.0+64fab8dae9dc",
         "evidence": {
           "status": "BLOCKED",
           "reason": "claim-eligible execution was not attempted"
         },
-        "created_at": "2026-09-18 08:12:58.266130+00:00"
+        "created_at": "2026-09-18 10:20:48.900870+00:00"
       }
     ],
-    "dsr_trial_count": 104,
-    "elapsed_s": 0.12790632247924805,
+    "dsr_trial_count": 303,
+    "elapsed_s": 0.12729263305664062,
     "status": "COMPLETED",
     "conclusion": "BLOCKED_INSUFFICIENT_DATA",
     "data_readiness": {
@@ -704,12 +704,12 @@
     "notes": "A completed campaign is not a positive result. Claim-ineligible data produces blocked trials; no trial is auto-promoted."
   },
   "evidence_portfolio": {
-    "generated_at": "2026-09-18T08:12:58.279684+00:00",
+    "generated_at": "2026-09-18T10:20:48.913380+00:00",
     "research_question": "Search for durable XAUUSD edge under conservative execution assumptions",
     "hypotheses": [
       {
-        "id": "HYP-efe495",
-        "thought_id": "THT-44b546",
+        "id": "HYP-8a75bb",
+        "thought_id": "THT-347b54",
         "statement": "trend persistence: if trend persistence exists, strategy capturing it should survive walk-forward, CPCV, costs, regime",
         "mechanism": "trend persistence",
         "why": "Previous evidence shows regime dependence and cost sensitivity \u2014 testing trend persistence may reveal conditional edge",
@@ -732,11 +732,11 @@
         "population": "the declared instrument, timeframe, regime, and provenance-qualified dataset",
         "falsification_criteria": "OOS Sharpe <=0, WFE<0.3, DSR <0.5, or placebo equivalent, or cost BE <5bps",
         "required_data": "500 bars across 20.8 days for XAUUSD 1H; dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims",
-        "created_at": "2026-09-18T08:12:58.127527Z"
+        "created_at": "2026-09-18T10:20:48.762476Z"
       },
       {
-        "id": "HYP-fb00f4",
-        "thought_id": "THT-7a9874",
+        "id": "HYP-21f108",
+        "thought_id": "THT-6aec41",
         "statement": "breakout failure: if breakout failure exists, strategy capturing it should survive walk-forward, CPCV, costs, regime",
         "mechanism": "breakout failure",
         "why": "Previous evidence shows regime dependence and cost sensitivity \u2014 testing breakout failure may reveal conditional edge",
@@ -759,11 +759,11 @@
         "population": "the declared instrument, timeframe, regime, and provenance-qualified dataset",
         "falsification_criteria": "OOS Sharpe <=0, WFE<0.3, DSR <0.5, or placebo equivalent, or cost BE <5bps",
         "required_data": "500 bars across 20.8 days for XAUUSD 1H; dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims",
-        "created_at": "2026-09-18T08:12:58.131347Z"
+        "created_at": "2026-09-18T10:20:48.765889Z"
       },
       {
-        "id": "HYP-bca53a",
-        "thought_id": "THT-d5ebf8",
+        "id": "HYP-df7f58",
+        "thought_id": "THT-34b665",
         "statement": "volatility expansion: if volatility expansion exists, strategy capturing it should survive walk-forward, CPCV, costs, regime",
         "mechanism": "volatility expansion",
         "why": "Previous evidence shows regime dependence and cost sensitivity \u2014 testing volatility expansion may reveal conditional edge",
@@ -786,7 +786,7 @@
         "population": "the declared instrument, timeframe, regime, and provenance-qualified dataset",
         "falsification_criteria": "OOS Sharpe <=0, WFE<0.3, DSR <0.5, or placebo equivalent, or cost BE <5bps",
         "required_data": "500 bars across 20.8 days for XAUUSD 1H; dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims",
-        "created_at": "2026-09-18T08:12:58.134416Z"
+        "created_at": "2026-09-18T10:20:48.768940Z"
       }
     ],
     "mechanism": "autonomous intelligence generated 3-6 falsifiable hypotheses",
@@ -928,7 +928,7 @@
       "did_we_confuse_correlation": "INSUFFICIENT_EVIDENCE \u2014 no trial-bound null/placebo report",
       "did_we_repeatedly_test_same_idea": "MEASURED \u2014 novelty distinct=6 of 6 records",
       "did_we_suppress_failures": "MEASURED \u2014 failed/blocked trial records are retained by the campaign ledger",
-      "verdict": "BLOCK \u2014 independent audit gates remain unproven"
+      "verdict": "BLOCK \u2014 missing evidence is fail-closed"
     },
     "retest_summary": {
       "retested": 0,
@@ -944,12 +944,12 @@
     "distinct_hypotheses": 6,
     "largest_cluster_size": 1,
     "clusters": {
-      "6ea8a17be1df": 1,
-      "897305a0fc5b": 1,
-      "a4b992a04201": 1,
-      "95e201278d53": 1,
-      "7ed15a9aed17": 1,
-      "133c6a9124db": 1
+      "e59e0090240f": 1,
+      "a1d9c1b122dd": 1,
+      "1352ec94a837": 1,
+      "dea43580c870": 1,
+      "3115212ec145": 1,
+      "c706d820c4f7": 1
     },
     "honest_note": "6 trials but only 6 materially distinct hypotheses \u2014 essential for honest multiple-testing"
   },
@@ -965,6 +965,6 @@
     "did_we_confuse_correlation": "INSUFFICIENT_EVIDENCE \u2014 no trial-bound null/placebo report",
     "did_we_repeatedly_test_same_idea": "MEASURED \u2014 novelty distinct=6 of 6 records",
     "did_we_suppress_failures": "MEASURED \u2014 failed/blocked trial records are retained by the campaign ledger",
-    "verdict": "BLOCK \u2014 independent audit gates remain unproven"
+    "verdict": "BLOCK \u2014 missing evidence is fail-closed"
   }
 }

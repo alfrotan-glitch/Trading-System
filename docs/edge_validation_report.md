@@ -1,8 +1,8 @@
 # Edge Validation Report
-**Generated:** 2026-09-18T10:08:18.525760+00:00
+**Generated:** 2026-09-18T10:20:51.016708+00:00
 **Strategy:** sma_breakout
 **Data version:** 20260918-010-572728d9
-**Code version:** 0.1.0+a885f65d252e-dirty
+**Code version:** 0.1.0+64fab8dae9dc
 
 ## 1. Dataset integrity
 - Manifest: 20260918-010-572728d9 XAUUSD 1H rows 500 checksum sha256:572728d92ebb5c2a timezone UTC preprocessing 1.0 source SYNTHETIC:fixture:XAUUSD_1H_500.csv
@@ -11,7 +11,7 @@
 - Locked partition: discovery 300 validation 100 locked 100 frozen True access_log 0 attempts
 
 ## 2. Trial count
-- Trials: 113 (all materially tested variants counted, DSR uses N=113)
+- Trials: 304 (all materially tested variants counted, DSR uses N=304)
 
 ## 3. Locked-test status
 - Frozen: True — locked test never influenced design/params/thresholds/feature selection
@@ -25,7 +25,7 @@
 - PBO: UNAVAILABLE passed: False details: PBO CPCV not executed (need >=6 combos, got 0) → BLOCKS
 
 ## 6. PSR/DSR
-- PSR: 0.46 DSR: 0.00 trials 113 passed: False
+- PSR: 0.46 DSR: 0.00 trials 304 passed: False
 
 ## 7. Null controls
 - Null-control evidence: {'status': 'NOT_IMPLEMENTED', 'value': None, 'reason': 'separate randomized signal model was not executed'}

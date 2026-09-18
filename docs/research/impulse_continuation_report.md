@@ -1,6 +1,6 @@
 # Impulse Continuation Research — Evidence Report
 
-Generated: 2026-09-18T10:07:59.563961+00:00  ·  Mode: **MECHANISM_VALIDATION**
+Generated: 2026-09-18T10:20:45.242523+00:00  ·  Mode: **MECHANISM_VALIDATION**
 
 > Dataset failed the pre-registered data-adequacy gate. All numbers below describe the RESEARCH MECHANISM operating on this dataset, NOT real-market behavior. No real-market claim is permitted and nothing was promoted.
 
@@ -12,6 +12,18 @@ When price begins an unusually strong directional movement, the conditional dist
 - checksum `sha256:572728d92ebb5c2a` · rows 500 · bars read 500
 - span 2020-01-01T00:00:00+00:00 → 2020-01-21T20:00:00+00:00 (UTC)
 - source label `SYNTHETIC:fixture:XAUUSD_1H_500.csv` · **data class: SYNTHETIC**
+- code version `0.1.0+64fab8dae9dc`
+
+## Falsifiable specification
+- **Mechanism:** short-horizon directional persistence after an impulse, rather than unconditional continuation
+- **Measurable Prediction:** impulse events have higher continuation and net-return distributions than the matched non-event baseline after declared costs
+- **Null Hypothesis:** impulse events have no incremental predictive value versus the matched baseline after costs and timing controls
+- **Horizon:** primary=12 bars; sensitivity=[12, 4]
+- **Population:** XAUUSD 1H bars from the declared venue/source
+- **Regime:** all declared volatility regimes; no unmeasured regime may be silently excluded
+- **Competing Explanations:** selection or trial-count bias; timestamp/look-ahead leakage; single-regime or single-instrument artifact; cost assumptions masking unavailable broker execution evidence
+- **Falsification Criteria:** chronological validation does not replicate the effect; the effect disappears under declared cost or latency sensitivity; the effect is not separated from baseline/placebo controls; event counts or regime coverage remain insufficient for the claim
+- **Required Data:** immutable provenance-qualified OHLC history; measured bid/ask or tick spread and execution-cost fields; enough events per direction across multiple regimes; untouched chronological validation and forward observation
 
 ## Data adequacy gate
 adequate_for_real_claims: **False**
@@ -32,19 +44,19 @@ adequate_for_real_claims: **False**
 - declared cost assumptions (ESTIMATED): {'spread_bps': 2.0, 'commission_bps_round_turn': 0.4, 'slippage_bps_per_side': 0.5, 'latency_bars': 1, 'round_turn_cost_bps': 3.4, 'provenance': 'ESTIMATED:declared_assumption'}
 - splits: discovery/validation chronological; LOCKED partition untouched: True
 - events: detected 53, measured 106, excluded (insufficient forward bars) 0, discarded-in-locked 11
-- trials recorded in ledger: 40 · ledger total (never reset): 112 · DSR penalized with N=112
+- trials recorded in ledger: 40 · ledger total (never reset): 295 · DSR penalized with N=295
 
 ## Results (primary horizon 12 bars, pooled discovery+validation)
 
 | Family | n | cont. rate | baseline | diff | p_raw | p_holm | gross bps | net bps | net CI | TTT hit | MFE | MAE | DSR |
 |--------|---|------------|----------|------|-------|--------|-----------|---------|--------|---------|-----|-----|-----|
 | IMP-BE-B | 7 | 0.429 | 0.462 | -0.034 | 1.0000 | 1.0000 | -231.21 | -234.61 | [-586.46,71.41] | 0.43 | 196.0 | 212.2 | 0.000 |
-| IMP-BE-V | 3 | 0.667 | 0.500 | +0.167 | 1.0000 | 1.0000 | +61.82 | +58.42 | [-330.44,274.47] | 1.00 | 344.8 | 95.5 | 0.014 |
-| IMP-PV-B | 6 | 0.500 | 0.448 | +0.052 | 1.0000 | 1.0000 | -203.43 | -206.83 | [-716.36,320.95] | 0.33 | 163.4 | 314.9 | 0.001 |
+| IMP-BE-V | 3 | 0.667 | 0.500 | +0.167 | 1.0000 | 1.0000 | +61.82 | +58.42 | [-330.44,274.47] | 1.00 | 344.8 | 95.5 | 0.006 |
+| IMP-PV-B | 6 | 0.500 | 0.448 | +0.052 | 1.0000 | 1.0000 | -203.43 | -206.83 | [-716.36,320.95] | 0.33 | 163.4 | 314.9 | 0.000 |
 | IMP-PV-V | 1 | 0.000 | 0.506 | -0.506 | 0.4938 | 1.0000 | -938.62 | -942.02 | [-942.02,-942.02] | 0.00 | 16.4 | 460.5 | n/a |
 | IMP-RB-B | 16 | 0.375 | 0.454 | -0.079 | 0.6205 | 1.0000 | -132.61 | -136.01 | [-349.56,70.79] | 0.44 | 181.6 | 218.7 | 0.000 |
-| IMP-RB-V | 10 | 0.500 | 0.465 | +0.035 | 1.0000 | 1.0000 | -16.69 | -20.09 | [-328.65,306.49] | 0.60 | 257.9 | 206.3 | 0.004 |
-| IMP-RE-B | 7 | 0.286 | 0.523 | -0.237 | 0.2696 | 1.0000 | -150.28 | -153.68 | [-664.10,356.02] | 0.71 | 254.8 | 186.9 | 0.001 |
+| IMP-RB-V | 10 | 0.500 | 0.465 | +0.035 | 1.0000 | 1.0000 | -16.69 | -20.09 | [-328.65,306.49] | 0.60 | 257.9 | 206.3 | 0.001 |
+| IMP-RE-B | 7 | 0.286 | 0.523 | -0.237 | 0.2696 | 1.0000 | -150.28 | -153.68 | [-664.10,356.02] | 0.71 | 254.8 | 186.9 | 0.000 |
 | IMP-RE-V | 1 | 0.000 | 0.525 | -0.525 | 0.4752 | 1.0000 | -1003.48 | -1006.88 | [-1006.88,-1006.88] | 1.00 | 302.7 | 128.6 | n/a |
 | IMP-VE-B | 2 | 0.000 | 0.487 | -0.487 | 0.5003 | 1.0000 | -566.72 | -570.12 | [-896.33,-243.91] | 0.50 | 303.5 | 268.0 | n/a |
 | IMP-VE-V | 0 | 0.000 | 0.497 | +0.000 | 1.0000 | 1.0000 | +0.00 | +0.00 | [0.00,0.00] | 0.00 | 0.0 | 0.0 | n/a |

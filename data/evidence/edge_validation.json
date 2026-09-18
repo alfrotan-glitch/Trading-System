@@ -140,9 +140,9 @@
     }
   },
   "trial_ledger": {
-    "trial_count": 113,
-    "experiment_id": "E-fde35ac2",
-    "configuration_hash": "c77c27100d763302",
+    "trial_count": 304,
+    "experiment_id": "E-d84a5ccd",
+    "configuration_hash": "b4a0cc38233d77c3",
     "cumulative": true
   },
   "edge_survival": {
@@ -175,13 +175,13 @@
       "cpcv": "PBO CPCV not executed (need >=6 combos, got 0) \u2192 BLOCKS",
       "pbo": "PBO UNAVAILABLE because CPCV was not executed",
       "psr": "psr 0.46",
-      "dsr": "dsr 0.00 trials 113",
+      "dsr": "dsr 0.00 trials 304",
       "placebo": "placebo control was not executed \u2014 NOT_IMPLEMENTED",
       "expectancy": "net_exp 0.0000 pf 0.00",
       "economic_edge": "economic edge blocked: cost decomposition unavailable"
     },
     "psr": 0.4551885879179798,
-    "dsr": 0.003629755836709179,
+    "dsr": 0.0013023446509725397,
     "pbo": null,
     "wfe": -0.6941970137519072,
     "cost_be": 0,
@@ -248,7 +248,7 @@
     "ok": false,
     "reason": "research orchestrator has no order path"
   },
-  "code_version": "0.1.0+a885f65d252e-dirty",
-  "generated_at": "2026-09-18T10:08:18.525760+00:00",
+  "code_version": "0.1.0+64fab8dae9dc",
+  "generated_at": "2026-09-18T10:20:51.016708+00:00",
   "conclusion": "BLOCKED_INSUFFICIENT_DATA"
 }

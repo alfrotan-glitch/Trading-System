@@ -1,5 +1,5 @@
 # Capital Preservation Policy
-**Generated:** 2026-09-18T10:08:18.525760+00:00
+**Generated:** 2026-09-18T10:20:51.016708+00:00
 
 Hard limits (Phase 12) — crossing any forces NO_TRADE or SUSPENDED, no adaptive expansion after losses.
 

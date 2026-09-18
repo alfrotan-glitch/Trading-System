@@ -1,5 +1,6 @@
 {
-  "generated_at": "2026-09-18T09:42:21.298132+00:00",
+  "generated_at": "2026-09-18T10:20:58.377094+00:00",
+  "code_version": "0.1.0+64fab8dae9dc",
   "provenance": {
     "paper_source": "data/evidence/paper_trades.json (PAPER class)",
     "shadow_source": "data/evidence/shadow_intents.json (SHADOW class)",

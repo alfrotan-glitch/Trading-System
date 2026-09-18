@@ -1,5 +1,5 @@
 {
-  "campaign_id": "C-39522b34",
+  "campaign_id": "C-292a5ec8",
   "config": {
     "name": "campaign-trend",
     "symbol": "XAUUSD",
@@ -22,9 +22,9 @@
   "discarded": 0,
   "trials": [
     {
-      "campaign_id": "C-39522b34",
-      "trial_id": "T-39522b34-0000",
-      "strategy_id": "trend_39522b34_0000",
+      "campaign_id": "C-292a5ec8",
+      "trial_id": "T-292a5ec8-0000",
+      "strategy_id": "trend_292a5ec8_0000",
       "params": {
         "fast": 5,
         "slow": 20,
@@ -66,21 +66,21 @@
           ]
         }
       },
-      "experiment_id": "E-b99a32e7",
-      "configuration_hash": "7f62269208f6b0c3",
+      "experiment_id": "E-d673135a",
+      "configuration_hash": "481ee36ff973b57e",
       "dataset_provenance": "SYNTHETIC",
       "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-      "code_version": "0.1.0+a885f65d252e",
+      "code_version": "0.1.0+64fab8dae9dc",
       "evidence": {
         "status": "BLOCKED",
         "reason": "claim-eligible execution was not attempted"
       },
-      "created_at": "2026-09-18 08:12:33.331672+00:00"
+      "created_at": "2026-09-18 10:20:47.634370+00:00"
     },
     {
-      "campaign_id": "C-39522b34",
-      "trial_id": "T-39522b34-0001",
-      "strategy_id": "trend_39522b34_0001",
+      "campaign_id": "C-292a5ec8",
+      "trial_id": "T-292a5ec8-0001",
+      "strategy_id": "trend_292a5ec8_0001",
       "params": {
         "fast": 5,
         "slow": 30,
@@ -122,23 +122,23 @@
           ]
         }
       },
-      "experiment_id": "E-c5e39bbb",
-      "configuration_hash": "62b2e169d38b8af5",
+      "experiment_id": "E-e5c763f1",
+      "configuration_hash": "387cf1a9bdb4f896",
       "dataset_provenance": "SYNTHETIC",
       "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-      "code_version": "0.1.0+a885f65d252e",
+      "code_version": "0.1.0+64fab8dae9dc",
       "evidence": {
         "status": "BLOCKED",
         "reason": "claim-eligible execution was not attempted"
       },
-      "created_at": "2026-09-18 08:12:33.341817+00:00"
+      "created_at": "2026-09-18 10:20:47.642392+00:00"
     }
   ],
   "ranked_for_inspection": [
     {
-      "campaign_id": "C-39522b34",
-      "trial_id": "T-39522b34-0000",
-      "strategy_id": "trend_39522b34_0000",
+      "campaign_id": "C-292a5ec8",
+      "trial_id": "T-292a5ec8-0000",
+      "strategy_id": "trend_292a5ec8_0000",
       "params": {
         "fast": 5,
         "slow": 20,
@@ -180,21 +180,21 @@
           ]
         }
       },
-      "experiment_id": "E-b99a32e7",
-      "configuration_hash": "7f62269208f6b0c3",
+      "experiment_id": "E-d673135a",
+      "configuration_hash": "481ee36ff973b57e",
       "dataset_provenance": "SYNTHETIC",
       "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-      "code_version": "0.1.0+a885f65d252e",
+      "code_version": "0.1.0+64fab8dae9dc",
       "evidence": {
         "status": "BLOCKED",
         "reason": "claim-eligible execution was not attempted"
       },
-      "created_at": "2026-09-18 08:12:33.331672+00:00"
+      "created_at": "2026-09-18 10:20:47.634370+00:00"
     },
     {
-      "campaign_id": "C-39522b34",
-      "trial_id": "T-39522b34-0001",
-      "strategy_id": "trend_39522b34_0001",
+      "campaign_id": "C-292a5ec8",
+      "trial_id": "T-292a5ec8-0001",
+      "strategy_id": "trend_292a5ec8_0001",
       "params": {
         "fast": 5,
         "slow": 30,
@@ -236,20 +236,20 @@
           ]
         }
       },
-      "experiment_id": "E-c5e39bbb",
-      "configuration_hash": "62b2e169d38b8af5",
+      "experiment_id": "E-e5c763f1",
+      "configuration_hash": "387cf1a9bdb4f896",
       "dataset_provenance": "SYNTHETIC",
       "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
-      "code_version": "0.1.0+a885f65d252e",
+      "code_version": "0.1.0+64fab8dae9dc",
       "evidence": {
         "status": "BLOCKED",
         "reason": "claim-eligible execution was not attempted"
       },
-      "created_at": "2026-09-18 08:12:33.341817+00:00"
+      "created_at": "2026-09-18 10:20:47.642392+00:00"
     }
   ],
-  "dsr_trial_count": 98,
-  "elapsed_s": 0.11644864082336426,
+  "dsr_trial_count": 297,
+  "elapsed_s": 0.14397811889648438,
   "status": "COMPLETED",
   "conclusion": "BLOCKED_INSUFFICIENT_DATA",
   "data_readiness": {
