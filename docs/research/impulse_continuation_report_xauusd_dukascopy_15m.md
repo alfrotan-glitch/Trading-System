@@ -43,12 +43,13 @@ adequate_for_real_claims: **True**
 - warmup: 64 bars · alpha: 0.05 · bootstrap: 2000
 - declared cost assumptions (ESTIMATED): {'spread_bps': 2.0, 'commission_bps_round_turn': 0.4, 'slippage_bps_per_side': 0.5, 'latency_bars': 1, 'round_turn_cost_bps': 3.4, 'provenance': 'ESTIMATED:declared_assumption'}
 - splits: discovery/validation chronological; LOCKED partition untouched: True
-- events: detected 3759, measured 7518, excluded (insufficient forward bars) 0, discarded-in-locked 1021
+- detected event records: 3759 across 10 pre-registered family definitions (family-scoped; not de-duplicated and not executed trades)
+- primary-horizon measured directional outcomes: 3759; all configured horizons: 7518; excluded (insufficient forward bars): 0; discarded in locked partition: 1021
 - trials recorded in ledger: 40 · ledger total (never reset): 180 · DSR penalized with N=180
 
 ## Results (primary horizon 12 bars, pooled discovery+validation)
 
-| Family | n | cont. rate | baseline | diff | p_raw | p_holm | gross bps | net bps | net CI | TTT hit | MFE | MAE | DSR |
+| Family | measured event outcomes (n) | gross cont. rate | baseline | diff | p_raw | p_holm | gross bps | net bps | net CI | TTT hit | MFE | MAE | DSR |
 |--------|---|------------|----------|------|-------|--------|-----------|---------|--------|---------|-----|-----|-----|
 | IMP-BE-B | 427 | 0.496 | 0.503 | -0.007 | 0.8089 | 1.0000 | +2.75 | -0.65 | [-7.69,6.14] | 0.51 | 25.5 | 22.8 | 0.002 |
 | IMP-BE-V | 321 | 0.492 | 0.499 | -0.006 | 0.8236 | 1.0000 | +3.68 | +0.28 | [-7.81,8.88] | 0.53 | 27.5 | 24.2 | 0.004 |
@@ -60,6 +61,27 @@ adequate_for_real_claims: **True**
 | IMP-RE-V | 221 | 0.525 | 0.504 | +0.021 | 0.5454 | 1.0000 | +9.15 | +5.75 | [-2.90,14.63] | 0.43 | 24.7 | 26.9 | 0.070 |
 | IMP-VE-B | 330 | 0.512 | 0.505 | +0.008 | 0.8258 | 1.0000 | +4.62 | +1.22 | [-6.09,8.80] | 0.49 | 24.9 | 22.4 | 0.008 |
 | IMP-VE-V | 106 | 0.462 | 0.501 | -0.039 | 0.4384 | 1.0000 | +0.49 | -2.91 | [-15.89,10.38] | 0.46 | 26.6 | 26.2 | 0.001 |
+
+## Trade-level outcome transparency (primary horizon)
+
+This research records **event-study directional outcomes**, not executed broker trades, orders, or fills. The canonical unit is one detected event for one pre-registered family measured once at the selected horizon. Each measured event has one existing `net_return_bps` outcome. Outcome winners and losers below are classified on that net return, after the declared cost assumption.
+
+Win-rate denominator: **all measured event outcomes in the row (wins + losses + break-even)**. The proportional 10/100 columns answer how the historical rate maps onto that many comparable events; they are not a forecast and are not a claim of trade execution.
+
+| Family | measured events | outcome status | wins | losses | break-even | win rate (W/N) | avg winner (net bps) | avg loser (net bps) | profit factor | expectancy / event (trade-equivalent, net bps) | aggregate net (bps) | 10 W/L/BE | 100 W/L/BE |
+|--------|-----------------|----------------|------|--------|------------|----------------|-----------------------|---------------------|---------------|------------------------------|--------------------|------------|--------------|
+| IMP-BE-B | 427 | AVAILABLE | 199 | 228 | 0 | +0.466 | +53.19 | -47.63 | +0.97 | -0.65 | -275.95 | 4.7 / 5.3 / 0.0 | 46.6 / 53.4 / 0.0 |
+| IMP-BE-V | 321 | AVAILABLE | 146 | 175 | 0 | +0.455 | +58.53 | -48.31 | +1.01 | +0.28 | +90.38 | 4.5 / 5.5 / 0.0 | 45.5 / 54.5 / 0.0 |
+| IMP-PV-B | 352 | AVAILABLE | 171 | 181 | 0 | +0.486 | +51.60 | -47.95 | +1.02 | +0.41 | +144.77 | 4.9 / 5.1 / 0.0 | 48.6 / 51.4 / 0.0 |
+| IMP-PV-V | 165 | AVAILABLE | 80 | 85 | 0 | +0.485 | +64.46 | -49.99 | +1.21 | +5.50 | +907.50 | 4.8 / 5.2 / 0.0 | 48.5 / 51.5 / 0.0 |
+| IMP-RB-B | 815 | AVAILABLE | 380 | 435 | 0 | +0.466 | +45.52 | -39.00 | +1.02 | +0.41 | +333.45 | 4.7 / 5.3 / 0.0 | 46.6 / 53.4 / 0.0 |
+| IMP-RB-V | 573 | AVAILABLE | 269 | 304 | 0 | +0.469 | +47.15 | -40.55 | +1.03 | +0.62 | +354.93 | 4.7 / 5.3 / 0.0 | 46.9 / 53.1 / 0.0 |
+| IMP-RE-B | 449 | AVAILABLE | 214 | 235 | 0 | +0.477 | +52.64 | -43.09 | +1.11 | +2.53 | +1138.17 | 4.8 / 5.2 / 0.0 | 47.7 / 52.3 / 0.0 |
+| IMP-RE-V | 221 | AVAILABLE | 112 | 109 | 0 | +0.507 | +55.03 | -44.89 | +1.26 | +5.75 | +1269.75 | 5.1 / 4.9 / 0.0 | 50.7 / 49.3 / 0.0 |
+| IMP-VE-B | 330 | AVAILABLE | 159 | 171 | 0 | +0.482 | +50.46 | -44.56 | +1.05 | +1.22 | +403.47 | 4.8 / 5.2 / 0.0 | 48.2 / 51.8 / 0.0 |
+| IMP-VE-V | 106 | AVAILABLE | 46 | 60 | 0 | +0.434 | +52.45 | -45.35 | +0.89 | -2.91 | -308.47 | 4.3 / 5.7 / 0.0 | 43.4 / 56.6 / 0.0 |
+
+Net-return basis: gross horizon return minus the declared round-turn cost of **+3.40 bps per measured event** (ESTIMATED:declared_assumption). No bid/ask, fill, or broker execution outcome is inferred. A metric is `unavailable` when the required event-level return or denominator is absent.
 
 ## Cost / spread / latency sensitivity (pooled net mean bps, primary horizon)
 

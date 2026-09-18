@@ -93,6 +93,7 @@ class FamilyHorizonSplitResult:
     gross_mean_bps: float = 0.0
     net_mean_bps: float = 0.0
     net_ci: tuple[float, float] = (0.0, 0.0)
+    trade_outcomes: dict[str, Any] = field(default_factory=dict)
     net_sharpe_per_event: float = 0.0
     dsr_per_event: float | None = None  # pooled discovery+validation only
     mfe_mean_bps: float = 0.0
@@ -172,6 +173,98 @@ def _measure_all(
     ]
 
 
+def summarize_trade_outcomes(
+    net_returns_bps: list[float | None],
+    *,
+    declared_round_turn_cost_bps: float | None = None,
+) -> dict[str, Any]:
+    """Summarize the canonical measured event outcomes for human reporting.
+
+    The impulse study does not contain executed broker trades or fills. Its
+    canonical unit is one measured directional outcome for one family-scoped
+    detected event at one horizon. ``net_returns_bps`` is therefore the
+    existing event-level outcome data, already calculated by
+    :func:`measure_event` as gross horizon return minus the declared cost.
+
+    A missing return is never interpreted as zero. In that case the event
+    count remains visible, while all outcome metrics that require a complete
+    return series are explicitly unavailable.
+    """
+    measured_count = len(net_returns_bps)
+    missing = 0
+    values: list[float] = []
+    for value in net_returns_bps:
+        if value is None:
+            missing += 1
+            continue
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            missing += 1
+            continue
+        if not np.isfinite(numeric):
+            missing += 1
+            continue
+        values.append(numeric)
+
+    base: dict[str, Any] = {
+        "unit": "measured_directional_event_outcome",
+        "return_basis": "net_return_bps",
+        "winner_definition": "net_return_bps > 0",
+        "loser_definition": "net_return_bps < 0",
+        "breakeven_definition": "net_return_bps == 0",
+        "measured_event_count": measured_count,
+        "declared_round_turn_cost_bps": declared_round_turn_cost_bps,
+    }
+    if missing or not values:
+        base.update(
+            {
+                "status": "UNAVAILABLE",
+                "outcome_count": 0 if not net_returns_bps else None,
+                "wins": None if missing or net_returns_bps else 0,
+                "losses": None if missing or net_returns_bps else 0,
+                "breakeven": None if missing or net_returns_bps else 0,
+                "win_rate": None,
+                "average_winner_bps": None,
+                "average_loser_bps": None,
+                "profit_factor": None,
+                "expectancy_per_trade_bps": None,
+                "net_result_bps": None,
+                "unavailable_reason": (
+                    "no measured event outcomes"
+                    if not net_returns_bps
+                    else f"net return unavailable for {missing} measured event(s)"
+                ),
+            }
+        )
+        return base
+
+    winners = [value for value in values if value > 0]
+    losers = [value for value in values if value < 0]
+    breakeven = [value for value in values if value == 0]
+    gross_wins = sum(winners)
+    gross_losses = abs(sum(losers))
+    base.update(
+        {
+            "status": "AVAILABLE",
+            "outcome_count": len(values),
+            "wins": len(winners),
+            "losses": len(losers),
+            "breakeven": len(breakeven),
+            "win_rate": len(winners) / len(values),
+            "average_winner_bps": float(np.mean(winners)) if winners else None,
+            "average_loser_bps": float(np.mean(losers)) if losers else None,
+            # Profit factor is undefined when there is no loss denominator;
+            # do not emit infinity or turn that case into zero.
+            "profit_factor": (gross_wins / gross_losses) if gross_losses > 0 else None,
+            "expectancy_per_trade_bps": float(np.mean(values)),
+            "net_result_bps": float(sum(values)),
+            "unavailable_reason": None,
+        }
+    )
+    return base
+
+
 def _summarize(
     measured: list[EventMeasurement],
     baseline_measured: list[EventMeasurement],
@@ -187,6 +280,10 @@ def _summarize(
     base_rate = base_k / base_n if base_n else 0.5
     gross = [float(m.horizon_return_bps or 0.0) for m in ok]
     net = [float(m.net_return_bps or 0.0) for m in ok]
+    trade_outcomes = summarize_trade_outcomes(
+        [m.net_return_bps for m in ok],
+        declared_round_turn_cost_bps=cfg.costs.round_turn_cost_bps(),
+    )
     net_mean, net_lo, net_hi = bootstrap_ci_mean(net, n_boot=cfg.n_boot, seed=cfg.seed)
     diff, diff_lo, diff_hi = two_proportion_diff_ci(k, n, base_k, base_n, seed=cfg.seed, n_boot=cfg.n_boot)
     obs_diff = (k / n - base_rate) if n else 0.0
@@ -230,6 +327,7 @@ def _summarize(
         "gross_mean_bps": float(np.mean(gross)) if gross else 0.0,
         "net_mean_bps": net_mean,
         "net_ci": (net_lo, net_hi),
+        "trade_outcomes": trade_outcomes,
         "net_sharpe_per_event": event_series_sharpe(net),
         "mfe_mean_bps": float(np.mean([float(m.mfe_bps or 0.0) for m in ok])) if ok else 0.0,
         "mae_mean_bps": float(np.mean([float(m.mae_bps or 0.0) for m in ok])) if ok else 0.0,
@@ -290,11 +388,16 @@ def run_impulse_analysis(
         "bars": n,
         "families": len(PRE_REGISTERED_FAMILIES),
         "horizons": list(cfg.horizons),
+        "primary_horizon": cfg.primary_horizon,
         "trials_recorded": 0,
         "events_detected_total": 0,
         "events_measured_total": 0,
         "events_excluded_total": 0,
         "events_locked_discarded": 0,
+        "event_unit": "family-scoped detected impulse event; not an executed broker trade",
+        "outcome_unit": "one measured directional event outcome per family and horizon",
+        "events_detected_total_scope": "sum across pre-registered families; not de-duplicated across family definitions",
+        "events_measured_total_scope": "sum across pre-registered families and configured horizons",
     }
 
     family_events_all: dict[str, list[tuple[int, str]]] = {}
@@ -375,6 +478,15 @@ def run_impulse_analysis(
                     totals["events_measured_total"] += res.n_measured
                     totals["events_excluded_total"] += res.n_excluded_insufficient_forward
                 results.append(res)
+
+    # Make the two denominators explicit. ``events_measured_total`` includes
+    # every configured horizon, while the report's primary outcome count is
+    # the pooled primary-horizon total. Neither aggregate is a broker-trade
+    # count or a de-duplicated count across different hypothesis families.
+    primary_pooled = [r for r in results if r.horizon == cfg.primary_horizon and r.split == "pooled"]
+    totals["primary_events_detected_total"] = sum(r.n_detected for r in primary_pooled)
+    totals["primary_outcomes_measured_total"] = sum(r.n_measured for r in primary_pooled)
+    totals["all_horizon_outcomes_measured_total"] = totals["events_measured_total"]
 
     # --- Holm correction per (horizon, split) across families ---------------
     for horizon in cfg.horizons:

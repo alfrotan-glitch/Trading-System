@@ -25,6 +25,7 @@ from qts.research.impulse.analysis import (
     ImpulseAnalysisResult,
     ImpulseResearchConfig,
     run_impulse_analysis,
+    summarize_trade_outcomes,
 )
 from qts.research.impulse.conclusions import ResearchConclusion, classify_conclusion
 
@@ -207,6 +208,46 @@ def run_impulse_research(
     return evidence
 
 
+def _trade_outcomes_for_report(result: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
+    """Return outcome metrics, including a backward-compatible evidence fallback.
+
+    Current runs persist ``trade_outcomes`` beside the result summary. Older
+    evidence already contains the authoritative per-event ``net_return_bps``
+    rows, so it can be rendered without rewriting that evidence artifact.
+    """
+    stored = result.get("trade_outcomes")
+    if stored:
+        return stored
+    values = [
+        event.get("net_return_bps")
+        for event in result.get("events", [])
+        if event.get("decision_state") == "DETECTED_MEASURED"
+    ]
+    costs = config.get("costs", {})
+    return summarize_trade_outcomes(
+        values,
+        declared_round_turn_cost_bps=costs.get("round_turn_cost_bps"),
+    )
+
+
+def _report_metric(value: Any, digits: int = 2) -> str:
+    if value is None:
+        return "unavailable"
+    return f"{float(value):+.{digits}f}" if digits else f"{int(value)}"
+
+
+def _scaled_outcome_counts(outcomes: dict[str, Any], scale: int) -> str:
+    """Show proportional W/L/break-even counts, never as a forecast."""
+    if outcomes.get("status") != "AVAILABLE" or not outcomes.get("outcome_count"):
+        return "unavailable"
+    n = float(outcomes["outcome_count"])
+    return (
+        f"{float(outcomes['wins']) * scale / n:.1f} / "
+        f"{float(outcomes['losses']) * scale / n:.1f} / "
+        f"{float(outcomes['breakeven']) * scale / n:.1f}"
+    )
+
+
 def render_markdown_report(evidence: dict[str, Any]) -> str:
     """Human-readable research report rendered from the evidence dict."""
     prov = evidence["provenance"]
@@ -265,10 +306,17 @@ def render_markdown_report(evidence: dict[str, Any]) -> str:
     lines.append(f"- declared cost assumptions (ESTIMATED): {cfgs['costs']}")
     lines.append(f"- splits: discovery/validation chronological; LOCKED partition untouched: {an['locked_untouched']}")
     t = an["totals"]
+    primary_outcomes = t.get("primary_outcomes_measured_total", t.get("events_detected_total", 0))
+    all_horizon_outcomes = t.get("all_horizon_outcomes_measured_total", t.get("events_measured_total", 0))
     lines.append(
-        f"- events: detected {t['events_detected_total']}, measured {t['events_measured_total']}, "
-        f"excluded (insufficient forward bars) {t['events_excluded_total']}, "
-        f"discarded-in-locked {t['events_locked_discarded']}"
+        f"- detected event records: {t['events_detected_total']} across {t.get('families', 'the')} "
+        "pre-registered family definitions (family-scoped; not de-duplicated and not executed trades)"
+    )
+    lines.append(
+        f"- primary-horizon measured directional outcomes: {primary_outcomes}; "
+        f"all configured horizons: {all_horizon_outcomes}; "
+        f"excluded (insufficient forward bars): {t['events_excluded_total']}; "
+        f"discarded in locked partition: {t['events_locked_discarded']}"
     )
     lines.append(
         f"- trials recorded in ledger: {t['trials_recorded']} · ledger total (never reset): "
@@ -278,7 +326,7 @@ def render_markdown_report(evidence: dict[str, Any]) -> str:
     lines.append(f"## Results (primary horizon {cfgs['primary_horizon']} bars, pooled discovery+validation)")
     lines.append("")
     lines.append(
-        "| Family | n | cont. rate | baseline | diff | p_raw | p_holm | gross bps | net bps | net CI | TTT hit | MFE | MAE | DSR |"
+        "| Family | measured event outcomes (n) | gross cont. rate | baseline | diff | p_raw | p_holm | gross bps | net bps | net CI | TTT hit | MFE | MAE | DSR |"
     )
     lines.append(
         "|--------|---|------------|----------|------|-------|--------|-----------|---------|--------|---------|-----|-----|-----|"
@@ -293,6 +341,58 @@ def render_markdown_report(evidence: dict[str, Any]) -> str:
             f"[{r['net_ci'][0]:.2f},{r['net_ci'][1]:.2f}] | {r['target_hit_rate']:.2f} | "
             f"{r['mfe_mean_bps']:.1f} | {r['mae_mean_bps']:.1f} | {dsr} |"
         )
+    lines.append("")
+    lines.append("## Trade-level outcome transparency (primary horizon)")
+    lines.append("")
+    lines.append(
+        "This research records **event-study directional outcomes**, not executed broker trades, "
+        "orders, or fills. The canonical unit is one detected event for one pre-registered family "
+        "measured once at the selected horizon. Each measured event has one existing "
+        "`net_return_bps` outcome. Outcome winners and losers below are classified on that net "
+        "return, after the declared cost assumption."
+    )
+    lines.append("")
+    lines.append(
+        "Win-rate denominator: **all measured event outcomes in the row (wins + losses + "
+        "break-even)**. The proportional 10/100 columns answer how the historical rate maps "
+        "onto that many comparable events; they are not a forecast and are not a claim of "
+        "trade execution."
+    )
+    lines.append("")
+    lines.append(
+        "| Family | measured events | outcome status | wins | losses | break-even | win rate (W/N) | "
+        "avg winner (net bps) | avg loser (net bps) | profit factor | expectancy / event (trade-equivalent, net bps) | "
+        "aggregate net (bps) | 10 W/L/BE | 100 W/L/BE |"
+    )
+    lines.append(
+        "|--------|-----------------|----------------|------|--------|------------|----------------|-----------------------|---------------------|---------------|------------------------------|--------------------|------------|--------------|"
+    )
+    for r in sorted(prim, key=lambda x: x["family_id"]):
+        outcomes = _trade_outcomes_for_report(r, cfgs)
+        status = outcomes.get("status", "UNAVAILABLE")
+        status_text = status if status == "AVAILABLE" else f"{status}: {outcomes.get('unavailable_reason', 'required data missing')}"
+        count = r.get("n_measured", outcomes.get("measured_event_count", 0))
+        lines.append(
+            f"| {r['family_id']} | {count} | {status_text} | "
+            f"{outcomes.get('wins', 'unavailable') if status == 'AVAILABLE' else 'unavailable'} | "
+            f"{outcomes.get('losses', 'unavailable') if status == 'AVAILABLE' else 'unavailable'} | "
+            f"{outcomes.get('breakeven', 'unavailable') if status == 'AVAILABLE' else 'unavailable'} | "
+            f"{_report_metric(outcomes.get('win_rate'), 3)} | "
+            f"{_report_metric(outcomes.get('average_winner_bps'))} | "
+            f"{_report_metric(outcomes.get('average_loser_bps'))} | "
+            f"{_report_metric(outcomes.get('profit_factor'))} | "
+            f"{_report_metric(outcomes.get('expectancy_per_trade_bps'))} | "
+            f"{_report_metric(outcomes.get('net_result_bps'))} | "
+            f"{_scaled_outcome_counts(outcomes, 10)} | {_scaled_outcome_counts(outcomes, 100)} |"
+        )
+    lines.append("")
+    base_cost = cfgs.get("costs", {}).get("round_turn_cost_bps")
+    lines.append(
+        f"Net-return basis: gross horizon return minus the declared round-turn cost of "
+        f"**{_report_metric(base_cost)} bps per measured event** ({cfgs.get('costs', {}).get('provenance', 'cost provenance unavailable')}). "
+        "No bid/ask, fill, or broker execution outcome is inferred. A metric is `unavailable` "
+        "when the required event-level return or denominator is absent."
+    )
     lines.append("")
     lines.append("## Cost / spread / latency sensitivity (pooled net mean bps, primary horizon)")
     lines.append("")
