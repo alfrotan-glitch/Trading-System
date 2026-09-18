@@ -37,8 +37,10 @@ enable switch:
 
 - `/api/demo/enable` returns HTTP 409 with the policy refusal and diagnostic
   readiness evidence. It never creates order permission.
-- `DemoExecutionAuthority.enable(...)` is hard-disabled as well; direct callers
-  receive a durable refusal and no `enabled=1` state.
+- `DemoExecutionAuthority.enable(...)` is refused while the current product
+  policy is `DEMO_EXECUTION = DISABLED BY POLICY`; direct callers receive a
+  durable refusal and no `enabled=1` state. The authority boundary remains
+  retained for a later explicitly authorized policy change.
 - `/api/demo/state` and `authority.is_execution_permitted(...)` always report
   `DISABLED` / `false` while the product policy is active, including when an
   old or tampered database contains an enabled row.

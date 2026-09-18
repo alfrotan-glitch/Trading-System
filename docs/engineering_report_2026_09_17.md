@@ -15,7 +15,7 @@ The release-level operator summary is `docs/release_readiness_report.md`.
 | Concern | Canonical implementation | Boundary |
 |---|---|---|
 | Mode resolution | `qts.domain.modes` | Unknown selections fail closed; descriptive capability is not permission. |
-| DEMO execution | `qts.lifecycle.demo_authority` | Product policy permanently refuses enablement and records refusal history. |
+| DEMO execution | `qts.lifecycle.demo_authority` | Current policy is `DEMO_EXECUTION = DISABLED BY POLICY`; enablement is unreachable today, while the authority records refusal history and retains the future boundary. |
 | DEMO_FORWARD gate | `qts.lifecycle.demo_gate` | Fresh readiness can start observation only; no order path. |
 | Risk limits | `qts.risk.authority`, `qts.risk.demo_limits` | Restrictions can tighten only; limits do not authorize execution. |
 | Observations | `qts.observability.forward_observatory` | One append-only SQLite store with provenance; JSON is derived. |
@@ -31,7 +31,7 @@ The release-level operator summary is `docs/release_readiness_report.md`.
 | PAPER | recorded data with simulated fills | never | simulated evidence |
 | SHADOW | would-be intents | never | divergence/intention evidence |
 | DEMO_FORWARD / OBSERVE_ONLY | real MT5 demo data when available | structurally zero | provenance-bound observations |
-| DEMO_EXECUTION | not shipped as an order path | disabled by policy | durable refusal; no permission |
+| DEMO_EXECUTION | capability boundary retained | `DEMO_EXECUTION = DISABLED BY POLICY` | unreachable today; durable refusal; no permission |
 | LIVE | real environment only | locked | requires independent governance/evidence |
 
 `ExecutionMode.DEMO_EXECUTION.can_submit_broker_orders` remains `true` as a
@@ -104,7 +104,7 @@ outputs as explicit `MEASURED_INVALID` blocking checks. It never replaces
 
 - `ruff check .`: clean.
 - `python -m compileall -q src tests`: clean.
-- Default `pytest -q`: 719 passed, 27 skipped; skipped integration/browser
+- Default `pytest -q`: 720 passed, 27 skipped; skipped integration/browser
   checks are not presented as evidence.
 - Node UI logic tests: 25 passed.
 - Direct authority/API checks: full-gate enable refuses; API enable returns

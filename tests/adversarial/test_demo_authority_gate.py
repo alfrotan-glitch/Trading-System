@@ -1,8 +1,10 @@
-"""Adversarial tests for the permanently disabled DEMO execution boundary.
+"""Adversarial tests for the current DEMO execution policy boundary.
 
-The product stops at ``DEMO_FORWARD/OBSERVE_ONLY``.  A readiness report,
-request payload, acknowledgement, direct authority call, restart, or tampered
-SQLite row must never create DEMO_EXECUTION permission.  Refusals remain
+``DEMO_EXECUTION = DISABLED BY POLICY`` today. The retained authority,
+readiness, audit, and execution-boundary architecture remains the future path
+for an explicitly authorized re-enable after research and safety milestones.
+A readiness report, request payload, acknowledgement, direct authority call,
+restart, or tampered SQLite row must not bypass today's policy. Refusals remain
 inspectable and durable so negative evidence is not lost.
 """
 
@@ -14,7 +16,12 @@ from pathlib import Path
 import pytest
 
 from qts.db import connect as db_connect
-from qts.lifecycle.demo_authority import REVERIFY_TTL_S, DemoExecutionAuthority
+from qts.lifecycle.demo_authority import (
+    DEMO_EXECUTION_DISABLED,
+    DEMO_EXECUTION_POLICY,
+    REVERIFY_TTL_S,
+    DemoExecutionAuthority,
+)
 
 
 def _readiness(passed: bool = True, **extra) -> dict:
@@ -36,6 +43,19 @@ def authority(tmp_path: Path):
     return DemoExecutionAuthority(db_path=tmp_path / "qts.db")
 
 
+def test_current_policy_is_explicit_and_authority_boundary_is_retained(authority: DemoExecutionAuthority):
+    assert DEMO_EXECUTION_DISABLED is True
+    assert DEMO_EXECUTION_POLICY == "DISABLED BY POLICY"
+    decision = authority.enable(readiness=_readiness(), confirmed=True, risk_ack=True)
+    assert decision.detail["product_policy"] == "DEMO_EXECUTION = DISABLED BY POLICY"
+    assert decision.enabled is False
+    assert decision.execution_permitted is False
+    # The durable authority remains present for audit/history rather than being
+    # deleted; a future policy decision must still pass through this boundary.
+    with db_connect(authority.db_path) as con:
+        assert con.execute("SELECT COUNT(*) FROM demo_execution_state").fetchone()[0] == 1
+
+
 def test_enable_refused_when_readiness_failed(authority: DemoExecutionAuthority):
     d = authority.enable(readiness=_readiness(passed=False), confirmed=True, risk_ack=True)
     assert d.enabled is False
@@ -48,13 +68,13 @@ def test_enable_refused_without_explicit_confirmation(authority: DemoExecutionAu
     d = authority.enable(readiness=_readiness(), confirmed=False, risk_ack=True)
     assert d.enabled is False
     assert "confirmed=true" in " ".join(d.reasons)
-    assert "DEMO_EXECUTION is disabled by product policy" in d.reasons[0]
+    assert "DEMO_EXECUTION = DISABLED BY POLICY" in d.reasons[0]
 
 
 def test_enable_refused_even_with_full_gate(authority: DemoExecutionAuthority):
     d = authority.enable(readiness=_readiness(), confirmed=True, risk_ack=True)
     assert d.enabled is False and d.execution_permitted is False and d.state == "DISABLED"
-    assert any("DEMO_EXECUTION is disabled by product policy" in reason for reason in d.reasons)
+    assert any("DEMO_EXECUTION = DISABLED BY POLICY" in reason for reason in d.reasons)
     cur = authority.current()
     assert cur.enabled is False
     assert cur.execution_permitted is False
@@ -93,7 +113,7 @@ def test_policy_refusal_is_not_reenabled_by_ttl_or_fresh_readiness(authority: De
     cur2 = authority.current(fresh_readiness=_readiness())
     assert cur2.enabled is False
     assert cur2.execution_permitted is False
-    assert "DEMO_EXECUTION is disabled by product policy" in cur2.reasons[0]
+    assert "DEMO_EXECUTION = DISABLED BY POLICY" in cur2.reasons[0]
 
 
 def test_fresh_failed_readiness_cannot_override_policy_refusal(authority: DemoExecutionAuthority):
@@ -127,7 +147,7 @@ def test_unknown_stored_mode_fails_closed(tmp_path: Path):
     cur = auth.current()
     assert cur.enabled is False
     assert cur.execution_permitted is False
-    assert "DEMO_EXECUTION is disabled by product policy" in cur.reasons[0]
+    assert "DEMO_EXECUTION = DISABLED BY POLICY" in cur.reasons[0]
 
 
 def test_disable_disables_and_persists(authority: DemoExecutionAuthority):
@@ -227,7 +247,7 @@ def test_tampered_capable_mode_row_refused_in_observe_only_process(tmp_path: Pat
     assert d["enabled"] is False
     assert d["execution_permitted"] is False
     assert d["state"] == "DISABLED"
-    assert "DEMO_EXECUTION is disabled by product policy" in d["reasons"]
+    assert "DEMO_EXECUTION = DISABLED BY POLICY" in d["reasons"]
 
 
 def test_tampered_null_mode_row_refused_in_observe_only_process(tmp_path: Path):
@@ -236,7 +256,7 @@ def test_tampered_null_mode_row_refused_in_observe_only_process(tmp_path: Path):
     d = auth.current().as_dict()
     assert d["enabled"] is False
     assert d["execution_permitted"] is False
-    assert "DEMO_EXECUTION is disabled by product policy" in d["reasons"]
+    assert "DEMO_EXECUTION = DISABLED BY POLICY" in d["reasons"]
 
 
 def test_tampered_row_refused_in_development_process(tmp_path: Path):

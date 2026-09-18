@@ -38,7 +38,7 @@ export async function renderSetup(root) {
     ["paper", "Paper", "Simulated fills on recorded data, next-bar-open. No real orders."],
     ["shadow", "Shadow", "Real market data; would-be intents with risk/spread checks. Nothing submitted."],
     ["demo_forward", "Demo Forward", "DEMO observation only — real MT5 demo terminal, real market data, zero orders structurally."],
-    ["demo_execution", "Demo Execution", "Disabled by product policy — no demo order path or enable control. DEMO vs LIVE unmistakable."],
+    ["demo_execution", "Demo Execution", "DEMO_EXECUTION = DISABLED BY POLICY — no demo order path is reachable today; authority boundary retained. DEMO vs LIVE unmistakable."],
   ];
   const currentEnv = env?.resolution?.effective_mode ?? "development";
   host.appendChild(card({

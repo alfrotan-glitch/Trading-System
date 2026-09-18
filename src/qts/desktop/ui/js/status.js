@@ -45,7 +45,7 @@ const MODES = {
   PAPER: { tone: "info", canSubmit: false, realData: false, blurb: "Simulated fills on recorded data — no broker contact." },
   SHADOW: { tone: "research", canSubmit: false, realData: false, blurb: "Would-be intents only — no broker submission. Data provenance is reported separately." },
   DEMO_FORWARD: { tone: "info", canSubmit: false, realData: true, blurb: "MT5 demo-account observation only — structurally no broker orders." },
-  DEMO_EXECUTION: { tone: "locked", canSubmit: false, realData: true, blurb: "Disabled by product policy — DEMO_FORWARD observation has zero orders; no demo order path is shipped." },
+  DEMO_EXECUTION: { tone: "locked", canSubmit: false, realData: true, blurb: "DEMO_EXECUTION = DISABLED BY POLICY — DEMO_FORWARD observation has zero orders; the authority boundary is retained for future explicit authorization." },
   LIVE: { tone: "locked", canSubmit: "gated", realData: true, blurb: "Live capital. Structurally locked until every gate and human approval pass." },
 };
 

@@ -14,9 +14,11 @@ Now every metric is one of:
 * **MEASURED** — computed from real event alignment / real recorded fields.
 * **UNAVAILABLE** — with a machine-readable reason (no data, not measured).
 
-Demo-side execution metrics are permanently UNAVAILABLE under the product
+Demo-side execution metrics are currently UNAVAILABLE under the product
 policy: the canonical store is observation-only and cannot authorize or
-record DEMO_EXECUTION fills. Signal agreement uses genuine event alignment: a
+record DEMO_EXECUTION fills while `DEMO_EXECUTION = DISABLED BY POLICY`.
+The authority and execution boundary remain retained for a later explicit
+policy decision. Signal agreement uses genuine event alignment: a
 paper fill agrees with a shadow intent when both reference the SAME decision
 event (matching bar-timestamp extracted from the event identity) — count
 ratios cannot pretend to be agreement.

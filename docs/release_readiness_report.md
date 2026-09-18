@@ -28,7 +28,7 @@ observations, enable DEMO execution, or unlock LIVE.
 | Question | Canonical authority | Current contract |
 |---|---|---|
 | Effective mode | `src/qts/domain/modes.py` | Unknown modes fail closed; capability metadata is not product permission. |
-| DEMO execution permission | `src/qts/lifecycle/demo_authority.py` | Durable refusal; `enabled=false`, `execution_permitted=false`; no DEMO order path. |
+| DEMO execution permission | `src/qts/lifecycle/demo_authority.py` | `DEMO_EXECUTION = DISABLED BY POLICY` today; durable refusal with `enabled=false`, `execution_permitted=false`; authority boundary retained. |
 | DEMO_FORWARD readiness | `src/qts/lifecycle/demo_gate.py` | Fresh 14-check diagnostic gate for observation only. |
 | Observation persistence | `src/qts/observability/forward_observatory.py` | One append-only SQLite store; derived manifest is regenerable. |
 | Risk boundary | `src/qts/risk/authority.py` and `demo_limits.py` | Mode restrictions can only tighten; safety metadata does not authorize execution. |
@@ -146,7 +146,7 @@ The current working tree was checked with:
 
 - `ruff check .` — clean
 - `python -m compileall -q src tests` — clean
-- `pytest -q` — `719 passed, 27 skipped` in the default environment
+- `pytest -q` — `720 passed, 27 skipped` in the default environment
   (integration tests require the explicit `--run-integration` flag; browser
   screenshots require Playwright/Chromium)
 - Node UI logic tests (`format.test.mjs`, `status.test.mjs`) — `25 passed`

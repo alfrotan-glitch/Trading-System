@@ -81,7 +81,7 @@ export async function renderDemo(root) {
   const head = page({
     crumb: "Trading", group: "Demo forward",
     title: "Demo Forward Control",
-    answer: h("b", null, `Readiness and execution permission are separate. A passing check only permits DEMO_FORWARD observation; DEMO_EXECUTION is disabled by product policy and has no order path. Context ${ctx.symbol} syncs, LIVE remains LOCKED and unmistakable.`),
+    answer: h("b", null, `Readiness and execution permission are separate. A passing check only permits DEMO_FORWARD observation; DEMO_EXECUTION = DISABLED BY POLICY today, so no demo order path is reachable. The authority boundary remains retained for future explicit authorization. Context ${ctx.symbol} syncs, LIVE remains LOCKED and unmistakable.`),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources")],
     body: null,
   });
@@ -213,7 +213,7 @@ export async function renderDemo(root) {
           h("div", { class: "meta" }, "A DEMO terminal must be configured; without one this honestly reports failure instead of pretending. Context syncs, permission does not."),
         ),
       }),
-      card({ title: "Demo execution — disabled, DEMO vs LIVE unmistakable", sub: "DEMO_EXECUTION is disabled by product policy; readiness permits OBSERVE_ONLY only — LIVE remains locked", icon: "lock", body:
+      card({ title: "Demo execution — disabled, DEMO vs LIVE unmistakable", sub: "DEMO_EXECUTION = DISABLED BY POLICY today; readiness permits OBSERVE_ONLY only — authority boundary retained for future explicit authorization; LIVE remains locked", icon: "lock", body:
         h("div", { class: "stack" },
           h("p", { class: "text-dim small" }, `Authority reports ${s.permission}. Mode ${s.mode.mode} — ${s.mode.blurb} — context ${getContext().symbol}. DEMO is DEMO, LIVE is LOCKED.`),
           h("div", { class: "banner info" }, "DEMO_EXECUTION is disabled by product policy. No readiness result, request payload, or UI action can create demo order permission. DEMO_FORWARD observation remains the only broker path; LIVE remains LOCKED."),

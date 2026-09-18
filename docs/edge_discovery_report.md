@@ -87,8 +87,9 @@ promotion is never substituted for missing evidence.
 
 Paper records are simulated. Shadow records would-be intents and submits no
 orders. DEMO_FORWARD records real MT5 demo-account observations only when a
-real terminal/session is available. DEMO_EXECUTION is disabled by product
-policy and has no order path in this product boundary.
+real terminal/session is available. `DEMO_EXECUTION = DISABLED BY POLICY`
+today, so its order path is unreachable; the authority and execution boundary
+remain retained for a later explicit authorization.
 
 Current derived comparison evidence reports 6 paper records, 10 shadow
 intents, zero canonical DEMO_FORWARD observations, measured paper/shadow event

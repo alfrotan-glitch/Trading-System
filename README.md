@@ -108,7 +108,7 @@ This workstation intentionally stops at `DEMO_FORWARD/OBSERVE_ONLY`: a fresh rea
 ## Canonical authorities (read this before touching limits/modes/gates)
 
 - **Mode**: `qts.domain.modes` — DEVELOPMENT / PAPER / SHADOW / DEMO_FORWARD / DEMO_EXECUTION / LIVE; unknown selections fail closed
-- **DEMO execution policy**: `qts.lifecycle.demo_authority` — one durable refusal/history boundary; direct enablement and API/UI/execution order permission are disabled
+- **DEMO execution policy**: `qts.lifecycle.demo_authority` — `DEMO_EXECUTION = DISABLED BY POLICY` today; one durable refusal/history boundary is retained for future explicit authorization; direct enablement and API/UI/execution order permission are unreachable
 - **Risk limits**: `qts.risk.authority` — one canonical set; mode restrictions may only tighten; every snapshot carries a config hash
 - **Broker metadata**: `qts.adapters.mt5_adapter` — alias-resolved, zero defaults, fail-closed
 - **Metrics**: `qts.domain.provenance.MetricValue` — MEASURED or UNAVAILABLE/INSUFFICIENT_EVIDENCE, never a placeholder zero

@@ -7,7 +7,7 @@ DEVELOPMENT   — backtest only, mock, no broker
 PAPER         — simulated fills, next-bar-open, no broker orders
 SHADOW        — would-be intents, checks risk/spread, no submission
 DEMO_FORWARD  — REAL MT5 + REAL market data + REAL DEMO account, OBSERVATION ONLY — no order path exists in this mode
-DEMO_EXECUTION — DISABLED by product policy; no order path is enabled
+DEMO_EXECUTION — DISABLED BY POLICY today; no order path is reachable while policy is active; authority/execution boundary retained for future explicit authorization
 LIVE          — real money, separately gated, LOCKED
 ```
 No env can silently become another (mode resolution: `qts.domain.modes` — unknown
@@ -31,13 +31,15 @@ approval gates and remains locked.
 
 ## Phase 2: DEMO_EXECUTION (Disabled)
 
-`POST /api/demo/enable` returns HTTP 409 with an explicit product-policy
-reason and may include a diagnostic readiness probe, but never performs an
-authority enablement or creates an order permission. A passing 14-check
-readiness report can authorize **observation only**; it never creates order
-permission. Consequently there are no actual demo fills, execution latency,
-slippage, broker responses, positions, exits, or P&L records in this product
-path. Those fields remain `UNAVAILABLE`, not zero or simulated.
+`POST /api/demo/enable` returns HTTP 409 with an explicit
+`DEMO_EXECUTION = DISABLED BY POLICY` reason and may include a diagnostic
+readiness probe, but never performs an authority enablement or creates an
+order permission today. A passing 14-check readiness report can authorize
+**observation only**; it never creates order permission. Consequently there
+are no actual demo fills, execution latency, slippage, broker responses,
+positions, exits, or P&L records in this product path. Those fields remain
+`UNAVAILABLE`, not zero or simulated. The authority and execution boundary
+remain retained for a later explicit policy decision.
 
 ## Comparison
 The canonical observation store can measure signal/theoretical-price versus

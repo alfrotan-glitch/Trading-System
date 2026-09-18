@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from qts.config.settings import load_settings
 from qts.domain.modes import effective_mode_report
-from qts.lifecycle.demo_authority import DEMO_EXECUTION_DISABLED
+from qts.lifecycle.demo_authority import DEMO_EXECUTION_DISABLED, DEMO_EXECUTION_POLICY
 
 # Product policy: this workstation supports real MT5 DEMO_FORWARD observation
 # only. The same constant is consumed by the authority and API so the policy
@@ -1232,7 +1232,7 @@ def demo_config() -> dict[str, Any]:
             "SHADOW_VERIFIED",
             "DEMO_OBSERVATION",
         ],
-        "demo_execution_policy": "DISABLED — no order path is shipped",
+        "demo_execution_policy": f"DEMO_EXECUTION = {DEMO_EXECUTION_POLICY} — no order path is reachable while current product policy is active; authority boundary retained for future explicit authorization",
     }
 
 
@@ -1266,12 +1266,13 @@ def _demo_authority() -> Any:
 
 
 @app.post("/api/demo/enable")
-def demo_enable(payload: dict[str, Any]) -> Any:  # always a policy refusal
-    """Return diagnostics for a permanently disabled DEMO_EXECUTION request.
+def demo_enable(payload: dict[str, Any]) -> Any:  # current policy refusal; future path remains authority-gated
+    """Return diagnostics for the current DEMO_EXECUTION policy refusal.
 
     Readiness is probed only to explain the operator's current observation
-    prerequisites. It is never passed to an enable transition because the
-    shipped product contains no DEMO_EXECUTION order path.
+    prerequisites. It cannot cross the current product-policy gate; the
+    authority and execution boundary remain retained for a later, separately
+    authorized policy change.
     """
     confirmed = bool(payload.get("confirmed"))
     risk_ack = bool(payload.get("risk_ack"))
