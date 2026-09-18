@@ -6,7 +6,7 @@ import {
   card, page, table, emptyState, skeletonInto, tech, kv, stat, errorBox,
   banner, checkGrid, toast,
 } from "../components.js";
-import { fmtUtc, fmtAge, humanKey } from "../format.js";
+import { fmtUtc, fmtAge, humanKey, fmtNum } from "../format.js";
 import { modeInfo } from "../status.js";
 import { onDispose } from "../router.js";
 
@@ -15,7 +15,7 @@ export async function renderSetup(root) {
   const head = page({
     crumb: "System", group: "Setup",
     title: "Setup",
-    answer: h("b", null, "Guided configuration — no code editing. Progress is verified against live system. Credentials never stored in QTS."),
+    answer: h("b", null, "Guided configuration — no code editing. Progress verified against live system. Credentials never stored in QTS."),
     body: null,
   });
   root.appendChild(head);
@@ -149,14 +149,14 @@ export async function renderMT5(root) {
   host.appendChild(banner("info", "Mock ≠ real, always labeled", "When no terminal attached QTS uses explicitly labeled mock module. Mock data is SYNTHETIC everywhere and never eligible as broker behavior evidence.", "info"));
 }
 
-/* Diagnostics — per-resource freshness */
+/* Diagnostics — per-resource freshness + performance evidence */
 export async function renderDiagnostics(root) {
   skeletonInto(root, "stats");
   root.classList.add("operator-workspace");
   const head = page({
     crumb: "System", group: "Diagnostics",
     title: "System Diagnostics",
-    answer: h("b", null, "Per-source freshness, environment boundary, mode resolution — honest plumbing view. One failed source does not erase other current facts."),
+    answer: h("b", null, "Per-source freshness, environment boundary, mode resolution — honest plumbing. One failed source does not erase other current facts."),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, "Refresh sources")],
     body: null,
   });
@@ -211,6 +211,45 @@ export async function renderDiagnostics(root) {
     }
   }
 
+  function perfSummary() {
+    const byKind = {};
+    for (const m of measurements) {
+      if (!byKind[m.kind]) byKind[m.kind] = { count: 0, total: 0, failed: 0, max: 0 };
+      byKind[m.kind].count++;
+      byKind[m.kind].total += m.ms || 0;
+      byKind[m.kind].max = Math.max(byKind[m.kind].max, m.ms || 0);
+      if (m.outcome === "failed") byKind[m.kind].failed++;
+    }
+    const rows = Object.entries(byKind).map(([kind, v]) => ({
+      kind, count: v.count, avg: v.count ? v.total / v.count : 0, max: v.max, failed: v.failed,
+    })).sort((a, b) => b.count - a.count);
+
+    const heap = measurements.length ? measurements[measurements.length - 1].heapUsed : null;
+
+    return h("div", { class: "stack" },
+      h("div", { class: "stat-grid" },
+        stat({ label: "Total measured", value: `${measurements.length} / 100`, hint: "bounded — no payloads" }),
+        stat({ label: "Heap (last)", value: heap ? `${heap} KB` : "UNAVAILABLE", hint: "JS heap if browser exposes performance.memory" }),
+        stat({ label: "Dup coalesced", value: `${(byKind["dup-coalesced"]?.count ?? 0) + (byKind["dup-sync"]?.count ?? 0)}`, hint: "GET coalesce + sync dedup — performance win" }),
+        stat({ label: "Recoveries", value: `${byKind["recovery"]?.count ?? 0}`, hint: "error → success transitions" }),
+      ),
+      rows.length ? table({
+        columns: [
+          { key: "kind", label: "Kind" },
+          { key: "count", label: "Count", num: true },
+          { key: "avg", label: "Avg ms", num: true, render: (r) => fmtNum(r.avg, 1) },
+          { key: "max", label: "Max ms", num: true, render: (r) => fmtNum(r.max, 1) },
+          { key: "failed", label: "Failed", num: true },
+        ],
+        rows,
+        dense: true,
+      }) : emptyState({ icon: "activity", title: "No measurements yet", desc: "Interact with UI — route, refresh, poll — to generate performance evidence." }),
+      h("details", null, h("summary", null, "Show raw measurements / technical (last 100)"),
+        h("p", { class: "small text-dim" }, "Kinds: load (page), route (transition), render (workspace update), request (API), refresh (forced or periodic), dup-coalesced (GET dedup), dup-sync (sync dedup), recovery (error→ok), poll (periodic), poll-skipped (hidden tab). No response payloads stored. Heap requires performance.memory."),
+        tech(measurements.slice(-100), "Measurements")),
+    );
+  }
+
   function render() {
     if (!lastHealth || !lastEnv) return;
     renderFacts();
@@ -257,7 +296,7 @@ export async function renderDiagnostics(root) {
       ),
     }));
 
-    content.appendChild(card({ title: "UI performance — last 100 local measurements", sub: "browser request/render/route durations, not broker latency", icon: "activity", body: h("div", { class: "stack" }, h("p", { class: "text-dim small" }, "Bounded to 100 records. No response payloads stored. Heap growth requires separate browser profiling."), h("details", null, h("summary", null, "Show measurements / technical"), tech(measurements.slice(-100), "Measurements")))}));
+    content.appendChild(card({ title: "UI performance — last 100 local measurements", sub: "load / transition / refresh / render / dup / recovery / memory", icon: "activity", body: perfSummary() }));
     host.replaceChildren(content);
   }
 

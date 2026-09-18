@@ -1,13 +1,13 @@
-/* ============================================================
-   QTS MAIN — application shell bootstrap
-   Header (global operating facts) · Sidebar (grouped IA) ·
-   Router · Palette · Global polling (pauses when hidden).
-   ============================================================ */
+/* QTS MAIN — professional operator shell
+   Header facts (instant awareness) · Sidebar (grouped IA, searchable, keyboard) ·
+   Router (shallow, predictable) · Palette (Ctrl+K) · Polling (pauses when hidden).
+   No decorative motion. Borders carry structure. Backend is only authority. */
+
 import { h, icon, clear } from "./dom.js";
-import { store, RESOURCES, syncResource, syncOperations, poll } from "./api.js";
+import { store, RESOURCES, syncResource, syncOperations, poll, measure } from "./api.js";
 import { operationalState, freshness } from "./operations.js";
 import { initWorkspace, readWorkspace, saveWorkspace } from "./workspace.js";
-import { registerRoutes, startRouter, navigate, dispatch } from "./router.js";
+import { registerRoutes, startRouter, navigate } from "./router.js";
 import { initPalette } from "./palette.js";
 import { fmtAge } from "./format.js";
 import { attentionRank } from "./status.js";
@@ -22,10 +22,6 @@ import * as evidence from "./views/evidence.js";
 import * as system from "./views/system.js";
 import * as governance from "./views/governance.js";
 
-/* ============================================================
-   INFORMATION ARCHITECTURE — 8 primary areas, contextual depth.
-   Every legacy page maps into exactly one home; nothing is lost.
-   ============================================================ */
 const IA = [
   { id: "overview", label: "Overview", icon: "grid", render: overview.renderOverview },
   {
@@ -77,10 +73,6 @@ const IA = [
   { id: "governance", label: "Governance", path: "#/governance/live", icon: "lock", render: governance.renderGovernance, restricted: true },
 ];
 
-/* ============================================================
-   SHELL CONSTRUCTION
-   ============================================================ */
-/* Semantic tone for notification levels — explicit mapping, never guessed. */
 const LEVEL_TONE = {
   critical: { tone: "err", label: "CRITICAL", mark: "■" },
   error: { tone: "err", label: "ERROR", mark: "■" },
@@ -88,13 +80,11 @@ const LEVEL_TONE = {
   info: { tone: "info", label: "INFO", mark: "●" },
 };
 
-/** Header notification center: backend notifications, highest severity first. */
 function buildNotifBell() {
   const wrapper = h("span", { class: "notification-anchor" });
   const count = h("span", { class: "notif-count", hidden: true, "aria-hidden": "true" });
   const btn = h("button", { class: "btn ghost sm notif-btn", "aria-label": "Notifications", title: "Notifications", "aria-expanded": "false" }, icon("alert", 15), count);
   let pop = null;
-
   const onDoc = (e) => { if (pop && !pop.contains(e.target) && !btn.contains(e.target)) close(); };
   const onKey = (e) => { if (e.key === "Escape") close(); };
   function close() {
@@ -151,7 +141,7 @@ function buildNotifBell() {
 }
 
 function buildHeader() {
-  const facts = h("div", { class: "header-facts", id: "header-facts" });
+  const facts = h("div", { class: "header-facts", id: "header-facts", role: "status", "aria-label": "Operating facts" });
   const conn = h("span", { class: "conn-dot", title: "API connection" });
   const updated = h("span", { class: "meta", id: "header-updated" }, "connecting…");
 
@@ -174,9 +164,8 @@ function buildHeader() {
   return { header, facts, conn, updated };
 }
 
-function factChip({ icon: ic, label, value, cls = "", title, optional = false }) {
-  return h("span", { class: `fact ${cls}${optional ? " optional" : ""}`, title: title ?? "" },
-    ic ? icon(ic, 12) : null,
+function factChip({ label, value, cls = "", title }) {
+  return h("span", { class: `fact ${cls}`, title: title ?? "" },
     label ? h("span", null, label, " ") : null,
     h("b", null, value),
   );
@@ -185,23 +174,31 @@ function factChip({ icon: ic, label, value, cls = "", title, optional = false })
 let palette;
 function openWorkspace() {
   const p = readWorkspace();
-  const form = h("div", { class: "stack" }, h("p", null, "Presentation preferences only. Modes, permissions and risk acknowledgements are never restored from browser storage."));
-  for (const [key, label, options] of [
-    ["density", "Density", ["compact", "comfortable"]],
-    ["width", "Workspace width", ["focused", "wide"]],
-    ["navigation", "Navigation width", ["narrow", "standard", "wide"]],
+  const form = h("div", { class: "stack" },
+    h("p", { class: "small text-dim" }, "Presentation preferences only. Modes, permissions and risk acknowledgements are never restored from browser storage. Multi-monitor: New window opens current context for second monitor. Native monitor placement and linked crosshairs are not implemented."),
+  );
+  for (const [key, label, options, hint] of [
+    ["density", "Density", ["compact", "comfortable"], "Compact: 5px table rows, 10px cards — high density without chaos. Comfortable: more whitespace."],
+    ["width", "Workspace width", ["focused", "wide"], "Focused: 1440px max — readable. Wide: 1600px — more columns visible."],
+    ["navigation", "Navigation width", ["narrow", "standard", "wide"], "Sidebar width — persists per browser."],
   ]) {
     const select = h("select", { class: "input", "aria-label": label }, options.map((v) => h("option", { value: v }, v)));
     select.value = p[key];
-    select.addEventListener("change", () => { if (!saveWorkspace({ [key]: select.value })) toast("warn", "Preferences could not be saved", "Browser storage is unavailable."); });
-    form.appendChild(h("label", { class: "stack" }, label, select));
+    select.addEventListener("change", () => { if (!saveWorkspace({ [key]: select.value })) toast("warn", "Preferences could not be saved", "Browser storage unavailable."); });
+    form.appendChild(h("div", { class: "field" }, h("label", null, label), select, h("div", { class: "hint" }, hint)));
   }
   const remember = h("input", { type: "checkbox", checked: p.rememberRoute });
   remember.addEventListener("change", () => { if (!saveWorkspace({ rememberRoute: remember.checked, route: location.hash })) toast("warn", "Preferences could not be saved"); });
-  form.appendChild(h("label", null, remember, " Restore last page on launch (never replay actions)"));
-  form.appendChild(h("p", { class: "text-dim small" }, "New window opens the current page for another monitor. Display preferences synchronize on this origin; routes, requests and authority remain independent. Native monitor placement and linked crosshairs are not implemented."));
+  form.appendChild(h("label", { class: "field-inline", style: { marginTop: "8px" } }, remember, h("span", { class: "small" }, "Restore last page on launch (never replay actions)")));
+  form.appendChild(h("div", { class: "stack", style: { marginTop: "12px" } },
+    h("div", { class: "eyebrow" }, "Keyboard"),
+    h("div", { class: "small text-dim" }, h("span", { class: "kbd" }, "Ctrl"), " + ", h("span", { class: "kbd" }, "K"), " palette · ", h("span", { class: "kbd" }, "Esc"), " close drawer/modal · ", h("span", { class: "kbd" }, "↑"), h("span", { class: "kbd" }, "↓"), " in tables · ", h("span", { class: "kbd" }, "Enter"), " sort/open"),
+    h("div", { class: "eyebrow" }, "Performance is UX"),
+    h("div", { class: "small text-dim" }, "Diagnostics shows last 100 measurements: load, route transition, refresh, render, dup coalesced, recovery, poll skipped, heap. No payloads stored."),
+  ));
   drawer("Workspace preferences", form);
 }
+
 function renderFacts(factsEl) {
   const s = operationalState(store.data);
   const values = [
@@ -218,13 +215,14 @@ function renderFacts(factsEl) {
     const v = node.querySelector("b");
     if (v.textContent !== value) v.textContent = value;
     node.className = `fact ${cls}`;
-    node.title = `${label}: ${value}. Current facts and source freshness in Overview.`;
+    const src = label === "mode" ? s.sources.health : label === "Observation" ? s.sources.observe : label === "DEMO" ? s.sources.demoState : s.sources.live;
+    node.title = `${label}: ${value}. ${src?.label ?? "UNAVAILABLE"} — ${label === "mode" ? "environment capability is not permission" : label === "DEMO" ? "readiness and permission are separate" : label === "LIVE" ? "never auto-enabled" : "collector state, zero orders"}.`;
   });
 }
 
 function buildSidebar() {
   const aside = h("nav", { class: "sidebar", "aria-label": "Primary" });
-  const search = h("input", { class: "input nav-search", type: "search", "aria-label": "Find a workspace page", placeholder: "Find a page…" });
+  const search = h("input", { class: "input nav-search", type: "search", "aria-label": "Find a workspace page", placeholder: "Find a page… ( / )" });
   search.addEventListener("input", () => {
     const q = search.value.trim().toLowerCase();
     aside.querySelectorAll(".sidebar-group").forEach((group) => {
@@ -233,6 +231,11 @@ function buildSidebar() {
     });
   });
   search.addEventListener("keydown", (e) => { if (e.key === "Escape") { search.value = ""; search.dispatchEvent(new window.Event("input")); } });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "/" && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+      e.preventDefault(); search.focus();
+    }
+  });
   aside.appendChild(search);
   for (const g of IA) {
     const grp = h("div", { class: "sidebar-group" });
@@ -242,7 +245,7 @@ function buildSidebar() {
         class: `nav-item${restricted ? " restricted" : ""}`,
         dataset: { href },
         onclick: () => navigate(href),
-      }, icon(restricted ? "lock" : g.icon, 15), h("span", null, label)));
+      }, icon(restricted ? "lock" : g.icon, 14), h("span", null, label)));
     };
     if (g.children) {
       for (const c of g.children) add(c.label, `#/${g.id}/${c.id}`, false);
@@ -252,8 +255,8 @@ function buildSidebar() {
     aside.appendChild(grp);
   }
   aside.appendChild(h("div", { class: "sidebar-footer" },
-    h("span", null, [h("span", { class: "kbd" }, "Ctrl"), " + ", h("span", { class: "kbd" }, "K"), " command palette"]),
-    h("span", null, "Backend is the only authority — the UI requests and displays, it never decides."),
+    h("span", null, [h("span", { class: "kbd" }, "Ctrl"), " + ", h("span", { class: "kbd" }, "K"), " palette · ", h("span", { class: "kbd" }, "/"), " filter"]),
+    h("span", null, "Backend is the only authority — UI requests and displays, never decides."),
   ));
   return aside;
 }
@@ -266,10 +269,8 @@ function markActiveNav() {
   });
 }
 
-/* ============================================================
-   BOOTSTRAP
-   ============================================================ */
 function main() {
+  const loadStart = performance.now();
   initWorkspace();
   const { header, facts, conn, updated } = buildHeader();
   const app = h("div", { id: "app" },
@@ -292,7 +293,7 @@ function main() {
   const update = () => {
     renderFacts(facts);
     const f = freshness(store.data.resources.health, "health");
-    conn.className = `conn-dot${f.current ? "" : " stale"}`;
+    conn.className = `conn-dot${f.current ? "" : f.label.includes("STALE") ? " stale" : " down"}`;
     updated.textContent = `Health API: ${f.label}${store.data.resources.health?.updatedAt ? ` · ${fmtAge(store.data.resources.health.updatedAt)}` : ""}`;
   };
   store.on("resources", update);
@@ -301,6 +302,7 @@ function main() {
 
   startRouter();
   markActiveNav();
+  measure("load", "shell", performance.now() - loadStart, "ok");
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", main);
