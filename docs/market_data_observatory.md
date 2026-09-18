@@ -43,8 +43,10 @@ the canonical store remain the primary runtime authorities.
   407.00 days;
 - frozen acquisition snapshot reported 12/12 quality checks and research
   readiness `READY`; the current audited gap model instead marks quality
-  completeness **FAIL** (1,493 unexpected missing intervals = 5.42% of active
-  expected span, above the 2% limit). The pre-registered impulse adequacy
+  completeness **FAIL** (the frozen legacy inventory records 1,493 unexpected
+  intervals = 5.42%, while the current conservative recomputation is 1,785 =
+  6.42% of active expected span, above the unchanged 2% limit). The
+  pre-registered impulse adequacy
   artifact passes R1–R4 and R6 in its frozen run; no rerun was performed. R5
   execution-data remains FAIL/non-blocking.
 - provenance, checksums, gaps, licensing limits, and the exact
@@ -106,8 +108,9 @@ quality PASS:
 - 26,038 bars ≥ 5,000-bar minimum;
 - 407.00 days ≥ 180-day span minimum;
 - the frozen run recorded 12/12 checks, but the current gap audit supersedes
-  that quality interpretation: completeness is **FAIL** at 5.42% unexpected
-  active-span missingness;
+  that quality interpretation: completeness is **FAIL** at 6.42% (1,785
+  unexpected intervals under current conservative semantics; the preserved
+  legacy inventory count is 1,493 / 5.42%);
 - freshness within the 7-day gate at the historical run time.
 
 It still lacks: measured continuous bid/ask/spread (only 23 supplementary

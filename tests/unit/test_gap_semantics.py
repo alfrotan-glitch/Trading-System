@@ -134,3 +134,62 @@ def test_calendar_span_and_active_span_are_distinct():
     assert stats["calendar_span_missing_pct"] > 90.0
     assert stats["active_span_missing_intervals"] == 0
     assert stats["active_span_missing_pct"] == 0.0
+
+
+def test_completeness_gate_passes_at_exactly_two_percent():
+    base = datetime(2020, 1, 1, tzinfo=UTC)
+    # One missing interval out of 50 expected intervals is exactly 2%.
+    opens = [base + timedelta(hours=i) for i in range(50) if i != 25]
+    stats = analyze_gap_semantics(make_bars(opens), "1H")
+
+    assert stats.active_span_expected_intervals == 50
+    assert stats.unexpected_missing_intervals == 1
+    assert stats.active_span_missing_fraction == 0.02
+    assert stats.active_span_missing_pct == 2.0
+    assert next(check for check in validate_bars(make_bars(opens), "1H").checks if check.name == "no_missing_bars").passed
+
+
+def test_completeness_gate_passes_below_two_percent():
+    base = datetime(2020, 1, 1, tzinfo=UTC)
+    # One missing interval out of 100 expected intervals is below the limit.
+    opens = [base + timedelta(hours=i) for i in range(100) if i != 25]
+    stats = analyze_gap_semantics(make_bars(opens), "1H")
+
+    assert stats.active_span_missing_fraction == 0.01
+    assert validate_bars(make_bars(opens), "1H").passed
+
+
+def test_completeness_gate_rejects_above_two_percent_even_when_display_rounding_could_hide_it():
+    base = datetime(2020, 1, 1, tzinfo=UTC)
+    # 1/49 = 2.0408...%, deliberately above the limit.
+    opens = [base + timedelta(hours=i) for i in range(49) if i != 25]
+    stats = analyze_gap_semantics(make_bars(opens), "1H")
+
+    assert stats.active_span_missing_pct == 2.04
+    report = validate_bars(make_bars(opens), "1H")
+    assert not next(check for check in report.checks if check.name == "no_missing_bars").passed
+
+
+def test_many_isolated_gaps_are_counted_without_event_count_shortcut():
+    base = datetime(2020, 1, 1, tzinfo=UTC)
+    # 5,000 nominal hourly slots and 102 isolated omissions: no large block
+    # can hide the aggregate failure.
+    missing = set(range(10, 5_000, 49))
+    opens = [base + timedelta(hours=i) for i in range(5_000) if i not in missing]
+    stats = analyze_gap_semantics(make_bars(opens), "1H")
+
+    assert len(missing) == 102
+    assert stats.unexpected_gap_events == len(missing)
+    assert stats.unexpected_missing_intervals == len(missing)
+    assert stats.active_span_missing_pct > 2.0
+    assert not validate_bars(make_bars(opens), "1H").passed
+
+
+def test_zero_and_full_active_span_are_fail_closed_and_pass_respectively():
+    assert not validate_bars([]).passed
+
+    base = datetime(2020, 1, 1, tzinfo=UTC)
+    full = make_bars([base + timedelta(hours=i) for i in range(50)])
+    stats = analyze_gap_semantics(full, "1H")
+    assert stats.active_span_missing_fraction == 0.0
+    assert validate_bars(full, "1H").passed

@@ -26,11 +26,14 @@ certificate.
   `4d6f15543e6285fad91fd57fe42f716bc7273075`, no upstream license;
 - frozen acquisition snapshot: **12/12 pass** under the previous
   event-count-only gap check;
-- current audited gap status: **FAIL for quality completeness** because the
-  inventory records 1,493 unexpected missing 15m intervals (5.42% of active
-  expected span), above the 2% duration threshold. The pre-registered impulse
-  artifact and its R1–R4/R6 adequacy record remain frozen historical evidence;
-  no rerun was performed.
+- current audited gap status: **FAIL for quality completeness**. The frozen
+  inventory's legacy count is 1,493 unexpected missing 15m intervals (5.42%),
+  while the current weekend-boundary-only recomputation is 1,785 intervals
+  (6.42% of 27,823 active expected intervals), both above the unchanged 2%
+  threshold. The pre-registered impulse artifact and its original adequacy
+  record remain frozen historical evidence; no rerun was performed. The full
+  root-cause and recovery disposition is in
+  `docs/data_completeness_disposition.md`.
 - tick, continuous bid/ask, measured spread, broker session/fill metadata,
   real-volume semantics, licensing metadata, survivorship universe, and
   execution history: `UNAVAILABLE` in the canonical bars.

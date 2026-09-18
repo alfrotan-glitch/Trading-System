@@ -15,7 +15,7 @@ identify.
 | Area | Current state | Evidence / authority |
 |---|---|---|
 | Foundation and architecture | **Complete / strong.** Modular monolith, Python, SQLite + Parquet, canonical authorities, fail-closed boundaries, durable audit and testing foundations are present. | `docs/01-architecture.md`, `docs/canonical_authorities.md`, source/tests |
-| Data provenance and quality | **Acquisition/provenance are strong; gap completeness required a P0 audit correction.** The frozen REAL acquisition artifact reported 12/12 under the previous event-count gate, but its inventory records 1,493 unexpected missing 15m intervals (5.42% of active expected span). The hardened gate now fails that population; no research rerun has been performed. | `src/qts/data/quality.py`, `docs/data_quality_protocol.md`, `docs/research_integrity_audit.md`, `data/evidence/research_integrity_audit.json` |
+| Data provenance and quality | **Acquisition/provenance are strong; completeness is FAIL and fully dispositioned.** The frozen inventory preserves 1,493 legacy unexpected intervals (5.42%); the current conservative model finds 1,785 intervals (6.42% of 27,823 active expected intervals). The unchanged 2% gate fails; recovery requires new acquisition; no research rerun has been performed. | `docs/data_completeness_disposition.md`, `src/qts/data/quality.py`, `data/evidence/xauusd_completeness_disposition.json` |
 | REAL historical XAUUSD data | **Acquired and registered.** Version `20260918-010+8f120133-1ba57af7`; XAUUSD 15m; 26,038 rows; approximately 407 days; class `REAL`; source `REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks`. | Dataset manifest and `docs/data_provenance_xauusd_dukascopy.md` |
 | Historical execution-cost evidence / R5 | **Unresolved.** The canonical bars contain no continuous historical bid/ask, measured spread, fill, latency or slippage history. R5 is **FAIL and non-blocking**. The supplementary 23-window spread study is not continuous and is not an R5 gate input. | `data/evidence/impulse_research_xauusd_dukascopy_15m.json`, `docs/research/impulse_continuation_evidence.md` |
 | REAL impulse research | **Frozen evidence exists from the existing preregistered design.** The locked partition was untouched; no candidate was promoted. The audit did not rerun it after correcting the gap gate. | `data/evidence/impulse_research_xauusd_dukascopy_15m.json`, `docs/research_integrity_audit.md` |
@@ -54,23 +54,19 @@ immediate tasks and must not be used to justify weakening an earlier gate.
 status authority, corrects the gap/provenance implementation, and labels older
 snapshots rather than rewriting historical evidence.
 
-### B. Next gated milestone — data-quality disposition, then real MT5 observation
+### B. Next milestone — independent Windows + MT5 DEMO_FORWARD observation
 
-The corrected completeness `FAIL` is a blocking data-quality finding. Review it
-against the frozen research lineage and either acquire/re-register an adequate
-immutable dataset or explicitly document the research limitation before any
-claim-bearing milestone. Do not weaken the 2% gate.
+The historical completeness disposition is complete and remains `FAIL`; the
+2% gate is unchanged. The next milestone is the existing readiness-gated,
+order-free FO-R1 protocol on a real Windows/MT5 demo terminal. It is independent
+of historical REAL completeness because it produces separate broker/demo
+observation evidence; it does not repair or validate the historical dataset.
 
-After that disposition and the documented readiness checks pass, run the
-existing FO-R1 order-free protocol on a real Windows/MT5 demo terminal.
-Preserve the canonical SQLite store, acquisition ledger, snapshot/export
-lineage and safety assertions. This produces observation evidence only; it does
-not produce execution evidence, a profitable edge, or permission to submit
-orders.
-
-No real MT5 session is currently present, so this remains an
-operator/environment milestone rather than a claim that the repository has
-already met it.
+Preserve the canonical SQLite store, acquisition ledger, snapshot/export lineage
+and safety assertions. This produces observation evidence only; it does not
+produce execution evidence, a profitable edge, or permission to submit orders.
+No real MT5 session is currently present, so this remains an operator/environment
+milestone and has not started.
 
 ### C. Historical execution-realism research milestone — resolve R5 where possible
 

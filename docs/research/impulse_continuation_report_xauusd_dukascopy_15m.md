@@ -2,7 +2,10 @@
 
 Generated: 2026-09-18T15:23:39.228005+00:00  ·  Mode: **REAL_CLAIMS**
 
-> Dataset passed the data-adequacy gate; conclusions may reference real-market behavior.
+> **Frozen historical report:** this run passed the then-current data-adequacy gate;
+> that historical result is preserved for lineage. The current completeness gate
+> is `FAIL` (1,785 unexpected intervals / 6.42% under conservative semantics),
+> so this report is not a current claim-eligibility certificate and was not rerun.
 
 ## Hypothesis
 When price begins an unusually strong directional movement, the conditional distribution of the next short horizon is sufficiently directional and persistent to create positive net expectancy after spread, commission, slippage, and latency.
@@ -25,8 +28,12 @@ When price begins an unusually strong directional movement, the conditional dist
 - **Falsification Criteria:** chronological validation does not replicate the effect; the effect disappears under declared cost or latency sensitivity; the effect is not separated from baseline/placebo controls; event counts or regime coverage remain insufficient for the claim
 - **Required Data:** immutable provenance-qualified OHLC history; measured bid/ask or tick spread and execution-cost fields; enough events per direction across multiple regimes; untouched chronological validation and forward observation
 
-## Data adequacy gate
-adequate_for_real_claims: **True**
+## Data adequacy gate (frozen historical run)
+The table below is the frozen pre-completeness-correction result. The current
+implementation additionally applies `R0-DATA-COMPLETENESS`, which fails this
+snapshot; the frozen table and research artifact are not rewritten.
+
+adequate_for_real_claims (historical run): **True**
 
 | ID | Requirement | Minimum | Observed | Passed | Blocking |
 |----|-------------|---------|----------|--------|----------|

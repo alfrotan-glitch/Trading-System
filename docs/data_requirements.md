@@ -6,9 +6,11 @@ Updated: 2026-09-18
 acquired dataset `20260918-010+8f120133-1ba57af7` — XAUUSD 15m, 26,038
 tick-derived mid OHLC bars, 407.00 days (2025-08-06 → 2026-09-17 UTC). The
 frozen acquisition snapshot reported 12/12 quality checks and readiness READY,
-but the current gap audit finds 1,493 unexpected missing 15m intervals (5.42%
-of the active expected span), so the hardened completeness quality gate is
-FAIL. Provenance and limits are in `docs/data_provenance_xauusd_dukascopy.md`.
+but the preserved inventory's legacy gap audit records 1,493 unexpected
+15m intervals (5.42%). The current conservative model finds 1,785 intervals
+(6.42% of active expected coverage), so the hardened completeness quality gate
+is FAIL. Provenance and the full disposition are in
+`docs/data_completeness_disposition.md`.
 A 1H aggregation of the same bars was rejected by the existing ingest gate and
 is not registered. The synthetic 1H fixture remains registered, labelled
 SYNTHETIC, and is mechanism-validation-only.
@@ -39,8 +41,10 @@ the block-level minimums for bar research, plus the unchanged synthetic fixture.
 
 **Result**: The frozen REAL 15m artifact has sufficient recorded depth/span for
 its historical run, but the current audited completeness result is **FAIL**
-(1,493 unexpected missing 15m intervals; 5.42% active-span missingness versus a
-2% limit). The frozen research evidence is preserved and not rerun. **R5**,
-continuous spread/tick data, multi-year regime coverage, cross-asset generality,
-and licensed provenance remain unavailable; current promotion/readiness remains
-**BLOCKED** until the quality finding and evidence implications are resolved.
+(the preserved legacy count is 1,493 unexpected intervals / 5.42%; current
+conservative semantics find 1,785 / 6.42%, versus the unchanged 2% limit). The
+frozen research evidence is preserved and not rerun. **R5**, continuous
+spread/tick data, multi-year regime coverage, cross-asset generality, and
+licensed provenance remain unavailable; current promotion/readiness remains
+**BLOCKED**. The completeness root cause and recovery outcome are formally
+recorded; no gate is weakened.

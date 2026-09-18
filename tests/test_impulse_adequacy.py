@@ -60,6 +60,23 @@ class TestAdequacyGate:
         assert r.data_class == "SYNTHETIC"
         assert not r.adequate_for_real_claims
 
+    def test_completeness_gate_is_a_blocking_impulse_requirement(self):
+        # The direct impulse adequacy API must not bypass the shared 2% gate.
+        base = NOW - timedelta(hours=MIN_BARS_REAL_CLAIMS + 10)
+        missing = set(range(10, MIN_BARS_REAL_CLAIMS, 49))
+        bars = [mkbar(i, base=base) for i in range(MIN_BARS_REAL_CLAIMS) if i not in missing]
+        r = assess_data_adequacy(
+            bars,
+            "v1",
+            "real_exchange_history_export",
+            now=NOW,
+            measured_events_total=MIN_EVENTS_FOR_INFERENCE,
+            measured_events_long=MIN_EVENTS_PER_SIDE,
+            measured_events_short=MIN_EVENTS_PER_SIDE,
+        )
+        assert not _check(r, "R0-DATA-COMPLETENESS").passed
+        assert not r.adequate_for_real_claims
+
     def test_insufficient_depth_blocks(self):
         bars = [mkbar(i) for i in range(500)]
         r = assess_data_adequacy(bars, "v1", "real_exchange_history_export", now=NOW)

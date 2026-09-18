@@ -41,8 +41,10 @@ class GapSemantics:
     ``calendar_span_*`` treats every nominal cadence slot between the first and
     last observed bar as expected.  ``closure_*`` is the subset recognized by
     the supplied schedule policy.  ``unexpected_*`` is everything else and is
-    the only population eligible for a quality PASS.  A broker/session
-    calendar is not inferred from the OHLC data; the default policy recognizes
+    the only population eligible for a quality PASS. ``active_span_missing_pct``
+    is presentation-only; the gate compares the unrounded
+    ``active_span_missing_fraction``. A broker/session calendar is not inferred
+    from the OHLC data; the default policy recognizes
     weekend boundaries only.
     """
 
@@ -60,6 +62,7 @@ class GapSemantics:
     active_span_expected_intervals: int | None
     active_span_missing_intervals: int | None
     active_span_missing_pct: float | None
+    active_span_missing_fraction: float | None
     max_gap_duration_s: float | None
     max_unexpected_gap_duration_s: float | None
     max_unexpected_missing_intervals: int | None
@@ -81,6 +84,7 @@ class GapSemantics:
             "active_span_expected_intervals": self.active_span_expected_intervals,
             "active_span_missing_intervals": self.active_span_missing_intervals,
             "active_span_missing_pct": self.active_span_missing_pct,
+            "active_span_missing_fraction": self.active_span_missing_fraction,
             "max_gap_duration_s": self.max_gap_duration_s,
             "max_unexpected_gap_duration_s": self.max_unexpected_gap_duration_s,
             "max_unexpected_missing_intervals": self.max_unexpected_missing_intervals,
@@ -177,6 +181,7 @@ def analyze_gap_semantics(
             active_span_expected_intervals=len(bars) if bars else None,
             active_span_missing_intervals=0 if bars else None,
             active_span_missing_pct=0.0 if bars else None,
+            active_span_missing_fraction=0.0 if bars else None,
             max_gap_duration_s=0.0 if bars else None,
             max_unexpected_gap_duration_s=0.0 if bars else None,
             max_unexpected_missing_intervals=0 if bars else None,
@@ -230,6 +235,7 @@ def analyze_gap_semantics(
         active_span_expected_intervals=active_expected,
         active_span_missing_intervals=unexpected_missing,
         active_span_missing_pct=round(unexpected_missing / active_expected * 100, 2) if active_expected else 0.0,
+        active_span_missing_fraction=(unexpected_missing / active_expected) if active_expected else 0.0,
         max_gap_duration_s=max_gap_duration,
         max_unexpected_gap_duration_s=max_unexpected_duration,
         max_unexpected_missing_intervals=max_unexpected_slots,
@@ -239,9 +245,12 @@ def analyze_gap_semantics(
 
 def _gap_quality_check(bars: list[Bar], timeframe: str | None = None) -> QualityCheck:
     stats = analyze_gap_semantics(bars, timeframe)
-    if stats.unexpected_missing_intervals is None or stats.active_span_missing_pct is None:
+    if stats.unexpected_missing_intervals is None or stats.active_span_missing_fraction is None:
         return QualityCheck("no_missing_bars", False, "gap semantics unavailable")
-    passed = stats.active_span_missing_pct <= MAX_UNEXPECTED_MISSING_FRACTION * 100
+    # Compare the unrounded integer-derived fraction.  The percentage is a
+    # presentation field; rounding it before the gate could turn a value just
+    # above the 2% threshold into a false PASS.
+    passed = stats.active_span_missing_fraction <= MAX_UNEXPECTED_MISSING_FRACTION
     if passed:
         details = (
             f"{stats.unexpected_gap_events} unexpected gap events; "

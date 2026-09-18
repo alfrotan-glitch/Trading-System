@@ -3,9 +3,12 @@ Version: 0.1.0 — 2026-09-18
 
 > This document describes the research machinery. Current machine evidence is
 > authoritative over historical examples. The registered REAL XAUUSD 15m
-> dataset supports the executed bar-based impulse study, whose conclusion is
-> `REGIME_DEPENDENT / BLOCK`; the unchanged synthetic fixture remains
-> mechanism-validation-only. See [`docs/current_state.md`](current_state.md).
+> dataset is preserved as frozen lineage for the executed bar-based impulse
+> study, whose conclusion is `REGIME_DEPENDENT / BLOCK`; current completeness is
+> FAIL under the unchanged 2% gate and the study is not currently claim-eligible.
+> The unchanged synthetic fixture remains mechanism-validation-only. See
+> [`docs/current_state.md`](current_state.md) and
+> [`docs/data_completeness_disposition.md`](data_completeness_disposition.md).
 
 ## Mission
 Turn the system into DISCOVER→INVENT→TEST→ATTACK→FALSIFY→REFINE→RE-TEST→PROVE while structurally hostile to false discoveries.

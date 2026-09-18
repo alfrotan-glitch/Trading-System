@@ -27,15 +27,22 @@ validation, manifests and inventory. It reports distinct populations:
 - `calendar_span_missing_intervals`: all nominal slots absent between the first and last observed bar, including closures;
 - `closure_intervals`: slots classified by the explicit schedule policy (the default only recognizes Friday-to-weekend boundaries);
 - `unexpected_missing_intervals`: all remaining absent slots, including unknown holidays or unexplained data holes;
-- `active_span_missing_pct`: unexpected missing intervals divided by observed bars plus unexpected missing intervals;
+- `active_span_expected_intervals`: observed bars plus unexpected missing intervals;
+- `active_span_missing_fraction`: unrounded unexpected missing intervals divided by `active_span_expected_intervals`;
+- `active_span_missing_pct`: presentation-only percentage of that fraction;
 - `max_unexpected_gap_duration_s`: the longest consecutive unexpected missing duration.
+
+The blocking rule is `active_span_missing_fraction <= 0.02`. The implementation
+compares the unrounded fraction (equivalently, the integer-derived counts),
+not the rounded `active_span_missing_pct`; 2.004% cannot pass as displayed
+2.00%. Empty input has no active span and fails closed.
 
 The legacy keys `gap_count`, `missing`, `missing_pct`, `expected`, and `actual`
 remain only as compatibility aliases. New reports must use the explicit names.
 A low event count cannot pass a high-duration missing block: the quality gate
-fails when `active_span_missing_pct` exceeds 2%. A broker/session calendar is
-not inferred from OHLC; explicit schedule evidence is required to classify
-non-weekend closures.
+fails when the unrounded `active_span_missing_fraction` exceeds 0.02. A
+broker/session calendar is not inferred from OHLC; explicit schedule evidence is
+required to classify non-weekend closures.
 
 ## Stress testing and adversarial coverage
 
@@ -44,11 +51,15 @@ The focused gap/provenance tests are in
 They cover:
 
 - one long missing block despite a low event count;
-- many short missing intervals where event count and duration differ;
+- many short missing intervals where event count and duration differ, including
+  102 isolated omissions across 5,000 nominal slots;
 - legitimate weekend closures excluded from unexpected missingness;
-- mixed closure and unexpected gaps;
+- mixed closure and unexpected gaps spanning a session boundary;
 - explicit non-weekend schedule evidence;
 - calendar-span versus active-span coverage;
+- exact 2% and below-2% PASS fixtures;
+- above-2% FAIL even when percentage display rounding could hide the excess;
+- zero-coverage/empty input FAIL and full coverage PASS;
 - low event count/high duration, ambiguous source, Dukascopy/MT5 role
   separation, and legacy-manifest compatibility.
 

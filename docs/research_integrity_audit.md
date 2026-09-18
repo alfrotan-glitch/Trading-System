@@ -1,10 +1,12 @@
 # P0 Research-Integrity Audit and Reconciliation
 
 **Status:** `AUDIT_COMPLETE_NO_RESEARCH_RERUN`
-**Starting HEAD:** `f61120845ac4fb9582d5acfe1799e1681449510f`
+**Baseline HEAD:** `a0ff165` (`audit: reconcile research integrity and gap semantics`)
 **Branch:** `arena/01a0b574-trading-system`
 **Current posture:** research-first / fail-closed / `NO_TRADE`
 **Machine result:** [`data/evidence/research_integrity_audit.json`](../data/evidence/research_integrity_audit.json)
+**Completeness disposition:** [`docs/data_completeness_disposition.md`](data_completeness_disposition.md)
+**Disposition evidence:** [`data/evidence/xauusd_completeness_disposition.json`](../data/evidence/xauusd_completeness_disposition.json)
 
 This audit checks the data-quality, provenance, derived-evidence and research
 boundary semantics. It does not acquire data, rerun the impulse study, start
@@ -21,11 +23,15 @@ MT5 observation, search strategies, or change execution permission.
   a day or more. A single very large missing block could therefore pass with
   one gap event. The store, manifest, inventory and research artifact also used
   different gap calculations.
-- **Why it matters:** gap-event count is not coverage. The registered REAL
-  snapshot contains 278 gap events but 1,493 unexpected missing 15m intervals,
-  or 5.42% of the active expected span.
-- **Evidence:** frozen inventory snapshot; current adversarial regression tests
-  for one huge block and many single-interval gaps.
+- **Why it matters:** gap-event count is not coverage. The frozen inventory
+  records 278 legacy gap events and 1,493 legacy unexpected slots, or 5.42%
+  under its historical closure heuristic. The independently recomputed current
+  conservative model has 279 gap events and 1,785 unexpected slots (6.42% of
+  the active expected span), because Easter is not silently forgiven without
+  explicit schedule evidence.
+- **Evidence:** frozen inventory snapshot; independent source reconstruction;
+  current adversarial regression tests for one huge block, isolated gaps,
+  exact-threshold boundaries, zero coverage and full coverage.
 - **Fix:** `analyze_gap_semantics()` is now canonical. `no_missing_bars` uses
   unexpected missing interval fraction, with a 2% fail-closed limit. The store
   and inventory use the same model. The frozen research artifact was not
@@ -162,25 +168,33 @@ The corrected model is conservative:
 calendar_span_missing_intervals = all nominal cadence slots absent, including closures
 closure_intervals                 = only default weekend or explicit schedule evidence
 unexpected_missing_intervals      = all remaining absent slots
-active_span_missing_pct           = unexpected / (observed + unexpected)
-quality PASS                      = active_span_missing_pct <= 2%
+active_span_missing_fraction   = unexpected / (observed + unexpected)
+active_span_missing_pct         = presentation-only 100 * fraction
+quality PASS                    = active_span_missing_fraction <= 0.02 (unrounded)
 ```
 
-For the frozen REAL snapshot, the recorded values are 278 gap events, 58
-recognized closure events, 1,493 unexpected missing 15m intervals and 5.42%
-active-span missingness. The current hardened gate therefore interprets the
-quality status as `FAIL`. The 33.36% calendar-span absence figure is not used as
-the quality fraction because it includes closure absence; it remains visible as
-a separate calendar metric.
+The frozen REAL snapshot retains its historical evidence: 278 gap events, 58
+legacy closure events, 1,493 legacy unexpected slots and 5.42% legacy
+active-span missingness. The current conservative recomputation recognizes 57
+weekend-boundary closure events and finds 1,785 unexpected slots, or 6.42% of
+27,823 active expected intervals. The 33.36% calendar-span absence figure is
+not used as the quality fraction because it includes closure absence; it remains
+visible as a separate calendar metric. The legacy 1,493 count is not rewritten.
 
-This correction does not weaken a gate, alter the hypothesis, modify the locked
-partition, reset the trial ledger, or rerun research.
+The root-cause and recovery disposition is recorded in
+`docs/data_completeness_disposition.md`: QTS loss is zero, 140 of 154 upstream
+update-loss slots can be materialized from earlier upstream files into a
+separate failed candidate, and complete recovery requires a new authoritative
+acquisition. This correction does not weaken a gate, alter the hypothesis,
+modify the locked partition, reset the trial ledger, or rerun research.
 
 ## 3. Evidence inventory
 
 | Artifact | Status | Canonical? | Current? | Action |
 |---|---|---:|---:|---|
 | `data/evidence/xauusd_dukascopy_acquisition.json` | frozen acquisition provenance | Yes for acquisition lineage | Yes as historical run record | Preserve; do not rewrite bytes or claims |
+| `data/evidence/xauusd_completeness_disposition.json` | current P0 completeness disposition | Yes for this disposition | Current audit result | Maintain with the audit commit |
+| `data/evidence/xauusd_recovery_candidate_manifest.json` | separate immutable recovery candidate lineage | Yes for candidate provenance | Failed candidate; not research-eligible | Never promote over frozen REAL snapshot |
 | `data/evidence/impulse_research_xauusd_dukascopy_15m.json` | frozen REAL research evidence | Yes for that run | Historical research result | Preserve; no rerun in this audit |
 | `data/evidence/data_inventory.json` | derived inventory snapshot containing REAL and SYNTHETIC rows | No; manifests/store are primary | Snapshot-time | Preserve for lineage; current code now emits explicit gap roles |
 | `data/evidence/data_source_audit.json` | derived acquisition-era source audit | No | Snapshot-time | Preserve; code/doc status now labels it derived |
@@ -233,12 +247,12 @@ REAL conclusion remains `REGIME_DEPENDENT / BLOCK` in the frozen evidence.
 
 Executed during this audit:
 
-- focused gap/provenance/audit pytest — **18 passed**;
-- full `/tmp/qts-venv/bin/python -m pytest -q` — **807 passed, 20 skipped** (827 collected);
+- focused gap/adequacy pytest — **22 passed**;
+- full `/tmp/qts-venv/bin/python -m pytest -q` — **813 passed, 20 skipped** (833 collected);
 - `/tmp/qts-venv/bin/ruff check src tests scripts` — **clean**;
-- `node --check` for the two changed JavaScript views — **clean**;
+- `node --check` for the two JavaScript views — **clean**;
 - `/tmp/qts-venv/bin/python -m compileall -q src tests` — **clean**;
-- `/tmp/qts-venv/bin/mypy src/qts/data src/qts/domain/value_objects.py src/qts/execution/reality.py` — **Success: no issues found in 13 source files**;
+- configured `/tmp/qts-venv/bin/mypy src` — **Success: no issues found in 113 source files**;
 - CLI help checks for `qts`, `qts data`, `qts data validate`, and `qts evidence verify` — **all exit 0**;
 - `qts data validate --version 20260918-010+feaa0789-572728d9` — **PASS (500 bars; all 12 checks pass)**;
 - evidence JSON parse — **clean**;
@@ -253,7 +267,7 @@ restored after verification and remains unchanged by this audit.
 ## 7. Final recommendation
 
 Do not start strategy discovery, paper trading, DEMO execution or LIVE work.
-The next milestone remains the readiness-gated real Windows + MT5 DEMO
-`OBSERVE_ONLY` FO-R1 session with zero orders, after the corrected data-quality
-status and licensing/coverage blockers are reviewed. This audit does not start
-that milestone.
+The one next milestone is the separate readiness-gated Windows + MT5
+`DEMO_FORWARD` observe-only session with zero orders. It is independent of the
+historical REAL completeness disposition, is not started by this audit, and
+cannot enable `DEMO_EXECUTION` or unlock `LIVE`.

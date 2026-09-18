@@ -64,8 +64,10 @@ JSON is a derived snapshot, not a current quality certificate:
     / `REAL`
   - Frozen acquisition snapshot: OHLC quality checks `12/12` passed under the
     previous event-count-only gap gate. Current audit status: **FAIL for gap
-    completeness** because 1,493 unexpected missing 15m intervals equal 5.42%
-    of the active expected span, above the 2% limit. No research rerun was
+    completeness**: the preserved legacy inventory has 1,493 unexpected
+    intervals (5.42%), while current conservative semantics find 1,785
+    intervals (6.42% of active expected span), both above the unchanged 2%
+    limit. No research rerun was
     performed.
   - Bid/ask (continuous), tick, measured spread, broker session, fill, latency,
     and real volume semantics: `UNAVAILABLE` in the canonical bars; a

@@ -27,9 +27,11 @@ verdict. Missing attack evidence is a blocker, not a pass.
 The frozen inventory evidence contains a REAL dataset:
 `20260918-010+8f120133-1ba57af7` (XAUUSD 15m, 26,038 Dukascopy tick-derived
 mid OHLC bars, 407.00 days; the frozen acquisition snapshot reported
-12/12 quality checks and readiness `READY`, but the current gap audit finds
-1,493 unexpected missing 15m intervals (5.42% active-span missingness) and the
-hardened completeness gate is FAIL. It is not a current quality PASS.
+12/12 quality checks and readiness `READY` under the frozen historical run,
+but the frozen inventory's legacy gap audit records 1,493 unexpected missing
+15m intervals (5.42%). The current conservative gap model finds 1,785 intervals
+(6.42% of active expected coverage), so the unchanged completeness gate is FAIL.
+It is not a current quality PASS.
 Provenance record: `docs/data_provenance_xauusd_dukascopy.md`. The 500-bar
 synthetic XAUUSD 1H fixture remains registered, labelled `SYNTHETIC`, and is
 mechanism-validation-only.
