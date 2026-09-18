@@ -1,0 +1,36 @@
+{
+  "canonical_artifact": "data/evidence/campaign_last.json",
+  "campaign_id": "C-292a5ec8",
+  "total_trials": 2,
+  "passed": 0,
+  "failed": 2,
+  "status": "COMPLETED",
+  "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+  "data_readiness": {
+    "data_version": "20260918-010-572728d9",
+    "status": "BLOCKED_INSUFFICIENT_DATA",
+    "data_class": "SYNTHETIC",
+    "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+    "instrument": "XAUUSD",
+    "timeframe": "1H",
+    "rows": 500,
+    "span_days": 20.833333333333332,
+    "quality_passed": true,
+    "ready_for_claims": false,
+    "mechanism_validation_only": true,
+    "reasons": [
+      "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+      "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+      "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+    ],
+    "requirements": {
+      "min_bars": 5000,
+      "min_span_days": 180.0,
+      "allowed_claim_classes": [
+        "REAL",
+        "HISTORICAL",
+        "BROKER-DERIVED"
+      ]
+    }
+  }
+}

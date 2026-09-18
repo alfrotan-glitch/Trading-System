@@ -1,0 +1,19 @@
+env: dev
+data:
+  root: data
+execution:
+  mode: backtest
+  spread_bps: 3.0
+  slippage_bps: 2.0
+  execution_delay_ms: 500
+risk:
+  max_quantity: 1.0
+  max_notional: 10000
+  max_exposure: 2.0
+  max_leverage: 5
+  daily_loss_limit: 200
+  max_drawdown: 500
+  approved: false
+validation:
+  min_wfe: 0.3
+  min_oos_sharpe: 0.0

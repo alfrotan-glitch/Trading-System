@@ -1,0 +1,41 @@
+{
+  "canonical_store": "data/sqlite/forward_observatory.db",
+  "active_observation_sessions": 0,
+  "ticks_recorded": 0,
+  "signals_recorded": 0,
+  "real_market_ticks": 0,
+  "ticks_by_provenance": {},
+  "divergence": {
+    "session_id": null,
+    "signals": 0,
+    "no_trade_signals": 0,
+    "hypothetical_price_divergence": {
+      "status": "UNAVAILABLE",
+      "value": null,
+      "reason": "no observation signals"
+    },
+    "execution_divergence": {
+      "status": "UNAVAILABLE",
+      "value": null,
+      "reason": "OBSERVE_ONLY never submits orders and receives no realized fills"
+    },
+    "realized_pnl": {
+      "status": "UNAVAILABLE",
+      "value": null,
+      "reason": "no positions or executions in observation store"
+    },
+    "order_path": {
+      "orders_submitted": 0,
+      "execution_engine_reachable": false
+    }
+  },
+  "no_capital_exposure": true,
+  "code_version": "0.1.0+64fab8dae9dc",
+  "safety": "No live trading \u2014 OBSERVE_ONLY market observations only; no orders or executions recorded",
+  "measurement_limits": "Hypothetical price divergence may be measured; realized execution/PnL is UNAVAILABLE",
+  "sample_ticks": [],
+  "sample_signals": [],
+  "generated_at": "2026-09-18T10:20:58.376059+00:00",
+  "derived_from": "data/sqlite/forward_observatory.db",
+  "forward_observation_protocol": "docs/forward_observation_protocol.md"
+}

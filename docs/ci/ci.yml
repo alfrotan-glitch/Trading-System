@@ -1,0 +1,25 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-latest is a required matrix entry: Windows-only file-handle
+        # lifecycle failures (e.g. WinError 32 during temp-dir cleanup) must
+        # gate merges, not surface on developer machines after the fact.
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests
+      - run: ruff format --check src tests
+      - run: mypy src/qts --ignore-missing-imports
+      - run: bandit -r src -q
+      - run: pytest tests -q --cov=qts --cov-fail-under=60
+      - run: pytest tests/integration -q --run-integration
