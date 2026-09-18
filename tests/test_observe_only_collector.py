@@ -17,6 +17,12 @@ Pins the Phase-9 contract:
 - ``stop()`` is deterministic: thread joined, session ENDED + end timestamp
   persisted, evidence manifest rewritten with ``class: REAL`` and
   ``orders_submitted: 0``.
+- Terminal-error semantics: a normal operator stop persists ``ENDED`` with NO
+  terminal ``error`` even when a transient runtime error occurred earlier and
+  collection recovered; only an error auto-stop (``ENDED_ON_ERRORS``) carries
+  the terminal failure reason. ``last_error`` remains a runtime diagnostic
+  surfaced in ``status()``/the derived manifest, never a failure cause
+  (FS-aeb881).
 - ``order_send`` / order submission / the observatory's simulation helper are
   unreachable from the observe-only path: proven structurally (AST call scan
   of the collector module and every observe endpoint) AND at runtime (the
@@ -42,6 +48,7 @@ from qts.db import connect as db_connect
 from qts.domain.value_objects import Instrument
 from qts.observability.demo_collector import ObservationCollector
 from qts.observability.forward_observatory import ForwardObservatory
+from qts.observability.session_export import export_session_evidence, verify_session_export
 
 BROKER_OFFSET_S = 10800  # UTC+3, like the verified WMMarkets-Demo server
 PASSED_READINESS: dict[str, Any] = {
@@ -369,6 +376,78 @@ def test_frozen_duplicate_quotes_recorded_once(tmp_path: Path) -> None:
     ticks = _tick_rows(tmp_path / "obs.db")
     assert len(ticks) == 1  # one REAL quote, never re-observed as new data
     assert ticks[0]["timestamp_basis"] == "broker-normalized(measured-m1-bar)"
+
+
+# ---------------------------------------------------------------------------
+# terminal-error semantics: transient runtime errors are not failure causes
+# ---------------------------------------------------------------------------
+
+
+def test_transient_error_then_recovery_then_manual_stop_has_no_terminal_error(tmp_path: Path) -> None:
+    """FS-aeb881 shape: transient stale-tick error, recovery, normal stop.
+
+    The operator stop is ENDED with NO terminal `error` — `last_error` is a
+    runtime diagnostic and must not be promoted to failure cause. The stale
+    diagnostic stays legitimately surfaced in status()/the derived manifest.
+    """
+    collector, fake = _make_collector(tmp_path, LiveFakeMT5("live"), max_consecutive_failures=40)
+    collector.start(PASSED_READINESS)
+    # early transient failure: feed goes stale for a moment, then recovers
+    fake.mode = "stale"
+    assert _wait_for(lambda: collector.consecutive_failures >= 1), "expected a transient failure"
+    transient = collector.last_error
+    fake.mode = "live"
+    assert _wait_for(lambda: collector.consecutive_failures == 0 and collector.ticks_recorded >= 1), (
+        f"collection did not recover: {collector.last_error}"
+    )
+    stopped = collector.stop()
+
+    assert stopped["state"] == "STOPPED"
+    assert stopped["consecutive_failures"] == 0
+    assert "stale" in (stopped["last_error"] or "")  # diagnostic preserved at runtime
+    assert fake.order_send_calls == []
+
+    sessions = _session_rows(tmp_path / "obs.db")
+    assert len(sessions) == 1
+    meta = json.loads(sessions[0]["meta"])
+    assert sessions[0]["status"] == "ENDED"
+    assert meta.get("ended_at") == sessions[0]["end"]
+    assert "error" not in meta  # a normal operator stop declares no terminal error
+
+    # the derived manifest keeps the diagnostic, without a terminal failure claim
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["state"] == "STOPPED"
+    assert manifest["last_error"] == transient
+    assert manifest["orders_submitted"] == 0
+
+    art = export_session_evidence(stopped["session_id"], db_path=collector.observatory.db_path)
+    assert art["session"]["status"] == "ENDED"
+    assert "error" not in art["session"]["meta_sanitized"]
+    verdict = verify_session_export(art)
+    assert verdict["verdict"] == "CONSISTENT", verdict
+    assert verdict["violations"] == []
+
+
+def test_genuine_error_autostop_still_carries_terminal_error(tmp_path: Path) -> None:
+    """A real error auto-stop keeps its terminal cause and verifies correctly."""
+    collector, fake = _make_collector(tmp_path, LiveFakeMT5("disconnect"), max_consecutive_failures=3)
+    collector.start(PASSED_READINESS)
+    assert _wait_for(lambda: collector.state == "STOPPED_ON_ERRORS"), collector.last_error
+    terminal = collector.last_error
+    assert terminal and "no tick available" in terminal
+
+    sessions = _session_rows(tmp_path / "obs.db")
+    meta = json.loads(sessions[0]["meta"])
+    assert sessions[0]["status"] == "ENDED_ON_ERRORS"
+    assert meta.get("error") == terminal  # required terminal failure reason
+
+    art = export_session_evidence(collector.session_id, db_path=collector.observatory.db_path)
+    assert art["session"]["status"] == "ENDED_ON_ERRORS"
+    assert art["session"]["meta_sanitized"]["error"] == terminal
+    verdict = verify_session_export(art)
+    assert verdict["verdict"] == "CONSISTENT", verdict
+    assert any("ended on errors" in note for note in verdict["notes"])
+    assert fake.order_send_calls == []
 
 
 # ---------------------------------------------------------------------------

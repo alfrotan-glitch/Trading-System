@@ -249,10 +249,18 @@ class ObservationCollector:
         # during the transition, before `state` itself flips.
         self._stop.set()
         if self.session_id:
+            # Terminal-error semantics: the session `error` is the reason the
+            # session FAILED, never the last transient runtime diagnostic. A
+            # normal operator stop is ENDED with NO terminal error; only an
+            # error auto-stop (ENDED_ON_ERRORS) carries the terminal reason.
+            # ``self.last_error`` stays a runtime diagnostic and is surfaced
+            # where it already is (status()/derived manifest), never promoted
+            # to terminal failure cause.
+            terminal_error = self.last_error if new_state != "STOPPED" else None
             self.observatory.end_session(
                 self.session_id,
                 status="ENDED" if new_state == "STOPPED" else "ENDED_ON_ERRORS",
-                error=self.last_error,
+                error=terminal_error,
             )
         self.write_manifest(state_override=new_state)
         self.state = new_state
