@@ -104,7 +104,7 @@ outputs as explicit `MEASURED_INVALID` blocking checks. It never replaces
 
 - `ruff check .`: clean.
 - `python -m compileall -q src tests`: clean.
-- Default `pytest -q`: 718 passed, 18 skipped; skipped integration/browser
+- Default `pytest -q`: 719 passed, 27 skipped; skipped integration/browser
   checks are not presented as evidence.
 - Node UI logic tests: 25 passed.
 - Direct authority/API checks: full-gate enable refuses; API enable returns

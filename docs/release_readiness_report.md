@@ -146,7 +146,7 @@ The current working tree was checked with:
 
 - `ruff check .` — clean
 - `python -m compileall -q src tests` — clean
-- `pytest -q` — `718 passed, 18 skipped` in the default environment
+- `pytest -q` — `719 passed, 27 skipped` in the default environment
   (integration tests require the explicit `--run-integration` flag; browser
   screenshots require Playwright/Chromium)
 - Node UI logic tests (`format.test.mjs`, `status.test.mjs`) — `25 passed`
