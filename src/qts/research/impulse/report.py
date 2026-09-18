@@ -25,7 +25,7 @@ from qts.research.impulse.analysis import (
     ImpulseAnalysisResult,
     ImpulseResearchConfig,
     run_impulse_analysis,
-    summarize_trade_outcomes,
+    summarize_event_outcomes,
 )
 from qts.research.impulse.conclusions import ResearchConclusion, classify_conclusion
 
@@ -208,14 +208,14 @@ def run_impulse_research(
     return evidence
 
 
-def _trade_outcomes_for_report(result: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
+def _event_outcomes_for_report(result: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
     """Return outcome metrics, including a backward-compatible evidence fallback.
 
-    Current runs persist ``trade_outcomes`` beside the result summary. Older
+    Current runs persist ``event_outcomes`` beside the result summary. Older
     evidence already contains the authoritative per-event ``net_return_bps``
     rows, so it can be rendered without rewriting that evidence artifact.
     """
-    stored = result.get("trade_outcomes")
+    stored = result.get("event_outcomes")
     if stored:
         return stored
     values = [
@@ -224,7 +224,7 @@ def _trade_outcomes_for_report(result: dict[str, Any], config: dict[str, Any]) -
         if event.get("decision_state") == "DETECTED_MEASURED"
     ]
     costs = config.get("costs", {})
-    return summarize_trade_outcomes(
+    return summarize_event_outcomes(
         values,
         declared_round_turn_cost_bps=costs.get("round_turn_cost_bps"),
     )
@@ -342,7 +342,7 @@ def render_markdown_report(evidence: dict[str, Any]) -> str:
             f"{r['mfe_mean_bps']:.1f} | {r['mae_mean_bps']:.1f} | {dsr} |"
         )
     lines.append("")
-    lines.append("## Trade-level outcome transparency (primary horizon)")
+    lines.append("## Event-outcome transparency (primary horizon)")
     lines.append("")
     lines.append(
         "This research records **event-study directional outcomes**, not executed broker trades, "
@@ -367,14 +367,14 @@ def render_markdown_report(evidence: dict[str, Any]) -> str:
     lines.append("")
     lines.append(
         "| Family | measured events | outcome status | wins | losses | break-even | win rate (W/N) | "
-        "avg winner (net bps) | avg loser (net bps) | profit factor | expectancy / event (trade-equivalent, net bps) | "
+        "avg winner (net bps) | avg loser (net bps) | profit factor | expectancy / event (net bps) | "
         "aggregate net (bps) | 10 W/L/BE | 100 W/L/BE |"
     )
     lines.append(
         "|--------|-----------------|----------------|------|--------|------------|----------------|-----------------------|---------------------|---------------|------------------------------|--------------------|------------|--------------|"
     )
     for r in sorted(prim, key=lambda x: x["family_id"]):
-        outcomes = _trade_outcomes_for_report(r, cfgs)
+        outcomes = _event_outcomes_for_report(r, cfgs)
         status = outcomes.get("status", "UNAVAILABLE")
         status_text = status if status == "AVAILABLE" else f"{status}: {outcomes.get('unavailable_reason', 'required data missing')}"
         count = r.get("n_measured", outcomes.get("measured_event_count", 0))
@@ -387,7 +387,7 @@ def render_markdown_report(evidence: dict[str, Any]) -> str:
             f"{_report_metric(outcomes.get('average_winner_bps'))} | "
             f"{_report_metric(outcomes.get('average_loser_bps'))} | "
             f"{_report_metric(outcomes.get('profit_factor'))} | "
-            f"{_report_metric(outcomes.get('expectancy_per_trade_bps'))} | "
+            f"{_report_metric(outcomes.get('expectancy_per_event_bps'))} | "
             f"{_report_metric(outcomes.get('net_result_bps'))} | "
             f"{_scaled_outcome_counts(outcomes, 10)} | {_scaled_outcome_counts(outcomes, 100)} |"
         )

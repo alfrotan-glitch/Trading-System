@@ -93,7 +93,7 @@ class FamilyHorizonSplitResult:
     gross_mean_bps: float = 0.0
     net_mean_bps: float = 0.0
     net_ci: tuple[float, float] = (0.0, 0.0)
-    trade_outcomes: dict[str, Any] = field(default_factory=dict)
+    event_outcomes: dict[str, Any] = field(default_factory=dict)
     net_sharpe_per_event: float = 0.0
     dsr_per_event: float | None = None  # pooled discovery+validation only
     mfe_mean_bps: float = 0.0
@@ -173,7 +173,7 @@ def _measure_all(
     ]
 
 
-def summarize_trade_outcomes(
+def summarize_event_outcomes(
     net_returns_bps: list[float | None],
     *,
     declared_round_turn_cost_bps: float | None = None,
@@ -228,7 +228,7 @@ def summarize_trade_outcomes(
                 "average_winner_bps": None,
                 "average_loser_bps": None,
                 "profit_factor": None,
-                "expectancy_per_trade_bps": None,
+                "expectancy_per_event_bps": None,
                 "net_result_bps": None,
                 "unavailable_reason": (
                     "no measured event outcomes"
@@ -257,7 +257,7 @@ def summarize_trade_outcomes(
             # Profit factor is undefined when there is no loss denominator;
             # do not emit infinity or turn that case into zero.
             "profit_factor": (gross_wins / gross_losses) if gross_losses > 0 else None,
-            "expectancy_per_trade_bps": float(np.mean(values)),
+            "expectancy_per_event_bps": float(np.mean(values)),
             "net_result_bps": float(sum(values)),
             "unavailable_reason": None,
         }
@@ -280,7 +280,7 @@ def _summarize(
     base_rate = base_k / base_n if base_n else 0.5
     gross = [float(m.horizon_return_bps or 0.0) for m in ok]
     net = [float(m.net_return_bps or 0.0) for m in ok]
-    trade_outcomes = summarize_trade_outcomes(
+    event_outcomes = summarize_event_outcomes(
         [m.net_return_bps for m in ok],
         declared_round_turn_cost_bps=cfg.costs.round_turn_cost_bps(),
     )
@@ -327,7 +327,7 @@ def _summarize(
         "gross_mean_bps": float(np.mean(gross)) if gross else 0.0,
         "net_mean_bps": net_mean,
         "net_ci": (net_lo, net_hi),
-        "trade_outcomes": trade_outcomes,
+        "event_outcomes": event_outcomes,
         "net_sharpe_per_event": event_series_sharpe(net),
         "mfe_mean_bps": float(np.mean([float(m.mfe_bps or 0.0) for m in ok])) if ok else 0.0,
         "mae_mean_bps": float(np.mean([float(m.mae_bps or 0.0) for m in ok])) if ok else 0.0,

@@ -16,7 +16,7 @@ from qts.research.impulse.analysis import (
     ImpulseAnalysisResult,
     ImpulseResearchConfig,
     run_impulse_analysis,
-    summarize_trade_outcomes,
+    summarize_event_outcomes,
 )
 from qts.research.impulse.conclusions import CONCLUSIONS, ResearchConclusion, classify_conclusion
 from qts.research.impulse.costs import BASE_COSTS, CostAssumptions
@@ -67,5 +67,5 @@ __all__ = [
     "render_markdown_report",
     "run_impulse_analysis",
     "run_impulse_research",
-    "summarize_trade_outcomes",
+    "summarize_event_outcomes",
 ]

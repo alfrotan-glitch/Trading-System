@@ -62,7 +62,7 @@ adequate_for_real_claims: **True**
 | IMP-VE-B | 330 | 0.512 | 0.505 | +0.008 | 0.8258 | 1.0000 | +4.62 | +1.22 | [-6.09,8.80] | 0.49 | 24.9 | 22.4 | 0.008 |
 | IMP-VE-V | 106 | 0.462 | 0.501 | -0.039 | 0.4384 | 1.0000 | +0.49 | -2.91 | [-15.89,10.38] | 0.46 | 26.6 | 26.2 | 0.001 |
 
-## Trade-level outcome transparency (primary horizon)
+## Event-outcome transparency (primary horizon)
 
 This research records **event-study directional outcomes**, not executed broker trades, orders, or fills. The canonical unit is one detected event for one pre-registered family measured once at the selected horizon. Each measured event has one existing `net_return_bps` outcome. Outcome winners and losers below are classified on that net return, after the declared cost assumption.
 
@@ -70,7 +70,7 @@ Win-rate denominator: **all measured event outcomes in the row (wins + losses + 
 
 No single all-family win/loss rate is reported: the 10 families are separate pre-registered hypotheses and their detections can overlap. The aggregate count above is a record count only, not a pooled independent trade population.
 
-| Family | measured events | outcome status | wins | losses | break-even | win rate (W/N) | avg winner (net bps) | avg loser (net bps) | profit factor | expectancy / event (trade-equivalent, net bps) | aggregate net (bps) | 10 W/L/BE | 100 W/L/BE |
+| Family | measured events | outcome status | wins | losses | break-even | win rate (W/N) | avg winner (net bps) | avg loser (net bps) | profit factor | expectancy / event (net bps) | aggregate net (bps) | 10 W/L/BE | 100 W/L/BE |
 |--------|-----------------|----------------|------|--------|------------|----------------|-----------------------|---------------------|---------------|------------------------------|--------------------|------------|--------------|
 | IMP-BE-B | 427 | AVAILABLE | 199 | 228 | 0 | +0.466 | +53.19 | -47.63 | +0.97 | -0.65 | -275.95 | 4.7 / 5.3 / 0.0 | 46.6 / 53.4 / 0.0 |
 | IMP-BE-V | 321 | AVAILABLE | 146 | 175 | 0 | +0.455 | +58.53 | -48.31 | +1.01 | +0.28 | +90.38 | 4.5 / 5.5 / 0.0 | 45.5 / 54.5 / 0.0 |
