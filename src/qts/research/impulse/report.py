@@ -19,6 +19,7 @@ from typing import Any
 from qts.data.bootstrap import classify_source
 from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
+from qts.observability.lineage import code_version
 from qts.research.impulse.adequacy import DataAdequacyReport, assess_data_adequacy
 from qts.research.impulse.analysis import (
     ImpulseAnalysisResult,
@@ -107,6 +108,7 @@ def run_impulse_research(
         "data_class": data_class,
         "timezone": manifest.timezone,
         "missing_data_stats": manifest.missing_data_stats,
+        "code_version": code_version(),
     }
 
     analysis: ImpulseAnalysisResult = run_impulse_analysis(
@@ -162,6 +164,33 @@ def run_impulse_research(
             "distribution of the next short horizon is sufficiently directional and persistent "
             "to create positive net expectancy after spread, commission, slippage, and latency."
         ),
+        "hypothesis_specification": {
+            "question": "Does an unusually strong directional movement predict positive net expectancy at the declared short horizons?",
+            "mechanism": "short-horizon directional persistence after an impulse, rather than unconditional continuation",
+            "measurable_prediction": "impulse events have higher continuation and net-return distributions than the matched non-event baseline after declared costs",
+            "null_hypothesis": "impulse events have no incremental predictive value versus the matched baseline after costs and timing controls",
+            "competing_explanations": [
+                "selection or trial-count bias",
+                "timestamp/look-ahead leakage",
+                "single-regime or single-instrument artifact",
+                "cost assumptions masking unavailable broker execution evidence",
+            ],
+            "falsification_criteria": [
+                "chronological validation does not replicate the effect",
+                "the effect disappears under declared cost or latency sensitivity",
+                "the effect is not separated from baseline/placebo controls",
+                "event counts or regime coverage remain insufficient for the claim",
+            ],
+            "required_data": [
+                "immutable provenance-qualified OHLC history",
+                "measured bid/ask or tick spread and execution-cost fields",
+                "enough events per direction across multiple regimes",
+                "untouched chronological validation and forward observation",
+            ],
+            "horizon": f"primary={cfg.primary_horizon} bars; sensitivity={list(cfg.horizons)}",
+            "population": f"{manifest.instrument} {manifest.timeframe} bars from the declared venue/source",
+            "regime": "all declared volatility regimes; no unmeasured regime may be silently excluded",
+        },
         "provenance": provenance,
         "data_adequacy": adequacy.as_dict(),
         "analysis": analysis.as_dict(),
@@ -201,6 +230,18 @@ def render_markdown_report(evidence: dict[str, Any]) -> str:
     lines.append(f"- checksum `{prov['checksum']}` · rows {prov['rows']} · bars read {prov['bars_read']}")
     lines.append(f"- span {prov['start']} → {prov['end']} ({prov['timezone']})")
     lines.append(f"- source label `{prov['source_label']}` · **data class: {prov['data_class']}**")
+    lines.append(f"- code version `{prov['code_version']}`")
+    spec = evidence.get("hypothesis_specification", {})
+    if spec:
+        lines.append("")
+        lines.append("## Falsifiable specification")
+        for key in ("mechanism", "measurable_prediction", "null_hypothesis", "horizon", "population", "regime"):
+            if spec.get(key):
+                lines.append(f"- **{key.replace('_', ' ').title()}:** {spec[key]}")
+        for key in ("competing_explanations", "falsification_criteria", "required_data"):
+            values = spec.get(key) or []
+            if values:
+                lines.append(f"- **{key.replace('_', ' ').title()}:** " + "; ".join(str(v) for v in values))
     lines.append("")
     lines.append("## Data adequacy gate")
     lines.append(f"adequate_for_real_claims: **{adq['adequate_for_real_claims']}**")
