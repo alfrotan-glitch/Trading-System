@@ -1,26 +1,33 @@
-/* Evidence — self-audit and append-only audit trail */
-import { api, store, RESOURCES, syncResource } from "../api.js";
-import { operationalState, freshness } from "../operations.js";
+/* Evidence — self-audit and append-only audit trail
+   Progressive disclosure: summary → evidence → raw. Dense, keyboard navigable. */
+
+import { api, store } from "../api.js";
 import { h, icon, clear } from "../dom.js";
 import {
   card, badge, page, table, emptyState, skeletonInto, tech, kv, errorBox,
   banner, drawer,
 } from "../components.js";
-import { fmtUtc, trunc, humanKey, fmtAge } from "../format.js";
+import { fmtUtc, trunc, humanKey } from "../format.js";
 import { navigate, onDispose } from "../router.js";
+import { getContext } from "../context.js";
 
 export async function renderExplorer(root) {
   skeletonInto(root);
   root.classList.add("operator-workspace");
+  const ctx = getContext();
   root.appendChild(page({
     crumb: "Evidence", group: "Explorer",
     title: "Evidence Explorer",
-    answer: h("b", null, "Every displayed result carries its evidence: provenance, lineage, and honest self-audit. If evidence missing, QTS says so. Progressive disclosure: summary → evidence → raw."),
+    answer: h("b", null, `Every displayed result carries its evidence: provenance, lineage, and honest self-audit. If evidence missing, QTS says so. Context ${ctx.symbol}. Progressive disclosure: summary → evidence → raw.`),
     body: null,
   }));
+  const activity = h("h2", null, `Loading evidence… — context ${ctx.symbol}`);
+  root.appendChild(h("section", { class: "operator-summary" }, h("div", null, h("div", { class: "eyebrow" }, "NOW / EVIDENCE"), activity)));
   const host = h("div", { class: "section" }); root.appendChild(host);
   let v = null;
   try { v = await api.get("/api/validation/sma_breakout"); } catch { v = null; }
+
+  activity.textContent = v ? `Validation evidence loaded — context ${ctx.symbol} — self-audit below` : `No validation evidence — context ${ctx.symbol} — honest empty`;
 
   const edge = v?.evidence?.edge_survival;
   const audit = [
@@ -34,7 +41,7 @@ export async function renderExplorer(root) {
     ["Did we assume unrealistic fills?", "NO — next-bar-open, slippage, latency, partial fills modeled", true],
   ];
   host.appendChild(card({
-    title: "Self-audit — 8 uncomfortable questions, answered from evidence", sub: "not intention", icon: "fileCheck",
+    title: `Self-audit — 8 uncomfortable questions, answered from evidence — context ${ctx.symbol}`, sub: "not intention, but evidence", icon: "fileCheck",
     body: h("div", { class: "check-grid" },
       audit.map(([q, a, ok]) => h("div", { class: `check ${ok === true ? "pass" : ok === false ? "fail" : "na"}` },
         h("div", { class: "mark", "aria-hidden": "true" }, ok === true ? "✓" : ok === false ? "✕" : "?"),
@@ -44,15 +51,15 @@ export async function renderExplorer(root) {
   }));
 
   host.appendChild(h("div", { class: "grid-2" },
-    card({ title: "Discovery report — per-campaign evidence portfolio", sub: "dense, with raw disclosure", icon: "archive", body:
+    card({ title: `Discovery report — per-campaign evidence portfolio — context ${ctx.symbol}`, sub: "dense, with raw disclosure", icon: "archive", body:
       v?.evidence
         ? h("div", { class: "stack" },
-            kv([["Dataset manifest", h("span", { class: "mono small" }, v.evidence?.dataset?.manifest ?? "—")], ["Trials (N)", v.evidence?.trial_ledger?.trial_count ?? "—"], ["Edge survival", badge(edge?.passed ? "PASSED" : "FAILED")], ["PSR / DSR / PBO", `${edge?.psr ?? "—"} / ${edge?.dsr ?? "—"} / ${edge?.pbo ?? "—"}`]]),
-            h("details", null, h("summary", null, "Raw discovery evidence / technical"), tech(v.evidence, "Raw discovery evidence")),
+            kv([["Dataset manifest", h("span", { class: "mono small" }, v.evidence?.dataset?.manifest ?? "—")], ["Trials (N)", v.evidence?.trial_ledger?.trial_count ?? "—"], ["Edge survival", badge(edge?.passed ? "PASSED" : "FAILED")], ["PSR / DSR / PBO", `${edge?.psr ?? "—"} / ${edge?.dsr ?? "—"} / ${edge?.pbo ?? "—"}`], ["Context", `${getContext().symbol} — presentation only`]]),
+            h("details", null, h("summary", null, "Raw discovery evidence / technical — summary → detail → raw"), tech(v.evidence, "Raw discovery evidence")),
           )
         : emptyState({ icon: "archive", title: "No validation evidence available", desc: "Evidence appears after research campaigns run. QTS never invents portfolio to look complete.", actions: [h("button", { class: "btn", onclick: () => navigate("#/research/campaigns") }, icon("play", 14), "Open Research")] }),
     }),
-    card({ title: "Confidence calibration", icon: "scale", body: h("div", { class: "stack" }, banner("info", "Calibrated probability, not vibes", "PSR/DSR give calibrated probabilities; permutation tests control false positives; null and placebo verify machinery itself.", "info"), h("p", { class: "gate-note" }, "High backtest Sharpe is treated as hypothesis to attack, never as result to display proudly."))}),
+    card({ title: "Confidence calibration — explanatory, not decorative", icon: "scale", body: h("div", { class: "stack" }, banner("info", "Calibrated probability, not vibes", "PSR/DSR give calibrated probabilities; permutation tests control false positives; null and placebo verify machinery itself.", "info"), h("p", { class: "gate-note" }, "High backtest Sharpe is treated as hypothesis to attack, never as result to display proudly."))}),
   ));
 
   host.appendChild(card({ title: "Evidence lineage — summary → evidence → lineage → raw", sub: "any preprocessing change creates NEW version", icon: "branch", body:
@@ -63,54 +70,33 @@ export async function renderExplorer(root) {
 export async function renderAudit(root) {
   skeletonInto(root);
   root.classList.add("operator-workspace");
+  const ctx = getContext();
   const q = h("input", { class: "input", placeholder: "Search events — decisions, risk vetoes, orders, fills, reconciliations…", style: { maxWidth: "380px" }, "aria-label": "Search audit trail" });
   const head = page({
     crumb: "Evidence", group: "Audit trail",
     title: "Audit Trail",
-    answer: h("b", null, "Append-only, redacted record of everything QTS decided, blocked, submitted, or reconciled. Dense table, drawer for payload, per-source freshness."),
+    answer: h("b", null, `Append-only, redacted record of everything QTS decided, blocked, submitted, or reconciled. Context ${ctx.symbol}. Dense table, drawer for payload, per-source freshness, keyboard navigable.`),
     actions: [q, h("button", { class: "btn primary", onclick: () => load() }, icon("search", 14), "Search")],
     body: null,
   });
   root.appendChild(head);
 
-  const factsBody = h("tbody");
-  const factCells = {};
-  const factsSection = h("section", { class: "operator-section" },
-    h("h2", null, "Operating facts — audit source freshness"),
-    h("div", { class: "tbl-wrap", tabindex: "0" }, h("table", { class: "tbl facts-table" }, h("thead", null, h("tr", null, ["Source","Reported state","API freshness"].map((t) => h("th", { scope: "col" }, t)))), factsBody)));
-  root.appendChild(factsSection);
+  const activity = h("h2", null, `Loading audit… — context ${ctx.symbol}`);
+  root.appendChild(h("section", { class: "operator-summary" }, h("div", null, h("div", { class: "eyebrow" }, "NOW / AUDIT"), activity)));
 
   const host = h("div", { class: "section" }); root.appendChild(host);
   q.addEventListener("keydown", (e) => { if (e.key === "Enter") load(); });
-
-  function renderFacts() {
-    const rows = [["audit", "Audit trail", `${store.data.resources.audit?.error ? "UNAVAILABLE" : "CURRENT"}`, "Append-only, redacted"]];
-    if (!factsBody.children.length) {
-      for (const [key, title] of rows) {
-        const st = h("span", { class: "badge neutral" }, "UNAVAILABLE");
-        const det = h("span", null, "");
-        const fresh = h("span", { class: "mono small" }, "");
-        factCells[key] = { st, det, fresh };
-        factsBody.appendChild(h("tr", null, h("th", { scope: "row" }, title), h("td", null, st), h("td", { class: "fact-detail" }, det), h("td", null, fresh)));
-      }
-    }
-    // audit endpoint is not in RESOURCES map, use ad-hoc freshness from last load time stored in dataset
-    const meta = store.data.resources.health; // use health as proxy for API reachability
-    for (const [key, , value, meaning] of rows) {
-      const c = factCells[key];
-      if (c) { c.st.textContent = value; c.det.textContent = meaning; }
-    }
-  }
 
   async function load() {
     const term = q.value.trim();
     let rows = [];
     try { rows = await api.get("/api/audit?limit=100" + (term ? `&q=${encodeURIComponent(term)}` : "")); } catch (e) { clear(host); host.appendChild(errorBox({ what: "audit trail could not be loaded", next: "Retry.", raw: e.message })); return; }
     clear(host);
+    activity.textContent = `${rows.length} audit events${term ? ` matching “${trunc(term,30)}”` : ""} — context ${getContext().symbol} — dense, keyboard sortable`;
     const byType = {};
     rows.forEach((r) => { const t = String(r.type ?? "event"); byType[t] = (byType[t] ?? 0) + 1; });
     host.appendChild(card({
-      title: `${rows.length} event(s)${term ? ` matching “${trunc(term,30)}”` : ""} — dense, keyboard sortable`, icon: "archive",
+      title: `${rows.length} event(s)${term ? ` matching “${trunc(term,30)}”` : ""} — dense, keyboard sortable, drawer for payload — context ${getContext().symbol}`, icon: "archive",
       actions: h("div", { class: "chip-row" }, Object.entries(byType).sort((a, b) => b[1]-a[1]).slice(0,8).map(([t, n]) => h("span", { class: "chip" }, `${t} · ${n}`))),
       body: rows.length
         ? table({
@@ -123,14 +109,13 @@ export async function renderAudit(root) {
             rows: [...rows].reverse(),
             empty: "No audit events match.",
             dense: true,
-            onRowClick: (r) => drawer(`Audit event — ${r.type ?? ""}`, h("div", { class: "stack" }, kv([["Time (UTC)", fmtUtc(r.time)], ["Type", String(r.type ?? "").toUpperCase()]]), tech(r.payload ?? r, "Raw event payload"))),
+            onRowClick: (r) => drawer(`Audit event — ${r.type ?? ""}`, h("div", { class: "stack" }, kv([["Time (UTC)", fmtUtc(r.time)], ["Type", String(r.type ?? "").toUpperCase()], ["Context", `${getContext().symbol} — presentation only`]]), tech(r.payload ?? r, "Raw event payload — summary → detail → raw"))),
           })
         : emptyState({ icon: "archive", title: "No audit events", desc: "Every decision QTS makes lands here — empty trail means nothing happened yet." }),
     }));
-    renderFacts();
   }
 
-  const off = store.on("resources", renderFacts);
+  const off = store.on("resources", () => { activity.textContent = `${getContext().symbol} — audit source — dense, honest`; });
   onDispose(root, off);
   await load();
 }
