@@ -1,6 +1,6 @@
 [
   {
-    "version": "20260918-010-572728d9",
+    "version": "20260918-010+c83567cb-572728d9",
     "source": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
     "source_file": "data/fixtures/XAUUSD_1H_500.csv",
     "data_class": "SYNTHETIC",
@@ -78,14 +78,14 @@
     "market_closure_handling": "closures measured from UTC calendar gaps; broker session schedule UNAVAILABLE",
     "broker_artifacts": "UNAVAILABLE: no broker tick/session diagnostics in OHLC dataset",
     "checksum": "sha256:572728d92ebb5c2a",
-    "ingestion_method": "source_label=SYNTHETIC:fixture:XAUUSD_1H_500.csv; class=SYNTHETIC \u2192 raw preserved \u2192 validation \u2192 canonical 20260918-010-572728d9",
+    "ingestion_method": "source_label=SYNTHETIC:fixture:XAUUSD_1H_500.csv; class=SYNTHETIC \u2192 raw preserved \u2192 validation \u2192 canonical 20260918-010+c83567cb-572728d9",
     "preprocessing_version": "1.0",
     "provenance": {
       "class": "SYNTHETIC",
       "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
       "raw_file": "data/fixtures/XAUUSD_1H_500.csv",
       "checksum": "sha256:572728d92ebb5c2a",
-      "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260918-010-572728d9/part-0.parquet"
+      "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260918-010+c83567cb-572728d9/part-0.parquet"
     },
     "schema_version": 2,
     "quality_report": [
@@ -151,8 +151,167 @@
       }
     ],
     "quality_passed": true,
-    "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260918-010-572728d9/part-0.parquet",
+    "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260918-010+c83567cb-572728d9/part-0.parquet",
     "raw_preserved": "data/fixtures/XAUUSD_1H_500.csv",
     "research_eligibility": "MECHANISM_VALIDATION_ONLY \u2014 synthetic data cannot support real-market claims"
+  },
+  {
+    "version": "20260918-010+8f120133-1ba57af7",
+    "source": "REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks",
+    "source_file": "data/raw/xauusd_dukascopy_15m_mid_20250806_20260916.csv",
+    "data_class": "REAL",
+    "provider": "real_market_source",
+    "instrument": "XAUUSD",
+    "venue": "MT5",
+    "timeframe": "15m",
+    "date_range": {
+      "start": "2025-08-06T00:00:00+00:00",
+      "end": "2026-09-17T00:00:00+00:00"
+    },
+    "row_count": 26038,
+    "tick_count": {
+      "status": "UNAVAILABLE",
+      "value": null,
+      "reason": "canonical dataset contains OHLC bars, not tick records"
+    },
+    "timezone": "UTC",
+    "timestamp_resolution": "900s bar cadence",
+    "ohlc_availability": {
+      "status": "MEASURED",
+      "value": "MEASURED"
+    },
+    "bid_availability": {
+      "status": "UNAVAILABLE",
+      "value": null,
+      "reason": "no bid field in canonical OHLC schema"
+    },
+    "ask_availability": {
+      "status": "UNAVAILABLE",
+      "value": null,
+      "reason": "no ask field in canonical OHLC schema"
+    },
+    "spread_availability": {
+      "status": "UNAVAILABLE",
+      "value": null,
+      "reason": "bid/ask observations not present in this bar dataset"
+    },
+    "volume_availability": {
+      "status": "MEASURED",
+      "value": "field present"
+    },
+    "tick_volume_vs_real_volume": "UNAVAILABLE: bar volume semantics not declared",
+    "missingness": {
+      "status": "MEASURED",
+      "value": {
+        "gap_count": 278,
+        "closure_gap_count": 58,
+        "max_gap_s": 102600,
+        "missing_intervals": 1493,
+        "missing_pct": 5.42,
+        "common_delta_s": 900
+      },
+      "reason": null
+    },
+    "duplicates": false,
+    "gaps": {
+      "gap_count": 278,
+      "closure_gap_count": 58,
+      "max_gap_s": 102600,
+      "missing_intervals": 1493,
+      "missing_pct": 5.42,
+      "common_delta_s": 900
+    },
+    "session_coverage": {
+      "status": "MEASURED",
+      "weekdays_observed": [
+        "Fri",
+        "Mon",
+        "Sun",
+        "Thu",
+        "Tue",
+        "Wed"
+      ],
+      "weekend_bars": 384,
+      "note": "calendar coverage only; broker session hours require broker tick/session metadata"
+    },
+    "market_closure_handling": "closures measured from UTC calendar gaps; broker session schedule UNAVAILABLE",
+    "broker_artifacts": "UNAVAILABLE: no broker tick/session diagnostics in OHLC dataset",
+    "checksum": "sha256:1ba57af7d9d034d9",
+    "ingestion_method": "source_label=REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks; class=REAL \u2192 raw preserved \u2192 validation \u2192 canonical 20260918-010+8f120133-1ba57af7",
+    "preprocessing_version": "1.0",
+    "provenance": {
+      "class": "REAL",
+      "source_label": "REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks",
+      "raw_file": "data/raw/xauusd_dukascopy_15m_mid_20250806_20260916.csv",
+      "checksum": "sha256:1ba57af7d9d034d9",
+      "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=15m/version=20260918-010+8f120133-1ba57af7/part-0.parquet"
+    },
+    "schema_version": 2,
+    "quality_report": [
+      {
+        "name": "monotonic_time",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "tz_aware",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_future",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "ohlc_invariants",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "positive_prices",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "abnormal_spreads",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_duplicates",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "single_symbol",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_missing_bars",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "session_boundaries",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_broker_artifacts",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "volume_non_negative",
+        "passed": true,
+        "details": ""
+      }
+    ],
+    "quality_passed": true,
+    "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=15m/version=20260918-010+8f120133-1ba57af7/part-0.parquet",
+    "raw_preserved": "data/raw/xauusd_dukascopy_15m_mid_20250806_20260916.csv",
+    "research_eligibility": "BLOCKED_UNTIL_PROVENANCE_AND_FIELD_SEMANTICS_VERIFIED"
   }
 ]

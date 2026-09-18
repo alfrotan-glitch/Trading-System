@@ -45,17 +45,34 @@ The API boundary is intentionally diagnostic-only:
 
 ## B. Data observatory and provenance
 
-The inventory is consolidated to one canonical dataset row rather than
-counting duplicate raw/curated representations as independent evidence:
+Two canonical dataset rows are registered rather than counting duplicate
+raw/curated representations as independent evidence:
 
-- Version: `20260918-010-572728d9`
-- Instrument/timeframe: `XAUUSD` / `1H`
-- Rows/span: `500` bars / `20.83` days
-- Source/class: `SYNTHETIC:fixture:XAUUSD_1H_500.csv` / `SYNTHETIC`
-- OHLC quality checks: `12/12` passed for the fixture schema
-- Bid/ask, tick, measured spread, broker session, fill, latency, and real
-  volume semantics: `UNAVAILABLE` in this dataset
-- Research eligibility: `MECHANISM_VALIDATION_ONLY`; not claim-eligible
+- Version: `20260918-010+c83567cb-572728d9` (synthetic fixture)
+  - Instrument/timeframe: `XAUUSD` / `1H`
+  - Rows/span: `500` bars / `20.83` days
+  - Source/class: `SYNTHETIC:fixture:XAUUSD_1H_500.csv` / `SYNTHETIC`
+  - OHLC quality checks: `12/12` passed for the fixture schema
+  - Bid/ask, tick, measured spread, broker session, fill, latency, and real
+    volume semantics: `UNAVAILABLE` in this dataset
+  - Research eligibility: `MECHANISM_VALIDATION_ONLY`; not claim-eligible
+- Version: `20260918-010+8f120133-1ba57af7` (REAL history)
+  - Instrument/timeframe: `XAUUSD` / `15m`
+  - Rows/span: `26,038` bars / `407.00` days
+  - Source/class: `REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks`
+    / `REAL`
+  - OHLC quality checks: `12/12` passed (`qts data validate`)
+  - Bid/ask (continuous), tick, measured spread, broker session, fill, latency,
+    and real volume semantics: `UNAVAILABLE` in the canonical bars; a
+    supplementary 23-event bid/ask spread study exists but is not a gate input
+  - Research eligibility: REAL-claims adequacy gate passed on provenance,
+    depth, span, freshness, and event count; inventory field-semantics label
+    remains `BLOCKED_UNTIL_PROVENANCE_AND_FIELD_SEMANTICS_VERIFIED`
+  - Provenance record: `docs/data_provenance_xauusd_dukascopy.md`
+
+The `data_quality_summary.json` and `historical_depth.json` exports were
+generated before the REAL dataset existed and still describe only the synthetic
+fixture; they are snapshot-time derived exports, not current coverage.
 
 The following are derived exports and must not be treated as primary evidence:
 
@@ -87,14 +104,21 @@ Current evidence is explicitly blocked:
 - Edge validation: `BLOCKED_INSUFFICIENT_DATA`; synthetic provenance and
   500-bar/20.83-day depth/span are recorded as reasons. The cumulative ledger
   count is preserved for multiple-testing accounting and is not reset.
+- REAL-data impulse campaign:
+  `data/evidence/impulse_research_xauusd_dukascopy_15m.json` — `REAL_CLAIMS`
+  mode on `20260918-010+8f120133-1ba57af7`; conclusion `REGIME_DEPENDENT` /
+  `go_block BLOCK` with no promotion. R5 (tick/execution-cost data) remains
+  `FAIL` and non-blocking; declared round-trip cost is an assumption, not a
+  broker observation.
 - Null control, placebo, gross/net cost decomposition, regime-bound evidence,
   realized expectancy, and execution-reality evidence are not claimed when
   they were not executed or cannot be bound to this experiment.
 - Non-finite cost-stress values are explicit `MEASURED_INVALID` blocking
   results; they are never replaced with a favorable sentinel.
 
-The correct conclusion is `NO_TRADE` / `BLOCKED_INSUFFICIENT_DATA`, not an
-unsupported promotion.
+The correct conclusion remains `NO_TRADE` (`BLOCKED_INSUFFICIENT_DATA` for the
+fixture campaign; `REGIME_DEPENDENT` / `BLOCK` for the REAL-data impulse
+campaign), not an unsupported promotion.
 
 ## D. Forward observation and comparison
 

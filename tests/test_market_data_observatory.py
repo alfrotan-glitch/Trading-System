@@ -51,8 +51,15 @@ def test_inventory_26_fields():
     for entry in inv:
         for f in required_fields:
             assert f in entry, f"missing field {f} in inventory {entry.get('checksum')}"
-        # spread must be labeled SYNTHETIC
-        assert "SYNTHETIC" in entry["spread_availability"]
+        # A spread may only be presented as a value when the dataset carries a
+        # measured bid field; otherwise it must be labelled SYNTHETIC or
+        # UNAVAILABLE — never silently replaced by high-low or zero.
+        spread = entry["spread_availability"]
+        if entry["bid_availability"]["status"] != "MEASURED":
+            if isinstance(spread, dict):
+                assert spread["status"] == "UNAVAILABLE", spread
+            else:
+                assert "SYNTHETIC" in spread or "UNAVAILABLE" in spread, spread
 
 
 def test_data_source_catalog_5_providers():
@@ -393,11 +400,18 @@ def test_no_fake_data_rule_distinguish():
     p = Path("data/evidence/data_inventory.json")
     inv = json.loads(p.read_text(encoding="utf-8"))
     for entry in inv:
-        assert "SYNTHETIC" in entry["spread_availability"] or not entry["bid_availability"]
-        # tick vs real volume must be distinguished
-        assert (
-            "SYNTHETIC" in entry["tick_volume_vs_real_volume"] or "tick" in entry["tick_volume_vs_real_volume"].lower()
-        )
+        spread = entry["spread_availability"]
+        if isinstance(spread, dict):
+            # No fabricated spread: a bar dataset without bid/ask must record the
+            # field as UNAVAILABLE with no value, never as a measurement.
+            assert spread["status"] == "UNAVAILABLE", spread
+            assert spread["value"] is None, spread
+        else:
+            # The synthetic fixture's spread must stay explicitly labelled.
+            assert "SYNTHETIC" in spread, spread
+        # tick vs real volume must be distinguished (or explicitly unavailable)
+        tick_vs_real = entry["tick_volume_vs_real_volume"]
+        assert "SYNTHETIC" in tick_vs_real or "tick" in tick_vs_real.lower() or "UNAVAILABLE" in tick_vs_real
     # Execution reality must have source field
     from datetime import UTC, datetime
     from decimal import Decimal
@@ -427,12 +441,35 @@ def test_no_fake_data_rule_distinguish():
     assert synth.source == "SYNTHETIC"
 
 
-def test_research_quality_gate_blocks_if_insufficient():
+def test_research_quality_gate_blocks_if_insufficient(tmp_path):
+    # The synthetic fixture is the standing insufficient-data case: 500 bars is
+    # below the 5,000-bar / 180-day requirements, so the readiness gate must
+    # block real-market claims for it — independently of any other dataset that
+    # happens to pass the same gate.
+    import shutil
+
+    from qts.data.bootstrap import bootstrap_data
+    from qts.data.store import SqliteParquetDataStore
+    from qts.research.readiness import assess_dataset
+
+    root = tmp_path / "data"
+    (root / "fixtures").mkdir(parents=True)
+    fixture = root / "fixtures" / "XAUUSD_1H_500.csv"
+    shutil.copy(Path("data/fixtures/XAUUSD_1H_500.csv"), fixture)
+    store = SqliteParquetDataStore(root=root)
+    boot = bootstrap_data(root=root, fixture=fixture, store=store)
+    readiness = assess_dataset(store, boot.version)
+    assert not readiness.ready_for_claims
+    assert readiness.status == "BLOCKED_INSUFFICIENT_DATA"
+    assert any("INSUFFICIENT_DEPTH" in reason for reason in readiness.reasons)
+    assert any("INSUFFICIENT_SPAN" in reason for reason in readiness.reasons)
+
     p_inv = Path("data/evidence/data_inventory.json")
     inv = json.loads(p_inv.read_text(encoding="utf-8"))
-    # Only 500 rows XAUUSD 1H available, requirement 5000
-    max_rows = max(e["row_count"] for e in inv)
-    assert max_rows < 5000
+    # Synthetic datasets must never be published as claim-eligible.
+    for entry in inv:
+        if entry["data_class"] == "SYNTHETIC":
+            assert "MECHANISM_VALIDATION_ONLY" in str(entry["research_eligibility"])
     # Diversity single symbol
     symbols = {e["instrument"] for e in inv}
     assert len(symbols) == 1

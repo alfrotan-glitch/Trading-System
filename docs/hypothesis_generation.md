@@ -10,7 +10,7 @@ Every `HypothesisSpec` stores:
 - WHAT MARKET MECHANISM IT ASSUMES: e.g., "volatility clustering — high vol begets high vol"
 - WHAT OBSERVATION WOULD SUPPORT IT: "OOS Sharpe >0.3, WFE >0.3, DSR>0.95, cost BE >20bps, regime stable"
 - WHAT OBSERVATION WOULD FALSIFY IT: "OOS ≤0, WFE<0.3, DSR<0.5, placebo equivalent, BE <5bps"
-- WHAT DATA IS REQUIRED: "immutable provenance-qualified XAUUSD 1H history with enough depth/span, measured costs, and expansion needed for generality; the current 500-bar fixture is synthetic and mechanism-only"
+- WHAT DATA IS REQUIRED: "immutable provenance-qualified XAUUSD 1H history with enough depth/span, measured costs, and expansion needed for generality; the 500-bar fixture is synthetic and mechanism-only, and the registered REAL 15m dataset (407 days) is still below the 2-year depth/span target"
 - WHAT COST/EXECUTION CONDITIONS MATTER: "spread 3bps × multiplier, slippage, latency 100ms, next-bar-open"
 - WHAT REGIMES IT SHOULD WORK IN: "trend for persistence, range for mean-reversion"
 - WHAT CONDITIONS SHOULD MAKE IT STOP WORKING: "high_vol opposite regime should degrade"

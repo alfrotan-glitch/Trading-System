@@ -24,12 +24,20 @@ verdict. Missing attack evidence is a blocker, not a pass.
 
 ## Current negative evidence
 
-The current canonical dataset is one 500-bar synthetic XAUUSD 1H fixture. It
-is useful for mechanism checks but not for real-market claims. Current campaign
-and edge artifacts are `BLOCKED_INSUFFICIENT_DATA`; null/placebo/regime,
-gross/net cost, and execution metrics are unavailable or not bound to the
-current experiment. No candidate is promoted and the system remains
-`NO_TRADE`.
+The canonical inventory now contains a REAL, claim-eligible dataset:
+`20260918-010+8f120133-1ba57af7` (XAUUSD 15m, 26,038 Dukascopy tick-derived
+mid OHLC bars, 407.00 days, 12/12 quality checks pass, readiness `READY`;
+provenance record `docs/data_provenance_xauusd_dukascopy.md`). The 500-bar
+synthetic XAUUSD 1H fixture remains registered, labelled `SYNTHETIC`, and is
+mechanism-validation-only.
+
+The pre-registered impulse study has been re-run against the REAL dataset in
+`REAL_CLAIMS` mode. The measured conclusion is `REGIME_DEPENDENT` /
+`go_block = BLOCK`: no candidate is promoted and the system remains
+`NO_TRADE`. R5 (continuous bid/ask/tick execution-cost history) remains
+`FAIL`, so execution-realism attacks are still unavailable rather than passed;
+campaign/edge artifacts generated from the synthetic fixture remain
+`BLOCKED_INSUFFICIENT_DATA`.
 
 The paper/shadow comparison has event alignment evidence for its available
 records, but DEMO execution is disabled and the canonical observation store
@@ -43,6 +51,9 @@ stored in the cumulative research/experiment ledger. Similar failed searches
 remain discoverable through research memory. Trial count is never reset to
 make a candidate look more significant.
 
-**Adversarial conclusion:** acquire claim-eligible history, preregister the
-hypothesis and attacks, lock the validation partition, then rerun all controls
-from the same canonical dataset. Until then, keep `NO_TRADE`.
+**Adversarial conclusion:** the acquired REAL dataset was attacked by the
+existing controls (chronological splits, locked partition untouched, Holm
+correction, deflated Sharpe against the full ledger, cost multiplication) and
+survived only as `REGIME_DEPENDENT` with a `BLOCK`. Execution-realism attacks
+remain unavailable until continuous bid/ask/tick history is acquired and
+bound to the same lineage. Keep `NO_TRADE`.

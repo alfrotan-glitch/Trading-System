@@ -10,6 +10,17 @@ This report records the current engineering contract. It does not claim that
 the sandbox has produced real broker observations or a validated trading edge.
 The release-level operator summary is `docs/release_readiness_report.md`.
 
+> **Current status (2026-09-18, post-snapshot):** this document is a historical
+> snapshot of the 2026-09-17 checkout. Since then a REAL, provenance-qualified
+> XAUUSD 15m dataset has been registered (`20260918-010+8f120133-1ba57af7`,
+> 26,038 Dukascopy tick-derived mid OHLC bars, 407.00 days, 12/12 quality
+> checks, readiness `READY`; see `docs/data_provenance_xauusd_dukascopy.md`),
+> and the pre-registered impulse study was re-run on it in `REAL_CLAIMS` mode
+> with the measured conclusion `REGIME_DEPENDENT` → `BLOCK` and no promotion
+> (`docs/research/impulse_continuation_evidence.md`). Where this snapshot says
+> "one synthetic fixture", read it as snapshot-time wording; the synthetic
+> fixture itself is unchanged and remains `MECHANISM_VALIDATION_ONLY`.
+
 ## 1. Canonical authorities
 
 | Concern | Canonical implementation | Boundary |
@@ -81,7 +92,8 @@ not claim-bearing.
 
 ## 5. Research/evidence corrections
 
-The canonical store currently contains one synthetic fixture dataset:
+At the time of this snapshot the canonical store contained one synthetic
+fixture dataset:
 `XAUUSD_1H_500`, 500 bars, 20.83 days. The quality checks pass for the fixture
 schema, but readiness blocks claims because provenance is `SYNTHETIC`, depth is
 below 5,000 bars, and span is below 180 days. Inventory/source-audit/quality/
@@ -109,9 +121,10 @@ outputs as explicit `MEASURED_INVALID` blocking checks. It never replaces
 - Node UI logic tests: 25 passed.
 - Direct authority/API checks: full-gate enable refuses; API enable returns
   `409`; state/config remain disabled.
-- Evidence inspection: one canonical synthetic dataset, zero real forward
-  observations, comparison execution metrics unavailable, edge/campaign
-  conclusions blocked.
+- Evidence inspection at snapshot time: one canonical synthetic dataset, zero
+  real forward observations, comparison execution metrics unavailable,
+  edge/campaign conclusions blocked. (Post-snapshot: a REAL Dukascopy-derived
+  XAUUSD 15m dataset is now registered; see the status note at the top.)
 
 ## 7. Remaining limitations
 

@@ -61,11 +61,15 @@ connectivity, broker metadata, fills, or live readiness.
 
 ## Research boundary
 
-Current canonical data is one 500-bar synthetic XAUUSD 1H fixture. Readiness
-blocks claim-grade work on provenance, depth, and span. Campaign and edge
-artifacts conclude `BLOCKED_INSUFFICIENT_DATA`; blocked/rejected trials remain
-in the cumulative ledger. Non-finite stress values are explicit invalid
-blocking measurements. No candidate is promoted.
+Current canonical data is one 500-bar synthetic XAUUSD 1H fixture plus a REAL
+provenance-qualified Dukascopy tick-derived XAUUSD 15m dataset (26,038 bars,
+407 days). The REAL dataset passes the existing quality, readiness and
+bar-research adequacy gates, but it stays below the 2-year regime target and
+carries no continuous bid/ask/tick spread fields (R5 `FAIL`, non-blocking).
+Campaign and edge artifacts conclude `BLOCKED_INSUFFICIENT_DATA`, and the
+REAL-data impulse campaign concludes `REGIME_DEPENDENT` / `go_block BLOCK`;
+blocked/rejected trials remain in the cumulative ledger. Non-finite stress
+values are explicit invalid blocking measurements. No candidate is promoted.
 
 ## Review requirements
 

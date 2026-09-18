@@ -2,6 +2,11 @@
 
 Generated: 2026-09-18T10:20:45.242523+00:00  ·  Mode: **MECHANISM_VALIDATION**
 
+> Historical (synthetic) baseline. A REAL-data re-run of the same pre-registered
+> study now exists — see `docs/research/impulse_continuation_evidence.md` and
+> `docs/research/impulse_continuation_report_xauusd_dukascopy_15m.md`. This
+> fixture report is retained as the mechanism-validation record.
+
 > Dataset failed the pre-registered data-adequacy gate. All numbers below describe the RESEARCH MECHANISM operating on this dataset, NOT real-market behavior. No real-market claim is permitted and nothing was promoted.
 
 ## Hypothesis

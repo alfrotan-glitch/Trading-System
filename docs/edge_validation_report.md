@@ -4,6 +4,13 @@
 **Data version:** 20260918-010-572728d9
 **Code version:** 0.1.0+64fab8dae9dc
 
+> Snapshot note: this report was generated for the synthetic fixture above and
+> is retained as a point-in-time artifact. The current canonical inventory also
+> contains the REAL 15m dataset `20260918-010+8f120133-1ba57af7`; its
+> pre-registered impulse run is recorded in
+> `docs/research/impulse_continuation_evidence.md`. The blocked conclusion below
+> is not superseded by that run.
+
 ## 1. Dataset integrity
 - Manifest: 20260918-010-572728d9 XAUUSD 1H rows 500 checksum sha256:572728d92ebb5c2a timezone UTC preprocessing 1.0 source SYNTHETIC:fixture:XAUUSD_1H_500.csv
 - Quality passed: True checks: monotonic_time:PASS, tz_aware:PASS, no_future:PASS, ohlc_invariants:PASS, positive_prices:PASS, abnormal_spreads:PASS, no_duplicates:PASS, single_symbol:PASS, no_missing_bars:PASS, session_boundaries:PASS, no_broker_artifacts:PASS, volume_non_negative:PASS

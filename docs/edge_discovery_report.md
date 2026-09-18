@@ -34,7 +34,10 @@ for a market claim.
 
 ## B. Canonical dataset and readiness
 
-The canonical inventory contains one dataset version:
+At the time of this snapshot the canonical inventory contained one dataset
+version (a REAL Dukascopy-derived XAUUSD 15m dataset,
+`20260918-010+8f120133-1ba57af7`, is now also registered — see
+`docs/data_provenance_xauusd_dukascopy.md`):
 
 - `XAUUSD_1H_500`, version `20260918-010-572728d9`;
 - 500 UTC OHLC bars spanning approximately 20.83 days;
