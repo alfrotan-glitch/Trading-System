@@ -1,7 +1,8 @@
 # FO-R1 — current observation-boundary status
 
-**Status:** current as of commit `cd7948b` + this hardening change on
-`arena/01a0b483-trading-system`. This page is the canonical statement of what the
+**Status:** current as of the FO-R1 hardening change delivered in commit
+`2050541` on `arena/01a0b483-trading-system` (which itself closes the boundary on
+top of `cd7948b`); this page is maintained in the same change set. This page is the canonical statement of what the
 observe-only boundary can and cannot do **today**. It deliberately does NOT
 rewrite the historical design/baseline documents:
 `docs/forward_observation_research_plan.md` remains the FO-R1 design of record and its
@@ -142,3 +143,28 @@ python -m qts evidence verify-research <snapshot.json>
 Transfer only the exported artifacts. `*.session_evidence.json` and
 `*.research_snapshot.json` are git-ignored: raw observation data must not enter
 project history.
+
+## 8. Verification status of this change set
+
+Run on the delivered commit (`2050541`), Python 3.11 in `.venv`, Linux sandbox.
+The repo's CI definition (`docs/ci/ci.yml`) is executed manually — there is no
+`.github/workflows` in this repository.
+
+| Step | Result |
+|---|---|
+| `pytest tests -q --cov=qts --cov-fail-under=60` | coverage 68.32 % ≥ 60 % (pass) |
+| `pytest tests` | 785 passed, 21 skipped, 2 warnings |
+| `pytest tests/integration -q --run-integration` | 18 passed |
+| new tests (`test_observation_attempt_journal.py`, `test_research_snapshot.py`, `test_observe_manifest_scaling.py`) | 54 passed |
+| focused observation/evidence/adversarial batch | 329 passed |
+| pre-fix proof (sources reverted, new tests kept) | 28 failed, 3 passed, 23 errors |
+| `ruff check src tests` | clean |
+| `mypy src/qts --ignore-missing-imports` | clean (one pre-existing error at `cd7948b` fixed) |
+| `python -m compileall -q src tests` | clean |
+| `bandit -r src -q` | **pre-existing failure**: 2 LOW `B311` in `research/null_control.py` and `research/placebo.py` (unchanged by this work; CI's `bandit` step therefore fails on this repo before and after) |
+| `ruff format --check src tests` | **pre-existing failure**: drift in 14 files; this change removes `demo_collector.py` from that list and adds none |
+| `node --test tests/ui/js/*.test.mjs` | 50 pass, 6 fail — all 6 are the same `tests/ui/js/shell.test.mjs` timeouts ("timeout waiting for mode fact") present identically at `cd7948b`, i.e. pre-existing and environmental |
+
+No store, artifact or manifest produced by a real observation session is
+committed; `data/evidence/*.research_snapshot.json` and
+`*.session_evidence.json` are git-ignored.
