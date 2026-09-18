@@ -1,182 +1,283 @@
 {
-  "campaign_id": "C-99305d7d",
+  "campaign_id": "C-39522b34",
   "config": {
-    "name": "campaign-volatility",
+    "name": "campaign-trend",
     "symbol": "XAUUSD",
     "timeframe": "1H",
-    "data_version": "20260916-010-572728d9",
-    "family": "volatility",
+    "data_version": "20260918-010-572728d9",
+    "family": "trend",
     "param_space": {},
-    "max_trials": 6,
+    "max_trials": 2,
     "max_runtime_s": 60.0,
-    "max_param_combinations": 6,
+    "max_param_combinations": 2,
     "seed": 42,
-    "hypothesis_template": "Test {family} with {params}"
+    "hypothesis_template": "Test {family} with {params}",
+    "minimum_bars": 5000,
+    "minimum_span_days": 180.0,
+    "require_claim_eligible_data": true
   },
-  "total_trials": 6,
+  "total_trials": 2,
   "passed": 0,
-  "failed": 6,
+  "failed": 2,
   "discarded": 0,
   "trials": [
     {
-      "campaign_id": "C-99305d7d",
-      "trial_id": "T-afa454",
-      "strategy_id": "volatility_fbc3f3",
+      "campaign_id": "C-39522b34",
+      "trial_id": "T-39522b34-0000",
+      "strategy_id": "trend_39522b34_0000",
       "params": {
-        "atr_period": 7,
-        "multiplier": 1.0
+        "fast": 5,
+        "slow": 20,
+        "ma_type": "sma"
       },
       "passed": false,
-      "sharpe_oos": 3.128862793061355,
-      "sharpe_is": 3.128862793061355,
-      "reasons": [],
-      "created_at": "2026-09-16 14:05:16.465629+00:00"
+      "sharpe_oos": null,
+      "sharpe_is": null,
+      "reasons": [
+        "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+        "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+        "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+      ],
+      "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+      "data_readiness": {
+        "data_version": "20260918-010-572728d9",
+        "status": "BLOCKED_INSUFFICIENT_DATA",
+        "data_class": "SYNTHETIC",
+        "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+        "instrument": "XAUUSD",
+        "timeframe": "1H",
+        "rows": 500,
+        "span_days": 20.833333333333332,
+        "quality_passed": true,
+        "ready_for_claims": false,
+        "mechanism_validation_only": true,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "requirements": {
+          "min_bars": 5000,
+          "min_span_days": 180.0,
+          "allowed_claim_classes": [
+            "REAL",
+            "HISTORICAL",
+            "BROKER-DERIVED"
+          ]
+        }
+      },
+      "experiment_id": "E-b99a32e7",
+      "configuration_hash": "7f62269208f6b0c3",
+      "dataset_provenance": "SYNTHETIC",
+      "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+      "code_version": "0.1.0+a885f65d252e",
+      "evidence": {
+        "status": "BLOCKED",
+        "reason": "claim-eligible execution was not attempted"
+      },
+      "created_at": "2026-09-18 08:12:33.331672+00:00"
     },
     {
-      "campaign_id": "C-99305d7d",
-      "trial_id": "T-5b210f",
-      "strategy_id": "volatility_00d7e0",
+      "campaign_id": "C-39522b34",
+      "trial_id": "T-39522b34-0001",
+      "strategy_id": "trend_39522b34_0001",
       "params": {
-        "atr_period": 7,
-        "multiplier": 1.5
+        "fast": 5,
+        "slow": 30,
+        "ma_type": "sma"
       },
       "passed": false,
-      "sharpe_oos": -3.9862063678731654,
-      "sharpe_is": -3.9862063678731654,
-      "reasons": [],
-      "created_at": "2026-09-16 14:05:17.216822+00:00"
-    },
-    {
-      "campaign_id": "C-99305d7d",
-      "trial_id": "T-f08a7a",
-      "strategy_id": "volatility_deaa86",
-      "params": {
-        "atr_period": 7,
-        "multiplier": 2.0
+      "sharpe_oos": null,
+      "sharpe_is": null,
+      "reasons": [
+        "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+        "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+        "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+      ],
+      "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+      "data_readiness": {
+        "data_version": "20260918-010-572728d9",
+        "status": "BLOCKED_INSUFFICIENT_DATA",
+        "data_class": "SYNTHETIC",
+        "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+        "instrument": "XAUUSD",
+        "timeframe": "1H",
+        "rows": 500,
+        "span_days": 20.833333333333332,
+        "quality_passed": true,
+        "ready_for_claims": false,
+        "mechanism_validation_only": true,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "requirements": {
+          "min_bars": 5000,
+          "min_span_days": 180.0,
+          "allowed_claim_classes": [
+            "REAL",
+            "HISTORICAL",
+            "BROKER-DERIVED"
+          ]
+        }
       },
-      "passed": false,
-      "sharpe_oos": 2.276802043178443,
-      "sharpe_is": 2.276802043178443,
-      "reasons": [],
-      "created_at": "2026-09-16 14:05:18.002798+00:00"
-    },
-    {
-      "campaign_id": "C-99305d7d",
-      "trial_id": "T-ced6dc",
-      "strategy_id": "volatility_f29f02",
-      "params": {
-        "atr_period": 14,
-        "multiplier": 1.0
+      "experiment_id": "E-c5e39bbb",
+      "configuration_hash": "62b2e169d38b8af5",
+      "dataset_provenance": "SYNTHETIC",
+      "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+      "code_version": "0.1.0+a885f65d252e",
+      "evidence": {
+        "status": "BLOCKED",
+        "reason": "claim-eligible execution was not attempted"
       },
-      "passed": false,
-      "sharpe_oos": -4.993521019370592,
-      "sharpe_is": -4.993521019370592,
-      "reasons": [],
-      "created_at": "2026-09-16 14:05:18.998036+00:00"
-    },
-    {
-      "campaign_id": "C-99305d7d",
-      "trial_id": "T-dc20cb",
-      "strategy_id": "volatility_ebc883",
-      "params": {
-        "atr_period": 14,
-        "multiplier": 1.5
-      },
-      "passed": false,
-      "sharpe_oos": 3.283980875660962,
-      "sharpe_is": 3.283980875660962,
-      "reasons": [],
-      "created_at": "2026-09-16 14:05:19.745356+00:00"
-    },
-    {
-      "campaign_id": "C-99305d7d",
-      "trial_id": "T-e102c4",
-      "strategy_id": "volatility_a2d598",
-      "params": {
-        "atr_period": 14,
-        "multiplier": 2.0
-      },
-      "passed": false,
-      "sharpe_oos": 3.3458059482037026,
-      "sharpe_is": 3.3458059482037026,
-      "reasons": [],
-      "created_at": "2026-09-16 14:05:20.508527+00:00"
+      "created_at": "2026-09-18 08:12:33.341817+00:00"
     }
   ],
   "ranked_for_inspection": [
     {
-      "campaign_id": "C-99305d7d",
-      "trial_id": "T-e102c4",
-      "strategy_id": "volatility_a2d598",
+      "campaign_id": "C-39522b34",
+      "trial_id": "T-39522b34-0000",
+      "strategy_id": "trend_39522b34_0000",
       "params": {
-        "atr_period": 14,
-        "multiplier": 2.0
+        "fast": 5,
+        "slow": 20,
+        "ma_type": "sma"
       },
       "passed": false,
-      "sharpe_oos": 3.3458059482037026,
-      "sharpe_is": 3.3458059482037026,
-      "reasons": [],
-      "created_at": "2026-09-16 14:05:20.508527+00:00"
+      "sharpe_oos": null,
+      "sharpe_is": null,
+      "reasons": [
+        "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+        "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+        "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+      ],
+      "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+      "data_readiness": {
+        "data_version": "20260918-010-572728d9",
+        "status": "BLOCKED_INSUFFICIENT_DATA",
+        "data_class": "SYNTHETIC",
+        "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+        "instrument": "XAUUSD",
+        "timeframe": "1H",
+        "rows": 500,
+        "span_days": 20.833333333333332,
+        "quality_passed": true,
+        "ready_for_claims": false,
+        "mechanism_validation_only": true,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "requirements": {
+          "min_bars": 5000,
+          "min_span_days": 180.0,
+          "allowed_claim_classes": [
+            "REAL",
+            "HISTORICAL",
+            "BROKER-DERIVED"
+          ]
+        }
+      },
+      "experiment_id": "E-b99a32e7",
+      "configuration_hash": "7f62269208f6b0c3",
+      "dataset_provenance": "SYNTHETIC",
+      "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+      "code_version": "0.1.0+a885f65d252e",
+      "evidence": {
+        "status": "BLOCKED",
+        "reason": "claim-eligible execution was not attempted"
+      },
+      "created_at": "2026-09-18 08:12:33.331672+00:00"
     },
     {
-      "campaign_id": "C-99305d7d",
-      "trial_id": "T-dc20cb",
-      "strategy_id": "volatility_ebc883",
+      "campaign_id": "C-39522b34",
+      "trial_id": "T-39522b34-0001",
+      "strategy_id": "trend_39522b34_0001",
       "params": {
-        "atr_period": 14,
-        "multiplier": 1.5
+        "fast": 5,
+        "slow": 30,
+        "ma_type": "sma"
       },
       "passed": false,
-      "sharpe_oos": 3.283980875660962,
-      "sharpe_is": 3.283980875660962,
-      "reasons": [],
-      "created_at": "2026-09-16 14:05:19.745356+00:00"
-    },
-    {
-      "campaign_id": "C-99305d7d",
-      "trial_id": "T-afa454",
-      "strategy_id": "volatility_fbc3f3",
-      "params": {
-        "atr_period": 7,
-        "multiplier": 1.0
+      "sharpe_oos": null,
+      "sharpe_is": null,
+      "reasons": [
+        "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+        "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+        "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+      ],
+      "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+      "data_readiness": {
+        "data_version": "20260918-010-572728d9",
+        "status": "BLOCKED_INSUFFICIENT_DATA",
+        "data_class": "SYNTHETIC",
+        "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+        "instrument": "XAUUSD",
+        "timeframe": "1H",
+        "rows": 500,
+        "span_days": 20.833333333333332,
+        "quality_passed": true,
+        "ready_for_claims": false,
+        "mechanism_validation_only": true,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "requirements": {
+          "min_bars": 5000,
+          "min_span_days": 180.0,
+          "allowed_claim_classes": [
+            "REAL",
+            "HISTORICAL",
+            "BROKER-DERIVED"
+          ]
+        }
       },
-      "passed": false,
-      "sharpe_oos": 3.128862793061355,
-      "sharpe_is": 3.128862793061355,
-      "reasons": [],
-      "created_at": "2026-09-16 14:05:16.465629+00:00"
-    },
-    {
-      "campaign_id": "C-99305d7d",
-      "trial_id": "T-f08a7a",
-      "strategy_id": "volatility_deaa86",
-      "params": {
-        "atr_period": 7,
-        "multiplier": 2.0
+      "experiment_id": "E-c5e39bbb",
+      "configuration_hash": "62b2e169d38b8af5",
+      "dataset_provenance": "SYNTHETIC",
+      "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+      "code_version": "0.1.0+a885f65d252e",
+      "evidence": {
+        "status": "BLOCKED",
+        "reason": "claim-eligible execution was not attempted"
       },
-      "passed": false,
-      "sharpe_oos": 2.276802043178443,
-      "sharpe_is": 2.276802043178443,
-      "reasons": [],
-      "created_at": "2026-09-16 14:05:18.002798+00:00"
-    },
-    {
-      "campaign_id": "C-99305d7d",
-      "trial_id": "T-5b210f",
-      "strategy_id": "volatility_00d7e0",
-      "params": {
-        "atr_period": 7,
-        "multiplier": 1.5
-      },
-      "passed": false,
-      "sharpe_oos": -3.9862063678731654,
-      "sharpe_is": -3.9862063678731654,
-      "reasons": [],
-      "created_at": "2026-09-16 14:05:17.216822+00:00"
+      "created_at": "2026-09-18 08:12:33.341817+00:00"
     }
   ],
-  "dsr_trial_count": 33,
-  "elapsed_s": 4.832343578338623,
+  "dsr_trial_count": 98,
+  "elapsed_s": 0.11644864082336426,
   "status": "COMPLETED",
-  "notes": "never auto-promote solely because high return \u2014 human inspection required via scorecard and promotion ledger"
+  "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+  "data_readiness": {
+    "data_version": "20260918-010-572728d9",
+    "status": "BLOCKED_INSUFFICIENT_DATA",
+    "data_class": "SYNTHETIC",
+    "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+    "instrument": "XAUUSD",
+    "timeframe": "1H",
+    "rows": 500,
+    "span_days": 20.833333333333332,
+    "quality_passed": true,
+    "ready_for_claims": false,
+    "mechanism_validation_only": true,
+    "reasons": [
+      "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+      "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+      "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+    ],
+    "requirements": {
+      "min_bars": 5000,
+      "min_span_days": 180.0,
+      "allowed_claim_classes": [
+        "REAL",
+        "HISTORICAL",
+        "BROKER-DERIVED"
+      ]
+    }
+  },
+  "notes": "A completed campaign is not a positive result. Claim-ineligible data produces blocked trials; no trial is auto-promoted."
 }

@@ -59,7 +59,7 @@ Routes are hash-based and deep-linkable. Sidebar has a local filter input. Ctrl+
 
 **Truth is visual design:** States `MEASURED`, `UNAVAILABLE`, `INSUFFICIENT EVIDENCE`, `BLOCKED`, `DEGRADED`, `READY`, `OBSERVING`, `LOCKED` are first-class. Pipeline HEALTHY ≠ quote freshness. `DISABLED` authority + passing readiness ≠ permission.
 
-**Safety understandable:** DEMO permission and readiness are separate. `DISABLED` vs `CONFLICT · INSPECT` vs `PERMITTED BY AUTHORITY` (only when mode DEMO_EXECUTION and authority ENABLED). LIVE shows `LOCKED` vs `ELIGIBLE · STILL GATED` vs `UNAVAILABLE`, never enabled. Enable controls disabled while locked.
+**Safety understandable:** DEMO readiness permits observation only; DEMO_EXECUTION is always `DISABLED BY POLICY` and has no enable control. LIVE shows `LOCKED` vs `ELIGIBLE · STILL GATED` vs `UNAVAILABLE`, never enabled. DEMO and LIVE remain unmistakable.
 
 **Navigation minimal cost:** 8 groups, searchable sidebar, palette with fuzzy scoring, shallow hierarchy, `aria-current=page`, skip link, workspace preferences.
 
@@ -77,7 +77,7 @@ Enforced by tests:
 
 1. `fmtMetric` only formats when `MEASURED`.
 2. `statusInfo` exact match — `ENABLED_BUT_BLOCKED` never healthy; `DISCONNECTED` never connected.
-3. `modeInfo` — DEVELOPMENT/PAPER/SHADOW cannot submit; DEMO_FORWARD is observation-only; DEMO_EXECUTION gated; LIVE gated and locked.
+3. `modeInfo` — DEVELOPMENT/PAPER/SHADOW cannot submit; DEMO_FORWARD is observation-only; DEMO_EXECUTION is disabled by policy; LIVE is gated and locked.
 4. `operationalState` — OBSERVING requires `state=OBSERVING` + `thread_alive=true` + current source; stale/failed authority → `UNAVAILABLE`; conflicting mode/permission → `CONFLICT · INSPECT`.
 5. Failure retains last receipt time; notifications never freshen health; malformed success does not replace state.
 6. GET coalesces, POST never coalesces; stopped poll cannot resurrect; hidden polls do not fetch.

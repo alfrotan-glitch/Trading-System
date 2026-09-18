@@ -30,8 +30,10 @@ class Manifest(BaseModel):
     rows: int
     checksum: str
     source_file: str | None = None
-    # Phase 1 extended fields — with defaults for backward compat
+    # Provenance is a label plus its canonical class.  Older manifests may
+    # lack the class; readers must then remain conservative.
     source: str = "synthetic_or_csv"
+    provenance_class: str = "UNVERIFIED"
     ingestion_timestamp: datetime | None = None
     preprocessing_version: str = "1.0"
     timezone: str = "UTC"
@@ -182,6 +184,9 @@ class SqliteParquetDataStore:
                 }
                 # session boundaries: count weekend gaps (market closures)
                 session_stats = {"timezone": "UTC", "weekend_gaps": gap_count}
+        from qts.data.bootstrap import classify_source
+
+        source_label = source or source_file or "synthetic_or_csv"
         manifest = Manifest(
             version=version,
             created_at=datetime.now(UTC),
@@ -194,7 +199,8 @@ class SqliteParquetDataStore:
             rows=len(bars),
             checksum=checksum,
             source_file=source_file,
-            source=source or source_file or "synthetic_or_csv",
+            source=source_label,
+            provenance_class=classify_source(source_label),
             ingestion_timestamp=datetime.now(UTC),
             preprocessing_version="1.0",
             timezone="UTC",
@@ -276,9 +282,21 @@ class SqliteParquetDataStore:
             if not row:
                 f = self.manifests_dir / f"manifest_{version}.json"
                 if f.exists():
-                    return Manifest.model_validate_json(f.read_text(encoding="utf-8"))
-                return None
-            return Manifest.model_validate_json(row[0])
+                    manifest = Manifest.model_validate_json(f.read_text(encoding="utf-8"))
+                else:
+                    return None
+            else:
+                manifest = Manifest.model_validate_json(row[0])
+        # Migrate the interpretation of old rows in memory only. A known
+        # source label receives its deterministic class; ambiguous provenance
+        # remains UNVERIFIED and is never upgraded to claim-eligible evidence.
+        if manifest.provenance_class == "UNVERIFIED" and manifest.source:
+            from qts.data.bootstrap import classify_source
+
+            inferred = classify_source(manifest.source)
+            if inferred != "UNVERIFIED":
+                manifest.provenance_class = inferred
+        return manifest
 
     def latest_version(self, instrument: Instrument, timeframe: str) -> str | None:
         with db_connect(self.db_path) as con:

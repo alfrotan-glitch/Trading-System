@@ -30,11 +30,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from qts.backtest.engine import BacktestEngine
+from qts.data.bootstrap import classify_source
 from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
 from qts.observability.audit import AuditLog
 from qts.research.agent import AdversarialAgent, ResearchAgent
 from qts.research.experiment import Experiment, ExperimentStore
+from qts.research.readiness import ResearchDataRequirements, assess_bars
 from qts.validation.pipeline import ValidatorPipeline
 
 logger = logging.getLogger(__name__)
@@ -85,57 +87,148 @@ class ResearchLoop:
         timeframe: str = "1H",
         seed: int = 42,
     ) -> LoopResult:
-        # create experiment
+        """Run one reproducible experiment or persist why it cannot run.
+
+        This method deliberately does not manufacture folds, nulls, controls,
+        or parameter stability from a baseline score.  Missing evidence is a
+        durable BLOCKED/REJECTED outcome in the experiment ledger.
+        """
+        hypothesis = self.store.get_hypothesis(hypothesis_id)
+        if self.engine is None:
+            self.engine = BacktestEngine(SqliteParquetDataStore())
+        data_store = getattr(self.engine, "data_store", None)
+        manifest = data_store.manifest(data_version) if data_store is not None else None
+        bars = (
+            data_store.read_bars(instrument, timeframe, version=data_version)
+            if data_store is not None and manifest is not None
+            else []
+        )
+        provenance = getattr(manifest, "provenance_class", None) or classify_source(
+            getattr(manifest, "source", "") if manifest else ""
+        )
+        manifest_hash = getattr(manifest, "checksum", "") if manifest else ""
+        from qts.observability.lineage import code_version
+
         exp = Experiment(
-            hypothesis_id=hypothesis_id, strategy_id=strategy_id, params=params, data_version=data_version, seed=seed
+            hypothesis_id=hypothesis_id,
+            strategy_id=strategy_id,
+            params=params,
+            data_version=data_version,
+            dataset_provenance=provenance,
+            dataset_manifest_hash=manifest_hash,
+            code_version=code_version(),
+            seed=seed,
+            split_definition={"method": "chronological_walk_forward", "timeframe": timeframe},
+            cost_assumptions={"status": "DECLARED_BY_ENGINE", "source": "BacktestEngine matching configuration"},
+            exclusions=["CPCV/null/placebo unavailable unless separately executed"],
         )
         self.store.put(exp)
 
-        if self.engine is None:
-            # need a default engine from DataStore
-            store_ds = SqliteParquetDataStore()
-            self.engine = BacktestEngine(store_ds)
-
-        # run backtest
-        try:
-            result = self.engine.run(
-                instrument, timeframe, data_version, strategy_id=strategy_id, strategy_params=params, seed=seed
+        reasons: list[str] = []
+        if hypothesis is None:
+            reasons.append("HYPOTHESIS_UNAVAILABLE: hypothesis was not found in the ledger")
+        elif hypothesis.missing_specification():
+            reasons.append("HYPOTHESIS_INCOMPLETE: " + ", ".join(hypothesis.missing_specification()))
+        readiness = assess_bars(
+            bars,
+            data_version=data_version,
+            source_label=getattr(manifest, "source", "") if manifest else None,
+            requirements=ResearchDataRequirements(),
+        )
+        if readiness.status != "READY":
+            reasons.extend(readiness.reasons)
+        if reasons:
+            body = {"readiness": readiness.as_dict(), "reasons": reasons}
+            self.store.complete(
+                exp.id,
+                results=body,
+                conclusion="BLOCKED_INSUFFICIENT_DATA",
+                failure_reason="; ".join(reasons),
             )
-        except Exception as e:  # noqa: BLE001
-            reason = f"backtest failed: {e}"
-            self.store.reject(exp.id, reason=reason)
-            return LoopResult(hypothesis_id, exp.id, False, [reason], "REJECTED")
+            return LoopResult(hypothesis_id, exp.id, False, reasons, "RESEARCH")
 
-        # validate (minimal: use full equity split + stress + perturbation via engine helpers)
-        # For loop brevity we run a reduced pipeline; full pipeline is in CLI `qts validate`
         try:
             import numpy as np
 
-            eq = np.array(result.equity_curve)
-            mid = len(eq) // 2
-            eq_is = eq[:mid] if len(eq) > 20 else eq
-            eq_oos = eq[mid:] if len(eq) > 20 else eq
-            # quick stress/perturb
-            stress = self.engine.run_stress(
-                instrument, timeframe, data_version, strategy_id, params, spreads=[1.0, 1.5]
+            result = self.engine.run(
+                instrument, timeframe, data_version, strategy_id=strategy_id, strategy_params=params, seed=seed
             )
-            perturbed = [
-                result.sharpe * (1 + p) for p in [-0.1, -0.05, 0, 0.05, 0.1]
-            ]  # placeholder; real loop should re-run
+            eq = np.asarray(result.equity_curve, dtype=float)
+            if len(eq) < 20:
+                raise ValueError("insufficient equity observations for an out-of-sample split")
+            mid = len(eq) // 2
+            eq_is = eq[:mid]
+            eq_oos = eq[mid:]
+
+            # Independent chronological reruns.  Each fold is measured from
+            # its own train and test interval; no copies of the full-run score.
+            train = max(100, len(bars) // 3)
+            test = max(20, len(bars) // 10)
+            folds: list[dict[str, float]] = []
+            for train_start, train_end, test_start, test_end in self.pipeline.walk_forward_splits(
+                len(bars), train=train, test=test, step=test
+            ):
+                train_result = self.engine.run(
+                    instrument,
+                    timeframe,
+                    data_version,
+                    strategy_id=strategy_id,
+                    strategy_params=params,
+                    seed=seed,
+                    start=bars[train_start].open_time,
+                    end=bars[train_end - 1].close_time,
+                )
+                test_result = self.engine.run(
+                    instrument,
+                    timeframe,
+                    data_version,
+                    strategy_id=strategy_id,
+                    strategy_params=params,
+                    seed=seed,
+                    start=bars[test_start].open_time,
+                    end=bars[test_end - 1].close_time,
+                )
+                folds.append({"is_sharpe": float(train_result.sharpe), "oos_sharpe": float(test_result.sharpe)})
+
+            # Rerun numeric parameter perturbations.  A non-numeric-only
+            # strategy has no stability evidence and is blocked by the pipeline.
+            perturbed: list[float] = []
+            for key, value in params.items():
+                if not isinstance(value, (int, float)) or key.startswith("_"):
+                    continue
+                for factor in (0.8, 0.9, 1.1, 1.2):
+                    variant = dict(params)
+                    variant[key] = type(value)(value * factor)
+                    variant_result = self.engine.run(
+                        instrument,
+                        timeframe,
+                        data_version,
+                        strategy_id=strategy_id,
+                        strategy_params=variant,
+                        seed=seed,
+                    )
+                    perturbed.append(float(variant_result.sharpe))
+
+            stress = self.engine.run_stress(
+                instrument, timeframe, data_version, strategy_id, params, spreads=[1.0, 1.5, 2.0]
+            )
+            # CPCV/null/placebo and gross-vs-net decomposition are not
+            # implemented by this loop.  The ValidatorPipeline marks those
+            # absent inputs NOT_IMPLEMENTED and blocks the result.
             report = self.pipeline.validate(
                 strategy_id=strategy_id,
                 data_version=data_version,
                 equity_is=eq_is,
                 equity_oos=eq_oos,
-                walk_forward_folds=[{"is_sharpe": result.sharpe, "oos_sharpe": result.sharpe}]
-                * 3,  # placeholder for demo
+                walk_forward_folds=folds,
                 num_trials=max(1, self.store.count_trials()),
-                cpcv_folds=None,  # will block; real loop should provide
+                cpcv_folds=[],
                 perturbed_sharpes=perturbed,
                 stress_results=stress,
+                timeframe=timeframe,
             )
-        except Exception as e:  # noqa: BLE001
-            reason = f"validation failed: {e}"
+        except Exception as e:  # noqa: BLE001 — failure is persisted, never hidden
+            reason = f"experiment execution/validation failed: {type(e).__name__}: {e}"
             self.store.reject(exp.id, reason=reason)
             return LoopResult(hypothesis_id, exp.id, False, [reason], "REJECTED")
 
@@ -149,7 +242,14 @@ class ResearchLoop:
             }
         )
         if report.passed and not findings:
-            self.store.lineage(hypothesis_id, exp.id, "promoted")
+            # This is a research candidate only.  No promotion to execution is
+            # performed here; any future claim still needs forward evidence.
+            self.store.complete(
+                exp.id,
+                results={"validation": report.metrics, "checks": [c.__dict__ for c in report.checks]},
+                conclusion="PROMISING_INSUFFICIENT",
+            )
+            self.store.lineage(hypothesis_id, exp.id, "candidate")
             return LoopResult(hypothesis_id, exp.id, True, [], "CANDIDATE")
         reason = "; ".join(findings) if findings else "; ".join(report.reasons) or "validation blocked"
         self.store.reject(exp.id, reason=reason, details={"report": report.metrics})

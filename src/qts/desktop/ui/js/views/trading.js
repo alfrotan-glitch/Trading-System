@@ -81,7 +81,7 @@ export async function renderDemo(root) {
   const head = page({
     crumb: "Trading", group: "Demo forward",
     title: "Demo Forward Control",
-    answer: h("b", null, `Readiness and execution permission are separate. A passing check never enables execution. DEMO_FORWARD is observation-only; orders require DEMO_EXECUTION plus explicit authority. Context ${ctx.symbol} syncs, LIVE remains LOCKED and unmistakable.`),
+    answer: h("b", null, `Readiness and execution permission are separate. A passing check only permits DEMO_FORWARD observation; DEMO_EXECUTION is disabled by product policy and has no order path. Context ${ctx.symbol} syncs, LIVE remains LOCKED and unmistakable.`),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources")],
     body: null,
   });
@@ -130,7 +130,7 @@ export async function renderDemo(root) {
     }
     activity.textContent = `${s.observation} · DEMO ${s.permission} · LIVE ${s.liveLabel} · ${getContext().symbol}`;
     if (s.permission === "DISABLED") {
-      next.textContent = "Review readiness blockers"; next.href = "#/trading/demo"; nextWhy.textContent = "Execution disabled. Observation does not require enabling it. Fix blockers only if you intend to request DEMO execution. What blocked, why, what missing, what next is below.";
+      next.textContent = "Review observation readiness"; next.href = "#/trading/demo"; nextWhy.textContent = "DEMO execution is disabled by policy. Observation does not require enabling execution; review only the blockers that prevent DEMO_FORWARD observation.";
     } else if (s.permission === "CONFLICT · INSPECT") {
       next.textContent = "Inspect permission conflict"; next.href = "#/system/diagnostics"; nextWhy.textContent = "Mode and authority disagree. Current permission cannot be established.";
     } else if (s.sources.health.current && String(s.health?.mt5).toLowerCase() !== "connected") {
@@ -167,9 +167,6 @@ export async function renderDemo(root) {
     renderFacts();
 
     const s = operationalState(store.data);
-    const enabled = Boolean(lastState.enabled);
-    const permitted = Boolean(lastState.execution_permitted) && lastState.state === "ENABLED" && s.mode.mode === "DEMO_EXECUTION";
-
     host.appendChild(h("section", { class: "operator-section" },
       h("h2", null, "Operating facts — per-source freshness, DEMO vs LIVE unmistakable"),
       h("div", { class: "tbl-wrap" },
@@ -179,14 +176,10 @@ export async function renderDemo(root) {
 
     // unmistakable DEMO vs LIVE banner
     host.appendChild(banner(
-      permitted ? "warn" : enabled ? "warn" : "info",
-      `DEMO EXECUTION: ${String(lastState.state ?? (enabled ? "ENABLED" : "DISABLED")).toUpperCase()}${permitted ? " — PERMITTED BY AUTHORITY (DEMO ONLY)" : s.permission === "CONFLICT · INSPECT" ? " — CONFLICT" : ""} — LIVE ${s.liveLabel}`,
-      permitted
-        ? `DEMO ONLY — orders permitted within demo limits, context ${getContext().symbol}. Readiness ${lastState.readiness_expired ? "EXPIRED — re-verify now" : `verified ${fmtDuration(lastState.readiness_age_s)} ago, re-verify every ${fmtDuration(lastState.reverify_ttl_s)}`}. LIVE remains LOCKED and requires independent governance.`
-        : enabled
-          ? `Enabled but not permitted — mode ${s.mode.mode} or additional gate blocks. ${lastState.reasons?.join("; ") || ""} LIVE is separate and LOCKED.`
-          : `Execution DISABLED until readiness passes and you explicitly acknowledge demo limits. Observation alone is always safe. LIVE is LOCKED — unmistakable via locked badge and disabled controls, never enabled from DEMO.`,
-      permitted || enabled ? "alert" : "lock",
+      "info",
+      "DEMO EXECUTION: DISABLED BY PRODUCT POLICY — LIVE LOCKED",
+      "No readiness result or UI action creates demo order permission. DEMO_FORWARD observation is the only broker path; LIVE remains separately locked.",
+      "lock",
     ));
 
     const checks = lastReadiness.checks ?? {};
@@ -198,8 +191,8 @@ export async function renderDemo(root) {
       actions: [h("button", { class: "btn sm", onclick: () => refresh(true) }, icon("refresh", 13), "Run readiness now")],
       body: h("div", { class: "stack" },
         allPass
-          ? banner("ok", "ALL CHECKS PASSED", "Passing readiness does not enable execution. Enabling still requires explicit confirmation and risk acknowledgment. Next: request demo execution enable if you intend to.", "check")
-          : banner("warn", "READINESS NOT PASSED — what blocked, why, what missing", (lastReadiness.blocked_reasons ?? []).join(" · ") || "Failed checks listed below. Fix what missing, re-run readiness, then request enable. Observation does not need this.", "alert"),
+          ? banner("ok", "OBSERVATION READINESS PASSED", "Passing readiness permits DEMO_FORWARD observation only. DEMO_EXECUTION remains disabled by product policy; no order permission is created.", "check")
+          : banner("warn", "READINESS NOT PASSED — what blocked, why, what missing", (lastReadiness.blocked_reasons ?? []).join(" · ") || "Failed checks listed below. Fix what is missing and re-run readiness before starting DEMO_FORWARD observation. Observation remains order-free.", "alert"),
         checkGrid(checks, lastReadiness.details ?? {}),
         h("details", null, h("summary", null, "Raw readiness report / technical evidence"), tech(lastReadiness, "Raw readiness")),
       ),
@@ -220,17 +213,11 @@ export async function renderDemo(root) {
           h("div", { class: "meta" }, "A DEMO terminal must be configured; without one this honestly reports failure instead of pretending. Context syncs, permission does not."),
         ),
       }),
-      card({ title: "Demo execution — gated, DEMO vs LIVE unmistakable", sub: "requires readiness + explicit acknowledgment + DEMO_EXECUTION mode — LIVE never auto-enabled", icon: "lock", body:
+      card({ title: "Demo execution — disabled, DEMO vs LIVE unmistakable", sub: "DEMO_EXECUTION is disabled by product policy; readiness permits OBSERVE_ONLY only — LIVE remains locked", icon: "lock", body:
         h("div", { class: "stack" },
           h("p", { class: "text-dim small" }, `Authority reports ${s.permission}. Mode ${s.mode.mode} — ${s.mode.blurb} — context ${getContext().symbol}. DEMO is DEMO, LIVE is LOCKED.`),
-          enabled
-            ? h("div", { class: "row" },
-                h("button", { class: "btn danger", disabled: acting, onclick: disableDemo }, icon("stop", 14), "Disable demo execution"),
-                h("span", { class: "meta" }, `decided ${fmtAge(lastState.decided_at)}`),
-              )
-            : h("button", { class: "btn primary", disabled: acting || !allPass, onclick: enableDemo }, icon("lock", 14), "Request demo execution enable"),
-          !allPass && !enabled ? h("p", { class: "text-dim small" }, "Enable disabled while readiness fails. What blocked: see failing checks above. Fix missing, re-run, then request.") : null,
-          h("div", { class: "meta" }, "Enable refused (409) with full blocker list unless FRESH readiness passes in same request. State durable — restart never silently changes it. LIVE remains LOCKED."),
+          h("div", { class: "banner info" }, "DEMO_EXECUTION is disabled by product policy. No readiness result, request payload, or UI action can create demo order permission. DEMO_FORWARD observation remains the only broker path; LIVE remains LOCKED."),
+          h("div", { class: "meta" }, "The authority and execution boundary both refuse DEMO_EXECUTION. Readiness evidence is retained for observation diagnostics only."),
           h("details", null, h("summary", null, "Why DEMO is not an ordinary switch / evidence — summary → detail"),
             h("ul", { class: "reason-list" },
               [`Authority state: ${lastState.state}`, `Execution permitted: ${String(lastState.execution_permitted)}`, `Mode: ${s.mode.mode}`, `LIVE: ${s.liveLabel} — unmistakable`, `Context: ${getContext().symbol} — presentation only`, ...(lastState.reasons || []).map((r) => `Permission: ${r}`), ...(lastReadiness.blocked_reasons || []).map((r) => `Readiness: ${r}`)].map((x) => h("li", null, x))
@@ -242,7 +229,7 @@ export async function renderDemo(root) {
 
     const lim = lastSafety?.demo_limits ?? {};
     host.appendChild(card({
-      title: "Demo hard limits — independent conservative caps", sub: `config ${lim.config_hash ?? "—"} — what limits, why`, icon: "shield",
+      title: "Demo safety metadata — non-authorizing caps", sub: `config ${lim.config_hash ?? "—"} — descriptive only; policy still disables execution`, icon: "shield",
       actions: [h("span", { class: "prov demo" }, "DEMO LIMITS")],
       body: h("div", { class: "stat-grid" },
         stat({ label: "Max volume / order", value: `${fmtNum(lim.max_volume_per_order)} lots`, icon: "layers" }),
@@ -275,57 +262,6 @@ export async function renderDemo(root) {
       }));
     }
     host.appendChild(h("details", null, h("summary", null, "Raw authority snapshots / technical evidence"), tech({ readiness: lastReadiness, state: lastState, safety: lastSafety, config: lastConfig, context: getContext() }, "Raw authority")));
-  }
-
-  async function enableDemo() {
-    const ok = await confirmModal({
-      title: "Enable demo execution — DEMO ONLY, LIVE remains LOCKED",
-      danger: false,
-      body: h("div", { class: "stack" },
-        h("p", { class: "text-dim" }, "This asks the authoritative gate to permit REAL demo orders on the connected DEMO account. The gate re-verifies all readiness checks in this same request and refuses with the full blocker list if anything fails. LIVE remains LOCKED and unmistakable."),
-        h("p", { class: "meta" }, `Demo execution is capped by independent conservative limits and labeled DEMO. It never makes the strategy live-eligible. Context ${getContext().symbol} is presentation only.`),
-      ),
-      acks: [
-        "confirmed — I explicitly request demo execution enablement now, DEMO ONLY.",
-        "risk_ack — I acknowledge the hard demo limits (volume, exposure, rate, daily loss, spread, kill switch) and that I will not bypass gates. LIVE remains LOCKED.",
-      ],
-      confirmLabel: "Request enable — DEMO ONLY",
-    });
-    if (!ok) return;
-    acting = true;
-    try {
-      const r = await api.post("/api/demo/enable", { confirmed: true, risk_ack: true });
-      toast("ok", "Demo execution ENABLED — DEMO ONLY", `Authority state: ${r.state} — LIVE still LOCKED`);
-      await refresh(true);
-    } catch (e) {
-      if (e.status === 409 && e.body) {
-        toast("err", "Enable refused by the gate", `${(e.body.reasons ?? []).slice(0, 3).join(" · ") || "readiness not passed"}`);
-        drawer("Enable refused — full blocker list — what blocked, why, what next", h("div", { class: "stack" },
-          banner("err", "The gate refused — state remains DISABLED", "This is the safety architecture working. Fix the blockers and request again. LIVE remains LOCKED.", "shield"),
-          h("ul", { class: "gate-list" }, (e.body.reasons ?? []).map((r) => h("li", null, r))),
-          e.body.readiness ? tech(e.body.readiness, "Raw readiness report") : null,
-        ));
-        await refresh(true);
-      } else if (e.status === 400) {
-        toast("err", "Missing acknowledgment", "The request requires confirmed=true and risk_ack=true.");
-      } else {
-        toast("err", "Enable request failed", explain(e));
-      }
-    } finally { acting = false; }
-  }
-
-  async function disableDemo() {
-    const ok = await confirmModal({
-      title: "Disable demo execution",
-      danger: true,
-      body: "The demo execution permission is revoked immediately and durably. Observation can continue safely. LIVE remains LOCKED.",
-      confirmLabel: "Disable",
-    });
-    if (!ok) return;
-    acting = true;
-    try { await api.post("/api/demo/disable"); toast("ok", "Demo execution disabled — LIVE still LOCKED"); await refresh(true); }
-    catch (e) { toast("err", "Disable failed", explain(e)); }
-    finally { acting = false; }
   }
 
   const off = store.on("resources", renderFacts);
@@ -397,7 +333,7 @@ export async function renderExecution(root) {
         })
       : emptyState({
           icon: "zap", title: "No real executions recorded yet",
-          desc: "Demo execution requires: the 14-check readiness gate passed, demo execution explicitly enabled with risk acknowledgment, and mode-correct configuration. Nothing here is simulated to look busy. DEMO vs LIVE unmistakable.",
+          desc: "DEMO_EXECUTION is disabled by product policy. This view reports only recorded order evidence; DEMO_FORWARD observation has zero orders and LIVE remains locked.",
           actions: [h("button", { class: "btn", onclick: () => navigate("#/trading/demo") }, icon("shield", 14), "Open Demo Control")],
         }),
   }));
@@ -410,7 +346,7 @@ export async function renderComparison(root) {
   root.appendChild(page({
     crumb: "Trading", group: "Comparison",
     title: "Paper · Shadow · Demo Comparison",
-    answer: h("b", null, "How simulated expectations compare with real demo outcomes — computed fresh on request, never cached optimism. Truth visible: MEASURED vs UNAVAILABLE never 0."),
+    answer: h("b", null, "Paper and shadow signals can be compared with DEMO_FORWARD observations. DEMO_EXECUTION is disabled by policy, so fill, slippage, latency, and realized-PnL comparisons are UNAVAILABLE — never fabricated as zero."),
     actions: [h("button", { class: "btn", onclick: async () => {
       try { await api.post("/api/demo/comparison/refresh"); toast("ok", "Comparison refreshed"); renderComparison(root); }
       catch (e) { toast("err", "Refresh failed", explain(e)); }
@@ -425,7 +361,7 @@ export async function renderComparison(root) {
   const metrics = Object.entries(comp?.metrics ?? comp ?? {})
     .filter(([, v]) => typeof v === "object" && v !== null && ("status" in v || "value" in v));
   if (metrics.length) {
-    host.appendChild(card({ title: `Measured comparison — context ${getContext().symbol}`, icon: "scale", body:
+    host.appendChild(card({ title: `Measured / unavailable comparison — context ${getContext().symbol}`, icon: "scale", body:
       h("div", { class: "stat-grid" },
         metrics.map(([k, m]) => metricStat({ label: humanKey(k), metric: m })),
       ),
@@ -433,8 +369,8 @@ export async function renderComparison(root) {
   } else {
     host.appendChild(card({ title: "Measured comparison", icon: "scale", body:
       emptyState({
-        icon: "scale", title: "No comparable demo executions yet",
-        desc: "Comparison metrics (signal agreement, expected vs actual entry, slippage, latency) require real demo executions. Until then every field reports UNAVAILABLE — comparison is never fabricated from simulation alone.",
+        icon: "scale", title: "No DEMO_FORWARD observations to compare yet",
+        desc: "Signal alignment can be measured only when paper/shadow events share a decision event with recorded observations. Fill, slippage, latency, and realized execution metrics remain UNAVAILABLE because DEMO_EXECUTION is disabled by policy.",
         actions: [h("button", { class: "btn", onclick: () => navigate("#/trading/demo") }, icon("shield", 14), "Demo control")],
       }),
     }));

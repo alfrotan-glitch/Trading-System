@@ -8,7 +8,7 @@ Runtime path behind the UI button "Start Observation (No Orders)":
          commit 0cb916f) -> MarketDataProvider.get_tick() (UNCHANGED
          validation: future/stale/spread/integrity, fail-closed)
       -> ObservationTick.from_domain_tick() -> ForwardObservatory.record_tick()
-      -> real forward-observation manifest (class REAL)
+      -> DEMO-class forward-observation manifest (real broker observations on a demo account; never REAL-money evidence)
 
 Safety contract:
 - market data ONLY. This module never calls order_send, never touches the
@@ -272,7 +272,17 @@ class ObservationCollector:
         """
         session = self.observatory.session(self.session_id) if self.session_id else None
         with db_connect(self.observatory.db_path) as con:
-            rows = con.execute("SELECT payload FROM observation_ticks ORDER BY created_at").fetchall()
+            if self.session_id:
+                rows = con.execute(
+                    "SELECT payload FROM observation_ticks WHERE session_id=? ORDER BY COALESCE(event_time, created_at), rowid",
+                    (self.session_id,),
+                ).fetchall()
+                signal_count = con.execute(
+                    "SELECT COUNT(*) FROM observation_signals WHERE session_id=?", (self.session_id,)
+                ).fetchone()[0]
+            else:
+                rows = con.execute("SELECT payload FROM observation_ticks ORDER BY COALESCE(event_time, created_at), rowid").fetchall()
+                signal_count = con.execute("SELECT COUNT(*) FROM observation_signals").fetchone()[0]
         all_payloads: list[dict[str, Any]] = []
         bases: dict[str, int] = {}
         offsets: set[float] = set()
@@ -322,6 +332,8 @@ class ObservationCollector:
             "stopped_at": status_snapshot["stopped_at"],
             "readiness_at_start": status_snapshot["readiness_at_start"],
             "ticks_recorded": len(all_payloads),
+            "signals_recorded": signal_count,
+            "divergence": self.observatory.divergence_summary(self.session_id),
             "duplicates_skipped": status_snapshot["duplicates_skipped"],
             "first_event_time": first_event,
             "last_event_time": last_event,

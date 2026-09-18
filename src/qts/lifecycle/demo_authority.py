@@ -1,32 +1,14 @@
-"""Authoritative DEMO execution-permission authority — ONE state, one gate.
+"""Authoritative DEMO execution boundary — observation only.
 
-Closes audit findings A and B:
+QTS deliberately ships without DEMO_EXECUTION. DEMO_FORWARD may collect
+real demo-account observations with zero orders; it cannot be upgraded into an
+order-capable state by a readiness report, a request payload, SQLite contents,
+or a direct call to :meth:`DemoExecutionAuthority.enable`.
 
-* **A — the gate must be authoritative.** ``/api/demo/enable`` previously
-  checked only confirmation/risk acknowledgement and *ignored* the readiness
-  report's ``passed`` result, returning ``demo_enabled=true`` even when
-  readiness had failed. Enablement now requires a FRESH readiness report
-  (computed in the same request, over the same resolved connection) with
-  ``passed=True`` — every required check genuinely satisfied.
-* **B — the state must be real, not cosmetic.** ``demo_enabled=true`` used to
-  be a response string nothing consumed. Enablement is now a durable,
-  versioned state transition in SQLite (``demo_execution_state``), emitted to
-  the audit log, and the ONLY thing the API/UI/execution layer read.
-  ``/api/demo/state``, ``/api/demo/config`` and the execution boundary all
-  consume this one authority.
-
-Fail-closed properties (all pinned by tests):
-
-* No enablement without a fresh, passed, 14/14 readiness report.
-* No enablement in a mode that cannot submit broker orders (DEMO_FORWARD is
-  observation-only and cannot silently become DEMO_EXECUTION).
-* No enablement while the risk kill switch is active.
-* Permission DECAYS: ``is_execution_permitted`` requires a re-verification
-  (fresh readiness pass) no older than ``REVERIFY_TTL_S``. A persisted
-  enablement whose readiness evidence has expired is reported BLOCKED with
-  ``readiness_expired`` — real broker conditions can change after enablement.
-* State survives restart (SQLite is the authority, not process memory).
-* Every transition is audited; audit failure fails the transition.
+The durable state table is retained for audit/history and fail-closed
+inspection. ``current()`` and ``is_execution_permitted()`` never grant broker
+permission while this product policy is active. API/UI readiness therefore
+remains an observation concern, not an execution switch.
 """
 
 from __future__ import annotations
@@ -42,6 +24,8 @@ from qts.db import connect as db_connect
 #: conditions (terminal down, market closed, spread blown) change; permission
 #: must be re-proven against the live gate, never assumed from an old pass.
 REVERIFY_TTL_S = 120.0
+# Product policy: the shipped build has no DEMO_EXECUTION order path.
+DEMO_EXECUTION_DISABLED = True
 
 GATE_VERSION = 2  # bumped when the readiness contract itself changes
 
@@ -286,11 +270,32 @@ class DemoExecutionAuthority:
                 execution_permitted=False,
                 state="DISABLED",
                 decided_at=row["decided_at"] if row else None,
-                reasons=[] if row and not row["enabled"] else ["never enabled"],
+                reasons=(
+                    [str(row["reason"] or "disabled")]
+                    if row and not row["enabled"]
+                    else ["never enabled"]
+                ),
                 readiness=row["readiness"] if row else None,
                 readiness_age_s=None,
                 readiness_expired=False,
                 mode=row["mode"] if row else None,
+            )
+
+        if DEMO_EXECUTION_DISABLED:
+            return DemoPermissionDecision(
+                enabled=False,
+                execution_permitted=False,
+                state="DISABLED",
+                decided_at=row["decided_at"],
+                reasons=[
+                    "DEMO_EXECUTION is disabled by product policy",
+                    "DEMO_FORWARD observation-only is the only broker mode",
+                ],
+                readiness=row["readiness"],
+                readiness_age_s=row["readiness_age_s"],
+                readiness_expired=False,
+                mode=row["mode"],
+                detail={"historical_enabled_row": True},
             )
 
         reasons: list[str] = []
@@ -385,133 +390,54 @@ class DemoExecutionAuthority:
         readiness_age_s: float | None = None,
         actor: str = "api",
     ) -> DemoPermissionDecision:
-        """Attempt enablement. Refuses (stays DISABLED) unless EVERY gate holds.
+        """Refuse every DEMO_EXECUTION enablement in the shipped product.
 
-        ``readiness`` must be freshly computed by the caller over the same
-        resolved connection the user tested. Stale or failed readiness can
-        never enable — this is the authoritative gate finding A demanded.
+        This method remains as an explicit fail-closed boundary for callers
+        that still use the historical authority API. It records a refusal for
+        audit/history, but never writes ``enabled=1`` and never returns an
+        execution-permitted decision. Readiness is useful for observation
+        startup only and cannot be converted into order permission.
         """
+        reason = "DEMO_EXECUTION is disabled by product policy; use DEMO_FORWARD OBSERVE_ONLY"
+        reasons = [reason]
         if not confirmed or not risk_ack:
-            self._record(
-                enabled=False,
-                reason="refused: explicit confirmation and risk acknowledgement required",
-                confirmed=confirmed,
-                risk_ack=risk_ack,
-                readiness=readiness,
-                readiness_age_s=readiness_age_s,
-                actor=actor,
-            )
-            return self._refused(
-                "explicit confirmation (confirmed=true) and risk acknowledgement (risk_ack=true) required"
-            )
-
+            reasons.append("explicit confirmation (confirmed=true) and risk acknowledgement (risk_ack=true) are still required")
+        if not readiness.get("passed"):
+            blocked = readiness.get("blocked_reasons") or ["readiness report does not show passed=true"]
+            reasons.extend(f"readiness: {item}" for item in blocked)
+        if readiness.get("warn_live_in_demo"):
+            reasons.append("LIVE account supplied to DEMO mode — blocked")
         checks = readiness.get("checks") or {}
         required = readiness.get("required_checks") or []
-        if not readiness.get("passed"):
-            blocked = (
-                readiness.get("blocked_reasons")
-                or [k for k, v in checks.items() if not v]
-                or ["readiness report does not show passed=true"]
-            )
-            self._record(
-                enabled=False,
-                reason=f"refused: DEMO readiness failed ({len(blocked)} blocker(s))",
-                confirmed=confirmed,
-                risk_ack=risk_ack,
-                readiness=readiness,
-                readiness_age_s=readiness_age_s,
-                actor=actor,
-            )
-            return self._refused(
-                "DEMO readiness gate failed — enablement refused",
-                blocked=blocked,
-                readiness=readiness,
-            )
-        if required and not all(bool(checks.get(k)) for k in required):
-            missing = [k for k in required if not checks.get(k)]
-            self._record(
-                enabled=False,
-                reason=f"refused: required checks not satisfied {missing}",
-                confirmed=confirmed,
-                risk_ack=risk_ack,
-                readiness=readiness,
-                readiness_age_s=readiness_age_s,
-                actor=actor,
-            )
-            return self._refused("required readiness checks not satisfied", blocked=missing, readiness=readiness)
-        if readiness.get("warn_live_in_demo"):
-            self._record(
-                enabled=False,
-                reason="refused: LIVE account supplied to DEMO mode",
-                confirmed=confirmed,
-                risk_ack=risk_ack,
-                readiness=readiness,
-                readiness_age_s=readiness_age_s,
-                actor=actor,
-            )
-            return self._refused("LIVE account supplied to DEMO mode — blocked", readiness=readiness)
-
-        mode = self._mode
-        if mode is not None:
-            from qts.domain.modes import ExecutionMode
-
-            try:
-                m = ExecutionMode(mode)
-                if not m.can_submit_broker_orders:
-                    self._record(
-                        enabled=False,
-                        reason=f"refused: mode {m.value} cannot submit broker orders",
-                        confirmed=confirmed,
-                        risk_ack=risk_ack,
-                        readiness=readiness,
-                        readiness_age_s=readiness_age_s,
-                        actor=actor,
-                    )
-                    return self._refused(
-                        f"mode {m.value} is observation-only — DEMO_EXECUTION enablement refused in this mode"
-                    )
-            except ValueError:
-                pass
-
-        # Audit BEFORE the state write: an enablement that cannot be audited
-        # must not exist. If the audit emit fails, nothing was persisted.
+        reasons.extend(f"readiness check failed: {item}" for item in required if not checks.get(item))
+        if self._mode == "DEMO_FORWARD":
+            reasons.append("mode DEMO_FORWARD is observation-only and cannot submit broker orders")
         if self._audit is not None:
             try:
-                self._emit_audit(
-                    "demo_execution_enabled",
-                    {
-                        "reason": "enabled: fresh readiness passed all required checks",
-                        "confirmed": confirmed,
-                        "risk_ack": risk_ack,
-                        "readiness_passed": True,
-                        "readiness_age_s": readiness_age_s,
-                        "mode": self._mode,
-                        "gate_version": GATE_VERSION,
-                        "actor": actor,
-                    },
-                )
-            except Exception as e:
-                return self._refused(f"enablement audit failed — state NOT changed: {e}")
+                self._emit_audit("demo_execution_refused", {"reason": reason, "actor": actor})
+            except Exception as exc:
+                reasons.append(f"audit failed while recording refusal: {exc}")
         self._record(
-            enabled=True,
-            reason="enabled: fresh readiness passed all required checks",
+            enabled=False,
+            reason=f"refused: {reason}",
             confirmed=confirmed,
             risk_ack=risk_ack,
             readiness=readiness,
             readiness_age_s=readiness_age_s,
             actor=actor,
-            audit=False,  # already emitted above
+            audit=False,  # explicit refusal audit attempted above
         )
         return DemoPermissionDecision(
-            enabled=True,
-            execution_permitted=True,  # freshly proven; decays per REVERIFY_TTL_S
-            state="ENABLED",
+            enabled=False,
+            execution_permitted=False,
+            state="DISABLED",
             decided_at=datetime.now(UTC).isoformat(),
-            reasons=[],
+            reasons=reasons,
             readiness=readiness,
-            readiness_age_s=readiness_age_s or 0.0,
+            readiness_age_s=readiness_age_s,
             readiness_expired=False,
             mode=self._mode,
+            detail={"product_policy": "DEMO_EXECUTION_DISABLED"},
         )
 
     def disable(self, *, reason: str = "operator requested", actor: str = "api") -> DemoPermissionDecision:

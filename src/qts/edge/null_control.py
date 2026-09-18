@@ -14,16 +14,16 @@ class NullControl:
 
     def __init__(self, seed: int = 42):
         self.seed = seed
-        random.seed(seed)
-        np.random.seed(seed)
+        # Keep control randomness local. Seeding process-global RNGs makes a
+        # null control alter unrelated research results in the same process.
+        self._rng = random.Random(seed)
+        self._np_rng = np.random.default_rng(seed)
 
     def randomized_timing(self, bars: list[Bar]) -> list[Signal]:
         """Same number of signals as real but random timing."""
         signals = []
-        # B311: non-cryptographic scientific randomness (seeded permutation/simulation), not security
-        for b in random.sample(bars, min(5, len(bars) // 10)):  # nosec B311
-            # B311: non-cryptographic scientific randomness (seeded permutation/simulation), not security
-            side = random.choice([Side.BUY, Side.SELL])  # nosec B311
+        for b in self._rng.sample(bars, min(5, len(bars) // 10)):
+            side = self._rng.choice([Side.BUY, Side.SELL])
             signals.append(
                 Signal(
                     instrument=b.instrument,
@@ -39,7 +39,7 @@ class NullControl:
     def shuffled_labels(self, bars: list[Bar], real_signals: list[Signal]) -> list[Signal]:
         """Shuffle real signal sides — creates new signals due to frozen model."""
         sides = [s.side for s in real_signals]
-        random.shuffle(sides)
+        self._rng.shuffle(sides)
         out = []
         for s, new_side in zip(real_signals, sides, strict=False):
             out.append(s.model_copy(update={"side": new_side}))

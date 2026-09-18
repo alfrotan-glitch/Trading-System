@@ -1,76 +1,84 @@
-"""Phase 9: Placebo / negative-control strategies — validator must reject."""
+"""Placebo / negative-control strategy generators.
+
+These controls are deliberately labelled and deterministic.  They may be run
+against a real measured bar population, but their outputs are never evidence
+for a positive strategy and they are never replaced by random score lists.
+"""
 
 from __future__ import annotations
+
+import hashlib
+import random
 
 from qts.domain.value_objects import Bar, Instrument, Side, Signal
 
 
 class PlaceboStrategies:
-    """Intentionally bad strategies."""
+    """Intentionally negative controls with a reproducible local RNG."""
 
-    def __init__(self, instrument: Instrument):
+    def __init__(self, instrument: Instrument, seed: int = 42):
         self.instrument = instrument
+        self.seed = seed
+        self._rng = random.Random(seed)
 
     def random_entry(self, bar: Bar) -> list[Signal]:
-        import random
-
-        # B311: non-cryptographic scientific randomness (seeded permutation/simulation), not security
-        if random.random() < 0.05:  # nosec B311
-            # B311: non-cryptographic scientific randomness (seeded permutation/simulation), not security
-            side = random.choice([Side.BUY, Side.SELL])  # nosec B311
+        if self._rng.random() < 0.05:
+            side = self._rng.choice([Side.BUY, Side.SELL])
             return [
                 Signal(
                     instrument=bar.instrument,
                     side=side,
                     strength=0.5,
                     event_time=bar.close_time,
-                    hypothesis_id="H-RANDOM",
+                    hypothesis_id=f"H-PLACEBO-RANDOM-{self.seed}",
                     strategy_id="placebo_random",
                 )
             ]
         return []
 
     def delayed_signal(self, bar: Bar, delay: int = 5) -> list[Signal]:
-        # Always lagging
+        # A delayed control is intentionally empty at the current decision
+        # point; a caller must construct the delayed event population itself.
+        if delay < 0:
+            raise ValueError("delay must be non-negative")
         return []
 
     def anti_signal(self, bar: Bar, real_signals: list[Signal]) -> list[Signal]:
-        # Opposite of real
-        out = []
-        for s in real_signals:
-            opp = Side.SELL if s.side == Side.BUY else Side.BUY
+        """Opposite-side control, preserving the original event identity fields."""
+        out: list[Signal] = []
+        for signal in real_signals:
+            opposite = Side.SELL if signal.side == Side.BUY else Side.BUY
             out.append(
                 Signal(
                     instrument=bar.instrument,
-                    side=opp,
-                    strength=s.strength,
+                    side=opposite,
+                    strength=signal.strength,
                     event_time=bar.close_time,
-                    hypothesis_id="H-ANTI",
+                    hypothesis_id="H-PLACEBO-ANTI",
                     strategy_id="placebo_anti",
                 )
             )
         return out
 
     def noise_feature(self, bar: Bar) -> list[Signal]:
-        import hashlib
-        import random
-
-        h = hashlib.sha256(str(bar.close).encode()).hexdigest()
-        side = Side.BUY if int(h, 16) % 2 == 0 else Side.SELL
-        # B311: non-cryptographic scientific randomness (seeded permutation/simulation), not security
-        if random.random() < 0.03:  # nosec B311
+        # Derive a deterministic draw from the declared seed and event identity;
+        # no process-global random state and no hidden stochastic rerun.
+        digest = hashlib.sha256(f"{self.seed}:{bar.instrument.symbol}:{bar.close_time.isoformat()}".encode()).digest()
+        draw = int.from_bytes(digest[:8], "big") / 2**64
+        if draw < 0.03:
+            side = Side.BUY if digest[8] % 2 == 0 else Side.SELL
             return [
                 Signal(
                     instrument=bar.instrument,
                     side=side,
                     strength=0.5,
                     event_time=bar.close_time,
-                    hypothesis_id="H-NOISE",
+                    hypothesis_id=f"H-PLACEBO-NOISE-{self.seed}",
                     strategy_id="placebo_noise",
                 )
             ]
         return []
 
     def overfit_params(self, bar: Bar) -> list[Signal]:
-        # Use overfit fast=2 slow=3 that looks good in-sample but fails OOS
+        """A declared overfit-parameter control, using the deterministic random entry."""
         return self.random_entry(bar)

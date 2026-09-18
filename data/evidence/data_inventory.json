@@ -1,158 +1,93 @@
 [
   {
-    "source": "data/raw/synth.csv",
+    "version": "20260918-010-572728d9",
+    "source": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+    "source_file": "data/fixtures/XAUUSD_1H_500.csv",
+    "data_class": "SYNTHETIC",
     "provider": "synthetic",
     "instrument": "XAUUSD",
-    "timeframe": "1H",
-    "date_range": {
-      "start": "2020-01-01T00:00:00+00:00",
-      "end": "2020-03-24T08:00:00+00:00"
-    },
-    "row_count": 2000,
-    "tick_count": 2000,
-    "timezone": "UTC",
-    "timestamp_resolution": "1 minute inferred, bar open_time second precision",
-    "ohlc_availability": true,
-    "bid_availability": false,
-    "ask_availability": false,
-    "spread_availability": "proxy via high-low (SYNTHETIC)",
-    "volume_availability": true,
-    "tick_volume_vs_real_volume": "tick volume proxy (SYNTHETIC), not real volume",
-    "missingness": {
-      "missing_pct": 0.2,
-      "gap_info": {
-        "gap_count": 0,
-        "max_gap_s": 3600,
-        "missing_pct": 0.0,
-        "common_delta_s": 3600
-      },
-      "details": "1 bar missing out of 501 expected for 1H"
-    },
-    "duplicates": false,
-    "gaps": {
-      "gap_count": 0,
-      "max_gap_s": 3600,
-      "missing_pct": 0.0,
-      "common_delta_s": 3600
-    },
-    "session_coverage": "XAUUSD 24h minus weekend (Fri 22:00 UTC close to Sun 22:00 open) \u2014 synthetic includes continuous, real should exclude",
-    "market_closure_handling": "synthetic ignores closures \u2014 real must handle",
-    "broker_artifacts": "none detected",
-    "checksum": "sha256:86ca2f9c35a3518f",
-    "ingestion_method": "Provider synthetic \u2192 Raw Storage \u2192 Validation \u2192 Normalization \u2192 Canonical 20260916-010-86ca2f9c",
-    "preprocessing_version": "1.0",
-    "provenance": "Raw data/raw/synth.csv checksum sha256:86ca2f9c35a3518f \u2192 normalized UTC \u2192 curated data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260916-010-86ca2f9c/part-0.parquet",
-    "schema_version": 1,
-    "quality_report": [
-      {
-        "name": "monotonic_time",
-        "passed": true,
-        "details": ""
-      },
-      {
-        "name": "tz_aware",
-        "passed": true,
-        "details": ""
-      },
-      {
-        "name": "no_future",
-        "passed": true,
-        "details": ""
-      },
-      {
-        "name": "ohlc_invariants",
-        "passed": true,
-        "details": ""
-      },
-      {
-        "name": "positive_prices",
-        "passed": true,
-        "details": ""
-      },
-      {
-        "name": "abnormal_spreads",
-        "passed": true,
-        "details": ""
-      },
-      {
-        "name": "no_duplicates",
-        "passed": true,
-        "details": ""
-      },
-      {
-        "name": "single_symbol",
-        "passed": true,
-        "details": ""
-      },
-      {
-        "name": "no_missing_bars",
-        "passed": true,
-        "details": ""
-      },
-      {
-        "name": "session_boundaries",
-        "passed": true,
-        "details": ""
-      },
-      {
-        "name": "no_broker_artifacts",
-        "passed": true,
-        "details": ""
-      },
-      {
-        "name": "volume_non_negative",
-        "passed": true,
-        "details": ""
-      }
-    ],
-    "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260916-010-86ca2f9c/part-0.parquet",
-    "raw_preserved": "data/raw/synth.csv",
-    "research_eligibility": "eligible for 1H trend/breakout research only \u2014 not for microstructure/tick/spread research (synthetic spread)"
-  },
-  {
-    "source": "data/fixtures/XAUUSD_1H_500.csv",
-    "provider": "csv",
-    "instrument": "XAUUSD",
+    "venue": "MT5",
     "timeframe": "1H",
     "date_range": {
       "start": "2020-01-01T00:00:00+00:00",
       "end": "2020-01-21T20:00:00+00:00"
     },
     "row_count": 500,
-    "tick_count": 500,
+    "tick_count": {
+      "status": "UNAVAILABLE",
+      "value": null,
+      "reason": "canonical dataset contains OHLC bars, not tick records"
+    },
     "timezone": "UTC",
-    "timestamp_resolution": "1 minute inferred, bar open_time second precision",
-    "ohlc_availability": true,
-    "bid_availability": false,
-    "ask_availability": false,
-    "spread_availability": "proxy via high-low (SYNTHETIC)",
-    "volume_availability": true,
-    "tick_volume_vs_real_volume": "tick volume proxy (SYNTHETIC), not real volume",
+    "timestamp_resolution": "3600s bar cadence",
+    "ohlc_availability": {
+      "status": "MEASURED",
+      "value": "MEASURED"
+    },
+    "bid_availability": {
+      "status": "UNAVAILABLE",
+      "value": null,
+      "reason": "no bid field in canonical OHLC schema"
+    },
+    "ask_availability": {
+      "status": "UNAVAILABLE",
+      "value": null,
+      "reason": "no ask field in canonical OHLC schema"
+    },
+    "spread_availability": "UNAVAILABLE \u2014 SYNTHETIC dataset has no measured bid/ask; high-low is not spread",
+    "volume_availability": {
+      "status": "MEASURED",
+      "value": "field present"
+    },
+    "tick_volume_vs_real_volume": "tick-volume field present; real traded volume UNAVAILABLE",
     "missingness": {
-      "missing_pct": 0.2,
-      "gap_info": {
+      "status": "MEASURED",
+      "value": {
         "gap_count": 0,
-        "max_gap_s": 3600,
+        "closure_gap_count": 0,
+        "max_gap_s": 0,
+        "missing_intervals": 0,
         "missing_pct": 0.0,
         "common_delta_s": 3600
       },
-      "details": "1 bar missing out of 501 expected for 1H"
+      "reason": null
     },
     "duplicates": false,
     "gaps": {
       "gap_count": 0,
-      "max_gap_s": 3600,
+      "closure_gap_count": 0,
+      "max_gap_s": 0,
+      "missing_intervals": 0,
       "missing_pct": 0.0,
       "common_delta_s": 3600
     },
-    "session_coverage": "XAUUSD 24h minus weekend (Fri 22:00 UTC close to Sun 22:00 open) \u2014 synthetic includes continuous, real should exclude",
-    "market_closure_handling": "synthetic ignores closures \u2014 real must handle",
-    "broker_artifacts": "none detected",
+    "session_coverage": {
+      "status": "MEASURED",
+      "weekdays_observed": [
+        "Fri",
+        "Mon",
+        "Sat",
+        "Sun",
+        "Thu",
+        "Tue",
+        "Wed"
+      ],
+      "weekend_bars": 144,
+      "note": "calendar coverage only; broker session hours require broker tick/session metadata"
+    },
+    "market_closure_handling": "closures measured from UTC calendar gaps; broker session schedule UNAVAILABLE",
+    "broker_artifacts": "UNAVAILABLE: no broker tick/session diagnostics in OHLC dataset",
     "checksum": "sha256:572728d92ebb5c2a",
-    "ingestion_method": "Provider csv \u2192 Raw Storage \u2192 Validation \u2192 Normalization \u2192 Canonical 20260916-010-572728d9",
+    "ingestion_method": "source_label=SYNTHETIC:fixture:XAUUSD_1H_500.csv; class=SYNTHETIC \u2192 raw preserved \u2192 validation \u2192 canonical 20260918-010-572728d9",
     "preprocessing_version": "1.0",
-    "provenance": "Raw data/fixtures/XAUUSD_1H_500.csv checksum sha256:572728d92ebb5c2a \u2192 normalized UTC \u2192 curated data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260916-010-572728d9/part-0.parquet",
-    "schema_version": 1,
+    "provenance": {
+      "class": "SYNTHETIC",
+      "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+      "raw_file": "data/fixtures/XAUUSD_1H_500.csv",
+      "checksum": "sha256:572728d92ebb5c2a",
+      "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260918-010-572728d9/part-0.parquet"
+    },
+    "schema_version": 2,
     "quality_report": [
       {
         "name": "monotonic_time",
@@ -215,8 +150,9 @@
         "details": ""
       }
     ],
-    "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260916-010-572728d9/part-0.parquet",
+    "quality_passed": true,
+    "curated_path": "data/curated/instrument=XAUUSD/venue=MT5/timeframe=1H/version=20260918-010-572728d9/part-0.parquet",
     "raw_preserved": "data/fixtures/XAUUSD_1H_500.csv",
-    "research_eligibility": "eligible for 1H trend/breakout research only \u2014 not for microstructure/tick/spread research (synthetic spread)"
+    "research_eligibility": "MECHANISM_VALIDATION_ONLY \u2014 synthetic data cannot support real-market claims"
   }
 ]

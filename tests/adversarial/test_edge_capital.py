@@ -22,7 +22,8 @@ from qts.edge.null_control import NullControl
 from qts.edge.placebo import PlaceboStrategies
 from qts.edge.promotion import PromotionLedger, PromotionState
 from qts.edge.regime_stability import evaluate_regime_stability
-from qts.research.experiment import Experiment, ExperimentStore, Hypothesis
+from qts.research.campaign import CampaignResult, ResearchCampaignStore
+from qts.research.experiment import Experiment, ExperimentStore, Hypothesis, ImmutableRecordError
 from qts.risk.capital_policy import CapitalPolicy
 
 
@@ -136,6 +137,45 @@ def test_trial_ledger_counts_all():
         # No manual adjustment
         # Simulate trying to manually delete — should not be allowed via API
         # The store has no delete method, so count is immutable via API
+
+
+def test_experiment_and_campaign_configuration_is_immutable():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = Path(tmp) / "ledger.db"
+        experiment_store = ExperimentStore(db_path=db)
+        hypothesis = Hypothesis(statement="test", rationale="r", falsifiability="f")
+        experiment_store.put_hypothesis(hypothesis)
+        experiment = Experiment(
+            hypothesis_id=hypothesis.id,
+            strategy_id="immutable_strategy",
+            params={"fast": 5},
+            data_version="v1",
+            dataset_provenance="SYNTHETIC",
+            dataset_manifest_hash="sha256:fixture",
+            code_version="0.1.0+test",
+            seed=42,
+            split_definition={"kind": "chronological"},
+            cost_assumptions={"spread_bps": None},
+        )
+        experiment_store.put(experiment)
+        changed = experiment.model_copy(update={"params": {"fast": 7}})
+        with pytest.raises(ImmutableRecordError):
+            experiment_store.put(changed)
+        stored = experiment_store.get(experiment.id)
+        assert stored is not None and stored.params == {"fast": 5}
+
+        campaign_store = ResearchCampaignStore(db_path=db)
+        result = CampaignResult(
+            campaign_id="C-test",
+            trial_id="T-test-0000",
+            strategy_id="immutable_strategy",
+            params={"fast": 5},
+            passed=False,
+            conclusion="BLOCKED_INSUFFICIENT_DATA",
+        )
+        campaign_store.put_trial("C-test", result)
+        with pytest.raises(ValueError):
+            campaign_store.put_trial("C-test", result.model_copy(update={"params": {"fast": 7}}))
 
 
 # Phase 5: Edge survival requires all A-O

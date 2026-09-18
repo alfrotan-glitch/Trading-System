@@ -25,13 +25,18 @@ from qts.domain.value_objects import Instrument
 
 # Provenance classes used across the system. Every dataset must map to exactly one.
 DATA_CLASSES = (
-    "REAL",  # genuine broker/exchange historical or live data
+    "REAL",  # verified real-account observation or explicitly verified market source
+    "HISTORICAL",  # imported real market history; not a live observation session
     "SYNTHETIC",  # generated locally (GBM/trending/fixture), never real
     "SIMULATED",  # paper/simulator fills, not venue-executed
+    "PAPER",  # simulated paper-trading record
+    "SHADOW",  # would-be intent, no venue submission
+    "DEMO",  # real broker/demo-account observation or execution evidence
     "ESTIMATED",  # inferred statistic, not an observation
     "IMPUTED",  # filled-in missing values
     "BROKER-DERIVED",  # computed from broker data (e.g. spread proxy)
     "MODEL-DERIVED",  # output of a model, not an observation
+    "UNVERIFIED",  # ambiguous lineage; never claim-bearing
 )
 
 FIXTURE_RELPATH = Path("fixtures/XAUUSD_1H_500.csv")
@@ -42,12 +47,26 @@ DEFAULT_FIXTURE = Path("data") / FIXTURE_RELPATH
 
 
 def classify_source(source: str | None) -> str:
-    """Map a manifest/bar source label to exactly one provenance class."""
+    """Map a manifest/bar source label to exactly one provenance class.
+
+    Explicit labels are preferred.  Ambiguous/absent labels are
+    ``UNVERIFIED``; the canonical store supplies ``synthetic_or_csv`` when a
+    legacy write has no source argument, preserving the older synthetic
+    fixture behavior without treating an unknown source as observed history.
+    """
     if not source:
-        return "SYNTHETIC"  # unlabeled legacy writes came from synthetic generators
-    s = source.lower()
+        return "UNVERIFIED"
+    s = source.strip().lower()
     if "synthetic" in s or "fixture" in s or "gbm" in s or "synth" in s:
         return "SYNTHETIC"
+    if s.startswith("historical") or s.startswith("imported") or "historical_import" in s:
+        return "HISTORICAL"
+    if s.startswith("paper") or "paper_simulation" in s:
+        return "PAPER"
+    if s.startswith("shadow") or "shadow_intent" in s:
+        return "SHADOW"
+    if s.startswith("demo") or "demo_observation" in s:
+        return "DEMO"
     if "mt5_history" in s or "broker" in s:
         return "BROKER-DERIVED"
     if "model" in s:
@@ -58,7 +77,7 @@ def classify_source(source: str | None) -> str:
         return "ESTIMATED"
     if s.startswith("real"):
         return "REAL"
-    return "SYNTHETIC"  # fail-safe: unverified provenance is NEVER treated as REAL
+    return "UNVERIFIED"  # fail-safe: ambiguous provenance is NEVER treated as REAL
 
 
 @dataclass

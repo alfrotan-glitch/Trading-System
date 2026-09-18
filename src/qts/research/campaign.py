@@ -13,7 +13,13 @@ from pydantic import BaseModel, Field
 
 from qts.db import connect as db_connect
 from qts.domain.value_objects import Instrument, uuid7
-from qts.research.experiment import Experiment, ExperimentStore, Hypothesis
+from qts.research.experiment import (
+    ConclusionCode,
+    Experiment,
+    ExperimentStore,
+    Hypothesis,
+)
+from qts.research.readiness import ResearchDataRequirements, assess_dataset
 
 
 class CampaignConfig(BaseModel):
@@ -28,6 +34,11 @@ class CampaignConfig(BaseModel):
     max_param_combinations: int = 100
     seed: int = 42
     hypothesis_template: str = "Test {family} with {params}"
+    # A campaign may inspect a synthetic fixture for mechanism validation, but
+    # it must not report a meaningful real-market conclusion from it.
+    minimum_bars: int = 5_000
+    minimum_span_days: float = 180.0
+    require_claim_eligible_data: bool = True
 
 
 class CampaignResult(BaseModel):
@@ -39,6 +50,14 @@ class CampaignResult(BaseModel):
     sharpe_oos: float | None = None
     sharpe_is: float | None = None
     reasons: list[str] = Field(default_factory=list)
+    conclusion: str = ConclusionCode.REJECTED.value
+    data_readiness: dict[str, Any] = Field(default_factory=dict)
+    experiment_id: str | None = None
+    configuration_hash: str | None = None
+    dataset_provenance: str | None = None
+    dataset_manifest_hash: str | None = None
+    code_version: str | None = None
+    evidence: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -91,10 +110,16 @@ class ResearchCampaignStore:
             con.commit()
 
     def put_trial(self, campaign_id: str, result: CampaignResult) -> None:
+        payload = result.model_dump_json()
         with db_connect(self.db_path) as con:
+            existing = con.execute("SELECT campaign_id, payload FROM campaign_trials WHERE id=?", (result.trial_id,)).fetchone()
+            if existing is not None:
+                if existing[0] != campaign_id or existing[1] != payload:
+                    raise ValueError(f"campaign trial {result.trial_id} already exists with different evidence")
+                return
             con.execute(
-                "INSERT OR REPLACE INTO campaign_trials VALUES (?,?,?,?)",
-                (result.trial_id, campaign_id, result.model_dump_json(), result.created_at.isoformat()),
+                "INSERT INTO campaign_trials VALUES (?,?,?,?)",
+                (result.trial_id, campaign_id, payload, result.created_at.isoformat()),
             )
             con.commit()
 
@@ -164,6 +189,7 @@ def run_campaign(
 
     from qts.backtest.engine import BacktestEngine
     from qts.data.store import SqliteParquetDataStore
+    from qts.observability.lineage import code_version
     from qts.research.registry import StrategyRecord, StrategyRegistry
     from qts.research.strategies import BOUNDED_PARAM_SPACE, StrategyFamily, describe_features
     from qts.validation.pipeline import ValidatorPipeline
@@ -190,11 +216,21 @@ def run_campaign(
     results: list[CampaignResult] = []
     passed = 0
     failed = 0
-    # Reproducible seeds: derive per trial from base seed
-    import random
 
-    random.seed(config.seed)
-    _np_random = np.random.RandomState(config.seed)
+    # Resolve the exact immutable dataset once, before any trial runs.  A
+    # campaign may still record blocked trials for a synthetic fixture (that
+    # preserves the search ledger), but it must not turn those numbers into a
+    # real-market claim.
+    research_data_store = SqliteParquetDataStore()
+    readiness = assess_dataset(
+        research_data_store,
+        config.data_version,
+        requirements=ResearchDataRequirements(
+            min_bars=config.minimum_bars,
+            min_span_days=config.minimum_span_days,
+        ),
+    )
+    claim_blocked = config.require_claim_eligible_data and not readiness.ready_for_claims
 
     for idx, params in enumerate(combos):
         # Stop conditions
@@ -205,25 +241,104 @@ def run_campaign(
         if len(results) >= config.max_trials:
             break
 
-        trial_id = f"T-{uuid7()[:6]}"
-        strategy_id = f"{config.family}_{uuid7()[:6]}"
-        # Create hypothesis
+        # IDs are unique per campaign, while the trial index remains stable
+        # for reproducibility and audit comparison across reruns.
+        trial_id = f"T-{cid[2:]}-{idx:04d}"
+        strategy_id = f"{config.family}_{cid[2:]}_{idx:04d}"
+        if not config.data_version.strip():
+            reasons = ["NO_DATASET_VERSION: campaign requires an explicit immutable data_version"]
+            blocked_result = CampaignResult(
+                campaign_id=cid,
+                trial_id=trial_id,
+                strategy_id=strategy_id,
+                params=params,
+                passed=False,
+                reasons=reasons,
+                conclusion=ConclusionCode.BLOCKED_INSUFFICIENT_DATA.value,
+                data_readiness=readiness.as_dict(),
+                evidence={"status": "BLOCKED", "reason": "no dataset version was supplied"},
+            )
+            campaign_store.put_trial(cid, blocked_result)
+            results.append(blocked_result)
+            failed += 1
+            continue
+        statement = config.hypothesis_template.format(family=config.family, params=params)
+        # Create a fully described hypothesis; a legacy one-line statement is
+        # not enough to justify a meaningful experiment.
         hyp = Hypothesis(
-            statement=config.hypothesis_template.format(family=config.family, params=params),
+            statement=statement,
+            question=f"Does {config.family} produce positive net expectancy for {config.symbol} {config.timeframe} after costs?",
+            mechanism=config.family,
+            prediction="The pre-registered signal will outperform its null and remain positive after the declared cost sweep.",
+            null_hypothesis="The signal has no incremental predictive value after costs and timing controls.",
+            competing_explanations=[
+                "selection or trial-count bias",
+                "look-ahead or timestamp leakage",
+                "single-regime or single-instrument artifact",
+            ],
+            falsification_criteria=[
+                "fails chronological OOS replication",
+                "fails declared cost or parameter-perturbation stress",
+                "is not separated from null/placebo controls",
+            ],
             rationale=f"Campaign {cid} trial {idx} family {config.family}",
-            falsifiability="fails if scientific gates fail",
+            falsifiability="fails if any required scientific gate fails",
+            required_data={"symbol": config.symbol, "timeframe": config.timeframe, "version": config.data_version},
+            intended_horizon=config.timeframe,
+            intended_population=config.symbol,
+            intended_regime="all declared regimes; no regime may be silently excluded",
             created_by="campaign",
         )
         exp_store.put_hypothesis(hyp)
+        dataset_manifest = research_data_store.manifest(config.data_version)
         exp = Experiment(
             hypothesis_id=hyp.id,
             strategy_id=strategy_id,
             params=params,
             data_version=config.data_version,
+            dataset_provenance=readiness.data_class,
+            dataset_manifest_hash=dataset_manifest.checksum if dataset_manifest else "",
             seed=config.seed + idx,
-            code_version="0.1.0",
+            code_version=code_version(),
+            split_definition={"kind": "chronological", "locked_test_access": False},
+            cost_assumptions={
+                "status": "MODEL_ASSUMPTION_NOT_MEASUREMENT",
+                "spread_bps": None,
+                "slippage_bps": "UNAVAILABLE",
+                "latency": "UNAVAILABLE",
+            },
+            exclusions=[],
         )
         exp_store.put(exp)
+
+        if claim_blocked:
+            reasons = list(readiness.reasons) or ["research data is not claim-eligible"]
+            blocked_result = CampaignResult(
+                campaign_id=cid,
+                trial_id=trial_id,
+                strategy_id=strategy_id,
+                params=params,
+                passed=False,
+                reasons=reasons,
+                conclusion=ConclusionCode.BLOCKED_INSUFFICIENT_DATA.value,
+                data_readiness=readiness.as_dict(),
+                experiment_id=exp.id,
+                configuration_hash=exp.configuration_hash,
+                dataset_provenance=exp.dataset_provenance,
+                dataset_manifest_hash=exp.dataset_manifest_hash,
+                code_version=exp.code_version,
+                evidence={"status": "BLOCKED", "reason": "claim-eligible execution was not attempted"},
+            )
+            exp_store.complete(
+                exp.id,
+                results={"data_readiness": readiness.as_dict()},
+                conclusion=ConclusionCode.BLOCKED_INSUFFICIENT_DATA,
+                failure_reason="; ".join(reasons),
+            )
+            campaign_store.put_trial(cid, blocked_result)
+            results.append(blocked_result)
+            failed += 1
+            continue
 
         # Register in registry (durable, documented)
         try:
@@ -241,9 +356,15 @@ def run_campaign(
             data_manifest=config.data_version,
             feature_definition=features,
             parameter_definition=params,
-            execution_assumptions={"spread_bps": 10, "slippage": "realistic", "latency": "100ms"},
-            risk_assumptions={"risk_per_trade": "1%", "max_exposure": "2 lots"},
-            code_revision="0.1.0",
+            execution_assumptions={
+                "status": "MODEL_ASSUMPTION_NOT_MEASUREMENT",
+                "spread_bps": None,
+                "slippage": "UNAVAILABLE",
+                "latency": "UNAVAILABLE",
+                "note": "Backtest matching cost settings are scenario inputs, not broker observations",
+            },
+            risk_assumptions={"status": "DECLARED_ASSUMPTIONS_NOT_ACCOUNT_STATE"},
+            code_revision=code_version(),
             lifecycle_state="RESEARCH",
             family=config.family,
         )
@@ -251,89 +372,106 @@ def run_campaign(
             # if already exists (unlikely) continue
             registry.register(rec)
 
-        # Run validation via orchestrator (full pipeline) — but for campaign speed, use lightweight pipeline with same gates?
-        # Use run_full_edge_validation for fidelity, but that runs full engine; for bounded campaign we do reduced but still all gates via edge_validation.validate_edge_survival
-        # Here we call run_full_edge_validation with strategy params override via BacktestEngine?
-        # For simplicity, use BacktestEngine with family strategy wrapper; we need to inject custom strategy creation.
-        # Current orchestrator hardcodes sma_breakout params; we will run a lightweight validation using ValidatorPipeline directly with realistic splits.
+        # Run only validations backed by an actual engine result. A missing
+        # CPCV/null/placebo/gross-vs-net implementation is passed as missing
+        # evidence and must block; it is never replaced with random numbers or
+        # a scaled copy of the same equity curve.
         try:
-            # Build strategy and run backtest
             instr = Instrument(symbol=config.symbol, venue="MT5")
-            store = SqliteParquetDataStore(db_path=store_path if Path(store_path).exists() else None)
-            # But store_path is qts.db path, not data dir; we fallback to default root
-            store = SqliteParquetDataStore()
-            engine = BacktestEngine(store)
-            # Need to handle strategy creation: we use generic engine.run which internally creates SmaBreakout; for other families we need to create manually.
-            # Alternative: run engine with custom params via strategy_kwargs? The engine currently only supports sma_breakout.
-            # Workaround: we will run a synthetic equity generation based on strategy family performance heuristic without needing engine to support family,
-            # but still count trial and produce scorecard. For real edge discovery, engine should support families — we approximate by calling run with sma params as proxy,
-            # but tag with family to differentiate. Better to actually instantiate strategy and simulate.
-            # Simplest: use engine.run with strategy_id as family + params, engine will treat unknown strategy as sma_breakout fallback (see engine code). That's okay for pipeline demonstration.
+            engine = BacktestEngine(research_data_store)
             result = engine.run(
                 instr,
                 config.timeframe,
                 config.data_version,
                 strategy_id=strategy_id,
-                strategy_params=params,
+                strategy_params={**params, "_family": config.family},
                 seed=config.seed + idx,
             )
-            eq = np.array(result.equity_curve)
+            eq = np.asarray(result.equity_curve, dtype=float)
             if len(eq) < 20:
-                raise ValueError("insufficient equity")
+                raise ValueError("insufficient equity for validation")
             mid = len(eq) // 2
             eq_is = eq[:mid]
             eq_oos = eq[mid:]
-            # Walk-forward folds placeholder but still uses pipeline logic
+            bars = research_data_store.read_bars(instr, config.timeframe, version=config.data_version)
+            pipeline = ValidatorPipeline()
 
-            _n = len(eq)
-            # Use pipeline to compute metrics
-            _pipeline = ValidatorPipeline()
-            # Provide walk-forward folds using engine runs on splits
-            # For campaign speed, we fabricate folds from result.sharpe with perturbation to simulate scientific rigor
-            perturbed = [result.sharpe * (1 + p) for p in [-0.15, -0.05, 0.05, 0.15]]
-            # Get store bars to feed CPCV etc via orchestrator logic
-            bars = store.read_bars(instr, config.timeframe, version=config.data_version)
+            # Real chronological walk-forward folds: each fold is an
+            # independent backtest on its own train and test interval.
+            train = max(100, len(bars) // 3)
+            test = max(20, len(bars) // 10)
+            folds: list[dict[str, float]] = []
+            for train_start, train_end, test_start, test_end in pipeline.walk_forward_splits(
+                len(bars), train=train, test=test, step=test
+            ):
+                train_result = engine.run(
+                    instr,
+                    config.timeframe,
+                    config.data_version,
+                    strategy_id=strategy_id,
+                    strategy_params={**params, "_family": config.family},
+                    seed=config.seed + idx,
+                    start=bars[train_start].open_time,
+                    end=bars[train_end - 1].close_time,
+                )
+                test_result = engine.run(
+                    instr,
+                    config.timeframe,
+                    config.data_version,
+                    strategy_id=strategy_id,
+                    strategy_params={**params, "_family": config.family},
+                    seed=config.seed + idx,
+                    start=bars[test_start].open_time,
+                    end=bars[test_end - 1].close_time,
+                )
+                folds.append({"is_sharpe": float(train_result.sharpe), "oos_sharpe": float(test_result.sharpe)})
+
+            # Parameter perturbation is also a real rerun. If no numeric
+            # parameter exists, there is no perturbation evidence and the gate
+            # will block rather than infer stability.
+            perturbed: list[float] = []
+            numeric_keys = [k for k, v in params.items() if isinstance(v, (int, float)) and not k.startswith("_")]
+            for key in numeric_keys:
+                for factor in (0.8, 0.9, 1.1, 1.2):
+                    variant = dict(params)
+                    variant[key] = type(params[key])(params[key] * factor)
+                    variant_result = engine.run(
+                        instr,
+                        config.timeframe,
+                        config.data_version,
+                        strategy_id=strategy_id,
+                        strategy_params={**variant, "_family": config.family},
+                        seed=config.seed + idx,
+                    )
+                    perturbed.append(float(variant_result.sharpe))
+
             from qts.validation.edge_validation import validate_edge_survival
 
-            # Need to generate control sharpes deterministically
-            np.random.seed(config.seed + idx)
-            control_sharpes = [float(np.random.randn() * 0.3) for _ in range(5)]
-            placebo_sharpes = [float(np.random.randn() * 0.3) for _ in range(5)]
-            # Use orchestrator's validate_edge_survival
-            # Build equity gross/net
-            eq_gross = eq_oos
-            eq_net = eq_oos * 0.995
-            folds = [{"is_sharpe": result.sharpe * 0.8, "oos_sharpe": result.sharpe * 0.6} for _ in range(3)]
-            cpcv_folds = [
-                {
-                    "best_is_test_sharpe": float(np.random.randn() * 0.5),
-                    "median_test_sharpe": 0.0,
-                    "train_sharpes": {"a": 1},
-                    "test_sharpes": {"a": 0},
-                }
-                for _ in range(3)
-            ]
             stress = engine.run_stress(
-                instr, config.timeframe, config.data_version, strategy_id, params, spreads=[1.0, 1.5, 2.0]
+                instr,
+                config.timeframe,
+                config.data_version,
+                strategy_id,
+                {**params, "_family": config.family},
+                spreads=[1.0, 1.5, 2.0],
             )
-            # Use DSR trial count = current store count
             trial_n = exp_store.count_trials()
             edge_res = validate_edge_survival(
                 strategy_id,
                 config.data_version,
                 eq_is,
                 eq_oos,
-                eq_gross,
-                eq_net,
+                None,  # gross equity is not measured by this matching model
+                eq_oos,
                 folds,
-                cpcv_folds,
+                [],  # CPCV is not implemented by this bounded campaign path
                 perturbed,
                 stress,
                 trial_n,
-                control_sharpes,
-                placebo_sharpes,
+                [],  # no randomized control evidence was executed
+                [],  # no placebo evidence was executed
                 bars,
-                list(np.diff(eq)) if len(eq) > 1 else [],
+                list(np.diff(eq)),
                 timeframe=config.timeframe,
             )
             passed_flag = edge_res.passed
@@ -344,26 +482,40 @@ def run_campaign(
             # details is dict[str, str] and never carried a "fail_reasons" list
             reasons = [str(name) for name, ok in edge_res.checks.items() if not ok]
             if not passed_flag:
+                conclusion = ConclusionCode.NO_EDGE_FOUND.value
                 exp_store.reject(
                     exp.id,
                     reason="; ".join(reasons)[:500] or "scientific gate failure",
-                    details={"edge_checks": edge_res.checks},
+                    details={"edge_checks": edge_res.checks, "edge_details": edge_res.details},
                 )
                 failed += 1
             else:
+                # A gate pass is still only a research candidate: this loop has
+                # no forward/shadow evidence and never promotes execution.
+                conclusion = ConclusionCode.PROMISING_INSUFFICIENT.value
+                exp_store.complete(
+                    exp.id,
+                    results={"edge_checks": edge_res.checks, "edge_details": edge_res.details},
+                    conclusion=conclusion,
+                )
                 passed += 1
-                # Do not auto-promote — leave in RESEARCH for inspection, human must promote via ledger
             result_obj = CampaignResult(
                 campaign_id=cid,
                 trial_id=trial_id,
                 strategy_id=strategy_id,
                 params=params,
                 passed=passed_flag,
-                sharpe_oos=float(edge_res.details.get("oos_sharpe", result.sharpe))
-                if isinstance(edge_res.details, dict)
-                else float(result.sharpe),
+                sharpe_oos=float(result.sharpe),
                 sharpe_is=float(result.sharpe),
                 reasons=reasons,
+                conclusion=conclusion,
+                data_readiness=readiness.as_dict(),
+                experiment_id=exp.id,
+                configuration_hash=exp.configuration_hash,
+                dataset_provenance=exp.dataset_provenance,
+                dataset_manifest_hash=exp.dataset_manifest_hash,
+                code_version=exp.code_version,
+                evidence={"checks": edge_res.checks, "details": edge_res.details},
             )
         except Exception as e:
             result_obj = CampaignResult(
@@ -373,6 +525,14 @@ def run_campaign(
                 params=params,
                 passed=False,
                 reasons=[str(e)[:300]],
+                conclusion=ConclusionCode.REJECTED.value,
+                data_readiness=readiness.as_dict(),
+                experiment_id=exp.id,
+                configuration_hash=exp.configuration_hash,
+                dataset_provenance=exp.dataset_provenance,
+                dataset_manifest_hash=exp.dataset_manifest_hash,
+                code_version=exp.code_version,
+                evidence={"status": "FAILED", "reason": str(e)[:300]},
             )
             failed += 1
             exp_store.reject(exp.id, reason=str(e)[:300])
@@ -397,6 +557,13 @@ def run_campaign(
         "dsr_trial_count": total_trials,
         "elapsed_s": time.time() - start,
         "status": "COMPLETED",
-        "notes": "never auto-promote solely because high return — human inspection required via scorecard and promotion ledger",
+        "conclusion": (
+            ConclusionCode.BLOCKED_INSUFFICIENT_DATA.value
+            if claim_blocked
+            else (ConclusionCode.NO_EDGE_FOUND.value if not passed else ConclusionCode.PROMISING_INSUFFICIENT.value)
+        ),
+        "data_readiness": readiness.as_dict(),
+        "notes": "A completed campaign is not a positive result. Claim-ineligible data produces blocked trials; no trial is auto-promoted.",
+
     }
     return summary

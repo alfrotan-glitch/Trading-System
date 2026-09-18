@@ -38,7 +38,7 @@ export async function renderSetup(root) {
     ["paper", "Paper", "Simulated fills on recorded data, next-bar-open. No real orders."],
     ["shadow", "Shadow", "Real market data; would-be intents with risk/spread checks. Nothing submitted."],
     ["demo_forward", "Demo Forward", "DEMO observation only — real MT5 demo terminal, real market data, zero orders structurally."],
-    ["demo_execution", "Demo Execution", "Demo orders — requires explicit authority, 14 checks, risk acks, hard limits. DEMO vs LIVE unmistakable."],
+    ["demo_execution", "Demo Execution", "Disabled by product policy — no demo order path or enable control. DEMO vs LIVE unmistakable."],
   ];
   const currentEnv = env?.resolution?.effective_mode ?? "development";
   host.appendChild(card({
@@ -79,7 +79,7 @@ export async function renderSetup(root) {
         stat({ label: "Daily loss cap", value: `$${lim.max_daily_loss_usd ?? "—"}` }),
         stat({ label: "Kill switch", value: lim.kill_switch_enabled ? "ARMED" : "—", tone: "ok" }),
       ),
-      banner("info", "Acknowledgement is stored durably in Demo Control — what blocked, why, what next", "Enabling demo execution requires separate explicit acks. Nothing is enabled from this page. DEMO vs LIVE unmistakable.", "alert"),
+      banner("info", "Safety metadata is informational and non-authorizing — what blocked, why, what next", "DEMO_EXECUTION is disabled by product policy. No acknowledgement or setup-page action creates order permission. Nothing is enabled from this page. DEMO_FORWARD observation remains order-free. DEMO vs LIVE unmistakable.", "alert"),
     ),
   }));
 
@@ -108,7 +108,7 @@ export async function renderSetup(root) {
     try {
       const r = await api.get(`/api/demo/readiness?terminal_path=${encodeURIComponent(path.value)}&symbol=${encodeURIComponent(symbol.value)}`);
       out.replaceChildren(
-        banner(r.passed ? "ok" : "warn", r.passed ? "ALL READINESS CHECKS PASSED — DEMO execution gated" : "READINESS NOT PASSED — what blocked, why, what missing, what next", (r.blocked_reasons ?? []).join(" · ") || "Review failing checks.", r.passed ? "check" : "alert"),
+        banner(r.passed ? "ok" : "warn", r.passed ? "OBSERVATION READINESS PASSED — DEMO execution disabled" : "READINESS NOT PASSED — what blocked, why, what missing, what next", (r.blocked_reasons ?? []).join(" · ") || "Review failing checks.", r.passed ? "check" : "alert"),
         checkGrid(r.checks ?? {}, r.details ?? {}),
       );
     } catch (e) {

@@ -36,14 +36,14 @@ A modular desktop app with a local FastAPI backend + native window (pywebview) t
 |------|---------|-------------|-------|---------|
 | **Paper** | No — next-bar-open simulation | No | PAPER | Estimate fills with conservative spread/slippage |
 | **Shadow** | No — would-be intents | No | SHADOW | Check what *would* have been sent, measure risk/spread vetoes |
-| **Demo Forward** | **Yes — REAL MT5 terminal + REAL DEMO account + REAL market data + REAL demo order lifecycle** | No — demo only | **DEMO** | Validate execution reality with ticks, spreads, latency, fills — **never LIVE** |
+| **Demo Forward** | **Yes — real MT5 terminal + demo account + market data; observation only** | No | **DEMO** | Measure ticks/provenance and hypothetical divergence; zero orders |
 | **Live** | Yes — real account | **Yes** | LIVE | **LOCKED** — requires everything to pass |
 
 `DEMO` results are **never** automatically promoted to `LIVE`.
 
 ## Why is Live locked?
 
-System currently reports `BLOCK — KEEP NO_TRADE` (DSR 0.12, no validated edge, insufficient depth/diversity/execution realism). Capital preservation hard limits, trial ledger (N=75, never reset), locked-test partition, one-way promotion, and risk/reconciliation gates keep it locked. See `data/evidence/edge_validation.json` and `docs/release_readiness_report.md` I. Live blockers.
+System defaults to `BLOCK — KEEP NO_TRADE`. The current repository fixture is explicitly `SYNTHETIC`, claim-ineligible, and only supports labelled mechanism validation. Dataset-specific DSR/PBO/PSR/cost values are shown only when their trial-bound evidence is present; missing controls, cost decomposition, forward divergence, reconciliation, or risk evidence remain `UNAVAILABLE`/`INSUFFICIENT_EVIDENCE` and block promotion. See `data/evidence/edge_validation.json` and `docs/release_readiness_report.md` for current blockers.
 
 ## How do I install on Windows? (Clean Clone)
 
@@ -79,20 +79,18 @@ Desktop shows: Home (System Status, Environment, MT5, Account Type, Market Data,
 1. Install MT5 terminal, open a **DEMO** account (never live for demo_forward).
 2. Launch QTS → **Setup Wizard** → set MT5 terminal path `C:\Program Files\MetaTrader 5\terminal64.exe` and symbol `XAUUSD`.
 3. Set credentials via Windows Credential Manager or `.env` (never plain repo): `QTS_MT5_LOGIN`, `QTS_MT5_PASSWORD`, `QTS_MT5_SERVER`. See `docs/mt5_demo_setup.md`.
-4. **MT5 Demo Connection Checker** (Setup Wizard → Test MT5 Connection or Demo Forward view) runs 14 checks: MT5 installed, terminal running, account connected, account is DEMO, broker, symbol available/tradable/spec valid, market data fresh, bid/ask valid, spread acceptable, account state, risk config, reconciliation. Only after all pass is Demo Forward enabled.
+4. **MT5 Demo Connection Checker** (Setup Wizard → Test MT5 Connection or Demo Forward view) runs 14 checks: MT5 installed, terminal running, account connected, account is DEMO, broker, symbol available/tradable/spec valid, market data fresh, bid/ask valid, spread acceptable, account state, risk config, reconciliation. Only after all pass may DEMO_FORWARD observation start; this never enables DEMO_EXECUTION.
 
 ## How do I start observation?
 
-- **Observe Only** (safe, no orders): Demo Forward → *Start Observation*. Requires all 14 readiness checks to pass; then records REAL MT5 ticks with full provenance into the **canonical observation store** (`data/sqlite/forward_observatory.db`) bound to an audited session (environment, broker, symbol, timestamp basis, code version). `data/evidence/forward_observation_manifest.json` is a derived, regenerable export.
+- **Observe Only** (safe, no orders): Demo Forward → *Start Observation*. Requires all 14 readiness checks to pass; then records real MT5 demo-account observations as provenance class `DEMO` with full provenance into the **canonical observation store** (`data/sqlite/forward_observatory.db`) bound to an audited session (environment, broker, symbol, timestamp basis, code version). `data/evidence/forward_observation_manifest.json` is a derived, regenerable export and is never `REAL`-money evidence.
 - Observation is physically order-free: the observe runtime has no order path at all (structurally pinned by tests).
-- **Enable Demo Execution** requires a FRESH 14/14 readiness pass computed in the same request; the decision is a durable, audited state (`/api/demo/state`) consumed by the API, UI and execution boundary. Permission decays (`reverify_ttl_s`): expired readiness evidence reports `ENABLED_BUT_BLOCKED` until a fresh pass re-verifies it. When the gate refuses, the API answers **409 with reasons** — never a fabricated `demo_enabled=true`.
+- **DEMO execution is disabled by product policy.** A readiness pass never creates order permission; `/api/demo/enable` returns a durable 409 refusal after optional diagnostic probing and does not write an enabled state. Direct authority calls are refused too. The only broker-facing product path is DEMO_FORWARD observation with zero orders.
 - Fabricated legacy "demo observations" were quarantined to `data/evidence/quarantine/` with documented violations; they satisfy no gate and no claim.
 
-## How do I enable demo execution?
+## Why is demo execution disabled?
 
-Demo Forward → tick *Risk ack* → **Enable Demo Execution** → confirms `DEMO_EXECUTION_ENABLED`. Lifecycle `RESEARCH→VALIDATING→FORWARD_OBSERVATION→PAPER_VERIFIED→SHADOW_VERIFIED→DEMO_OBSERVATION/DEMO_EXECUTION` — demo success does NOT become live eligible.
-
-Demo safety limits (conservative): max 0.1 lot/order, 0.3 exposure, 3 open orders, 4/min, 50 USD daily loss, 100 USD /5% drawdown, 30bps spread, 20bps slippage, kill switch armed. See `docs/demo_forward_protocol.md`.
+This workstation intentionally stops at `DEMO_FORWARD/OBSERVE_ONLY`: a fresh readiness report can authorize recording real MT5 demo-account observations, but it cannot authorize an order path. `/api/demo/enable` is a durable 409 refusal, and `LIVE` remains separately locked. See `docs/demo_forward_protocol.md` for the observation contract.
 
 ## How do I stop it?
 
@@ -110,7 +108,7 @@ Demo safety limits (conservative): max 0.1 lot/order, 0.3 exposure, 3 open order
 ## Canonical authorities (read this before touching limits/modes/gates)
 
 - **Mode**: `qts.domain.modes` — DEVELOPMENT / PAPER / SHADOW / DEMO_FORWARD / DEMO_EXECUTION / LIVE; unknown selections fail closed
-- **DEMO execution permission**: `qts.lifecycle.demo_authority` — one durable audited state; API/UI/execution all consume it
+- **DEMO execution policy**: `qts.lifecycle.demo_authority` — one durable refusal/history boundary; direct enablement and API/UI/execution order permission are disabled
 - **Risk limits**: `qts.risk.authority` — one canonical set; mode restrictions may only tighten; every snapshot carries a config hash
 - **Broker metadata**: `qts.adapters.mt5_adapter` — alias-resolved, zero defaults, fail-closed
 - **Metrics**: `qts.domain.provenance.MetricValue` — MEASURED or UNAVAILABLE/INSUFFICIENT_EVIDENCE, never a placeholder zero
@@ -144,6 +142,6 @@ Docs start `docs/00-overview.md` → `docs/13-adrs.md`. Build exe: `scripts/buil
 
 ## Current Status
 
-`BLOCK — KEEP NO_TRADE`, Live LOCKED, 531 tests passing (Linux 3.11; deterministic under ASCII/C locale), static gates green (ruff check, ruff format, mypy, bandit). LIVE gate evidence is tiered (structural / integration / real-environment); MT5 connectivity passes only with a REAL terminal — mock-based connectivity evidence is banned. `data/curated/` and `data/manifests/` are deliberately **not tracked** — a clean clone establishes its dataset via `qts data bootstrap` (truthful provenance, `SYNTHETIC` label). Remaining limitations in `docs/release_readiness_report.md` K.
+`BLOCK — KEEP NO_TRADE`, Live LOCKED. Test and static-check counts are run-dependent and are not treated as research evidence. LIVE gate evidence is tiered (structural / integration / real-environment); MT5 connectivity passes only with a REAL terminal — mock-based connectivity evidence is banned. `data/curated/` and `data/manifests/` are deliberately **not tracked** — a clean clone establishes its dataset via `qts data bootstrap` (truthful provenance, `SYNTHETIC` label). Remaining limitations in `docs/release_readiness_report.md` K.
 
 Never treat BACKTEST/PAPER/SHADOW/DEMO as LIVE. No profitability claimed.

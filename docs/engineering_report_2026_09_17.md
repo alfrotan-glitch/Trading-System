@@ -1,152 +1,129 @@
-# QTS Engineering Report — Authority Architecture, Fabrication Removal & Safety Hardening
+# QTS Engineering Report — Authority, Evidence, and Safety Boundaries
 
-**Branch:** `arena/01a0af7d-trading-system` · **Base:** `1b7fbed` · **Head:** `b802510`
-**Date:** 2026-09-17 · **Environment:** Linux 3.11 sandbox (development — no MT5 terminal, no broker access)
+**Status:** superseded audit report reconciled with the current checkout
+**Updated:** 2026-09-18
+**Branch:** `arena/01a0b358-trading-system`
+**Inspected base:** `a885f65d252e`
+**Environment:** Linux development sandbox; no MT5 terminal or broker session.
 
----
+This report records the current engineering contract. It does not claim that
+the sandbox has produced real broker observations or a validated trading edge.
+The release-level operator summary is `docs/release_readiness_report.md`.
 
-## 1. Architecture — what was redesigned and why
+## 1. Canonical authorities
 
-The audit's root cause was **authority duplication**: demo permission, risk
-limits, environment/mode, observation data, and metric semantics were each
-defined or derived independently in several places, so components could
-disagree silently. Five canonical authorities now own these questions
-(`docs/canonical_authorities.md`):
-
-| Authority | Module | Replaces |
+| Concern | Canonical implementation | Boundary |
 |---|---|---|
-| **ExecutionMode** | `qts.domain.modes` | scattered `QTS_ENV`/`QTS_MODE`/YAML/UI derivations |
-| **DEMO execution permission** | `qts.lifecycle.demo_authority` | the cosmetic `/api/demo/enable` response string |
-| **Risk limits** | `qts.risk.authority` | `RiskLimits` + `RiskConfig` + `DemoForwardLimits` + UI text |
-| **Observation store** | `qts.observability.forward_observatory` (SQLite, provenance-first) | competing JSON evidence files |
-| **Provenance & metric semantics** | `qts.domain.provenance` | implicit "zeros and defaults everywhere" |
+| Mode resolution | `qts.domain.modes` | Unknown selections fail closed; descriptive capability is not permission. |
+| DEMO execution | `qts.lifecycle.demo_authority` | Product policy permanently refuses enablement and records refusal history. |
+| DEMO_FORWARD gate | `qts.lifecycle.demo_gate` | Fresh readiness can start observation only; no order path. |
+| Risk limits | `qts.risk.authority`, `qts.risk.demo_limits` | Restrictions can tighten only; limits do not authorize execution. |
+| Observations | `qts.observability.forward_observatory` | One append-only SQLite store with provenance; JSON is derived. |
+| Provenance/metric semantics | `qts.domain.provenance` | `MEASURED`, `UNAVAILABLE`, `INSUFFICIENT_EVIDENCE`, and blocked states stay distinct. |
+| Research lineage | `qts.research.experiment`, `campaign`, `readiness` | Immutable configuration, dataset/version, seed, split, costs, trial count, conclusion, and failure reason. |
+| LIVE governance | `qts.lifecycle.live_gate` | Separate lock; no DEMO or research result unlocks it. |
 
-Supporting redesigns:
+## 2. Current safety matrix
 
-- **Broker metadata resolution** (`mt5_adapter`): explicit alias table, zero
-  defaults, contradiction guards, fail-closed on any missing/invalid field.
-- **Live-gate proof tiers**: `structural` / `integration` /
-  `real_environment` — mock evidence can never satisfy a real-environment
-  tier (`live_gate.py`).
-- **Evidence quarantine**: `data/evidence/quarantine/` with a README
-  documenting every violation of the removed fabricated artifacts.
-- **Durability-before-visibility**: the observation collector persists the
-  session end (and manifest) BEFORE flipping its state — a state transition
-  is always a persistence point.
-
-## 2. Bugs closed (audit findings → resolution)
-
-| # | Finding | Resolution (evidence) |
-|---|---------|----------------------|
-| A | Demo enable ignores `readiness.passed` | `/api/demo/enable` computes a FRESH 14/14 report in-request; refusal → HTTP 409 + durable DISABLED + audited refusal. Test: `test_demo_authority_gate.py` (13 cases), `test_demo_enable_evaluates_the_same_saved_connection` |
-| B | `demo_enabled=true` is cosmetic | Durable SQLite+audit state consumed by `/api/demo/state`, `/api/demo/config`, UI, and the execution boundary; survives restart (test-pinned) |
-| C | "Start Observation" stub | Already replaced by the real collector (commit 1b7fbed); now upgraded with canonical session identity (env/broker/symbol/timestamp basis/code version), DEMO provenance stamping, honest `ENDED_ON_ERRORS` terminal status |
-| #5 | Competing observation stores | ONE SQLite store; `/api/demo/observations` reads it; manifest is a derived export; the impulse forward-evidence gate consumes `real_observation_count()` (provenance-gated), never a JSON file |
-| #6 | Fabricated legacy evidence | `demo_forward_observations.json` (constant 2.5 bps slippage, 120 ms latency, +0.05 fills, wrong symbol, `source=REAL DEMO`) → quarantined with documented violations; regression test forbids its return |
-| #7 | Placeholder "reality metrics" | All comparison metrics are MEASURED or UNAVAILABLE with reasons; signal agreement = real event alignment (window-matched bar timestamps, one-to-one); zero-ratio fabrication removed and pinned |
-| #8 | Risk authority duplication | One resolver; mode restrictions may only tighten (validated at import+use); loosening rejected without `risk.approved`; snapshot served at `/api/risk` with per-field sources + config hash |
-| #9 | Fabricated safety fallbacks | `equity→10000` in risk engine → `ACCOUNT_STATE_UNAVAILABLE` veto; unlabeled dry-run/paper/shadow accounts labeled `*_SIM`/`CLI_SYNTHETIC`; `order_check` price=`2000` fabrication removed; `BrokerAdapter.account()` default fabrication removed (raises) |
-| #10 | Defaulted broker metadata | Contract size, volume min/max/step, digits, point, tick size, trade mode, filling mode, execution mode, stops/freeze: all required, fail-closed; contradictory geometry rejected; `trade_allowed` default-True fabrication replaced by authoritative `trade_mode` |
-| #11 | Account authority | `leverage`/`currency` = `None` (UNAVAILABLE) when absent — never guessed; `source="BROKER"`; receipt-time limitation documented in `docs/mt5_demo_setup.md`; unknown equity vetoes orders |
-| #12 | Timestamp model | Preserved (measured-offset contract + regression tests untouched); collector sessions bind the timestamp basis; provenance travels in every record |
-| #13 | One market-data path | Preserved (`MarketDataProvider` validates; collector uses it); no new bypass introduced |
-| #14 | Mode authority | Canonical resolution; unknown selection → `ModeResolutionError` (never silent DEVELOPMENT); effective-mode diagnostics in `/api/health` and `/api/env/boundary` |
-| #16/#20 | Live-gate quality | `check_mt5_connectivity` rewritten: real terminal required; mock-based pass banned; proof tiers exposed in the report; micro (LIVE-family) fails closed without a real terminal |
-| #21/#22 | Weak evidence checks | Paper/shadow gate evidence now requires parseable JSON + mode label + `data_version`/`generated_at`/`code_version` lineage + real records; existence-only acceptance banned (tests pin both the refusal and the pass) |
-| #33 | Reality reporting | Comparison + execution-reality endpoints distinguish MEASURED / UNAVAILABLE with reasons; `/api/paper`'s fabricated 1.5 bps slippage removed (PAPER slippage is a model assumption) |
-| #36 | UI truthfulness | Dashboard renders UNAVAILABLE metrics honestly (no fake equity/balance/regime/spread); MT5 view shows REAL_TERMINAL or DISCONNECTED with no invented spec; demo-enable button displays refusals verbatim; demo state view shows the authority |
-| #15 | Credentials | Wizard store already credential-free with rejection reporting (preserved; no regression) |
-
-## 3. Safety — what can and cannot execute per mode
-
-| Mode | Broker data | Broker orders | Enforced by |
+| Mode | Data | Broker orders | Product result |
 |---|---|---|---|
-| DEVELOPMENT | no | never | no adapter in path; mode cannot submit |
-| PAPER | simulation | never | `PaperBrokerAdapter` (local matching only) |
-| SHADOW | simulation | never | `ShadowBroker` (intents only) |
-| DEMO_FORWARD | **yes** | **structurally never** — observe runtime has no order path (AST-pinned + runtime `order_send` sentinel); mode cannot submit (authority refuses) | collector + authority |
-| DEMO_EXECUTION | yes | yes — only behind a fresh, durable, audited 14/14 pass; decays after 120 s without re-verification | `DemoExecutionAuthority` |
-| LIVE | yes | **LOCKED** — real-environment proof tiers; connectivity passes only with a REAL terminal | live gate |
+| DEVELOPMENT | synthetic/backtest only | never | mechanism research |
+| PAPER | recorded data with simulated fills | never | simulated evidence |
+| SHADOW | would-be intents | never | divergence/intention evidence |
+| DEMO_FORWARD / OBSERVE_ONLY | real MT5 demo data when available | structurally zero | provenance-bound observations |
+| DEMO_EXECUTION | not shipped as an order path | disabled by policy | durable refusal; no permission |
+| LIVE | real environment only | locked | requires independent governance/evidence |
 
-Kill switch, reconciliation suspension, idempotency, and restart recovery
-are unchanged and regression-covered. Risk vetoes on unknown account state
-(`ACCOUNT_STATE_UNAVAILABLE`) make UNKNOWN → BLOCK the default.
+`ExecutionMode.DEMO_EXECUTION.can_submit_broker_orders` remains `true` as a
+capability-model compatibility value. It is not product permission. The
+separate authority/API policy overrides it and always returns
+`execution_permitted=false`.
 
-## 4. Research
+## 3. DEMO boundary corrections
 
-The impulse/event research framework (pre-registered, Holm-Bonferroni,
-placebo, locked validation, trial ledger, data-adequacy gate) is intact and
-now reads forward evidence ONLY from the canonical store with DEMO/REAL
-provenance — 10 synthetic ticks and 50 fabricated JSON rows both correctly
-fail the forward-evidence gate (test-pinned).
+The previous implementation allowed a successful readiness/acknowledgement
+transition to look like DEMO execution permission. The current boundary is
+explicit:
 
-## 5. Scientific validity
+- `DemoExecutionAuthority.enable()` always refuses, even with a fresh passing
+  readiness object and both acknowledgements.
+- The refusal is appended to the durable state/history and a refusal audit is
+  attempted; no `enabled=1` state is written.
+- `POST /api/demo/enable` is diagnostic-only and returns `409` with policy and
+  readiness reasons. It cannot be used to create an order permission.
+- `DEMO_FORWARD` collection owns no order submission call and remains the only
+  broker-facing product path.
+- UI operations, setup, trading, comparison, and governance views render
+  `DISABLED BY POLICY` and do not offer an enable action.
+- Tampered enabled rows, restarts, missing/failed readiness, and mode changes
+  remain fail-closed.
 
-Leakage/overfitting controls unchanged (locked test partition, purged CPCV,
-walk-forward, perturbation, null/placebo, PSR/DSR, trial ledger). New:
-every produced evidence artifact now carries code lineage
-(`generated_at`, `code_version`, `data_class`), and the live gate rejects
-lineage-less evidence with a regeneration reason instead of accepting any
-non-empty file.
+No demo fill, account state, spread, slippage, latency, reconciliation, or
+profitability is inferred from readiness or observation counts.
 
-## 6. Broker reality (honest scope)
+## 4. Observation/provenance corrections
 
-Verified **in this environment**: none against a live terminal — this
-sandbox has no MT5/WM Markets access. What IS verified: the contract with
-the real environment is preserved and regression-pinned (real-API field
-aliases incl. `trade_contract_size`/`trade_exemode`, the WMMarkets
-timestamp behavior, the 14-check gate, initialize-in-process requirement,
-`XAUUSD@` symbol mapping). The previous session's real-terminal readiness
-evidence remains valid: those checks were not weakened — two fabricated
-defaults inside them (`trade_allowed→True`, demo-gate metadata defaults)
-were replaced with authoritative resolution.
+The canonical observation store is `data/sqlite/forward_observatory.db`.
+`data/evidence/forward_observation_manifest.json` is a derived export and
+currently records zero sessions/ticks/signals. It must never be populated with
+synthetic or quarantined samples labelled as DEMO evidence.
 
-## 7. Evidence
+Every accepted observation carries source/session/timestamp/code provenance.
+The timestamp contract remains unchanged: authoritative UTC `time.time()`;
+broker server-local time minus one measured offset; retain the last good offset;
+use zero only before any valid measurement; reject future/stale timestamps.
+The FS-c42bbd regression suite remains part of the verification boundary.
 
-- Canonical stores: `data/sqlite/qts.db` (state/audit),
-  `data/sqlite/forward_observatory.db` (observations, provenance-first)
-- Derived exports: `data/evidence/*.json` (regenerable, never gate-satisfying)
-- Quarantine: `data/evidence/quarantine/` (2 artifacts + README)
+The paper/shadow comparison now uses event alignment for signal agreement and
+returns `UNAVAILABLE` with a reason for execution-side metrics because
+DEMO_EXECUTION is disabled. Legacy fabricated constants are quarantined and
+not claim-bearing.
 
-## 8. Testing
+## 5. Research/evidence corrections
 
-- **493 passed, 16 skipped** (full suite; was 440 at baseline) — includes
-  **64 new adversarial tests**: demo authority (13), authority boundaries
-  (18), no-fabrication (21), plus upgraded existing suites
-- Static gates: **ruff clean**, **mypy clean** (110 files)
-- API smoke: all 22 GET endpoints 200; enable flow 409→DISABLED end-to-end
-- Full-suite run twice consecutively green (race fix verified)
+The canonical store currently contains one synthetic fixture dataset:
+`XAUUSD_1H_500`, 500 bars, 20.83 days. The quality checks pass for the fixture
+schema, but readiness blocks claims because provenance is `SYNTHETIC`, depth is
+below 5,000 bars, and span is below 180 days. Inventory/source-audit/quality/
+historical-depth/edge/comparison/forward artifacts are regenerated from that
+single source and retain explicit limitations.
 
-## 9. Remaining limitations (genuinely unproven)
+Research records now require a complete falsifiable hypothesis: mechanism,
+measurable prediction, null, competing explanations, falsification criteria,
+required data, horizon, and population/regime. Experiments preserve immutable
+configuration and cumulative trial memory. Blocked and rejected trials remain
+in the denominator; no trial reset or unsupported promotion is allowed.
 
-1. **No live-terminal validation in this session** — the Windows/MT5/WM
-   Markets probe, real DEMO observation, and DEMO execution remain to be
-   re-run on the real machine (procedures unchanged; `docs/mt5_demo_setup.md`).
-2. **DEMO_EXECUTION path unexercised end-to-end** — the authority gates it
-   correctly, but no real demo order lifecycle has been recorded since the
-   fabricated artifacts were removed. Execution-reality metrics are
-   honestly UNAVAILABLE.
-3. **No forward observation sessions yet** under the new canonical store —
-   the first real session will be the first DEMO-class evidence.
-4. **No validated trading edge** — research status remains
-   BLOCK / KEEP NO_TRADE (DSR 0.12, insufficient data depth/diversity).
-   This is a correct scientific result, not a defect.
-5. Derived-JSON consumers outside the API (impulse report legacy code
-   paths reading `data/evidence/*.json` for non-gate purposes) still exist;
-   they are read-only analyses, not gates.
+Current conclusion: `BLOCKED_INSUFFICIENT_DATA` / `NO_TRADE`.
 
-## 10. Live status
+`ValidatorPipeline.validate_stress()` treats non-numeric and non-finite stress
+outputs as explicit `MEASURED_INVALID` blocking checks. It never replaces
+`NaN`/`inf` with a favorable sentinel.
 
-**LIVE: LOCKED.**
+## 6. Verification snapshot
 
-Not `ELIGIBLE_PENDING_GOVERNANCE`. Blocked by: no validated edge, no
-real-environment connectivity evidence in this session, no forward
-evidence, lineage-less legacy paper/shadow artifacts requiring
-regeneration (the gate now says so explicitly), and the structural
-requirement of human approval. No backtest, demo result, UI action, or
-mock can change this — the gate's evidence tiers and the demo authority's
-audit-first state machine make the forbidden transitions structurally
-impossible, and 64 adversarial tests pin them.
+- `ruff check .`: clean.
+- `python -m compileall -q src tests`: clean.
+- Default `pytest -q`: 718 passed, 18 skipped; skipped integration/browser
+  checks are not presented as evidence.
+- Node UI logic tests: 25 passed.
+- Direct authority/API checks: full-gate enable refuses; API enable returns
+  `409`; state/config remain disabled.
+- Evidence inspection: one canonical synthetic dataset, zero real forward
+  observations, comparison execution metrics unavailable, edge/campaign
+  conclusions blocked.
 
-**The system can now honestly say: it does not know whether it has an
-edge — and it is built to find out without being able to lie about it.**
+## 7. Remaining limitations
+
+1. No real Windows/MT5 terminal observation was available in this checkout.
+2. Historical depth, population breadth, regime coverage, measured costs, and
+   execution evidence are insufficient for a claim.
+3. Null/placebo/regime/gross-net controls remain blocked or unbound where the
+   current experiment did not execute them.
+4. Browser-level screenshots and opt-in integration tests require their
+   external dependencies/flags and are not silently counted as passed.
+5. DEMO_EXECUTION remains intentionally disabled and LIVE remains locked.
+
+The next operator action is to acquire and register provenance-qualified
+history, then regenerate and inspect the falsification/evidence bundle. No
+execution mode should be enabled to satisfy a test or demonstration.

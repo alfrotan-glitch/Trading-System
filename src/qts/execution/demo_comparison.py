@@ -14,12 +14,12 @@ Now every metric is one of:
 * **MEASURED** — computed from real event alignment / real recorded fields.
 * **UNAVAILABLE** — with a machine-readable reason (no data, not measured).
 
-Demo-side execution metrics come from the canonical observation store; when
-no demo-execution fills have ever been recorded they are UNAVAILABLE — NOT
-zero. Signal agreement uses genuine event alignment: a paper fill agrees
-with a shadow intent when both reference the SAME decision event (matching
-bar-timestamp extracted from the event identity) — count ratios cannot
-pretend to be agreement.
+Demo-side execution metrics are permanently UNAVAILABLE under the product
+policy: the canonical store is observation-only and cannot authorize or
+record DEMO_EXECUTION fills. Signal agreement uses genuine event alignment: a
+paper fill agrees with a shadow intent when both reference the SAME decision
+event (matching bar-timestamp extracted from the event identity) — count
+ratios cannot pretend to be agreement.
 """
 
 from __future__ import annotations
@@ -131,28 +131,26 @@ def compare_paper_shadow_demo(
 
     agreement = _align_events(paper_fills, shadow_intents)
 
-    # Demo EXECUTION metrics: require real recorded demo fills (order lifecycle
-    # data). Canonical store observations are ticks — no fills exist until
-    # DEMO_EXECUTION actually records them; then they must carry real fields.
-    demo_fills = [
-        o
-        for o in demo_observations
-        if str(o.get("type", "")).startswith("demo_fill") and o.get("requested_price") and o.get("actual_price")
-    ]
-    slips = [float(o["slippage_bps"]) for o in demo_fills if o.get("slippage_bps") is not None]
-    lats = [float(o["latency_ms"]) for o in demo_fills if o.get("latency_ms") is not None]
+    # DEMO_EXECUTION is disabled by product policy. Canonical store rows are
+    # observations, never fills; do not interpret legacy/external fill-shaped
+    # rows as permission or execution evidence.
+    demo_fills: list[dict[str, Any]] = []
+    slips: list[float] = []
+    lats: list[float] = []
 
     result: dict[str, Any] = {
         "generated_at": datetime.now(UTC).isoformat(),
         "provenance": {
             "paper_source": "data/evidence/paper_trades.json (PAPER class)",
             "shadow_source": "data/evidence/shadow_intents.json (SHADOW class)",
-            "demo_source": "canonical observation store (DEMO class)",
+            "demo_source": "canonical observation store (DEMO_FORWARD/OBSERVE_ONLY; DEMO_EXECUTION disabled)",
             "label": "DEMO never LIVE",
+            "policy": "DEMO_FORWARD is observation-only; DEMO_EXECUTION disabled; LIVE never inferred",
         },
         "paper_trades": len(paper_fills),
         "shadow_intents": len(shadow_intents),
         "demo_observations": len(demo_observations),
+        "demo_execution_policy": "DISABLED",
         "demo_fills_recorded": len(demo_fills),
         "signal_agreement": agreement.as_dict(),
         # Execution-reality metrics — each is a real measurement or an

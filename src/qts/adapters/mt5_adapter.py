@@ -1032,7 +1032,7 @@ class MT5Adapter(BrokerAdapter):
             if lo <= grid < hi and abs(grid) <= self._MAX_PLAUSIBLE_OFFSET_S:
                 measured_offset, measured_basis = float(grid), "measured-m1-bar"
 
-        if measured_offset is not None:
+        if measured_offset is not None and measured_basis is not None:
             self._server_offset_cache[symbol] = (measured_offset, measured_basis, now_epoch)
             return measured_offset, measured_basis
 

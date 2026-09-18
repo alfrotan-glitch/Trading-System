@@ -345,12 +345,73 @@ class ValidatorPipeline:
                     status="NOT_IMPLEMENTED",
                 )
             ]
+        required_scenarios = (1.0, 1.5, 2.0)
+        missing_scenarios = [
+            s for s in required_scenarios if s not in stress_results or stress_results.get(s) is None
+        ]
+        if missing_scenarios:
+            return [
+                Check(
+                    "stress_complete",
+                    False,
+                    None,
+                    None,
+                    f"cost stress missing measured rerun scenarios {missing_scenarios} → BLOCKS",
+                    required=True,
+                    status="NOT_IMPLEMENTED",
+                )
+            ]
+
+        # Non-finite values are not favorable measurements.  They are invalid
+        # evidence and must remain visible as a blocking result instead of
+        # being replaced with an arbitrary large pass value.
+        invalid_measurements: list[str] = []
+        for scenario in required_scenarios:
+            raw_value = stress_results.get(scenario)
+            if raw_value is None:
+                invalid_measurements.append(f"{scenario}x=None (missing)")
+                continue
+            try:
+                numeric_value = float(raw_value)
+            except (TypeError, ValueError, OverflowError):
+                invalid_measurements.append(f"{scenario}x={raw_value!r} (non-numeric)")
+                continue
+            if not math.isfinite(numeric_value):
+                invalid_measurements.append(f"{scenario}x={raw_value!r} (non-finite)")
+        if invalid_measurements:
+            return [
+                Check(
+                    "stress_measurement",
+                    False,
+                    "; ".join(invalid_measurements),
+                    None,
+                    "cost stress contains invalid measured result(s): "
+                    + "; ".join(invalid_measurements)
+                    + " → BLOCKS",
+                    required=True,
+                    status="MEASURED_INVALID",
+                )
+            ]
+
         checks: list[Check] = []
         # check 1.5x still profitable (PF threshold from Settings)
-        pf_1_5 = stress_results.get(1.5, stress_results.get(1.0))
+        pf_1_5 = stress_results[1.5]
+        try:
+            pf_1_5_f = float(pf_1_5)
+        except (TypeError, ValueError, OverflowError):  # defensive; checked above
+            return [
+                Check(
+                    "stress_measurement",
+                    False,
+                    repr(pf_1_5),
+                    None,
+                    "cost stress contains a non-numeric measured result → BLOCKS",
+                    required=True,
+                    status="MEASURED_INVALID",
+                )
+            ]
         if pf_1_5 is not None:
             # PF could be inf
-            pf_1_5_f = float(pf_1_5) if np.isfinite(pf_1_5) else 999
             checks.append(
                 Check(
                     "stress_spread_1_5x",
@@ -366,7 +427,20 @@ class ValidatorPipeline:
         # 2x check — G6 unify threshold via settings (derive from min_spread_pf)
         pf_2 = stress_results.get(2.0)
         if pf_2 is not None:
-            pf_2_f = float(pf_2) if np.isfinite(pf_2) else 999
+            try:
+                pf_2_f = float(pf_2)
+            except (TypeError, ValueError, OverflowError):  # defensive; checked above
+                return [
+                    Check(
+                        "stress_measurement",
+                        False,
+                        repr(pf_2),
+                        None,
+                        "cost stress contains a non-numeric measured result → BLOCKS",
+                        required=True,
+                        status="MEASURED_INVALID",
+                    )
+                ]
             thresh_2x = max(0.8, self.min_spread_pf * 0.8)
             checks.append(
                 Check(
@@ -375,7 +449,7 @@ class ValidatorPipeline:
                     float(pf_2_f),
                     thresh_2x,
                     f"PF at 2x spread {pf_2_f:.2f} <{thresh_2x} fragile",
-                    required=False,
+                    required=True,
                 )
             )
         return checks
@@ -476,25 +550,23 @@ class ValidatorPipeline:
         for c in self.validate_perturbation(sr_oos, perturbed_sharpes):
             report.add(c)
 
-        # Stress (real re-runs)
-        # prefer stress_results if provided, else fallback to spread_stress but mark as not real?
-        real_stress = stress_results if stress_results is not None else spread_stress
-        # if spread_stress was passed as PF multiplication (old), it will be same, but we treat as real now
-        # To ensure no placeholder, we require stress_results from re-runs; if only spread_stress with PF multiplication, we still check but note
-        # For strictness, if stress_results is None and spread_stress is provided, we will still validate but it's not from re-run — we flag.
-        # Instead, we demand stress_results; if only spread_stress provided, we consider it NOT real and block.
-        if stress_results is None and spread_stress is not None and len(spread_stress) > 0:
-            # This is the old path (PF multiplication) — now we consider it insufficient and require real
-            # But to avoid breaking existing callers, we treat spread_stress as real only if it came from re-run
-            # We can't distinguish, so we will validate it but add a note check.
-            for c in self.validate_stress(spread_stress):
-                # mark as not from re-run, make it warning not block? But spec says must be real, so we block if not real.
-                # We will add a separate info check.
-                c.details += " (via PF arg — ensure this came from re-run, not multiplication)"
-                report.add(c)
-        else:
-            for c in self.validate_stress(real_stress):
-                report.add(c)
+        # Stress must be supplied as actual rerun results.  The legacy
+        # ``spread_stress`` argument is intentionally not accepted as evidence:
+        # its provenance cannot distinguish a rerun from a scaled baseline.
+        for c in self.validate_stress(stress_results):
+            report.add(c)
+        if stress_results is None and spread_stress is not None:
+            report.add(
+                Check(
+                    "stress_provenance",
+                    False,
+                    None,
+                    None,
+                    "legacy spread_stress supplied without rerun provenance — NOT_IMPLEMENTED → BLOCKS",
+                    required=True,
+                    status="NOT_IMPLEMENTED",
+                )
+            )
 
         # Drawdown / PF metrics
         dd_is = max_drawdown(equity_is)

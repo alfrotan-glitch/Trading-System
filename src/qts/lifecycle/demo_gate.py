@@ -180,7 +180,11 @@ def demo_forward_readiness_report(
     symbol: str | None = None,
     symbol_map: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Run 14 checks. Returns dict with checklist, passed, blocked_reasons, demo_enabled.
+    """Run 14 checks for DEMO_FORWARD observation readiness.
+
+    ``passed`` authorizes observation only. The legacy ``demo_enabled`` field
+    is retained for API compatibility and is always false because
+    DEMO_EXECUTION is disabled by product policy.
 
     ``terminal_path`` (or ``QTS_MT5_PATH``/``MT5_PATH`` env) is passed to
     ``mt5.initialize(path=...)``: the MetaTrader5 package returns None from
@@ -472,7 +476,10 @@ def demo_forward_readiness_report(
         "reconciliation_healthy",
     ]
     passed = all(checks.get(k, False) for k in required)
-    demo_enabled = passed  # only after all required pass
+    # ``passed`` authorizes DEMO_FORWARD observation readiness only. Product
+    # policy intentionally keeps DEMO_EXECUTION disabled, so the legacy field
+    # must not imply order permission.
+    demo_enabled = False
     return {
         "timestamp": datetime.now(UTC).isoformat(),
         "checks": checks,
@@ -480,6 +487,8 @@ def demo_forward_readiness_report(
         "blocked_reasons": blocked,
         "passed": passed,
         "demo_enabled": demo_enabled,
+        "demo_execution_enabled": False,
+        "demo_execution_note": "DEMO_EXECUTION is disabled by product policy; passed readiness only permits DEMO_FORWARD observation",
         "required_checks": required,
         "account_is_demo": is_demo,
         "warn_live_in_demo": not is_demo and account_info is not None,

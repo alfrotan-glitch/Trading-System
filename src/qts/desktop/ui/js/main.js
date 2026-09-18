@@ -205,7 +205,7 @@ function openWorkspace() {
     h("div", { class: "eyebrow" }, "Performance is UX — principle 13"),
     h("div", { class: "small text-dim" }, "Diagnostics shows last 100 measurements: load (page), route (transition), refresh (forced/periodic), render (workspace update), request (API), dup-coalesced (GET dedup), dup-sync (sync dedup), recovery (error→ok), poll (periodic), poll-skipped (hidden tab), heap (performance.memory). No payloads. Bounded 100. Measures load/transition/refresh/rendering/memory/dup/recovery."),
     h("div", { class: "eyebrow" }, "Safety — DEMO vs LIVE unmistakable"),
-    h("div", { class: "small text-dim" }, "DEMO = simulated execution, yellow/warn, requires readiness + explicit acks. LIVE = real capital, red/locked, structurally locked until every scientific, safety, human-approval gate passes. What blocked, why, what missing, what next explicit everywhere."),
+    h("div", { class: "small text-dim" }, "DEMO_FORWARD = real MT5 demo-account observation with zero orders, yellow/warn. DEMO_EXECUTION is disabled by product policy. LIVE = real capital, red/locked, structurally locked. What blocked, why, what missing, what next explicit everywhere."),
     h("div", { class: "eyebrow" }, "Truth visible — never 0 when missing"),
     h("div", { class: "small text-dim" }, "MEASURED/UNAVAILABLE/INSUFFICIENT/BLOCKED/DEGRADED/READY/OBSERVING/LOCKED — never 0. Provenance badges REAL/SYNTHETIC/SIMULATED/ESTIMATED/IMPUTED/BROKER-DERIVED/MODEL-DERIVED explicit on every field."),
   ));

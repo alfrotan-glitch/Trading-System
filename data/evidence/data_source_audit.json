@@ -1,60 +1,74 @@
 {
   "available_sources": [
     {
-      "version": "20260916-010-86ca2f9c",
+      "version": "20260918-010-572728d9",
       "instrument": "XAUUSD",
-      "timeframe": "1H",
-      "rows": 2000,
-      "start": "2020-01-01 00:00:00+00:00",
-      "end": "2020-03-24 08:00:00+00:00",
-      "checksum": "sha256:86ca2f9c35a3518f",
-      "source": "synthetic_or_csv",
-      "bid_ask_available": false,
-      "spread_available": "proxy via high-low only",
-      "tick_available": false,
-      "timestamp_quality": "UTC",
-      "survivorship": "single symbol XAUUSD, no survivorship issue for FX/metal",
-      "corporate_adjustments": "not applicable (XAUUSD)",
-      "broker_differences": "mock vs real MT5 not distinguished in sample \u2014 limitation",
-      "historical_depth": "2000 bars (~83.3 days for 1H)",
-      "market_regimes": "limited to 2020-01 sample, not multi-regime",
-      "execution_conditions": "not real tick, spread proxy only",
-      "licensing": "synthetic_or_csv \u2014 internal, no external licensing, not production market data"
-    },
-    {
-      "version": "20260916-010-572728d9",
-      "instrument": "XAUUSD",
+      "venue": "MT5",
       "timeframe": "1H",
       "rows": 500,
-      "start": "2020-01-01 00:00:00+00:00",
-      "end": "2020-01-21 20:00:00+00:00",
+      "date_range": {
+        "start": "2020-01-01T00:00:00+00:00",
+        "end": "2020-01-21T20:00:00+00:00"
+      },
       "checksum": "sha256:572728d92ebb5c2a",
-      "source": "synthetic_or_csv",
-      "bid_ask_available": false,
-      "spread_available": "proxy via high-low only",
-      "tick_available": false,
-      "timestamp_quality": "UTC",
-      "survivorship": "single symbol XAUUSD, no survivorship issue for FX/metal",
-      "corporate_adjustments": "not applicable (XAUUSD)",
-      "broker_differences": "mock vs real MT5 not distinguished in sample \u2014 limitation",
-      "historical_depth": "500 bars (~20.8 days for 1H)",
-      "market_regimes": "limited to 2020-01 sample, not multi-regime",
-      "execution_conditions": "not real tick, spread proxy only",
-      "licensing": "synthetic_or_csv \u2014 internal, no external licensing, not production market data"
+      "source": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+      "data_class": "SYNTHETIC",
+      "bid_ask_available": {
+        "status": "UNAVAILABLE",
+        "value": null,
+        "reason": "no bid field in canonical OHLC schema"
+      },
+      "spread_available": "UNAVAILABLE \u2014 SYNTHETIC dataset has no measured bid/ask; high-low is not spread",
+      "tick_available": {
+        "status": "UNAVAILABLE",
+        "value": null,
+        "reason": "canonical dataset contains OHLC bars, not tick records"
+      },
+      "timestamp_quality": {
+        "timezone": "UTC",
+        "resolution": "3600s bar cadence",
+        "missingness": {
+          "status": "MEASURED",
+          "value": {
+            "gap_count": 0,
+            "closure_gap_count": 0,
+            "max_gap_s": 0,
+            "missing_intervals": 0,
+            "missing_pct": 0.0,
+            "common_delta_s": 3600
+          },
+          "reason": null
+        }
+      },
+      "survivorship": "UNAVAILABLE: survivorship requires a multi-instrument universe and membership history",
+      "corporate_adjustments": "NOT_APPLICABLE for the registered instrument",
+      "broker_differences": "UNAVAILABLE: broker session/fill metadata is not in canonical OHLC bars",
+      "historical_depth": {
+        "status": "MEASURED",
+        "rows": 500,
+        "span": {
+          "start": "2020-01-01T00:00:00+00:00",
+          "end": "2020-01-21T20:00:00+00:00"
+        }
+      },
+      "market_regimes": "UNAVAILABLE: regime coverage needs a declared regime taxonomy and sufficient span",
+      "execution_conditions": {
+        "status": "UNAVAILABLE",
+        "reason": "no measured bid/ask, latency, slippage, or fill history in OHLC dataset"
+      },
+      "licensing": "UNAVAILABLE: licensing metadata is not encoded in the manifest"
     }
   ],
-  "count": 2,
-  "limitation": "Only 1-2 XAUUSD 1H 500-row samples available \u2014 minimum depth for credible research is >> 5000 bars across multiple years/regimes. Current data insufficient for generality; results are illustrative, not production. Do not increase data until strategy looks good \u2014 expansion only for reducing uncertainty.",
-  "recommendation": "Acquire at least 2 years XAUUSD 1H (or 1M) with real bid/ask, true spread, tick, multiple symbols (EURUSD, BTC), multiple timeframes, from broker MT5 history or dukascopy/first-rate, with licensing cleared, timestamp UTC, survivorship documented.",
+  "count": 1,
+  "limitation": "1 canonical dataset version(s), classes=['SYNTHETIC'], total_rows=500, largest_dataset_rows=500; claim eligibility remains dataset-specific and requires measured provenance, depth, span, quality, and costs",
+  "recommendation": "Acquire provenance-qualified history with licensing, broker/session semantics, bid/ask or measured cost data, UTC timestamp evidence, multiple regimes, and a declared cross-instrument population before generalizing a claim.",
   "minimum_expansion_needed": {
-    "historical_depth": "5000+ bars (6 months 1H) ideally 2 years",
-    "symbols": "XAUUSD + 1-2 majors for cross-asset check",
-    "timeframes": "1H + 15m or 1M for multi-timeframe structure",
-    "regimes": "include 2020-2024 varied volatility",
-    "execution": "real spread/bid-ask/tick for execution-aware research"
+    "historical_depth": "UNAVAILABLE until the target claim specifies horizon, population, and power requirement",
+    "symbols": "UNAVAILABLE until the target population is declared",
+    "timeframes": "UNAVAILABLE until the mechanism specifies a timeframe",
+    "regimes": "UNAVAILABLE until a regime taxonomy and sufficient history are measured",
+    "execution": "measured bid/ask/tick/fill evidence required for execution claims"
   },
-  "never_substitute": "Do not silently substitute convenient synthetic for real market data \u2014 structural difference (GBM vs real microstructure) invalidates execution assumptions.",
-  "raw_files": [
-    "data/raw/synth.csv"
-  ]
+  "never_substitute": "Do not substitute synthetic, paper, shadow, demo, imputed, estimated, or model-derived data for claim-eligible market observations.",
+  "raw_files": []
 }

@@ -1,5 +1,5 @@
 # Capital Preservation Policy
-**Generated:** 2026-09-16T14:09:25.844765+00:00
+**Generated:** 2026-09-18T10:08:18.525760+00:00
 
 Hard limits (Phase 12) — crossing any forces NO_TRADE or SUSPENDED, no adaptive expansion after losses.
 
@@ -17,7 +17,7 @@ Hard limits (Phase 12) — crossing any forces NO_TRADE or SUSPENDED, no adaptiv
 - data_staleness: 5s
 - reconciliation_drift: any drift → SUSPENDED
 
-Current check: {'passed': True, 'reason': None}
+Current check: {'status': 'UNAVAILABLE', 'value': None, 'reason': 'authoritative account state is unavailable in research mode'}
 
 Emergency controls (Phase 17): kill_switch, cancel_all, suspend_new_orders, max_order_rate, max_order_size, stale_data_stop, abnormal_spread_stop, latency_stop, account_state_stop, reconciliation_stop — independently tested.
 

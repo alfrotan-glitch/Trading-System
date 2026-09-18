@@ -171,7 +171,11 @@ class EdgeScorecard:
         )
         sc.regime_results = regime if isinstance(regime, list) else []
         sc.regime_passed = bool(checks.get("regime", False))
-        sc.worst_regime = min(regime, key=lambda x: x.get("sharpe", 0)) if regime else None
+        sc.worst_regime = (
+            min((x for x in regime if isinstance(x, dict)), key=lambda x: x.get("sharpe", 0), default=None)
+            if isinstance(regime, list)
+            else None
+        )
         sc.perturbation_passed = bool(checks.get("perturbation", False))
         sc.null_control_sharpes = (
             evidence.get("null_control", {}).get("control_sharpes", [])

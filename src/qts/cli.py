@@ -725,6 +725,17 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
     ev = evidence
     ds = ev["dataset"]
     es = ev["edge_survival"]
+
+    def _metric(value: Any, fmt: str = ".2f") -> str:
+        if value is None:
+            return "UNAVAILABLE"
+        try:
+            return format(float(value), fmt)
+        except (TypeError, ValueError):
+            return str(value)
+
+    regime_rows = ev.get("regime") if isinstance(ev.get("regime"), list) else []
+    economic = ev.get("economic_edge") or {}
     report_md = f"""# Edge Validation Report
 **Generated:** {ev["generated_at"]}
 **Strategy:** {strategy}
@@ -745,17 +756,17 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
 - Access log: {ev["dataset"]["locked_partition"]["access_log"]}
 
 ## 4. Walk-forward results
-- WFE: {es["wfe"]:.2f} passed: {es["checks"].get("walk_forward", False)}
+- WFE: {_metric(es.get("wfe"))} passed: {es["checks"].get("walk_forward", False)}
 - Details: {es["details"].get("walk_forward", "")}
 
 ## 5. CPCV/PBO
-- PBO: {es["pbo"]:.2f} passed: {es["checks"].get("cpcv", False)} details: {es["details"].get("cpcv", "")}
+- PBO: {_metric(es.get("pbo"))} passed: {es["checks"].get("cpcv", False)} details: {es["details"].get("cpcv", "")}
 
 ## 6. PSR/DSR
-- PSR: {es["psr"]:.2f} DSR: {es["dsr"]:.2f} trials {ev["trial_ledger"]["trial_count"]} passed: {es["checks"].get("dsr", False)}
+- PSR: {_metric(es.get("psr"))} DSR: {_metric(es.get("dsr"))} trials {ev["trial_ledger"]["trial_count"]} passed: {es["checks"].get("dsr", False)}
 
 ## 7. Null controls
-- Control sharpes: {ev["null_control"]["control_sharpes"]} rejected: {ev["null_control"]["rejected"]}
+- Null-control evidence: {ev["null_control"]}
 
 ## 8. Stress results
 - Stress: {ev["cost_robustness"]["stress"]}
@@ -777,18 +788,18 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
 - Economic edge: {ev["economic_edge"]}
 
 ## 14. Drawdown
-- Max DD: {ev["expectancy"]["max_drawdown"]} expected shortfall: {ev["expectancy"]["expected_shortfall"]}
+- Drawdown / expected shortfall evidence: {ev["expectancy"]}
 
 ## 15. Worst observed failure
-- Worst regime/stress: {min(ev["regime"], key=lambda x: x["sharpe"]) if ev["regime"] else "none"}
+- Worst regime/stress: {min(regime_rows, key=lambda x: x.get("sharpe", 0)) if regime_rows else "UNAVAILABLE"}
 
 ## 16. Capital-at-risk assumptions
 - Risk per trade {ev["capital_policy"]} + SymbolSpec authoritative, spread/slippage/delay net metrics
 
 ## 17. Exact reasons for PASS or BLOCK
 - Edge survival passed: {es["passed"]} checks: {es["checks"]}
-- Economic edge passed: {ev["economic_edge"]["passed"]} criterion: {ev["economic_edge"]["criterion"]}
-- Overall: **{"PASS" if es["passed"] and ev["economic_edge"]["passed"] and ds["quality_passed"] else "BLOCK — keep NO_TRADE"}** — genuine edge must survive costs, regime, perturbation, multiple testing, unseen data
+- Economic edge evidence: {economic}
+- Overall: **{"PASS" if es["passed"] and economic.get("passed", False) and ds["quality_passed"] else "BLOCK — keep NO_TRADE"}** — genuine edge must survive costs, regime, perturbation, multiple testing, unseen data
 
 ## Promotion
 - Current promotion state: {ev["promotion"]["state"]} — one-way RESEARCH→LIVE_ELIGIBLE, no skip, anomaly→SUSPENDED
@@ -853,12 +864,13 @@ Immutable lifecycle: RESEARCH → CANDIDATE → VALIDATED → FORWARD_OBSERVATIO
     # 5 experiment_ledger
     exp_store = __import__("qts.research.experiment", fromlist=["ExperimentStore"]).ExperimentStore()
     trials = exp_store.count_trials()
+    economic_passed = bool((ev.get("economic_edge") or {}).get("passed", False))
     ledger_md = f"""# Experiment Ledger
 **Trials:** {trials} (all materially tested variants, not only winners, discarded counts)
 
 Every experiment recorded: strategy identity, parameter set, feature set, timeframe, data manifest, random seed, objective metrics, rejected/accepted status, reason, timestamp, code version
 
-- Trial count feeds DSR/multiple-testing correction (DSR {es["dsr"]:.2f} with N={trials})
+- Trial count feeds DSR/multiple-testing correction (DSR {_metric(es.get("dsr"))} with N={trials})
 - No manual adjustment of trial count
 - Ledger DB: data/sqlite/qts.db experiments table
 
@@ -869,11 +881,11 @@ Current ledger count: {trials}
     click.echo(
         "docs: edge_validation_report.md, capital_preservation_policy.md, strategy_promotion_policy.md, locked_test_protocol.md, experiment_ledger.md"
     )
-    if strict and not (es["passed"] and ev["economic_edge"]["passed"]):
+    if strict and not (es["passed"] and economic_passed):
         click.echo("BLOCK — edge does not survive costs/regime/perturbation/multiple-testing → KEEP NO_TRADE", err=True)
         # do not exit 2 here, just report BLOCK; live gate still blocks
     else:
-        click.echo(f"edge validation completed: passed={es['passed']} economic={ev['economic_edge']['passed']}")
+        click.echo(f"edge validation completed: passed={es['passed']} economic={economic_passed}")
 
 
 @main.command("run")

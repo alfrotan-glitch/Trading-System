@@ -1,97 +1,36 @@
 {
-  "generated_at": "2026-09-16T14:28:01.087690+00:00",
-  "registry_count": 69,
-  "trial_count": 75,
-  "campaigns": [
-    {
-      "id": "C-e4300c64",
-      "family": "trend",
-      "trials": 6,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-4d425a4e",
-      "family": "trend",
-      "trials": 6,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-8ebb2e2e",
-      "family": "trend",
-      "trials": 3,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-6eaed82d",
-      "family": "volatility",
-      "trials": 6,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-c6cd8c31",
-      "family": "trend",
-      "trials": 6,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-cc07319a",
-      "family": "trend",
-      "trials": 3,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-71172fb9",
-      "family": "trend",
-      "trials": 3,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-cc2a2c4f",
-      "family": "trend",
-      "trials": 3,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-b7bbbdd1",
-      "family": "trend",
-      "trials": 3,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-519a9a7d",
-      "family": "trend",
-      "trials": 3,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-99305d7d",
-      "family": "volatility",
-      "trials": 6,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-766d1c21",
-      "family": "momentum",
-      "trials": 6,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-08b269cc",
-      "family": "mean_reversion",
-      "trials": 6,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-05672610",
-      "family": "breakout",
-      "trials": 6,
-      "status": "COMPLETED"
-    },
-    {
-      "id": "C-85ee6935",
-      "family": "trend",
-      "trials": 6,
-      "status": "COMPLETED"
+  "canonical_artifact": "data/evidence/campaign_last.json",
+  "campaign_id": "C-39522b34",
+  "total_trials": 2,
+  "passed": 0,
+  "failed": 2,
+  "status": "COMPLETED",
+  "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+  "data_readiness": {
+    "data_version": "20260918-010-572728d9",
+    "status": "BLOCKED_INSUFFICIENT_DATA",
+    "data_class": "SYNTHETIC",
+    "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+    "instrument": "XAUUSD",
+    "timeframe": "1H",
+    "rows": 500,
+    "span_days": 20.833333333333332,
+    "quality_passed": true,
+    "ready_for_claims": false,
+    "mechanism_validation_only": true,
+    "reasons": [
+      "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+      "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+      "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+    ],
+    "requirements": {
+      "min_bars": 5000,
+      "min_span_days": 180.0,
+      "allowed_claim_classes": [
+        "REAL",
+        "HISTORICAL",
+        "BROKER-DERIVED"
+      ]
     }
-  ]
+  }
 }

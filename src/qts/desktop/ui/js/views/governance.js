@@ -124,8 +124,8 @@ export async function renderGovernance(root) {
       title: "Why it is locked — calm, explicit — what blocked, why, what missing, what next", icon: "info",
       body: h("div", { class: "stack" },
         h("ul", { class: "reason-list" }, (live.blocked_reasons ?? []).map((r) => h("li", null, r))),
-        banner("info", "What live eligibility would require — what missing", "A strategy surviving every scientific gate on real-data evidence, forward observation and demo execution with reconciled reality, approved risk configuration, verified connectivity — and an explicit human approval recorded in the audit log.", "info"),
-        banner("info", "What demo success means — DEMO vs LIVE unmistakable", "Demo execution proves operational correctness, not profitability, and never advances lifecycle state by itself. Labels stay DEMO. LIVE remains LOCKED until human approval.", "info"),
+        banner("info", "What live eligibility would require — what missing", "A strategy surviving every scientific gate on claim-eligible real-data evidence, forward observation with honest divergence evidence, approved risk configuration, verified connectivity — and an explicit human approval recorded in the audit log. DEMO_EXECUTION is disabled and is not a prerequisite or evidence source.", "info"),
+        banner("info", "What DEMO_FORWARD observation can establish — DEMO vs LIVE unmistakable", "Observation establishes provenance and hypothetical divergence only. It does not prove execution correctness, profitability, or live eligibility; DEMO_EXECUTION is disabled by policy and LIVE remains LOCKED.", "info"),
       ),
     }));
 
@@ -162,7 +162,7 @@ export async function renderGovernance(root) {
       danger: true,
       body: h("div", { class: "stack" },
         h("p", null, "This records a formal, audited request. The governance gate still decides; human approval is verified server-side. DEMO vs LIVE unmistakable: DEMO proves ops, never profitability."),
-        h("div", { class: "card live-boundary" }, h("div", { class: "card-body" }, h("div", { class: "eyebrow" }, "DEMO vs LIVE"), h("p", { class: "small" }, "DEMO = simulated execution. LIVE = real capital. Demo success never unlocks LIVE. Human approval still required."))),
+        h("div", { class: "card live-boundary" }, h("div", { class: "card-body" }, h("div", { class: "eyebrow" }, "DEMO vs LIVE"), h("p", { class: "small" }, "DEMO_FORWARD = real demo-account observation with zero orders. DEMO_EXECUTION is disabled by product policy. LIVE = real capital and remains locked."))),
       ),
       acks: [
         "I understand live trading risks real capital — LIVE LOCKED is a safety feature.",

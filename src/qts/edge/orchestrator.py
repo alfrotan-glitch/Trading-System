@@ -1,8 +1,14 @@
-"""Capital Preservation + Real Edge Discovery orchestrator — Phases 1-19."""
+"""Capital-preservation edge validation orchestrator.
+
+This module coordinates measurable backtest evidence and records missing
+controls explicitly.  It never creates placebo scores, synthetic gross/net
+curves, account state, forward observations, or trial rows merely to make a
+report look complete.  DEMO observation and LIVE execution remain outside
+this research-only path.
+"""
 
 from __future__ import annotations
 
-import contextlib
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -12,237 +18,252 @@ import numpy as np
 from qts.data.locked_test import LockedTestPartitioner
 from qts.data.store import SqliteParquetDataStore
 from qts.edge.emergency import EmergencyControls
-from qts.edge.expectancy import compute_expectancy, evaluate_minimum_economic_edge
-from qts.edge.null_control import NullControl
 from qts.edge.promotion import PromotionLedger
-from qts.edge.regime_stability import evaluate_regime_stability
-from qts.research.experiment import ExperimentStore
-from qts.risk.capital_policy import CapitalPolicy
+from qts.research.experiment import ConclusionCode, Experiment, ExperimentStore, Hypothesis
+from qts.research.readiness import ResearchDataRequirements, assess_dataset
 from qts.validation.edge_validation import validate_edge_survival
 
 
-def run_full_edge_validation(data_version: str | None = None, strategy_id: str = "sma_breakout") -> dict:
-    """Run Phases 1-19 and produce machine-readable evidence."""
+def _unavailable(reason: str) -> dict[str, Any]:
+    return {"status": "UNAVAILABLE", "value": None, "reason": reason}
+
+
+def _not_implemented(reason: str) -> dict[str, Any]:
+    return {"status": "NOT_IMPLEMENTED", "value": None, "reason": reason}
+
+
+def run_full_edge_validation(data_version: str | None = None, strategy_id: str = "sma_breakout") -> dict[str, Any]:
+    """Run the research validation path and return a fail-closed evidence object.
+
+    A strategy may be backtested on an available fixture for mechanism
+    inspection, but claim eligibility is separately gated by provenance,
+depth/span, quality, costs, controls, and forward evidence.
+    """
     store = SqliteParquetDataStore()
     if data_version is None:
         versions = store.list_versions()
         data_version = versions[-1] if versions else None
     if not data_version:
-        return {"error": "no data version"}
+        return {"error": "no data version", "conclusion": ConclusionCode.BLOCKED_INSUFFICIENT_DATA.value}
+
     manifest = store.manifest(data_version)
-    # fail closed: a manifest row alone is NOT proof of data (clean-clone phantom versions)
     if manifest is None:
-        return {"error": f"data version {data_version} not found"}
-    if not store.version_usable(data_version):
-        return {"error": f"data version {data_version} is registered but has no readable bars — not usable"}
+        return {"error": f"data version {data_version} not found", "conclusion": ConclusionCode.BLOCKED_INSUFFICIENT_DATA.value}
+    readiness = assess_dataset(
+        store,
+        data_version,
+        requirements=ResearchDataRequirements(),
+    )
+    # ``Manifest`` rows from older checkouts may not persist the class; the
+    # readiness assessment is the canonical inferred value and must be used
+    # consistently in experiment and exported evidence provenance.
+    manifest_data_class = readiness.data_class
     from qts.domain.value_objects import Instrument
 
     instr = Instrument(symbol=manifest.instrument, venue=manifest.venue)
-    bars = store.read_bars(instr, manifest.timeframe, version=data_version)
-    # Phase 1: Data quality gate
+    bars = store.read_bars(instr, manifest.timeframe, version=data_version) if store.version_usable(data_version) else []
     from qts.data.quality import dataset_missing_stats, validate_bars
 
-    dq = validate_bars(bars)
-    missing = dataset_missing_stats(bars, manifest.timeframe)
-    # Phase 2: Locked test partitions
+    dq = validate_bars(bars) if bars else None
+    missing = dataset_missing_stats(bars, manifest.timeframe) if bars else _unavailable("no readable bars")
+
+    # The locked partition is an actual partition/access record.  It is not a
+    # substitute for forward observations and is never relabelled as one.
     partitioner = LockedTestPartitioner()
-    parts = partitioner.partition(bars, data_version)
-    is_frozen = partitioner.is_frozen(data_version)
-    access_log = partitioner.access_log(data_version)
-    # Phase 3: Trial ledger — count ALL materially tested variants
+    parts = partitioner.partition(bars, data_version) if bars else {"discovery": [], "validation": [], "locked": []}
+    is_frozen = partitioner.is_frozen(data_version) if bars else False
+    access_log = partitioner.access_log(data_version) if bars else []
+
     exp_store = ExperimentStore()
-    # Record current validation as a trial if not already
-    from qts.research.experiment import Experiment, Hypothesis
+    hypothesis = Hypothesis(
+        statement=f"{strategy_id} has a durable, cost-adjusted edge on {manifest.instrument} {manifest.timeframe}",
+        question=f"Does {strategy_id} predict out-of-sample returns beyond a declared null after costs?",
+        mechanism="strategy-defined signal mechanism; mechanism-specific interpretation remains bounded to the strategy code",
+        prediction="The pre-registered strategy must pass independent walk-forward, stress, control, and forward gates.",
+        null_hypothesis="The strategy has no incremental predictive or economic value beyond the baseline after costs.",
+        competing_explanations=[
+            "multiple-testing or selection artifact",
+            "regime/sample dependence",
+            "unmeasured spread, slippage, latency, or fill behavior",
+        ],
+        falsification_criteria=[
+            "out-of-sample or walk-forward gate fails",
+            "cost stress or gross/net decomposition is unavailable or fails",
+            "CPCV/null/placebo/forward evidence is unavailable or fails",
+        ],
+        required_data={
+            "data_version": data_version,
+            "manifest_checksum": manifest.checksum,
+            "instrument": manifest.instrument,
+            "timeframe": manifest.timeframe,
+            "minimum_bars": 5_000,
+            "minimum_span_days": 180.0,
+        },
+        intended_horizon="the exact chronological dataset partition declared below",
+        intended_population=f"{manifest.instrument} {manifest.timeframe} bars in manifest {data_version}",
+        intended_regime="all observed regimes; regime stability must be measured, not assumed",
+        rationale="Registered by run_full_edge_validation so this attempt and its negative result remain in experiment memory.",
+    )
+    exp_store.put_hypothesis(hypothesis)
+    params = {"fast": 10, "slow": 20, "quantity": 0.1}
+    from qts.observability.lineage import code_version
 
-    # Ensure at least one hypothesis/experiment exists for this strategy
-    if exp_store.count_trials() == 0:
-        # Create a dummy hypothesis and experiment for sma_breakout to demonstrate ledger
-        h = Hypothesis(statement=f"Edge for {strategy_id}", rationale="test", falsifiability="sharpe<0.3 fails")
-        exp_store.put_hypothesis(h)
-        exp = Experiment(
-            hypothesis_id=h.id,
-            strategy_id=strategy_id,
-            params={"fast": 10, "slow": 20},
-            data_version=data_version,
-            code_version=manifest.code_version,
-        )
-        exp_store.put(exp)
-        # Also record placebo trials as separate experiments (to count as trials)
-        for i in range(5):
-            hp = Hypothesis(statement=f"Placebo {i} for {strategy_id}", rationale="null")
-            exp_store.put_hypothesis(hp)
-            ep = Experiment(
-                hypothesis_id=hp.id,
-                strategy_id=f"placebo_{i}",
-                params={"fast": i},
-                data_version=data_version,
-                code_version=manifest.code_version,
-            )
-            exp_store.put(ep)
-    trial_count = exp_store.count_trials()
-    # DSR must use trial_count (no manual adjustment)
-    # Phase 4: Freeze check (strategy spec)
-    _frozen = is_frozen  # simplified
-    # Phase 5: Edge survival
-    # Need to run backtest on discovery vs validation etc.
+    exp = Experiment(
+        hypothesis_id=hypothesis.id,
+        strategy_id=strategy_id,
+        params=params,
+        data_version=data_version,
+        dataset_provenance=manifest_data_class,
+        dataset_manifest_hash=manifest.checksum,
+        code_version=code_version(),
+        seed=42,
+        split_definition={
+            "partitioner": "LockedTestPartitioner",
+            "discovery_rows": len(parts["discovery"]),
+            "validation_rows": len(parts["validation"]),
+            "locked_rows": len(parts["locked"]),
+            "locked_frozen": is_frozen,
+        },
+        cost_assumptions={"status": "ENGINE_DECLARED", "source": "BacktestEngine matching configuration"},
+        exclusions=[
+            "CPCV not implemented in this orchestrator",
+            "randomized null/placebo not executed",
+            "gross/net decomposition not available from BacktestResult",
+            "forward broker observations not part of this call",
+        ],
+    )
+    exp_store.put(exp)
+
+    # Base and sensitivity reruns are real when readable bars exist.  They are
+    # still mechanism evidence if the readiness report is not claim-eligible.
     from qts.backtest.engine import BacktestEngine
-
-    engine = BacktestEngine(store)
-    # Use discovery and validation splits
-    # For demo, use is/oos as discovery/validation
-    n = len(bars)
-    mid = n // 2
-    eq_is: np.ndarray = np.asarray(
-        engine.run(
-            instr,
-            manifest.timeframe,
-            data_version,
-            strategy_id=strategy_id,
-            strategy_params={"fast": 10, "slow": 20, "quantity": 0.1},
-            start=bars[0].open_time,
-            end=bars[mid].close_time,
-        ).equity_curve,
-        dtype=float,
-    )
-    eq_oos: np.ndarray = np.asarray(
-        engine.run(
-            instr,
-            manifest.timeframe,
-            data_version,
-            strategy_id=strategy_id,
-            strategy_params={"fast": 10, "slow": 20, "quantity": 0.1},
-            start=bars[mid].open_time,
-            end=bars[-1].close_time,
-        ).equity_curve,
-        dtype=float,
-    )
-    eq_gross = eq_oos
-    eq_net = eq_oos * 0.99  # simulate cost drag
-    # Walk-forward folds
     from qts.validation.pipeline import ValidatorPipeline
 
-    pipeline = ValidatorPipeline()
-    train = max(50, n // 3)
-    test = max(20, n // 9)
-    splits = pipeline.walk_forward_splits(n, train=train, test=test, step=test)
+    engine = BacktestEngine(store)
+    eq_is = np.asarray([], dtype=float)
+    eq_oos = np.asarray([], dtype=float)
+    full = None
     folds: list[dict[str, float]] = []
-    for ts, te, vs, ve in splits[:5]:
-        with contextlib.suppress(Exception):
-            tr = engine.run(
-                instr,
-                manifest.timeframe,
-                data_version,
-                strategy_id=strategy_id,
-                strategy_params={"fast": 10, "slow": 20, "quantity": 0.1},
-                start=bars[ts].open_time,
-                end=bars[te - 1].close_time,
-            )
-            te_res = engine.run(
-                instr,
-                manifest.timeframe,
-                data_version,
-                strategy_id=strategy_id,
-                strategy_params={"fast": 10, "slow": 20, "quantity": 0.1},
-                start=bars[vs].open_time,
-                end=bars[ve - 1].close_time,
-            )
-            folds.append({"is_sharpe": float(tr.sharpe), "oos_sharpe": float(te_res.sharpe)})
-    # CPCV
-    cpcv_folds = []
-    cpcv_splits = pipeline.cpcv_splits(n, n_groups=6, n_test=2)
-    for _train_idx, _test_idx in cpcv_splits[:6]:
-        # simplified
-        cpcv_folds.append(
-            {
-                "best_is_test_sharpe": float(np.random.randn() * 0.5),
-                "median_test_sharpe": 0.0,
-                "train_sharpes": {"a": 1, "b": 0, "c": -0.5},
-                "test_sharpes": {"a": 0, "b": 0.2, "c": 0.1},
-            }
-        )
-    perturbed: list[float] = [0.1, 0.2, 0.15, 0.3, 0.25, 0.1, 0.05]
-    stress = engine.run_stress(
-        instr,
-        manifest.timeframe,
-        data_version,
-        strategy_id,
-        {"fast": 10, "slow": 20, "quantity": 0.1},
-        spreads=[1.0, 1.5, 2.0],
-    )
-    # Controls
-    _null = NullControl(seed=42)
-    control_sharpes = [float(np.random.randn() * 0.3) for _ in range(5)]  # should be ~0
-    placebo_sharpes = [float(np.random.randn() * 0.3) for _ in range(5)]
-    # Trades pnl
-    full = engine.run(
-        instr,
-        manifest.timeframe,
-        data_version,
-        strategy_id=strategy_id,
-        strategy_params={"fast": 10, "slow": 20, "quantity": 0.1},
-    )
-    trades_pnl: list[float] = [float(x) for x in np.diff(full.equity_curve)] if len(full.equity_curve) > 1 else []
-    # Edge survival
+    perturbed: list[float] = []
+    stress: dict[float, float] = {}
+    run_error: str | None = None
+    if bars:
+        try:
+            full = engine.run(instr, manifest.timeframe, data_version, strategy_id=strategy_id, strategy_params=params, seed=42)
+            equity = np.asarray(full.equity_curve, dtype=float)
+            mid = len(equity) // 2
+            eq_is, eq_oos = equity[:mid], equity[mid:]
+            pipeline = ValidatorPipeline()
+            train = max(100, len(bars) // 3)
+            test = max(20, len(bars) // 10)
+            for ts, te, vs, ve in pipeline.walk_forward_splits(len(bars), train=train, test=test, step=test):
+                train_run = engine.run(
+                    instr,
+                    manifest.timeframe,
+                    data_version,
+                    strategy_id=strategy_id,
+                    strategy_params=params,
+                    seed=42,
+                    start=bars[ts].open_time,
+                    end=bars[te - 1].close_time,
+                )
+                test_run = engine.run(
+                    instr,
+                    manifest.timeframe,
+                    data_version,
+                    strategy_id=strategy_id,
+                    strategy_params=params,
+                    seed=42,
+                    start=bars[vs].open_time,
+                    end=bars[ve - 1].close_time,
+                )
+                folds.append({"is_sharpe": float(train_run.sharpe), "oos_sharpe": float(test_run.sharpe)})
+            numeric_keys = [k for k, v in params.items() if isinstance(v, (int, float))]
+            for key in numeric_keys:
+                for factor in (0.8, 0.9, 1.1, 1.2):
+                    variant = dict(params)
+                    variant[key] = type(params[key])(params[key] * factor)
+                    variant_run = engine.run(
+                        instr,
+                        manifest.timeframe,
+                        data_version,
+                        strategy_id=strategy_id,
+                        strategy_params=variant,
+                        seed=42,
+                    )
+                    perturbed.append(float(variant_run.sharpe))
+            stress = engine.run_stress(instr, manifest.timeframe, data_version, strategy_id, params, spreads=[1.0, 1.5, 2.0])
+        except Exception as exc:  # preserve the failed attempt, do not fill metrics
+            run_error = f"{type(exc).__name__}: {exc}"
+
+    # No control scores are supplied: NullControl cannot be applied to this
+    # engine without executing a separately specified signal model.  Empty
+    # inputs intentionally make the control/placebo gates fail.
     edge = validate_edge_survival(
         strategy_id,
         data_version,
         eq_is,
         eq_oos,
-        eq_gross,
-        eq_net,
+        None,
+        eq_oos if len(eq_oos) else None,
         folds,
-        cpcv_folds,
+        [],
         perturbed,
         stress,
-        max(1, trial_count),
-        control_sharpes,
-        placebo_sharpes,
+        max(1, exp_store.count_trials()),
+        [],
+        [],
         bars,
-        trades_pnl,
+        [],  # BacktestResult exposes fills, not realized trade PnL attribution
         timeframe=manifest.timeframe,
     )
-    # Phase 8 regime
-    regime = evaluate_regime_stability(bars, eq_oos if len(eq_oos) > 0 else eq_is)
-    # Phase 10 forward observation (use locked as forward)
-    forward_obs = {
-        "signals": len(parts["locked"]) // 10,
-        "no_trades": len(parts["locked"]) - len(parts["locked"]) // 10,
-        "invalidated": False,
-    }
-    # Phase 11 shadow vs paper
-    paper_ev = Path("data/evidence/paper_trades.json")
-    shadow_ev = Path("data/evidence/shadow_intents.json")
-    shadow_paper_consistency: dict[str, Any] | None = None
-    if paper_ev.exists() and shadow_ev.exists():
-        import json as js
+    claim_blocked = readiness.status != "READY"
+    conclusion = (
+        ConclusionCode.BLOCKED_INSUFFICIENT_DATA.value
+        if claim_blocked
+        else (ConclusionCode.NO_EDGE_FOUND.value if not edge.passed else ConclusionCode.PROMISING_INSUFFICIENT.value)
+    )
+    exp_store.complete(
+        exp.id,
+        results={
+            "readiness": readiness.as_dict(),
+            "edge_checks": edge.checks,
+            "edge_details": edge.details,
+            "walk_forward_folds": folds,
+            "run_error": run_error,
+        },
+        conclusion=conclusion,
+        failure_reason=("; ".join(readiness.reasons) if claim_blocked else run_error),
+    )
 
-        paper = js.loads(paper_ev.read_text(encoding="utf-8"))
-        shadow = js.loads(shadow_ev.read_text(encoding="utf-8"))
-        from qts.edge.execution_consistency import compare_shadow_paper
+    # Forward evidence is read only from the canonical observation store when
+    # it exists; locked historical rows are not counted as forward observations.
+    forward_path = Path("data/sqlite/forward_observatory.db")
+    if forward_path.exists():
+        from qts.observability.forward_observatory import ForwardObservatory
 
-        _consistency = compare_shadow_paper(
-            shadow.get("intents_sample", shadow.get("would_be_fills", [])), paper.get("fills", []), []
-        )
-        shadow_paper_consistency = _consistency.__dict__
-    # Phase 12 capital policy
-    cap_policy = CapitalPolicy()
-    cap_check, cap_reason = cap_policy.check({"daily_loss": -50, "drawdown": 10, "exposure_lots": 0.5})
-    # Phase 13 expectancy
-    exp_report = compute_expectancy(trades_pnl, costs_per_trade=0.0)
-    econ = evaluate_minimum_economic_edge(exp_report.net_expectancy_after_costs, 0.01, 0.02, 0.01)
-    # Phase 15 promotion
-    promo = PromotionLedger()
-    promo_state = promo.get_state(strategy_id).value
-    # Phase 17 emergency
-    emer = EmergencyControls()
-    # Phase 18 order_check (mock)
-    order_check_ok = True
-    # Assemble evidence
+        real_forward_count = ForwardObservatory(forward_path).real_observation_count(symbol=manifest.instrument)
+        forward_obs: dict[str, Any] = {
+            "status": "MEASURED" if real_forward_count else "INSUFFICIENT_EVIDENCE",
+            "real_observations": real_forward_count,
+            "note": "observation count only; divergence/realized PnL requires a bound session export",
+        }
+    else:
+        forward_obs = _unavailable("canonical forward observation store does not exist")
+
+    promo_state = PromotionLedger().get_state(strategy_id).value
+    emergency = EmergencyControls()
     evidence = {
         "dataset": {
-            "manifest": manifest.model_dump() if hasattr(manifest, "model_dump") else manifest.dict(),
-            "quality_passed": dq.passed,
-            "quality_checks": [{"name": c.name, "passed": c.passed, "details": c.details} for c in dq.checks],
+            "manifest": {
+                **(manifest.model_dump() if hasattr(manifest, "model_dump") else manifest.dict()),
+                "provenance_class": manifest_data_class,
+            },
+            "readiness": readiness.as_dict(),
+            "quality_passed": dq.passed if dq else None,
+            "quality_checks": (
+                [{"name": c.name, "passed": c.passed, "details": c.details} for c in dq.checks] if dq else []
+            ),
             "missing_stats": missing,
             "locked_partition": {
                 "discovery": len(parts["discovery"]),
@@ -252,9 +273,14 @@ def run_full_edge_validation(data_version: str | None = None, strategy_id: str =
                 "access_log": access_log[:5],
             },
         },
-        "trial_ledger": {"trial_count": trial_count, "disk_trial_count": trial_count},
+        "trial_ledger": {
+            "trial_count": exp_store.count_trials(),
+            "experiment_id": exp.id,
+            "configuration_hash": exp.configuration_hash,
+            "cumulative": True,
+        },
         "edge_survival": {
-            "passed": edge.passed,
+            "passed": edge.passed and not claim_blocked,
             "checks": edge.checks,
             "details": edge.details,
             "psr": edge.psr,
@@ -262,20 +288,22 @@ def run_full_edge_validation(data_version: str | None = None, strategy_id: str =
             "pbo": edge.pbo,
             "wfe": edge.wfe,
             "cost_be": edge.cost_break_even_bps,
+            "conclusion": conclusion,
         },
-        "null_control": {"control_sharpes": control_sharpes, "rejected": edge.null_rejected},
-        "placebo": {"placebo_sharpes": placebo_sharpes, "rejected": edge.placebo_rejected},
-        "cost_robustness": {"stress": stress},
-        "regime": [{"regime": r.regime, "sharpe": r.sharpe, "passed": r.passed} for r in regime],
+        "null_control": _not_implemented("separate randomized signal model was not executed"),
+        "placebo": _not_implemented("placebo signal model was not executed"),
+        "cost_robustness": {"status": "MEASURED", "stress": stress} if stress else _unavailable("stress rerun unavailable"),
+        "regime": _unavailable("regime result is not separately bound in this evidence object; edge details contain the gate"),
         "forward": forward_obs,
-        "shadow_paper": shadow_paper_consistency,
-        "capital_policy": {"passed": cap_check, "reason": cap_reason},
-        "expectancy": exp_report.__dict__,
-        "economic_edge": econ.__dict__,
-        "promotion": {"state": promo_state},
-        "emergency": {"kill_switch": not emer.is_killed()},
-        "order_check": {"ok": order_check_ok},
-        "code_version": manifest.code_version,
+        "shadow_paper": _unavailable("shadow/paper artifacts are not bound to this experiment"),
+        "capital_policy": _unavailable("authoritative account state is unavailable in research mode"),
+        "expectancy": _unavailable("realized trade PnL attribution is unavailable from BacktestResult fills"),
+        "economic_edge": _unavailable("gross/net cost decomposition is unavailable"),
+        "promotion": {"state": promo_state, "advanced": False},
+        "emergency": {"kill_switch": emergency.is_killed(), "execution_enabled": False},
+        "order_check": {"status": "NOT_RUN", "ok": False, "reason": "research orchestrator has no order path"},
+        "code_version": code_version(),
         "generated_at": datetime.now(UTC).isoformat(),
+        "conclusion": conclusion,
     }
     return evidence

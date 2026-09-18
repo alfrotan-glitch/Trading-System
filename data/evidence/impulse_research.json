@@ -1,11 +1,11 @@
 {
   "research": "impulse_continuation",
-  "generated_at": "2026-09-16T18:47:50.410106+00:00",
+  "generated_at": "2026-09-18T10:07:59.563961+00:00",
   "mode": "MECHANISM_VALIDATION",
   "mode_note": "Dataset failed the pre-registered data-adequacy gate. All numbers below describe the RESEARCH MECHANISM operating on this dataset, NOT real-market behavior. No real-market claim is permitted and nothing was promoted.",
   "hypothesis": "When price begins an unusually strong directional movement, the conditional distribution of the next short horizon is sufficiently directional and persistent to create positive net expectancy after spread, commission, slippage, and latency.",
   "provenance": {
-    "data_version": "20260916-010-572728d9",
+    "data_version": "20260918-010-572728d9",
     "checksum": "sha256:572728d92ebb5c2a",
     "instrument": "XAUUSD",
     "venue": "MT5",
@@ -28,7 +28,7 @@
     }
   },
   "data_adequacy": {
-    "data_version": "20260916-010-572728d9",
+    "data_version": "20260918-010-572728d9",
     "data_class": "SYNTHETIC",
     "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
     "adequate_for_real_claims": false,
@@ -64,7 +64,7 @@
         "requirement_id": "R4-FRESHNESS",
         "description": "Real-time impulse claims require recent data (stale data cannot describe current market microstructure)",
         "minimum": "last bar within 7 days of assessment time",
-        "observed": "last bar 2429.9 days old",
+        "observed": "last bar 2431.6 days old",
         "passed": false,
         "blocking_for_real_claims": true
       },
@@ -87,9 +87,9 @@
     ]
   },
   "analysis": {
-    "data_version": "20260916-010-572728d9",
+    "data_version": "20260918-010-572728d9",
     "provenance": {
-      "data_version": "20260916-010-572728d9",
+      "data_version": "20260918-010-572728d9",
       "checksum": "sha256:572728d92ebb5c2a",
       "instrument": "XAUUSD",
       "venue": "MT5",
@@ -383,7 +383,7 @@
           356.0169589548608
         ],
         "net_sharpe_per_event": -0.20491586106128368,
-        "dsr_per_event": 0.00300230889015278,
+        "dsr_per_event": 0.001419186172572119,
         "mfe_mean_bps": 254.78045119600736,
         "mae_mean_bps": 186.88525551422205,
         "race_counts": {
@@ -1224,7 +1224,7 @@
           320.9466034129329
         ],
         "net_sharpe_per_event": -0.2864049128759494,
-        "dsr_per_event": 0.0016983656228319202,
+        "dsr_per_event": 0.0007610636019213587,
         "mfe_mean_bps": 163.3982494944936,
         "mae_mean_bps": 314.85367991882663,
         "race_counts": {
@@ -2688,7 +2688,7 @@
           70.78985793758542
         ],
         "net_sharpe_per_event": -0.31050728805228694,
-        "dsr_per_event": 0.00016914730061889864,
+        "dsr_per_event": 6.354447384299318e-05,
         "mfe_mean_bps": 181.57798064307408,
         "mae_mean_bps": 218.74576340388796,
         "race_counts": {
@@ -3438,7 +3438,7 @@
           306.48875036288825
         ],
         "net_sharpe_per_event": -0.03721193896298656,
-        "dsr_per_event": 0.007465369067366663,
+        "dsr_per_event": 0.0037050586148245843,
         "mfe_mean_bps": 257.92974489665005,
         "mae_mean_bps": 206.34686649223733,
         "race_counts": {
@@ -4040,7 +4040,7 @@
           71.4130360692334
         ],
         "net_sharpe_per_event": -0.48668616969150275,
-        "dsr_per_event": 5.209635733110889e-05,
+        "dsr_per_event": 1.663076980243356e-05,
         "mfe_mean_bps": 195.99321979037668,
         "mae_mean_bps": 212.2198398977005,
         "race_counts": {
@@ -4548,7 +4548,7 @@
           274.4665984523891
         ],
         "net_sharpe_per_event": 0.17312287959335948,
-        "dsr_per_event": 0.02481299939834363,
+        "dsr_per_event": 0.014137004990735494,
         "mfe_mean_bps": 344.75564864656025,
         "mae_mean_bps": 95.47490430336232,
         "race_counts": {
@@ -4991,8 +4991,8 @@
     },
     "ledger": {
       "recorded": 40,
-      "ledger_trials_total": 57,
-      "hypothesis_id": "H-8529a8"
+      "ledger_trials_total": 112,
+      "hypothesis_id": "H-80767b85"
     },
     "totals": {
       "bars": 500,
@@ -5006,7 +5006,7 @@
       "events_measured_total": 106,
       "events_excluded_total": 0,
       "events_locked_discarded": 11,
-      "num_trials_for_dsr": 57
+      "num_trials_for_dsr": 112
     }
   },
   "conclusion": {
@@ -5018,7 +5018,7 @@
       "R1-REAL-PROVENANCE: Data must be REAL broker/exchange history \u2014 synthetic or simulated data cannot support claims about real-market behavior (minimum: data_class == REAL; observed: data_class=SYNTHETIC (source='SYNTHETIC:fixture:XAUUSD_1H_500.csv'))",
       "R2-DEPTH: Minimum number of bars for event-count sufficiency (minimum: >= 5000 bars (target 17520); observed: 500 bars)",
       "R3-REGIME-COVERAGE: Series must span enough calendar time to contain multiple volatility regimes (minimum: >= 180 days; observed: 20.8 days)",
-      "R4-FRESHNESS: Real-time impulse claims require recent data (stale data cannot describe current market microstructure) (minimum: last bar within 7 days of assessment time; observed: last bar 2429.9 days old)",
+      "R4-FRESHNESS: Real-time impulse claims require recent data (stale data cannot describe current market microstructure) (minimum: last bar within 7 days of assessment time; observed: last bar 2431.6 days old)",
       "R5-EXECUTION-DATA: Real spread/bid-ask/tick history is required to replace declared cost ASSUMPTIONS with broker-observed costs (bar high-low range is only a proxy) (minimum: bid/ask or tick data with real spread history available; observed: OHLC bars only \u2014 no bid/ask, no ticks (costs remain ESTIMATED assumptions))",
       "R6-EVENT-SUFFICIENCY: Enough measured events (per side) for statistical inference after multiple-testing correction (minimum: >= 100 total, >= 30 per side; observed: total=53 long=27 short=26)"
     ],

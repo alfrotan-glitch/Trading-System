@@ -187,7 +187,7 @@ class ForwardObservatory:
     def record_tick(self, tick: ObservationTick):
         with db_connect(self.db_path) as con:
             con.execute(
-                "INSERT OR REPLACE INTO observation_ticks (id, payload, created_at, provenance, session_id, symbol, event_time)"
+                "INSERT INTO observation_ticks (id, payload, created_at, provenance, session_id, symbol, event_time)"
                 " VALUES (?,?,?,?,?,?,?)",
                 (
                     tick.id,
@@ -204,7 +204,7 @@ class ForwardObservatory:
     def record_signal(self, sig: ObservationSignal):
         with db_connect(self.db_path) as con:
             con.execute(
-                "INSERT OR REPLACE INTO observation_signals (id, payload, created_at, provenance, session_id)"
+                "INSERT INTO observation_signals (id, payload, created_at, provenance, session_id)"
                 " VALUES (?,?,?,?,?)",
                 (sig.id, sig.model_dump_json(), sig.timestamp.isoformat(), sig.provenance, sig.session_id),
             )
@@ -226,7 +226,7 @@ class ForwardObservatory:
         }
         with db_connect(self.db_path) as con:
             con.execute(
-                "INSERT OR REPLACE INTO observation_sessions (id, start, end, status, meta) VALUES (?,?,?,?,?)",
+                "INSERT INTO observation_sessions (id, start, end, status, meta) VALUES (?,?,?,?,?)",
                 (sid, body["started_at"], "", "ACTIVE", json.dumps(body, default=str)),
             )
             con.commit()
@@ -296,6 +296,80 @@ class ForwardObservatory:
             meta_d = {"unparseable": True}
         return {"id": sid, "start": start, "end": end or None, "status": status, "meta": meta_d}
 
+    def divergence_summary(self, session_id: str | None = None) -> dict[str, Any]:
+        """Measure only observable paper/shadow intent divergence.
+
+        Observation-only has no broker execution, therefore execution/fill
+        divergence is explicitly UNAVAILABLE.  The measurable comparison is
+        theoretical signal price versus the stored *hypothetical* fill price;
+        it is not presented as realized slippage or PnL.
+        """
+        q = "SELECT payload FROM observation_signals"
+        args: list[Any] = []
+        if session_id:
+            q += " WHERE session_id=?"
+            args.append(session_id)
+        with db_connect(self.db_path) as con:
+            rows = con.execute(q, args).fetchall()
+        paired: list[float] = []
+        signal_count = 0
+        no_trade_count = 0
+        for (payload,) in rows:
+            try:
+                signal = json.loads(payload)
+            except ValueError:
+                continue
+            signal_count += 1
+            if not signal.get("signal_side"):
+                no_trade_count += 1
+                continue
+            theoretical = signal.get("theoretical_price")
+            hypothetical = signal.get("hypothetical_fill_price")
+            if theoretical is None or hypothetical is None:
+                continue
+            try:
+                t = float(theoretical)
+                h = float(hypothetical)
+            except (TypeError, ValueError):
+                continue
+            if t:
+                paired.append((h - t) / abs(t) * 10_000)
+        if paired:
+            measured: dict[str, Any] = {
+                "status": "MEASURED",
+                "value": {
+                    "count": len(paired),
+                    "mean_bps": sum(paired) / len(paired),
+                    "min_bps": min(paired),
+                    "max_bps": max(paired),
+                },
+            }
+        elif signal_count:
+            measured = {
+                "status": "INSUFFICIENT_EVIDENCE",
+                "value": None,
+                "reason": "signals have no paired theoretical and hypothetical prices",
+            }
+        else:
+            measured = {"status": "UNAVAILABLE", "value": None, "reason": "no observation signals"}
+        return {
+            "session_id": session_id,
+            "signals": signal_count,
+            "no_trade_signals": no_trade_count,
+            "hypothetical_price_divergence": measured,
+            "execution_divergence": {
+                "status": "UNAVAILABLE",
+                "value": None,
+                "reason": "OBSERVE_ONLY never submits orders and receives no realized fills",
+            },
+            "realized_pnl": {
+                "status": "UNAVAILABLE",
+                "value": None,
+                "reason": "no positions or executions in observation store",
+            },
+            "order_path": {"orders_submitted": 0, "execution_engine_reachable": False},
+        }
+
     def real_observation_count(self, *, symbol: str | None = None, since_iso: str | None = None) -> int:
         """Count observations whose provenance qualifies as REAL-market evidence
         (DEMO or REAL class only — SYNTHETIC/PAPER/UNVERIFIED never count)."""
@@ -325,6 +399,7 @@ class ForwardObservatory:
                     "SELECT provenance, COUNT(*) FROM observation_ticks GROUP BY provenance"
                 ).fetchall()
             }
+        divergence = self.divergence_summary()
         return {
             "canonical_store": str(self.db_path),
             "active_observation_sessions": sessions,
@@ -332,8 +407,10 @@ class ForwardObservatory:
             "signals_recorded": signal_count,
             "real_market_ticks": real_count,
             "ticks_by_provenance": by_prov,
+            "divergence": divergence,
             "no_capital_exposure": True,
             "safety": "No live trading — only hypothetical executions recorded",
+            "measurement_limits": "Hypothetical price divergence may be measured; realized execution/PnL is UNAVAILABLE",
         }
 
     # ------------------------------------------------------ derived exports

@@ -21,8 +21,10 @@ export function operationalState(data, now = Date.now()) {
   if (obs?.state === "OBSERVING" && obs?.thread_alive !== true) observation = "DEGRADED";
   const demoKnown = demo && typeof demo.execution_permitted === "boolean";
   // A boolean from the authority is not inferred from readiness or risk status.
-  const permission = !demoKnown ? "UNAVAILABLE" : demo.execution_permitted === true
-    ? mode.mode === "DEMO_EXECUTION" && demo.state === "ENABLED" ? "PERMITTED BY AUTHORITY" : "CONFLICT · INSPECT" : demo.state === "DISABLED" ? "DISABLED" : "BLOCKED";
+  const permission = mode.mode === "DEMO_EXECUTION" || demo?.demo_execution_disabled === true
+    ? "DISABLED BY POLICY"
+    : !demoKnown ? "UNAVAILABLE" : demo.execution_permitted === true
+      ? "CONFLICT · INSPECT" : demo.state === "DISABLED" ? "DISABLED" : "BLOCKED";
   const reasons = Array.isArray(demo?.reasons) ? demo.reasons : [];
   const readinessReasons = Array.isArray(demo?.current_readiness?.blocked_reasons) ? demo.current_readiness.blocked_reasons : [];
   const liveReasons = Array.isArray(live?.blocked_reasons) ? live.blocked_reasons : [];

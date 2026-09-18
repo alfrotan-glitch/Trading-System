@@ -1,10 +1,9 @@
-"""DEMO_FORWARD/DEMO_EXECUTION safety boundary — DERIVED from the unified Risk Authority.
+"""DEMO_FORWARD safety metadata — derived from the unified Risk Authority.
 
-This module no longer owns its own numbers (the old duplication that let
-demo limits and risk-engine limits drift apart). Every limit is resolved by
-:data:`qts.risk.authority.resolve_risk_limits` for DEMO_EXECUTION mode and
-re-exported here under the historical names so the readiness gate, docs, and
-UI keep one vocabulary.
+DEMO_EXECUTION remains a historical compatibility label but is disabled by
+product policy. Every displayed limit is resolved by
+:data:`qts.risk.authority.resolve_risk_limits`; these values describe a safety
+boundary and never represent broker account state or authorize orders.
 """
 
 from __future__ import annotations
@@ -74,7 +73,7 @@ SAFETY_BOUNDARY = {
     "PAPER": "simulated fills, no broker orders, next-bar-open",
     "SHADOW": "would-be intents, no submission",
     "DEMO_FORWARD": "REAL MT5 terminal + REAL market data + REAL DEMO account + observation ONLY — no order path exists in this mode",
-    "DEMO_EXECUTION": "REAL MT5 terminal + REAL DEMO account + REAL demo order lifecycle — labeled DEMO, authoritative conservative limits, kill switch, never LIVE; requires fresh 14/14 readiness pass",
+    "DEMO_EXECUTION": "DISABLED by product policy — no demo order lifecycle, never LIVE; DEMO_FORWARD remains observation-only with zero orders",
     "LIVE": "REAL money, separately gated, requires env=live + --confirm live + risk.approved + validation.passed + reconciliation + human approval — LOCKED unless all pass",
 }
 

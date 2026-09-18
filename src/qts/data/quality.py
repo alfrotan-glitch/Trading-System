@@ -133,8 +133,24 @@ def validate_bars(bars: list[Bar]) -> DataQualityReport:
 def dataset_missing_stats(bars: list[Bar], timeframe: str = "1H") -> dict:
     """Compute missing-data statistics for manifest."""
     if not bars:
-        return {"expected": 0, "actual": 0, "missing": 0, "gap_count": 0}
-    tf_seconds = {"1m": 60, "5m": 300, "15m": 900, "1H": 3600, "1D": 86400}.get(timeframe, 3600)
+        return {
+            "status": "UNAVAILABLE",
+            "expected": None,
+            "actual": 0,
+            "missing": None,
+            "gap_count": None,
+            "reason": "no readable bars",
+        }
+    tf_seconds = {"1m": 60, "5m": 300, "15m": 900, "1H": 3600, "1D": 86400}.get(timeframe)
+    if tf_seconds is None:
+        return {
+            "status": "UNAVAILABLE",
+            "expected": None,
+            "actual": len(bars),
+            "missing": None,
+            "gap_count": None,
+            "reason": f"unsupported timeframe cadence: {timeframe}",
+        }
     total = (bars[-1].close_time - bars[0].open_time).total_seconds()
     expected = int(total // tf_seconds) + 1 if total > 0 else len(bars)
     missing = max(0, expected - len(bars))
@@ -146,6 +162,7 @@ def dataset_missing_stats(bars: list[Bar], timeframe: str = "1H") -> dict:
             gap_count += 1
             max_gap = max(max_gap, gap)
     return {
+        "status": "MEASURED",
         "expected": expected,
         "actual": len(bars),
         "missing": missing,

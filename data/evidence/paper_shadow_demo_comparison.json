@@ -1,14 +1,16 @@
 {
-  "generated_at": "2026-09-17T18:00:16.964657+00:00",
+  "generated_at": "2026-09-18T09:42:21.298132+00:00",
   "provenance": {
     "paper_source": "data/evidence/paper_trades.json (PAPER class)",
     "shadow_source": "data/evidence/shadow_intents.json (SHADOW class)",
-    "demo_source": "canonical observation store (DEMO class)",
-    "label": "DEMO never LIVE"
+    "demo_source": "canonical observation store (DEMO_FORWARD/OBSERVE_ONLY; DEMO_EXECUTION disabled)",
+    "label": "DEMO never LIVE",
+    "policy": "DEMO_FORWARD is observation-only; DEMO_EXECUTION disabled; LIVE never inferred"
   },
   "paper_trades": 6,
   "shadow_intents": 10,
   "demo_observations": 0,
+  "demo_execution_policy": "DISABLED",
   "demo_fills_recorded": 0,
   "signal_agreement": {
     "status": "MEASURED",

@@ -94,6 +94,18 @@ def test_validation_fail_wfe():
     assert any("WFE" in r for r in report.reasons)
 
 
+def test_nonfinite_stress_is_an_explicit_blocking_measurement():
+    pipe = ValidatorPipeline()
+    checks = pipe.validate_stress({1.0: 1.2, 1.5: float("nan"), 2.0: float("inf")})
+
+    assert len(checks) == 1
+    assert checks[0].name == "stress_measurement"
+    assert checks[0].status == "MEASURED_INVALID"
+    assert not checks[0].passed
+    assert "non-finite" in checks[0].details
+    assert "BLOCKS" in checks[0].details
+
+
 def test_adversarial_spread():
     findings = check_spread_sensitivity(1.2, 0.9, 0.5)
     assert len(findings) >= 1

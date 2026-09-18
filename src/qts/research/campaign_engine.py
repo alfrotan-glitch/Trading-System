@@ -7,15 +7,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 from qts.data.audit import audit_data_sources
-from qts.research.adversary import adversarial_attack
 from qts.research.campaign import CampaignConfig, run_campaign
 from qts.research.intelligence import IntelligenceOrchestrator
 from qts.research.memory import ResearchMemory
 from qts.research.novelty import report_novelty
-from qts.research.statistical import hansen_spa, white_reality_check
 
 
 def run_autonomous_campaign(
@@ -78,7 +74,12 @@ def run_autonomous_campaign(
     }
 
     # 4 create hypotheses
-    hyps = intel.generate_mechanism_hypotheses(mechanism_pool=plan["mechanisms"])
+    hyps = intel.generate_mechanism_hypotheses(
+        mechanism_pool=plan["mechanisms"],
+        symbol=symbol,
+        timeframe=timeframe,
+        data_description=data_review.get("limitation"),
+    )
 
     # 5 execute experiments — run bounded campaign per family
     # Use existing campaign infra: run one campaign per hypothesis family batch
@@ -121,49 +122,42 @@ def run_autonomous_campaign(
 
     # 6 store all results already via run_campaign
 
-    # 7 attack candidates
-    # Need evidence for each trial — use edge_validation.json as proxy
-    import pathlib
-
-    ev_path = pathlib.Path("data/evidence/edge_validation.json")
-    ev = json.loads(ev_path.read_text(encoding="utf-8")) if ev_path.exists() else {}
-    attacks = {}
+    # 7 attack candidates.  A campaign summary alone is not trial-bound
+    # edge evidence, so no stale global JSON is reused as if it belonged to
+    # these trials.
+    attacks: dict[str, dict[str, Any]] = {}
     for trial in summary.get("trials", [])[:3]:
         sid = trial.get("strategy_id", "unknown")
-        atk = adversarial_attack(sid, ev)
-        attacks[sid] = atk
+        attacks[sid] = {
+            "status": "UNAVAILABLE",
+            "reason": "trial-bound edge-validation artifact was not produced by this campaign",
+            "best_evidence_for": [],
+            "best_evidence_against": ["missing trial-bound adversarial inputs"],
+        }
 
     # 8 eliminate weak candidates
     surviving = [t for t in summary.get("trials", []) if t.get("passed")]
     eliminated = [t for t in summary.get("trials", []) if not t.get("passed")]
 
-    # 9 refine surviving hypotheses (mutate)
+    # 9/10: do not claim a refinement was tested unless a new immutable
+    # experiment was actually executed.  Keep a plan-only record for audit.
     refinements = []
     for s in surviving[:2]:
-        # Mutate params slightly
-        params = s.get("params", {})
-        mutated = {
-            k: (v + 1 if isinstance(v, int) else v * 1.1 if isinstance(v, float) else v) for k, v in params.items()
-        }
         refinements.append(
             {
                 "original": s["strategy_id"],
-                "mutated_params": mutated,
-                "reason": "refine surviving via small param mutation",
+                "status": "PLANNED_NOT_EXECUTED",
+                "reason": "survivor refinement requires a separately persisted experiment and budget",
             }
         )
-
-    # 10 re-test refinements if any surviving (bounded)
-    _retest_summary = None
-    if refinements and max_trials > len(summary.get("trials", [])) + len(refinements):
-        # Would run another campaign batch for refinements
-        _retest_summary = {
-            "retested": len(refinements),
-            "note": "re-test would run bounded experiments with mutated params, DSR penalty increased",
-        }
+    _retest_summary = {
+        "retested": 0,
+        "planned": len(refinements),
+        "status": "NOT_EXECUTED",
+        "reason": "no refinement rerun was performed by this bounded campaign",
+    }
 
     # 11 produce evidence portfolio
-    # Novelty
     trials_for_novelty = [
         {
             "family": t.get("strategy_id", "").split("_")[0],
@@ -175,30 +169,45 @@ def run_autonomous_campaign(
     ]
     novelty = report_novelty(trials_for_novelty)
 
-    # Statistical extensions
-    # Use dummy returns for White/Hansen
-    dummy_rets = np.random.randn(100) * 0.01
-    wrc = white_reality_check(dummy_rets, n_bootstrap=200)
-    spa = hansen_spa([dummy_rets, dummy_rets * 0.5], n_bootstrap=200)
-
-    # Self-audit 9 questions
-    self_audit = {
-        "did_we_leak": "NO — discovery never reads locked, FeatureStore checks future string",
-        "did_we_cherry_pick": "NO — all trials stored, ranked only for inspection",
-        "did_we_over_search": "CHECK — 45 trials, DSR 0.12 indicates over-search penalty applied",
-        "did_we_reset_trial_count": "NO — count monotonic 45, no deletion",
-        "did_we_reuse_test_set": "NO — locked frozen, forward separate",
-        "did_we_overfit_params": "YES — perturbation fragile indicates overfit",
-        "did_we_under_model_costs": "NO — 1.0/1.5/2.0× stress, BE 3bps",
-        "did_we_assume_unrealistic_fills": "NO — next-bar-open, partial fills",
-        "did_we_confuse_correlation": "UNKNOWN — null equivalence suggests possible",
-        "did_we_repeatedly_test_same_idea": "CHECK — novelty distinct 8 vs total 45 indicates clustering",
-        "did_we_suppress_failures": "NO — all failures stored in research_memory",
-        "verdict": "BLOCK — over-search and perturbation/regime failures, plus distinct vs total indicates redundant search",
+    # White/Hansen tests require observed return vectors bound to this
+    # campaign's immutable experiments.  No such vectors are returned by the
+    # bounded campaign API, so preserve the missing evidence explicitly.
+    wrc = {
+        "status": "UNAVAILABLE",
+        "reason": "campaign did not produce trial-bound return vectors for White reality check",
     }
-    # If any YES or UNKNOWN that is concerning → BLOCK
-    _block = any(v.startswith("YES") for v in self_audit.values()) or "UNKNOWN" in str(self_audit.values())
-    # Note: self_audit verdict already BLOCK
+    spa = {
+        "status": "UNAVAILABLE",
+        "reason": "campaign did not produce trial-bound return vectors for Hansen SPA",
+    }
+    # Self-audit is derived from this run, not a pre-written success story.
+    total_trials = len(summary.get("trials", []))
+    blocked_trials = sum(
+        1
+        for t in summary.get("trials", [])
+        if t.get("conclusion") == "BLOCKED_INSUFFICIENT_DATA"
+        or "BLOCKED" in " ".join(t.get("reasons", []))
+    )
+    missing_evidence = (
+        blocked_trials > 0
+        or summary.get("conclusion") == "BLOCKED_INSUFFICIENT_DATA"
+        or summary.get("status") == "BLOCKED_INSUFFICIENT_DATA"
+    )
+    self_audit = {
+        "did_we_leak": "NOT_PROVEN — campaign-level leakage audit is not implemented",
+        "did_we_cherry_pick": f"MEASURED — {total_trials} trial records returned; no records were removed by this runner",
+        "did_we_over_search": f"MEASURED — requested max_trials={max_trials}, executed_records={total_trials}",
+        "did_we_reset_trial_count": "MEASURED — delegated to append-only experiment ledger",
+        "did_we_reuse_test_set": "NOT_PROVEN — campaign-level frozen-test audit is not implemented",
+        "did_we_overfit_params": "INSUFFICIENT_EVIDENCE — no trial-bound perturbation report",
+        "did_we_under_model_costs": "INSUFFICIENT_EVIDENCE — no trial-bound gross/net cost report",
+        "did_we_assume_unrealistic_fills": "INSUFFICIENT_EVIDENCE — no trial-bound execution/fill report",
+        "did_we_confuse_correlation": "INSUFFICIENT_EVIDENCE — no trial-bound null/placebo report",
+        "did_we_repeatedly_test_same_idea": f"MEASURED — novelty distinct={novelty['distinct_hypotheses']} of {total_trials} records",
+        "did_we_suppress_failures": "MEASURED — failed/blocked trial records are retained by the campaign ledger",
+        "verdict": "BLOCK — missing evidence is fail-closed" if missing_evidence else "BLOCK — independent audit gates remain unproven",
+    }
+    _block = True
 
     evidence_portfolio = {
         "generated_at": datetime.now(UTC).isoformat(),
@@ -213,18 +222,22 @@ def run_autonomous_campaign(
         "surviving_candidates": len(surviving),
         "strongest_for": list(attacks.values())[0].get("best_evidence_for") if attacks else [],
         "strongest_against": list(attacks.values())[0].get("best_evidence_against") if attacks else [],
-        "DSR": ev.get("edge_survival", {}).get("dsr") if ev else None,
-        "PBO": ev.get("edge_survival", {}).get("pbo") if ev else None,
+        "DSR": {"status": "UNAVAILABLE", "reason": "no trial-bound multiple-testing report"},
+        "PBO": {"status": "UNAVAILABLE", "reason": "no trial-bound probability-of-backtest-overfit report"},
         "white_reality_check": wrc,
         "hansen_spa": spa,
-        "cost_sensitivity": ev.get("edge_survival", {}).get("cost_break_even_bps") if ev else None,
-        "execution_sensitivity": summary.get("shadow_paper", "not yet"),
-        "regime_behavior": ev.get("regime") if ev else None,
-        "robustness": "perturbation fragile, regime dependent",
-        "forward_evidence": ev.get("forward") if ev else None,
-        "unresolved_uncertainty": "single 500-row sample, no multi-market, no real tick",
-        "never_winner_by_return": "Top OOS 3.75 still BLOCKED — not winner",
-        "candidate_survival_standard": "Must survive OOS, multiple testing, costs, perturbation, regime, null/placebo, expectancy, forward, execution — none did",
+        "cost_sensitivity": {"status": "UNAVAILABLE", "reason": "no trial-bound gross/net cost decomposition"},
+        "execution_sensitivity": {"status": "UNAVAILABLE", "reason": "no execution or fill observations in campaign"},
+        "regime_behavior": {"status": "UNAVAILABLE", "reason": "no trial-bound regime report"},
+        "robustness": {"status": "UNAVAILABLE", "reason": "no trial-bound perturbation report"},
+        "forward_evidence": {"status": "UNAVAILABLE", "reason": "no forward observation evidence bound to campaign trials"},
+        "unresolved_uncertainty": [
+            data_review.get("limitation", "data limitation unavailable"),
+            "campaign-level leakage/frozen-test audit is not implemented",
+            "null, placebo, cost, execution, and forward evidence are not trial-bound",
+        ],
+        "never_winner_by_return": "No winner declared; campaign conclusion is fail-closed",
+        "candidate_survival_standard": "No promotion without OOS, multiple testing, costs, perturbation, regime, null/placebo, expectancy, forward, and execution evidence",
         "self_audit": self_audit,
         "retest_summary": _retest_summary,
         "live_safety": "RESEARCH→VALIDATION→FORWARD→PAPER→SHADOW→MICRO→LIVE_ELIGIBLE never skipped, no LIVE move",

@@ -100,7 +100,10 @@ def assess_data_adequacy(
     data bootstrap, so labels cannot drift between subsystems.
     """
     now = now or datetime.now(UTC)
-    data_class = classify_source(source_label)
+    # This older event-study API treats a missing source label as the local
+    # synthetic fixture convention. The newer generic readiness API keeps
+    # absent provenance as UNVERIFIED; neither path can satisfy REAL claims.
+    data_class = classify_source(source_label or "synthetic_or_csv")
     checks: list[RequirementCheck] = []
 
     checks.append(

@@ -16,6 +16,11 @@ from fastapi.staticfiles import StaticFiles
 
 from qts.config.settings import load_settings
 from qts.domain.modes import effective_mode_report
+from qts.lifecycle.demo_authority import DEMO_EXECUTION_DISABLED
+
+# Product policy: this workstation supports real MT5 DEMO_FORWARD observation
+# only. The same constant is consumed by the authority and API so the policy
+# cannot drift between the request boundary and the execution boundary.
 
 app = FastAPI(title="QTS Desktop API", version="0.1.0")
 
@@ -389,7 +394,7 @@ def paper_center() -> dict[str, Any]:
             "avg_slippage_bps": {
                 "status": "UNAVAILABLE",
                 "value": None,
-                "reason": "slippage is a MODEL assumption for paper fills; observed slippage requires real broker executions (DEMO_EXECUTION)",
+                "reason": "slippage is a MODEL assumption for paper fills; observed slippage is UNAVAILABLE because DEMO_EXECUTION is disabled and OBSERVE_ONLY submits no orders",
             },
             "label": "PAPER",
         },
@@ -1189,6 +1194,7 @@ def env_boundary() -> dict[str, Any]:
         "resolution": effective_mode_report(),
         "boundary": SAFETY_BOUNDARY,
         "demo_forward_separate": True,
+        "demo_execution_disabled": DEMO_EXECUTION_DISABLED,
         "live_locked": True,
         "label_for_demo": "DEMO",
         "label_for_paper": "PAPER",
@@ -1198,9 +1204,11 @@ def env_boundary() -> dict[str, Any]:
 
 @app.get("/api/demo/config")
 def demo_config() -> dict[str, Any]:
-    """Demo configuration — state read from the ONE authority, risk from the
-    ONE risk authority. No cosmetic ``demo_forward_enabled`` flag: permission
-    is what the durable authority says, decayed by freshness."""
+    """Demo configuration — observation facts plus the disabled execution policy.
+
+    Risk limits remain visible as declared DEMO boundary metadata; they are not
+    evidence of an enabled order path or broker account state.
+    """
     from qts.domain.modes import resolve_mode
     from qts.risk.authority import demo_forward_limits_from, resolve_risk_limits_from_settings
 
@@ -1211,7 +1219,8 @@ def demo_config() -> dict[str, Any]:
     return {
         "env": load_settings().env,
         "mode": mode.value,
-        "mode_can_submit_orders": mode.can_submit_broker_orders,
+        "mode_can_submit_orders": False if DEMO_EXECUTION_DISABLED else mode.can_submit_broker_orders,
+        "demo_execution_disabled": DEMO_EXECUTION_DISABLED,
         "demo_execution": decision.as_dict(),
         "risk": limits,
         "observation_mode": "OBSERVE_ONLY",  # observe endpoint is physically order-free
@@ -1222,8 +1231,8 @@ def demo_config() -> dict[str, Any]:
             "PAPER_VERIFIED",
             "SHADOW_VERIFIED",
             "DEMO_OBSERVATION",
-            "DEMO_EXECUTION",
         ],
+        "demo_execution_policy": "DISABLED — no order path is shipped",
     }
 
 
@@ -1248,59 +1257,51 @@ def _demo_authority() -> Any:
             _DEMO_AUTHORITY = DemoExecutionAuthority(
                 db_path=_db_path(),
                 audit=audit,
-                mode=resolve_mode().value,
+                # DEMO_EXECUTION is intentionally disabled in the product
+                # build. Binding the API authority to observation-only mode
+                # makes a readiness pass unable to create order permission.
+                mode="DEMO_FORWARD" if DEMO_EXECUTION_DISABLED else resolve_mode().value,
             )
         return _DEMO_AUTHORITY
 
 
 @app.post("/api/demo/enable")
-def demo_enable(payload: dict[str, Any]) -> Any:  # dict on success, JSONResponse on 409
-    """Request DEMO_EXECUTION enablement — ONE authoritative gate.
+def demo_enable(payload: dict[str, Any]) -> Any:  # always a policy refusal
+    """Return diagnostics for a permanently disabled DEMO_EXECUTION request.
 
-    Contract (finding A/B): enablement requires a FRESH readiness report
-    computed in THIS request over the SAME resolved connection the user
-    tested, with passed=true across every required check. The decision is a
-    durable state transition (SQLite + audit log), not a response string:
-    /api/demo/state, /api/demo/config and the execution boundary read the
-    same authority. When readiness fails the API answers 409 with the FULL
-    blocked-reason list and the persisted state stays DISABLED — permission
-    can never exist while a required readiness condition is unsatisfied.
+    Readiness is probed only to explain the operator's current observation
+    prerequisites. It is never passed to an enable transition because the
+    shipped product contains no DEMO_EXECUTION order path.
     """
     confirmed = bool(payload.get("confirmed"))
     risk_ack = bool(payload.get("risk_ack"))
     if not confirmed or not risk_ack:
-        # Client error — refused BEFORE any readiness evaluation or state write.
         raise HTTPException(400, "DEMO execution requires explicit confirmed=true and risk_ack=true")
-    from qts.lifecycle.demo_authority import readiness_age_seconds
+
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
 
-    setup = _wizard_setup_kwargs(None, None)
-    # Fresh readiness in THIS request — the authoritative gate input.
     try:
-        rpt = demo_forward_readiness_report(**setup)
-    except Exception as e:
-        rpt = {
-            "passed": False,
-            "demo_enabled": False,
-            "blocked_reasons": [f"readiness probe failed: {e}"],
-            "checks": {},
-        }
-    age = readiness_age_seconds(rpt)
-    authority = _demo_authority()
-    decision = authority.enable(
-        readiness=rpt,
-        confirmed=confirmed,
-        risk_ack=risk_ack,
-        readiness_age_s=age,
-        actor="api",
+        rpt = demo_forward_readiness_report(**_wizard_setup_kwargs(None, None))
+        diagnostic_reasons = list(rpt.get("blocked_reasons", []))
+    except Exception as exc:
+        rpt = {"passed": False, "checks": {}, "blocked_reasons": [str(exc)]}
+        diagnostic_reasons = [str(exc)]
+    return JSONResponse(
+        status_code=409,
+        content={
+            "authority": "demo_execution_state",
+            "enabled": False,
+            "execution_permitted": False,
+            "state": "DISABLED",
+            "reasons": [
+                "DEMO_EXECUTION is disabled by product policy; use DEMO_FORWARD OBSERVE_ONLY",
+                *diagnostic_reasons,
+            ],
+            "mode": "DEMO_FORWARD",
+            "demo_execution_disabled": True,
+            "readiness": rpt,
+        },
     )
-    body = decision.as_dict()
-    body["readiness"] = rpt
-    body["label"] = "DEMO" if decision.enabled else None
-    if not decision.enabled:
-        # 409 Conflict: the request was well-formed but the safety gate refused.
-        return JSONResponse(status_code=409, content=body)
-    return body
 
 
 @app.get("/api/demo/state")
@@ -1319,8 +1320,9 @@ def demo_state() -> dict[str, Any]:
 
     So ``readiness_passed=false`` + ``current_readiness.passed=true`` is a
     coherent state: the environment is ready now, but no enablement decision
-    carries passing readiness evidence. Execution stays forbidden until
-    ``/api/demo/enable`` binds a fresh pass to a durable decision.
+    carries passing readiness evidence. Execution stays forbidden because
+    DEMO_EXECUTION is disabled by product policy; the fresh result can only
+    authorize DEMO_FORWARD observation.
     """
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
 
@@ -1335,6 +1337,7 @@ def demo_state() -> dict[str, Any]:
         "passed": bool(rpt.get("passed")),
         "blocked_reasons": rpt.get("blocked_reasons", []),
     }
+    out["demo_execution_disabled"] = DEMO_EXECUTION_DISABLED
     return out
 
 

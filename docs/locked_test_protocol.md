@@ -1,5 +1,5 @@
 # Locked Test Protocol
-**Data version:** 20260916-010-572728d9
+**Data version:** 20260918-010-572728d9
 
 - Partitions: discovery 300 (60%), validation 100 (20%), locked 100 (20%)
 - Immutable: hash sha256:572728d92ebb5c2a, once created cannot change

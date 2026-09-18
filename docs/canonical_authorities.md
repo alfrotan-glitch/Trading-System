@@ -17,7 +17,7 @@ ONE canonical `ExecutionMode`:
 | `PAPER` | no (simulation) | **no** | no |
 | `SHADOW` | no (intents only) | **no** | no |
 | `DEMO_FORWARD` | **yes** (real MT5) | **no — structurally** | no |
-| `DEMO_EXECUTION` | **yes** | yes (demo account, gated) | no |
+| `DEMO_EXECUTION` | **yes** | **no — disabled by product policy** | no |
 | `LIVE` | **yes** | yes (gated) | **yes** |
 
 Resolution precedence (highest wins): explicit argument → `QTS_MODE` →
@@ -31,48 +31,24 @@ no silent mid-session mode change.
 
 ## 2. DEMO execution-permission authority — `qts.lifecycle.demo_authority`
 
-`DemoExecutionAuthority` owns ONE durable state (SQLite `demo_execution_state`
-+ audit events). Everything else reads it:
+`DemoExecutionAuthority` owns ONE durable refusal/history state (SQLite
+`demo_execution_state` + audit events). It is an execution boundary, not an
+enable switch:
 
-- `/api/demo/enable` — computes a FRESH 14/14 readiness report in the same
-  request over the same resolved connection, and refuses (HTTP 409, state
-  stays DISABLED, refusal recorded) unless every required check passed.
-  The old behavior — returning `demo_enabled=true` while ignoring
-  `readiness.passed` — is impossible and regression-pinned.
-- `/api/demo/state` — the authoritative current decision:
-  `DISABLED | ENABLED | ENABLED_BUT_BLOCKED`.
-- Execution boundary: `authority.is_execution_permitted(fresh_readiness)`.
+- `/api/demo/enable` returns HTTP 409 with the policy refusal and diagnostic
+  readiness evidence. It never creates order permission.
+- `DemoExecutionAuthority.enable(...)` is hard-disabled as well; direct callers
+  receive a durable refusal and no `enabled=1` state.
+- `/api/demo/state` and `authority.is_execution_permitted(...)` always report
+  `DISABLED` / `false` while the product policy is active, including when an
+  old or tampered database contains an enabled row.
+- DEMO_FORWARD readiness is still useful for starting the zero-order
+  observation collector; it is not an execution prerequisite that can be
+  promoted.
 
-Decay: enablement's readiness evidence expires after `REVERIFY_TTL_S = 120s`.
-An ENABLED authority whose evidence has expired reports
-`ENABLED_BUT_BLOCKED` with `readiness_expired` until a fresh readiness pass
-re-verifies it. Real broker conditions can change; permission must be
-re-proven, never assumed.
-
-Two distinct readiness facts (they may legitimately disagree — this is NOT a
-contradiction or stale state):
-
-* `readiness_passed` / `readiness_evidence` (`/api/demo/state`) describe the
-  PERSISTED DECISION RECORD — the readiness report bound to the latest
-  authority transition. `readiness_evidence` is `none` (no report bound —
-  never enabled, or a disable/refusal without one), `failed`, or `passed`.
-* `current_readiness.passed` is a FRESH 14-check probe computed in the same
-  request.
-
-Therefore `readiness_passed=false` + `current_readiness.passed=true` is
-coherent: the terminal is ready now, but no durable decision carries passing
-evidence (typical for a never-enabled authority). Execution remains forbidden
-either way — only `/api/demo/enable` with a fresh pass creates permission,
-and it decays per the TTL.
-
-Audit-first: enablement is audited BEFORE the state write — an enablement
-that cannot be audited does not exist.
-
-Mode bound (checked TWICE, fail-closed): enablement requires the process's
-resolved mode to be broker-capable, and EVERY read re-checks BOTH the
-authority's live mode and the stored row's mode. A DEMO_FORWARD (observe-only)
-process can never hold execution permission, even if the stored row is
-tampered to `enabled=1` with a broker-capable or NULL mode.
+The old behavior — returning `demo_enabled=true` while ignoring
+`readiness.passed` — is impossible, and passing readiness never creates a
+DEMO_EXECUTION order path. Unknown broker evidence stays unavailable.
 
 ## 3. Risk authority — `qts.risk.authority`
 

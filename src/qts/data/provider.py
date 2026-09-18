@@ -108,8 +108,14 @@ class SyntheticProvider(DataProvider):
 
 # Candidate external providers (researched, not all implemented — catalog documents them)
 EXTERNAL_CATALOG: list[dict[str, Any]] = [
+    # These are acquisition plans, not measured datasets in this checkout.
+    # Keep that status explicit so a catalog row cannot be mistaken for
+    # evidence of installed history or broker-quality fields.
     {
         "provider_id": "dukascopy",
+        "availability_status": "PLANNED_NOT_INGESTED",
+        "measured_in_checkout": False,
+        "evidence_status": "CATALOG_PLAN_ONLY",
         "description": "Dukascopy free FX tick/1m/1H history, deep",
         "historical_depth": "2003+ for FX, 10+ years",
         "granularity": "tick, 1m, 1H, 1D",
@@ -129,6 +135,9 @@ EXTERNAL_CATALOG: list[dict[str, Any]] = [
     },
     {
         "provider_id": "firstrate",
+        "availability_status": "PLANNED_NOT_INGESTED",
+        "measured_in_checkout": False,
+        "evidence_status": "CATALOG_PLAN_ONLY",
         "description": "FirstRate Data — exchange-grade tick/1m for FX/metals/crypto",
         "historical_depth": "2003+ 1m, tick from 2019",
         "granularity": "tick, 1s, 1m, 1H, 1D",
@@ -148,6 +157,9 @@ EXTERNAL_CATALOG: list[dict[str, Any]] = [
     },
     {
         "provider_id": "mt5_history",
+        "availability_status": "PLANNED_NOT_INGESTED",
+        "measured_in_checkout": False,
+        "evidence_status": "CATALOG_PLAN_ONLY",
         "description": "MT5 broker history export (real broker XAUUSD)",
         "historical_depth": "Broker dependent, typically 1-2 years 1m, 5+ years 1H",
         "granularity": "1m, 5m, 15m, 1H, tick if enabled",
@@ -167,6 +179,9 @@ EXTERNAL_CATALOG: list[dict[str, Any]] = [
     },
     {
         "provider_id": "binance",
+        "availability_status": "PLANNED_NOT_INGESTED",
+        "measured_in_checkout": False,
+        "evidence_status": "CATALOG_PLAN_ONLY",
         "description": "Binance crypto spot/futures tick/aggs",
         "historical_depth": "2017+ for BTC, 2020+ for many",
         "granularity": "tick, 1s, 1m, 1H",
@@ -186,6 +201,9 @@ EXTERNAL_CATALOG: list[dict[str, Any]] = [
     },
     {
         "provider_id": "truefx",
+        "availability_status": "PLANNED_NOT_INGESTED",
+        "measured_in_checkout": False,
+        "evidence_status": "CATALOG_PLAN_ONLY",
         "description": "TrueFX free FX tick with bid/ask",
         "historical_depth": "2009+ for majors",
         "granularity": "tick bid/ask",
@@ -238,15 +256,22 @@ def ingestion_pipeline(
     # 4 Normalization (UTC, sort, quantize)
     bars = sorted(bars, key=lambda b: b.open_time)
     bars = [b.quantize() for b in bars]
-    # 5 Canonical Dataset → Manifest (immutable dataset ID)
+    # 5 Canonical Dataset → Manifest (immutable dataset ID). The source label
+    # is explicit: a generated provider is synthetic; every external provider
+    # remains unverified until its raw evidence is actually ingested and
+    # independently classified.
     from qts.data.store import SqliteParquetDataStore
 
+    source_class = "SYNTHETIC" if provider.provider_id == "synthetic" else "UNVERIFIED"
+    source_label = f"{source_class}:provider:{provider.provider_id}"
     store = SqliteParquetDataStore(root=store_dir)
-    manifest = store.write_bars(bars, source_file=str(fetched))
+    manifest = store.write_bars(bars, source_file=str(fetched), source=source_label)
     # 6 Evidence (quality report + raw provenance)
     evidence = {
         "dataset_id": manifest.version,
         "source_id": provider.provider_id,
+        "source_status": "MEASURED_INGESTION",
+        "data_class": manifest.provenance_class,
         "instrument": instrument,
         "timeframe": timeframe,
         "start": manifest.start.isoformat(),

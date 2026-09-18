@@ -76,10 +76,12 @@ auditable. Offsets are cached per symbol for 300s (they only shift on DST);
 during a DST transition the unchanged validation fails closed until the
 re-measurement.
 
-Config precedence (readiness AND demo-enablement resolve identically):
+Config precedence for readiness and observation setup:
 request/wizard param → saved wizard file (`QTS_SETUP_FILE`, default
 `data/setup/mt5_setup.json`) → `QTS_MT5_PATH`/`QTS_MT5_SYMBOL` env →
-`MT5_PATH` env → auto-detect. The wizard store is credential-free:
+`MT5_PATH` env → auto-detect. `/api/demo/enable` may reuse these values for
+fresh diagnostics, but it is a durable policy refusal and never grants
+DEMO_EXECUTION permission. The wizard store is credential-free:
 login/password/server are rejected and never persisted — use
 `QTS_MT5_LOGIN`/`QTS_MT5_PASSWORD`/`QTS_MT5_SERVER` (legacy unprefixed
 `MT5_*` names still accepted as fallback).
@@ -88,7 +90,7 @@ In QTS: **Setup Wizard → Test MT5 Connection** or **Demo Forward → Refresh C
 
 1. MT5 installed? 2. Terminal running? 3. Account connected? 4. Account is DEMO? 5. Broker identified? 6. Symbol available? 7. Symbol tradable? 8. Symbol spec valid? 9. Market data fresh? 10. Bid/ask valid? 11. Spread acceptable? 12. Account state valid? 13. Risk config valid? 14. Reconciliation healthy?
 
-Only after all ✓ is *Demo Execution Enabled* allowed. Blocked reasons shown explicitly.
+Only after all ✓ may DEMO_FORWARD observation start. DEMO_EXECUTION remains disabled by product policy; blocked reasons are shown explicitly.
 
 ## Account authority (explicit limitation)
 
@@ -109,11 +111,17 @@ was removed.
 
 ## DEMO FORWARD vs LIVE
 
-- DEMO_FORWARD promotion requires a **passed** readiness report (14/14) plus a
-  successful order-placement dry run; LIVE stays disabled by policy.
-- Promotion ladder is one-way: `OBSERVE_ONLY -> DEMO_FORWARD -> LIVE (disabled by policy)`.
-- Demo execution order flow: `validate -> plan -> preflight -> gate -> submit -> poll-fill -> reconcile`.
-- Kill switch: `qts risk kill` halts new order submission independently of the desktop UI.
+- DEMO_FORWARD observation requires a **passed** readiness report (14/14) and
+  records real demo-account market observations without an order path. It does
+  not require, imply, or create DEMO_EXECUTION permission.
+- DEMO_EXECUTION is disabled by product policy. `/api/demo/enable` is a
+  diagnostic-only durable refusal; there is no demo order-placement dry run,
+  fill lifecycle, or execution-comparison claim in this product boundary.
+- LIVE remains separately locked. No observation, evidence export, or
+  readiness result can advance it.
+- Kill switch: any separately implemented order boundary must halt new order
+  submission independently of the desktop UI; this observation product path
+  submits zero orders.
 - Symbol contract size: QTS `SymbolSpec.contract_size` maps from MT5
   `SymbolInfo.trade_contract_size` (the real MT5 object has **no**
   `contract_size` attribute; pinned by `tests/test_mt5_boundary_contract.py`).

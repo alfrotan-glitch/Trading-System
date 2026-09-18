@@ -1,5 +1,5 @@
-# Demo Forward Protocol — Observe First, Then Execute (DEMO, Never LIVE)
-Version 2026-09-16
+# Demo Forward Protocol — Observe Only (DEMO, Never LIVE)
+Version 2026-09-18
 
 ## Safety Boundary
 ```
@@ -7,52 +7,45 @@ DEVELOPMENT   — backtest only, mock, no broker
 PAPER         — simulated fills, next-bar-open, no broker orders
 SHADOW        — would-be intents, checks risk/spread, no submission
 DEMO_FORWARD  — REAL MT5 + REAL market data + REAL DEMO account, OBSERVATION ONLY — no order path exists in this mode
-DEMO_EXECUTION — REAL MT5 + REAL DEMO account + REAL demo order lifecycle — labeled DEMO, authoritative conservative limits, kill switch, never LIVE
-LIVE          — real money, separately gated, LOCKED unless all scientific+safety gates pass + human approval
+DEMO_EXECUTION — DISABLED by product policy; no order path is enabled
+LIVE          — real money, separately gated, LOCKED
 ```
 No env can silently become another (mode resolution: `qts.domain.modes` — unknown
-selections fail closed). Demo limits are DERIVED from the unified risk authority
-(`qts.risk.authority`, `resolve_risk_limits(DEMO_EXECUTION)`), not defined
-independently:
-
-- max 0.1 lot/order, 0.3 exposure, 3 open orders, 4 orders/min
-- 50 USD daily loss, 100 USD /5% drawdown
-- 30 bps spread, 20 bps slippage, kill switch armed
-- Resolved snapshot visible at `/api/risk` with config hash and per-field source
+selections fail closed). Risk limits remain inspectable, but they do not create
+an order permission while the product policy disables DEMO_EXECUTION. The
+observation path has no order boundary.
 
 ## Lifecycle
 ```
-RESEARCH → VALIDATING → FORWARD_OBSERVATION → PAPER_VERIFIED → SHADOW_VERIFIED → DEMO_OBSERVATION / DEMO_EXECUTION
+RESEARCH → VALIDATING → FORWARD_OBSERVATION → PAPER_VERIFIED → SHADOW_VERIFIED → DEMO_OBSERVATION
 ```
-`DEMO_EXECUTION` success does **NOT** become `LIVE_ELIGIBLE` automatically — separate gate requires DSR/PBO/PSR/costs/regime/perturbation/null/placebo/forward/reconciliation/risk/human.
+`DEMO_EXECUTION` is intentionally absent from the enabled lifecycle. `LIVE`
+requires its separate scientific, reconciliation, risk, governance, and human
+approval gates and remains locked.
 
 ## Phase 1: Observe Only (Safe, No Orders)
 - Start via **Demo Forward → Start Observation** — refused unless all 14 readiness checks pass (fail-closed).
-- Records REAL MT5 ticks with full provenance into the canonical observation store (`data/sqlite/forward_observatory.db`), bound to an audited session carrying environment/mode, broker, canonical+broker symbol, timestamp basis, and code version.
+- Records real MT5 demo-account ticks with provenance class `DEMO` into the canonical observation store (`data/sqlite/forward_observatory.db`), bound to an audited session carrying environment/mode, broker, canonical+broker symbol, timestamp basis, and code version.
 - No `order_send`, no order path, no capital. `data/evidence/forward_observation_manifest.json` is a DERIVED export.
 - Legacy `demo_forward_observations.json` (fabricated fills) was quarantined — see `data/evidence/quarantine/README.md`; it satisfies nothing.
 
-## Phase 2: Demo Execution Enabled (Requires Explicit Confirmation)
-Prerequisites:
-1. 14 checks ✓ (demo readiness)
-2. Risk ack ticked
-3. User confirms `confirmed=true` via **Enable Demo Execution** (POST `/api/demo/enable`)
+## Phase 2: DEMO_EXECUTION (Disabled)
 
-Then — ONLY after the authority records a durable ENABLED state (fresh 14/14
-readiness computed in the enable request; permission decays after
-`reverify_ttl_s` and must be re-verified) — QTS submits **real demo orders** via MT5 `order_send` to demo account. Refusals return HTTP 409 with reasons; the state stays DISABLED and is never fabricated:
-- Captures requested vs actual price, slippage, latency, broker response, fill/partial/rejection/cancellation, position, exit, P&L with `label=DEMO` and provenance.
-- Reconciliation checks after each fill; ambiguous orders (timeout) → fail-closed, require manual reconciliation, block new orders.
-- Crash after submission → on restart, `startup_health_check` restores pending/ambiguous orders, verifies fills via MT5 deals, audits.
-
-Every result in `data/evidence/demo_forward_observations.json` with fields:
-`timestamp/bid/ask/spread/symbol/timeframe/tick/session/strategy_state/regime/signal/NO_TRADE/hypothetical order/actual demo order/requested_price/actual_price/slippage/latency/broker_response/fill/position/exit/PnL/provenance/label=DEMO`.
+`POST /api/demo/enable` returns HTTP 409 with an explicit product-policy
+reason and may include a diagnostic readiness probe, but never performs an
+authority enablement or creates an order permission. A passing 14-check
+readiness report can authorize **observation only**; it never creates order
+permission. Consequently there are no actual demo fills, execution latency,
+slippage, broker responses, positions, exits, or P&L records in this product
+path. Those fields remain `UNAVAILABLE`, not zero or simulated.
 
 ## Comparison
-Automatic vs paper/shadow:
-
-- `data/evidence/paper_shadow_demo_comparison.json` + **Paper/Shadow/Demo** view
-- Metrics: signal agreement, expected vs actual entry, spread/slippage/latency, fill/rejected/partial/exit/P&L differences. Refresh via button or `POST /api/demo/comparison/refresh`.
+The canonical observation store can measure signal/theoretical-price versus
+hypothetical-price divergence when both fields are present. Execution/fill
+divergence, realized P&L, and paper/shadow-to-broker fill differences are
+`UNAVAILABLE` because DEMO_EXECUTION is disabled and OBSERVE_ONLY submits no
+orders. The API reports these states explicitly rather than deriving them from
+simulation.
 
 ## Position Management Research
 During demo_forward, research engine can compare (still under same gates):

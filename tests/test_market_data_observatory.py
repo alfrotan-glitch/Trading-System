@@ -12,7 +12,10 @@ def test_inventory_26_fields():
     p = Path("data/evidence/data_inventory.json")
     assert p.exists(), "data_inventory.json not generated"
     inv = json.loads(p.read_text(encoding="utf-8"))
-    assert len(inv) >= 2
+    # The inventory is consolidated: one row per canonical dataset version,
+    # rather than duplicate raw/curated rows that could be double-counted.
+    assert len(inv) >= 1
+    assert len({entry["version"] for entry in inv}) == len(inv)
     required_fields = [
         "source",
         "provider",

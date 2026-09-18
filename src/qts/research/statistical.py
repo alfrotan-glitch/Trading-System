@@ -15,12 +15,12 @@ def white_reality_check(returns: np.ndarray, benchmark: float = 0.0, n_bootstrap
     Inputs: returns (T), benchmark, n_bootstrap.
     Limitations: requires sufficient T, assumes i.i.d. under null.
     """
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     obs_max = float(np.max(returns)) if len(returns) else 0.0
     # Bootstrap max
     boot_max = []
     for _ in range(n_bootstrap):
-        sample = np.random.choice(returns, size=len(returns), replace=True)
+        sample = rng.choice(returns, size=len(returns), replace=True)
         boot_max.append(float(np.max(sample)))
     p_value = float(np.mean(np.array(boot_max) >= obs_max))
     return {
@@ -36,7 +36,7 @@ def hansen_spa(returns_list: list[np.ndarray], benchmark: float = 0.0, n_bootstr
     """Hansen SPA (2005) — superior predictive ability, improvements over White.
     Purpose: test if any strategy beats benchmark after multiple testing.
     """
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     # Simplified SPA: compute t-stats per strategy, SPA is max t
     t_stats = []
     for rets in returns_list:
@@ -52,7 +52,7 @@ def hansen_spa(returns_list: list[np.ndarray], benchmark: float = 0.0, n_bootstr
     for _ in range(n_bootstrap):
         b_t = []
         for rets in returns_list:
-            sample = np.random.choice(rets, size=len(rets), replace=True)
+            sample = rng.choice(rets, size=len(rets), replace=True)
             m = np.mean(sample) - benchmark
             s = np.std(sample, ddof=1) / math.sqrt(len(sample)) if np.std(sample) else 1.0
             b_t.append(m / s if s else 0.0)
@@ -68,13 +68,13 @@ def hansen_spa(returns_list: list[np.ndarray], benchmark: float = 0.0, n_bootstr
 
 def permutation_test(returns: np.ndarray, n_perm: int = 1000, seed: int = 42) -> dict:
     """Permutation test for Sharpe — shuffles labels to test significance."""
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     from qts.validation.metrics import sharpe_ratio
 
     obs_sr = sharpe_ratio(returns)
     perm_srs = []
     for _ in range(n_perm):
-        perm = np.random.permutation(returns)
+        perm = rng.permutation(returns)
         perm_srs.append(sharpe_ratio(perm))
     p_value = float(np.mean(np.array(perm_srs) >= obs_sr))
     return {
@@ -106,7 +106,7 @@ def minimum_backtest_length(sharpe: float, target_psr: float = 0.95, skew: float
 
 def drawdown_distribution(equity: np.ndarray, n_bootstrap: int = 500, seed: int = 42) -> dict:
     """Drawdown distribution and expected shortfall diagnostics."""
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     from qts.validation.metrics import max_drawdown
 
     obs_dd = max_drawdown(equity)
@@ -114,7 +114,7 @@ def drawdown_distribution(equity: np.ndarray, n_bootstrap: int = 500, seed: int 
     rets = np.diff(equity) / equity[:-1] if len(equity) > 1 else np.array([0.0])
     boot_dds = []
     for _ in range(n_bootstrap):
-        sample_rets = np.random.choice(rets, size=len(rets), replace=True)
+        sample_rets = rng.choice(rets, size=len(rets), replace=True)
         eq = np.cumprod(1 + sample_rets) * equity[0]
         boot_dds.append(max_drawdown(eq))
     return {

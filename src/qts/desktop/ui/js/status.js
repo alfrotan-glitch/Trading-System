@@ -45,7 +45,7 @@ const MODES = {
   PAPER: { tone: "info", canSubmit: false, realData: false, blurb: "Simulated fills on recorded data — no broker contact." },
   SHADOW: { tone: "research", canSubmit: false, realData: false, blurb: "Would-be intents only — no broker submission. Data provenance is reported separately." },
   DEMO_FORWARD: { tone: "info", canSubmit: false, realData: true, blurb: "MT5 demo-account observation only — structurally no broker orders." },
-  DEMO_EXECUTION: { tone: "warn", canSubmit: "gated", realData: true, blurb: "Demo-account execution mode — submission requires current authority permission and all execution gates." },
+  DEMO_EXECUTION: { tone: "locked", canSubmit: false, realData: true, blurb: "Disabled by product policy — DEMO_FORWARD observation has zero orders; no demo order path is shipped." },
   LIVE: { tone: "locked", canSubmit: "gated", realData: true, blurb: "Live capital. Structurally locked until every gate and human approval pass." },
 };
 
@@ -74,8 +74,6 @@ export function modeInfo(mode) {
 export function lifecycleStages(src = {}) {
   const mode = String(src.mode || "").toUpperCase();
   const observing = src.observeState === "OBSERVING";
-  const demoEnabled = src.demoState === "ENABLED" && src.demoPermitted === true && mode === "DEMO_EXECUTION";
-
   const stages = [
     { id: "research", label: "Research", sub: "hypotheses, campaigns", state: "unknown" },
     { id: "validating", label: "Validating", sub: "DSR · PBO · stress", state: "unknown" },
@@ -86,14 +84,14 @@ export function lifecycleStages(src = {}) {
       label: "Demo Observation",
       sub: "real ticks, zero orders",
       state: observing ? "current" : "blocked",
-      blockedWhy: mode === "DEMO_FORWARD" || demoEnabled ? null : "requires DEMO_FORWARD environment + MT5 demo terminal",
+      blockedWhy: mode === "DEMO_FORWARD" ? null : "requires DEMO_FORWARD environment + MT5 demo terminal",
     },
     {
       id: "demo_exec",
       label: "Demo Execution",
-      sub: "real demo orders",
-      state: demoEnabled ? "current" : "blocked",
-      blockedWhy: demoEnabled ? null : "requires all 14 readiness checks + explicit risk acknowledgment",
+      sub: "disabled by policy; zero orders",
+      state: "blocked",
+      blockedWhy: "DEMO_EXECUTION is disabled by product policy; DEMO_FORWARD observation is the only broker path",
     },
     {
       id: "live",

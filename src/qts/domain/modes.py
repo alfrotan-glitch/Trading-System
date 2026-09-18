@@ -63,12 +63,16 @@ class ExecutionMode(StrEnum):
     PAPER = "PAPER"
     SHADOW = "SHADOW"
     DEMO_FORWARD = "DEMO_FORWARD"  # observation only — physically no orders
-    DEMO_EXECUTION = "DEMO_EXECUTION"  # real demo-account orders, gated
+    DEMO_EXECUTION = "DEMO_EXECUTION"  # capability label; product policy disables it
     LIVE = "LIVE"  # real money — structurally locked behind the live gate
 
     @property
     def can_submit_broker_orders(self) -> bool:
-        """Whether this mode may reach a real broker order-submission path at all."""
+        """Whether the mode has a broker-capable boundary in the capability model.
+
+        Capability is not permission. DEMO_EXECUTION is hard-disabled by the
+        shipped product authority/API, and LIVE remains separately locked.
+        """
         return self in (ExecutionMode.DEMO_EXECUTION, ExecutionMode.LIVE)
 
     @property

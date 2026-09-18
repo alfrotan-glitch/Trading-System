@@ -45,6 +45,21 @@ class HypothesisSpec(BaseModel):
     stop_conditions: str
     family: str
     feature_lineage: list[str] = Field(default_factory=list)
+    # Explicit scientific specification fields.  Defaults preserve loading of
+    # older hypothesis rows; newly generated hypotheses fill them from the
+    # thought and remain incomplete only when the source thought is incomplete.
+    null_hypothesis: str = "No incremental predictive or economic effect beyond the declared baseline and costs"
+    competing_explanations: list[str] = Field(
+        default_factory=lambda: [
+            "selection or multiple-testing artifact",
+            "regime/sample dependence",
+            "unmodeled spread, slippage, or latency",
+        ]
+    )
+    horizon: str = "declared out-of-sample evaluation horizon"
+    population: str = "declared instrument, timeframe, and available provenance-qualified sample"
+    falsification_criteria: str = ""
+    required_data: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -83,11 +98,22 @@ class IntelligenceOrchestrator:
                 bars_count = len(store.read_bars(instr, latest.timeframe, version=latest.version))
             except Exception:
                 bars_count = 0
+        if latest and bars_count:
+            span_days = (latest.end - latest.start).total_seconds() / 86_400
+            limitation = (
+                f"{bars_count} bars across {span_days:.1f} days for {latest.instrument} {latest.timeframe}; "
+                "dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims"
+            )
+        elif latest:
+            limitation = "Manifest exists but readable bars are unavailable; depth/span cannot be measured"
+        else:
+            limitation = "No canonical dataset manifest is available"
         return {
             "versions": versions,
             "latest": latest.model_dump() if latest else None,
             "bars": bars_count,
-            "limitation": "Only 500 XAUUSD 1H sample available — limited historical depth, single symbol, single timeframe. Explicitly reported as limitation per mission 6.",
+            "span_days": (latest.end - latest.start).total_seconds() / 86_400 if latest and bars_count else None,
+            "limitation": limitation,
         }
 
     def inspect_evidence(self) -> dict[str, Any]:
@@ -98,17 +124,27 @@ class IntelligenceOrchestrator:
         # Identify weaknesses
         weaknesses = []
         es = ev.get("edge_survival", {})
-        if es.get("pbo", 1) > 0.5:
+        pbo = es.get("pbo")
+        if isinstance(pbo, (int, float)) and pbo > 0.5:
             weaknesses.append("PBO high — overfitting")
-        if es.get("dsr", 0) < 0.95:
-            weaknesses.append("DSR low — multiple-testing penalty")
-        if es.get("cost_break_even_bps", 99) < 20:
+        elif pbo is None:
+            weaknesses.append("PBO unavailable — CPCV evidence is missing")
+        dsr = es.get("dsr")
+        if not isinstance(dsr, (int, float)) or dsr < 0.95:
+            weaknesses.append("DSR unavailable/low — multiple-testing penalty")
+        break_even = es.get("cost_break_even_bps")
+        if isinstance(break_even, (int, float)) and break_even < 20:
             weaknesses.append("Cost break-even low — no economic edge")
+        elif break_even is None:
+            weaknesses.append("Cost break-even unavailable — cost evidence is missing")
         # Regime worst
         regs = ev.get("regime", [])
-        worst = min(regs, key=lambda x: x.get("sharpe", 0)) if regs else None
+        regime_rows = regs if isinstance(regs, list) else []
+        worst = min(regime_rows, key=lambda x: x.get("sharpe", 0)) if regime_rows else None
         if worst and worst.get("sharpe", 0) < -2:
             weaknesses.append(f"Regime failure {worst.get('regime')} Sharpe {worst.get('sharpe'):.2f}")
+        elif not regime_rows:
+            weaknesses.append("Regime evidence unavailable or not trial-bound")
         return {"evidence": ev, "campaigns": camps, "weaknesses": weaknesses, "worst_regime": worst}
 
     def generate_thought(self, question: str, mechanism: str, **kwargs) -> ResearchThought:
@@ -149,6 +185,16 @@ class IntelligenceOrchestrator:
             regimes=thought.regimes_expected,
             stop_conditions=thought.regimes_stop,
             family=family,
+            null_hypothesis="No incremental predictive or economic effect beyond the declared baseline and costs",
+            competing_explanations=[
+                "selection or multiple-testing artifact",
+                "regime/sample dependence",
+                "unmodeled spread, slippage, or latency",
+            ],
+            horizon="the declared out-of-sample evaluation horizon",
+            population="the declared instrument, timeframe, regime, and provenance-qualified dataset",
+            falsification_criteria=thought.falsify_observation,
+            required_data=thought.data_required,
         )
         with db_connect(self.db_path) as con:
             con.execute(
@@ -159,8 +205,15 @@ class IntelligenceOrchestrator:
             con.commit()
         return hyp
 
-    def generate_mechanism_hypotheses(self, mechanism_pool: list[str] | None = None) -> list[HypothesisSpec]:
-        """Generate hypotheses for market mechanisms — falsifiable, with full provenance."""
+    def generate_mechanism_hypotheses(
+        self,
+        mechanism_pool: list[str] | None = None,
+        *,
+        symbol: str = "XAUUSD",
+        timeframe: str = "1H",
+        data_description: str | None = None,
+    ) -> list[HypothesisSpec]:
+        """Generate bounded, explicitly falsifiable hypotheses with declared scope."""
         pool = mechanism_pool or [
             "trend persistence",
             "momentum persistence",
@@ -189,13 +242,13 @@ class IntelligenceOrchestrator:
         thoughts = []
         for mech in pool[:6]:  # bounded for demo
             t = self.generate_thought(
-                question=f"Does {mech} produce executable edge in XAUUSD 1H after costs?",
+                question=f"Does {mech} produce executable edge in {symbol} {timeframe} after costs?",
                 mechanism=mech,
                 why=f"Previous evidence shows regime dependence and cost sensitivity — testing {mech} may reveal conditional edge",
                 assumption=f"Market exhibits {mech} that persists beyond spread/slippage",
                 support="OOS Sharpe >0.3 with WFE>0.3, DSR>0.95, regime stable, cost BE >20bps",
                 falsify="OOS Sharpe <=0, WFE<0.3, DSR <0.5, or placebo equivalent, or cost BE <5bps",
-                data_required="XAUUSD 1H 500 bars, need more depth for generality — limitation reported",
+                data_required=data_description or f"{symbol} {timeframe} bars with provenance, timestamps, costs, and regime labels; depth/span must be measured before claims",
                 cost_conditions="spread 3bps, slippage realistic, latency 100ms, next-bar-open execution",
                 regimes_expected="trend for persistence, range for mean-reversion",
                 regimes_stop="high_vol or opposite regime should degrade",

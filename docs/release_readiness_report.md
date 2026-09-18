@@ -1,207 +1,176 @@
-# Release Readiness Report — QTS Trading System
-**Version:** 0.1.0 — 2026-09-16  
-**Branch:** arena/01a0aa13-trading-system  
-**Commit:** 0b1fb89 (observatory) + current (windows release candidate)  
-**LIVE Status:** **LOCKED — BLOCK — KEEP NO_TRADE**
+# QTS Release Readiness Report — Research-First, Observation-Only Boundary
 
----
+**Date:** 2026-09-18
+**Branch:** `arena/01a0b358-trading-system`
+**Base revision inspected:** `a885f65d252e`
+**Environment:** Linux development sandbox; no MT5 terminal, broker account, or live market session is available here.
 
-## A. Clean-Clone Result
+## Executive verdict
 
-```powershell
-git clone https://github.com/alfrotan-glitch/Trading-System.git
-cd Trading-System
-git checkout arena/01a0aa13-trading-system
-powershell -ExecutionPolicy Bypass -File scripts/setup_windows.ps1
-# Batch fallback: scripts/setup_windows.bat
-```
+**RELEASE STATUS: RESEARCH / OBSERVE-ONLY — KEEP `NO_TRADE`.**
 
-- Python **3.11/3.12/3.13 required** (`requires-python = ">=3.11,<3.14"`); scripts fail clearly `ERROR: Python not found / Python 3.14 not supported` if 3.14 detected (3.14 not yet verified) — see `pyproject.toml` and `docs/desktop_installation_windows.md`
-- git required; fails `ERROR: git not found`
-- Creates `.venv`, `pip install -e ".[dev]"` (now includes `httpx`+`anyio` for `TestClient`), creates `data/raw, curated, sqlite, evidence, logs`
-- Validates `qts --help` and `qts health` — prints health checks
-- Ensures data: checks `list_versions()` and usable bars for `20260916-010-572728d9`; if 0 or `data/curated` missing, ingests `data/fixtures/XAUUSD_1H_500.csv` (idempotent, handles duplicate version via fallback)
-- Runs `pytest -q` quick tests **fail-closed** — on any failure prints `Setup NOT complete` and exits 1, never printing `Setup Complete`; second run is idempotent — see K.
+The checkout is coherent as a quantitative research workstation and preserves
+negative evidence. It does not demonstrate a profitable edge, claim real MT5
+observations, enable DEMO execution, or unlock LIVE.
 
-**Result on Linux sandbox (simulating Windows):** `scripts/setup_windows.ps1` logic verified via `python -m pytest tests -q` — **PASS** (224 tests: 215 original + 9 Windows lifecycle). Windows-specific `.bat` identical logic, path `C:\` handling in docs. No developer-only tools beyond Python/git required.
+- `DEMO_FORWARD` is the only broker-facing product path and is structurally
+  observation-only: it can record real MT5 demo-account observations when a
+  real terminal is present, and it submits zero orders.
+- `DEMO_EXECUTION` is disabled by product policy. Readiness is diagnostic and
+  may authorize observation startup only; it never creates order permission.
+  `DemoExecutionAuthority.enable()` refuses even a fresh passing report,
+  records the refusal, and never writes an enabled state.
+- `LIVE` remains separately locked. No UI action, readiness result, synthetic
+  fixture, paper/shadow result, or evidence export can promote it.
 
----
+## A. Canonical authority and safety boundaries
 
-## B. Windows Setup Result
+| Question | Canonical authority | Current contract |
+|---|---|---|
+| Effective mode | `src/qts/domain/modes.py` | Unknown modes fail closed; capability metadata is not product permission. |
+| DEMO execution permission | `src/qts/lifecycle/demo_authority.py` | Durable refusal; `enabled=false`, `execution_permitted=false`; no DEMO order path. |
+| DEMO_FORWARD readiness | `src/qts/lifecycle/demo_gate.py` | Fresh 14-check diagnostic gate for observation only. |
+| Observation persistence | `src/qts/observability/forward_observatory.py` | One append-only SQLite store; derived manifest is regenerable. |
+| Risk boundary | `src/qts/risk/authority.py` and `demo_limits.py` | Mode restrictions can only tighten; safety metadata does not authorize execution. |
+| LIVE governance | `src/qts/lifecycle/live_gate.py` | Locked without independent claim-grade evidence and explicit human governance. |
 
-Prerequisites documented in `docs/desktop_installation_windows.md`:
+The API boundary is intentionally diagnostic-only:
 
-- Supported Python 3.11/3.12/3.13 (tested 3.11.2, 224 tests pass; 3.14 not verified and fails clearly), venv, `pip install -e ".[dev]"` installs `pydantic, pandas, numpy, pyarrow, fastapi, uvicorn, scipy, click, pyyaml` + dev `pytest, hypothesis, etc.` + `httpx, anyio` (fixes Starlette TestClient)
-- `scripts/setup_windows.ps1` checks Python version, creates `.venv`, upgrades pip, installs, creates dirs, validates CLI.
-- `.gitignore` keeps secrets, `data/sqlite/*.db`, `logs/`, `dist/`, `build/` out of repo.
+- `POST /api/demo/enable` returns HTTP `409` with policy and readiness
+  reasons, does not persist an enabled state, and returns no permission.
+- `GET /api/demo/config` reports `demo_execution_disabled=true`.
+- `/api/demo/state` is the single state consumed by API/UI/execution checks.
+- A readiness pass is not a fill, account-state measurement, slippage,
+  latency, reconciliation, profitability, or execution result.
 
-**Verified:** Linux clean checkout `pip install -e ".[dev]"` succeeded; Windows expected identical (PowerShell `py` fallback included).
+## B. Data observatory and provenance
 
----
+The inventory is consolidated to one canonical dataset row rather than
+counting duplicate raw/curated representations as independent evidence:
 
-## C. Desktop Build Result
+- Version: `20260918-010-572728d9`
+- Instrument/timeframe: `XAUUSD` / `1H`
+- Rows/span: `500` bars / `20.83` days
+- Source/class: `SYNTHETIC:fixture:XAUUSD_1H_500.csv` / `SYNTHETIC`
+- OHLC quality checks: `12/12` passed for the fixture schema
+- Bid/ask, tick, measured spread, broker session, fill, latency, and real
+  volume semantics: `UNAVAILABLE` in this dataset
+- Research eligibility: `MECHANISM_VALIDATION_ONLY`; not claim-eligible
 
-Spec: `packaging/qts.spec` (canonical) + `build/qts.spec` (copy for test).  
-Hidden imports include `qts.api.server, desktop.health/state, config.settings, risk.demo_limits, lifecycle.demo_gate/live_gate, execution.demo_comparison/reality, observability/forward_observatory, regime.observatory, data.provider/inventory/store, uvicorn, fastapi, etc.`
+The following are derived exports and must not be treated as primary evidence:
 
-Build command:
-```bat
-scripts/build_windows.bat
-# equivalent: pyinstaller packaging/qts.spec --clean --noconfirm
-```
+- `data/evidence/data_inventory.json`
+- `data/evidence/data_source_audit.json`
+- `data/evidence/data_quality_summary.json`
+- `data/evidence/historical_depth.json`
+- `data/evidence/edge_validation.json`
+- `data/evidence/forward_observation_manifest.json`
+- `data/evidence/paper_shadow_demo_comparison.json`
 
-- Verifies PyInstaller installed, spec exists, `src/qts/desktop/ui/index.html` exists, then builds.
-- Output `dist/QTS.exe` (or `dist/QTS/QTS.exe` onedir) — **standalone, no repo path needed, no hardcoded dev paths**.
-- In sandbox (Linux) attempt: `libpython3.11.so.1.0` missing on minimal Debian image — build cannot complete on this Linux container. **On Windows 10/11 with Python 3.11/3.12/3.13 installed from python.org, build succeeds** (requires `libpython` present; Windows Python installer includes it). This is documented as *Known Linux-sandbox limitation*, not a Windows failure.
+No synthetic fixture, paper record, shadow intent, quarantined legacy artifact,
+or derived JSON is relabeled as REAL or as a broker observation.
 
-**Sandbox verification fallback:**
-- Created `dist/QTS.exe` placeholder launcher (Python stub) for release candidate completeness; real exe must be built on Windows.
-- Checksums generated below — real Windows build should regenerate.
-- UI assets verified: `src/qts/desktop/ui` included via `datas`, FastAPI backend starts on `127.0.0.1:8000`, `api/health` returns `system_status`, webview fallback to browser works.
+## C. Research and falsification status
 
----
+The research contract retains hypothesis and experiment lineage: mechanism,
+prediction, null, competing explanations, falsification criteria, required
+data, horizon/population, immutable configuration hash, data version,
+provenance, split, seed, costs, exclusions, trial count, code identity,
+results, conclusion, and failure reason.
 
-## D. MT5 Demo Connection Result
+Current evidence is explicitly blocked:
 
-Demo_forward uses **real** MT5 terminal + real market data + real demo account + real demo order lifecycle — labeled **DEMO**.
+- Bounded campaign artifact: `data/evidence/campaign_last.json` — `2` trials,
+  `0` passed, conclusion `BLOCKED_INSUFFICIENT_DATA`.
+- Autonomous campaign artifact: `6` trials, `0` passed, self-audit remains
+  `BLOCK — independent audit gates remain unproven`.
+- Edge validation: `BLOCKED_INSUFFICIENT_DATA`; synthetic provenance and
+  500-bar/20.83-day depth/span are recorded as reasons. The cumulative ledger
+  count is preserved for multiple-testing accounting and is not reset.
+- Null control, placebo, gross/net cost decomposition, regime-bound evidence,
+  realized expectancy, and execution-reality evidence are not claimed when
+  they were not executed or cannot be bound to this experiment.
+- Non-finite cost-stress values are explicit `MEASURED_INVALID` blocking
+  results; they are never replaced with a favorable sentinel.
 
-Wizard `GET /api/demo/readiness` runs 14 checks:
+The correct conclusion is `NO_TRADE` / `BLOCKED_INSUFFICIENT_DATA`, not an
+unsupported promotion.
 
-1. MT5 installed? 2. Terminal running? 3. Account connected? 4. Account is DEMO? 5. Broker identified? 6. Symbol available? 7. Symbol tradable? 8. Symbol spec valid? 9. Market data fresh? 10. Bid/ask valid? 11. Spread acceptable? 12. Account state valid? 13. Risk config valid? 14. Reconciliation healthy?
+## D. Forward observation and comparison
 
-**Sandbox result (no MT5):** All 14 → `false` (expected), `blocked_reasons` includes `MT5 not installed` etc., `demo_enabled: false` — **fail-closed, correct**. Mock MT5 injection tests in `tests/adversarial/test_demo_forward_boundary.py` verify:
-- LIVE account to DEMO blocked ✓
-- Stale tick blocked ✓
-- Invalid bid/ask blocked ✓
-- Excessive spread blocked ✓
-- etc. 16 adversarial tests PASS.
+`data/sqlite/forward_observatory.db` currently contains:
 
-On real Windows with MT5 Demo (see `docs/mt5_demo_setup.md`), after installing terminal, `pip install MetaTrader5`, opening demo account `ICMarkets-Demo`, checks become ✓ and `demo_enabled: true`.
+- active sessions: `0`
+- ticks/signals: `0/0`
+- real-market ticks: `0`
+- order submissions: `0`
+- realized execution/PnL: `UNAVAILABLE`
 
----
+This checkout therefore contains no real MT5 observation session. The
+manifest honestly reports zero observations and is not populated from old or
+synthetic samples.
 
-## E. Demo Forward Result
+The current paper/shadow/comparison export reports:
 
-- **Observe Only:** `Demo Forward → Start Observation` records ticks without orders to `data/evidence/forward_observation_manifest.json` (12 ticks) and `data/evidence/demo_forward_observations.json` (10 obs with provenance: timestamp/bid/ask/spread/symbol/timeframe/tick/session/strategy_state/regime/signal/NO_TRADE/hypothetical order/etc., `label: DEMO`).
-- **Demo Execution Enabled:** Requires `confirmed=true + risk_ack=true + 14 checks ✓` via `POST /api/demo/enable` — then real demo orders via `MT5Adapter.order_send` to demo server, capturing `requested_price/actual_price/slippage/latency/broker_response/fill/position/exit/PnL` with `label=DEMO`, provenance, never LIVE.
+- paper records: `6`
+- shadow intents: `10`
+- canonical DEMO_FORWARD observations: `0`
+- signal agreement: `MEASURED` at `0.5` for the available paper/shadow event
+  alignment
+- DEMO execution policy: `DISABLED`
+- demo fills, slippage, latency, spread/fill/exit/PnL differences:
+  `UNAVAILABLE` with reasons
 
-**Sandbox demo_forward_observations:** 10 sample ticks generated (script) with all required fields, labeled DEMO.
+The comparison label remains `DEMO never LIVE`; its policy block states that
+DEMO_FORWARD is observation-only and DEMO_EXECUTION is disabled. No fill-shaped
+row is interpreted as execution permission.
 
-Lifecycle `RESEARCH→VALIDATING→FORWARD_OBSERVATION→PAPER_VERIFIED→SHADOW_VERIFIED→DEMO_OBSERVATION/DEMO_EXECUTION` — demo success does **NOT** become live eligible (enforced in `src/qts/edge/promotion.py`).
+## E. Documentation and operator UI
 
----
+README, the demo-forward protocol, MT5 setup instructions, release guidance,
+governance, setup, operations, trading, and comparison views now distinguish:
 
-## F. Paper / Shadow / Demo Comparison
+- capability metadata versus product permission;
+- DEMO_FORWARD observation versus DEMO_EXECUTION (disabled);
+- measured values versus `UNAVAILABLE` / `INSUFFICIENT_EVIDENCE`;
+- canonical SQLite evidence versus derived exports;
+- DEMO versus LIVE, with LIVE always visibly locked.
 
-Automatic `data/evidence/paper_shadow_demo_comparison.json` via `src/qts/execution/demo_comparison.py`:
+The UI has no DEMO execution enable control. It presents the policy refusal,
+readiness blockers, observation action, provenance, and next operator action.
+Safety limits are shown as non-authorizing metadata.
 
-```json
-{
-  "paper_trades": 6,
-  "shadow_intents": 10,
-  "demo_observations": 10,
-  "demo_fills": 4,
-  "signal_agreement": 0.6,
-  "slippage_demo_bps": 2.5,
-  "latency_demo_ms": 120.0,
-  "rejected_orders_demo": 0,
-  "pnl_difference": 4.8,
-  "label": "DEMO never LIVE"
-}
-```
+## F. Verification performed
 
-Measures signal agreement, expected vs actual entry, spread/slippage/latency, fill/rejected/partial/exit/P&L differences. Desktop view **Paper/Shadow/Demo** shows metrics + raw evidence. Refresh via button or `POST /api/demo/comparison/refresh`.
+The current working tree was checked with:
 
----
+- `ruff check .` — clean
+- `python -m compileall -q src tests` — clean
+- `pytest -q` — `718 passed, 18 skipped` in the default environment
+  (integration tests require the explicit `--run-integration` flag; browser
+  screenshots require Playwright/Chromium)
+- Node UI logic tests (`format.test.mjs`, `status.test.mjs`) — `25 passed`
+- targeted authority, data-inventory, comparison, setup, timestamp,
+  observation, and validation tests — passing
 
-## G. Safety Verification
+Skipped checks are not promoted to evidence. In particular, this report does
+not claim a real MT5 session, a browser screenshot run, or claim-grade
+historical validation.
 
-- **Boundary:** `src/qts/risk/demo_limits.py` `SAFETY_BOUNDARY` table DEVELOPMENT/PAPER/SHADOW/DEMO_FORWARD/LIVE — no silent conversion (`env_boundary_check`). Tested 16 adversarial cases.
-- **Demo Limits:** `DEMO_FORWARD_DEFAULTS` 0.1 lot/order, 0.3 exposure, 3 open orders, 4/min, 50 USD daily loss, 100 USD /5% drawdown, 30bps spread, 20bps slippage, kill switch armed — conservative vs live 0.2/0.5/150.
-- **Live Gate:** `src/qts/lifecycle/live_gate.py` `live_readiness_report` blocks on DSR/PBO/PSR/costs/regime/perturbation/null/placebo/forward/reconciliation/risk/human — current **BLOCKED** (DSR 0.12, NO_VALIDATED_EDGE). `GET /api/live/status` `live_trading: LOCKED`.
-- **Mock vs Real:** MT5 mode `QTS_MT5_MODE` MOCK/REAL distinguished in UI badges, health, API `mt5/`. Demo_forward checks `trade_mode` 0=demo else LIVE blocked.
-- **15 adversarial demo tests** + existing 50 MT5 boundary tests all PASS — wrong account, stale tick, invalid bid/ask, excessive spread, wrong lot, broker rejection, timeout/AMBIGUOUS, partial fill, crash after submission, restart after fill/suspension, demo/live confusion.
+## G. Remaining blockers and one next operator action
 
----
+1. Acquire provenance-qualified, licensed market history with the declared
+   population, horizon, timestamp/session semantics, and enough depth/span.
+2. Re-run quality, source audit, readiness, walk-forward, OOS, cost, null,
+   placebo, regime, forward, and comparison evidence from that canonical
+   dataset without resetting the cumulative trial ledger.
+3. On a real Windows/MT5 demo terminal, run the documented readiness probe and
+   `DEMO_FORWARD` observation protocol. Store raw/provenance-bound sessions in
+   the canonical observatory; do not use the derived manifest as a source.
+4. Keep `DEMO_EXECUTION` disabled and `LIVE` locked until an explicitly
+   governed product decision changes that boundary; no test or demo should
+   weaken it.
 
-## H. Scientific Status
-
-- **Data Observatory:** 2 datasets XAUUSD 1H (500 & 2000 rows, SYNTHETIC spread), `data_inventory.json` 26 fields, `data_quality_summary.json` 12/12 PASS but synthetic, `data_source_catalog.json` 5 providers, `historical_depth.json` XAUUSD 1H `pass:false` (500 vs 5000 required).
-- **Research:** 75 trials preserved, 0 survive, DSR 0.12 fail, PBO fail, costs fragile, `edge_validation.json` BLOCK — **KEEP NO_TRADE**.
-- **Gates enforced:** DSR, PBO, PSR, cost 1.0/1.5/2.0×, slippage, regime, perturbation, null/placebo, forward, execution, reconciliation, risk, human — no bypass, no N reset, no deletion.
-
----
-
-## I. Live Blockers (Exact)
-
-```
-LIVE = LOCKED
-Blocked reasons from /api/live/status:
-- NO_VALIDATED_EDGE
-- DATA_DEPTH FAIL (500 vs 5000)
-- DATA_DIVERSITY FAIL (single symbol/timeframe)
-- EXECUTION_REALISM FAIL (0 real observations)
-- REGIME_COVERAGE FAIL (single month)
-- DSR 0.12 <0.95
-- PBO fail
-- COST gates fragile
-- No human approval
-- Reconciliation not demo-verified beyond mock
-```
-
-See `docs/market_data_observatory.md` final 10 questions 1-10 KEEP NO_TRADE.
-
----
-
-## J. Exact Tests
-
-```
-python -m pytest tests -q
-```
-
-- **Count:** 224 tests collected (16 demo_boundary + 19 edge/capital + 50 mt5_boundary + 20 phase1_audit + 18 production_boundary + 3 backtest_determinism + 3 execution + 3 reconciliation + 5 validation + 3 property + 20 desktop + 22 market_data_observatory + 6 statistical + 3 data_quality + 7 domain + 5 lifecycle + 5 matching + 7 risk + 9 windows_sqlite_lifecycle)
-- **Sandbox result:** **224 passed, 0 failed** (pytest -q, ~12s) — includes `tests/test_windows_sqlite_lifecycle.py` 9 tests and `tests/conftest.py` SafeTemporaryDirectory that prevents WinError32
-- Also: `pytest tests/property -q`, `pytest tests/integration -q --run-integration` included; data observatory 22, campaign trials reproducibility, desktop health, restart after kill, packaging docs.
-
-Adversarial demo_forward 16 tests cover wrong account type, live to demo, terminal disconnected, stale tick, invalid bid/ask, excessive spread, insufficient margin, wrong lot, broker rejection, timeout/ambiguous, partial fill, crash/restart, demo/live confusion.
-
----
-
-## K. Release Instructions
-
-**Clone → Install → Configure Demo → Launch → Connect MT5 Demo → Observe → Demo Execute → See UI**
-
-```powershell
-git clone https://github.com/alfrotan-glitch/Trading-System.git
-cd Trading-System
-git checkout arena/01a0aa13-trading-system
-powershell -ExecutionPolicy Bypass -File scripts/setup_windows.ps1
-.\.venv\Scripts\python.exe -m qts health
-scripts/run_qts.bat
-# or dist/QTS.exe after build
-scripts/build_windows.bat
-```
-
-- Setup creates `.venv`, installs `qts`, runs tests, shows health.
-- Launch opens Setup Wizard → choose **Demo Forward**, set MT5 path, symbol, research dirs, ack risk limits.
-- MT5 Setup: install MT5, create DEMO account, set `MT5_LOGIN/PASSWORD/SERVER` via Credential Manager or `.env` (never repo) — see `docs/mt5_demo_setup.md`.
-- MT5 Checker: 14 checks must pass before Demo Execution Enabled.
-- First observe live ticks (no orders), then enable demo execution, monitor Dashboard, Forward, Execution, Risk, MT5, Audit, Paper/Shadow/Demo.
-- Logs `logs/audit.jsonl`, evidence `data/evidence/*.json`.
-- **Never edit** `data/sqlite/qts.db` manually, never reset N, never claim profit.
-
-**Artifacts:** `dist/QTS.exe` (Windows build), checksums below, `data/evidence/paper_shadow_demo_comparison.json`, `data/evidence/demo_forward_observations.json`, `data/evidence/data_inventory.json`, etc.
-
-**LIVE remains LOCKED** — do not enable unrestricted live trading; do not merge PR automatically.
-
----
-
-### Checksums (Release Candidate — Windows must rebuild for real)
-```
-# Generated on sandbox Linux; Windows build will differ — regenerate after real build
-SHA256(dist/QTS.exe)           = <to be regenerated on Windows>
-SHA256(packaging/qts.spec)     = 8f9e2c...
-SHA256(data/evidence/paper_shadow_demo_comparison.json) = see file
-```
-
-*Note: Sandbox Linux cannot build Windows exe due to missing libpython3.11.so; placeholder `dist/QTS.exe` created for completeness. Build on Windows 10/11 with Python 3.11/3.12/3.13 + `pip install pyinstaller` yields real exe.*
+**Next operator action:** acquire and register the first provenance-qualified
+historical dataset, then regenerate the evidence bundle and inspect its
+falsification results before considering any lifecycle change.

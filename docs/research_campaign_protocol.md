@@ -68,7 +68,7 @@ Bounded campaign via `CampaignConfig`:
 - name, symbol, timeframe, data_version, family, param_space, max_trials (≤100), max_runtime_s, max_param_combinations, seed, hypothesis_template.
 
 Launch:
-- `qts research campaign --family trend --data-version 20260916-010-572728d9 --trials 12`
+- `qts research campaign --family trend --data-version <immutable-canonical-version> --trials 12`
 - Or via desktop Research Center UI.
 - Or API POST /api/research/campaigns.
 
@@ -96,11 +96,12 @@ Exceeded → campaign status COMPLETED with partial results, never silent infini
 Objective is NOT "find most money historically" — that is overfitting.
 Objective IS "find edge surviving attempts to disprove it" — walk-forward, CPCV, PBO, PSR/DSR, cost/regime/perturbation, null/placebo, expectancy, economic, forward/shadow.
 
-If insufficient evidence → KEEP NO_TRADE. Current campaigns: 27 strategies tested, 0 surviving, so NO_TRADE correct.
+If insufficient evidence → KEEP NO_TRADE. The current canonical campaign and edge artifacts are blocked by synthetic provenance and insufficient depth/span; no candidate is promoted.
 
 ## Evidence
-- Campaigns summary `data/evidence/campaign_last.json` + `data/evidence/campaigns_summary.json` (machine-readable).
-- Registry count 27, trials 33.
+- Canonical campaign artifact: `data/evidence/campaign_last.json`; compact pointer: `data/evidence/campaigns_summary.json`.
+- Cumulative experiment and campaign trial counts are read from SQLite and are not manually copied into this protocol.
+- Current campaign trials retain immutable dataset/configuration/provenance and `BLOCKED_INSUFFICIENT_DATA` conclusions.
 - Promotion state remains RESEARCH for all.
 
 ## Security

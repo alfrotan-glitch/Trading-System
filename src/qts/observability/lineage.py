@@ -38,7 +38,29 @@ def git_commit() -> str | None:
                 )
                 commit = out.stdout.strip()
                 if commit:
-                    return commit
+                    # Evidence must distinguish the committed revision from
+                    # a working tree whose source/configuration has changed.
+                    # Generated evidence and local logs are intentionally not
+                    # included in this source-dirty check.
+                    dirty = subprocess.run(  # nosec B603 B607
+                        [
+                            "git",
+                            "-C",
+                            str(candidate),
+                            "status",
+                            "--porcelain",
+                            "--untracked-files=all",
+                            "--",
+                            "src",
+                            "tests",
+                            "pyproject.toml",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                        check=True,
+                    ).stdout.strip()
+                    return f"{commit}-dirty" if dirty else commit
     return None
 
 
@@ -54,5 +76,8 @@ def code_version() -> str:
     except Exception:
         base = "0.0.0-dev"
     commit = git_commit()
-    short = (commit or "unknown")[:12]
-    return f"{base}+{short}"
+    dirty_suffix = "-dirty" if commit and commit.endswith("-dirty") else ""
+    commit_value = commit or ""
+    commit_id = commit_value[:-6] if dirty_suffix else commit_value
+    short = (commit_id or "unknown")[:12]
+    return f"{base}+{short}{dirty_suffix}"

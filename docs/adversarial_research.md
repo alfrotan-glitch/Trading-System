@@ -1,45 +1,48 @@
 # Adversarial Research
-Version: 0.1.0
 
-## Purpose
-Internal adversary whose objective is BREAK THE STRATEGY, not confirm it. Structurally hostile to false discoveries.
+**Updated:** 2026-09-18
+**Purpose:** attack hypotheses and evidence; never confirm a strategy merely
+because a return is attractive.
 
-## Implementation
-`src/qts/research/adversary.py` `adversarial_attack(strategy_id, evidence)` → `best_for`/`best_against`.
+## Attack dimensions
 
-Searches for:
-- leakage (future info, normalization, feature selection, locked test contamination)
-- parameter fragility (perturbation drop >20%)
-- regime dependence (worst regime Sharpe)
-- cost sensitivity (BE <20bps)
-- hidden assumptions (exact params, single regime)
-- selective reporting (favorable periods, suppressed drawdown)
-- unstable exits (trailing vs fixed fragility)
-- unrealistic fills (mid-price vs next-bar-open, partial fills)
-- overfitting (PBO >0.5, CPCV fail)
-- false correlations (null control Sharpe close to real)
-- random-control equivalence (placebo)
-- data artifacts (high/low proxy, survivorship)
+`src/qts/research/adversary.py` and the validation pipeline are expected to
+look for:
 
-## Output per Candidate
-- BEST EVIDENCE FOR: e.g., "WFE 0.59 suggests some OOS persistence", "PSR 0.85 probabilistic edge"
-- BEST EVIDENCE AGAINST: e.g., "PBO 0.83 >0.5 overfitting", "Regime range -5.17 dependence", "Cost BE 3bps sensitive", "Null 0.45 equivalence", "Placebo not rejected"
-- leakage_found: bool
-- fragility: stable/fragile
-- cost_sensitivity: robust/sensitive
-- regime_dependence: stable/dependent
-- verdict: BREAKS or SURVIVES (needs forward)
-- never_report_only_favorable: both sides mandatory
+- future leakage, normalization leakage, feature/locked-test contamination;
+- parameter fragility and unstable exits;
+- regime/sample dependence and population overreach;
+- spread, slippage, latency, and gross/net cost sensitivity;
+- null/placebo equivalence and multiple-testing/selection bias;
+- unrealistic fills, missing bid/ask, missing execution timestamps;
+- selective reporting, missing drawdown, and provenance/data-quality flaws;
+- missing forward observation or unbound paper/shadow comparison.
 
-## Example (sma_breakout, 45 trials)
-For: WFE 0.59
-Against: PBO 0.33 (now stable but still DSR 0.12 fail), DSR 0.12, regime -5.17, cost 3bps, null 0.45, placebo fail → verdict BREAKS.
+Every important candidate report should include both evidence for and evidence
+against, the attack inputs, code/dataset/experiment lineage, and a deterministic
+verdict. Missing attack evidence is a blocker, not a pass.
 
-## Integration
-Campaign engine step 7 `attack candidates` calls adversary per survivor, eliminates weak (verdict BREAKS), refines surviving via `ResearchMemory` + `novelty`.
+## Current negative evidence
 
-## Testing
-Unit tests in `tests/test_desktop.py` verify adversary produces both sides, never only favorable.
+The current canonical dataset is one 500-bar synthetic XAUUSD 1H fixture. It
+is useful for mechanism checks but not for real-market claims. Current campaign
+and edge artifacts are `BLOCKED_INSUFFICIENT_DATA`; null/placebo/regime,
+gross/net cost, and execution metrics are unavailable or not bound to the
+current experiment. No candidate is promoted and the system remains
+`NO_TRADE`.
 
-## References
-Lopez de Prado adversarial validation, Harvey et al. false discoveries.
+The paper/shadow comparison has event alignment evidence for its available
+records, but DEMO execution is disabled and the canonical observation store
+has zero observations. Therefore demo fill/slippage/latency/P&L attacks are
+not silently replaced by zeros; they remain unavailable.
+
+## Integration and memory
+
+Campaign attack results, blocked trials, rejections, and failure reasons are
+stored in the cumulative research/experiment ledger. Similar failed searches
+remain discoverable through research memory. Trial count is never reset to
+make a candidate look more significant.
+
+**Adversarial conclusion:** acquire claim-eligible history, preregister the
+hypothesis and attacks, lock the validation partition, then rerun all controls
+from the same canonical dataset. Until then, keep `NO_TRADE`.

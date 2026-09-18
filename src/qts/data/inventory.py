@@ -1,35 +1,111 @@
-"""Data Landscape Audit — machine-readable inventory for every dataset."""
+"""Data landscape audit — derived facts, never fabricated metrics.
+
+The inventory is a report over canonical manifests and readable bars.  It is
+not itself authoritative evidence and it never treats an OHLC bar count as a
+tick count or a high-low range as a measured spread.
+"""
 
 from __future__ import annotations
 
+from collections import Counter
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
+from qts.data.bootstrap import classify_source
+from qts.data.quality import validate_bars
 from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
 
 
-def _assess_gaps(bars: list) -> dict[str, Any]:
-    if len(bars) < 2:
-        return {"gap_count": 0, "max_gap_s": 0, "missing_pct": 0.0}
-    from collections import Counter
+def _assess_gaps(bars: list[Any]) -> dict[str, Any]:
+    """Measure gaps relative to the modal bar interval.
 
+    Weekend/market-closure gaps are reported separately from unexplained
+    missing intervals.  No guessed number is inserted when the cadence cannot
+    be inferred.
+    """
+    if len(bars) < 2:
+        return {
+            "gap_count": 0,
+            "max_gap_s": None,
+            "missing_intervals": None,
+            "missing_pct": None,
+            "common_delta_s": None,
+            "closure_gap_count": 0,
+        }
     deltas = [(bars[i + 1].open_time - bars[i].open_time).total_seconds() for i in range(len(bars) - 1)]
-    cnt = Counter(deltas)
-    common = cnt.most_common(1)[0][0] if cnt else 0
-    # abnormal intraday gaps <1 day
-    abnormal = sum(1 for d in deltas if common * 1.5 < d < 86400)
-    _missing_est = len(bars) - 1  # placeholder
+    positive = [d for d in deltas if d > 0]
+    common = Counter(round(d, 6) for d in positive).most_common(1)[0][0] if positive else 0.0
+    if common <= 0:
+        return {
+            "gap_count": None,
+            "max_gap_s": None,
+            "missing_intervals": None,
+            "missing_pct": None,
+            "common_delta_s": None,
+            "closure_gap_count": None,
+        }
+
+    abnormal = 0
+    closures = 0
+    missing_intervals = 0
+    max_abnormal_gap = 0.0
+    for i, delta in enumerate(deltas):
+        if delta <= common * 1.5:
+            continue
+        before = bars[i].close_time.astimezone(UTC)
+        after = bars[i + 1].open_time.astimezone(UTC)
+        # Friday-to-Sunday gaps and multi-day gaps are market closures, not
+        # missing observations.  The report still exposes them explicitly.
+        is_closure = before.weekday() == 4 and after.weekday() in (5, 6) or delta >= 2 * 86_400
+        if is_closure:
+            closures += 1
+            continue
+        abnormal += 1
+        intervals = max(0, int(round(delta / common)) - 1)
+        missing_intervals += intervals
+        max_abnormal_gap = max(max_abnormal_gap, delta)
+
+    expected = len(bars) + missing_intervals
     return {
         "gap_count": abnormal,
-        "max_gap_s": int(max(deltas)) if deltas else 0,
-        "missing_pct": round(abnormal / len(bars) * 100, 2) if bars else 0.0,
+        "closure_gap_count": closures,
+        "max_gap_s": int(max_abnormal_gap) if max_abnormal_gap else 0,
+        "missing_intervals": missing_intervals,
+        "missing_pct": round(missing_intervals / expected * 100, 2) if expected else 0.0,
         "common_delta_s": int(common),
     }
 
 
+def _resolution(bars: list[Any]) -> str:
+    if len(bars) < 2:
+        return "UNAVAILABLE: fewer than two bars"
+    seconds = (bars[1].open_time - bars[0].open_time).total_seconds()
+    return f"{seconds:g}s bar cadence"
+
+
+def _session_coverage(bars: list[Any]) -> dict[str, Any]:
+    if not bars:
+        return {"status": "UNAVAILABLE", "value": None, "reason": "no bars"}
+    weekdays = sorted({b.open_time.astimezone(UTC).strftime("%a") for b in bars})
+    weekend_bars = sum(1 for b in bars if b.open_time.astimezone(UTC).weekday() >= 5)
+    return {
+        "status": "MEASURED",
+        "weekdays_observed": weekdays,
+        "weekend_bars": weekend_bars,
+        "note": "calendar coverage only; broker session hours require broker tick/session metadata",
+    }
+
+
+def _availability(available: bool, measured_as: str, reason: str) -> dict[str, Any]:
+    if available:
+        return {"status": "MEASURED", "value": measured_as}
+    return {"status": "UNAVAILABLE", "value": None, "reason": reason}
+
+
 def generate_inventory(root: Path = Path("data")) -> list[dict[str, Any]]:
-    """For every dataset record full audit fields."""
+    """Return one honest inventory entry for every usable/registered dataset."""
     store = SqliteParquetDataStore(root=root)
     versions = store.list_versions()
     inventory: list[dict[str, Any]] = []
@@ -38,105 +114,116 @@ def generate_inventory(root: Path = Path("data")) -> list[dict[str, Any]]:
         if not manifest:
             continue
         instr = Instrument(symbol=manifest.instrument, venue=manifest.venue)
-        bars = store.read_bars(instr, manifest.timeframe, version=version)
-        bars_sorted = sorted(bars, key=lambda b: b.open_time)
-        # Quality
-        from qts.data.quality import validate_bars
-
-        report = validate_bars(bars)
-        # Checksum already in manifest
-        # File provenance
-        curated_path = (
-            root
-            / "curated"
-            / f"instrument={manifest.instrument}"
-            / f"venue={manifest.venue}"
-            / f"timeframe={manifest.timeframe}"
-            / f"version={version}"
-            / "part-0.parquet"
+        bars = sorted(store.read_bars(instr, manifest.timeframe, version=version), key=lambda b: b.open_time)
+        report = validate_bars(bars) if bars else None
+        gap_info = _assess_gaps(bars)
+        source_label = getattr(manifest, "source", None) or "UNVERIFIED"
+        raw_source = getattr(manifest, "source_file", None)
+        data_class = getattr(manifest, "provenance_class", None) or classify_source(source_label)
+        provider = {
+            "SYNTHETIC": "synthetic",
+            "HISTORICAL": "historical_import",
+            "REAL": "real_market_source",
+            "DEMO": "mt5_demo_observation",
+            "BROKER-DERIVED": "mt5_history",
+            "PAPER": "paper",
+            "SHADOW": "shadow",
+        }.get(data_class, "unverified")
+        duplicates = len(bars) != len({(b.instrument.symbol, b.open_time) for b in bars}) if bars else None
+        quality_checks = (
+            [{"name": c.name, "passed": c.passed, "details": c.details} for c in report.checks]
+            if report
+            else []
         )
-        raw_source = manifest.source_file or "synthetic_or_csv"
-        # Determine provider from the provenance LABEL first (manifest.source), then
-        # fall back to source_file heuristics. A fixture ingested via bootstrap carries
-        # an explicit "SYNTHETIC:fixture:..." label — it must never be classified as
-        # real csv/broker history.
-        from qts.data.bootstrap import classify_source
-
-        label = manifest.source or raw_source
-        data_class = classify_source(label)
+        quality_passed = report.passed if report else False
+        source_note = f"source_label={source_label}; class={data_class}"
+        spread: str | dict[str, Any]
         if data_class == "SYNTHETIC":
-            provider = "synthetic"
-        elif data_class == "BROKER-DERIVED":
-            provider = "mt5_history"
-        elif data_class == "REAL":
-            provider = "real"
+            spread = "UNAVAILABLE — SYNTHETIC dataset has no measured bid/ask; high-low is not spread"
+            volume = "tick-volume field present; real traded volume UNAVAILABLE"
+            eligibility = "MECHANISM_VALIDATION_ONLY — synthetic data cannot support real-market claims"
+        elif data_class in ("HISTORICAL", "BROKER-DERIVED"):
+            spread = {
+                "status": "UNAVAILABLE",
+                "value": None,
+                "reason": "imported OHLC contains no measured bid/ask spread",
+            }
+            volume = "dataset volume field; real-volume semantics require source metadata"
+            eligibility = "HISTORICAL_RESEARCH_WITH_DECLARED_COST_ASSUMPTIONS"
         else:
-            provider = "csv"
-        if provider == "csv" and "mt5" in raw_source.lower():
-            provider = "mt5_history"
-        # Session coverage, market-closure handling, broker artifacts via quality checks
-        gap_info = _assess_gaps(bars_sorted)
-        # Timezone, resolution
-        tz = getattr(manifest, "timezone", "UTC") or "UTC"
-        # OHLC, bid/ask, spread, volume availability
-        ohlc_available = True
-        bid_available = False  # our samples have no bid/ask
-        ask_available = False
-        spread_available = "proxy via high-low (SYNTHETIC)"  # must be labeled SYNTHETIC
-        volume_available = True
-        # Tick volume vs real volume — our volume is tick volume proxy, not real
-        tick_vs_real = "tick volume proxy (SYNTHETIC), not real volume"
-        # Duplicates, missingness already via quality
-        duplicates = len(bars) != len({(b.instrument.symbol, b.open_time) for b in bars})
-        # Session coverage — XAUUSD closes weekend
-        session_coverage = "XAUUSD 24h minus weekend (Fri 22:00 UTC close to Sun 22:00 open) — synthetic includes continuous, real should exclude"
-        market_closure_handling = "synthetic ignores closures — real must handle"
-        broker_artifacts = "none detected" if report.passed else "possible"
-        # Checksum, ingestion method, preprocessing, provenance
-        checksum = manifest.checksum
-        ingestion_method = f"Provider {provider} → Raw Storage → Validation → Normalization → Canonical {version}"
-        preprocessing_version = getattr(manifest, "preprocessing_version", "1.0.0") or "1.0.0"
-        provenance = f"Raw {raw_source} checksum {checksum} → normalized UTC → curated {curated_path}"
+            spread = _availability(False, "", "bid/ask observations not present in this bar dataset")
+            volume = "UNAVAILABLE: bar volume semantics not declared"
+            eligibility = "BLOCKED_UNTIL_PROVENANCE_AND_FIELD_SEMANTICS_VERIFIED"
 
         inventory.append(
             {
-                "source": raw_source,
+                "version": version,
+                "source": source_label,
+                "source_file": raw_source,
+                "data_class": data_class,
                 "provider": provider,
                 "instrument": manifest.instrument,
+                "venue": manifest.venue,
                 "timeframe": manifest.timeframe,
                 "date_range": {"start": manifest.start.isoformat(), "end": manifest.end.isoformat()},
                 "row_count": manifest.rows,
-                "tick_count": manifest.rows,  # for OHLC, tick count == bar count
-                "timezone": tz,
-                "timestamp_resolution": "1 minute inferred, bar open_time second precision",
-                "ohlc_availability": ohlc_available,
-                "bid_availability": bid_available,
-                "ask_availability": ask_available,
-                "spread_availability": spread_available,
-                "volume_availability": volume_available,
-                "tick_volume_vs_real_volume": tick_vs_real,
+                "tick_count": {
+                    "status": "UNAVAILABLE",
+                    "value": None,
+                    "reason": "canonical dataset contains OHLC bars, not tick records",
+                },
+                "timezone": getattr(manifest, "timezone", "UTC") or "UTC",
+                "timestamp_resolution": _resolution(bars),
+                "ohlc_availability": _availability(bool(bars), "MEASURED", "no readable bars"),
+                "bid_availability": _availability(False, "", "no bid field in canonical OHLC schema"),
+                "ask_availability": _availability(False, "", "no ask field in canonical OHLC schema"),
+                "spread_availability": spread,
+                "volume_availability": _availability(bool(bars), "field present", "no readable bars"),
+                "tick_volume_vs_real_volume": volume,
                 "missingness": {
-                    "missing_pct": 0.2,
-                    "gap_info": gap_info,
-                    "details": "1 bar missing out of 501 expected for 1H",
+                    "status": "MEASURED" if gap_info.get("missing_pct") is not None else "UNAVAILABLE",
+                    "value": gap_info,
+                    "reason": None if gap_info.get("missing_pct") is not None else "cadence unavailable",
                 },
                 "duplicates": duplicates,
                 "gaps": gap_info,
-                "session_coverage": session_coverage,
-                "market_closure_handling": market_closure_handling,
-                "broker_artifacts": broker_artifacts,
-                "checksum": checksum,
-                "ingestion_method": ingestion_method,
-                "preprocessing_version": preprocessing_version,
-                "provenance": provenance,
+                "session_coverage": _session_coverage(bars),
+                "market_closure_handling": "closures measured from UTC calendar gaps; broker session schedule UNAVAILABLE",
+                "broker_artifacts": "UNAVAILABLE: no broker tick/session diagnostics in OHLC dataset",
+                "checksum": manifest.checksum,
+                "ingestion_method": f"{source_note} → raw preserved → validation → canonical {version}",
+                "preprocessing_version": getattr(manifest, "preprocessing_version", "UNAVAILABLE") or "UNAVAILABLE",
+                "provenance": {
+                    "class": data_class,
+                    "source_label": source_label,
+                    "raw_file": raw_source,
+                    "checksum": manifest.checksum,
+                    "curated_path": str(
+                        root
+                        / "curated"
+                        / f"instrument={manifest.instrument}"
+                        / f"venue={manifest.venue}"
+                        / f"timeframe={manifest.timeframe}"
+                        / f"version={version}"
+                        / "part-0.parquet"
+                    ),
+                },
                 "schema_version": manifest.schema_version,
-                "quality_report": [{"name": c.name, "passed": c.passed, "details": c.details} for c in report.checks],
-                "curated_path": str(curated_path),
+                "quality_report": quality_checks,
+                "quality_passed": quality_passed,
+                "curated_path": str(
+                    root
+                    / "curated"
+                    / f"instrument={manifest.instrument}"
+                    / f"venue={manifest.venue}"
+                    / f"timeframe={manifest.timeframe}"
+                    / f"version={version}"
+                    / "part-0.parquet"
+                ),
                 "raw_preserved": raw_source,
-                "research_eligibility": "eligible for 1H trend/breakout research only — not for microstructure/tick/spread research (synthetic spread)",
+                "research_eligibility": eligibility,
             }
         )
-    # Also include raw inventory
     return inventory
 
 

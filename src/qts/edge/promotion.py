@@ -50,11 +50,14 @@ _ALLOWED = {
         PromotionState.REJECTED,
         PromotionState.SUSPENDED,
     },
-    PromotionState.DEMO_OBSERVATION: {PromotionState.DEMO_EXECUTION, PromotionState.REJECTED, PromotionState.SUSPENDED},
+    # DEMO_EXECUTION is retained as a historical label only. The shipped
+    # product has no transition into it; DEMO_OBSERVATION is terminal for the
+    # broker-facing path unless it is rejected or suspended.
+    PromotionState.DEMO_OBSERVATION: {PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.DEMO_EXECUTION: {
         PromotionState.REJECTED,
         PromotionState.SUSPENDED,
-    },  # DEMO success does NOT automatically become LIVE — explicit separate gate required
+    },  # legacy rows can only be wound down
     PromotionState.MICRO_ELIGIBLE: {PromotionState.MICRO_VALIDATED, PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.MICRO_VALIDATED: {PromotionState.LIVE_ELIGIBLE, PromotionState.REJECTED, PromotionState.SUSPENDED},
     PromotionState.LIVE_ELIGIBLE: {PromotionState.SUSPENDED, PromotionState.REJECTED},
@@ -96,6 +99,8 @@ class PromotionLedger:
 
     def can_transition(self, strategy_id: str, target: PromotionState) -> tuple[bool, str]:
         cur = self.get_state(strategy_id)
+        if target is PromotionState.DEMO_EXECUTION:
+            return False, "DEMO_EXECUTION is disabled by product policy; no promotion path is shipped"
         if target not in _ALLOWED.get(cur, set()):
             return False, f"transition {cur} -> {target} not allowed (one-way, no skip)"
         return True, "ok"

@@ -63,18 +63,33 @@ def evaluate_cost_robustness(
 
 
 def run_conservative_cost_scenarios(backtest_engine, instrument, timeframe, data_version, strategy_id, params):
-    """Run spread 1.0, 1.5, 2.0x and slippage 0,2,5,10 bps."""
+    """Run actual spread scenarios through the engine's stress rerun.
+
+    The old implementation reran the baseline and labelled its Sharpe as a
+    stressed result (and wrote zero on exceptions).  This accessor now refuses
+    to infer a scenario from a baseline.  A BacktestEngine exposes
+    ``run_stress``; other engines return an explicit unavailable record.
+    """
     spreads = [1.0, 1.5, 2.0]
-    _slippages = [0, 2, 5, 10]
-    results = {}
-    for s in spreads:
-        try:
-            res = backtest_engine.run(
-                instrument, timeframe, data_version, strategy_id=strategy_id, strategy_params=params
-            )
-            # Simulate cost impact as equity curve scaled down by s
-            # For demo, we just record sharpe
-            results[f"spread_{s}x"] = float(res.sharpe)
-        except Exception:
-            results[f"spread_{s}x"] = 0.0
-    return results
+    runner = getattr(backtest_engine, "run_stress", None)
+    if not callable(runner):
+        return {
+            "status": "NOT_IMPLEMENTED",
+            "reason": "cost scenario engine does not expose provenance-preserving stress reruns",
+        }
+    try:
+        measured = runner(
+            instrument,
+            timeframe,
+            data_version,
+            strategy_id,
+            params,
+            spreads=spreads,
+        )
+    except Exception as exc:  # preserve failure; do not turn it into zero
+        return {"status": "UNAVAILABLE", "reason": f"cost stress rerun failed: {type(exc).__name__}: {exc}"}
+    return {
+        "status": "MEASURED",
+        "scenarios": {f"spread_{s}x": measured[s] for s in spreads if s in measured},
+        "source": "BacktestEngine.run_stress actual reruns",
+    }

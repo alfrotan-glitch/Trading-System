@@ -63,10 +63,10 @@ test("lifecycleStages: demo_forward observing → demo_obs current", () => {
   assert.equal(byId.demo_exec.state, "blocked");
 });
 
-test("lifecycleStages: demo execution authority → demo_exec current; no inferred research completion", () => {
+test("lifecycleStages: demo execution remains policy-blocked; no inferred research completion", () => {
   const stages = lifecycleStages({ mode: "DEMO_EXECUTION", observeState: "OBSERVING", demoState: "ENABLED", demoPermitted: true, liveEligible: false });
   const byId = Object.fromEntries(stages.map((s) => [s.id, s]));
-  assert.equal(byId.demo_exec.state, "current");
+  assert.equal(byId.demo_exec.state, "blocked");
   assert.equal(byId.research.state, "unknown");
   assert.equal(byId.demo_obs.state, "current");
   assert.equal(byId.live.state, "live-locked"); // demo never unlocks live
@@ -95,7 +95,7 @@ test("freshnessTone: 60s contract", () => {
 
 test("blocked compound statuses are never healthy", () => {
   for (const state of ["ENABLED_BUT_BLOCKED", "unhealthy", "connected_but_failed"]) assert.notEqual(statusInfo(state).tone, "ok");
-  assert.equal(modeInfo("DEMO_EXECUTION").canSubmit, "gated");
+  assert.equal(modeInfo("DEMO_EXECUTION").canSubmit, false);
   const stages = lifecycleStages({ mode: "DEVELOPMENT", observeState: "STOPPED", ticksRecorded: 900 });
   assert.equal(stages.find((x) => x.id === "demo_obs").state, "blocked");
 });
