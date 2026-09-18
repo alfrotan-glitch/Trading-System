@@ -24,11 +24,17 @@ export function initPalette(IA, actions = []) {
 
   const input = h("input", { class: "input palette-input", placeholder: "Search pages, actions, concepts…", "aria-label": "Command palette search" });
   const list = h("div", { class: "palette-list", role: "listbox", id: "palette-list" });
+  const foot = h("div", { class: "palette-foot", "aria-hidden": "true" },
+    h("span", null, h("span", { class: "kbd" }, "↑"), h("span", { class: "kbd" }, "↓"), " navigate"),
+    h("span", null, h("span", { class: "kbd" }, "↵"), " open"),
+    h("span", null, h("span", { class: "kbd" }, "esc"), " close"),
+  );
   const scrim = h("div", { class: "palette-scrim", onclick: (e) => { if (e.target === scrim) close(); } },
     h("div", { class: "palette", role: "dialog", "aria-modal": "true", "aria-label": "Command palette" },
       h("div", { class: "palette-input-row" }, icon("search", 16), input,
         h("span", { class: "kbd" }, "esc")),
       list,
+      foot,
     ),
   );
   document.body.appendChild(scrim);

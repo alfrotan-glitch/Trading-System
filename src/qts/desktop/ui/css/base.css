@@ -15,7 +15,10 @@ body {
   font-size: var(--fs-13);
   line-height: 1.5;
   color: var(--text-1);
-  background: var(--bg-0);
+  background:
+    radial-gradient(1200px 620px at 88% -12%, var(--glow-accent), transparent 62%),
+    radial-gradient(1000px 540px at -8% 112%, var(--glow-research), transparent 56%),
+    var(--bg-0);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -23,14 +26,16 @@ body {
 /* ---------- focus & keyboard ---------- */
 :focus { outline: none; }
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
   border-radius: var(--r-sm);
+  box-shadow: 0 0 0 5px var(--accent-soft);
 }
 
 ::selection { background: rgba(79, 156, 249, 0.30); }
 
 /* ---------- scrollbars (unobtrusive) ---------- */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 5px; border: 2px solid var(--bg-0); }
@@ -72,15 +77,19 @@ code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
   white-space: nowrap;
 }
 .btn:hover:not(:disabled) { background: #242d3d; border-color: #3a475d; }
-.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.995); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn.primary {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
+  background: linear-gradient(180deg, #3f8ef2, #2b74cf);
+  border-color: #2b74cf;
   color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), var(--shadow-1);
 }
-.btn.primary:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+.btn.primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #4f9cf9, #3f8ef2);
+  border-color: #3f8ef2;
+}
 
 .btn.ghost { background: transparent; border-color: transparent; color: var(--text-2); }
 .btn.ghost:hover:not(:disabled) { background: var(--bg-3); color: var(--text-1); }

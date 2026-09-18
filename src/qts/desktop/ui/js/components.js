@@ -135,12 +135,17 @@ export function table({ columns, rows, empty, onRowClick, sortable = true, dense
   for (const c of columns) {
     const th = h("th", { class: `${c.num ? "num" : ""}${sortable && !c.noSort ? "" : " no-sort"}`, scope: "col" }, c.label);
     if (sortable && !c.noSort) {
+      th.setAttribute("aria-sort", "none");
       th.addEventListener("click", () => {
         state.dir = state.key === c.key ? -state.dir : 1;
         state.key = c.key;
         renderBody();
-        thead.querySelectorAll("th").forEach((x) => (x.textContent = x.textContent.replace(/ [▲▼]$/, "")));
+        thead.querySelectorAll("th").forEach((x) => {
+          x.textContent = x.textContent.replace(/ [▲▼]$/, "");
+          if (x.getAttribute("aria-sort")) x.setAttribute("aria-sort", "none");
+        });
         th.textContent = c.label + (state.dir === 1 ? " ▲" : " ▼");
+        th.setAttribute("aria-sort", state.dir === 1 ? "ascending" : "descending");
       });
     }
     tr.appendChild(th);

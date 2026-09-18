@@ -8,8 +8,8 @@ import { api, store, syncHealth, syncNotifications, syncObservations, poll } fro
 import { registerRoutes, startRouter, navigate, dispatch } from "./router.js";
 import { initPalette } from "./palette.js";
 import { fmtAge } from "./format.js";
-import { modeInfo, statusInfo } from "./status.js";
-import { toast } from "./components.js";
+import { modeInfo, statusInfo, attentionRank } from "./status.js";
+import { toast, badge } from "./components.js";
 
 import * as overview from "./views/overview.js";
 import * as research from "./views/research.js";
@@ -78,6 +78,71 @@ const IA = [
 /* ============================================================
    SHELL CONSTRUCTION
    ============================================================ */
+/* Semantic tone for notification levels — explicit mapping, never guessed. */
+const LEVEL_TONE = {
+  critical: { tone: "err", label: "CRITICAL", mark: "■" },
+  error: { tone: "err", label: "ERROR", mark: "■" },
+  warning: { tone: "warn", label: "WARNING", mark: "▲" },
+  info: { tone: "info", label: "INFO", mark: "●" },
+};
+
+/** Header notification center: backend notifications, highest severity first. */
+function buildNotifBell() {
+  const count = h("span", { class: "notif-count", hidden: true, "aria-hidden": "true" });
+  const btn = h("button", { class: "btn ghost sm notif-btn", "aria-label": "Notifications", title: "Notifications" }, icon("alert", 15), count);
+  let pop = null;
+
+  const onDoc = (e) => { if (pop && !pop.contains(e.target) && !btn.contains(e.target)) close(); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  function close() {
+    if (!pop) return;
+    pop.remove(); pop = null;
+    document.removeEventListener("click", onDoc, true);
+    document.removeEventListener("keydown", onKey);
+  }
+  function renderList(listEl) {
+    clear(listEl);
+    const notes = attentionRank(store.data.notifications || []);
+    if (!notes.length) {
+      listEl.appendChild(h("div", { class: "notif-empty" }, "All clear — nothing needs attention."));
+      return;
+    }
+    for (const n of notes) {
+      const info = LEVEL_TONE[String(n.level).toLowerCase()] ?? { tone: "neutral", label: String(n.level || "NOTICE").toUpperCase(), mark: "○" };
+      listEl.appendChild(h("div", {
+        class: "notif-item", role: "button", tabindex: "0",
+        onclick: () => { close(); navigate("#/overview"); },
+        onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); close(); navigate("#/overview"); } },
+      },
+        badge(info),
+        h("div", { class: "n-body" },
+          h("div", { class: "n-title" }, n.title ?? "—"),
+          n.detail ? h("div", { class: "n-detail" }, n.detail) : null),
+      ));
+    }
+  }
+  btn.addEventListener("click", () => {
+    if (pop) { close(); return; }
+    pop = h("div", { class: "notif-pop", role: "dialog", "aria-label": "Notifications" },
+      h("div", { class: "notif-head" },
+        "Attention",
+        h("button", { class: "btn ghost sm", "aria-label": "Close notifications", onclick: close }, icon("x", 13))),
+      h("div", { class: "notif-list" }));
+    renderList(pop.querySelector(".notif-list"));
+    btn.appendChild(pop);
+    setTimeout(() => document.addEventListener("click", onDoc, true), 0);
+    document.addEventListener("keydown", onKey);
+  });
+  store.on("notifications", (notes) => {
+    const list = notes || [];
+    count.hidden = list.length === 0;
+    count.textContent = list.length > 99 ? "99+" : String(list.length);
+    count.classList.toggle("critical", list.some((x) => ["critical", "error"].includes(String(x.level).toLowerCase())));
+    if (pop) renderList(pop.querySelector(".notif-list"));
+  });
+  return btn;
+}
+
 function buildHeader() {
   const facts = h("div", { class: "header-facts", id: "header-facts" });
   const conn = h("span", { class: "conn-dot", title: "API connection" });
@@ -93,6 +158,7 @@ function buildHeader() {
     facts,
     h("div", { class: "header-actions" },
       conn, updated,
+      buildNotifBell(),
       h("button", { class: "btn ghost sm", onclick: () => document.querySelector(".palette-scrim") && document.body.classList.add("palette-open"), "aria-label": "Open command palette (Ctrl+K)", title: "Ctrl+K" }, icon("search", 15)),
     ),
   );
@@ -118,14 +184,19 @@ function renderFacts(factsEl) {
   const mode = modeInfo(health.effective_mode?.effective_mode);
   const broker = statusInfo(String(health.mt5).toLowerCase() === "connected" ? "connected" : "unavailable");
   const data = statusInfo(String(health.market_data).toLowerCase().includes("healthy") ? "healthy" : "degraded");
-  factsEl.append(
+  const obsRunning = String(store.data.observe?.state ?? "").toLowerCase() === "running";
+  const chips = [
     factChip({ icon: "layers", label: "mode", value: mode.mode, cls: mode.tone === "locked" ? "live-locked" : "mode", title: `${mode.blurb}${mode.canSubmit === true ? " — CAN submit broker orders" : mode.canSubmit === "gated" ? " — submission gated by demo authority" : " — cannot submit broker orders"}` }),
     factChip({ icon: "bank", value: broker.label, cls: broker.tone === "ok" ? "" : "optional", title: "MT5 terminal connection", optional: true }),
     factChip({ icon: "candle", value: health.strategy?.symbol ?? "XAUUSD", cls: "optional", title: "Instrument", optional: true }),
     factChip({ icon: "activity", value: data.label, cls: data.tone === "ok" ? "optional" : "", title: "Market data pipeline freshness" }),
     factChip({ icon: "shield", value: String(health.risk ?? "—").toUpperCase(), cls: "optional", title: "Risk subsystem state", optional: true }),
-    factChip({ icon: "lock", value: "LIVE LOCKED", cls: "live-locked", title: "Live trading is structurally locked — see Governance" }),
-  );
+  ];
+  if (obsRunning) {
+    chips.splice(1, 0, factChip({ icon: "eye", value: "OBSERVING", cls: "observing", title: "Forward observation session running — real ticks, zero orders" }));
+  }
+  chips.push(factChip({ icon: "lock", value: "LIVE LOCKED", cls: "live-locked", title: "Live trading is structurally locked — see Governance" }));
+  factsEl.append(...chips);
 }
 
 function buildSidebar() {
@@ -191,10 +262,14 @@ function main() {
   window.addEventListener("hashchange", () => { markActiveNav(); });
   store.on("health", () => { renderFacts(facts); markConn(); });
   store.on("conn", () => { markConn(); });
+  store.on("observe", () => renderFacts(facts)); // header shows live observation state
 
   function markConn() {
-    conn.className = `conn-dot${store.data.conn === "down" ? " down" : ""}`;
-    updated.textContent = store.data.conn === "down"
+    const down = store.data.conn === "down";
+    // syncs older than 45s are visibly stale — honesty about data age
+    const stale = !down && store.data.lastSync && Date.now() - store.data.lastSync > 45000;
+    conn.className = `conn-dot${down ? " down" : stale ? " stale" : ""}`;
+    updated.textContent = down
       ? "API unreachable — values may be stale"
       : `synced ${fmtAge(store.data.lastSync)}`;
   }

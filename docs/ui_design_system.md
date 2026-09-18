@@ -46,10 +46,31 @@ Routes are hash-based (`#/market/observations`) and deep-linkable.
 ## 3. Design tokens (`css/tokens.css`)
 
 - **Surfaces**: graphite scale `--bg-0…3`, inset wells; structure carried by 1px borders, not shadows.
+  The content area sits on a faint two-tone ambient wash (`--glow-accent`,
+  `--glow-research`) so depth reads without heavy shadows.
 - **Type**: `Inter/Segoe UI` UI stack; `JetBrains Mono/Consolas` for numerics with `tabular-nums`; 11–28 px scale.
-- **Spacing**: 4 px scale. **Radii**: 4/8/12. **Elevation**: 2 subtle shadows (drawers/modals only).
+- **Spacing**: 4 px scale. **Radii**: 4/8/12. **Elevation**: shadows stay subtle —
+  `--shadow-1…3` for structure, `--shadow-4` reserved for floating layers
+  (palette, modals, notification popover).
 - **Accent**: one restrained blue. Semantic state trios (`bg/border/text`) for:
   `ok · run · info · warn · err · neutral · research · locked`.
+
+### Motion & polish layer (v2)
+
+Motion is information, never decoration — every animation encodes state:
+
+- **View transitions**: each route dispatch fades/rises in (`view-in`, 340 ms settle curve).
+- **Live pulses**: the API link dot pulses while synced (`conn-pulse`), goes
+  amber when the last sync is >45 s old, red when unreachable; the rail's
+  current stage rings; fresh-data dots pulse while data is young and sit still
+  when stale/down.
+- **Breathing OBSERVING chip**: while a forward-observation session runs, the
+  header carries a run-toned chip whose icon breathes.
+- **Entry choreography**: palette, modals and popovers settle in with a slight
+  overshoot curve (`--ease-pop`); scrims fade. Cards/stats lift 1 px on hover;
+  the active nav item carries a gradient left rail.
+- **Header glass**: translucent header with a gradient hairline, backdrop blur.
+- `prefers-reduced-motion` collapses all of the above to ~0 ms — calm by default.
 
 ### Semantic states — color is never the only channel
 Every status renders as a **badge with a label and a redundant mark**
@@ -84,9 +105,15 @@ Every page answers, in order: **primary answer** (page head), **primary action**
 **setup journey**: six steps (terminal → data freshness → research → readiness →
 demo → governance), each verified live against canonical endpoints, never assumed.
 
-Real-time behavior: header syncs every 15 s, observation view every 5 s, global
-notifications every 20 s — all paused while the window is hidden, all showing a
-connection indicator (`synced Xs ago` / `API unreachable — values may be stale`).
+Real-time behavior: header syncs every 15 s, observation status every 8 s,
+global notifications every 20 s — all paused while the window is hidden, all
+showing a connection indicator (`synced Xs ago` / `API unreachable — values
+may be stale`). The header also hosts a **notification center** (bell with
+severity count, critical/error items marked red, list sorted by severity via
+`attentionRank`, deep-linking into the Overview) and an **OBSERVING** chip
+that appears only while `/api/observe/status` says a session is running —
+backend truth, never assumed. Sortable tables publish `aria-sort`; every route
+dispatch moves focus to the new page for assistive tech.
 
 ## 6. Testing matrix
 

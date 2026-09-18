@@ -45,11 +45,14 @@ export async function dispatch() {
   if (!main) return;
   main.scrollTop = 0; // new page — scroll to top
   document.getElementById("app")?.classList.remove("nav-open");
+  if (route.page?.label) document.title = `${route.page.label} · QTS Trading System`;
   // Render into a per-dispatch host: if a newer navigation supersedes this
   // one, the old view's late async appends land in a detached node — never
   // interleaved with the new page (prevents duplicated/raced content).
   const host = document.createElement("div");
+  host.className = "view-enter"; // per-route transition (respects reduced motion)
   main.replaceChildren(host);
+  main.focus({ preventScroll: true }); // SPA a11y: announce the new page to AT
   try {
     await route.render(host);
   } catch (e) {

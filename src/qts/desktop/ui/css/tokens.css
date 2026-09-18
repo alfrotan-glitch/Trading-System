@@ -73,9 +73,20 @@
   /* ----- motion ----- */
   --t-fast: 120ms ease;
   --t-med: 220ms ease;
+  --t-slow: 340ms ease;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);      /* settle-in (views, popovers) */
+  --ease-pop: cubic-bezier(0.34, 1.45, 0.5, 1);    /* slight overshoot (modals) */
 
   /* ----- status dot shapes (redundant encoding beyond color) ----- */
   --dot-ok: "●"; --dot-warn: "▲"; --dot-err: "■"; --dot-neutral: "○";
+
+  /* ----- modern layer (v2): ambience, glow, glass ----- */
+  --glow-accent: rgba(79, 156, 249, 0.06);   /* ambient top-right wash */
+  --glow-research: rgba(157, 124, 249, 0.045);/* ambient bottom-left wash */
+  --accent-glow: rgba(79, 156, 249, 0.35);
+  --shadow-4: 0 24px 64px rgba(0, 0, 0, 0.60);
+  --blur: 14px;
+  --hairline: linear-gradient(90deg, transparent, var(--line-strong) 16%, var(--accent-glow) 52%, var(--line-strong) 84%, transparent);
 }
 
 /* Light high-contrast emphasis for focus states */
