@@ -34,7 +34,7 @@ export async function renderPaper(root) {
         h("div", { class: "stat-grid" },
           stat({ label: "Fills", value: fmtInt(paper?.execution_statistics?.total_fills ?? paper?.fills?.length), icon: "zap" }),
           metricStat({ label: "Avg slippage", metric: paper?.execution_statistics?.avg_slippage_bps, icon: "scale", hint: "unmeasured slippage is UNAVAILABLE — never zero" }),
-          stat({ label: "PnL (simulated)", value: fmtMetric(paper?.pnl ?? 0), hint: "hypothetical — not real money", icon: "pulse" }),
+          stat({ label: "PnL (simulated)", value: fmtMetric(paper?.pnl), hint: "hypothetical — not real money", icon: "pulse" }),
         ),
         (paper?.fills ?? []).length
           ? table({
@@ -74,7 +74,7 @@ export async function renderDemo(root) {
   const head = page({
     crumb: "Trading", group: "Demo forward",
     title: "Demo Forward Control",
-    answer: h("b", null, "Real MT5 DEMO terminal, real market data, real demo orders — labeled DEMO, never LIVE. The authority below is the same object the execution boundary enforces."),
+    answer: h("b", null, "MT5 demo-account readiness and execution authority are separate. DEMO_FORWARD is observation-only; broker orders require DEMO_EXECUTION plus explicit authority and every safety gate."),
     actions: [
       h("button", { class: "btn", onclick: () => renderDemo(root) }, icon("refresh", 14), "Refresh"),
     ],
@@ -280,6 +280,21 @@ export async function renderExecution(root) {
   let orders = [];
   try { orders = await api.get("/api/execution/orders?limit=50"); }
   catch (e) { host.appendChild(errorBox({ what: "orders could not be loaded", next: "Retry.", raw: e.message })); return; }
+
+  try {
+    const account = await api.get("/api/dashboard");
+    host.appendChild(card({ title: "Account snapshot", sub: "Canonical dashboard metrics; UNAVAILABLE is not zero. Refresh this page to retrieve a new snapshot.", icon: "bank",
+      body: h("div", { class: "stack" },
+        h("div", { class: "stat-grid" },
+          metricStat({ label: "Equity", metric: account.equity }),
+          metricStat({ label: "Balance", metric: account.balance }),
+          metricStat({ label: "Exposure", metric: account.exposure }),
+          metricStat({ label: "Spread", metric: account.spread })),
+        Array.isArray(account.open_positions) && account.open_positions.length
+          ? table({ columns: [{key: "symbol", label: "Symbol"}, {key: "side", label: "Side"}, {key: "volume", label: "Volume", num: true}, {key: "profit", label: "P&L", num: true}], rows: account.open_positions })
+          : h("p", {class: "text-dim"}, account.balance?.status === "MEASURED" ? "No positions reported in this snapshot." : "Position state UNAVAILABLE — account measurements are not established."),
+        tech(account, "Raw account snapshot")) }));
+  } catch (e) { host.appendChild(errorBox({ what: "account snapshot unavailable", next: "Retry this page; order-event evidence below is independent.", raw: e.message })); }
 
   host.appendChild(card({ title: "Lifecycle reference", sub: "each stage is audited with its own timestamp", icon: "branch", body:
     pipeline(ORDER_STAGES, ORDER_STAGES.length, -1),

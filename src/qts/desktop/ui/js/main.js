@@ -4,12 +4,14 @@
    Router · Palette · Global polling (pauses when hidden).
    ============================================================ */
 import { h, icon, clear } from "./dom.js";
-import { api, store, syncHealth, syncNotifications, syncObservations, poll } from "./api.js";
+import { store, RESOURCES, syncResource, syncOperations, poll } from "./api.js";
+import { operationalState, freshness } from "./operations.js";
+import { initWorkspace, readWorkspace, saveWorkspace } from "./workspace.js";
 import { registerRoutes, startRouter, navigate, dispatch } from "./router.js";
 import { initPalette } from "./palette.js";
 import { fmtAge } from "./format.js";
-import { modeInfo, statusInfo, attentionRank } from "./status.js";
-import { toast, badge } from "./components.js";
+import { attentionRank } from "./status.js";
+import { toast, badge, drawer } from "./components.js";
 
 import * as overview from "./views/overview.js";
 import * as research from "./views/research.js";
@@ -88,8 +90,9 @@ const LEVEL_TONE = {
 
 /** Header notification center: backend notifications, highest severity first. */
 function buildNotifBell() {
+  const wrapper = h("span", { class: "notification-anchor" });
   const count = h("span", { class: "notif-count", hidden: true, "aria-hidden": "true" });
-  const btn = h("button", { class: "btn ghost sm notif-btn", "aria-label": "Notifications", title: "Notifications" }, icon("alert", 15), count);
+  const btn = h("button", { class: "btn ghost sm notif-btn", "aria-label": "Notifications", title: "Notifications", "aria-expanded": "false" }, icon("alert", 15), count);
   let pop = null;
 
   const onDoc = (e) => { if (pop && !pop.contains(e.target) && !btn.contains(e.target)) close(); };
@@ -97,6 +100,7 @@ function buildNotifBell() {
   function close() {
     if (!pop) return;
     pop.remove(); pop = null;
+    btn.setAttribute("aria-expanded", "false"); btn.focus();
     document.removeEventListener("click", onDoc, true);
     document.removeEventListener("keydown", onKey);
   }
@@ -104,7 +108,7 @@ function buildNotifBell() {
     clear(listEl);
     const notes = attentionRank(store.data.notifications || []);
     if (!notes.length) {
-      listEl.appendChild(h("div", { class: "notif-empty" }, "All clear — nothing needs attention."));
+      listEl.appendChild(h("div", { class: "notif-empty" }, freshness(store.data.resources.notifications, "notifications").current ? "No notifications reported. See operating facts for permission and health." : "Notifications unavailable or stale. No all-clear can be established."));
       return;
     }
     for (const n of notes) {
@@ -123,14 +127,16 @@ function buildNotifBell() {
   }
   btn.addEventListener("click", () => {
     if (pop) { close(); return; }
-    pop = h("div", { class: "notif-pop", role: "dialog", "aria-label": "Notifications" },
+    pop = h("div", { class: "notif-pop", role: "region", "aria-label": "Notifications" },
       h("div", { class: "notif-head" },
         "Attention",
         h("button", { class: "btn ghost sm", "aria-label": "Close notifications", onclick: close }, icon("x", 13))),
       h("div", { class: "notif-list" }));
     renderList(pop.querySelector(".notif-list"));
-    btn.appendChild(pop);
-    setTimeout(() => document.addEventListener("click", onDoc, true), 0);
+    wrapper.appendChild(pop);
+    btn.setAttribute("aria-expanded", "true");
+    pop.querySelector("button").focus();
+    document.addEventListener("click", onDoc, true);
     document.addEventListener("keydown", onKey);
   });
   store.on("notifications", (notes) => {
@@ -140,7 +146,8 @@ function buildNotifBell() {
     count.classList.toggle("critical", list.some((x) => ["critical", "error"].includes(String(x.level).toLowerCase())));
     if (pop) renderList(pop.querySelector(".notif-list"));
   });
-  return btn;
+  wrapper.appendChild(btn);
+  return wrapper;
 }
 
 function buildHeader() {
@@ -149,17 +156,19 @@ function buildHeader() {
   const updated = h("span", { class: "meta", id: "header-updated" }, "connecting…");
 
   const header = h("header", { class: "header" },
-    h("button", { class: "btn ghost nav-toggle", "aria-label": "Toggle navigation", onclick: () => document.getElementById("app").classList.toggle("nav-open") }, icon("menu", 18)),
+    h("button", { class: "btn ghost nav-toggle", "aria-label": "Toggle navigation", "aria-expanded": "false", onclick: (e) => { const open = document.getElementById("app").classList.toggle("nav-open"); e.currentTarget.setAttribute("aria-expanded", String(open)); } }, icon("menu", 18)),
     h("div", { class: "brand" },
       h("span", { class: "logo", "aria-hidden": "true" }, "QTS"),
       h("span", { class: "word" }, "QTS"),
-      h("span", { class: "sub" }, "Trading System"),
+      h("span", { class: "sub" }, "Research workstation"),
     ),
     facts,
     h("div", { class: "header-actions" },
       conn, updated,
       buildNotifBell(),
-      h("button", { class: "btn ghost sm", onclick: () => document.querySelector(".palette-scrim") && document.body.classList.add("palette-open"), "aria-label": "Open command palette (Ctrl+K)", title: "Ctrl+K" }, icon("search", 15)),
+      h("button", { class: "btn ghost sm", onclick: openWorkspace, "aria-label": "Workspace preferences" }, icon("layers", 15), "Workspace"),
+      h("a", { class: "btn ghost sm", href: location.hash || "#/overview", target: "_blank", rel: "noopener", "aria-label": "Open current context in another window", onclick: (e) => { e.currentTarget.href = location.hash || "#/overview"; } }, "New window"),
+      h("button", { class: "btn ghost sm", onclick: () => palette?.open(), "aria-label": "Open command palette (Ctrl+K)", title: "Ctrl+K" }, icon("search", 15)),
     ),
   );
   return { header, facts, conn, updated };
@@ -173,34 +182,58 @@ function factChip({ icon: ic, label, value, cls = "", title, optional = false })
   );
 }
 
+let palette;
+function openWorkspace() {
+  const p = readWorkspace();
+  const form = h("div", { class: "stack" }, h("p", null, "Presentation preferences only. Modes, permissions and risk acknowledgements are never restored from browser storage."));
+  for (const [key, label, options] of [
+    ["density", "Density", ["compact", "comfortable"]],
+    ["width", "Workspace width", ["focused", "wide"]],
+    ["navigation", "Navigation width", ["narrow", "standard", "wide"]],
+  ]) {
+    const select = h("select", { class: "input", "aria-label": label }, options.map((v) => h("option", { value: v }, v)));
+    select.value = p[key];
+    select.addEventListener("change", () => { if (!saveWorkspace({ [key]: select.value })) toast("warn", "Preferences could not be saved", "Browser storage is unavailable."); });
+    form.appendChild(h("label", { class: "stack" }, label, select));
+  }
+  const remember = h("input", { type: "checkbox", checked: p.rememberRoute });
+  remember.addEventListener("change", () => { if (!saveWorkspace({ rememberRoute: remember.checked, route: location.hash })) toast("warn", "Preferences could not be saved"); });
+  form.appendChild(h("label", null, remember, " Restore last page on launch (never replay actions)"));
+  form.appendChild(h("p", { class: "text-dim small" }, "New window opens the current page for another monitor. Display preferences synchronize on this origin; routes, requests and authority remain independent. Native monitor placement and linked crosshairs are not implemented."));
+  drawer("Workspace preferences", form);
+}
 function renderFacts(factsEl) {
-  const d = store.data;
-  const health = d.health;
-  clear(factsEl);
-  if (!health) {
-    factsEl.appendChild(factChip({ icon: "clock", label: "status", value: "connecting…" }));
-    return;
-  }
-  const mode = modeInfo(health.effective_mode?.effective_mode);
-  const broker = statusInfo(String(health.mt5).toLowerCase() === "connected" ? "connected" : "unavailable");
-  const data = statusInfo(String(health.market_data).toLowerCase().includes("healthy") ? "healthy" : "degraded");
-  const obsRunning = String(store.data.observe?.state ?? "").toLowerCase() === "running";
-  const chips = [
-    factChip({ icon: "layers", label: "mode", value: mode.mode, cls: mode.tone === "locked" ? "live-locked" : "mode", title: `${mode.blurb}${mode.canSubmit === true ? " — CAN submit broker orders" : mode.canSubmit === "gated" ? " — submission gated by demo authority" : " — cannot submit broker orders"}` }),
-    factChip({ icon: "bank", value: broker.label, cls: broker.tone === "ok" ? "" : "optional", title: "MT5 terminal connection", optional: true }),
-    factChip({ icon: "candle", value: health.strategy?.symbol ?? "XAUUSD", cls: "optional", title: "Instrument", optional: true }),
-    factChip({ icon: "activity", value: data.label, cls: data.tone === "ok" ? "optional" : "", title: "Market data pipeline freshness" }),
-    factChip({ icon: "shield", value: String(health.risk ?? "—").toUpperCase(), cls: "optional", title: "Risk subsystem state", optional: true }),
+  const s = operationalState(store.data);
+  const values = [
+    ["mode", s.mode.mode, "mode"],
+    ["Observation", s.observation, s.observing ? "observing" : ""],
+    ["DEMO", s.permission, ""],
+    ["LIVE", s.liveLabel, "live-locked"],
   ];
-  if (obsRunning) {
-    chips.splice(1, 0, factChip({ icon: "eye", value: "OBSERVING", cls: "observing", title: "Forward observation session running — real ticks, zero orders" }));
+  if (!factsEl.children.length) {
+    for (const [label, value, cls] of values) factsEl.appendChild(factChip({ label, value, cls }));
   }
-  chips.push(factChip({ icon: "lock", value: "LIVE LOCKED", cls: "live-locked", title: "Live trading is structurally locked — see Governance" }));
-  factsEl.append(...chips);
+  [...factsEl.children].forEach((node, i) => {
+    const [label, value, cls] = values[i];
+    const v = node.querySelector("b");
+    if (v.textContent !== value) v.textContent = value;
+    node.className = `fact ${cls}`;
+    node.title = `${label}: ${value}. Current facts and source freshness in Overview.`;
+  });
 }
 
 function buildSidebar() {
   const aside = h("nav", { class: "sidebar", "aria-label": "Primary" });
+  const search = h("input", { class: "input nav-search", type: "search", "aria-label": "Find a workspace page", placeholder: "Find a page…" });
+  search.addEventListener("input", () => {
+    const q = search.value.trim().toLowerCase();
+    aside.querySelectorAll(".sidebar-group").forEach((group) => {
+      group.querySelectorAll(".nav-item").forEach((item) => { item.hidden = !`${group.querySelector(".sidebar-group-label").textContent} ${item.textContent}`.toLowerCase().includes(q); });
+      group.hidden = [...group.querySelectorAll(".nav-item")].every((x) => x.hidden);
+    });
+  });
+  search.addEventListener("keydown", (e) => { if (e.key === "Escape") { search.value = ""; search.dispatchEvent(new window.Event("input")); } });
+  aside.appendChild(search);
   for (const g of IA) {
     const grp = h("div", { class: "sidebar-group" });
     grp.appendChild(h("div", { class: "sidebar-group-label" }, icon(g.icon, 14), h("span", null, g.label)));
@@ -229,6 +262,7 @@ function markActiveNav() {
   const hash = (location.hash || "#/overview").split("?")[0];
   document.querySelectorAll(".nav-item").forEach((el) => {
     el.classList.toggle("active", el.dataset.href === hash);
+    if (el.dataset.href === hash) el.setAttribute("aria-current", "page"); else el.removeAttribute("aria-current");
   });
 }
 
@@ -236,6 +270,7 @@ function markActiveNav() {
    BOOTSTRAP
    ============================================================ */
 function main() {
+  initWorkspace();
   const { header, facts, conn, updated } = buildHeader();
   const app = h("div", { id: "app" },
     header,
@@ -246,42 +281,24 @@ function main() {
   document.body.appendChild(app);
 
   registerRoutes(IA);
-  initPalette(IA, [
-    { label: "Start observation (no orders)", group: "Actions", icon: "eye", run: async () => {
-      try { await api.post("/api/observe/start"); toast("ok", "Observation started", "Zero orders will be submitted."); dispatch(); }
-      catch (e) { toast("err", "Could not start observation", String(e.message).slice(0, 120)); }
-    } },
-    { label: "Stop observation", group: "Actions", icon: "stop", run: async () => {
-      try { await api.post("/api/observe/stop"); toast("warn", "Observation stopped"); dispatch(); }
-      catch (e) { toast("err", "Could not stop", String(e.message).slice(0, 120)); }
-    } },
-    { label: "Run readiness checks", group: "Actions", icon: "shield", run: () => { navigate("#/trading/demo"); } },
-    { label: "Refresh system status", group: "Actions", icon: "refresh", run: async () => { await syncHealth(); toast("ok", "Status refreshed"); dispatch(); } },
+  palette = initPalette(IA, [
+    { label: "Inspect observation (no orders)", group: "Actions", icon: "eye", run: () => navigate("#/market/observations") },
+    { label: "Inspect readiness and permission", group: "Actions", icon: "shield", run: () => navigate("#/trading/demo") },
+    { label: "Workspace preferences", group: "Workspace", icon: "layers", run: openWorkspace },
+    { label: "Refresh operating sources", group: "Actions", icon: "refresh", run: () => syncOperations(true) },
   ]);
 
   window.addEventListener("hashchange", () => { markActiveNav(); });
-  store.on("health", () => { renderFacts(facts); markConn(); });
-  store.on("conn", () => { markConn(); });
-  store.on("observe", () => renderFacts(facts)); // header shows live observation state
+  const update = () => {
+    renderFacts(facts);
+    const f = freshness(store.data.resources.health, "health");
+    conn.className = `conn-dot${f.current ? "" : " stale"}`;
+    updated.textContent = `Health API: ${f.label}${store.data.resources.health?.updatedAt ? ` · ${fmtAge(store.data.resources.health.updatedAt)}` : ""}`;
+  };
+  store.on("resources", update);
+  for (const key of Object.keys(RESOURCES)) poll(() => syncResource(key), RESOURCES[key].interval);
+  const clock = setInterval(update, 2000); clock.unref?.();
 
-  function markConn() {
-    const down = store.data.conn === "down";
-    // syncs older than 45s are visibly stale — honesty about data age
-    const stale = !down && store.data.lastSync && Date.now() - store.data.lastSync > 45000;
-    conn.className = `conn-dot${down ? " down" : stale ? " stale" : ""}`;
-    updated.textContent = down
-      ? "API unreachable — values may be stale"
-      : `synced ${fmtAge(store.data.lastSync)}`;
-  }
-
-  /* global polling — only while visible */
-  poll(syncHealth, 15000);
-  poll(syncNotifications, 20000);
-  poll(syncObservations, 8000);
-  const clock = setInterval(() => markConn(), 2000);
-  if (typeof clock.unref === "function") clock.unref();
-
-  syncHealth().then(syncNotifications);
   startRouter();
   markActiveNav();
 }

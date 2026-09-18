@@ -78,7 +78,7 @@ def server():
 def browser():
     with pw.sync_playwright() as p:
         try:
-            b = p.chromium.launch(args=["--no-sandbox"])
+            b = p.chromium.launch(executable_path=os.getenv("QTS_CHROMIUM_PATH") or None, args=["--no-sandbox"])
         except Exception as e:  # chromium not installed
             pytest.skip(f"Chromium not available: {e}")
         yield b
@@ -93,7 +93,7 @@ def page(browser, server):
     pg.on("pageerror", lambda e: errors.append(str(e)))
     pg.errors = errors  # type: ignore[attr-defined]
     pg.goto(server + "/#/overview")
-    pg.wait_for_selector(".stat", timeout=20_000)
+    pg.wait_for_selector("[data-fact=broker]", timeout=20_000)
     yield pg
     ctx.close()
 
@@ -139,6 +139,7 @@ def test_mode_display_matches_backend_truth(page, server):
 
 def test_live_locked_always_visible(page):
     page.wait_for_selector(".fact.live-locked", timeout=10_000)
+    page.wait_for_function("document.querySelector('.fact.live-locked').textContent.includes('LIVE LOCKED')")
     assert "LIVE LOCKED" in page.locator(".fact.live-locked").inner_text()
 
 
@@ -186,13 +187,15 @@ def test_stale_indicator_when_api_down(browser, server):
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
     pg = ctx.new_page()
     pg.goto(server + "/#/overview")
-    pg.wait_for_selector(".stat", timeout=20_000)
-    # block all API calls → connection indicator must flip to "down"
+    pg.wait_for_selector("[data-fact=broker]", timeout=20_000)
+    # block all API calls and explicitly refresh: source failure must be visible
     pg.route("**/api/*", lambda route: route.abort())
-    pg.wait_for_timeout(6500)
+    pg.wait_for_selector(".operator-workspace button:not([disabled])")
+    pg.get_by_role("button", name="Refresh sources").click()
+    pg.wait_for_function("document.querySelector('#header-updated').textContent.includes('RETRYING')")
     dot_class = pg.locator(".conn-dot").get_attribute("class")
-    assert "down" in dot_class, f"connection indicator should show down, got {dot_class}"
-    assert "unreachable" in pg.locator("#header-updated").inner_text().lower()
+    assert "stale" in dot_class, f"connection indicator should show down, got {dot_class}"
+    assert "RETRYING" in pg.locator("#header-updated").inner_text()
     ctx.close()
 
 

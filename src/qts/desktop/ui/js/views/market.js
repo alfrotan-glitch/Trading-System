@@ -11,7 +11,7 @@ import {
 } from "../components.js";
 import { fmtInt, fmtNum, fmtUtc, fmtAge, humanKey, trunc, fmtMetric } from "../format.js";
 import { statusInfo, freshnessTone } from "../status.js";
-import { navigate } from "../router.js";
+import { navigate, onDispose } from "../router.js";
 
 /* ================= MONITOR ================= */
 export async function renderMonitor(root) {
@@ -106,7 +106,8 @@ export async function renderMonitor(root) {
 /* ================= OBSERVATIONS ================= */
 export async function renderObservations(root) {
   skeletonInto(root, "stats");
-  const stop = poll(refresh, 5000);
+  let refreshing = false;
+  let acting = false;
   root.appendChild(page({
     crumb: "Market", group: "Observations",
     title: "Forward Observatory",
@@ -123,7 +124,11 @@ export async function renderObservations(root) {
   const stamp = freshStamp(() => lastManifest?.generated_at, 1000);
   host.appendChild(stamp);
 
+  const sourceStatus = h("p", { class: "text-dim small", role: "status" }, "Loading observation sources…");
+  host.before(sourceStatus);
   async function refresh() {
+    if (refreshing || !root.isConnected) return;
+    refreshing = true;
     let obs, manifest, execReality;
     try {
       [obs, manifest, execReality] = await Promise.all([
@@ -132,21 +137,26 @@ export async function renderObservations(root) {
         api.get("/api/research/execution-reality"),
       ]);
     } catch (e) {
+      sourceStatus.textContent = "STALE / UNAVAILABLE — refresh failed. Last-known evidence may remain below; collector activity is not established. Retrying while visible.";
       if (!lastManifest) {
         clear(host); host.appendChild(stamp);
-        host.appendChild(errorBox({ what: "observation status could not be loaded", next: "Retry. The session keeps recording server-side while this view is offline.", raw: e.message }));
+        host.appendChild(errorBox({ what: "observation status could not be loaded", next: "Retry; collector activity cannot be established while its source is unavailable.", raw: e.message }));
       }
       return;
-    }
+    } finally { refreshing = false; }
+    if (!root.isConnected) return;
+    sourceStatus.textContent = "CURRENT API snapshot — quote timestamps and manifest generation time are separate. Updated " + fmtUtc(Date.now());
     lastManifest = manifest;
-    const running = String(obs.state).toLowerCase() === "running";
+    const running = obs.state === "OBSERVING" && obs.thread_alive === true;
     store.set("observe", obs);
+    root.querySelector("#obs-start").disabled = acting || running;
+    root.querySelector("#obs-stop").disabled = acting || !running;
 
     const body = h("div", { class: "stack" });
     body.appendChild(h("div", { class: "stat-grid" },
       stat({ label: "Session state", value: running ? "OBSERVING" : String(obs.state ?? "IDLE").toUpperCase(), tone: running ? "run" : "neutral", icon: "eye", hint: obs.note ?? null }),
       stat({ label: "Ticks recorded", value: fmtInt(manifest.ticks_recorded), icon: "database", hint: `${fmtInt(manifest.real_market_ticks)} real-market` }),
-      stat({ label: "Signals recorded", value: fmtInt(manifest.signals_recorded), icon: "zap", hint: "with NO_TRADE as a first-class outcome" }),
+      stat({ label: "Signals recorded", value: fmtInt(manifest.signals_recorded), icon: "zap", hint: "store-wide count; FO-R1 observation requires zero session signals" }),
       stat({ label: "Orders submitted", value: fmtInt(obs.orders_submitted), tone: Number(obs.orders_submitted) === 0 ? "ok" : "err", hint: "must always be 0 during observation" }),
     ));
 
@@ -204,7 +214,7 @@ export async function renderObservations(root) {
               ],
               rows: manifest.sample_signals, empty: "No signals yet.",
             })
-          : emptyState({ icon: "zap", title: "No signals recorded yet", desc: "Signals (and deliberate NO_TRADE decisions) appear once a strategy runs against the observation feed." }),
+          : emptyState({ icon: "zap", title: "No signals recorded yet", desc: "Research-grade observation requires zero session signals. Legacy strategy records, if any, are separate evidence." }),
       }),
     ));
 
@@ -214,23 +224,28 @@ export async function renderObservations(root) {
   }
 
   async function act(kind) {
+    if (acting) return;
+    acting = true;
+    root.querySelectorAll("#obs-start, #obs-stop").forEach((b) => { b.disabled = true; });
+    sourceStatus.textContent = kind === "start" ? "REQUESTING observation — waiting for backend readiness and collector state…" : "STOPPING observation — waiting for terminal state…";
     try {
       if (kind === "start") {
-        await api.post("/api/observe/start");
-        toast("ok", "Observation started", "Recording real ticks — zero orders will be submitted.");
+        const result = await api.post("/api/observe/start");
+        if (result.status?.state !== "OBSERVING") throw new Error(result.note || result.status?.blocked_reasons?.join("; ") || "Backend did not confirm observation started");
+        toast("ok", "Observation confirmed", "Collector reports OBSERVING — zero orders.");
       } else {
         await api.post("/api/observe/stop");
         toast("warn", "Observation stopped", "Session state preserved.");
       }
-      refresh();
+      await refresh();
     } catch (e) {
       const msg = typeof e.body === "object" && e.body?.detail ? (e.body.detail.detail ?? e.body.detail) : e.message;
       toast("err", `Could not ${kind} observation`, String(msg).slice(0, 140));
-    }
+    } finally { acting = false; await refresh(); }
   }
 
-  await refresh();
-  root.addEventListener("DOMNodeRemoved", () => stop(), { once: true });
+  const stop = poll(refresh, 5000);
+  onDispose(root, stop);
 }
 
 /* ================= QUALITY ================= */

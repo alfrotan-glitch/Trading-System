@@ -16,7 +16,7 @@ export function statusInfo(raw) {
   if (!s || s === "none" || s === "unknown" || s === "unavailable" || s === "—") {
     return { tone: "neutral", label: raw ? String(raw) : "UNAVAILABLE", mark: "○" };
   }
-  if (/(^|_)(pass|passed|ok|healthy|enabled|connected|running|measured|fresh|valid)/.test(s) && !/not|no_|never/.test(s)) {
+  if (/^(pass|passed|ok|healthy|enabled|connected|running|observing|measured|fresh|valid)$/.test(s)) {
     return { tone: "ok", label: String(raw).toUpperCase(), mark: "●" };
   }
   if (/(degrad|stale|warn|pending|partial|estimated|synthetic|sufficien|expired)/.test(s)) {
@@ -43,9 +43,10 @@ export function gateInfo(v, label) {
 const MODES = {
   DEVELOPMENT: { tone: "neutral", canSubmit: false, realData: false, blurb: "Backtest/research only — mock or historical data, no broker orders." },
   PAPER: { tone: "info", canSubmit: false, realData: false, blurb: "Simulated fills on recorded data — no broker contact." },
-  SHADOW: { tone: "research", canSubmit: false, realData: true, blurb: "Real market data, would-be intents only — nothing is submitted." },
-  DEMO_FORWARD: { tone: "warn", canSubmit: "gated", realData: true, blurb: "Real MT5 DEMO terminal and account. Orders only if demo execution is enabled — labeled DEMO, never LIVE." },
-  LIVE: { tone: "locked", canSubmit: true, realData: true, blurb: "Live capital. Structurally locked until every gate and human approval pass." },
+  SHADOW: { tone: "research", canSubmit: false, realData: false, blurb: "Would-be intents only — no broker submission. Data provenance is reported separately." },
+  DEMO_FORWARD: { tone: "info", canSubmit: false, realData: true, blurb: "MT5 demo-account observation only — structurally no broker orders." },
+  DEMO_EXECUTION: { tone: "warn", canSubmit: "gated", realData: true, blurb: "Demo-account execution mode — submission requires current authority permission and all execution gates." },
+  LIVE: { tone: "locked", canSubmit: "gated", realData: true, blurb: "Live capital. Structurally locked until every gate and human approval pass." },
 };
 
 /**
@@ -72,20 +73,19 @@ export function modeInfo(mode) {
  */
 export function lifecycleStages(src = {}) {
   const mode = String(src.mode || "").toUpperCase();
-  const observing = src.observeState === "running" || src.observeState === "RUNNING" ||
-    (src.ticksRecorded ?? 0) > 0;
-  const demoEnabled = src.demoState === "ENABLED" || src.demoPermitted === true;
+  const observing = src.observeState === "OBSERVING";
+  const demoEnabled = src.demoState === "ENABLED" && src.demoPermitted === true && mode === "DEMO_EXECUTION";
 
   const stages = [
-    { id: "research", label: "Research", sub: "hypotheses, campaigns", state: "done" },
-    { id: "validating", label: "Validating", sub: "DSR · PBO · stress", state: "done" },
-    { id: "paper", label: "Paper", sub: "simulated fills", state: "done" },
-    { id: "shadow", label: "Shadow", sub: "intents on real data", state: mode === "SHADOW" ? "current" : "done" },
+    { id: "research", label: "Research", sub: "hypotheses, campaigns", state: "unknown" },
+    { id: "validating", label: "Validating", sub: "DSR · PBO · stress", state: "unknown" },
+    { id: "paper", label: "Paper", sub: "simulated fills", state: "unknown" },
+    { id: "shadow", label: "Shadow", sub: "intents on real data", state: mode === "SHADOW" ? "current" : "unknown" },
     {
       id: "demo_obs",
       label: "Demo Observation",
       sub: "real ticks, zero orders",
-      state: demoEnabled ? "done" : mode === "DEMO_FORWARD" ? "current" : observing ? "done" : "blocked",
+      state: observing ? "current" : "blocked",
       blockedWhy: mode === "DEMO_FORWARD" || demoEnabled ? null : "requires DEMO_FORWARD environment + MT5 demo terminal",
     },
     {
@@ -103,9 +103,7 @@ export function lifecycleStages(src = {}) {
       blockedWhy: src.liveEligible === true ? null : "structurally locked — independent governance, never auto-enabled",
     },
   ];
-  // mark everything before current as done
-  const cur = stages.findIndex((s) => s.state === "current");
-  if (cur > 0) stages.forEach((s, i) => { if (i < cur && s.state !== "current") s.state = "done"; });
+  // Mode and record counts do not prove successful research/promotion stages.
   return stages;
 }
 

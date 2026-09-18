@@ -98,7 +98,7 @@ export async function renderAudit(root) {
   async function load() {
     const term = q.value.trim();
     let rows = [];
-    try { rows = await api.get(`/api/audit?limit=100${term ? `&q=${encodeURIComponent(term)}` : ""}`); }
+    try { rows = await api.get("/api/audit?limit=100" + (term ? `&q=${encodeURIComponent(term)}` : "")); }
     catch (e) { clear(host); host.appendChild(errorBox({ what: "audit trail could not be loaded", next: "Retry.", raw: e.message })); return; }
     clear(host);
     const byType = {};

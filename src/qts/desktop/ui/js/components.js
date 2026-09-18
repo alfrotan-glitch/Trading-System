@@ -1,3 +1,4 @@
+import { focusDialog } from "./focus.js";
 /* ============================================================
    QTS COMPONENTS — design-system building blocks
    Every component renders backend truth as-is; components have
@@ -136,6 +137,9 @@ export function table({ columns, rows, empty, onRowClick, sortable = true, dense
     const th = h("th", { class: `${c.num ? "num" : ""}${sortable && !c.noSort ? "" : " no-sort"}`, scope: "col" }, c.label);
     if (sortable && !c.noSort) {
       th.setAttribute("aria-sort", "none");
+      th.tabIndex = 0;
+      th.setAttribute("aria-label", `${c.label}: activate to sort`);
+      th.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); th.click(); } });
       th.addEventListener("click", () => {
         state.dir = state.key === c.key ? -state.dir : 1;
         state.key = c.key;
@@ -163,6 +167,8 @@ export function table({ columns, rows, empty, onRowClick, sortable = true, dense
       data.sort((a, b) => {
         const va = col.sortVal ? col.sortVal(a) : a[state.key];
         const vb = col.sortVal ? col.sortVal(b) : b[state.key];
+        const absentA = va == null || va === "", absentB = vb == null || vb === "";
+        if (absentA || absentB) return absentA === absentB ? 0 : absentA ? 1 : -1;
         const na = Number(va), nb = Number(vb);
         const cmp = Number.isFinite(na) && Number.isFinite(nb) ? na - nb : String(va ?? "").localeCompare(String(vb ?? ""));
         return cmp * state.dir;
@@ -174,7 +180,8 @@ export function table({ columns, rows, empty, onRowClick, sortable = true, dense
     }
     for (const r of data) {
       const tds = columns.map((c) => {
-        const v = c.render ? c.render(r) : r[c.key];
+        const raw = c.render ? c.render(r) : r[c.key];
+        const v = raw == null ? "UNAVAILABLE" : raw;
         return h("td", { class: c.num ? "num" : "" }, typeof v === "object" && v !== null && !(v instanceof Node) ? String(v) : v);
       });
       const trR = h("tr", { class: onRowClick ? "clickable" : "", tabindex: onRowClick ? "0" : null, role: onRowClick ? "button" : null }, tds);
@@ -286,12 +293,15 @@ export function timeline(items) {
 
 /* ---------------- drawer ---------------- */
 let drawerEl = null;
+let releaseDrawer = null;
 export function drawer(title, bodyNode) {
+  releaseDrawer?.(); releaseDrawer = null;
   if (!drawerEl) {
     const scrim = h("div", { class: "drawer-scrim", onclick: closeDrawer });
     drawerEl = h("div", { class: "drawer", role: "dialog", "aria-modal": "true" });
     document.body.append(scrim, drawerEl);
   }
+  drawerEl.setAttribute("aria-label", title);
   clear(drawerEl);
   drawerEl.append(
     h("div", { class: "drawer-head" },
@@ -300,11 +310,13 @@ export function drawer(title, bodyNode) {
     ),
     h("div", { class: "drawer-body" }, bodyNode),
   );
-  requestAnimationFrame(() => document.body.classList.add("drawer-open"));
+  document.body.classList.add("drawer-open");
+  releaseDrawer = focusDialog(drawerEl, closeDrawer);
   return drawerEl;
 }
 export function closeDrawer() {
   document.body.classList.remove("drawer-open");
+  releaseDrawer?.(); releaseDrawer = null;
 }
 
 /* ---------------- modal confirm ---------------- */
@@ -317,7 +329,8 @@ export function confirmModal({ title, body, confirmLabel = "Confirm", danger = f
   return new Promise((resolve) => {
     const scrim = h("div", { class: "modal-scrim" });
     const checkboxes = [];
-    const finish = (ok) => { document.body.classList.remove("modal-open"); scrim.remove(); resolve(ok); };
+    let releaseFocus;
+    const finish = (ok) => { document.body.classList.remove("modal-open"); releaseFocus?.(); scrim.remove(); resolve(ok); };
     const confirmBtn = h("button", { class: `btn ${danger ? "danger" : "primary"}`, disabled: acks.length > 0 }, confirmLabel);
     const sync = () => (confirmBtn.disabled = !checkboxes.every((c) => c.checked));
     const modal = h("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-label": title },
@@ -345,7 +358,7 @@ export function confirmModal({ title, body, confirmLabel = "Confirm", danger = f
     scrim.addEventListener("click", (e) => { if (e.target === scrim) finish(false); });
     document.body.classList.add("modal-open");
     document.body.appendChild(scrim);
-    confirmBtn.focus();
+    releaseFocus = focusDialog(modal, () => finish(false));
   });
 }
 
@@ -371,7 +384,7 @@ export function freshStamp(getTs, intervalMs = 1000) {
     el.lastChild.textContent = ts ? `updated ${fmtAge(ts)}` : "never updated";
   };
   tick();
-  const iv = setInterval(() => { if (!document.hidden) tick(); }, intervalMs);
+  const iv = setInterval(() => { if (!el.isConnected) { clearInterval(iv); return; } if (!document.hidden) tick(); }, intervalMs);
   if (typeof iv.unref === "function") iv.unref();
   el.addEventListener("DOMNodeRemoved", () => clearInterval(iv), { once: true });
   return el;

@@ -1,56 +1,57 @@
-/* ============================================================
-   QTS API — thin fetch layer with honest failure semantics
-   The backend is the only authority; this layer never alters
-   payloads, only normalizes transport errors.
-   ============================================================ */
-
+/* Transport + shared operational resources. No permission decisions or persisted authority. */
 export class ApiError extends Error {
   constructor(path, status, body) {
     super(`API ${status} on ${path}: ${typeof body === "string" ? body.slice(0, 200) : JSON.stringify(body).slice(0, 200)}`);
-    this.path = path;
-    this.status = status;
-    this.body = body;
+    Object.assign(this, { path, status, body });
   }
 }
-
-const REQUEST_TIMEOUT_MS = 20000; // a hung API call must surface as a failure, never freeze the view
-
+const inflight = new Map();
+export const measurements = [];
+export function measure(kind, name, ms, outcome = "ok") {
+  measurements.push({ kind, name, ms: Math.round(ms * 10) / 10, outcome, at: Date.now() });
+  if (measurements.length > 100) measurements.shift(); // bounded; no response payloads
+}
 async function request(path, opts) {
-  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-  const timer = ctrl ? setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS) : null;
-  if (timer && typeof timer.unref === "function") timer.unref();
-  let resp;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  timer.unref?.();
+  const start = performance.now();
+  let outcome = "ok";
   try {
-    resp = await fetch(path, {
-      headers: { "Content-Type": "application/json" },
-      signal: ctrl?.signal,
-      ...opts,
-    });
+    const resp = await fetch(path, { headers: { "Content-Type": "application/json" }, signal: ctrl.signal, ...opts });
+    const text = await resp.text(); // body read is also protected by timeout
+    let data;
+    try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+    if (!resp.ok) throw new ApiError(path, resp.status, data);
+    return data;
   } catch (e) {
-    const aborted = e && (e.name === "AbortError" || String(e.message).includes("abort"));
-    const err = new ApiError(path, 0, aborted ? `request timed out after ${REQUEST_TIMEOUT_MS / 1000}s` : `network error: ${e.message}`);
-    err.network = true;
-    throw err;
+    outcome = "failed";
+    if (e instanceof ApiError) throw e;
+    throw new ApiError(path, 0, e.name === "AbortError" ? "request timed out after 20s" : `network error: ${e.message}`);
   } finally {
-    if (timer) clearTimeout(timer);
+    clearTimeout(timer);
+    measure("request", path, performance.now() - start, outcome);
   }
-  let data = null;
-  const text = await resp.text();
-  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-  if (!resp.ok) throw new ApiError(path, resp.status, data);
-  return data;
 }
-
 export const api = {
-  get: (path) => request(path),
+  get(path) {
+    if (inflight.has(path)) { measure("coalesced", path, 0); return inflight.get(path); }
+    const p = request(path).finally(() => inflight.delete(path));
+    inflight.set(path, p);
+    return p;
+  },
   post: (path, body) => request(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
 };
-
-/* ---------------- global store (tiny pub-sub) ---------------- */
+export const RESOURCES = {
+  health: { path: "/api/health", interval: 15000, stale: 30000 },
+  observe: { path: "/api/observe/status", interval: 8000, stale: 20000 },
+  demoState: { path: "/api/demo/state", interval: 30000, stale: 45000 },
+  live: { path: "/api/live/status", interval: 60000, stale: 90000 },
+  notifications: { path: "/api/notifications", interval: 20000, stale: 45000 },
+};
 const listeners = new Map();
-
 export const store = {
-  data: { health: null, notifications: [], observe: null, live: null, demoState: null, lastSync: 0, conn: "init" },
+  data: { health: null, notifications: null, observe: null, live: null, demoState: null, resources: {}, lastSync: 0, conn: "init" },
   on(key, fn) {
     if (!listeners.has(key)) listeners.set(key, new Set());
     listeners.get(key).add(fn);
@@ -59,40 +60,60 @@ export const store = {
   },
   set(key, value) {
     this.data[key] = value;
-    this.data.lastSync = Date.now();
-    listeners.get(key)?.forEach((fn) => { try { fn(value); } catch (e) { console.error(e); } });
+    // A notification, failure or connection update must not refresh health's timestamp.
+    if (RESOURCES[key]) {
+      this.data.resources[key] = { updatedAt: Date.now(), loading: false, error: null };
+      if (key === "health") this.data.lastSync = this.data.resources[key].updatedAt;
+      this.emit("resources");
+    }
+    this.emit(key);
   },
+  emit(key) { listeners.get(key)?.forEach((fn) => { try { fn(this.data[key]); } catch (e) { console.error(e); } }); },
 };
-
-/** Fetch + store health; sets conn health for the header. */
-export async function syncHealth() {
-  try {
-    const health = await api.get("/api/health");
-    store.set("health", health);
-    store.set("conn", "up");
-  } catch {
-    store.set("conn", "down");
-  }
+const syncing = new Map();
+export function syncResource(key, { force = false } = {}) {
+  if (syncing.has(key)) return syncing.get(key);
+  const meta = store.data.resources[key];
+  if (!force && meta?.updatedAt && !meta.error && Date.now() - meta.updatedAt < RESOURCES[key].interval) return Promise.resolve();
+  store.data.resources[key] = { ...meta, loading: true };
+  store.emit("resources");
+  const p = (async () => {
+    try {
+      const value = await api.get(RESOURCES[key].path);
+      if (key === "notifications" ? !Array.isArray(value) : !value || typeof value !== "object" || Array.isArray(value)) {
+        throw new Error("Unexpected response shape; state unavailable");
+      }
+      store.set(key, value);
+      if (key === "health") store.set("conn", "up");
+    } catch (e) {
+      store.data.resources[key] = { ...store.data.resources[key], loading: false, error: e.message };
+      store.emit("resources");
+      if (key === "health") store.set("conn", "down");
+    } finally { syncing.delete(key); }
+  })();
+  syncing.set(key, p);
+  return p;
 }
+export const syncHealth = () => syncResource("health");
+export const syncObservations = () => syncResource("observe");
+export const syncNotifications = () => syncResource("notifications");
+export const syncOperations = (force = false) => Promise.all(Object.keys(RESOURCES).map((k) => syncResource(k, { force })));
 
-export async function syncObservations() {
-  try { store.set("observe", await api.get("/api/observe/status")); } catch { /* header degrades honestly */ }
-}
-
-export async function syncNotifications() {
-  try { store.set("notifications", await api.get("/api/notifications")); } catch { /* keep last known */ }
-}
-
-/** Poll fn every ms while the document is visible; returns stop(). */
+/** One in-flight iteration per poller; stop during await cannot resurrect it. Resume on visibility. */
 export function poll(fn, ms) {
-  let alive = true;
-  let timer = null;
+  let alive = true, busy = false, timer;
   const loop = async () => {
-    if (!alive) return;
-    if (!document.hidden) { try { await fn(); } catch { /* handled by fn */ } }
-    timer = setTimeout(loop, ms);
-    if (typeof timer.unref === "function") timer.unref(); // Node/test hygiene; no-op in browsers
+    clearTimeout(timer);
+    if (!alive || busy) return;
+    busy = true;
+    try { if (!document.hidden) await fn(); } catch { /* resource/view owns failure presentation */ }
+    finally {
+      busy = false;
+      if (alive) { timer = setTimeout(loop, ms); timer.unref?.(); }
+    }
   };
+  const resume = () => { if (!document.hidden) loop(); };
+  document.addEventListener("visibilitychange", resume);
   loop();
-  return () => { alive = false; clearTimeout(timer); };
+  return () => { alive = false; clearTimeout(timer); document.removeEventListener("visibilitychange", resume); };
 }

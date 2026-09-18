@@ -1,3 +1,4 @@
+import { focusDialog } from "./focus.js";
 /* ============================================================
    QTS COMMAND PALETTE — Ctrl/Cmd+K global search & actions
    Keyboard-first: ↑/↓ navigate, Enter run, Esc close.
@@ -22,7 +23,8 @@ export function initPalette(IA, actions = []) {
   }
   items.push(...actions);
 
-  const input = h("input", { class: "input palette-input", placeholder: "Search pages, actions, concepts…", "aria-label": "Command palette search" });
+  let releaseFocus = null;
+  const input = h("input", { role: "combobox", "aria-autocomplete": "list", "aria-controls": "palette-list", "aria-expanded": "true", class: "input palette-input", placeholder: "Search pages, actions, concepts…", "aria-label": "Command palette search" });
   const list = h("div", { class: "palette-list", role: "listbox", id: "palette-list" });
   const foot = h("div", { class: "palette-foot", "aria-hidden": "true" },
     h("span", null, h("span", { class: "kbd" }, "↑"), h("span", { class: "kbd" }, "↓"), " navigate"),
@@ -56,15 +58,16 @@ export function initPalette(IA, actions = []) {
   });
 
   function open() {
+    if (releaseFocus) return;
     document.body.classList.add("palette-open");
     input.value = "";
     sel = 0;
     renderList("");
-    requestAnimationFrame(() => input.focus());
+    releaseFocus = focusDialog(scrim.querySelector(".palette"), close);
   }
   function close() {
     document.body.classList.remove("palette-open");
-    input.blur();
+    releaseFocus?.(); releaseFocus = null;
   }
   function run(item) {
     close();
@@ -81,13 +84,16 @@ export function initPalette(IA, actions = []) {
       .map((x) => x.it);
     sel = 0;
     clear(list);
+    input.removeAttribute("aria-activedescendant");
     if (!visible.length) {
       list.appendChild(h("div", { class: "palette-empty" }, `Nothing matches “${q}”.`));
       return;
     }
+    input.removeAttribute("aria-activedescendant");
+    if (visible.length) input.setAttribute("aria-activedescendant", `palette-option-${sel}`);
     visible.forEach((it, i) => {
       list.appendChild(h("div", {
-        class: `palette-item${i === sel ? " sel" : ""}`, role: "option", "aria-selected": i === sel ? "true" : "false",
+        id: `palette-option-${i}`, class: `palette-item${i === sel ? " sel" : ""}`, role: "option", "aria-selected": i === sel ? "true" : "false",
         onclick: () => run(it), onmousemove: () => { if (sel !== i) { sel = i; paint(); } },
       },
         icon(it.icon ?? "chevron", 14),
@@ -97,6 +103,7 @@ export function initPalette(IA, actions = []) {
     });
   }
   function paint() {
+    if (visible[sel]) input.setAttribute("aria-activedescendant", `palette-option-${sel}`);
     list.querySelectorAll(".palette-item").forEach((el, i) => {
       el.classList.toggle("sel", i === sel);
       el.setAttribute("aria-selected", i === sel ? "true" : "false");

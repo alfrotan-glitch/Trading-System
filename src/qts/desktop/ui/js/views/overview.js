@@ -1,330 +1,148 @@
-/* ============================================================
-   VIEW: OVERVIEW — the command center
-   Answers, in order: what is QTS doing · what market · what mode ·
-   is trading permitted · what needs attention · what should I do
-   next. Every answer is derived from canonical endpoints only.
-   ============================================================ */
-import { api, store, poll } from "../api.js";
-import { h, icon, clear } from "../dom.js";
-import {
-  card, stat, metricStat, badge, banner, page, rail, journey, checkGrid, tech,
-  emptyState, skeletonInto, freshStamp, kv, timeline, toast, provStrip, errorBox, table,
-} from "../components.js";
-import { fmtMetric, fmtAge, fmtUtc, fmtInt, fmtDuration } from "../format.js";
-import { modeInfo, lifecycleStages, statusInfo } from "../status.js";
-import { navigate } from "../router.js";
+/* Operator workspace: stable primary state → evidence → technical payloads.
+   Subscribes to shell resources. No separate polling loop or trading mutation. */
+import { store, syncOperations, RESOURCES, measurements, measure } from "../api.js";
+import { operationalState } from "../operations.js";
+import { h, icon } from "../dom.js";
+import { page } from "../components.js";
+import { fmtUtc, fmtAge, fmtInt } from "../format.js";
+import { statusInfo } from "../status.js";
+import { onDispose } from "../router.js";
+
+const link = (label, href, cls = "btn sm") => h("a", { class: cls, href }, label);
+const setText = (node, value) => { const s = String(value); if (node.textContent !== s) node.textContent = s; };
 
 export async function renderOverview(root) {
-  skeletonInto(root, "stats");
-  let health, risk, observe, demoState, live, manifest, notes, campaigns, audit, dash;
-  try {
-    [health, risk, observe, demoState, live, manifest, notes, campaigns, audit, dash] = await Promise.all([
-      api.get("/api/health"),
-      api.get("/api/risk"),
-      api.get("/api/observe/status"),
-      api.get("/api/demo/state"),
-      api.get("/api/live/status"),
-      api.get("/api/research/forward-manifest"),
-      api.get("/api/notifications"),
-      api.get("/api/research/campaigns"),
-      api.get("/api/audit?limit=8"),
-      api.get("/api/dashboard"),
-    ]);
-  } catch (e) {
-    clear(root);
-    root.appendChild(errorBox({
-      what: "the system overview could not be loaded",
-      known: e.status ? `API responded with status ${e.status}.` : "The API server did not respond.",
-      next: "use Retry; if it persists, restart QTS from the desktop launcher.",
-      raw: e.message,
-    }));
-    root.appendChild(h("div", { class: "mt-4" },
-      h("button", { class: "btn primary", onclick: () => renderOverview(root) }, icon("refresh", 14), "Retry")));
-    return;
-  }
+  root.classList.add("operator-workspace");
+  const activity = h("h2", { id: "operator-activity" }, "Loading operating state…");
+  const explanation = h("p", { class: "text-dim" });
+  const next = link("Inspect unavailable sources", "#/system/diagnostics", "btn primary");
+  const nextWhy = h("p", { class: "text-dim small" });
+  const announce = h("div", { class: "sr-only", role: "status", "aria-live": "polite" });
+  const refresh = h("button", { class: "btn", onclick: () => syncOperations(true) }, icon("refresh", 14), "Refresh sources");
+  root.appendChild(page({ crumb: "Overview", title: "Operator workspace", answer: "Current operation, authority and evidence — one source per fact.", actions: [refresh] }));
+  root.appendChild(h("section", { class: "operator-summary", "aria-labelledby": "operator-activity" },
+    h("div", null, h("div", { class: "eyebrow" }, "NOW / OBSERVATION"), activity, explanation),
+    h("div", { class: "next-action" }, h("div", { class: "eyebrow" }, "NEXT MEANINGFUL ACTION"), next, nextWhy)));
+  root.appendChild(announce);
 
-  const mode = modeInfo(health.effective_mode?.effective_mode);
-  const brokerUp = String(health.mt5 || "").toLowerCase() === "connected";
-  const dataUp = String(health.market_data || "").toLowerCase().includes("healthy");
-  const canTrade = !risk.blocked;
-  const clearRoot = clear(root);
-
-  /* ---------- page head ---------- */
-  const head = page({
-    crumb: "Overview",
-    title: "Command Center",
-    answer: [
-      h("b", null, mode.mode), ` — ${mode.blurb} `,
-      h("span", { class: "text-dim" }, "All numbers below come from the canonical backend; nothing on this page is simulated presentation data."),
-    ],
-    actions: [
-      h("button", { class: "btn", onclick: () => renderOverview(root) }, icon("refresh", 14), "Refresh"),
-      h("button", { class: "btn", onclick: () => navigate("#/system/setup") }, icon("gear", 14), "Setup"),
-    ],
-    body: null,
-  });
-  root.appendChild(head);
-
-  /* ---------- operator questions strip ---------- */
-  root.appendChild(h("div", { class: "stat-grid", style: { marginTop: "var(--sp-5)" } },
-    stat({
-      label: "Effective mode", value: mode.mode, tone: mode.tone === "neutral" ? "neutral" : mode.tone,
-      hint: mode.canSubmit === true ? "broker submission possible in this mode" : mode.canSubmit === "gated" ? "submission gated by demo authority" : "no broker submission in this mode",
-      icon: "layers",
-    }),
-    stat({
-      label: "Broker (MT5)", value: brokerUp ? "CONNECTED" : String(health.mt5 || "UNAVAILABLE").toUpperCase(),
-      tone: brokerUp ? "ok" : "warn",
-      hint: brokerUp ? "terminal reachable — account state on MT5 page" : "no live terminal context — observation/demo need it",
-      icon: "bank",
-    }),
-    stat({
-      label: "Market data", value: String(health.market_data || "UNAVAILABLE").toUpperCase(),
-      tone: dataUp ? "ok" : "warn",
-      hint: manifest.ticks_recorded ? `${fmtInt(manifest.ticks_recorded)} recorded ticks` : "no forward observations recorded yet",
-      icon: "activity",
-    }),
-    stat({
-      label: "Trading permission", value: canTrade ? "PERMITTED (within limits)" : "BLOCKED",
-      tone: canTrade ? "ok" : "err",
-      hint: canTrade ? "risk limits satisfied — see Risk for why" : `${risk.blocked_reasons.length} active reason(s) — see Risk`,
-      icon: "shield",
-    }),
-  ));
-
-  /* ---------- lifecycle rail ---------- */
-  const stages = lifecycleStages({
-    mode: mode.mode,
-    observeState: observe.state,
-    ticksRecorded: manifest.ticks_recorded,
-    demoState: demoState.state,
-    demoPermitted: demoState.execution_permitted,
-    liveEligible: live.eligible,
-    liveStatus: live.live_trading,
-  });
-  root.appendChild(card({
-    title: "Strategy lifecycle", sub: "where QTS is on the path to live — every stage transition is gated by evidence",
-    icon: "branch",
-    body: h("div", null,
-      rail(stages),
-      h("div", { class: "mt-3" }, banner(
-        live.eligible ? "warn" : "info",
-        ("LIVE — " + String(live.live_trading || "LOCKED")).toUpperCase(),
-        live.eligible ? "Eligible — human approval still required." : live.message,
-        "lock",
-      )),
-    ),
-  }));
-
-  /* ---------- attention + journey ---------- */
-  const attention = buildAttention({ health, risk, demoState, live, manifest, notes });
-  const journeySteps = await buildJourney({ health, observe, demoState, live, campaigns });
-
-  root.appendChild(h("div", { class: "grid-2 section" },
-    card({
-      title: "Requires attention", sub: "highest-severity first — nothing here is decorative", icon: "alert",
-      actions: [h("button", { class: "btn ghost sm", onclick: () => navigate("#/evidence/audit") }, "Full audit trail")],
-      body: attention.length
-        ? h("div", { class: "stack" }, attention.map((a) =>
-            h("div", { class: "row spread", style: { padding: "6px 0", borderBottom: "1px solid var(--line-soft)" } },
-              h("div", { class: "row", style: { gap: "8px" } }, badge(a.level), h("span", { class: "small text-dim" }, a.text)),
-              a.href ? h("button", { class: "btn ghost sm", onclick: () => navigate(a.href) }, "Open") : null,
-            )))
-        : emptyState({ icon: "check", title: "Nothing requires attention", desc: "All monitored subsystems are reporting healthy or are intentionally idle." }),
-    }),
-    card({
-      title: "Setup journey", sub: "guided path from install to controlled demo — each step is checked against the live system", icon: "sliders",
-      body: h("div", { class: "journey" }, journeySteps),
-    }),
-  ));
-
-  /* ---------- sessions + activity ---------- */
-  const obsActive = observe.state === "running";
-  root.appendChild(h("div", { class: "grid-2 section" },
-    card({
-      title: "Observation session", sub: "real-market forward observation — zero orders", icon: "eye",
-      actions: [h("button", { class: "btn ghost sm", onclick: () => navigate("#/market/observations") }, "Open observatory")],
-      body: h("div", { class: "stack" },
-        h("div", { class: "stat-grid" },
-          stat({ label: "Session state", value: obsActive ? "OBSERVING" : String(observe.state || "IDLE").toUpperCase(), tone: obsActive ? "run" : "neutral", icon: "eye" }),
-          stat({ label: "Ticks recorded", value: fmtInt(manifest.ticks_recorded), hint: `${fmtInt(manifest.real_market_ticks)} real-market`, icon: "database" }),
-          stat({ label: "Orders submitted", value: fmtInt(observe.orders_submitted), tone: Number(observe.orders_submitted) === 0 ? "ok" : "warn", hint: "observation never submits orders", icon: "zap" }),
-        ),
-        manifest.ticks_recorded
-          ? kv([["Canonical store", manifest.canonical_store], ["Capital exposure", manifest.no_capital_exposure ? "none (observation only)" : "review required"]])
-          : emptyState({
-              icon: "eye", title: "No real observations recorded yet",
-              desc: "Start an observation session to record real broker ticks (bid/ask/spread/regime). No orders are ever submitted during observation.",
-              actions: [h("button", { class: "btn", onclick: () => navigate("#/market/observations") }, icon("play", 14), "Start Observation")],
-            }),
-      ),
-    }),
-    card({
-      title: "Recent activity", sub: "audit events — append-only, redacted", icon: "clock",
-      actions: [h("button", { class: "btn ghost sm", onclick: () => navigate("#/evidence/audit") }, "Evidence")],
-      body: audit.length
-        ? timeline(audit.slice(0, 8).map((a) => ({
-            when: fmtUtc(a.time),
-            what: `${String(a.type || "event").toUpperCase()}${a.payload?.event ? ` — ${String(a.payload.event).replace(/_/g, " ")}` : ""}`,
-            detail: a.payload?.reason ? truncReason(a.payload.reason) : null,
-            tone: String(a.type).includes("block") || String(a.type).includes("veto") ? "err" : String(a.type).includes("enable") || String(a.type).includes("start") ? "ok" : "",
-          })))
-        : emptyState({ icon: "clock", title: "No activity yet", desc: "Audit events appear here as soon as QTS does anything: campaigns, checks, enables, blocks." }),
-    }),
-  ));
-
-  /* ---------- account / positions / latest decision ---------- */
-  root.appendChild(card({
-    title: "Account & positions", sub: "as reported by the canonical account authority — unmeasured values show UNAVAILABLE", icon: "bank",
-    actions: [h("button", { class: "btn ghost sm", onclick: () => navigate("#/trading/execution") }, "Execution center")],
-    body: h("div", { class: "stack" },
-      h("div", { class: "stat-grid" },
-        metricStat({ label: "Equity", metric: dash.equity, icon: "pulse" }),
-        metricStat({ label: "Balance", metric: dash.balance, icon: "bank" }),
-        metricStat({ label: "Exposure", metric: dash.exposure, icon: "layers" }),
-        metricStat({ label: "Spread", metric: dash.spread, digits: 1, icon: "activity" }),
-      ),
-      h("div", { class: "grid-2" },
-        (dash.open_positions ?? []).length
-          ? table({
-              columns: [
-                { key: "symbol", label: "Symbol" },
-                { key: "side", label: "Side" },
-                { key: "volume", label: "Volume", num: true },
-                { key: "profit", label: "P&L", num: true },
-              ],
-              rows: dash.open_positions,
-              empty: "No positions.",
-            })
-          : h("div", { class: "empty", style: { padding: "var(--sp-4)" } },
-              h("div", { class: "empty-title" }, "No open positions"),
-              h("div", { class: "empty-desc" }, "Positions appear only after real (demo or live) execution — simulated paper positions stay on the Paper/Shadow page, clearly labeled.")),
-        h("div", null,
-          h("div", { class: "eyebrow", style: { marginBottom: "6px" } }, "Reconciliation"),
-          banner(String(dash.reconciliation_status).toLowerCase() === "healthy" ? "ok" : "err",
-            String(dash.reconciliation_status ?? "UNAVAILABLE").toUpperCase(),
-            "internal state vs broker, checked continuously",
-            String(dash.reconciliation_status).toLowerCase() === "healthy" ? "check" : "alert"),
-          dash.latest_decision
-            ? [h("div", { class: "eyebrow mt-3", style: { marginBottom: "6px" } }, "Latest decision"),
-               h("div", { class: "gate-note" }, truncReason(JSON.stringify(dash.latest_decision)))]
-            : null,
-        ),
-      ),
-    ),
-  }));
-
-  /* ---------- research pulse ---------- */
-  root.appendChild(card({
-    title: "Research pulse", sub: "what the laboratory is doing", icon: "flask",
-    actions: [h("button", { class: "btn ghost sm", onclick: () => navigate("#/research/campaigns") }, "Open Research")],
-    body: campaigns.length
-      ? h("div", null,
-          table({
-            columns: [
-              { key: "id", label: "Campaign", render: (c) => h("span", { class: "primary-cell mono" }, c.id?.slice(0, 18) ?? "—") },
-              { key: "status", label: "Status", render: (c) => badge(c.status) },
-              { key: "family", label: "Family", render: (c) => c.config?.family ?? "—" },
-              { key: "symbol", label: "Symbol", render: (c) => `${c.config?.symbol ?? "—"} ${c.config?.timeframe ?? ""}` },
-              { key: "trials", label: "Max trials", num: true, render: (c) => String(c.config?.max_trials ?? "—") },
-            ],
-            rows: campaigns.slice(0, 5),
-            empty: "No campaigns.",
-            onRowClick: () => navigate("#/research/campaigns"),
-          }),
-        )
-      : emptyState({
-          icon: "flask", title: "Research has not started yet",
-          desc: "QTS researches like a scientist: it proposes falsifiable hypotheses, runs bounded experiments, attacks survivors, and records every failure as knowledge.",
-          actions: [h("button", { class: "btn primary", onclick: () => navigate("#/research/campaigns") }, icon("play", 14), "Open Research")],
-        }),
-  }));
-
-  root.appendChild(h("div", { class: "mt-4" }, tech({ health, risk_summary: { blocked: risk.blocked, reasons: risk.blocked_reasons }, observe, demo_state: demoState, live_status: live }, "Raw overview snapshot")));
-}
-
-function truncReason(r) {
-  const s = String(r);
-  return s.length > 120 ? s.slice(0, 119) + "…" : s;
-}
-
-/* ---------- attention builder (canonical sources only) ---------- */
-function buildAttention({ health, risk, demoState, live, manifest, notes }) {
-  const items = [];
-  for (const n of notes || []) {
-    items.push({ level: n.level, text: `${n.title}${n.detail ? ` — ${n.detail}` : ""}`, href: "#/overview" });
-  }
-  if (String(health.mt5).toLowerCase() !== "connected") {
-    items.push({ level: "warning", text: "MT5 terminal not connected — observation and demo cannot run. This is normal in development environments.", href: "#/system/mt5" });
-  }
-  if (String(health.market_data).toLowerCase() !== "healthy") {
-    items.push({ level: "warning", text: `Market data: ${health.market_data}. Signals requiring fresh data are not trustworthy right now.`, href: "#/market/monitor" });
-  }
-  if (risk.blocked) {
-    items.push({ level: "error", text: `Trading blocked by risk: ${risk.blocked_reasons.slice(0, 2).join("; ")}${risk.blocked_reasons.length > 2 ? ` (+${risk.blocked_reasons.length - 2} more)` : ""}`, href: "#/risk" });
-  }
-  if (demoState.state === "ENABLED" && demoState.readiness_expired) {
-    items.push({ level: "critical", text: "Demo execution enabled but readiness has expired — re-verify before any submission.", href: "#/trading/demo" });
-  }
-  return items.slice(0, 8);
-}
-
-/* ---------- setup journey (each step verified against live state) ---------- */
-async function buildJourney({ health, observe, demoState, live, campaigns }) {
-  let readiness = null;
-  try { readiness = await api.get("/api/demo/readiness"); } catch { readiness = null; }
-  const brokerUp = String(health.mt5).toLowerCase() === "connected";
-  const dataOk = String(health.market_data).toLowerCase() === "healthy";
-  const researchDone = (campaigns?.length ?? 0) > 0;
-  const readinessPassed = Boolean(readiness?.passed);
-
-  const steps = [
-    {
-      state: brokerUp ? "done" : "active",
-      title: "1 · Connect the MT5 environment",
-      desc: brokerUp ? `Terminal connected (${health.mt5}).` : "Install MetaTrader 5 with a DEMO account, then set the terminal path in Setup. Development without a terminal is fine — research works on historical data.",
-      action: brokerUp ? null : btn("Open Setup", "#/system/setup"),
-    },
-    {
-      state: dataOk ? "done" : brokerUp ? "active" : "blocked",
-      title: "2 · Verify market data freshness",
-      desc: dataOk ? "Market data pipeline healthy." : "Start a short observation session so QTS can record real ticks and verify freshness, spread and regime.",
-      action: !dataOk && brokerUp ? btn("Observation", "#/market/observations") : null,
-    },
-    {
-      state: researchDone ? "done" : "active",
-      title: "3 · Run research",
-      desc: researchDone ? `${campaigns.length} campaign(s) recorded — every trial is preserved.` : "Create a bounded research campaign. QTS proposes hypotheses, executes experiments and attacks survivors — failures are recorded as knowledge.",
-      action: researchDone ? btn("View research", "#/research/campaigns") : btn("Start research", "#/research/campaigns"),
-    },
-    {
-      state: readinessPassed ? "done" : researchDone ? "active" : "blocked",
-      title: "4 · Verify broker readiness (14 checks)",
-      desc: readinessPassed ? `All readiness checks passed ${readiness.timestamp ? fmtAge(readiness.timestamp) : ""}.` : "Run the 14-check readiness gate against the DEMO terminal: connection, account type, symbol, spread, freshness, account state.",
-      action: !readinessPassed ? btn("Run readiness", "#/trading/demo") : null,
-    },
-    {
-      state: demoState.enabled ? "done" : readinessPassed ? "active" : "blocked",
-      title: "5 · Enable controlled demo execution (optional)",
-      desc: demoState.enabled ? `Demo execution ENABLED — capped limits active${demoState.readiness_expired ? " (readiness expired — re-verify)" : ""}.` : "Demo execution stays disabled until readiness passes and you acknowledge the hard demo limits. Observation alone is always safe.",
-      action: !demoState.enabled && readinessPassed ? btn("Demo control", "#/trading/demo") : null,
-    },
-    {
-      state: live.eligible ? "active" : "locked",
-      title: "6 · Live governance",
-      desc: live.eligible
-        ? "All gates pass — explicit human confirmation is still required in Governance."
-        : "LIVE is structurally locked. Demo results never unlock it; see Governance for the exact missing requirements.",
-      action: h("button", { class: "btn ghost sm", onclick: () => navigate("#/governance/live") }, "Why is LIVE locked?"),
-    },
+  const definitions = [
+    ["mode", "Environment / mode", "health", "#/system/diagnostics"],
+    ["broker", "Broker (MT5)", "health", "#/system/mt5"],
+    ["market", "Market data pipeline", "health", "#/market/quality"],
+    ["quoteAge", "Collected quote age", "observe", "#/market/observations"],
+    ["observation", "Observation collector", "observe", "#/market/observations"],
+    ["permission", "DEMO execution", "demoState", "#/trading/demo"],
+    ["liveLabel", "LIVE governance", "live", "#/governance/live"],
   ];
-  return steps.map((s) => h("div", { class: `journey-step ${s.state}` },
-    h("div", { class: "j-step-mark", "aria-hidden": "true" }, s.state === "done" ? "✓" : ""),
-    h("div", null, h("div", { class: "j-title" }, s.title), h("div", { class: "j-desc" }, s.desc)),
-    s.action ? h("div", { class: "j-action" }, s.action) : null,
-  ));
-
-  function btn(label, href) {
-    return h("button", { class: "btn sm", onclick: () => navigate(href) }, label);
+  const tbody = h("tbody");
+  const cells = {};
+  for (const [key, title, resource, href] of definitions) {
+    const state = h("span", { class: "badge neutral" }, "UNAVAILABLE");
+    const detail = h("span");
+    const fresh = h("span", { class: "resource-fresh" });
+    cells[key] = { state, detail, fresh, resource };
+    tbody.appendChild(h("tr", { dataset: { fact: key } }, h("th", { scope: "row" }, title), h("td", null, state),
+      h("td", { class: "fact-detail" }, detail), h("td", { class: "mono small" }, fresh),
+      h("td", null, link("Inspect", href))));
   }
+  root.appendChild(h("section", { class: "operator-section", "aria-labelledby": "facts-title" },
+    h("h2", { id: "facts-title" }, "Operating facts"),
+    h("p", { class: "small text-dim" }, "Freshness below means the last successful API receipt, not the age of a market quote. Stale authority cannot establish current permission."),
+    h("div", { class: "tbl-wrap", tabindex: "0", "aria-label": "Operating facts, horizontally scrollable on narrow screens" },
+      h("table", { class: "tbl facts-table" },
+        h("thead", null, h("tr", null, ["Source", "Reported state", "Meaning / constraint", "API freshness", "Evidence"].map((t) => h("th", { scope: "col" }, t)))), tbody))));
+
+  const demoReasons = h("ul", { class: "reason-list" });
+  const liveReasons = h("ul", { class: "reason-list" });
+  root.appendChild(h("div", { class: "operator-grid" },
+    h("section", { class: "operator-section" }, h("h2", null, "Why DEMO is not an ordinary switch"),
+      h("p", { class: "text-dim small" }, "Readiness and durable execution permission are separate. A passing connection check does not enable execution."), demoReasons,
+      link("Inspect permission & readiness", "#/trading/demo")),
+    h("section", { class: "operator-section live-boundary" }, h("h2", null, "LIVE / independent governance"),
+      h("p", { class: "text-dim small" }, "Eligibility is not enablement. Observation and DEMO evidence never automatically authorize live capital."), liveReasons,
+      link("Inspect missing LIVE evidence", "#/governance/live"))));
+
+  const observationEvidence = h("dl", { class: "evidence-values" });
+  const obsFields = {};
+  for (const title of ["Session", "Recorded quotes", "Orders submitted (collector)", "Last broker event (UTC)"]) {
+    obsFields[title] = h("dd", null, "UNAVAILABLE");
+    observationEvidence.append(h("dt", null, title), obsFields[title]);
+  }
+  root.appendChild(h("details", { class: "operator-section evidence-disclosure" },
+    h("summary", null, "Observation evidence / scope and limitations"), observationEvidence,
+    h("p", { class: "text-dim small" }, "Recorded quotes are not complete tick history. Collector order counts do not establish terminal-wide activity. Structural consistency does not establish origin, completeness or research sufficiency."),
+    h("p", { class: "text-dim small" }, "No trend chart is drawn here: these endpoints describe current state, not a comparable historical series."),
+    link("Open observations", "#/market/observations"), " ", link("Open research inventory", "#/research/data"), " ", link("Account & execution evidence", "#/trading/execution"), " ", link("Audit trail", "#/evidence/audit")));
+
+  const raw = h("pre");
+  const technical = h("details", { class: "operator-section" }, h("summary", null, "Raw overview snapshot / technical evidence"), raw);
+  const perf = h("pre");
+  const diagnostics = h("details", { class: "operator-section" }, h("summary", null, "UI performance / last 100 local measurements"),
+    h("p", { class: "text-dim small" }, "Browser request, update and route durations in milliseconds; not broker latency. Bounded to 100 records. Heap growth requires a separate browser profiling run."), perf);
+  root.append(technical, diagnostics);
+  const reasonList = (el, entries) => {
+    const signature = JSON.stringify(entries);
+    if (el.dataset.signature === signature) return;
+    el.dataset.signature = signature;
+    const wasOpen = el.querySelector("details")?.open;
+    const rest = entries.slice(4);
+    el.replaceChildren(...entries.slice(0, 4).map((x) => h("li", null, x)));
+    if (rest.length) el.appendChild(h("li", null, h("details", { open: wasOpen }, h("summary", null, `${rest.length} more recorded reasons`), h("ul", null, rest.map((x) => h("li", null, x))))));
+  };
+  let lastAnnouncement = "";
+  function update() {
+    if (!root.isConnected) return;
+    const started = performance.now();
+    const s = operationalState(store.data);
+    setText(activity, s.activity);
+    setText(explanation, `${s.mode.mode} — ${s.mode.blurb}`);
+    setText(next, s.next.label); next.href = s.next.href;
+    setText(nextWhy, s.next.why);
+    refresh.disabled = Object.values(store.data.resources).some((m) => m.loading);
+    const summary = `${s.activity}; DEMO ${s.permission}; LIVE ${s.liveLabel}`;
+    if (summary !== lastAnnouncement) { setText(announce, summary); lastAnnouncement = summary; }
+    const meanings = {
+      mode: "Environment capability is not execution permission.",
+      broker: "Terminal connectivity; not proof of a healthy current quote.",
+      market: "Backend pipeline status, not proof of a healthy live quote.",
+      quoteAge: s.obs?.last_tick_time ? `Last reported broker event: ${fmtUtc(s.obs.last_tick_time)}. Clock accuracy is not established.` : "No current collected-quote timestamp is available. Pipeline health is not quote freshness.",
+      observation: s.observing ? "Collector reports an active worker. No order path." : s.obs?.last_error || s.obs?.note || "No active collection is established.",
+      permission: !s.sources.demoState.current ? "Current permission cannot be established." : `Authority state: ${s.demo?.state ?? "UNAVAILABLE"}; risk and execution gates remain independent.`,
+      liveLabel: "Never auto-enabled. Independent evidence and human governance required.",
+    };
+    for (const [key] of definitions) {
+      const { state, detail, fresh, resource } = cells[key];
+      const value = key === "mode" ? s.mode.mode : s[key];
+      const info = statusInfo(value);
+      setText(state, value);
+      state.className = `badge ${key === "liveLabel" ? "locked" : info.tone}`;
+      setText(detail, meanings[key]);
+      const m = store.data.resources[resource];
+      setText(fresh, `${s.sources[resource].label}${m?.updatedAt ? ` · ${fmtAge(m.updatedAt)}` : ""}`);
+      fresh.title = m?.updatedAt ? `Last successful API receipt: ${fmtUtc(m.updatedAt)}; ${RESOURCES[resource].path}` : RESOURCES[resource].path;
+    }
+    reasonList(demoReasons, !s.sources.demoState.current ? ["Permission source unavailable or stale. Retry or inspect Diagnostics; no current permission is established."] : [
+      `Authority reports ${s.permission}.`,
+      ...(s.permission === "DISABLED" ? ["Execution remains disabled. Observation does not require enabling it."] : []),
+      ...s.reasons.map((r) => `Permission: ${r}`),
+      ...s.readinessReasons.map((r) => `Current readiness: ${r}`),
+    ]);
+    reasonList(liveReasons, !s.sources.live.current ? ["Governance source unavailable or stale. Current eligibility cannot be established."] :
+      [`Authority reports ${s.liveLabel}.`, ...s.liveReasons.map((r) => String(r).replace(/_/g, " "))]);
+    const obs = s.obs;
+    setText(obsFields.Session, obs?.session_id ?? "UNAVAILABLE");
+    setText(obsFields["Recorded quotes"], obs?.ticks_recorded == null ? "UNAVAILABLE" : fmtInt(obs.ticks_recorded));
+    setText(obsFields["Orders submitted (collector)"], obs?.orders_submitted == null ? "UNAVAILABLE" : fmtInt(obs.orders_submitted));
+    setText(obsFields["Last broker event (UTC)"], obs?.last_tick_time ? fmtUtc(obs.last_tick_time) : "UNAVAILABLE");
+    if (technical.open) raw.textContent = JSON.stringify({ sources: store.data.resources, health: store.data.health, observation: store.data.observe, demo: store.data.demoState, live: store.data.live }, null, 2);
+    if (diagnostics.open) perf.textContent = JSON.stringify(measurements, null, 2);
+    measure("render", "operator workspace update", performance.now() - started);
+  }
+  technical.addEventListener("toggle", update);
+  diagnostics.addEventListener("toggle", update);
+  const off = store.on("resources", update);
+  const clock = setInterval(update, 1000); clock.unref?.();
+  onDispose(root, () => { off(); clearInterval(clock); });
+  update();
+  await syncOperations();
 }

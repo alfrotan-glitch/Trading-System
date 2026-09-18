@@ -34,9 +34,9 @@ test("modeInfo: canonical modes carry submit/data truth", () => {
   assert.equal(modeInfo("DEVELOPMENT").canSubmit, false);
   assert.equal(modeInfo("PAPER").canSubmit, false);
   assert.equal(modeInfo("SHADOW").canSubmit, false);
-  assert.equal(modeInfo("SHADOW").realData, true);
-  assert.equal(modeInfo("DEMO_FORWARD").canSubmit, "gated");
-  assert.equal(modeInfo("LIVE").canSubmit, true);
+  assert.equal(modeInfo("SHADOW").realData, false);
+  assert.equal(modeInfo("DEMO_FORWARD").canSubmit, false);
+  assert.equal(modeInfo("LIVE").canSubmit, "gated");
   assert.equal(modeInfo("LIVE").tone, "locked");
 });
 
@@ -57,22 +57,23 @@ test("lifecycleStages: development sandbox → demo stages blocked, LIVE locked"
 });
 
 test("lifecycleStages: demo_forward observing → demo_obs current", () => {
-  const stages = lifecycleStages({ mode: "DEMO_FORWARD", observeState: "running", demoState: "DISABLED", liveEligible: false });
+  const stages = lifecycleStages({ mode: "DEMO_FORWARD", observeState: "OBSERVING", demoState: "DISABLED", liveEligible: false });
   const byId = Object.fromEntries(stages.map((s) => [s.id, s]));
   assert.equal(byId.demo_obs.state, "current");
   assert.equal(byId.demo_exec.state, "blocked");
 });
 
-test("lifecycleStages: demo enabled → demo_exec current; earlier stages done", () => {
-  const stages = lifecycleStages({ mode: "DEMO_FORWARD", observeState: "running", demoState: "ENABLED", demoPermitted: true, liveEligible: false });
+test("lifecycleStages: demo execution authority → demo_exec current; no inferred research completion", () => {
+  const stages = lifecycleStages({ mode: "DEMO_EXECUTION", observeState: "OBSERVING", demoState: "ENABLED", demoPermitted: true, liveEligible: false });
   const byId = Object.fromEntries(stages.map((s) => [s.id, s]));
   assert.equal(byId.demo_exec.state, "current");
-  assert.equal(byId.demo_obs.state, "done");
+  assert.equal(byId.research.state, "unknown");
+  assert.equal(byId.demo_obs.state, "current");
   assert.equal(byId.live.state, "live-locked"); // demo never unlocks live
 });
 
 test("lifecycleStages: live eligible never 'done' — stays pending governance", () => {
-  const stages = lifecycleStages({ mode: "DEMO_FORWARD", observeState: "running", demoState: "ENABLED", liveEligible: true });
+  const stages = lifecycleStages({ mode: "DEMO_FORWARD", observeState: "OBSERVING", demoState: "ENABLED", liveEligible: true });
   const byId = Object.fromEntries(stages.map((s) => [s.id, s]));
   assert.equal(byId.live.state, "eligible");
   assert.equal(byId.live.blockedWhy, null);
@@ -90,4 +91,11 @@ test("freshnessTone: 60s contract", () => {
   assert.equal(freshnessTone(120_000), "warn");
   assert.equal(freshnessTone(400_000), "err");
   assert.equal(freshnessTone(null), "neutral");
+});
+
+test("blocked compound statuses are never healthy", () => {
+  for (const state of ["ENABLED_BUT_BLOCKED", "unhealthy", "connected_but_failed"]) assert.notEqual(statusInfo(state).tone, "ok");
+  assert.equal(modeInfo("DEMO_EXECUTION").canSubmit, "gated");
+  const stages = lifecycleStages({ mode: "DEVELOPMENT", observeState: "STOPPED", ticksRecorded: 900 });
+  assert.equal(stages.find((x) => x.id === "demo_obs").state, "blocked");
 });

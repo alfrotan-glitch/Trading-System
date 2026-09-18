@@ -1,128 +1,105 @@
-# QTS UI — Design System & Product Architecture
+# QTS UI — Design System & Operator Workstation
 
-The desktop interface is a **command center for a scientific trading system**.
-It is built as a coherent product: one visual language, one information
-architecture, one rule — **the UI renders canonical backend state and never
-invents its own**.
+The desktop interface is a **professional research and market-operations workstation**. Modern does not mean dark mode or gradients. It means clarity, speed, trust, hierarchy, and controlled complexity. The UI renders canonical backend state and never invents its own.
 
----
+## 1. Architecture — what was changed and why
 
-## 1. Architecture
-
-| Decision | Choice | Rationale |
+| Decision | Current choice | Why it matters for modern QTS |
 |---|---|---|
-| Stack | Vanilla ES modules + CSS custom properties | No build step; FastAPI serves the files; pywebview/WebView2 loads them over HTTP; Windows packaging stays `python -m qts.desktop` |
-| Charts | In-house SVG (`spark`, `barList`) | No CDN dependency (offline desktop); renders only real recorded values; refuses to draw with < 2 points |
-| State | Tiny pub-sub `store` + per-view fetch | The backend is the only authority; no duplicated business rules in the frontend |
-| Location | `src/qts/desktop/ui/` | `index.html`, `css/` (4 layers), `js/` (core + `views/`) |
+| Stack | Vanilla ES modules + CSS custom properties, no build step | FastAPI serves files directly; Windows packaging stays `python -m qts.desktop`; no hidden bundler magic |
+| State authority | `RESOURCES` map + per-source freshness, `operationalState()` pure derivation | One fact = one source. Health, observation, DEMO permission, LIVE governance and notifications have independent staleness. No single “synced X ago” that lies about authority |
+| Transport | Request coalescing for GET, timeout 20s, bounded performance log | Prevents duplicate polling storms; stale/failed sources stay visible instead of freezing |
+| Presentation prefs | `workspace.js` sanitized to density/width/navigation + opt-in route restore | Workspace behavior without persisting permission, mode, or risk acknowledgements |
+| Focus model | `focus.js` shared dialog containment, inert background, Escape restores invoker | Keyboard-first, WCAG 2.2 visible focus, predictable modal/palette/drawer behavior |
+| Shell | `router.js` disposes per-route resources, cancels late renders, measures route duration | No leaked intervals, no interleaved content when navigation races |
 
-DOM-free logic (`format.js`, `status.js`) is unit-tested with Node
-(`node --test tests/ui/js/format.test.mjs tests/ui/js/status.test.mjs`); the
-full shell is exercised by a jsdom
-functional tour against a **real** backend (`tests/test_ui_logic.py`, which
-starts uvicorn itself; running `tests/ui/js/shell.test.mjs` directly needs a
-backend on `QTS_UI_BASE`, default `http://127.0.0.1:8901`);
-Playwright/Chromium specs run wherever a browser is available
-(`tests/ui/test_browser.py`) and capture screenshots of the key screens.
+DOM-free logic is unit-tested with Node (`format.test.mjs`, `status.test.mjs`, `operations.test.mjs`, `workstation.test.mjs`). The full shell is exercised by a jsdom functional tour against a real backend (`tests/test_ui_logic.py`). Playwright specs capture 11 key screens.
 
 ## 2. Information architecture
 
-28 equally-weighted tabs became **8 primary areas with contextual sub-navigation**
-(reachable via the sidebar or `Ctrl/⌘+K` command palette):
+8 primary areas, 23 destinations. Every legacy endpoint has a home.
 
-| Area | Contains |
+| Area | Operator question it answers |
 |---|---|
-| **Overview** | Command center: mode, broker, market data, permission, lifecycle rail, attention list, guided setup journey, account/positions, recent activity, research pulse |
-| **Research** | Campaigns · Hypotheses · Experiment ledger · Strategy library · Validation scorecard · Research memory · Data observatory |
-| **Market** | Market monitor · Observations (forward observatory) · Data quality · Lineage |
-| **Trading** | Demo forward control · Paper/Shadow · Execution · Comparison |
-| **Risk** | Safety cockpit: effective limits + provenance, vetoes, mode restrictions, config hash |
-| **Evidence** | Evidence explorer (self-audit) · Audit trail |
-| **System** | Setup · MT5 connection · Diagnostics |
-| **Governance** | LIVE — LOCKED. Deliberately calm, restricted, separate |
+| **Overview** | What is QTS doing now? What mode? Is data healthy? Is observation running? Is execution permitted? Why is it blocked? What next? |
+| **Research** | What has been tried, what survived falsification, what data exists |
+| **Market** | What did the broker report, when, with what provenance |
+| **Trading** | What execution authority says, what would-be vs real fills show |
+| **Risk** | Why trading is blocked or permitted, with config hash |
+| **Evidence** | Append-only audit, searchable |
+| **System** | Setup, MT5 connection, diagnostics (per-source freshness) |
+| **Governance** | LIVE — LOCKED, calm, restricted, never auto-enabled |
 
-Routes are hash-based (`#/market/observations`) and deep-linkable.
+Routes are hash-based and deep-linkable. Sidebar has a local filter input. Ctrl+K opens a command palette with `aria-activedescendant` and focus containment.
 
-## 3. Design tokens (`css/tokens.css`)
+## 3. Design tokens and workstation layer
 
-- **Surfaces**: graphite scale `--bg-0…3`, inset wells; structure carried by 1px borders, not shadows.
-  The content area sits on a faint two-tone ambient wash (`--glow-accent`,
-  `--glow-research`) so depth reads without heavy shadows.
-- **Type**: `Inter/Segoe UI` UI stack; `JetBrains Mono/Consolas` for numerics with `tabular-nums`; 11–28 px scale.
-- **Spacing**: 4 px scale. **Radii**: 4/8/12. **Elevation**: shadows stay subtle —
-  `--shadow-1…3` for structure, `--shadow-4` reserved for floating layers
-  (palette, modals, notification popover).
-- **Accent**: one restrained blue. Semantic state trios (`bg/border/text`) for:
-  `ok · run · info · warn · err · neutral · research · locked`.
+- Surfaces: graphite `--bg-0…3`, 1px borders carry structure. `workstation.css` removes ambient glows, hover lifts and breathing animations — motion is reserved for meaningful state only.
+- Type: Inter/Segoe UI + JetBrains Mono with tabular-nums for numeric columns. 11–28px scale, one spacing system (4px), one radii system (4/6/8/12).
+- Density: compact (6px table padding) vs comfortable (11px), focused (1440px) vs wide (2400px) content width. Remembers only presentation, never authority.
+- Semantic states: `ok · run · info · warn · err · neutral · research · locked` each with bg/line/text trio plus redundant mark `● ▲ ■ ○ ✓ ✕`. `UNAVAILABLE` is a word, never `0` or `-`.
+- Responsive: header wraps at 1120px, sidebar becomes overlay drawer below 920px, operator facts table scrolls horizontally with keyboard focus ring at 640px. No horizontal overflow at 900px.
+- Reduced motion: `prefers-reduced-motion` disables all animations.
 
-### Motion & polish layer (v2)
+## 4. Modern QTS principles implemented
 
-Motion is information, never decoration — every animation encodes state:
+**Instant situational awareness:** Overview shows NOW / OBSERVATION (activity + environment blurb) and exactly one NEXT MEANINGFUL ACTION with why. Header chips: mode, observation, DEMO, LIVE LOCKED, plus per-source freshness in the facts table.
 
-- **View transitions**: each route dispatch fades/rises in (`view-in`, 340 ms settle curve).
-- **Live pulses**: the API link dot pulses while synced (`conn-pulse`), goes
-  amber when the last sync is >45 s old, red when unreachable; the rail's
-  current stage rings; fresh-data dots pulse while data is young and sit still
-  when stale/down.
-- **Breathing OBSERVING chip**: while a forward-observation session runs, the
-  header carries a run-toned chip whose icon breathes.
-- **Entry choreography**: palette, modals and popovers settle in with a slight
-  overshoot curve (`--ease-pop`); scrims fade. Cards/stats lift 1 px on hover;
-  the active nav item carries a gradient left rail.
-- **Header glass**: translucent header with a gradient hairline, backdrop blur.
-- `prefers-reduced-motion` collapses all of the above to ~0 ms — calm by default.
+**Hierarchy, not dumping:** Primary layer = human-readable state. Secondary = metrics/evidence. Technical = raw JSON behind `<details>`. Primary facts are 6–7 rows, not 20 cards.
 
-### Semantic states — color is never the only channel
-Every status renders as a **badge with a label and a redundant mark**
-(`●` ok, `▲` warn, `■` err, `○` neutral/locked). Canonical states used across
-the UI: HEALTHY, READY, OBSERVING, RUNNING, BLOCKED, DEGRADED, WARNING, ERROR,
-**UNAVAILABLE**, **INSUFFICIENT EVIDENCE**, **LOCKED**.
-`UNAVAILABLE` is always typeset as a word — it must never be confusable with `0`.
+**High density without chaos:** Facts table with aligned numeric columns, compact tables, expandable detail, drawers for row drill-down. Missing values render as `UNAVAILABLE`.
 
-## 4. Truthfulness contract (the UI is a presentation layer over truth)
+**Progressive disclosure:** Overview has three disclosure levels: operating facts (always), evidence values (observation evidence details), technical snapshots (raw). Drawer for audit/order details.
 
-Enforced by tests (`tests/ui/js/*.test.mjs`, `tests/test_ui_shell.py`, jsdom tour):
+**Workspace-oriented:** Persistent presentation prefs (density/width/navigation), remember-route opt-in, New Window opens current hash for multi-monitor, sidebar filter, Ctrl+K palette, keyboard sortable tables (Enter/Space), focus restoration on Escape.
 
-1. `fmtMetric` renders a value **only** when the backend says `MEASURED`;
-   otherwise it prints the status (`UNAVAILABLE`, `INSUFFICIENT EVIDENCE`, …) plus reason.
-2. Provenance is always shown explicitly (REAL / DEMO / SYNTHETIC / … chips).
-3. Timestamps carry their basis (`… UTC`); ages are honest and clamped.
-4. The header always shows the effective mode and a permanent **LIVE LOCKED** chip.
-5. Demo permission display mirrors `/api/demo/state` verbatim (e.g. `DEMO EXECUTION: DISABLED`);
-   enabling requires the same acks the backend enforces, and a 409 renders the full blocker list.
-6. Empty states state what is missing and the next safe action; charts never draw
-   fabricated history (`Not enough observations yet`).
-7. Failures show what failed, what QTS knows, what it does not know, and what to do next —
-   with a Retry control; API requests abort at 20 s and surface instead of freezing.
-8. No external origins (offline desktop), no decorative fabrication, no dark patterns —
-   the LIVE enablement control is disabled and quiet while the gate is locked.
+**Data visualization that explains:** No fabricated trend chart on Overview. Charts elsewhere require ≥2 real points or show empty state with reason. Quote age is separate from pipeline health.
 
-## 5. Operator model
+**Real-time alive without flicker:** Polling via `poll()` with one in-flight iteration, hidden-tab pause, visibility resume, per-resource loading/error state. Updates reuse nodes (setText) and preserve focus/open disclosures. Source failure shows `STALE · RETRYING` not stale data as current.
 
-Every page answers, in order: **primary answer** (page head), **primary action**
-(page actions), **supporting evidence** (cards/checklists), **advanced details**
-(`<details class="tech">` raw JSON). The Overview additionally runs the
-**setup journey**: six steps (terminal → data freshness → research → readiness →
-demo → governance), each verified live against canonical endpoints, never assumed.
+**Truth is visual design:** States `MEASURED`, `UNAVAILABLE`, `INSUFFICIENT EVIDENCE`, `BLOCKED`, `DEGRADED`, `READY`, `OBSERVING`, `LOCKED` are first-class. Pipeline HEALTHY ≠ quote freshness. `DISABLED` authority + passing readiness ≠ permission.
 
-Real-time behavior: header syncs every 15 s, observation status every 8 s,
-global notifications every 20 s — all paused while the window is hidden, all
-showing a connection indicator (`synced Xs ago` / `API unreachable — values
-may be stale`). The header also hosts a **notification center** (bell with
-severity count, critical/error items marked red, list sorted by severity via
-`attentionRank`, deep-linking into the Overview) and an **OBSERVING** chip
-that appears only while `/api/observe/status` says a session is running —
-backend truth, never assumed. Sortable tables publish `aria-sort`; every route
-dispatch moves focus to the new page for assistive tech.
+**Safety understandable:** DEMO permission and readiness are separate. `DISABLED` vs `CONFLICT · INSPECT` vs `PERMITTED BY AUTHORITY` (only when mode DEMO_EXECUTION and authority ENABLED). LIVE shows `LOCKED` vs `ELIGIBLE · STILL GATED` vs `UNAVAILABLE`, never enabled. Enable controls disabled while locked.
+
+**Navigation minimal cost:** 8 groups, searchable sidebar, palette with fuzzy scoring, shallow hierarchy, `aria-current=page`, skip link, workspace preferences.
+
+**Consistency:** One spacing, typography, icon (24px stroke), state, table, button hierarchy. No decorative gradients in workstation layer.
+
+**Accessibility:** Skip link, landmarks, visible focus, inert background for modals/drawers, focus containment, Escape handling, sortable headers keyboard accessible, `aria-sort`, `aria-activedescendant`, live region for operator activity changes.
+
+**Performance is UX:** Request coalescing, bounded 100-entry measurement log (request/render/route/coalesced), per-view refresh guards, interval cleanup on route dispose. Heap growth requires separate browser profiling — not faked.
+
+**Professional instrument:** Operator feels oriented (activity + mode), informed (per-source freshness), in control (inspect links), never misled (UNAVAILABLE ≠ 0), never overwhelmed (one next action), able to inspect deeply (evidence disclosures).
+
+## 5. Truthfulness contract
+
+Enforced by tests:
+
+1. `fmtMetric` only formats when `MEASURED`.
+2. `statusInfo` exact match — `ENABLED_BUT_BLOCKED` never healthy; `DISCONNECTED` never connected.
+3. `modeInfo` — DEVELOPMENT/PAPER/SHADOW cannot submit; DEMO_FORWARD is observation-only; DEMO_EXECUTION gated; LIVE gated and locked.
+4. `operationalState` — OBSERVING requires `state=OBSERVING` + `thread_alive=true` + current source; stale/failed authority → `UNAVAILABLE`; conflicting mode/permission → `CONFLICT · INSPECT`.
+5. Failure retains last receipt time; notifications never freshen health; malformed success does not replace state.
+6. GET coalesces, POST never coalesces; stopped poll cannot resurrect; hidden polls do not fetch.
+7. Table missing → `UNAVAILABLE`, not 0; sort pushes missing to end.
+8. Drawer/modal focus contained, Escape restores invoker, background inert.
+9. Palette button opens focused search, Escape restores focus.
+10. Late failing route cannot replace newer route; cleanup fires once.
 
 ## 6. Testing matrix
 
-| Layer | File | Requires |
+| Layer | File | Checks |
 |---|---|---|
-| Truthfulness logic units | `tests/ui/js/format.test.mjs`, `status.test.mjs` | Node |
-| Full functional tour (real backend, real DOM) | `tests/ui/js/shell.test.mjs` via `tests/test_ui_logic.py` | Node + jsdom (auto-installed) |
-| Served-shell integrity | `tests/test_ui_shell.py` | — |
-| Browser + screenshots + stale/error behavior | `tests/ui/test_browser.py` | `pip install playwright && playwright install chromium` (skip-guarded) |
+| Truthfulness units | `format.test.mjs`, `status.test.mjs`, `operations.test.mjs` | 39 cases: mode, permission, freshness, coalescing, bounded log, blocked states |
+| Interaction & a11y | `workstation.test.mjs` | Table keyboard, drawer inertness, modal ack, palette focus, route race, disclosure preservation |
+| Full functional tour | `shell.test.mjs` via `test_ui_logic.py` | 11 routes, header facts, broker truthfulness, DEMO DISABLED + failing checks, LIVE LOCKED hero, risk banner, observation zero-orders, palette |
+| Served-shell integrity | `test_ui_shell.py` | Design tokens, truthfulness primitives, asset existence, no CDN, IA 8 groups, legacy endpoint coverage |
+| Browser + screenshots | `test_browser.py` (skip-guarded) | 11 screens to `artifacts/ui_screens/`, mode chip = backend truth, permission banner, blocked risk, stale indicator |
 
-Screenshots land in `artifacts/ui_screens/` (gitignored) for visual review;
-diffing baselines can be added on top of them without touching product code.
+Workstation screenshots in `artifacts/workstation/` are generated with the same Chromium used for Playwright when network is unavailable.
+
+## 7. What is intentionally not implemented
+
+- Native multi-monitor workspace restoration and synchronized crosshairs (TradingView benchmark) — not implemented; New Window opens current hash for manual multi-monitor use, honestly documented in workspace preferences.
+- Quote-arrival intensity charts from 1s polling — not complete tick history; would mislead.
+- Automatic LIVE enablement from observation/DEMO evidence — structurally forbidden.

@@ -60,7 +60,7 @@ before(async () => {
 
   await import("../../../src/qts/desktop/ui/js/main.js?boot=" + Date.now());
   await waitUntil(() => document.querySelectorAll(".nav-item").length > 0, 15000, "shell bootstrap");
-  await waitUntil(() => document.querySelectorAll(".stat").length >= 4, 20000, "overview data render");
+  await waitUntil(() => document.querySelectorAll("[data-fact]").length === 7 && /unavailable|disconnected/i.test(document.querySelector("[data-fact=broker]")?.textContent || ""), 20000, "overview data render");
 });
 
 after(() => {
@@ -78,32 +78,25 @@ test("header communicates the critical operating facts continuously", async () =
   const facts = document.getElementById("header-facts");
   await waitUntil(() => facts.textContent.includes("DEVELOPMENT"), 15000, "mode fact");
   assert.ok(facts.textContent.includes("mode"), "mode chip present");
-  assert.ok(facts.textContent.includes("LIVE LOCKED"), "LIVE LOCKED chip always visible");
+  await waitUntil(() => facts.textContent.includes("LIVE LOCKED"), 15000, "LIVE authority response");
   assert.ok(facts.querySelector(".fact.live-locked"), "locked chip styled as locked");
 });
 
-test("truthfulness: broker UNAVAILABLE is not rendered as connected (sandbox has no MT5)", () => {
-  const broker = [...document.querySelectorAll(".stat")].find((s) => s.textContent.includes("Broker (MT5)"));
-  assert.ok(broker, "broker stat exists");
-  const val = broker.querySelector(".stat-value").textContent;
-  assert.ok(/UNAVAILABLE|DISCONNECTED/i.test(val), `broker renders honestly, got: ${val}`);
-  assert.ok(!/connected/i.test(val.replace("DISCONNECTED", "")), "never claims CONNECTED without the backend saying so");
+test("overview: operational hierarchy and truthful broker state", () => {
+  const broker = document.querySelector('[data-fact="broker"]');
+  assert.match(broker.textContent, /UNAVAILABLE|Unavailable|DISCONNECTED/i);
+  assert.ok(document.querySelector(".operator-summary"));
+  assert.equal(document.querySelectorAll(".next-action a").length, 1);
+  assert.equal(document.querySelectorAll(".rail-node").length, 0, "no implied lifecycle completion");
+  assert.equal(document.querySelectorAll(".journey-step").length, 0, "no execution-enabling checklist in primary layer");
 });
-
-test("overview: lifecycle rail renders 7 stages with LIVE locked", () => {
-  const nodes = [...document.querySelectorAll(".rail-node")].map((n) => n.querySelector(".rail-label").textContent);
-  assert.deepEqual(nodes, ["Research", "Validating", "Paper", "Shadow", "Demo Observation", "Demo Execution", "LIVE"]);
-  const live = document.querySelectorAll(".rail-node.live-locked").length;
-  assert.equal(live, 1, "LIVE node rendered as live-locked");
-  assert.ok(document.body.textContent.includes("LIVE — LOCKED"), "explicit lock banner");
-});
-
-test("overview: setup journey renders 6 guided steps", async () => {
-  await waitUntil(() => document.querySelectorAll(".journey-step").length >= 6, 30000, "journey steps");
-  const steps = document.querySelectorAll(".journey-step");
-  assert.equal(steps.length, 6);
-  assert.ok(document.body.textContent.includes("Connect the MT5 environment"));
-  assert.ok(document.body.textContent.includes("Why is LIVE locked?") || document.querySelector(".journey-step.locked"));
+test("overview: authority, evidence and technical disclosure are distinct", async () => {
+  await waitUntil(() => document.querySelector('[data-fact="permission"]').textContent.includes("DISABLED"));
+  await waitUntil(() => document.querySelector('[data-fact="liveLabel"]').textContent.includes("LOCKED"));
+  assert.ok(document.body.textContent.includes("Raw overview snapshot"));
+  const details = document.querySelectorAll(".operator-workspace > details");
+  assert.equal(details.length, 3);
+  assert.ok([...details].every((x) => !x.open));
 });
 
 test("navigation to Trading → Demo shows authority truth: DISABLED + failing checks", async () => {
@@ -152,7 +145,7 @@ test("observation view: orders-submitted stat exists and observation copy never 
 });
 
 test("command palette: Ctrl+K opens, search filters, Enter navigates", async () => {
-  document.body.classList.add("palette-open");
+  document.querySelector('[aria-label="Open command palette (Ctrl+K)"]').click();
   const input = document.querySelector(".palette-input");
   assert.ok(input, "palette input exists");
   input.value = "governance";

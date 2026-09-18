@@ -214,7 +214,7 @@ export async function renderDiagnostics(root) {
       h("div", { class: "check-grid" },
         ["mt5", "market_data", "risk", "reconciliation"].map((k) => {
           const v = health?.[k];
-          const ok = String(v).toLowerCase().includes("healthy") || String(v).toLowerCase() === "connected";
+          const ok = String(v).toLowerCase() === "healthy" || String(v).toLowerCase() === "connected";
           return h("div", { class: `check ${ok ? "pass" : "na"}` },
             h("div", { class: "mark" }, ok ? "✓" : "!"),
             h("div", null, h("div", { class: "name" }, humanKey(k)), h("div", { class: "detail" }, String(v ?? "UNAVAILABLE"))),

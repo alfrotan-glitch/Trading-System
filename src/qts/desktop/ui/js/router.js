@@ -1,3 +1,5 @@
+import { measure } from "./api.js";
+import { readWorkspace, saveWorkspace } from "./workspace.js";
 /* ============================================================
    QTS ROUTER — hash router over the information architecture.
    Routes are declared in the IA tree (main.js); this module
@@ -6,6 +8,15 @@
 
 let routes = new Map(); // "#/market/observations" → {render, group, label}
 let current = null;
+let currentHost = null;
+const cleanups = new WeakMap();
+export function onDispose(host, fn) {
+  if (!host.isConnected) { fn(); return; }
+  if (!cleanups.has(host)) cleanups.set(host, []);
+  cleanups.get(host).push(fn);
+}
+function dispose(host) { (cleanups.get(host) || []).forEach((fn) => fn()); cleanups.delete(host); }
+
 
 export function registerRoutes(IA) {
   routes = new Map();
@@ -43,6 +54,8 @@ export async function dispatch() {
   current = route;
   const main = document.getElementById("main");
   if (!main) return;
+  if (currentHost) dispose(currentHost);
+  const start = performance.now();
   main.scrollTop = 0; // new page — scroll to top
   document.getElementById("app")?.classList.remove("nav-open");
   if (route.page?.label) document.title = `${route.page.label} · QTS Trading System`;
@@ -51,20 +64,24 @@ export async function dispatch() {
   // interleaved with the new page (prevents duplicated/raced content).
   const host = document.createElement("div");
   host.className = "view-enter"; // per-route transition (respects reduced motion)
+  currentHost = host;
   main.replaceChildren(host);
+  if (readWorkspace().rememberRoute && routes.has(location.hash)) saveWorkspace({ route: location.hash });
   main.focus({ preventScroll: true }); // SPA a11y: announce the new page to AT
   try {
     await route.render(host);
+    if (currentHost === host) measure("route", route.page.label, performance.now() - start);
   } catch (e) {
     console.error("view render failed", e);
-    import("../components.js").then(({ errorBox }) => {
-      main.replaceChildren(errorBox({
-        what: "this view failed to render",
-        known: "The backend may still be healthy — other views can work.",
-        next: "Refresh this view or pick another section from the sidebar.",
-        raw: e.stack || e.message,
-      }));
-    });
+    if (currentHost !== host) return;
+    const { errorBox } = await import("./components.js");
+    if (currentHost !== host) return;
+    host.replaceChildren(errorBox({
+      what: "this view failed to render",
+      known: "The backend may still be healthy — other views can work.",
+      next: "Refresh this view or pick another section from the sidebar.",
+      raw: e.stack || e.message,
+    }));
   }
 }
 
@@ -74,7 +91,8 @@ export function startRouter() {
   // history.replaceState is silent, so exactly one initial render happens.
   if (!location.hash || location.hash === "#" || location.hash === "#/") {
     if (window.history?.replaceState) {
-      window.history.replaceState(null, "", "#/overview"); // silent — one initial dispatch below
+      const p = readWorkspace();
+      window.history.replaceState(null, "", p.rememberRoute && routes.has(p.route) ? p.route : "#/overview"); // silent — one initial dispatch below
     } else {
       location.hash = "#/overview"; // hashchange will dispatch; skip the manual call
       return;
