@@ -24,9 +24,23 @@ from qts.domain.value_objects import Instrument, Tick
 
 
 class MarketDataError(RuntimeError):
-    """Fail-closed market data violation."""
+    """Fail-closed market data violation.
 
-    pass
+    ``kind`` is a machine-readable classification used by the acquisition
+    ledger, so an attempt can be accounted without parsing message text:
+
+    * ``"unavailable"`` — no tick could be obtained (feed closed, symbol
+      unknown, retrieval failed). An acquisition/availability failure.
+    * ``"validation"``  — a tick WAS obtained and rejected by a safety rule
+      (stale, future, spread, integrity, symbol identity, market state).
+
+    The distinction never changes which quotes are accepted: both are
+    fail-closed and neither is ever persisted.
+    """
+
+    def __init__(self, *args: Any, kind: str = "validation") -> None:
+        super().__init__(*args)
+        self.kind = kind
 
 
 class MarketDataProvider:
@@ -78,7 +92,9 @@ class MarketDataProvider:
                 try:
                     spec = self.broker.get_symbol_spec(expected_symbol)
                 except Exception as e:
-                    raise MarketDataError(f"market not trade_allowed for {expected_symbol}: {e}") from e
+                    raise MarketDataError(
+                        f"market not trade_allowed for {expected_symbol}: {e}", kind="unavailable"
+                    ) from e
                 if not spec.trade_allowed or spec.trade_mode == 0:
                     raise MarketDataError(f"market not trade_allowed for {expected_symbol} mode {spec.trade_mode}")
         except MarketDataError:
@@ -90,16 +106,20 @@ class MarketDataProvider:
     def get_tick(self, instrument: Instrument) -> Tick:
         """Authoritative executable tick — validated, fail-closed."""
         if not hasattr(self.broker, "ticks"):
-            raise MarketDataError(f"broker {type(self.broker).__name__} has no ticks() for {instrument.symbol}")
+            raise MarketDataError(
+                f"broker {type(self.broker).__name__} has no ticks() for {instrument.symbol}", kind="unavailable"
+            )
         try:
             tick = self.broker.ticks(instrument)
         except Exception as e:
             # Convert pydantic ValidationError or other broker errors to MarketDataError
             if isinstance(e, MarketDataError):
                 raise
-            raise MarketDataError(f"tick retrieval failed for {instrument.symbol}: {e}") from e
+            raise MarketDataError(f"tick retrieval failed for {instrument.symbol}: {e}", kind="unavailable") from e
         if tick is None:
-            raise MarketDataError(f"no tick available for {instrument.symbol} (market closed or symbol unknown)")
+            raise MarketDataError(
+                f"no tick available for {instrument.symbol} (market closed or symbol unknown)", kind="unavailable"
+            )
         self._validate_tick(tick, instrument.symbol)
         self._last_tick[instrument.symbol] = tick
         self._last_valid[instrument.symbol] = datetime.now(UTC)

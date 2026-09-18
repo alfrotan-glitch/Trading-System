@@ -132,6 +132,18 @@ class ForwardObservatory:
             con.execute(
                 "CREATE TABLE IF NOT EXISTS observation_sessions (id TEXT PRIMARY KEY, start TEXT, end TEXT, status TEXT)"
             )
+            # Durable acquisition ledger (FO-R1 prerequisite: every acquisition
+            # attempt has an auditable outcome). Same store, same module — the
+            # accepted-tick table stays the ONLY pricing data; this table never
+            # holds a price and never holds a rejected observation's data.
+            con.execute(
+                "CREATE TABLE IF NOT EXISTS observation_attempts ("
+                " session_id TEXT, seq INTEGER, outcome TEXT, attempted_at TEXT,"
+                " scheduled_at TEXT, slot_index INTEGER, interval_s REAL,"
+                " monotonic_s REAL, record_id TEXT, dup_key TEXT, reason TEXT,"
+                " persistence_ok INTEGER, deferred INTEGER, gap_slots INTEGER,"
+                " payload TEXT, PRIMARY KEY (session_id, seq))"
+            )
             # Canonical accessor columns (added for provenance-first queries;
             # older databases are migrated in place, payload stays immutable).
             # Backfill runs ONCE, only when a column was just added — never a
@@ -358,6 +370,8 @@ class ForwardObservatory:
             }
         else:
             measured = {"status": "UNAVAILABLE", "value": None, "reason": "no observation signals"}
+        if not signal_count:
+            return self.empty_divergence_shape(session_id)
         return {
             "session_id": session_id,
             "signals": signal_count,
@@ -375,6 +389,324 @@ class ForwardObservatory:
             },
             "order_path": {"orders_submitted": 0, "execution_engine_reachable": False},
         }
+
+    def empty_divergence_shape(self, session_id: str | None = None) -> dict[str, Any]:
+        """The exact zero-signal divergence report.
+
+        Single source of truth for the no-signals case, so the collector's
+        bounded manifest path can report divergence without scanning the
+        signal table (OBSERVE_ONLY records no signals at all).
+        """
+        return {
+            "session_id": session_id,
+            "signals": 0,
+            "no_trade_signals": 0,
+            "hypothetical_price_divergence": {
+                "status": "UNAVAILABLE",
+                "value": None,
+                "reason": "no observation signals",
+            },
+            "execution_divergence": {
+                "status": "UNAVAILABLE",
+                "value": None,
+                "reason": "OBSERVE_ONLY never submits orders and receives no realized fills",
+            },
+            "realized_pnl": {
+                "status": "UNAVAILABLE",
+                "value": None,
+                "reason": "no positions or executions in observation store",
+            },
+            "order_path": {"orders_submitted": 0, "execution_engine_reachable": False},
+        }
+
+    # ----------------------------------------------------- acquisition ledger
+
+    #: Closed acquisition-outcome vocabulary — every acquisition attempt has
+    #: exactly ONE outcome. Rejected/errored attempts never enter accepted
+    #: tick data, and a missing interval is never classified as an observation.
+    ATTEMPT_OUTCOMES = (
+        "SESSION_START",  # session anchor row: schedule + policy, not a market attempt
+        "STORED",  # validated quote persisted as a NEW accepted record
+        "DUPLICATE",  # same raw broker quote already observed — never re-persisted
+        "VALIDATION_REJECTED",  # provider rejected it (stale/future/spread/integrity/symbol)
+        "RETRIEVAL_ERROR",  # broker/terminal retrieval or normalization failed
+        "STORAGE_ERROR",  # validated quote could NOT be persisted — never accepted
+        "UNRESOLVED",  # outcome could not be determined — never treated as market activity
+    )
+
+    def record_attempt(
+        self,
+        session_id: str,
+        seq: int,
+        *,
+        outcome: str,
+        attempted_at: str,
+        scheduled_at: str | None = None,
+        slot_index: int | None = None,
+        interval_s: float | None = None,
+        monotonic_s: float | None = None,
+        record_id: str | None = None,
+        dup_key: str | None = None,
+        reason: str | None = None,
+        persistence_ok: bool | None = None,
+        deferred: bool = False,
+        gap_slots: int = 0,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        """Append ONE acquisition-attempt row to the durable ledger.
+
+        Append-only by construction: ``(session_id, seq)`` is the primary key,
+        so a re-used sequence refuses rather than replacing history. The caller
+        decides how a failure here is accounted for (the collector counts it);
+        this method never swallows a storage error.
+        """
+        if outcome not in self.ATTEMPT_OUTCOMES:
+            raise ValueError(f"unknown acquisition outcome {outcome!r}")
+        body: dict[str, Any] = {
+            "session_id": session_id,
+            "seq": int(seq),
+            "outcome": outcome,
+            "attempted_at": attempted_at,
+            "scheduled_at": scheduled_at,
+            "slot_index": slot_index,
+            "interval_s": interval_s,
+            "monotonic_s": monotonic_s,
+            "record_id": record_id,
+            "dup_key": dup_key,
+            "reason": reason,
+            "persistence_ok": persistence_ok,
+            "deferred": bool(deferred),
+            "gap_slots": int(gap_slots),
+        }
+        if extra:
+            body["extra"] = extra
+        with db_connect(self.db_path) as con:
+            con.execute(
+                "INSERT INTO observation_attempts (session_id, seq, outcome, attempted_at, scheduled_at,"
+                " slot_index, interval_s, monotonic_s, record_id, dup_key, reason, persistence_ok,"
+                " deferred, gap_slots, payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    session_id,
+                    int(seq),
+                    outcome,
+                    attempted_at,
+                    scheduled_at,
+                    slot_index,
+                    interval_s,
+                    monotonic_s,
+                    record_id,
+                    dup_key,
+                    reason,
+                    None if persistence_ok is None else int(bool(persistence_ok)),
+                    int(bool(deferred)),
+                    int(gap_slots),
+                    json.dumps(body, sort_keys=True, default=str),
+                ),
+            )
+            con.commit()
+
+    def list_attempts(self, session_id: str) -> list[dict[str, Any]]:
+        """Ledger rows for one session, in acquisition order."""
+        with db_connect(self.db_path) as con:
+            rows = con.execute(
+                "SELECT seq, outcome, attempted_at, scheduled_at, slot_index, interval_s, monotonic_s,"
+                " record_id, dup_key, reason, persistence_ok, deferred, gap_slots, payload"
+                " FROM observation_attempts WHERE session_id=? ORDER BY seq",
+                (session_id,),
+            ).fetchall()
+        out: list[dict[str, Any]] = []
+        for (
+            seq,
+            outcome,
+            attempted_at,
+            scheduled_at,
+            slot_index,
+            interval_s,
+            monotonic_s,
+            record_id,
+            dup_key,
+            reason,
+            persistence_ok,
+            deferred,
+            gap_slots,
+            payload,
+        ) in rows:
+            out.append(
+                {
+                    "session_id": session_id,
+                    "seq": seq,
+                    "outcome": outcome,
+                    "attempted_at": attempted_at,
+                    "scheduled_at": scheduled_at,
+                    "slot_index": slot_index,
+                    "interval_s": interval_s,
+                    "monotonic_s": monotonic_s,
+                    "record_id": record_id,
+                    "dup_key": dup_key,
+                    "reason": reason,
+                    "persistence_ok": None if persistence_ok is None else bool(persistence_ok),
+                    "deferred": bool(deferred),
+                    "gap_slots": gap_slots,
+                    "payload": payload,
+                }
+            )
+        return out
+
+    def attempt_reconciliation(self, session_id: str, *, stale_after_s: float = 300.0) -> dict[str, Any]:
+        """Reconcile acquisition outcomes against the accepted-tick store.
+
+        Invariant (FO-R1): every attempt is classified, and the accepted rows
+        are exactly the attempts that reported a successful persistence — so
+        ``stored + duplicate + validation_reject + retrieval_error +
+        storage_error + unresolved == attempts`` holds with no residue, and no
+        stored row exists without a ledger entry (both directions checked).
+        Missing slots are reported as MISSED, never as market activity.
+        """
+        attempts = self.list_attempts(session_id)
+        counts: dict[str, int] = dict.fromkeys(self.ATTEMPT_OUTCOMES, 0)
+        stored_ids: list[str] = []
+        for row in attempts:
+            counts[row["outcome"]] = counts.get(row["outcome"], 0) + 1
+            if row["outcome"] == "STORED" and row["record_id"]:
+                stored_ids.append(row["record_id"])
+
+        with db_connect(self.db_path) as con:
+            store_ids = [
+                r[0]
+                for r in con.execute(
+                    "SELECT id FROM observation_ticks WHERE session_id=? ORDER BY rowid", (session_id,)
+                ).fetchall()
+            ]
+        stored_unique = len(set(stored_ids))
+        missing = sorted(set(stored_ids) - set(store_ids))
+        orphans = sorted(set(store_ids) - set(stored_ids))
+
+        # Sequence continuity: attempts are numbered 1..N (seq 0 = session anchor).
+        seqs = sorted(r["seq"] for r in attempts)
+        expected_seqs = list(range(1, (max(seqs) + 1) if seqs else 1))
+        seq_gaps = [s for s in expected_seqs if s not in set(seqs)]
+
+        # Coverage: nominal poll slots vs the slots actually serviced.
+        slots = sorted({r["slot_index"] for r in attempts if r["slot_index"] is not None})
+        expected_slots = (max(slots) + 1) if slots else 0
+        missed = [i for i in range(expected_slots) if i not in set(slots)]
+        ranges: list[list[int]] = []
+        for idx in missed:
+            if ranges and idx == ranges[-1][1] + 1:
+                ranges[-1][1] = idx
+            else:
+                ranges.append([idx, idx])
+
+        attempted = [r["attempted_at"] for r in attempts if r["attempted_at"]]
+        last_age: float | None = None
+        if attempted:
+            with contextlib.suppress(ValueError):
+                last_age = (datetime.now(UTC) - datetime.fromisoformat(attempted[-1])).total_seconds()
+        status = (self.session(session_id) or {}).get("status")
+
+        market_attempts = [r for r in attempts if r["outcome"] != "SESSION_START"]
+        classified = sum(counts[k] for k in self.ATTEMPT_OUTCOMES if k != "SESSION_START")
+        return {
+            "session_id": session_id,
+            "session_status": status,
+            "attempts": len(market_attempts),
+            "counts_by_outcome": counts,
+            "stored": stored_unique,
+            "duplicate_skip": counts["DUPLICATE"],
+            "validation_reject": counts["VALIDATION_REJECTED"],
+            "retrieval_error": counts["RETRIEVAL_ERROR"],
+            "storage_error": counts["STORAGE_ERROR"],
+            "unresolved": counts["UNRESOLVED"],
+            "deferred_attempts": sum(1 for r in attempts if r["deferred"]),
+            "classified_total": classified,
+            "accounting_balanced": classified == len(market_attempts),
+            "store_rows": len(store_ids),
+            "ledger_store_agreement": (stored_unique == len(store_ids) and not missing and not orphans),
+            "missing_record_ids": missing,
+            "orphan_store_ids": orphans,
+            "sequence_contiguous": not seq_gaps,
+            "sequence_gaps": seq_gaps[:100],
+            "expected_slots": expected_slots,
+            "serviced_slots": len(slots),
+            "missed_slots": len(missed),
+            "missed_slot_ranges": ranges[:50],
+            "missed_slot_ranges_truncated": len(ranges) > 50,
+            "first_attempt_at": attempted[0] if attempted else None,
+            "last_attempt_at": attempted[-1] if attempted else None,
+            "last_attempt_age_s": last_age,
+            "stale_active": bool(status == "ACTIVE" and last_age is not None and last_age > stale_after_s),
+            "note": (
+                "MISSED slots and UNRESOLVED attempts are NOT market activity: they carry no price "
+                "and must never be read as zero spread, zero volatility or a quiet market."
+            ),
+        }
+
+    def clock_history(self, session_id: str) -> dict[str, Any]:
+        """Measured broker-UTC offset history for one session.
+
+        Derived from the per-attempt ledger (each row carries the offset and
+        basis actually applied). Reports only what was observed; the adapter
+        exposes no measurement timestamp, so that field is never fabricated.
+        """
+        seen: dict[tuple[float, str], dict[str, Any]] = {}
+        for row in self.list_attempts(session_id):
+            try:
+                extra = json.loads(row["payload"] or "{}").get("extra") or {}
+            except ValueError:
+                continue
+            offset = extra.get("server_utc_offset_s")
+            if offset is None:
+                continue
+            basis = str(extra.get("offset_basis", "unknown"))
+            key = (float(offset), basis)
+            entry = seen.setdefault(
+                key,
+                {
+                    "server_utc_offset_s": float(offset),
+                    "basis": basis,
+                    "first_seen_at": row["attempted_at"],
+                    "last_seen_at": row["attempted_at"],
+                    "observations": 0,
+                },
+            )
+            entry["last_seen_at"] = row["attempted_at"]
+            entry["observations"] += 1
+        offsets = sorted(seen.values(), key=lambda e: (e["first_seen_at"] or "", e["server_utc_offset_s"]))
+        return {
+            "session_id": session_id,
+            "distinct_offsets": len(offsets),
+            "offsets": offsets,
+            "offset_changed_mid_session": len(offsets) > 1,
+            "measurement_time": {
+                "status": "UNAVAILABLE",
+                "value": None,
+                "reason": "the MT5 adapter exposes the measured offset and its basis, not the measurement timestamp",
+            },
+        }
+
+    def stale_active_sessions(self, *, stale_after_s: float = 300.0) -> list[dict[str, Any]]:
+        """ACTIVE sessions whose ledger has gone quiet — a possible unexplained stop.
+
+        A worker that dies without writing a terminal state leaves its session
+        ACTIVE. This is the durable detector for that condition (it never
+        rewrites the historical row; it reports it).
+        """
+        with db_connect(self.db_path) as con:
+            rows = con.execute("SELECT id FROM observation_sessions WHERE status='ACTIVE'").fetchall()
+        out: list[dict[str, Any]] = []
+        for (sid,) in rows:
+            rec = self.attempt_reconciliation(sid, stale_after_s=stale_after_s)
+            if rec["stale_active"]:
+                out.append(
+                    {
+                        "session_id": sid,
+                        "last_attempt_at": rec["last_attempt_at"],
+                        "last_attempt_age_s": rec["last_attempt_age_s"],
+                        "attempts": rec["attempts"],
+                        "reason": "session is ACTIVE with no recent acquisition attempt — possible unexplained stop",
+                    }
+                )
+        return out
 
     def real_observation_count(self, *, symbol: str | None = None, since_iso: str | None = None) -> int:
         """Count observations whose provenance qualifies as REAL-market evidence

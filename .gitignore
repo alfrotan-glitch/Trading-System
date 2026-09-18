@@ -60,3 +60,4 @@ artifacts/
 
 # Raw Desktop observation exports must not enter history, regardless of location.
 *.session_evidence.json
+*.research_snapshot.json

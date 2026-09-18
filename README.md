@@ -142,6 +142,6 @@ Docs start `docs/00-overview.md` → `docs/13-adrs.md`. Build exe: `scripts/buil
 
 ## Current Status
 
-`BLOCK — KEEP NO_TRADE`, Live LOCKED. Test and static-check counts are run-dependent and are not treated as research evidence. LIVE gate evidence is tiered (structural / integration / real-environment); MT5 connectivity passes only with a REAL terminal — mock-based connectivity evidence is banned. `data/curated/` and `data/manifests/` are deliberately **not tracked** — a clean clone establishes its dataset via `qts data bootstrap` (truthful provenance, `SYNTHETIC` label). Remaining limitations in `docs/release_readiness_report.md` K.
+`BLOCK — KEEP NO_TRADE`, Live LOCKED. Observation-boundary status (what is closed, what each evidence layer proves, what remains unavailable) is tracked in **`docs/forward_observation_status.md`** — the historical FO-R1 design document is a baseline snapshot of its inspection date and is not rewritten. Test and static-check counts are run-dependent and are not treated as research evidence. LIVE gate evidence is tiered (structural / integration / real-environment); MT5 connectivity passes only with a REAL terminal — mock-based connectivity evidence is banned. `data/curated/` and `data/manifests/` are deliberately **not tracked** — a clean clone establishes its dataset via `qts data bootstrap` (truthful provenance, `SYNTHETIC` label). Remaining limitations in `docs/release_readiness_report.md` K.
 
 Never treat BACKTEST/PAPER/SHADOW/DEMO as LIVE. No profitability claimed.

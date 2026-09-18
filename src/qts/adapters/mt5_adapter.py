@@ -1048,6 +1048,30 @@ class MT5Adapter(BrokerAdapter):
         self._server_offset_cache[symbol] = (fallback_offset, fallback_basis, now_epoch)
         return fallback_offset, fallback_basis
 
+    def offset_cache_info(self, symbol: str) -> dict[str, Any]:
+        """Read-only view of the cached broker-offset state. Never measures.
+
+        Reports what the cache actually knows: the offset, its basis, and the
+        time the cache entry was last stamped. A retained offset keeps its last
+        refresh stamp, so this is deliberately NOT labelled a measurement
+        timestamp — no clock fact is invented.
+        """
+        cached = self._server_offset_cache.get(symbol)
+        if cached is None:
+            return {"status": "UNAVAILABLE", "reason": "no broker offset has been measured yet for this symbol"}
+        offset, basis, stamped = cached
+        return {
+            "status": "MEASURED",
+            "server_utc_offset_s": float(offset),
+            "basis": str(basis),
+            "cache_stamped_at": datetime.fromtimestamp(stamped, tz=UTC).isoformat(),
+            "cache_age_s": max(0.0, time.time() - float(stamped)),
+            "note": (
+                "cache refresh time; an offset retained after a failed probe keeps its last refresh stamp, "
+                "which is not necessarily the original measurement time"
+            ),
+        }
+
     def ticks(self, instrument: Instrument) -> Tick | None:
         """Raw broker tick, normalized to the canonical QTS time basis (true UTC).
 
