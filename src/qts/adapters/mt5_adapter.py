@@ -991,26 +991,62 @@ class MT5Adapter(BrokerAdapter):
         no server-time/offset call. Measurement: offset lies in
         [bar_time - utc_now, bar_time + 60 - utc_now) and must be a multiple
         of 15 minutes — a 60s window holds at most one such grid point, so a
-        match is EXACT. No grid point (market closed/frozen series/inconsistent
-        data) -> refuse to guess -> legacy same-basis fallback (0.0,
-        'assumed-utc-fallback'); MarketDataProvider's UNCHANGED future/stale
-        validation then loudly rejects server-basis stamps instead of silently
-        mis-dating them. Cached per broker symbol for _OFFSET_TTL_S.
+        match is EXACT.
+
+        Authoritative clock basis: true UTC is ``time.time()`` (system clock);
+        broker stamps are server-local. The offset is server - UTC, measured
+        via the forming-M1-bar probe. Canonical normalization is
+        ``event_time = broker_stamp - offset`` -> true UTC, single application,
+        never double-applied.
+
+        Failure handling (fix for FS-c42bbd +3h future-tick storm):
+        - If the probe succeeds, the measured offset is cached and returned.
+        - If the probe fails (no bar, stale bar, no grid point), we MUST NOT
+          lose a previously measured offset by overwriting it with 0. That
+          caused 2396 good ticks then 30 consecutive ``tick from future``
+          failures when the 5-minute TTL expired and ``copy_rates`` was
+          intermittently unavailable, falling back to 0.0 while ticks were
+          still server-local (+3h).
+        - Contract: on probe failure, retain the last known good offset if
+          present (return it, refresh its timestamp to avoid hammering); only
+          if no offset was ever measured do we fall back to
+          ``(0.0, 'assumed-utc-fallback')``. The fallback still loudly fails
+          via MarketDataProvider's unchanged future/stale validation instead
+          of silently mis-dating.
+
+        Cached per broker symbol for _OFFSET_TTL_S.
         """
         now_epoch = time.time()
         cached = self._server_offset_cache.get(symbol)
         if cached is not None and (now_epoch - cached[2]) < self._OFFSET_TTL_S:
             return cached[0], cached[1]
-        offset, basis = 0.0, "assumed-utc-fallback"
+
+        # Attempt fresh measurement
+        measured_offset: float | None = None
+        measured_basis: str | None = None
         bar_time = self._latest_bar_time(symbol)
         if bar_time is not None:
             lo = bar_time - now_epoch
             hi = lo + 60.0
             grid = math.ceil(lo / self._OFFSET_QUANTUM_S) * self._OFFSET_QUANTUM_S
             if lo <= grid < hi and abs(grid) <= self._MAX_PLAUSIBLE_OFFSET_S:
-                offset, basis = float(grid), "measured-m1-bar"
-        self._server_offset_cache[symbol] = (offset, basis, now_epoch)
-        return offset, basis
+                measured_offset, measured_basis = float(grid), "measured-m1-bar"
+
+        if measured_offset is not None:
+            self._server_offset_cache[symbol] = (measured_offset, measured_basis, now_epoch)
+            return measured_offset, measured_basis
+
+        # Measurement failed — retain previous good offset if any, do not lose it
+        if cached is not None:
+            prev_offset, prev_basis, _ = cached
+            # Refresh timestamp to avoid tight retry loop, but keep offset/basis
+            self._server_offset_cache[symbol] = (prev_offset, prev_basis, now_epoch)
+            return prev_offset, prev_basis
+
+        # No previous offset ever measured — fallback, loudly rejected for server-basis stamps
+        fallback_offset, fallback_basis = 0.0, "assumed-utc-fallback"
+        self._server_offset_cache[symbol] = (fallback_offset, fallback_basis, now_epoch)
+        return fallback_offset, fallback_basis
 
     def ticks(self, instrument: Instrument) -> Tick | None:
         """Raw broker tick, normalized to the canonical QTS time basis (true UTC).
