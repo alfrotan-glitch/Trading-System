@@ -17,26 +17,39 @@ export function sanitizeWorkspace(raw = {}) {
 }
 
 export function readWorkspace() {
-  try { return sanitizeWorkspace(JSON.parse(window.localStorage.getItem(KEY))); }
-  catch { return { ...defaults }; }
+  try {
+    const w = typeof window !== "undefined" ? window : null;
+    const raw = w?.localStorage?.getItem(KEY);
+    return raw ? sanitizeWorkspace(JSON.parse(raw)) : { ...defaults };
+  } catch { return { ...defaults }; }
 }
 
 export function applyWorkspace() {
-  const p = readWorkspace();
-  document.body.dataset.density = p.density;
-  document.body.dataset.width = p.width;
-  document.documentElement.style.setProperty("--sidebar-w", { narrow: "184px", standard: "216px", wide: "264px" }[p.navigation]);
-  document.documentElement.style.setProperty("--content-max", p.width === "wide" ? "1600px" : "1440px");
+  try {
+    const w = typeof window !== "undefined" ? window : null;
+    if (!w?.document) return;
+    const p = readWorkspace();
+    w.document.body.dataset.density = p.density;
+    w.document.body.dataset.width = p.width;
+    w.document.documentElement.style.setProperty("--sidebar-w", { narrow: "184px", standard: "216px", wide: "264px" }[p.navigation]);
+    w.document.documentElement.style.setProperty("--content-max", p.width === "wide" ? "1600px" : "1440px");
+  } catch {}
 }
 
 export function saveWorkspace(changes) {
   const p = sanitizeWorkspace({ ...readWorkspace(), ...changes });
-  try { window.localStorage.setItem(KEY, JSON.stringify(p)); } catch { return false; }
+  try {
+    const w = typeof window !== "undefined" ? window : null;
+    w?.localStorage?.setItem(KEY, JSON.stringify(p));
+  } catch { return false; }
   applyWorkspace();
   return true;
 }
 
 export function initWorkspace() {
   applyWorkspace();
-  window.addEventListener("storage", (e) => { if (e.key === KEY) applyWorkspace(); });
+  try {
+    const w = typeof window !== "undefined" ? window : null;
+    w?.addEventListener("storage", (e) => { if (e.key === KEY) applyWorkspace(); });
+  } catch {}
 }

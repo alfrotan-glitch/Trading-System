@@ -162,6 +162,11 @@ export function table({ columns, rows, empty, onRowClick, sortable = true, dense
   wrap.appendChild(tbl);
 
   function renderBody() {
+    // preserve focus: remember active row index and focused th
+    const active = document.activeElement;
+    const activeInBody = active && tbody.contains(active) ? [...tbody.children].indexOf(active) : -1;
+    const activeTh = active && thead.contains(active) ? [...thead.querySelectorAll("th")].indexOf(active) : -1;
+
     clear(tbody);
     let data = [...(rows || [])];
     if (state.key) {
@@ -186,20 +191,30 @@ export function table({ columns, rows, empty, onRowClick, sortable = true, dense
         const v = raw == null ? "UNAVAILABLE" : raw;
         return h("td", { class: c.num ? "num" : "" }, typeof v === "object" && v !== null && !(v instanceof Node) ? String(v) : v);
       });
-      const trR = h("tr", { class: onRowClick ? "clickable" : "", tabindex: onRowClick ? "0" : "-1", role: onRowClick ? "button" : null }, tds);
+      const trR = h("tr", { class: onRowClick ? "clickable" : "", tabindex: onRowClick ? "-1" : "-1", role: onRowClick ? "button" : null, "data-row": String(data.indexOf(r)) }, tds);
       if (onRowClick) {
         trR.addEventListener("click", () => onRowClick(r));
         trR.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRowClick(r); }
-          if (e.key === "ArrowDown") { e.preventDefault(); const nxt = trR.nextElementSibling; if (nxt) nxt.focus(); }
-          if (e.key === "ArrowUp") { e.preventDefault(); const prv = trR.previousElementSibling; if (prv) prv.focus(); else thead.querySelector("th")?.focus(); }
+          if (e.key === "ArrowDown") { e.preventDefault(); const nxt = trR.nextElementSibling; if (nxt && nxt.classList.contains("clickable")) nxt.focus(); }
+          if (e.key === "ArrowUp") { e.preventDefault(); const prv = trR.previousElementSibling; if (prv && prv.classList.contains("clickable")) prv.focus(); else thead.querySelectorAll("th")[activeTh >=0 ? activeTh : 0]?.focus(); }
+          if (e.key === "Home") { e.preventDefault(); const first = tbody.querySelector("tr.clickable"); if (first) first.focus(); }
+          if (e.key === "End") { e.preventDefault(); const rowsEl = [...tbody.querySelectorAll("tr.clickable")]; const last = rowsEl[rowsEl.length-1]; if (last) last.focus(); }
         });
       }
       tbody.appendChild(trR);
     }
-    // make first row tabbable if any
-    const first = tbody.querySelector("tr");
-    if (first && onRowClick) first.tabIndex = 0;
+    // restore focus: first row tabbable, and restore previous focus if possible
+    const clickables = [...tbody.querySelectorAll("tr.clickable")];
+    if (clickables.length) {
+      clickables.forEach((el, i) => el.tabIndex = i === 0 ? 0 : -1);
+      if (activeInBody >= 0 && clickables[activeInBody]) {
+        clickables[activeInBody].focus();
+        clickables[activeInBody].tabIndex = 0;
+      } else if (activeTh >= 0) {
+        thead.querySelectorAll("th")[activeTh]?.focus();
+      }
+    }
   }
   renderBody();
   // wrap-level arrow navigation into table

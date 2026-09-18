@@ -175,13 +175,19 @@ function factChip({ label, value, cls = "", title }) {
 let palette;
 function openWorkspace() {
   const p = readWorkspace();
+  const ctx = getContext();
   const form = h("div", { class: "stack" },
-    h("p", { class: "small text-dim" }, "Presentation preferences only. Modes, permissions and risk acknowledgements are never restored from browser storage. Multi-monitor: New window opens current context for second monitor. Native monitor placement and linked crosshairs are not implemented."),
+    h("p", { class: "small text-dim" }, `Presentation preferences only. Modes, permissions and risk acknowledgements are never restored from browser storage. Context ${ctx.symbol} · ${ctx.timeframe} syncs across windows via BroadcastChannel, never permission. Multi-monitor: New window opens current context for second monitor. Native monitor placement and linked crosshairs benchmark — not claimed implemented if not.`),
+    h("div", { class: "stat-grid" },
+      stat({ label: "Density", value: p.density, hint: "compact = 5px rows, 10px cards — high density without chaos" }),
+      stat({ label: "Width", value: p.width, hint: "focused 1440px, wide 1600px" }),
+      stat({ label: "Context", value: `${ctx.symbol} · ${ctx.timeframe}`, hint: "presentation only, syncs, never permission" }),
+    ),
   );
   for (const [key, label, options, hint] of [
-    ["density", "Density", ["compact", "comfortable"], "Compact: 5px table rows, 10px cards — high density without chaos. Comfortable: more whitespace."],
-    ["width", "Workspace width", ["focused", "wide"], "Focused: 1440px max — readable. Wide: 1600px — more columns visible."],
-    ["navigation", "Navigation width", ["narrow", "standard", "wide"], "Sidebar width — persists per browser."],
+    ["density", "Density", ["compact", "comfortable"], "Compact: 5px table rows, 10px cards — high density without chaos. Comfortable: more whitespace — professional instrument, not decorative."],
+    ["width", "Workspace width", ["focused", "wide"], "Focused: 1440px max — readable, oriented. Wide: 1600px — more columns visible, controlled complexity."],
+    ["navigation", "Navigation width", ["narrow", "standard", "wide"], "Sidebar width — persists per browser, never permission. Shallow, predictable, searchable."],
   ]) {
     const select = h("select", { class: "input", "aria-label": label }, options.map((v) => h("option", { value: v }, v)));
     select.value = p[key];
@@ -190,14 +196,28 @@ function openWorkspace() {
   }
   const remember = h("input", { type: "checkbox", checked: p.rememberRoute });
   remember.addEventListener("change", () => { if (!saveWorkspace({ rememberRoute: remember.checked, route: location.hash })) toast("warn", "Preferences could not be saved"); });
-  form.appendChild(h("label", { class: "field-inline", style: { marginTop: "8px" } }, remember, h("span", { class: "small" }, "Restore last page on launch (never replay actions)")));
+  form.appendChild(h("label", { class: "field-inline", style: { marginTop: "8px" } }, remember, h("span", { class: "small" }, "Restore last page on launch (never replay actions, never permission)")));
   form.appendChild(h("div", { class: "stack", style: { marginTop: "12px" } },
-    h("div", { class: "eyebrow" }, "Keyboard"),
-    h("div", { class: "small text-dim" }, h("span", { class: "kbd" }, "Ctrl"), " + ", h("span", { class: "kbd" }, "K"), " palette · ", h("span", { class: "kbd" }, "Esc"), " close drawer/modal · ", h("span", { class: "kbd" }, "↑"), h("span", { class: "kbd" }, "↓"), " in tables · ", h("span", { class: "kbd" }, "Enter"), " sort/open"),
-    h("div", { class: "eyebrow" }, "Performance is UX"),
-    h("div", { class: "small text-dim" }, "Diagnostics shows last 100 measurements: load, route transition, refresh, render, dup coalesced, recovery, poll skipped, heap. No payloads stored."),
+    h("div", { class: "eyebrow" }, "Keyboard — minimal cognitive cost, keyboard-first"),
+    h("div", { class: "small text-dim" }, h("span", { class: "kbd" }, "Ctrl"), " + ", h("span", { class: "kbd" }, "K"), " palette · ", h("span", { class: "kbd" }, "/"), " filter nav · ", h("span", { class: "kbd" }, "Esc"), " close drawer/modal · ", h("span", { class: "kbd" }, "↑"), h("span", { class: "kbd" }, "↓"), " navigate rows · ", h("span", { class: "kbd" }, "Home"), "/", h("span", { class: "kbd" }, "End"), " first/last · ", h("span", { class: "kbd" }, "Enter"), " sort/open drawer"),
+    h("div", { class: "eyebrow" }, "Workspace-oriented — persistent layouts, synchronized context"),
+    h("div", { class: "small text-dim" }, "BroadcastChannel qts-context syncs symbol/timeframe across windows/tabs. localStorage qts.context.v1 persists per browser. Never permission/mode/risk. New window button opens current context for multi-monitor. TradingView benchmark for UX, not visual copy."),
+    h("div", { class: "eyebrow" }, "Performance is UX — principle 13"),
+    h("div", { class: "small text-dim" }, "Diagnostics shows last 100 measurements: load (page), route (transition), refresh (forced/periodic), render (workspace update), request (API), dup-coalesced (GET dedup), dup-sync (sync dedup), recovery (error→ok), poll (periodic), poll-skipped (hidden tab), heap (performance.memory). No payloads. Bounded 100. Measures load/transition/refresh/rendering/memory/dup/recovery."),
+    h("div", { class: "eyebrow" }, "Safety — DEMO vs LIVE unmistakable"),
+    h("div", { class: "small text-dim" }, "DEMO = simulated execution, yellow/warn, requires readiness + explicit acks. LIVE = real capital, red/locked, structurally locked until every scientific, safety, human-approval gate passes. What blocked, why, what missing, what next explicit everywhere."),
+    h("div", { class: "eyebrow" }, "Truth visible — never 0 when missing"),
+    h("div", { class: "small text-dim" }, "MEASURED/UNAVAILABLE/INSUFFICIENT/BLOCKED/DEGRADED/READY/OBSERVING/LOCKED — never 0. Provenance badges REAL/SYNTHETIC/SIMULATED/ESTIMATED/IMPUTED/BROKER-DERIVED/MODEL-DERIVED explicit on every field."),
   ));
-  drawer("Workspace preferences", form);
+  drawer("Workspace preferences — presentation only, never permission", form);
+}
+
+function stat({ label, value, hint }) {
+  return h("div", { class: "stat" },
+    h("div", { class: "stat-label" }, label),
+    h("div", { class: "stat-value" }, value),
+    hint ? h("div", { class: "stat-hint" }, hint) : null,
+  );
 }
 
 function renderFacts(factsEl) {

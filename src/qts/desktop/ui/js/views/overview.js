@@ -3,12 +3,13 @@
 
 import { store, syncOperations, RESOURCES, measurements, measure } from "../api.js";
 import { operationalState } from "../operations.js";
-import { h, icon } from "../dom.js";
+import { h, icon, clear } from "../dom.js";
 import { page, table, card, stat } from "../components.js";
 import { fmtUtc, fmtAge, fmtInt, fmtNum } from "../format.js";
 import { statusInfo } from "../status.js";
 import { onDispose } from "../router.js";
-import { getContext } from "../context.js";
+import { getContext, onContext } from "../context.js";
+import { readWorkspace } from "../workspace.js";
 
 const link = (label, href, cls = "btn sm") => h("a", { class: cls, href }, label);
 const setText = (node, value) => { const s = String(value); if (node.textContent !== s) node.textContent = s; };
@@ -48,11 +49,25 @@ export async function renderOverview(root) {
       h("td", null, link("Inspect", href))));
   }
   root.appendChild(h("section", { class: "operator-section", "aria-labelledby": "facts-title" },
-    h("h2", { id: "facts-title" }, "Operating facts — per-source freshness, not quote freshness"),
-    h("p", { class: "small text-dim" }, "Freshness below means last successful API receipt, not age of market quote. Stale authority cannot establish current permission. Context syncs separately and never stores permission."),
+    h("h2", { id: "facts-title" }, "Operating facts — per-source freshness, not quote freshness — truth visible"),
+    h("p", { class: "small text-dim" }, "Freshness below means last successful API receipt, not age of market quote. Stale authority cannot establish current permission. Context syncs separately via BroadcastChannel and never stores permission. Workspace density/width/navigation persist per browser, never permission."),
     h("div", { class: "tbl-wrap", tabindex: "0", "aria-label": "Operating facts, horizontally scrollable" },
       h("table", { class: "tbl facts-table" },
         h("thead", null, h("tr", null, ["Source", "Reported state", "Meaning / constraint", "API freshness", "Evidence"].map((t) => h("th", { scope: "col" }, t)))), tbody))));
+
+  const workspaceFacts = h("div", { class: "stat-grid" });
+  function renderWorkspaceFacts() {
+    const ws = readWorkspace();
+    const ctx = getContext();
+    clear(workspaceFacts);
+    workspaceFacts.append(
+      stat({ label: "Density", value: ws.density, hint: "compact = high density without chaos" }),
+      stat({ label: "Width", value: ws.width, hint: "focused 1440px, wide 1600px" }),
+      stat({ label: "Context", value: `${ctx.symbol} · ${ctx.timeframe}`, hint: "presentation only, syncs across windows" }),
+      stat({ label: "Navigation", value: ws.navigation, hint: "sidebar width — persists per browser" }),
+    );
+  }
+  root.appendChild(card({ title: "Workspace — persistent layout, synchronized context, keyboard-first", sub: "presentation only, never permission — TradingView benchmark for UX, not visual copy", icon: "layers", body: workspaceFacts }));
 
   const demoReasons = h("ul", { class: "reason-list" });
   const liveReasons = h("ul", { class: "reason-list" });
@@ -169,9 +184,11 @@ export async function renderOverview(root) {
   }
   technical.addEventListener("toggle", update);
   diagnostics.addEventListener("toggle", () => { renderPerf(); update(); });
-  const off = store.on("resources", update);
+  const off = store.on("resources", () => { update(); renderWorkspaceFacts(); });
+  const offCtx = onContext(() => { update(); renderWorkspaceFacts(); });
   const clock = setInterval(update, 1000); clock.unref?.();
-  onDispose(root, () => { off(); clearInterval(clock); });
+  onDispose(root, () => { off(); offCtx(); clearInterval(clock); });
+  renderWorkspaceFacts();
   update();
   await syncOperations();
 }

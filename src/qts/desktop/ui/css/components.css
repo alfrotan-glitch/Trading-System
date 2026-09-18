@@ -171,6 +171,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .tbl td .primary-cell { color: var(--text-1); font-weight: 550; }
 .tbl tr:hover td { background: var(--bg-2); }
 .tbl tr.clickable { cursor: pointer; }
+.tbl tr.clickable:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; background: var(--bg-3); }
+.tbl tr.clickable:focus-visible td { background: var(--bg-3); }
 .tbl .num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .tbl th.num { text-align: right; }
 .tbl .row-empty td { color: var(--text-3); font-style: italic; padding: 16px 12px; }
