@@ -12,6 +12,7 @@ import { initPalette } from "./palette.js";
 import { fmtAge } from "./format.js";
 import { attentionRank } from "./status.js";
 import { toast, badge, drawer } from "./components.js";
+import { getContext, onContext } from "./context.js";
 
 import * as overview from "./views/overview.js";
 import * as research from "./views/research.js";
@@ -201,11 +202,13 @@ function openWorkspace() {
 
 function renderFacts(factsEl) {
   const s = operationalState(store.data);
+  const ctx = getContext();
   const values = [
     ["mode", s.mode.mode, "mode"],
     ["Observation", s.observation, s.observing ? "observing" : ""],
     ["DEMO", s.permission, ""],
     ["LIVE", s.liveLabel, "live-locked"],
+    ["ctx", `${ctx.symbol}`, "optional"],
   ];
   if (!factsEl.children.length) {
     for (const [label, value, cls] of values) factsEl.appendChild(factChip({ label, value, cls }));
@@ -213,10 +216,12 @@ function renderFacts(factsEl) {
   [...factsEl.children].forEach((node, i) => {
     const [label, value, cls] = values[i];
     const v = node.querySelector("b");
-    if (v.textContent !== value) v.textContent = value;
+    const cur = label === "ctx" ? `${getContext().symbol}` : value;
+    if (v.textContent !== cur) v.textContent = cur;
     node.className = `fact ${cls}`;
-    const src = label === "mode" ? s.sources.health : label === "Observation" ? s.sources.observe : label === "DEMO" ? s.sources.demoState : s.sources.live;
-    node.title = `${label}: ${value}. ${src?.label ?? "UNAVAILABLE"} — ${label === "mode" ? "environment capability is not permission" : label === "DEMO" ? "readiness and permission are separate" : label === "LIVE" ? "never auto-enabled" : "collector state, zero orders"}.`;
+    const src = label === "mode" ? s.sources.health : label === "Observation" ? s.sources.observe : label === "DEMO" ? s.sources.demoState : label === "LIVE" ? s.sources.live : null;
+    if (label === "ctx") node.title = `Context: ${getContext().symbol} · ${getContext().timeframe} — presentation only, syncs across windows via BroadcastChannel, never permission.`;
+    else node.title = `${label}: ${value}. ${src?.label ?? "UNAVAILABLE"} — ${label === "mode" ? "environment capability is not permission" : label === "DEMO" ? "readiness and permission are separate" : label === "LIVE" ? "never auto-enabled" : "collector state, zero orders"}.`;
   });
 }
 
@@ -297,6 +302,7 @@ function main() {
     updated.textContent = `Health API: ${f.label}${store.data.resources.health?.updatedAt ? ` · ${fmtAge(store.data.resources.health.updatedAt)}` : ""}`;
   };
   store.on("resources", update);
+  onContext(update);
   for (const key of Object.keys(RESOURCES)) poll(() => syncResource(key), RESOURCES[key].interval);
   const clock = setInterval(update, 2000); clock.unref?.();
 

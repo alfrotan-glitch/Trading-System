@@ -122,14 +122,16 @@ export function errorBox({ what, known, next, raw }) {
   );
 }
 
-/* ---------------- table (sortable, honest empties) ---------------- */
+/* ---------------- table (sortable, dense, keyboard, honest empties) ---------------- */
 /**
- * table({columns:[{key,label,num,render}], rows, empty, onRowClick, sortable})
- * render(row) → node|string; empty → node|string shown when rows=[]
+ * table({columns:[{key,label,num,render}], rows, empty, onRowClick, sortable, dense})
+ * - sortable headers: Enter/Space toggles, aria-sort
+ * - keyboard: ↑/↓ moves focus between rows, Enter opens drawer
+ * - missing → UNAVAILABLE, never 0
  */
 export function table({ columns, rows, empty, onRowClick, sortable = true, dense }) {
   const state = { key: null, dir: 1 };
-  const wrap = h("div", { class: `tbl-wrap${dense ? " dense" : ""}` });
+  const wrap = h("div", { class: `tbl-wrap${dense ? " dense" : ""}`, tabindex: "0", role: "region", "aria-label": "Data table, use arrow keys to navigate rows, Enter to open details" });
   const tbl = h("table", { class: `tbl${dense ? " dense" : ""}` });
   const thead = h("thead");
   const tr = h("tr");
@@ -184,15 +186,30 @@ export function table({ columns, rows, empty, onRowClick, sortable = true, dense
         const v = raw == null ? "UNAVAILABLE" : raw;
         return h("td", { class: c.num ? "num" : "" }, typeof v === "object" && v !== null && !(v instanceof Node) ? String(v) : v);
       });
-      const trR = h("tr", { class: onRowClick ? "clickable" : "", tabindex: onRowClick ? "0" : null, role: onRowClick ? "button" : null }, tds);
+      const trR = h("tr", { class: onRowClick ? "clickable" : "", tabindex: onRowClick ? "0" : "-1", role: onRowClick ? "button" : null }, tds);
       if (onRowClick) {
         trR.addEventListener("click", () => onRowClick(r));
-        trR.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRowClick(r); } });
+        trR.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRowClick(r); }
+          if (e.key === "ArrowDown") { e.preventDefault(); const nxt = trR.nextElementSibling; if (nxt) nxt.focus(); }
+          if (e.key === "ArrowUp") { e.preventDefault(); const prv = trR.previousElementSibling; if (prv) prv.focus(); else thead.querySelector("th")?.focus(); }
+        });
       }
       tbody.appendChild(trR);
     }
+    // make first row tabbable if any
+    const first = tbody.querySelector("tr");
+    if (first && onRowClick) first.tabIndex = 0;
   }
   renderBody();
+  // wrap-level arrow navigation into table
+  wrap.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" && e.target === wrap) {
+      e.preventDefault();
+      const first = tbody.querySelector("tr");
+      if (first) first.focus();
+    }
+  });
   return wrap;
 }
 

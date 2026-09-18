@@ -1,4 +1,6 @@
-/* Market — Monitor (quotes/regime/quality) · Observations · Data quality · Lineage */
+/* Market — Monitor (quotes/regime/quality) · Observations · Data quality · Lineage
+   Flat, dense, honest empties. Context synchronized across windows via context.js */
+
 import { api, store, RESOURCES, syncResource, poll } from "../api.js";
 import { operationalState, freshness } from "../operations.js";
 import { h, icon, clear } from "../dom.js";
@@ -8,16 +10,25 @@ import {
 } from "../components.js";
 import { fmtInt, fmtNum, fmtUtc, fmtAge, humanKey, trunc, fmtMetric } from "../format.js";
 import { navigate, onDispose } from "../router.js";
+import { getContext, setContext, onContext } from "../context.js";
 
 /* Monitor */
 export async function renderMonitor(root) {
   skeletonInto(root, "stats");
   root.classList.add("operator-workspace");
+
+  const ctx = getContext();
+  const ctxBadge = h("span", { class: "badge neutral" }, `${ctx.symbol} · ${ctx.timeframe}`);
+  const symInput = h("input", { class: "input", style: { maxWidth: "120px" }, value: ctx.symbol, "aria-label": "Symbol context" });
+  const tfInput = h("select", { class: "input", style: { maxWidth: "90px" }, "aria-label": "Timeframe context" },
+    ["1M","5M","15M","1H","4H","1D"].map((tf) => h("option", { value: tf, selected: tf === ctx.timeframe }, tf)));
+  const applyCtx = h("button", { class: "btn sm", onclick: () => { setContext({ symbol: symInput.value.trim().toUpperCase(), timeframe: tfInput.value }); toast("ok","Context updated",`${symInput.value} · ${tfInput.value} — syncs across windows`); } }, "Set context");
+
   root.appendChild(page({
     crumb: "Market", group: "Monitor",
     title: "Market Monitor",
-    answer: h("b", null, "What the market looks like through QTS's data pipeline — quotes, regime, freshness — with provenance and honest empty states. Pipeline health is not quote freshness."),
-    actions: [h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources")],
+    answer: h("b", null, "What the market looks like through QTS's data pipeline — quotes, regime, freshness — with provenance and honest empty states. Pipeline health is not quote freshness. Context syncs across windows via BroadcastChannel."),
+    actions: [ctxBadge, symInput, tfInput, applyCtx, h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources")],
     body: null,
   }));
 
@@ -59,7 +70,7 @@ export async function renderMonitor(root) {
       const f = meta ? freshness(meta, resKey) : { label: "UNAVAILABLE", current: false };
       c.fresh.textContent = `${f.label}${meta?.updatedAt ? ` · ${fmtAge(meta.updatedAt)}` : ""}`;
     }
-    activity.textContent = `${s.market} · ${s.observation} · ${s.quoteAge}`;
+    activity.textContent = `${s.market} · ${s.observation} · ${s.quoteAge} · context ${getContext().symbol}`;
     nextWhy.textContent = s.obs?.state === "OBSERVING" ? "Collector reports OBSERVING. Inspect quote timestamps and provenance." : "No active collection. Start observation if terminal connected.";
   }
 
@@ -84,18 +95,20 @@ export async function renderMonitor(root) {
     const manifest = lastManifest, regime = lastRegime, adv = lastAdv;
     const ticks = manifest.sample_ticks ?? [];
     const last = ticks[ticks.length - 1];
+    const currentCtx = getContext();
+    ctxBadge.textContent = `${currentCtx.symbol} · ${currentCtx.timeframe} — synced`;
 
     const content = h("div", { class: "stack" });
     content.appendChild(h("section", { class: "operator-section" },
       h("h2", null, "Operating facts — pipeline health vs quote freshness"),
-      h("div", { class: "tbl-wrap", tabindex: "0" },
+      h("div", { class: "tbl-wrap" },
         h("table", { class: "tbl facts-table" },
           h("thead", null, h("tr", null, ["Source","Reported state","Meaning / constraint","API freshness"].map((t) => h("th", { scope: "col" }, t)))),
           factsBody))));
 
     content.appendChild(h("div", { class: "grid-2" },
       card({
-        title: "Current quote — last recorded tick, not live market", sub: last ? `latest recorded · ${last.symbol ?? ""}` : "no tick recorded", icon: "activity",
+        title: "Current quote — last recorded tick, not live market", sub: last ? `latest recorded · ${last.symbol ?? ""} — context ${currentCtx.symbol}` : "no tick recorded", icon: "activity",
         actions: [last ? provStrip(last.provenance ?? last.data_class ?? "SYNTHETIC") : null],
         body: last
           ? h("div", { class: "stack" },
@@ -108,7 +121,7 @@ export async function renderMonitor(root) {
               h("div", { class: "meta" }, `API freshness ${freshness(store.data.resources.observe, "observe").label} — quote age is separate from API receipt`),
               ticks.length >= 2
                 ? [h("div", { class: "chart-block" }, spark(ticks.map((t) => (Number(t.bid) + Number(t.ask)) / 2), { height: 70 })),
-                   h("div", { class: "chart-caption" }, h("span", { class: "cap-item" }, `${ticks.length} real recorded ticks`), h("span", { class: "cap-item" }, "source: forward observation"), h("span", { class: "cap-item" }, "mid = (bid+ask)/2, no interpolation"))]
+                   h("div", { class: "chart-caption" }, h("span", { class: "cap-item" }, `${ticks.length} real recorded ticks`), h("span", { class: "cap-item" }, "source: forward observation"), h("span", { class: "cap-item" }, "mid = (bid+ask)/2, no interpolation"), h("span", { class: "cap-item" }, `context ${currentCtx.symbol} — chart is explanatory, not predictive`))]
                 : banner("info", "Not enough observations yet", "Chart appears after ≥2 recorded ticks — QTS never fabricates history.", "info"),
             )
           : emptyState({
@@ -149,11 +162,12 @@ export async function renderMonitor(root) {
   }
 
   const off = store.on("resources", renderFacts);
-  onDispose(root, off);
+  const offCtx = onContext(() => { ctxBadge.textContent = `${getContext().symbol} · ${getContext().timeframe} — synced`; renderFacts(); });
+  onDispose(root, () => { off(); offCtx(); });
   await refresh();
 }
 
-/* Observations — already modernized but keep contract */
+/* Observations */
 export async function renderObservations(root) {
   skeletonInto(root, "stats");
   let refreshing = false, acting = false;
@@ -220,8 +234,8 @@ export async function renderObservations(root) {
 
     const ticks = manifest.sample_ticks ?? [];
     body.appendChild(card({
-      title: "Recorded ticks — dense, sortable", sub: `${ticks.length} shown of ${fmtInt(manifest.ticks_recorded)}`, icon: "activity",
-      actions: [h("span", { class: "meta" }, "live view — updates every 5s while visible")],
+      title: "Recorded ticks — dense, sortable, keyboard navigable", sub: `${ticks.length} shown of ${fmtInt(manifest.ticks_recorded)}`, icon: "activity",
+      actions: [h("span", { class: "meta" }, "live view — updates every 5s while visible, context synced")],
       body: ticks.length
         ? table({
             columns: [
@@ -352,7 +366,7 @@ export async function renderLineage(root) {
     h("div", { class: "pipeline" }, chain.map((c, i) => [i > 0 && h("span", { class: "pipe-arrow", "aria-hidden": "true" }, "→"), h("span", { class: "pipe-stage reached" }, c)])),
   }));
 
-  host.appendChild(card({ title: "Datasets — immutable, checksummed, version-locked", sub: "dense table, sortable", icon: "database", body:
+  host.appendChild(card({ title: "Datasets — immutable, checksummed, version-locked", sub: "dense table, sortable, keyboard navigable", icon: "database", body:
     table({
       columns: [
         { key: "id", label: "Dataset", render: (d) => h("span", { class: "primary-cell mono small" }, `${d.instrument} ${d.timeframe}`) },
