@@ -60,7 +60,9 @@ source and a stable `config_hash`).
 `resolve_risk_limits_from_settings(mode)` is the standard entry point: YAML
 `risk:` flows through the authority as the override layer — there is no
 parallel consumer path. `DEMO_FORWARD_DEFAULTS` (demo boundary) is DERIVED
-from the DEMO_EXECUTION resolution; the numbers live in exactly one place.
+from the shared demo-boundary risk resolution; the numbers live in exactly one
+place. They are descriptive safety metadata only while DEMO_EXECUTION is
+policy-disabled and do not authorize orders.
 
 Runtime visibility: `/api/risk` serves the resolved snapshot (limits,
 sources, overrides, warnings, config hash). The UI never displays invented

@@ -122,12 +122,16 @@ Tunable per `instrument` and `timeframe`; defaults conservative for XAUUSD.
 
 `ValidationReport` includes: equity curves (IS/OOS/WFA stitched), per-fold metrics, per-regime, perturbation heatmap, stress table, Monte Carlo drawdown histogram, DSR/PSR/PBO numbers, leakage checklist, and `passed: bool` with reasons.
 
-## 9.13 Example Report Snippet
+## 9.13 Illustrative Report Snippet
+
+The following is a teaching example, not current evidence. Current reports must
+use the bound dataset, experiment configuration, and cumulative ledger values
+from their machine artifact; they must not copy these numbers.
 
 ```
 Walk-forward (12m/3m, 8 folds): IS Sharpe 1.8, OOS 1.1, WFE 0.61 PASS
 PBO (CPCV 12 groups): 0.38 PASS
-DSR (N=45 trials, len=1200): observed 1.1 → DSR prob 0.87 FAIL (need 0.95)
+DSR (trial count from the cumulative ledger, len=1200): observed 1.1 → DSR prob 0.87 FAIL (need 0.95)
 Stress spread 1.5×: PF 0.9 FAIL
 → Overall: FAIL, reasons: [DSR, spread stress]
 → Action: RESEARCH (needs stronger edge or lower cost sensitivity)

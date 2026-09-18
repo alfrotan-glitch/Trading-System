@@ -1,5 +1,5 @@
 # MT5 Demo Setup — Real Terminal + Demo Account
-Version 2026-09-16
+Version 2026-09-18
 
 ## Goal
 Connect **real** MT5 terminal + **real** DEMO account + **real** market data, but **no real money** — for `DEMO_FORWARD` mode (labeled DEMO, never LIVE).

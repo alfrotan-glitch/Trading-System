@@ -1,5 +1,9 @@
 # Autonomous Quantitative Research Laboratory
-Version: 0.1.0 — 2026-09-16
+Version: 0.1.0 — 2026-09-18
+
+> This document describes the research machinery. Current machine evidence is
+> authoritative over historical examples; the current fixture remains
+> mechanism-validation-only and does not support a real-market claim.
 
 ## Mission
 Turn the system into DISCOVER→INVENT→TEST→ATTACK→FALSIFY→REFINE→RE-TEST→PROVE while structurally hostile to false discoveries.
@@ -10,7 +14,13 @@ Turn the system into DISCOVER→INVENT→TEST→ATTACK→FALSIFY→REFINE→RE-T
 Every idea has: WHY, mechanism, support, falsify, data, cost, regimes, stop conditions — documented before any trial.
 
 ## Market Mechanisms Investigated
-23 mechanisms enumerated, 6 tested per campaign batch: trend persistence, momentum persistence, mean reversion, breakout continuation/failure, volatility clustering/expansion, regime transitions, liquidity, spread, time-of-day, session, range compression/expansion, directional imbalance, acceleration, exhaustion, overextension, pullback, failed breakouts, multi-timeframe, volatility-adjusted, persistence after large moves, asymmetric after shocks. Treat each as falsifiable; none assumed real.
+The bounded research families cover trend/momentum persistence, mean reversion,
+breakout continuation/failure, volatility expansion, regime transitions,
+liquidity/spread, session/time-of-day, range compression, directional
+imbalance, acceleration/exhaustion, pullbacks, multi-timeframe structure, and
+shock persistence. Each mechanism is treated as falsifiable; none is assumed
+real. The current campaign artifacts, not this catalogue, define how many
+trials actually ran.
 
 ## Invented Strategies
 Beyond classic indicators: `src/qts/research/invented_strategies.py` (state-machine, event-driven, multi-timeframe, volatility-normalized) + `src/qts/research/strategies.py` 5 families + regime-conditioned wrapper. New complexity → more trials → stronger DSR penalty (honest). `src/qts/research/position_management.py` 6 exit policies (fixed, volatility, trailing, time, breakeven, momentum-decay) — entry+exit joint hypothesis tested OOS.
@@ -37,7 +47,7 @@ Retains walk-forward, CPCV, PBO, PSR, DSR, perturbation, regime, null/placebo, c
 `src/qts/research/memory.py` `ResearchMemory` durable `research_memory` table stores hypothesis_id, family, mechanism, params, failed_stage, reason, regime_failed, param_range_unstable, feature_useless, redundant. `has_failed_similar` prevents rediscovery under new name.
 
 ## Novelty / Diversity Control
-`src/qts/research/novelty.py` fingerprints `family+mechanism+features+param_keys` via SHA12, clusters trials, reports `total_trials` vs `distinct_hypotheses` and largest cluster — honest multiple-testing. Example: 45 trials but only ~8 distinct hypotheses.
+`src/qts/research/novelty.py` fingerprints `family+mechanism+features+param_keys` via SHA12, clusters trials, and reports `total_trials` versus `distinct_hypotheses` and largest cluster. These values are derived from the cumulative ledger for each run; historical examples are not current evidence.
 
 ## Campaign Engine
 `src/qts/research/campaign.py` + `campaign_engine.py` 11 steps: 1 review data, 2 review failures, 3 generate bounded plan, 4 create hypotheses, 5 execute experiments, 6 store results, 7 attack candidates, 8 eliminate weak, 9 refine surviving, 10 re-test, 11 produce evidence portfolio. Budget explicit max_trials/runtime/feature/param/mutation/retries/data/seed, STOP when exhausted. Never moves to LIVE — only `PromotionLedger` human approval can.
@@ -58,7 +68,10 @@ Desktop `Research Lab` etc shows WHAT thinking, WHY hypothesis, EXPECTS, FAILED,
 Per campaign: research question, hypotheses, mechanism, data, trial count, distinct hypotheses, strategies tested, failed/surviving candidates, strongest for/against each survivor, DSR/PBO/Reality Check/SPA, cost/execution sensitivity, regime, robustness, forward, uncertainty. See `docs/edge_discovery_report.md` updated with autonomous results.
 
 ## Candidate Survival Standard
-Edge must survive OOS, multiple testing, costs, perturbation, regime, null/placebo, expectancy, forward, execution credibility — only then MICRO_ELIGIBLE. Current 39 strategies 0 survive → BLOCK correct.
+Edge must survive OOS, multiple testing, costs, perturbation, regime,
+null/placebo, expectancy, forward, and execution credibility — only then could
+it become `MICRO_ELIGIBLE`. Current bounded campaign and edge artifacts have no
+survivor; `BLOCK` / `NO_TRADE` is correct.
 
 ## Live Safety Untouchable
 RESEARCH→VALIDATION→FORWARD→PAPER→SHADOW→MICRO→LIVE_ELIGIBLE cannot be skipped, no AI confidence overrides risk/reconciliation, no backtest unlocks live — `PromotionLedger` + `live_gate` enforce.
@@ -70,10 +83,24 @@ Per campaign 9 questions: leak? cherry-pick? over-search? N reset? reuse test se
 This doc + 7 others, machine evidence `data/evidence/autonomous_research.json`, desktop 9 new views.
 
 ## Current Evidence
-- New capabilities: intelligence, feature discovery, position management, statistical extensions, adversary, memory, novelty, campaign engine, data audit.
-- Mechanisms investigated 23, distinct hypotheses ~8, trials 45.
-- No survivor; strongest adversarial verdict BREAKS for all.
-- No economic edge demonstrated; keep NO_TRADE.
+
+The current machine-readable evidence is authoritative:
+
+- canonical dataset `20260918-010-572728d9`: XAUUSD 1H, 500 bars,
+  `SYNTHETIC`, `BLOCKED_INSUFFICIENT_DATA`;
+- `data/evidence/campaign_last.json`: 2 bounded trials, 0 passed,
+  `BLOCKED_INSUFFICIENT_DATA`;
+- `data/evidence/autonomous_campaign.json`: 6 bounded trials, 0 passed,
+  self-audit blocked;
+- `data/evidence/edge_validation.json`: blocked, with cumulative trial
+  accounting and unavailable/missing controls retained;
+- `data/evidence/impulse_research.json`: mechanism validation only, not a
+  real-market claim;
+- no candidate is promoted and the operational conclusion remains
+  `NO_TRADE`.
+
+Do not copy counts from this overview into a new claim. Read the artifact's
+bound experiment/configuration, code version, dataset, and limitations.
 
 ## References
 Bailey & López de Prado PSR/DSR, White Reality Check 1996, Hansen SPA 2005, CPCV PBO.
