@@ -35,6 +35,7 @@ from __future__ import annotations
 import ast
 import inspect
 import json
+import sqlite3
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -376,6 +377,69 @@ def test_frozen_duplicate_quotes_recorded_once(tmp_path: Path) -> None:
     ticks = _tick_rows(tmp_path / "obs.db")
     assert len(ticks) == 1  # one REAL quote, never re-observed as new data
     assert ticks[0]["timestamp_basis"] == "broker-normalized(measured-m1-bar)"
+
+
+# ---------------------------------------------------------------------------
+# storage/manifest failures are failure-accounted, never silently fatal
+# ---------------------------------------------------------------------------
+
+
+def _failing_record_tick(_tick: Any) -> None:
+    """Stand-in for a duplicate-ID collision or any write/manifest error."""
+    raise sqlite3.IntegrityError("UNIQUE constraint failed: observation_ticks.id")
+
+
+def test_storage_failure_is_accounted_and_collection_recovers(tmp_path: Path) -> None:
+    """A transient write error must not kill the poll thread silently.
+
+    Pre-fix, the exception escaped ``_poll_once``: the session kept advertising
+    OBSERVING, ``consecutive_failures`` stayed 0, ``last_error`` stayed None and
+    the session row stayed ACTIVE with no reason — collection was dead and could
+    not be resumed until the operator pressed Stop.
+    """
+    collector, fake = _make_collector(tmp_path, LiveFakeMT5("live"), max_consecutive_failures=40)
+    collector.start(PASSED_READINESS)
+    assert _wait_for(lambda: collector.ticks_recorded >= 2), collector.last_error
+    real = collector.observatory.record_tick
+    collector.observatory.record_tick = _failing_record_tick
+    try:
+        assert _wait_for(lambda: collector.consecutive_failures >= 1), "storage failure was not accounted"
+        assert "IntegrityError" in (collector.last_error or "")  # diagnostic recorded
+        assert collector.state == "OBSERVING" and collector.thread_alive  # not silently fatal
+    finally:
+        collector.observatory.record_tick = real
+    recorded = collector.ticks_recorded
+    assert _wait_for(lambda: collector.consecutive_failures == 0 and collector.ticks_recorded > recorded), (
+        "collection did not recover after storage healed"
+    )
+    stopped = collector.stop()
+    assert stopped["state"] == "STOPPED"
+    sessions = _session_rows(tmp_path / "obs.db")
+    assert sessions[0]["status"] == "ENDED" and "error" not in json.loads(sessions[0]["meta"])
+    assert fake.order_send_calls == []
+
+
+def test_sustained_storage_failure_auto_stops_with_persisted_terminal_state(tmp_path: Path) -> None:
+    """Sustained write failure auto-stops under the EXISTING tolerance."""
+    collector, fake = _make_collector(tmp_path, LiveFakeMT5("live"), max_consecutive_failures=3)
+    collector.start(PASSED_READINESS)
+    assert _wait_for(lambda: collector.ticks_recorded >= 1), collector.last_error
+    collector.observatory.record_tick = _failing_record_tick
+    assert _wait_for(lambda: collector.state == "STOPPED_ON_ERRORS"), collector.last_error
+    assert not collector.thread_alive
+    terminal = collector.last_error
+    assert terminal and "IntegrityError" in terminal
+
+    sessions = _session_rows(tmp_path / "obs.db")
+    meta = json.loads(sessions[0]["meta"])
+    assert sessions[0]["status"] == "ENDED_ON_ERRORS"  # persisted terminal state, not silent OBSERVING
+    assert sessions[0]["end"] and meta.get("error") == terminal
+
+    art = export_session_evidence(collector.session_id, db_path=collector.observatory.db_path)
+    assert art["session"]["status"] == "ENDED_ON_ERRORS"
+    verdict = verify_session_export(art)
+    assert verdict["verdict"] == "CONSISTENT", verdict
+    assert fake.order_send_calls == []
 
 
 # ---------------------------------------------------------------------------

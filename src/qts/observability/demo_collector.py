@@ -17,9 +17,10 @@ Safety contract:
 - refuses to start unless the caller supplies a readiness report with
   passed=True (state BLOCKED otherwise, reasons surfaced).
 - fail-closed runtime: terminal disconnect, stale data, timestamp conversion
-  failure, symbol disappearance, and validation errors are recorded as
-  failures; after `max_consecutive_failures` the session auto-stops with
-  state STOPPED_ON_ERRORS and the session end is persisted. Invalid ticks
+  failure, symbol disappearance, validation errors, and storage/manifest
+  publication errors are recorded as failures; after
+  `max_consecutive_failures` the session auto-stops with state
+  STOPPED_ON_ERRORS and the session end is persisted. Invalid ticks
   are NEVER persisted.
 - duplicate quotes (identical raw broker stamps) are skipped, never recorded
   twice — the same standing quote is not two observations.
@@ -193,11 +194,26 @@ class ObservationCollector:
                 break
 
     def _poll_once(self) -> None:
+        """One poll — fail-closed over the WHOLE body, not just retrieval.
+
+        Retrieval/validation errors were already failure-accounted, but
+        persistence (``record_tick``) and manifest publication were not: a
+        storage or manifest exception escaped this method, killed the poll
+        thread and left the session advertising ``OBSERVING`` with no counted
+        failure, no diagnostic and no way to resume collection (the session row
+        also stayed ACTIVE with no reason). Counting them through the SAME
+        failure account keeps the documented contract: a transient error is
+        tolerated and reset by the next recorded tick, and
+        ``max_consecutive_failures`` consecutive errors auto-stop the session
+        with a persisted terminal state.
+        """
         try:
-            tick = self.provider.get_tick(self.instrument)
-        except Exception as e:  # noqa: BLE001 — fail-closed: ANY retrieval/validation error counts
+            self._poll_and_record()
+        except Exception as e:  # noqa: BLE001 — fail-closed: ANY poll error counts
             self._register_failure(f"{type(e).__name__}: {e}")
-            return
+
+    def _poll_and_record(self) -> None:
+        tick = self.provider.get_tick(self.instrument)
         prov = tick.provenance or {}
         raw_key = (prov.get("mt5_time_msc"), prov.get("mt5_time"), float(tick.event_time.timestamp()))
         with self._lock:
