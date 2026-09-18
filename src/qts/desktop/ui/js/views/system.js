@@ -1,5 +1,6 @@
 /* System — setup, MT5, diagnostics: plumbing made calm and explicit
-   Operator workspace, context synced, DEMO vs LIVE unmistakable, perf honest. */
+   Operator workspace, context synced, DEMO vs LIVE unmistakable, perf honest.
+   Includes timestamp normalization health (FS-c42bbd fix visible). */
 
 import { api, store, RESOURCES, syncResource, measurements } from "../api.js";
 import { operationalState, freshness } from "../operations.js";
@@ -8,7 +9,7 @@ import {
   card, page, table, emptyState, skeletonInto, tech, kv, stat, errorBox,
   banner, checkGrid, toast,
 } from "../components.js";
-import { fmtUtc, fmtAge, humanKey, fmtNum } from "../format.js";
+import { fmtUtc, fmtAge, humanKey, fmtNum, fmtInt } from "../format.js";
 import { modeInfo } from "../status.js";
 import { onDispose } from "../router.js";
 import { getContext, onContext } from "../context.js";
@@ -88,6 +89,7 @@ export async function renderSetup(root) {
       ["Audit log", h("span", { class: "mono small" }, "logs/audit.jsonl (redacted) + SQLite audit_events")],
       ["Evidence", h("span", { class: "mono small" }, "data/evidence/*.json — Evidence Explorer")],
       ["Canonical observations", h("span", { class: "mono small" }, "data/sqlite/forward_observatory.db")],
+      ["Timestamp contract", h("span", { class: "mono small" }, "broker stamp - measured offset -> UTC, retained on probe failure (FS-c42bbd fix)")],
       ["Context", `${getContext().symbol} — presentation only, never permission`],
       ["Rule", "Never edit by hand — UI and CLI read them for you."],
     ]),
@@ -123,7 +125,7 @@ export async function renderMT5(root) {
   root.appendChild(page({
     crumb: "System", group: "MT5",
     title: "MT5 Connection",
-    answer: h("b", null, `Terminal, account and instrument state — mock and real explicitly distinguished. Mock is never eligible as broker evidence. Context ${ctx.symbol} syncs, never permission.`),
+    answer: h("b", null, `Terminal, account and instrument state — mock and real explicitly distinguished. Mock is never eligible as broker evidence. Context ${ctx.symbol} syncs, never permission. Timestamp normalization: broker stamp - measured offset -> UTC.`),
     actions: [h("button", { class: "btn", onclick: () => renderMT5(root) }, "Refresh")],
     body: null,
   }));
@@ -156,10 +158,10 @@ export async function renderMT5(root) {
     }),
   ));
 
-  host.appendChild(banner("info", "Mock ≠ real, always labeled — truth visible", "When no terminal attached QTS uses explicitly labeled mock module. Mock data is SYNTHETIC everywhere and never eligible as broker behavior evidence. Context syncs, never permission.", "info"));
+  host.appendChild(banner("info", "Mock ≠ real, always labeled — truth visible — timestamp contract retained", "When no terminal attached QTS uses explicitly labeled mock module. Mock data is SYNTHETIC everywhere and never eligible as broker behavior evidence. Timestamp normalization: broker stamp - measured offset -> UTC, retained on probe failure (FS-c42bbd fix). Context syncs, never permission.", "info"));
 }
 
-/* Diagnostics — per-resource freshness + performance evidence */
+/* Diagnostics — per-resource freshness + performance + timestamp normalization */
 export async function renderDiagnostics(root) {
   skeletonInto(root, "stats");
   root.classList.add("operator-workspace");
@@ -167,7 +169,7 @@ export async function renderDiagnostics(root) {
   const head = page({
     crumb: "System", group: "Diagnostics",
     title: "System Diagnostics",
-    answer: h("b", null, `Per-source freshness, environment boundary, mode resolution — honest plumbing. One failed source does not erase other current facts. Context ${ctx.symbol} syncs. Performance is UX: load/transition/refresh/rendering/memory/dup/recovery measured.`),
+    answer: h("b", null, `Per-source freshness, environment boundary, mode resolution — honest plumbing. One failed source does not erase other current facts. Context ${ctx.symbol} syncs. Performance is UX: load/transition/refresh/rendering/memory/dup/recovery measured. Timestamp normalization: broker - measured offset -> UTC, retained on failure (FS-c42bbd).`),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, "Refresh sources")],
     body: null,
   });
@@ -179,13 +181,13 @@ export async function renderDiagnostics(root) {
   const factsBody = h("tbody");
   const factCells = {};
   const host = h("div", { class: "section" }); root.appendChild(host);
-  let lastHealth = null, lastEnv = null;
+  let lastHealth = null, lastEnv = null, lastManifest = null, lastObserve = null;
 
   function renderFacts() {
     const s = operationalState(store.data);
     const rows = [
       ["health", "Health API", s.sources.health.label, "Backend health endpoint freshness, not quote freshness."],
-      ["observe", "Observation collector", s.observation, s.obs?.last_error || s.obs?.note || "Collector state from /api/observe/status"],
+      ["observe", "Observation collector", s.observation, s.obs?.last_error || s.obs?.note || "Collector state from /api/observe/status — FS-c42bbd: 2396 ticks then 30 future failures, offset retained fix"],
       ["demoState", "DEMO authority", s.permission, "Current execution permission from authority. DEMO vs LIVE unmistakable."],
       ["live", "LIVE governance", s.liveLabel, "Governance eligibility from /api/live/status — LOCKED is safety."],
       ["notifications", "Notifications", s.sources.notifications.label, "Attention list freshness."],
@@ -208,13 +210,18 @@ export async function renderDiagnostics(root) {
       c.fresh.textContent = `${f.label}${meta?.updatedAt ? ` · ${fmtAge(meta.updatedAt)}` : ""} · ${RESOURCES[key]?.path ?? ""}`;
       c.fresh.title = meta?.error ? `Last error: ${meta.error}` : RESOURCES[key]?.path ?? "";
     }
-    activity.textContent = `Health ${s.sources.health.label} · Observation ${s.observation} · DEMO ${s.permission} · LIVE ${s.liveLabel} · context ${getContext().symbol}`;
+    activity.textContent = `Health ${s.sources.health.label} · Observation ${s.observation} · DEMO ${s.permission} · LIVE ${s.liveLabel} · context ${getContext().symbol} · timestamp bases ${Object.keys(lastManifest?.timestamp_bases ?? {}).join(", ") || "UNAVAILABLE"}`;
   }
 
   async function refresh(force = false) {
     try {
-      const [health, env] = await Promise.all([api.get("/api/health"), api.get("/api/env/boundary")]);
-      lastHealth = health; lastEnv = env;
+      const [health, env, manifest, observe] = await Promise.all([
+        api.get("/api/health"),
+        api.get("/api/env/boundary"),
+        api.get("/api/research/forward-manifest").catch(() => null),
+        api.get("/api/observe/status").catch(() => null),
+      ]);
+      lastHealth = health; lastEnv = env; lastManifest = manifest; lastObserve = observe;
       if (force) await Promise.all(Object.keys(RESOURCES).map((k) => syncResource(k, { force: true })));
       render();
     } catch (e) {
@@ -261,6 +268,37 @@ export async function renderDiagnostics(root) {
     );
   }
 
+  function timestampNormalizationCard() {
+    const manifest = lastManifest;
+    const obs = lastObserve;
+    if (!manifest && !obs) {
+      return card({ title: "Timestamp normalization — FS-c42bbd fix — authoritative clock basis", sub: "broker stamp - measured offset -> UTC, retained on probe failure", icon: "clock", body: emptyState({ icon: "clock", title: "No observation manifest yet — INSUFFICIENT", desc: "Manifest appears after observation records ticks. Shows timestamp bases, server_utc_offsets, last error. Truth visible." }) });
+    }
+    const bases = manifest?.timestamp_bases ?? {};
+    const offsets = manifest?.server_utc_offsets_s ?? obs?.server_utc_offsets_s ?? [];
+    const lastError = obs?.last_error ?? manifest?.last_error ?? null;
+    const ticksRecorded = manifest?.ticks_recorded ?? obs?.ticks_recorded ?? 0;
+    const dupSkipped = manifest?.duplicates_skipped ?? obs?.duplicates_skipped ?? 0;
+    const state = obs?.state ?? manifest?.state ?? "UNAVAILABLE";
+
+    return card({
+      title: `Timestamp normalization — FS-c42bbd fix — ${state} — authoritative clock basis UTC`, sub: `bases: ${Object.keys(bases).join(", ") || "UNAVAILABLE"} — offsets retained on probe failure, not lost`, icon: "clock",
+      body: h("div", { class: "stack" },
+        h("div", { class: "stat-grid" },
+          stat({ label: "Ticks recorded", value: fmtInt(ticksRecorded), hint: "canonical store count — FS-c42bbd had 2396 then 30 future failures" }),
+          stat({ label: "Duplicates skipped", value: fmtInt(dupSkipped), hint: "identical raw broker stamps skipped — FS-c42bbd had 233" }),
+          stat({ label: "Offsets observed", value: offsets.length ? offsets.map((o) => `${o/3600}h`).join(", ") : "UNAVAILABLE", hint: "server_utc_offset_s — +3h = 10800, retained on failure not lost" }),
+          stat({ label: "Bases", value: Object.keys(bases).length ? Object.entries(bases).map(([k,v])=>`${k}·${v}`).join(", ") : "UNAVAILABLE", hint: "broker-normalized(measured-m1-bar) vs assumed-utc-fallback" }),
+          stat({ label: "Last tick time", value: manifest?.last_event_time ?? obs?.last_tick_time ?? "UNAVAILABLE", hint: "broker-normalized true UTC, not server-local" }),
+          stat({ label: "Collector state", value: state, hint: "OBSERVING vs STOPPED_ON_ERRORS — FS-c42bbd stopped after 30 future" }),
+        ),
+        lastError ? banner("warn", "Last collector error — what blocked, why", String(lastError).slice(0, 300), "alert") : null,
+        banner("info", "Canonical contract — authoritative clock basis", "True UTC = time.time(). Broker stamps are server-local (e.g. UTC+3). Offset = server - UTC measured via forming-M1-bar probe (bar_time ∈ [server_now-60, server_now]). Normalization = broker_stamp - offset -> UTC, single application, never double-applied. On probe failure (copy_rates None/stale), retain last measured offset instead of falling back to 0.0 — fix for FS-c42bbd +3h future storm. Future-tick protection unchanged: age < -1s still fails.", "clock"),
+        h("details", null, h("summary", null, "Raw timestamp normalization evidence / technical — summary → detail → raw"), tech({ manifest: { timestamp_bases: bases, server_utc_offsets_s: offsets, ticks_recorded: ticksRecorded, last_event_time: manifest?.last_event_time, state }, observe: obs }, "Raw timestamp evidence")),
+      ),
+    });
+  }
+
   function render() {
     if (!lastHealth || !lastEnv) return;
     renderFacts();
@@ -272,6 +310,8 @@ export async function renderDiagnostics(root) {
         h("table", { class: "tbl facts-table" },
           h("thead", null, h("tr", null, ["Source","Reported state","Meaning / constraint","API freshness / path"].map((t) => h("th", { scope: "col" }, t)))),
           factsBody))));
+
+    content.appendChild(timestampNormalizationCard());
 
     content.appendChild(card({ title: `Environment boundary matrix — context ${getContext().symbol}`, sub: "what each mode may and may not do — DEMO vs LIVE unmistakable", icon: "shield", body:
       kv(Object.entries(lastEnv?.boundary ?? {}).map(([k, v]) => [k, h("span", { class: "small text-dim" }, v)])),

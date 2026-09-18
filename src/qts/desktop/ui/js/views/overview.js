@@ -1,10 +1,10 @@
 /* Operator workspace: primary answer → facts → why blocked → evidence → technical.
    No separate polling loop. Stable controls, focus preserved, no fake zero. */
 
-import { store, syncOperations, RESOURCES, measurements, measure } from "../api.js";
+import { api, store, syncOperations, RESOURCES, measurements, measure } from "../api.js";
 import { operationalState } from "../operations.js";
 import { h, icon, clear } from "../dom.js";
-import { page, table, card, stat } from "../components.js";
+import { page, table, card, stat, banner, kv } from "../components.js";
 import { fmtUtc, fmtAge, fmtInt, fmtNum } from "../format.js";
 import { statusInfo } from "../status.js";
 import { onDispose } from "../router.js";
@@ -68,6 +68,38 @@ export async function renderOverview(root) {
     );
   }
   root.appendChild(card({ title: "Workspace — persistent layout, synchronized context, keyboard-first", sub: "presentation only, never permission — TradingView benchmark for UX, not visual copy", icon: "layers", body: workspaceFacts }));
+
+  // timestamp normalization health — FS-c42bbd fix visible at top level
+  const tsCard = h("div");
+  root.appendChild(card({ title: "Timestamp normalization — authoritative UTC — FS-c42bbd fix", sub: "broker stamp - measured offset -> UTC, retained on probe failure, not lost — no double-apply", icon: "clock", body: tsCard }));
+  async function refreshTimestampCard() {
+    try {
+      const [manifest, obs] = await Promise.all([
+        api.get("/api/research/forward-manifest").catch(()=>null),
+        api.get("/api/observe/status").catch(()=>null),
+      ]);
+      if (!manifest && !obs) {
+        tsCard.replaceChildren(h("p", { class: "small text-dim" }, "No observation manifest yet — INSUFFICIENT, not 0. Shows timestamp bases, offsets, last error after observation starts."));
+        return;
+      }
+      const bases = manifest?.timestamp_bases ?? {};
+      const offsets = manifest?.server_utc_offsets_s ?? obs?.server_utc_offsets_s ?? [];
+      tsCard.replaceChildren(
+        h("div", { class: "stat-grid" },
+          stat({ label: "State", value: obs?.state ?? manifest?.state ?? "UNAVAILABLE", hint: "FS-c42bbd stopped after 30 future failures, now retained offset prevents storm" }),
+          stat({ label: "Ticks recorded", value: fmtInt(manifest?.ticks_recorded ?? obs?.ticks_recorded ?? 0), hint: "2396 good ticks then 30 future in FS-c42bbd" }),
+          stat({ label: "Offsets", value: offsets.length ? offsets.map((o)=>`${o/3600}h`).join(", ") : "UNAVAILABLE", hint: "+3h=10800 retained on failure, not lost" }),
+          stat({ label: "Bases", value: Object.keys(bases).length ? Object.entries(bases).map(([k,v])=>`${k}·${v}`).join(", ") : "UNAVAILABLE", hint: "broker-normalized(measured-m1-bar) vs assumed-utc-fallback" }),
+        ),
+        obs?.last_error ? banner("warn", "Last collector error — what blocked, why", String(obs.last_error).slice(0,250), "alert") : null,
+        banner("info", "Canonical contract — no double-apply, no loss", "True UTC = time.time(). Broker server-local. Offset = server - UTC via forming-M1-bar probe. Normalization = broker_stamp - offset -> UTC single. On probe failure retain last offset (FS-c42bbd fix). Future-tick protection unchanged: age < -1s fails.", "clock"),
+      );
+    } catch {
+      tsCard.replaceChildren(h("p", { class: "small text-dim" }, "Timestamp normalization health unavailable — refresh diagnostics."));
+    }
+  }
+  refreshTimestampCard();
+
 
   const demoReasons = h("ul", { class: "reason-list" });
   const liveReasons = h("ul", { class: "reason-list" });

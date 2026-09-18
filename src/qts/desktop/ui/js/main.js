@@ -310,8 +310,16 @@ function main() {
   palette = initPalette(IA, [
     { label: "Inspect observation (no orders)", group: "Actions", icon: "eye", run: () => navigate("#/market/observations") },
     { label: "Inspect readiness and permission", group: "Actions", icon: "shield", run: () => navigate("#/trading/demo") },
+    { label: "Inspect timestamp normalization — FS-c42bbd fix", group: "Diagnostics", icon: "clock", run: () => navigate("#/system/diagnostics") },
+    { label: "Market monitor — timestamp bases & offsets", group: "Market", icon: "activity", run: () => navigate("#/market/monitor") },
     { label: "Workspace preferences", group: "Workspace", icon: "layers", run: openWorkspace },
     { label: "Refresh operating sources", group: "Actions", icon: "refresh", run: () => syncOperations(true) },
+    { label: "Toggle density compact/comfortable", group: "Workspace", icon: "layers", run: () => {
+      const ws = readWorkspace();
+      const next = ws.density === "compact" ? "comfortable" : "compact";
+      saveWorkspace({ density: next });
+      toast("ok", `Density ${next}`, "High density without chaos — professional instrument");
+    }},
   ]);
 
   window.addEventListener("hashchange", () => { markActiveNav(); });
