@@ -129,8 +129,8 @@ export function errorBox({ what, known, next, raw }) {
  */
 export function table({ columns, rows, empty, onRowClick, sortable = true, dense }) {
   const state = { key: null, dir: 1 };
-  const wrap = h("div", { class: "tbl-wrap" });
-  const tbl = h("table", { class: "tbl" });
+  const wrap = h("div", { class: `tbl-wrap${dense ? " dense" : ""}` });
+  const tbl = h("table", { class: `tbl${dense ? " dense" : ""}` });
   const thead = h("thead");
   const tr = h("tr");
   for (const c of columns) {

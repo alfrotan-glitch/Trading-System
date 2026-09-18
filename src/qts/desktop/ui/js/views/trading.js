@@ -1,19 +1,22 @@
-/* ============================================================
-   VIEW GROUP: TRADING — what actually happened
-   Paper/Shadow · Demo Forward (readiness, authority, control) ·
-   Execution lifecycle · Comparison. UNAVAILABLE is never 0.
-   ============================================================ */
-import { api, poll, store } from "../api.js";
+/* Trading — Paper/Shadow (simulation) · Demo Forward (readiness + authority) · Execution · Comparison */
+import { api, store, RESOURCES, syncResource } from "../api.js";
+import { operationalState, freshness } from "../operations.js";
 import { h, icon, clear } from "../dom.js";
 import {
   card, badge, page, table, emptyState, skeletonInto, tech, kv, stat, errorBox,
   banner, confirmModal, toast, checkGrid, provStrip, pipeline, metricStat, drawer,
 } from "../components.js";
-import { fmtInt, fmtNum, fmtUtc, fmtAge, fmtDuration, fmtMetric, humanKey, trunc, metricTone } from "../format.js";
-import { statusInfo } from "../status.js";
-import { navigate } from "../router.js";
+import { fmtInt, fmtNum, fmtUtc, fmtAge, fmtDuration, fmtMetric, humanKey, trunc } from "../format.js";
+import { navigate, onDispose } from "../router.js";
 
-/* ================= PAPER / SHADOW ================= */
+function explain(e) {
+  if (e.status === 0) return "API unreachable — is the QTS backend running?";
+  const d = e.body;
+  if (d && typeof d === "object") return String(d.detail?.detail ?? d.detail ?? d.reasons?.[0] ?? e.message).slice(0, 160);
+  return String(e.message).slice(0, 160);
+}
+
+/* Paper / Shadow — simulation only, never broker */
 export async function renderPaper(root) {
   skeletonInto(root, "stats");
   root.appendChild(page({
@@ -63,117 +66,177 @@ export async function renderPaper(root) {
   ));
 
   const diff = shadow?.shadow_vs_paper_discrepancy ?? shadow?.discrepancy ?? null;
-  if (diff) {
-    host.appendChild(card({ title: "Shadow vs paper discrepancy", sub: "systematic differences between simulation and reality proxies", icon: "scale", body: tech(diff, "Show discrepancy detail") }));
-  }
+  if (diff) host.appendChild(card({ title: "Shadow vs paper discrepancy", sub: "systematic differences between simulation and reality proxies", icon: "scale", body: tech(diff, "Show discrepancy detail") }));
 }
 
-/* ================= DEMO FORWARD ================= */
+/* Demo Forward — authority + readiness are separate */
 export async function renderDemo(root) {
   skeletonInto(root, "stats");
+  root.classList.add("operator-workspace");
   const head = page({
     crumb: "Trading", group: "Demo forward",
     title: "Demo Forward Control",
-    answer: h("b", null, "MT5 demo-account readiness and execution authority are separate. DEMO_FORWARD is observation-only; broker orders require DEMO_EXECUTION plus explicit authority and every safety gate."),
+    answer: h("b", null, "Readiness and execution permission are separate. A passing connection check never enables execution. DEMO_FORWARD is observation-only; orders require DEMO_EXECUTION plus explicit authority."),
     actions: [
-      h("button", { class: "btn", onclick: () => renderDemo(root) }, icon("refresh", 14), "Refresh"),
+      h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources"),
     ],
     body: null,
   });
   root.appendChild(head);
-  const host = h("div", { class: "section" }); root.appendChild(host);
-  let demoRetried = false;
-  await refresh();
 
-  async function refresh() {
-    let readiness, state, safety, obs, config;
+  const activity = h("h2", { id: "demo-activity" }, "Loading authority…");
+  const next = h("a", { class: "btn primary", href: "#/system/setup" }, "Inspect setup");
+  const nextWhy = h("p", { class: "text-dim small" });
+  root.appendChild(h("section", { class: "operator-summary", "aria-labelledby": "demo-activity" },
+    h("div", null, h("div", { class: "eyebrow" }, "NOW / AUTHORITY"), activity),
+    h("div", { class: "next-action" }, h("div", { class: "eyebrow" }, "NEXT MEANINGFUL ACTION"), next, nextWhy)));
+
+  const factsBody = h("tbody");
+  const factCells = {};
+  const host = h("div", { class: "section" });
+  root.appendChild(host);
+
+  let lastReadiness = null, lastState = null, lastSafety = null, lastObs = null, lastConfig = null;
+  let acting = false;
+
+  function renderFacts() {
+    const s = operationalState(store.data);
+    const rows = [
+      ["mode", "Environment / mode", s.mode.mode, "Environment capability is not execution permission."],
+      ["broker", "Broker (MT5)", s.broker, "Terminal connectivity; not proof of healthy quote."],
+      ["observation", "Observation collector", s.observation, s.obs?.last_error ? `Last error: ${s.obs.last_error}` : s.obs?.note || "No active collection established."],
+      ["permission", "DEMO execution", s.permission, s.sources.demoState.current ? `Authority state ${s.demo?.state ?? "UNAVAILABLE"}; readiness and permission are separate.` : "Permission source unavailable or stale."],
+      ["liveLabel", "LIVE governance", s.liveLabel, "Never auto-enabled from DEMO evidence."],
+    ];
+    if (!factsBody.children.length) {
+      for (const [key, title] of rows) {
+        const st = h("span", { class: "badge neutral" }, "UNAVAILABLE");
+        const det = h("span", null, "");
+        const fresh = h("span", { class: "mono small" }, "");
+        factCells[key] = { st, det, fresh };
+        factsBody.appendChild(h("tr", null, h("th", { scope: "row" }, title), h("td", null, st), h("td", { class: "fact-detail" }, det), h("td", null, fresh)));
+      }
+    }
+    for (const [key, , value, meaning] of rows) {
+      const c = factCells[key];
+      c.st.textContent = value;
+      c.det.textContent = meaning;
+      const meta = store.data.resources[key === "mode" || key === "broker" ? "health" : key === "observation" ? "observe" : key === "permission" ? "demoState" : "live"];
+      const f = meta ? freshness(meta, key === "mode" || key === "broker" ? "health" : key === "observation" ? "observe" : key === "permission" ? "demoState" : "live") : { label: "UNAVAILABLE", current: false };
+      c.fresh.textContent = `${f.label}${meta?.updatedAt ? ` · ${fmtAge(meta.updatedAt)}` : ""}`;
+    }
+    activity.textContent = `${s.observation} · DEMO ${s.permission} · LIVE ${s.liveLabel}`;
+    if (s.permission === "DISABLED") {
+      next.textContent = "Review readiness blockers"; next.href = "#/trading/demo"; nextWhy.textContent = "Execution disabled. Observation does not require enabling it. Fix blockers only if you intend to request DEMO execution.";
+    } else if (s.permission === "CONFLICT · INSPECT") {
+      next.textContent = "Inspect permission conflict"; next.href = "#/system/diagnostics"; nextWhy.textContent = "Mode and authority disagree. Current permission cannot be established.";
+    } else if (s.sources.health.current && String(s.health?.mt5).toLowerCase() !== "connected") {
+      next.textContent = "Review MT5 connection"; next.href = "#/system/mt5"; nextWhy.textContent = "Terminal not connected. No permission can be established.";
+    } else {
+      next.textContent = "Inspect observation evidence"; next.href = "#/market/observations"; nextWhy.textContent = s.next.why;
+    }
+  }
+
+  async function refresh(force = false) {
+    if (acting) return;
     try {
-      [readiness, state, safety, obs, config] = await Promise.all([
+      const [readiness, state, safety, obs, config] = await Promise.all([
         api.get("/api/demo/readiness"),
         api.get("/api/demo/state"),
         api.get("/api/demo/safety"),
         api.get("/api/demo/observations?limit=20"),
         api.get("/api/demo/config"),
       ]);
+      lastReadiness = readiness; lastState = state; lastSafety = safety; lastObs = obs; lastConfig = config;
+      store.set("demoState", state);
+      // keep health/observe/live from shell resources if available
+      if (force) await Promise.all(Object.keys(RESOURCES).map((k) => syncResource(k, { force: true })));
+      render();
     } catch (e) {
       clear(host);
-      host.appendChild(errorBox({ what: "demo state could not be loaded", next: "Use Retry. If readiness probing itself fails (no terminal), that is reported honestly below.", raw: e.message }));
-      host.appendChild(h("div", { class: "mt-3" },
-        h("button", { class: "btn primary", onclick: () => refresh() }, icon("refresh", 14), "Retry")));
-      if (!demoRetried) {
-        demoRetried = true;
-        setTimeout(() => { if (document.contains(host)) refresh(); }, 4000);
-      }
-      return;
+      host.appendChild(errorBox({ what: "demo authority could not be loaded", next: "Retry. If readiness probing fails, terminal is not installed — that is honest, not a silent pass.", raw: e.message }));
+      host.appendChild(h("div", { class: "mt-3" }, h("button", { class: "btn primary", onclick: () => refresh(true) }, icon("refresh", 14), "Retry")));
     }
-    store.set("demoState", state);
-    clear(host);
+  }
 
-    /* --- authority banner: THE primary answer --- */
-    const enabled = Boolean(state.enabled);
-    const permitted = Boolean(state.execution_permitted);
+  function render() {
+    if (!lastReadiness || !lastState) return;
+    clear(host);
+    renderFacts();
+
+    const s = operationalState(store.data);
+    const enabled = Boolean(lastState.enabled);
+    const permitted = Boolean(lastState.execution_permitted) && lastState.state === "ENABLED" && s.mode.mode === "DEMO_EXECUTION";
+
+    host.appendChild(h("section", { class: "operator-section" },
+      h("h2", null, "Operating facts"),
+      h("div", { class: "tbl-wrap", tabindex: "0" },
+        h("table", { class: "tbl facts-table" },
+          h("thead", null, h("tr", null, ["Source", "Reported state", "Meaning / constraint", "API freshness"].map((t) => h("th", { scope: "col" }, t)))),
+          factsBody))));
+
     host.appendChild(banner(
       permitted ? "warn" : enabled ? "warn" : "info",
-      `DEMO EXECUTION: ${String(state.state ?? (enabled ? "ENABLED" : "DISABLED")).toUpperCase()}`,
+      `DEMO EXECUTION: ${String(lastState.state ?? (enabled ? "ENABLED" : "DISABLED")).toUpperCase()}${permitted ? "" : s.permission === "CONFLICT · INSPECT" ? " — CONFLICT" : ""}`,
       permitted
-        ? `Orders permitted within demo limits — readiness ${state.readiness_expired ? "EXPIRED — re-verify now" : `verified ${fmtDuration(state.readiness_age_s)} ago, re-verify every ${fmtDuration(state.reverify_ttl_s)}`}`
+        ? `Orders permitted within demo limits — readiness ${lastState.readiness_expired ? "EXPIRED — re-verify now" : `verified ${fmtDuration(lastState.readiness_age_s)} ago, re-verify every ${fmtDuration(lastState.reverify_ttl_s)}`}`
         : enabled
-          ? "Enabled but not permitted — see blockers."
-          : "Execution stays disabled until readiness passes and you explicitly acknowledge the demo limits. Observation alone is always safe.",
+          ? `Enabled but not permitted — mode ${s.mode.mode} or additional gate blocks. ${lastState.reasons?.join("; ") || ""}`
+          : "Execution disabled until readiness passes and you explicitly acknowledge demo limits. Observation alone is always safe.",
       permitted || enabled ? "alert" : "lock",
     ));
 
-    /* --- readiness --- */
-    const checks = readiness.checks ?? {};
-    const allPass = Boolean(readiness.passed);
+    const checks = lastReadiness.checks ?? {};
+    const allPass = Boolean(lastReadiness.passed);
     host.appendChild(card({
-      title: "Readiness — the 14-check gate", icon: "shield",
-      sub: allPass ? `passed ${fmtAge(readiness.timestamp)}` : `${Object.values(checks).filter((v) => v === false).length} check(s) failing`,
-      actions: [
-        h("button", { class: "btn sm", onclick: runReadiness }, icon("refresh", 13), "Run readiness now"),
-      ],
+      title: "Readiness — 14-check gate (fresh probe)", icon: "shield",
+      sub: allPass ? `passed ${fmtAge(lastReadiness.timestamp)}` : `${Object.values(checks).filter((v) => v === false).length} failing`,
+      actions: [h("button", { class: "btn sm", onclick: () => refresh(true) }, icon("refresh", 13), "Run readiness now")],
       body: h("div", { class: "stack" },
         allPass
-          ? banner("ok", "ALL CHECKS PASSED", "Demo execution can be requested — enabling still requires your explicit confirmation and risk acknowledgment.", "check")
-          : banner("warn", "READINESS NOT PASSED", (readiness.blocked_reasons ?? []).join(" · ") || "Failed checks listed below.", "alert"),
-        checkGrid(checks, readiness.details ?? {}),
-        tech(readiness, "Raw readiness report"),
+          ? banner("ok", "ALL CHECKS PASSED", "Passing readiness does not enable execution. Enabling still requires explicit confirmation and risk acknowledgment.", "check")
+          : banner("warn", "READINESS NOT PASSED", (lastReadiness.blocked_reasons ?? []).join(" · ") || "Failed checks listed below.", "alert"),
+        checkGrid(checks, lastReadiness.details ?? {}),
+        h("details", null, h("summary", null, "Raw readiness report / technical evidence"), tech(lastReadiness, "Raw readiness")),
       ),
     }));
 
-    /* --- control: observe vs enable --- */
     host.appendChild(h("div", { class: "grid-2" },
       card({ title: "Observe only — always safe", sub: "records real ticks, submits zero orders", icon: "eye", body:
         h("div", { class: "stack" },
-          kv([["Observation mode", String(config.observation_mode ?? "observe_only").toUpperCase()], ["Orders possible", "no — structurally"]]),
+          kv([[ "Observation mode", String(lastConfig?.observation_mode ?? "observe_only").toUpperCase()], ["Orders possible", "no — structurally"], ["Collector", s.observation]]),
           h("div", { class: "row" },
-            h("button", { class: "btn", onclick: async () => {
-              try { await api.post("/api/observe/start"); toast("ok", "Observation started", "Zero orders will be submitted."); refresh(); }
-              catch (e) { toast("err", "Could not start", explain(e)); }
+            h("button", { class: "btn", disabled: acting || s.observing, onclick: async () => {
+              acting = true; try { const r = await api.post("/api/observe/start"); if (r.status?.state !== "OBSERVING") throw new Error(r.note || "Backend did not confirm OBSERVING"); toast("ok","Observation confirmed","Zero orders."); await refresh(); } catch (e){ toast("err","Could not start",explain(e)); } finally { acting=false; }
             } }, icon("play", 14), "Start observation"),
-            h("button", { class: "btn", onclick: async () => {
-              try { await api.post("/api/observe/stop"); toast("warn", "Observation stopped"); refresh(); }
-              catch (e) { toast("err", "Could not stop", explain(e)); }
+            h("button", { class: "btn", disabled: acting || !s.observing, onclick: async () => {
+              acting = true; try { await api.post("/api/observe/stop"); toast("warn","Observation stopped"); await refresh(); } catch (e){ toast("err","Could not stop",explain(e)); } finally { acting=false; }
             } }, icon("stop", 14), "Stop"),
           ),
           h("div", { class: "meta" }, "A DEMO terminal must be configured; without one this honestly reports failure instead of pretending."),
         ),
       }),
-      card({ title: "Demo execution — gated", sub: "requires readiness + explicit acknowledgment", icon: "lock", body:
+      card({ title: "Demo execution — gated", sub: "requires readiness + explicit acknowledgment + DEMO_EXECUTION mode", icon: "lock", body:
         h("div", { class: "stack" },
+          h("p", { class: "text-dim small" }, `Authority reports ${s.permission}. Mode ${s.mode.mode} — ${s.mode.blurb}`),
           enabled
             ? h("div", { class: "row" },
-                h("button", { class: "btn danger", onclick: disableDemo }, icon("stop", 14), "Disable demo execution"),
-                h("span", { class: "meta" }, `decided ${fmtAge(state.decided_at)}`),
+                h("button", { class: "btn danger", disabled: acting, onclick: disableDemo }, icon("stop", 14), "Disable demo execution"),
+                h("span", { class: "meta" }, `decided ${fmtAge(lastState.decided_at)}`),
               )
-            : h("button", { class: "btn primary", onclick: enableDemo }, icon("lock", 14) , "Request demo execution enable"),
-          h("div", { class: "meta" }, "Enable is refused (409) with the full blocker list unless a FRESH readiness report passes in the same request. The state is durable — a restart never silently changes it."),
+            : h("button", { class: "btn primary", disabled: acting || !allPass, onclick: enableDemo }, icon("lock", 14), "Request demo execution enable"),
+          !allPass && !enabled ? h("p", { class: "text-dim small" }, "Enable is disabled while readiness fails. Fix blockers and re-run readiness.") : null,
+          h("div", { class: "meta" }, "Enable is refused (409) with full blocker list unless a FRESH readiness report passes in the same request. State is durable — restart never silently changes it."),
+          h("details", null, h("summary", null, "Why DEMO is not an ordinary switch / evidence"), 
+            h("ul", { class: "reason-list" },
+              [ `Authority state: ${lastState.state}`, `Execution permitted: ${String(lastState.execution_permitted)}`, `Mode: ${s.mode.mode}`, ...(lastState.reasons || []).map((r) => `Permission: ${r}`), ...(lastReadiness.blocked_reasons || []).map((r) => `Readiness: ${r}`)].map((x) => h("li", null, x))
+            )
+          ),
         ),
       }),
     ));
 
-    /* --- demo limits --- */
-    const lim = safety?.demo_limits ?? {};
+    const lim = lastSafety?.demo_limits ?? {};
     host.appendChild(card({
       title: "Demo hard limits", sub: `independent conservative caps · config ${lim.config_hash ?? "—"}`, icon: "shield",
       actions: [h("span", { class: "prov demo" }, "DEMO LIMITS")],
@@ -187,9 +250,8 @@ export async function renderDemo(root) {
       ),
     }));
 
-    /* --- observations table --- */
-    host.appendChild(card({ title: "Recent demo observations", sub: "canonical store — provenance explicit", icon: "database", body:
-      (obs ?? []).length
+    host.appendChild(card({ title: "Recent demo observations", sub: "canonical store — provenance explicit, not a completeness proof", icon: "database", body:
+      (lastObs ?? []).length
         ? table({
             columns: [
               { key: "timestamp", label: "Time (UTC)", render: (o) => h("span", { class: "mono small" }, fmtUtc(o.timestamp)) },
@@ -198,22 +260,17 @@ export async function renderDemo(root) {
               { key: "prov", label: "Provenance", render: (o) => provStrip(o.provenance ?? o.data_class ?? "") },
               { key: "signal", label: "Signal", render: (o) => o.signal ? badge(String(o.signal).toUpperCase() === "NO_TRADE" ? "NO_TRADE" : "SIGNAL") : h("span", { class: "text-faint small" }, "—") },
             ],
-            rows: obs, empty: "No demo observations yet.",
+            rows: lastObs, empty: "No demo observations yet.",
           })
         : emptyState({ icon: "database", title: "No real demo observations recorded yet", desc: "Start an observation session with the DEMO terminal connected. Every tick persists with full provenance." }),
     }));
 
-    /* --- safety boundary --- */
-    if (safety?.boundary) {
+    if (lastSafety?.boundary) {
       host.appendChild(card({ title: "Environment boundary", sub: "what each mode may do — demo never grants live", icon: "shield", body:
-        kv(Object.entries(safety.boundary).map(([k, v]) => [k, h("span", { class: "small text-dim" }, v)])),
+        kv(Object.entries(lastSafety.boundary).map(([k, v]) => [k, h("span", { class: "small text-dim" }, v)])),
       }));
     }
-  }
-
-  async function runReadiness() {
-    toast("info", "Running readiness", "Probing terminal, account, symbol, spec, data…");
-    await refresh();
+    host.appendChild(h("details", null, h("summary", null, "Raw authority snapshots / technical evidence"), tech({ readiness: lastReadiness, state: lastState, safety: lastSafety, config: lastConfig }, "Raw authority")));
   }
 
   async function enableDemo() {
@@ -231,10 +288,11 @@ export async function renderDemo(root) {
       confirmLabel: "Request enable",
     });
     if (!ok) return;
+    acting = true;
     try {
       const r = await api.post("/api/demo/enable", { confirmed: true, risk_ack: true });
       toast("ok", "Demo execution ENABLED", `Authority state: ${r.state}`);
-      refresh();
+      await refresh(true);
     } catch (e) {
       if (e.status === 409 && e.body) {
         toast("err", "Enable refused by the gate", `${(e.body.reasons ?? []).slice(0, 3).join(" · ") || "readiness not passed"}`);
@@ -243,13 +301,13 @@ export async function renderDemo(root) {
           h("ul", { class: "gate-list" }, (e.body.reasons ?? []).map((r) => h("li", null, r))),
           e.body.readiness ? tech(e.body.readiness, "Raw readiness report") : null,
         ));
-        refresh();
+        await refresh(true);
       } else if (e.status === 400) {
         toast("err", "Missing acknowledgment", "The request requires confirmed=true and risk_ack=true.");
       } else {
         toast("err", "Enable request failed", explain(e));
       }
-    }
+    } finally { acting = false; }
   }
 
   async function disableDemo() {
@@ -260,14 +318,19 @@ export async function renderDemo(root) {
       confirmLabel: "Disable",
     });
     if (!ok) return;
-    try { await api.post("/api/demo/disable"); toast("ok", "Demo execution disabled"); refresh(); }
+    acting = true;
+    try { await api.post("/api/demo/disable"); toast("ok", "Demo execution disabled"); await refresh(true); }
     catch (e) { toast("err", "Disable failed", explain(e)); }
+    finally { acting = false; }
   }
+
+  const off = store.on("resources", renderFacts);
+  onDispose(root, off);
+  await refresh();
 }
 
-/* ================= EXECUTION ================= */
+/* Execution Center */
 const ORDER_STAGES = ["INTENT", "RISK", "PREFLIGHT", "SUBMIT", "BROKER ACK", "FILL", "RECONCILE"];
-
 export async function renderExecution(root) {
   skeletonInto(root, "stats");
   root.appendChild(page({
@@ -291,9 +354,9 @@ export async function renderExecution(root) {
           metricStat({ label: "Exposure", metric: account.exposure }),
           metricStat({ label: "Spread", metric: account.spread })),
         Array.isArray(account.open_positions) && account.open_positions.length
-          ? table({ columns: [{key: "symbol", label: "Symbol"}, {key: "side", label: "Side"}, {key: "volume", label: "Volume", num: true}, {key: "profit", label: "P&L", num: true}], rows: account.open_positions })
+          ? table({ columns: [{key: "symbol", label: "Symbol"}, {key: "side", label: "Side"}, {key: "volume", label: "Volume", num: true}, {key: "profit", label: "P&L", num: true}], rows: account.open_positions, dense: true })
           : h("p", {class: "text-dim"}, account.balance?.status === "MEASURED" ? "No positions reported in this snapshot." : "Position state UNAVAILABLE — account measurements are not established."),
-        tech(account, "Raw account snapshot")) }));
+        h("details", null, h("summary", null, "Raw account snapshot / technical evidence"), tech(account, "Raw account snapshot")))}));
   } catch (e) { host.appendChild(errorBox({ what: "account snapshot unavailable", next: "Retry this page; order-event evidence below is independent.", raw: e.message })); }
 
   host.appendChild(card({ title: "Lifecycle reference", sub: "each stage is audited with its own timestamp", icon: "branch", body:
@@ -301,7 +364,7 @@ export async function renderExecution(root) {
   }));
 
   host.appendChild(card({
-    title: "Orders", sub: `${orders.length} recent event(s)`, icon: "zap",
+    title: "Orders", sub: `${orders.length} recent event(s) — dense, sortable, drawer for detail`, icon: "zap",
     body: orders.length
       ? table({
           columns: [
@@ -312,8 +375,9 @@ export async function renderExecution(root) {
           ],
           rows: [...orders].reverse(),
           empty: "No orders.",
+          dense: true,
           onRowClick: (o) => drawer(`Order event — ${o.type ?? ""}`, h("div", { class: "stack" },
-            kv([["Time (UTC)", fmtUtc(o.time)], ["Type", String(o.type ?? "").toUpperCase()], ["Lifecycle", String(o.lifecycle ?? "—").toUpperCase()]]),
+            kv([[ "Time (UTC)", fmtUtc(o.time)], ["Type", String(o.type ?? "").toUpperCase()], ["Lifecycle", String(o.lifecycle ?? "—").toUpperCase()]]),
             o.payload && (o.payload.requested_price || o.payload.executed_price)
               ? h("div", { class: "stat-grid" },
                   stat({ label: "Requested", value: fmtNum(o.payload.requested_price) }),
@@ -333,7 +397,7 @@ export async function renderExecution(root) {
   }));
 }
 
-/* ================= COMPARISON ================= */
+/* Comparison */
 export async function renderComparison(root) {
   skeletonInto(root, "stats");
   root.appendChild(page({
@@ -368,13 +432,5 @@ export async function renderComparison(root) {
       }),
     }));
   }
-  host.appendChild(tech(comp, "Raw comparison evidence"));
-}
-
-/* ---------- helpers ---------- */
-function explain(e) {
-  if (e.status === 0) return "API unreachable — is the QTS backend running?";
-  const d = e.body;
-  if (d && typeof d === "object") return String(d.detail?.detail ?? d.detail ?? d.reasons?.[0] ?? e.message).slice(0, 160);
-  return String(e.message).slice(0, 160);
+  host.appendChild(h("details", null, h("summary", null, "Raw comparison evidence / technical"), tech(comp, "Raw comparison evidence")));
 }
