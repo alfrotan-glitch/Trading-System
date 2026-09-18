@@ -27,7 +27,7 @@ data/
 
 - **Parquet** partitioned by `(instrument, venue, timeframe, date)`, dictionary + Snappy, `event_time` sorted.
 - **SQLite WAL** for manifests, lineage, quality results. `qts.db` is portable.
-- **Manifest** per version: `{version, created_at, code_version, instrument, venue, timeframe, start, end, rows, checksum, source_url, schema_version}` plus `quality_report` (stored in SQLite `quality_reports` with `passed` + per-check details).
+- **Manifest** per version: `{version, created_at, code_version, instrument, venue, timeframe, start, end, rows, checksum, source, provenance_class, source_provider, source_feed, source_venue, execution_target, execution_venue, schema_version}` plus `quality_report` (stored in SQLite `quality_reports` with `passed` + per-check details). Legacy `venue` is a dataset/storage namespace; source and execution roles are separate and nullable.
 - **Version** = `YYYYMMDD-<git_short>-<content_hash8>` e.g. `20260101-a1b2c3d-9f3e2a1b`. Data is immutable; new ingest → new version.
 
 ## 5.3 Normalization

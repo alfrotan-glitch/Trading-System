@@ -94,8 +94,9 @@ This doc + 7 others, machine evidence `data/evidence/autonomous_research.json`, 
 The current machine-readable evidence is authoritative:
 
 - canonical datasets: `20260918-010+8f120133-1ba57af7` — XAUUSD 15m, 26,038
-  tick-derived mid bars, 407 days, `REAL`, readiness `READY` (provenance:
-  `docs/data_provenance_xauusd_dukascopy.md`) — and the unchanged synthetic
+  tick-derived mid bars, 407 days, `REAL`, acquired but current gap
+  completeness `FAIL` under the audited duration-based gate (frozen snapshot
+  had recorded `READY`; provenance: `docs/data_provenance_xauusd_dukascopy.md`) — and the unchanged synthetic
   fixture `20260918-010+…-572728d9` (XAUUSD 1H, 500 bars, `SYNTHETIC`,
   `BLOCKED_INSUFFICIENT_DATA`);
 - `data/evidence/campaign_last.json`: 2 bounded trials, 0 passed,

@@ -45,8 +45,9 @@ The API boundary is intentionally diagnostic-only:
 
 ## B. Data observatory and provenance
 
-Two canonical dataset rows are registered rather than counting duplicate
-raw/curated representations as independent evidence:
+The frozen inventory evidence records two dataset rows rather than counting
+duplicate raw/curated representations as independent evidence. The checked-in
+JSON is a derived snapshot, not a current quality certificate:
 
 - Version: `20260918-010+c83567cb-572728d9` (synthetic fixture)
   - Instrument/timeframe: `XAUUSD` / `1H`
@@ -61,15 +62,17 @@ raw/curated representations as independent evidence:
   - Rows/span: `26,038` bars / `407.00` days
   - Source/class: `REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks`
     / `REAL`
-  - OHLC quality checks: `12/12` passed (`qts data validate`)
+  - Frozen acquisition snapshot: OHLC quality checks `12/12` passed under the
+    previous event-count-only gap gate. Current audit status: **FAIL for gap
+    completeness** because 1,493 unexpected missing 15m intervals equal 5.42%
+    of the active expected span, above the 2% limit. No research rerun was
+    performed.
   - Bid/ask (continuous), tick, measured spread, broker session, fill, latency,
     and real volume semantics: `UNAVAILABLE` in the canonical bars; a
     supplementary 23-event bid/ask spread study exists but is not a gate input
-  - Research eligibility: REAL-claims adequacy passed R1–R4 and R6;
-    execution-cost requirement R5 remains **FAIL/non-blocking** because the
-    canonical bars contain no continuous bid/ask/tick history. Older derived
-    inventory exports are snapshot-time artifacts, not a replacement for the
-    REAL impulse evidence.
+  - The frozen REAL impulse artifact records R1–R4 and R6 passing and R5
+    **FAIL/non-blocking**; it remains historical research evidence, not a
+    current quality certification.
   - Provenance record: `docs/data_provenance_xauusd_dukascopy.md`
 
 The `data_quality_summary.json` and `historical_depth.json` exports were

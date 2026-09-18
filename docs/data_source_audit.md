@@ -3,12 +3,19 @@
 **Updated:** 2026-09-18
 **Canonical machine evidence:** `data/evidence/data_source_audit.json`
 **Additional provenance record:** `docs/data_provenance_xauusd_dukascopy.md`
+**Audit status:** the checked-in JSON is a derived acquisition-era snapshot;
+`src/qts/data/audit.py` and `src/qts/data/quality.py` now emit explicit role and
+gap populations. The snapshot is retained for lineage and is not a current
+quality certificate.
 
 ## Audited sources
 
-The canonical inventory now contains two registered datasets.
+The frozen inventory artifact records two dataset entries. It is retained for
+acquisition/research lineage; the current code treats manifests and the
+canonical store as primary and does not treat this snapshot as a current quality
+certificate.
 
-### 1. Real dataset (claim-eligible)
+### 1. REAL acquired dataset (current completeness blocked)
 
 - version `20260918-010+8f120133-1ba57af7`;
 - `XAUUSD` / `15m`, 26,038 UTC mid-price OHLC bars, span 407.00 days
@@ -17,9 +24,13 @@ The canonical inventory now contains two registered datasets.
   class `REAL` — Dukascopy XAU/USD tick-derived 15-minute mid bars
   (`mid = (bid + ask) / 2`, per-bar tick counts), pinned upstream commit
   `4d6f15543e6285fad91fd57fe42f716bc7273075`, no upstream license;
-- quality checks: **12/12 pass**;
-- research readiness: **READY** (class REAL, rows ≥ 5,000, span ≥ 180 days,
-  quality passed); the pre-registered impulse adequacy gate passes R1–R4 and R6;
+- frozen acquisition snapshot: **12/12 pass** under the previous
+  event-count-only gap check;
+- current audited gap status: **FAIL for quality completeness** because the
+  inventory records 1,493 unexpected missing 15m intervals (5.42% of active
+  expected span), above the 2% duration threshold. The pre-registered impulse
+  artifact and its R1–R4/R6 adequacy record remain frozen historical evidence;
+  no rerun was performed.
 - tick, continuous bid/ask, measured spread, broker session/fill metadata,
   real-volume semantics, licensing metadata, survivorship universe, and
   execution history: `UNAVAILABLE` in the canonical bars.
@@ -41,12 +52,14 @@ acquired data. Raw broker Desktop evidence is not present in this checkout.
 
 ## Claim consequence
 
-The real dataset is claim-eligible for bar-based research on XAUUSD 15m within
-its declared window and for the cost assumptions it declares. It is **not**
-execution-realism evidence: there is no continuous spread/tick history, no
-broker session metadata, and derivations rest on a third-party mirror without a
-license. Research conclusions must stay regime- and window-conditional
-(the pre-registered impulse study returned `REGIME_DEPENDENT` / `BLOCK`).
+The frozen research run treated the real dataset as eligible for bar-based
+research on XAUUSD 15m within its declared window and cost assumptions, but the
+current audited completeness result is **FAIL** and blocks a current quality
+PASS. It is **not** execution-realism evidence: there is no continuous
+spread/tick history, no broker session metadata, and derivations rest on a
+third-party mirror without a license. The preserved research conclusion must
+stay regime- and window-conditional (the pre-registered impulse study returned
+`REGIME_DEPENDENT` / `BLOCK`); no rerun or promotion occurred.
 
 The synthetic fixture supports only labelled mechanism validation.
 
@@ -58,8 +71,9 @@ Continue to improve, without weakening any gate:
   bid/ask and broker session semantics (fills, latency, spreads);
 - longer history (the 2-year regime target is not met by 407 days);
 - cross-instrument coverage (e.g. EURUSD/BTC) for generality claims;
-- forward observation of real broker quotes (already available as DEMO_FORWARD
-  with zero orders) to replace declared cost assumptions with measurements.
+- forward observation of real broker quotes through the order-free DEMO_FORWARD
+  protocol (no real session is present in the current canonical store) to replace
+  declared cost assumptions with measurements.
 
 The provider catalog is an acquisition plan, not evidence of availability or
 quality.

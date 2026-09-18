@@ -12,7 +12,10 @@ market/timeframe generality is untested.
 - **Diverse**: XAUUSD (metal safe-haven, volatile) vs EURUSD (FX mean-reverting, high liquidity) vs BTCUSDT (crypto 24/7, high vol) — different drivers, sessions, shocks.
 
 ## Evidence-Based Selection
-- **Evidence for**: We have only XAUUSD; need EURUSD (dukascopy 2003+, free tick/1m, high quality, need verify) + BTC (binance free tick) to test cross-asset robustness; cross-market would catch spurious XAUUSD-only pattern.
+- **Evidence for**: We have only XAUUSD; need independently licensed EURUSD
+  and BTC populations to test cross-asset robustness. Catalog descriptions of
+  Dukascopy/Binance access are planning metadata, not acquired data or a license
+  grant; cross-market research would catch a spurious XAUUSD-only pattern.
 - **Evidence against**: Adding markets for sample-size alone without behavior difference is padding; must show that strategy passes XAUUSD but fails EURUSD (or vice versa) indicates overfit.
 - **Current status**: No independent cross-asset data is ingested. XAUUSD is
   the only instrument, with the REAL 15m dataset and synthetic 1H fixture

@@ -406,7 +406,7 @@ export async function renderData(root) {
 
   host.appendChild(card({ title: "Labeling contract — truth is visual design", icon: "fileCheck", body: h("div", { class: "stack" },
     h("div", { class: "chip-row" }, h("span", { class: "prov real" }, "REAL"), h("span", { class: "prov synthetic" }, "SYNTHETIC"), h("span", { class: "prov synthetic" }, "SIMULATED"), h("span", { class: "prov synthetic" }, "ESTIMATED"), h("span", { class: "prov" }, "IMPUTED"), h("span", { class: "prov demo" }, "BROKER-DERIVED"), h("span", { class: "prov" }, "MODEL-DERIVED")),
-    h("p", { class: "gate-note" }, "OHLC from CSV import is REAL-price proxy with limited depth; bid/ask and spread derived from highs/lows are SYNTHETIC until real ticks observed. Every badge carries source prefix. Context syncs, never permission."),
+    h("p", { class: "gate-note" }, "CSV imports remain provenance-bound; the registered Dukascopy dataset is REAL historical mid-price OHLC, not MT5 broker history. Bid/ask and spread are UNAVAILABLE in those bars; high-low is never a measured spread. DEMO_FORWARD observations remain DEMO, not historical REAL. Every badge carries source prefix. Context syncs, never permission."),
     audit?.never_substitute ? banner("warn", "Never substitute", audit.never_substitute, "alert") : null,
   )}));
 

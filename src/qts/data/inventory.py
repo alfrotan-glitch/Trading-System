@@ -7,75 +7,19 @@ tick count or a high-low range as a measured spread.
 
 from __future__ import annotations
 
-from collections import Counter
 from datetime import UTC
 from pathlib import Path
 from typing import Any
 
 from qts.data.bootstrap import classify_source
-from qts.data.quality import validate_bars
+from qts.data.quality import dataset_missing_stats, validate_bars
 from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
 
 
-def _assess_gaps(bars: list[Any]) -> dict[str, Any]:
-    """Measure gaps relative to the modal bar interval.
-
-    Weekend/market-closure gaps are reported separately from unexplained
-    missing intervals.  No guessed number is inserted when the cadence cannot
-    be inferred.
-    """
-    if len(bars) < 2:
-        return {
-            "gap_count": 0,
-            "max_gap_s": None,
-            "missing_intervals": None,
-            "missing_pct": None,
-            "common_delta_s": None,
-            "closure_gap_count": 0,
-        }
-    deltas = [(bars[i + 1].open_time - bars[i].open_time).total_seconds() for i in range(len(bars) - 1)]
-    positive = [d for d in deltas if d > 0]
-    common = Counter(round(d, 6) for d in positive).most_common(1)[0][0] if positive else 0.0
-    if common <= 0:
-        return {
-            "gap_count": None,
-            "max_gap_s": None,
-            "missing_intervals": None,
-            "missing_pct": None,
-            "common_delta_s": None,
-            "closure_gap_count": None,
-        }
-
-    abnormal = 0
-    closures = 0
-    missing_intervals = 0
-    max_abnormal_gap = 0.0
-    for i, delta in enumerate(deltas):
-        if delta <= common * 1.5:
-            continue
-        before = bars[i].close_time.astimezone(UTC)
-        after = bars[i + 1].open_time.astimezone(UTC)
-        # Friday-to-Sunday gaps and multi-day gaps are market closures, not
-        # missing observations.  The report still exposes them explicitly.
-        is_closure = before.weekday() == 4 and after.weekday() in (5, 6) or delta >= 2 * 86_400
-        if is_closure:
-            closures += 1
-            continue
-        abnormal += 1
-        intervals = max(0, int(round(delta / common)) - 1)
-        missing_intervals += intervals
-        max_abnormal_gap = max(max_abnormal_gap, delta)
-
-    expected = len(bars) + missing_intervals
-    return {
-        "gap_count": abnormal,
-        "closure_gap_count": closures,
-        "max_gap_s": int(max_abnormal_gap) if max_abnormal_gap else 0,
-        "missing_intervals": missing_intervals,
-        "missing_pct": round(missing_intervals / expected * 100, 2) if expected else 0.0,
-        "common_delta_s": int(common),
-    }
+def _assess_gaps(bars: list[Any], timeframe: str | None = None) -> dict[str, Any]:
+    """Use the canonical gap model; keep this wrapper for callers/tests."""
+    return dataset_missing_stats(bars, timeframe or "")
 
 
 def _resolution(bars: list[Any]) -> str:
@@ -116,7 +60,7 @@ def generate_inventory(root: Path = Path("data")) -> list[dict[str, Any]]:
         instr = Instrument(symbol=manifest.instrument, venue=manifest.venue)
         bars = sorted(store.read_bars(instr, manifest.timeframe, version=version), key=lambda b: b.open_time)
         report = validate_bars(bars) if bars else None
-        gap_info = _assess_gaps(bars)
+        gap_info = _assess_gaps(bars, manifest.timeframe)
         source_label = getattr(manifest, "source", None) or "UNVERIFIED"
         raw_source = getattr(manifest, "source_file", None)
         data_class = getattr(manifest, "provenance_class", None) or classify_source(source_label)
@@ -162,6 +106,12 @@ def generate_inventory(root: Path = Path("data")) -> list[dict[str, Any]]:
                 "source_file": raw_source,
                 "data_class": data_class,
                 "provider": provider,
+                "source_provider": getattr(manifest, "source_provider", None),
+                "source_feed": getattr(manifest, "source_feed", None),
+                "source_venue": getattr(manifest, "source_venue", None),
+                "execution_target": getattr(manifest, "execution_target", None),
+                "execution_venue": getattr(manifest, "execution_venue", None),
+                "venue_semantics": getattr(manifest, "venue_semantics", "legacy_dataset_namespace_only"),
                 "instrument": manifest.instrument,
                 "venue": manifest.venue,
                 "timeframe": manifest.timeframe,

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import contextlib
 import hashlib
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
@@ -13,6 +13,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from pydantic import BaseModel
 
+from qts.data.quality import dataset_missing_stats
 from qts.db import connect as db_connect
 from qts.domain.value_objects import Bar, Instrument
 
@@ -30,10 +31,18 @@ class Manifest(BaseModel):
     rows: int
     checksum: str
     source_file: str | None = None
-    # Provenance is a label plus its canonical class.  Older manifests may
-    # lack the class; readers must then remain conservative.
+    # Provenance is a label plus its canonical class. Older manifests may lack
+    # the class; readers must then remain conservative.
     source: str = "synthetic_or_csv"
     provenance_class: str = "UNVERIFIED"
+    # Explicit source/execution roles. The legacy ``venue`` field below is a
+    # storage/instrument namespace, not proof of source or broker execution.
+    source_provider: str | None = None
+    source_feed: str | None = None
+    source_venue: str | None = None
+    execution_target: str | None = None
+    execution_venue: str | None = None
+    venue_semantics: str = "legacy_dataset_namespace_only"
     ingestion_timestamp: datetime | None = None
     preprocessing_version: str = "1.0"
     timezone: str = "UTC"
@@ -42,7 +51,19 @@ class Manifest(BaseModel):
 
 
 class DataStore(Protocol):
-    def write_bars(self, bars: list[Bar], version: str | None = None, source_file: str | None = None) -> Manifest: ...
+    def write_bars(
+        self,
+        bars: list[Bar],
+        version: str | None = None,
+        source_file: str | None = None,
+        strict_quality: bool = True,
+        source: str | None = None,
+        source_provider: str | None = None,
+        source_feed: str | None = None,
+        source_venue: str | None = None,
+        execution_target: str | None = None,
+        execution_venue: str | None = None,
+    ) -> Manifest: ...
     def read_bars(
         self,
         instrument: Instrument,
@@ -115,6 +136,11 @@ class SqliteParquetDataStore:
         source_file: str | None = None,
         strict_quality: bool = True,
         source: str | None = None,
+        source_provider: str | None = None,
+        source_feed: str | None = None,
+        source_venue: str | None = None,
+        execution_target: str | None = None,
+        execution_venue: str | None = None,
     ) -> Manifest:
         if not bars:
             raise ValueError("no bars to write")
@@ -125,10 +151,13 @@ class SqliteParquetDataStore:
             if key in seen:
                 raise ValueError(f"duplicate bar {key}")
             seen.add(key)
+        instrument = bars[0].instrument
+        timeframe = self._infer_timeframe(bars)
+        source_label = source or source_file or "synthetic_or_csv"
         # quality gate — fail closed on bad data unless strict_quality=False
         from qts.data.quality import validate_bars as _validate_bars
 
-        quality = _validate_bars(bars)
+        quality = _validate_bars(bars, timeframe)
         if strict_quality and not quality.passed:
             details = "; ".join(f"{c.name}: {c.details}" for c in quality.checks if not c.passed)
             raise ValueError(f"data quality failed: {details}")
@@ -143,8 +172,6 @@ class SqliteParquetDataStore:
             row = con.execute("SELECT 1 FROM manifests WHERE version=?", (version,)).fetchone()
             if row:
                 raise ValueError(f"version {version} already exists")
-        instrument = bars[0].instrument
-        timeframe = self._infer_timeframe(bars)
         df = self._bars_to_df(bars)
         checksum = _checksum_bars(bars)
         out_dir = (
@@ -157,36 +184,30 @@ class SqliteParquetDataStore:
         out_dir.mkdir(parents=True, exist_ok=True)
         table = pa.Table.from_pandas(df, preserve_index=False)
         pq.write_table(table, out_dir / "part-0.parquet", compression="snappy")
-        # Phase 1: compute missing data stats
-        missing_stats = None
-        session_stats = None
-        with contextlib.suppress(Exception):
-            # estimate expected bars based on timeframe
-            tf_seconds = {"1m": 60, "5m": 300, "15m": 900, "1H": 3600, "1D": 86400}.get(timeframe)
-            if tf_seconds:
-                total_seconds = (bars[-1].close_time - bars[0].open_time).total_seconds()
-                expected = int(total_seconds // tf_seconds) + 1 if total_seconds > 0 else len(bars)
-                missing = max(0, expected - len(bars))
-                gap_count = 0
-                max_gap_s = 0.0
-                for i in range(len(bars) - 1):
-                    gap = (bars[i + 1].open_time - bars[i].close_time).total_seconds()
-                    if gap > tf_seconds * 1.5:
-                        gap_count += 1
-                        max_gap_s = max(max_gap_s, gap)
-                missing_stats = {
-                    "expected": expected,
-                    "actual": len(bars),
-                    "missing": missing,
-                    "gap_count": gap_count,
-                    "max_gap_s": max_gap_s,
-                    "missing_pct": round(missing / expected * 100, 2) if expected else 0,
-                }
-                # session boundaries: count weekend gaps (market closures)
-                session_stats = {"timezone": "UTC", "weekend_gaps": gap_count}
+        # Compute the same explicit gap model used by validation and inventory.
+        # Do not swallow errors or silently fall back to a different population.
+        missing_stats = dataset_missing_stats(bars, timeframe)
+        session_stats = {
+            "timezone": "UTC",
+            "closure_policy": missing_stats.get("closure_policy"),
+            "closure_gap_events": missing_stats.get("closure_gap_events"),
+            "closure_intervals": missing_stats.get("closure_intervals"),
+            "unexpected_gap_events": missing_stats.get("unexpected_gap_events"),
+            "unexpected_missing_intervals": missing_stats.get("unexpected_missing_intervals"),
+        }
         from qts.data.bootstrap import classify_source
+        from qts.data.provenance import describe_source
 
-        source_label = source or source_file or "synthetic_or_csv"
+        roles = describe_source(source_label, instrument.venue)
+        roles.update(
+            {
+                "source_provider": source_provider or roles["source_provider"],
+                "source_feed": source_feed or roles["source_feed"],
+                "source_venue": source_venue or roles["source_venue"],
+                "execution_target": execution_target,
+                "execution_venue": execution_venue,
+            }
+        )
         manifest = Manifest(
             version=version,
             created_at=datetime.now(UTC),
@@ -201,6 +222,12 @@ class SqliteParquetDataStore:
             source_file=source_file,
             source=source_label,
             provenance_class=classify_source(source_label),
+            source_provider=roles["source_provider"],
+            source_feed=roles["source_feed"],
+            source_venue=roles["source_venue"],
+            execution_target=roles["execution_target"],
+            execution_venue=roles["execution_venue"],
+            venue_semantics=roles["venue_semantics"],
             ingestion_timestamp=datetime.now(UTC),
             preprocessing_version="1.0",
             timezone="UTC",
@@ -413,19 +440,16 @@ class SqliteParquetDataStore:
     def _infer_timeframe(self, bars: list[Bar]) -> str:
         if len(bars) < 2:
             return "1m"
-        delta = bars[1].open_time - bars[0].open_time
-        secs = int(delta.total_seconds())
-        if secs == 60:
+        deltas = [
+            int((bars[i + 1].open_time - bars[i].open_time).total_seconds())
+            for i in range(len(bars) - 1)
+            if bars[i + 1].open_time > bars[i].open_time
+        ]
+        if not deltas:
             return "1m"
-        if secs == 300:
-            return "5m"
-        if secs == 900:
-            return "15m"
-        if secs == 3600:
-            return "1H"
-        if secs == 86400:
-            return "1D"
-        return f"{secs}s"
+        secs = Counter(deltas).most_common(1)[0][0]
+        known = {60: "1m", 300: "5m", 900: "15m", 3600: "1H", 86400: "1D"}
+        return known.get(secs, f"{secs}s")
 
     def close(self) -> None:
         # File-backed connections are opened/closed per operation via qts.db.connect,

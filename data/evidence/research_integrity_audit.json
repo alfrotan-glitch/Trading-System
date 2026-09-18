@@ -1,0 +1,101 @@
+{
+  "schema": "qts.research_integrity_audit.v1",
+  "status": "AUDIT_COMPLETE_NO_RESEARCH_RERUN",
+  "checked_starting_commit": "f61120845ac4fb9582d5acfe1799e1681449510f",
+  "branch": "arena/01a0b574-trading-system",
+  "posture": "research-first / fail-closed / NO_TRADE",
+  "scope": {
+    "strategy_search": false,
+    "research_rerun": false,
+    "data_acquisition": false,
+    "mt5_observation_session": false,
+    "execution_path_changed": false
+  },
+  "verification": {
+    "focused_pytest": "18 passed",
+    "full_pytest": "807 passed, 20 skipped, 827 collected",
+    "ruff": "clean: src tests scripts",
+    "javascript_syntax": "clean: market.js research.js",
+    "compileall": "clean: src tests",
+    "mypy": "Success: no issues found in 13 source files",
+    "cli_help": "4 commands exit 0",
+    "fixture_cli_validate": "PASS: 500 bars, 12 checks",
+    "evidence_json_parse": "clean",
+    "markdown_links": "clean",
+    "git_diff_check": "clean"
+  },
+  "gap_model": {
+    "implementation": "src/qts/data/quality.py::analyze_gap_semantics",
+    "quality_limit": {
+      "name": "active_span_missing_pct",
+      "maximum": 2.0,
+      "unit": "percent",
+      "population": "unexpected_missing_intervals / (observed_bars + unexpected_missing_intervals)"
+    },
+    "default_closure_policy": "weekend_boundary_only",
+    "unknown_holidays": "unexpected_until_explicit_schedule_evidence",
+    "legacy_gap_keys": "retained as compatibility aliases; new code uses explicit populations"
+  },
+  "registered_real_snapshot": {
+    "version": "20260918-010+8f120133-1ba57af7",
+    "instrument": "XAUUSD",
+    "timeframe": "15m",
+    "rows": 26038,
+    "source_label": "REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks",
+    "provenance_class": "REAL",
+    "frozen_inventory_snapshot": {
+      "gap_events": 278,
+      "closure_gap_events": 58,
+      "unexpected_missing_intervals": 1493,
+      "active_span_missing_pct": 5.42,
+      "calendar_span_missing_intervals": 13035,
+      "calendar_span_missing_pct": 33.36
+    },
+    "current_quality_interpretation": "FAIL: frozen snapshot exceeds the 2% unexpected active-span missingness limit",
+    "research_artifact": "preserved; no rerun performed"
+  },
+  "provenance_defaults": {
+    "domain_tick": "UNVERIFIED",
+    "execution_observation": "UNVERIFIED",
+    "explicit_real_required": true,
+    "demo_distinct_from_real": true
+  },
+  "provenance_roles": {
+    "legacy_manifest_venue": "MT5",
+    "legacy_manifest_venue_meaning": "dataset/storage namespace only",
+    "source_provider": "Dukascopy-derived upstream mirror",
+    "source_feed": "Dukascopy XAU/USD tick feed; exported mid-price OHLC",
+    "source_venue": "Dukascopy XAU/USD feed",
+    "execution_target": null,
+    "execution_venue": null,
+    "interpretation": "historical research data is not MT5 broker execution history"
+  },
+  "forward_observation": {
+    "canonical_store": "data/sqlite/forward_observatory.db",
+    "checked_manifest": "data/evidence/forward_observation_manifest.json",
+    "active_sessions": 0,
+    "ticks_recorded": 0,
+    "real_market_ticks": 0,
+    "simulation_helper": "TEST_ONLY_SYNTHETIC",
+    "real_mt5_session_present": false
+  },
+  "safety": {
+    "DEMO_EXECUTION": "DISABLED BY POLICY",
+    "LIVE": "LOCKED",
+    "NO_TRADE": "unchanged",
+    "trial_ledger_reset": false,
+    "locked_partition_modified": false,
+    "promotion_changed": false,
+    "broker_orders": 0
+  },
+  "artifact_policy": {
+    "data_inventory.json": "DERIVED_SNAPSHOT_RETAINED_FOR_LINEAGE",
+    "data_quality_summary.json": "DERIVED_HISTORICAL_SYNTHETIC_ONLY",
+    "historical_depth.json": "DERIVED_HISTORICAL_SYNTHETIC ONLY",
+    "data_source_audit.json": "DERIVED_ACQUISITION_SNAPSHOT",
+    "forward_observation_manifest.json": "DERIVED_CURRENT_ZERO_OBSERVATION_EXPORT",
+    "impulse_research_xauusd_dukascopy_15m.json": "FROZEN_RESEARCH_EVIDENCE",
+    "xauusd_dukascopy_acquisition.json": "FROZEN_ACQUISITION_PROVENANCE",
+    "research_integrity_audit.json": "CURRENT_AUDIT_RESULT"
+  }
+}
