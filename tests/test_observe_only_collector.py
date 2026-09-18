@@ -35,9 +35,12 @@ from __future__ import annotations
 import ast
 import inspect
 import json
+import re
 import sqlite3
 import time
+import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -46,9 +49,9 @@ import pytest
 from qts.adapters.market_data import MarketDataProvider
 from qts.adapters.mt5_adapter import MT5Adapter
 from qts.db import connect as db_connect
-from qts.domain.value_objects import Instrument
+from qts.domain.value_objects import Instrument, uuid7
 from qts.observability.demo_collector import ObservationCollector
-from qts.observability.forward_observatory import ForwardObservatory
+from qts.observability.forward_observatory import ForwardObservatory, ObservationTick
 from qts.observability.session_export import export_session_evidence, verify_session_export
 
 BROKER_OFFSET_S = 10800  # UTC+3, like the verified WMMarkets-Demo server
@@ -439,6 +442,169 @@ def test_sustained_storage_failure_auto_stops_with_persisted_terminal_state(tmp_
     assert art["session"]["status"] == "ENDED_ON_ERRORS"
     verdict = verify_session_export(art)
     assert verdict["verdict"] == "CONSISTENT", verdict
+    assert fake.order_send_calls == []
+
+
+# ---------------------------------------------------------------------------
+# manifest failures, terminal persistence, and record identity
+# ---------------------------------------------------------------------------
+
+
+def test_manifest_failure_is_accounted_and_collection_recovers(tmp_path: Path) -> None:
+    """A DERIVED-manifest write error is a counted failure, never a silent death."""
+    collector, fake = _make_collector(
+        tmp_path, LiveFakeMT5("live"), max_consecutive_failures=40, manifest_every_ticks=1
+    )
+    collector.start(PASSED_READINESS)
+    assert _wait_for(lambda: collector.ticks_recorded >= 1), collector.last_error
+    real = collector.write_manifest
+
+    def boom(*_a: Any, **_k: Any) -> dict[str, Any]:
+        raise OSError(28, "No space left on device")
+
+    collector.write_manifest = boom
+    try:
+        assert _wait_for(lambda: collector.consecutive_failures >= 1), "manifest failure was not accounted"
+        assert "OSError" in (collector.last_error or "")
+        assert collector.state == "OBSERVING" and collector.thread_alive
+        recorded = collector.ticks_recorded
+    finally:
+        collector.write_manifest = real
+    assert _wait_for(lambda: collector.consecutive_failures == 0 and collector.ticks_recorded > recorded)
+    stopped = collector.stop()
+    assert stopped["state"] == "STOPPED"
+    assert fake.order_send_calls == []
+
+
+def test_terminal_manifest_failure_cannot_block_session_end(tmp_path: Path) -> None:
+    """stop() must still persist ENDED and flip state when the manifest write fails."""
+    collector, fake = _make_collector(tmp_path, LiveFakeMT5("live"))
+    collector.start(PASSED_READINESS)
+    assert _wait_for(lambda: collector.ticks_recorded >= 1), collector.last_error
+
+    def boom(*_a: Any, **_k: Any) -> dict[str, Any]:
+        raise OSError(28, "No space left on device")
+
+    collector.write_manifest = boom
+    stopped = collector.stop()  # must NOT raise into the caller / API handler
+
+    assert stopped["state"] == "STOPPED"  # truthful terminal state, not a stuck OBSERVING
+    assert not collector.thread_alive
+    assert "terminal manifest write failed" in (stopped["last_error"] or "")  # loud diagnostic
+    sessions = _session_rows(tmp_path / "obs.db")
+    assert sessions[0]["status"] == "ENDED" and "error" not in json.loads(sessions[0]["meta"])
+    art = export_session_evidence(stopped["session_id"], db_path=collector.observatory.db_path)
+    assert art["session"]["status"] == "ENDED"
+    assert verify_session_export(art)["verdict"] == "CONSISTENT"
+    assert fake.order_send_calls == []
+
+
+def test_terminal_persist_failure_is_loud_and_never_leaves_worker_untrusted(tmp_path: Path) -> None:
+    """If storage is down at the transition the state is still terminal and loud,
+    and `stop()` retries the row so it cannot stay ACTIVE forever."""
+    collector, fake = _make_collector(tmp_path, LiveFakeMT5("live"))
+    collector.start(PASSED_READINESS)
+    assert _wait_for(lambda: collector.ticks_recorded >= 1), collector.last_error
+
+    real = collector.observatory.end_session
+    calls = {"n": 0}
+
+    def flaky(session_id: str, *, status: str = "ENDED", error: str | None = None) -> None:
+        calls["n"] += 1
+        if calls["n"] <= 3:  # every bounded attempt fails
+            raise sqlite3.OperationalError("database is locked")
+        real(session_id, status=status, error=error)
+
+    collector.observatory.end_session = flaky
+    stopped = collector.stop()
+
+    # never silently OBSERVING/ACTIVE: state is terminal and the failure is loud
+    assert stopped["state"] == "STOPPED"
+    assert not collector.thread_alive
+    assert "terminal session persist failed" in (stopped["last_error"] or "")
+    assert _session_rows(tmp_path / "obs.db")[0]["status"] == "ACTIVE"  # storage was down
+    assert collector._terminal_persist_pending is True
+
+    # storage recovers -> the operator's Stop retries and the row becomes terminal
+    collector.stop()
+    row = _session_rows(tmp_path / "obs.db")[0]
+    assert row["status"] == "ENDED" and row["end"]
+    assert collector._terminal_persist_pending is False
+    art = export_session_evidence(collector.session_id, db_path=collector.observatory.db_path)
+    assert art["session"]["status"] == "ENDED"
+    assert verify_session_export(art)["verdict"] == "CONSISTENT"
+    assert fake.order_send_calls == []
+
+
+def test_record_identity_is_collision_resistant_and_session_ids_stay_canonical() -> None:
+    """Record IDs carry full 128-bit entropy; session IDs keep the FS-<6 hex> contract."""
+    ids = {ObservationTick(symbol="XAUUSD@").id for _ in range(500)}
+    assert len(ids) == 500
+    assert all(re.fullmatch(r"OT-[0-9a-f]{32}", i) for i in ids)  # was 6 hex chars (24 bits)
+    assert all(re.fullmatch(r"FS-[0-9a-f]{6}", f"FS-{uuid7()[:6]}") for _ in range(50))  # unchanged
+
+
+def test_duplicate_record_id_is_refused_not_overwritten(tmp_path: Path) -> None:
+    """Append-only identity: a duplicate record ID refuses, never replaces."""
+    observatory = ForwardObservatory(db_path=tmp_path / "obs.db")
+    sid = observatory.start_session(meta={"orders_possible": False, "broker_symbol": "XAUUSD@"})
+    first = ObservationTick(
+        symbol="XAUUSD@",
+        bid=Decimal("2000.0"),
+        ask=Decimal("2000.5"),
+        provenance="DEMO",
+        broker_event_time=datetime.now(UTC),
+        broker_time_raw=1_750_000_000.0,
+        server_utc_offset_s=10800.0,
+        timestamp_basis="broker-normalized(measured-m1-bar)",
+        tick_provenance={"mt5_time": 1_750_000_000.0, "mt5_time_msc": 1_750_000_000_007},
+        session_id=sid,
+    )
+    observatory.record_tick(first)
+    clash = first.model_copy(deep=True)
+    clash.bid = Decimal("1999.0")  # conflicting payload, identical identity
+    with pytest.raises(sqlite3.IntegrityError):
+        observatory.record_tick(clash)
+    stored = _tick_rows(tmp_path / "obs.db")
+    assert len(stored) == 1 and float(stored[0]["bid"]) == 2000.0  # original preserved
+
+
+def test_session_id_collision_never_replaces_existing_session(tmp_path: Path) -> None:
+    """Session IDs keep the v1 canonical format and collide loudly, never replace."""
+    observatory = ForwardObservatory(db_path=tmp_path / "obs.db")
+    sid = observatory.start_session(session_id="FS-abcdef", meta={"kind": "LIVE_OBSERVATION", "orders_possible": False})
+    assert re.fullmatch(r"FS-[0-9a-f]{6}", sid)
+    with pytest.raises(sqlite3.IntegrityError):
+        observatory.start_session(session_id="FS-abcdef", meta={"kind": "OTHER", "orders_possible": False})
+    row = observatory.session("FS-abcdef")
+    assert row["status"] == "ACTIVE" and row["meta"]["kind"] == "LIVE_OBSERVATION"  # original preserved
+
+
+def test_record_id_collision_is_accounted_and_exports_truthfully(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A genuine duplicate-insertion collision is accounted, not fatal."""
+    collector, fake = _make_collector(tmp_path, LiveFakeMT5("live"), max_consecutive_failures=40)
+    collector.start(PASSED_READINESS)
+    assert _wait_for(lambda: collector.ticks_recorded >= 2), collector.last_error
+    recorded = collector.ticks_recorded
+    with monkeypatch.context() as mp:
+        # every new record gets the SAME identity -> real UNIQUE collisions
+        mp.setattr("qts.domain.value_objects.uuid.uuid4", lambda: uuid.UUID("00000000-0000-4000-8000-000000000009"))
+        assert _wait_for(lambda: collector.consecutive_failures >= 1), "collision was not accounted"
+        assert "IntegrityError" in (collector.last_error or "")
+        assert collector.state == "OBSERVING" and collector.thread_alive  # thread survived
+        assert collector.ticks_recorded <= recorded + 1  # duplicates never inserted
+    assert _wait_for(lambda: collector.consecutive_failures == 0 and collector.ticks_recorded > recorded), (
+        "collection did not recover once identity was unique again"
+    )
+    stopped = collector.stop()
+    rows = _tick_rows(tmp_path / "obs.db")
+    assert len(rows) == stopped["ticks_recorded"]  # no silent overwrite, no lost rows
+    assert len({r["id"] for r in rows}) == len(rows)  # every stored record uniquely identified
+    art = export_session_evidence(stopped["session_id"], db_path=collector.observatory.db_path)
+    assert verify_session_export(art)["verdict"] == "CONSISTENT"
+    assert art["session"]["status"] == "ENDED"
     assert fake.order_send_calls == []
 
 

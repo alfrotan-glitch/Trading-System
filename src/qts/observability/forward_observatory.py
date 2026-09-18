@@ -38,7 +38,12 @@ from qts.observability.lineage import code_version
 
 
 class ObservationTick(BaseModel):
-    id: str = Field(default_factory=lambda: f"OT-{uuid7()[:6]}")
+    # Collision-resistant record identity: full 128-bit random hex. The earlier
+    # 6-hex-char (24-bit) form reached ~50% birthday-collision probability near
+    # 4.8k records — unusable for multi-million-row forward collection. Record
+    # IDs are not format-constrained by the v1 evidence contract; session IDs
+    # below keep the canonical `FS-<6 hex>` form the verifier requires.
+    id: str = Field(default_factory=lambda: f"OT-{uuid7()}")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))  # local receipt time
     symbol: str
     bid: Decimal | None = None

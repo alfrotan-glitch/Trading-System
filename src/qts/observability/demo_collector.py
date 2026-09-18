@@ -30,12 +30,19 @@ Safety contract:
   timestamp_basis, and full tick provenance.
 - idempotent start (one collector/session), deterministic stop (thread join,
   persisted session end, final manifest).
+- the worker thread can never stop silently: an exception anywhere in the poll
+  body is routed through the failure/lifecycle machinery, the terminal session
+  write is bounded-retried and never blocked by the DERIVED manifest export,
+  and `state` always flips to a terminal state when the worker ends. A session
+  therefore cannot remain `ACTIVE` while advertising `OBSERVING` after the
+  worker has stopped; a storage outage is surfaced loudly instead.
 """
 
 from __future__ import annotations
 
 import json
 import threading
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -46,6 +53,11 @@ from qts.observability.forward_observatory import ForwardObservatory, Observatio
 
 MIN_INTERVAL_S = 0.2
 MAX_INTERVAL_S = 60.0
+
+#: Bounded retry for the terminal session-row write. Covers transient storage
+#: contention (e.g. a momentary SQLite lock) without adding machinery.
+_TERMINAL_PERSIST_ATTEMPTS = 3
+_TERMINAL_PERSIST_RETRY_S = 0.05
 
 
 class ObservationCollector:
@@ -91,6 +103,12 @@ class ObservationCollector:
         self.last_tick_time: str | None = None  # broker event time (true UTC), ISO
         self.last_timestamp_basis: str | None = None
         self._last_raw_key: tuple[Any, Any, float] | None = None
+        #: Set when the terminal session row could not be persisted (storage
+        #: outage at the transition). `stop()` retries it, so a session is
+        #: never left permanently ACTIVE through inaction.
+        self._terminal_persist_pending = False
+        #: The terminal failure reason captured at the transition (retry-safe).
+        self._terminal_error: str | None = None
 
     # ------------------------------------------------------------------ API
 
@@ -152,6 +170,10 @@ class ObservationCollector:
         """
         with self._lock:
             if self.state != "OBSERVING":
+                if self._terminal_persist_pending and self.session_id:
+                    # The transition happened while storage was unavailable.
+                    # Retry now so the session row cannot stay ACTIVE forever.
+                    self._persist_session_end(self.state, self._terminal_error)
                 return self.status()  # idempotent
             thread = self._finish("STOPPED")
         self._join(thread)
@@ -189,7 +211,10 @@ class ObservationCollector:
         # has already persisted the terminal state — no finalizer needed here
         # (a lock-taking finalizer would deadlock against stop()'s join).
         while not self._stop.is_set():
-            self._poll_once()
+            try:
+                self._poll_once()
+            except Exception as e:  # noqa: BLE001 — last resort: the worker must never die silently
+                self._register_failure(f"unexpected poll loop error: {type(e).__name__}: {e}")
             if self._stop.wait(self.interval_s):
                 break
 
@@ -272,18 +297,53 @@ class ObservationCollector:
             # ``self.last_error`` stays a runtime diagnostic and is surfaced
             # where it already is (status()/derived manifest), never promoted
             # to terminal failure cause.
-            terminal_error = self.last_error if new_state != "STOPPED" else None
-            self.observatory.end_session(
-                self.session_id,
-                status="ENDED" if new_state == "STOPPED" else "ENDED_ON_ERRORS",
-                error=terminal_error,
-            )
-        self.write_manifest(state_override=new_state)
+            self._terminal_error = self.last_error if new_state != "STOPPED" else None
+            # Storage failures must not escape the worker thread or leave the
+            # session row ACTIVE silently; this is bounded-retried and never
+            # raises (see _persist_session_end).
+            self._persist_session_end(new_state, self._terminal_error)
+        # The DERIVED manifest export must never be able to block the lifecycle
+        # transition: a manifest failure is recorded as a diagnostic and the
+        # state still flips below.
+        try:
+            self.write_manifest(state_override=new_state)
+        except Exception as e:  # noqa: BLE001 — derived export, never lifecycle-fatal
+            self._note_diagnostic(f"terminal manifest write failed: {type(e).__name__}: {e}")
         self.state = new_state
         self.stopped_at = datetime.now(UTC).isoformat()
         thread = self._thread
         self._thread = None
         return thread
+
+    def _note_diagnostic(self, message: str) -> None:
+        """Append a runtime diagnostic. Diagnostics never become terminal errors."""
+        stamped = f"{datetime.now(UTC).isoformat()} {message}"
+        self.last_error = stamped if not self.last_error else f"{self.last_error} | {stamped}"
+
+    def _persist_session_end(self, new_state: str, terminal_error: str | None) -> None:
+        """Persist the terminal session row; bounded-retried, never raises.
+
+        Called with ``self._lock`` held, BEFORE ``state`` flips, so an observer
+        that sees the terminal state can rely on the session end already being
+        durable. If storage stays unavailable the failure is surfaced as a
+        diagnostic and ``_terminal_persist_pending`` stays set so ``stop()``
+        retries once storage recovers — the session can never silently remain
+        ACTIVE, and the worker never dies from a storage exception.
+        """
+        status = "ENDED" if new_state == "STOPPED" else "ENDED_ON_ERRORS"
+        last: Exception | None = None
+        for attempt in range(_TERMINAL_PERSIST_ATTEMPTS):
+            try:
+                self.observatory.end_session(self.session_id, status=status, error=terminal_error)
+            except Exception as e:  # noqa: BLE001 — persistence must never escape the worker
+                last = e
+                if attempt + 1 < _TERMINAL_PERSIST_ATTEMPTS:
+                    time.sleep(_TERMINAL_PERSIST_RETRY_S)
+                continue
+            self._terminal_persist_pending = False
+            return
+        self._terminal_persist_pending = True
+        self._note_diagnostic(f"terminal session persist failed: {type(last).__name__}: {last}")
 
     # -------------------------------------------------------------- manifest
 
