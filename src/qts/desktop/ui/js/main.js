@@ -143,8 +143,8 @@ function buildNotifBell() {
 
 function buildHeader() {
   const facts = h("div", { class: "header-facts", id: "header-facts", role: "status", "aria-label": "Operating facts" });
-  const conn = h("span", { class: "conn-dot", title: "API connection" });
-  const updated = h("span", { class: "meta", id: "header-updated" }, "connecting…");
+  const conn = h("span", { class: "conn-dot", title: "API connection", role: "status", "aria-label": "Health API connecting" });
+  const updated = h("span", { class: "meta", id: "header-updated", "aria-live": "polite" }, "connecting…");
 
   const header = h("header", { class: "header" },
     h("button", { class: "btn ghost nav-toggle", "aria-label": "Toggle navigation", "aria-expanded": "false", onclick: (e) => { const open = document.getElementById("app").classList.toggle("nav-open"); e.currentTarget.setAttribute("aria-expanded", String(open)); } }, icon("menu", 18)),
@@ -326,7 +326,10 @@ function main() {
   const update = () => {
     renderFacts(facts);
     const f = freshness(store.data.resources.health, "health");
-    conn.className = `conn-dot${f.current ? "" : f.label.includes("STALE") ? " stale" : " down"}`;
+    const stateClass = f.current ? "" : f.label.includes("STALE") ? " stale" : " down";
+    conn.className = `conn-dot${stateClass}`;
+    conn.title = `Health API: ${f.label}`;
+    conn.setAttribute("aria-label", `Health API ${f.label.toLowerCase()}`);
     updated.textContent = `Health API: ${f.label}${store.data.resources.health?.updatedAt ? ` · ${fmtAge(store.data.resources.health.updatedAt)}` : ""}`;
   };
   store.on("resources", update);
