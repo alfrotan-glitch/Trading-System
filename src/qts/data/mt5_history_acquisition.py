@@ -125,8 +125,54 @@ def _utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+def _durable_sync_file(path: Path) -> None:
+    """fsync a file's data via a WRITABLE descriptor (Windows-correct).
+
+    On Windows, fsync (``FlushFileBuffers``) requires a handle opened for
+    writing: calling it on a read-only (``"rb"``) descriptor raises
+    ``OSError: [Errno 9] Bad file descriptor``.  The original writer
+    (pyarrow / ``json``) has already closed its handle by now; fsync on a
+    fresh writable descriptor durably flushes the whole file on both POSIX
+    and Windows, so the guarantee is identical on every platform.
+    """
+    fd = os.open(path, os.O_WRONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _fsync_dir(path: Path) -> None:
+    """Best-effort fsync of a directory after an atomic ``os.replace`` into it.
+
+    POSIX requires fsync'ing the containing directory to make the rename
+    itself durable.  Windows commits the replace to the NTFS journal and
+    does not support fsync'ing directories, so this is a no-op there; any
+    other platform/filesystem that rejects a directory fsync degrades to
+    best-effort rather than failing the commit (the file-data fsync is the
+    hard guarantee; the ledger sequence is unchanged).
+    """
+    if os.name == "nt":
+        return
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
 def _dump_json_atomic(path: Path, payload: Mapping[str, Any]) -> None:
-    """Write JSON atomically (same-directory tmp + os.replace) and fsync."""
+    """Write JSON atomically (same-directory tmp + os.replace) and fsync.
+
+    Durability order: tmp file data fsync'd via its writable handle BEFORE
+    the atomic replace, then the containing directory is fsync'd so the
+    rename is durable too.
+    """
     tmp = path.with_name(path.name + f".tmp-{os.getpid()}")
     rendered = json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n"
     with tmp.open("w", encoding="utf-8") as fh:
@@ -134,6 +180,7 @@ def _dump_json_atomic(path: Path, payload: Mapping[str, Any]) -> None:
         fh.flush()
         os.fsync(fh.fileno())
     os.replace(tmp, path)
+    _fsync_dir(path.parent)
 
 
 def sha256_file(path: Path) -> str:
@@ -222,8 +269,14 @@ class RawTickDatasetWriter:
             ...
 
     A chunk is committed only when its parquet part exists under its final
-    name AND the fsync'd manifest ledger records it.  A crash between the two
-    leaves a ``*.parquet.part-<pid>`` temp file that is discarded on open.
+    name AND the fsync'd manifest ledger records it.  Commit sequence per
+    chunk (Windows-correct): parquet tmp data fsync'd via a WRITABLE
+    handle, then atomically renamed, then the parts directory fsync'd,
+    and only then the ledger updated.  A crash before the rename leaves a
+    ``*.parquet.part-<pid>`` temp file that is discarded on open; a crash
+    after the rename leaves an uncommitted final-named part that the
+    resumed run deterministically overwrites for the same chunk id (only
+    ledger-recorded parts are evidence).
     """
 
     def __init__(
@@ -432,9 +485,15 @@ class RawTickDatasetWriter:
                 stats["raw_time_msc_min"] = int(np.min(rows["time_msc"]))
                 stats["raw_time_msc_max"] = int(np.max(rows["time_msc"]))
 
-        os.replace(tmp_path, final_path)  # atomic same-dir commit of the part
-        with final_path.open("rb") as fh:  # fsync data blocks before ledger
-            os.fsync(fh.fileno())
+        try:
+            _durable_sync_file(tmp_path)      # parquet data durable BEFORE visible
+            os.replace(tmp_path, final_path)  # atomic same-dir commit of the part
+            _fsync_dir(self._parts_dir)       # make the rename itself durable
+        except OSError:
+            # Fail-closed: a durability failure means NO part under its final
+            # name, NO ledger entry; the uncommitted temp part is removed.
+            tmp_path.unlink(missing_ok=True)
+            raise
 
         part_record = {
             "part": part_name,

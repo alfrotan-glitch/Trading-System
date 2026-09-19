@@ -15,16 +15,20 @@ dtype layout.
 from __future__ import annotations
 
 import ast
+import errno
 import json
+import os
 import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 from fakes_mt5 import TICK_DTYPE, TICK_DTYPE_WITH_FUTURE_FIELD, FakeMT5, generate_chunk_rows
 
+from qts.data import mt5_history_acquisition as acq
 from qts.data.mt5_history_acquisition import (
     ALLOWED_MT5_CALLS,
     AcquisitionRefused,
@@ -325,6 +329,179 @@ def test_completed_dataset_is_not_reopened_for_append(tmp_path: Path) -> None:
     _acquire(fake, tmp_path, days=1)
     with pytest.raises(FileExistsError):
         RawTickDatasetWriter.open_existing(tmp_path / "dataset")
+
+
+# ---------------------------------------------------------------------------
+# Durability — Windows-correct fsync sequence (regression: EBADF on read-only fd)
+# ---------------------------------------------------------------------------
+#
+# 2026-09 live Windows failure: fsync was attempted on a read-only ("rb")
+# descriptor, which Windows rejects with OSError(Errno 9) "Bad file
+# descriptor" (FlushFileBuffers requires a write handle).  POSIX fsync on a
+# read-only REGULAR-FILE fd happens to succeed, which is why CI never caught
+# it.  The tests below (a) emulate that Windows semantic on POSIX, (b) pin
+# the durability ORDER (data fsync -> atomic rename -> dir fsync -> ledger),
+# and (c) prove a durability error leaves no final-named part and no ledger
+# entry (fail-closed, resumable).
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX fcntl emulates the Windows fsync semantic; on Windows the real path applies")
+def test_fsync_never_on_read_only_descriptor_windows_semantics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Emulate Windows fsync semantics: read-only REGULAR-FILE fd -> EBADF.
+
+    With the durable-write fix the entire acquisition path (parquet parts AND
+    manifest) completes successfully, proving every file-data fsync runs on a
+    WRITABLE descriptor.  The pre-fix code (open("rb") + os.fsync) fails this
+    test with exactly the production error.
+    """
+    import fcntl
+    import stat
+
+    real_fsync = os.fsync
+
+    def windows_fsync(fd: int) -> None:
+        is_read_only = (fcntl.fcntl(fd, fcntl.F_GETFL) & os.O_ACCMODE) == os.O_RDONLY
+        if is_read_only and stat.S_ISREG(os.fstat(fd).st_mode):
+            raise OSError(errno.EBADF, "Bad file descriptor")
+        real_fsync(fd)
+
+    monkeypatch.setattr(os, "fsync", windows_fsync)
+    fake = FakeMT5()
+    manifest = _acquire(fake, tmp_path, days=1)
+    assert manifest["status"] == acq.STATUS_COMPLETE
+    assert manifest["chunks_committed"] == len(plan_base_chunks(END - timedelta(days=1), END, timedelta(hours=6.0)))
+    stored = _read_all_parts(tmp_path / "dataset")
+    expected = _expected_rows(1, 6.0)
+    assert stored.shape == expected.shape
+    for name in TICK_DTYPE.names or ():
+        assert np.array_equal(stored[name], expected[name]), f"field {name} diverged under Windows fsync semantics"
+    assert validate_dataset_integrity(tmp_path / "dataset")["overall"] == "PASS"
+
+
+def test_part_commit_durability_order_data_synced_before_visible_and_ledgered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Commit order per chunk: fsync(tmp data) -> rename -> dir fsync -> ledger.
+
+    The ledger must never record a part whose data is not yet visible on disk,
+    and data must never become visible before being fsync'd (fail-closed under
+    power loss).
+    """
+    events: list[str] = []
+    real_sync_file = acq._durable_sync_file
+    real_sync_dir = acq._fsync_dir
+    real_persist = RawTickDatasetWriter._persist
+
+    def spy_sync_file(path: Path) -> None:
+        p = Path(path)
+        assert ".part-" in p.name, f"data must be fsync'd under its tmp name, got {p.name}"
+        final_name = p.name.split(".part-")[0]
+        assert not p.with_name(final_name).exists(), (
+            f"uncommitted part {final_name} must not be visible before its data is fsync'd"
+        )
+        events.append(f"sync-data:{final_name}")
+        real_sync_file(p)
+
+    def spy_sync_dir(path: Path) -> None:
+        events.append("sync-dir")
+        real_sync_dir(path)
+
+    def spy_persist(self: RawTickDatasetWriter) -> None:
+        for part in self.manifest["parts"]:
+            assert Path(part["path"]).exists(), f"ledger records {part['part']} but file is missing"
+        events.append(f"ledger:{len(self.manifest['parts'])}")
+        real_persist(self)
+
+    monkeypatch.setattr(acq, "_durable_sync_file", spy_sync_file)
+    monkeypatch.setattr(acq, "_fsync_dir", spy_sync_dir)
+    monkeypatch.setattr(RawTickDatasetWriter, "_persist", spy_persist)
+
+    manifest = _acquire(FakeMT5(), tmp_path, days=1)
+    assert manifest["status"] == acq.STATUS_COMPLETE
+
+    for k, part in enumerate(manifest["parts"], start=1):
+        sync_ev = f"sync-data:{part['part']}"
+        ledger_ev = f"ledger:{k}"
+        assert sync_ev in events, f"part {part['part']} committed without a data fsync event"
+        assert ledger_ev in events, f"part {part['part']} committed without a ledger event"
+        s, led = events.index(sync_ev), events.index(ledger_ev)
+        assert s < led, f"data fsync must precede the ledger entry for {part['part']}"
+        between = [e for e in events[s:led] if e == "sync-dir"]
+        assert between, (
+            f"a directory fsync (rename durability) must occur between the data "
+            f"fsync and the ledger entry for {part['part']}"
+        )
+
+
+def test_durability_failure_is_fail_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A durability error (the Windows EBADF shape) aborts the chunk BEFORE the
+    rename: no final-named part, no temp leftover, no ledger entry; the dataset
+    stays IN_PROGRESS and resumable."""
+    def boom(_path: Path) -> None:
+        raise OSError(errno.EBADF, "Bad file descriptor")
+
+    monkeypatch.setattr(acq, "_durable_sync_file", boom)
+    with pytest.raises(OSError):
+        _acquire(FakeMT5(), tmp_path, days=1)
+
+    dataset_dir = tmp_path / "dataset"
+    manifest = json.loads((dataset_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["status"] == acq.STATUS_IN_PROGRESS
+    assert manifest["parts"] == []
+    assert manifest["chunks_committed"] == 0
+    parts_dir = dataset_dir / "parts"
+    assert list(parts_dir.glob("*.parquet")) == [], "uncommitted part must never persist under its final name"
+    assert list(parts_dir.glob("*.part-*")) == [], "uncommitted temp part must be removed on failure"
+    # fail-closed reopened: resumable, interruptions recorded
+    writer = RawTickDatasetWriter.open_existing(dataset_dir)
+    assert writer.manifest["resumed_from_previous_run"] is True
+    assert writer.manifest["interruptions"] == 1
+
+
+def test_legacy_windows_crash_orphan_final_part_is_safely_resumed(tmp_path: Path) -> None:
+    """Exact pre-fix Windows crash residue: os.replace had succeeded and the
+    fsync then failed, so a fully-written part exists under its FINAL name
+    WITHOUT a ledger entry, with the manifest stuck IN_PROGRESS.
+
+    Resume must reuse (not delete, not count) that orphan: the same chunk id
+    is re-acquired, os.replace overwrites the orphan deterministically, and
+    the finished dataset matches an uninterrupted run byte-for-byte.
+    """
+    days, chunk_hours = 1, 6.0
+    dataset_dir = tmp_path / "dataset"
+    writer = RawTickDatasetWriter.create(
+        dataset_dir,
+        symbol_requested="XAUUSD@",
+        symbol_actual="XAUUSD@",
+        environment=_env(),
+        request={"window_days": days},
+        software={},
+    )
+    assert writer.manifest["status"] == acq.STATUS_IN_PROGRESS
+    # Reproduce the old crash residue: orphan written under its FINAL name with
+    # DIFFERENT content than a correct re-acquisition (different tick spacing),
+    # and no ledger entry.
+    first_chunk = plan_base_chunks(END - timedelta(days=days), END, timedelta(hours=chunk_hours))[0]
+    orphan_rows = generate_chunk_rows(
+        datetime.fromisoformat(first_chunk["start_utc"]),
+        datetime.fromisoformat(first_chunk["end_utc"]),
+        spacing_ms=60_000,
+    )
+    table = pa.table({name: orphan_rows[name] for name in orphan_rows.dtype.names or ()})
+    pq.write_table(table, dataset_dir / "parts" / "part-000000.parquet", compression="zstd")
+
+    manifest = _acquire(FakeMT5(), tmp_path, days=days, chunk_hours=chunk_hours)
+    assert manifest["status"] == acq.STATUS_COMPLETE
+    assert manifest["resumed_from_previous_run"] is True
+    expected = _expected_rows(days, chunk_hours)
+    stored = _read_all_parts(dataset_dir)
+    assert stored.shape == expected.shape, "orphan content must be overwritten, never counted or concatenated"
+    for name in TICK_DTYPE.names or ():
+        assert np.array_equal(stored[name], expected[name]), f"field {name} diverged after orphan-resume"
+    integrity = validate_dataset_integrity(dataset_dir)
+    assert integrity["overall"] == "PASS"
+    unrecorded = next(c for c in integrity["checks"] if c["check"] == "no_unrecorded_part_files")
+    assert unrecorded["status"] == "PASS"
 
 
 # ---------------------------------------------------------------------------

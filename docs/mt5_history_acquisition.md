@@ -47,14 +47,19 @@ afterwards, from local files only, and can be re-run against the immutable datas
   boundaries are recorded exactly; the broker's boundary inclusivity is UNVERIFIED, so a tick
   exactly on a boundary may appear in two adjacent parts — such rows are retained by design and
   measured by the analysis (never removed).
-- **Interrupt-safe / restart-safe.** Each part is written to a `*.parquet.part-<pid>` temp file
-  and atomically renamed; `manifest.json` is fsync'd after every committed chunk with
+- **Interrupt-safe / restart-safe.** Each part is written to a `*.parquet.part-<pid>` temp file,
+  fsync'd **via a writable descriptor** (Windows requires a write handle for fsync; a read-only
+  `rb` fd fails there with `EBADF`), then atomically renamed, then the parts directory is fsync'd;
+  only afterwards is `manifest.json` updated (write-tmp → fsync → rename → dir fsync) with
   `status: IN_PROGRESS`. Chunk ids are the raw bound strings, so a resume re-derives the same
-  pending set and skips committed chunks. Orphan temp parts from a crash are discarded on open.
-  Only a fully closed dataset reaches `status: COMPLETE` / `EMPTY_COMPLETE`. A killed process can
-  never masquerade as a complete acquisition (manifest stays `IN_PROGRESS`; integrity validation
-  fails `manifest_status_final`). Resume determinism under interruption is pinned by tests,
-  including byte-equality against an uninterrupted run.
+  pending set and skips committed chunks. Orphan temp parts from a crash are discarded on open;
+  an uncommitted part that exists only under its final name (a crash between rename and ledger)
+  is deterministically overwritten when the same chunk id is re-acquired — only ledger-recorded
+  parts are evidence. Only a fully closed dataset reaches `status: COMPLETE` / `EMPTY_COMPLETE`.
+  A killed process can never masquerade as a complete acquisition (manifest stays `IN_PROGRESS`;
+  integrity validation fails `manifest_status_final`). Resume determinism under interruption is
+  pinned by tests, including byte-equality against an uninterrupted run, the Windows EBADF
+  emulation, and the exact durability ordering.
 - **Fail-closed safety.** Read-only and DEMO-only: the account's `trade_mode` must equal
   `ACCOUNT_TRADE_MODE_DEMO` or acquisition refuses before any tick query. The exact symbol is
   resolved via `symbol_info` (no guessing; candidates are reported). The only MT5 functions this
