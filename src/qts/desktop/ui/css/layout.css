@@ -1,6 +1,6 @@
 /* QTS LAYOUT — header · sidebar · main
-   Flat, no blur, no gradient, no pulse, no shimmer.
-   Structure via borders, not shadows. */
+   Neon layer: gradient hairlines carry chrome, active nav is a luminous
+   tab, global facts sit on glass chips over the ambient wash. */
 
 #app {
   display: grid;
@@ -21,10 +21,19 @@
   align-items: center;
   gap: var(--sp-4);
   padding: 0 var(--sp-4) 0 var(--sp-3);
-  background: var(--bg-1);
-  border-bottom: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, #0a1020 0%, #070c18 100%);
+  border-bottom: 1px solid var(--line);
+  position: relative;
   z-index: 40;
   min-width: 0;
+}
+/* neon hairline under the chrome */
+.header::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.6), rgba(167, 139, 250, 0.35) 45%, transparent 78%);
+  pointer-events: none;
 }
 
 .brand {
@@ -34,12 +43,18 @@
   white-space: nowrap;
 }
 .brand .logo {
-  width: 24px; height: 24px; flex: none;
+  width: 26px; height: 26px; flex: none;
   display: grid; place-items: center;
-  background: #286cc4;
-  border-radius: 4px;
-  color: #fff;
+  background: var(--grad-accent);
+  border-radius: 7px;
+  color: var(--text-inverse);
   font-size: 11px; font-weight: 800;
+  box-shadow: var(--glow-accent);
+}
+.brand .word {
+  background: var(--grad-text);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
 }
 .brand .sub { color: var(--text-3); font-weight: 500; font-size: var(--fs-12); }
 
@@ -56,11 +71,12 @@
   color: var(--text-2);
   background: var(--bg-2);
   border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 3px 7px;
+  border-radius: 7px;
+  padding: 3px 8px;
   white-space: nowrap;
   max-width: 220px;
   overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 .fact b { color: var(--text-1); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
 .fact .icon { width: 12px; height: 12px; flex: none; }
@@ -70,23 +86,29 @@
   color: var(--locked-text);
   background: var(--locked-bg);
   font-weight: 600;
+  box-shadow: 0 0 12px rgba(255, 84, 112, 0.18);
 }
 .fact.btn-fact { cursor: pointer; }
 .fact.btn-fact:hover { border-color: var(--line-strong); background: var(--bg-3); }
-.fact.observing { border-color: var(--run-line); color: var(--run-text); background: var(--run-bg); }
+.fact.observing {
+  border-color: var(--run-line);
+  color: var(--run-text);
+  background: var(--run-bg);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.2);
+}
 .fact.observing b { color: var(--run-text); }
 
 .header-actions { display: flex; align-items: center; gap: 8px; flex: none; }
 
-.conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
-.conn-dot.stale { background: var(--warn); }
-.conn-dot.down { background: var(--err); }
+.conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; box-shadow: 0 0 8px var(--ok); }
+.conn-dot.stale { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+.conn-dot.down { background: var(--err); box-shadow: 0 0 8px var(--err); }
 
 /* sidebar — grouped IA, searchable, keyboard */
 .sidebar {
   grid-area: sidebar;
   width: var(--sidebar-w);
-  background: var(--bg-1);
+  background: linear-gradient(180deg, #080c18 0%, #070b15 100%);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -109,7 +131,7 @@
   padding: 6px 12px 4px;
   font-size: 10px; font-weight: 700;
   color: var(--text-3);
-  text-transform: uppercase; letter-spacing: 0.08em;
+  text-transform: uppercase; letter-spacing: 0.1em;
 }
 .sidebar-group-label .icon { width: 14px; height: 14px; flex: none; }
 
@@ -121,21 +143,25 @@
   min-height: 28px;
   font: inherit; font-size: 12.5px;
   color: var(--text-2);
-  background: none; border: none; border-radius: 4px;
+  background: none; border: none; border-radius: 7px;
   cursor: pointer;
   text-align: left;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast);
 }
 .nav-item:hover { background: var(--bg-2); color: var(--text-1); }
 .nav-item.active {
-  background: var(--accent-soft);
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.16), rgba(34, 211, 238, 0.05) 70%, transparent);
   color: var(--text-1);
   border-left: 2px solid var(--accent);
+  border-radius: 3px 7px 7px 3px;
   font-weight: 600;
+  box-shadow: inset 0 0 20px rgba(34, 211, 238, 0.06), 0 0 14px rgba(34, 211, 238, 0.1);
 }
+.nav-item.active .icon { color: var(--accent-text); opacity: 1; }
 .nav-item.restricted { color: var(--locked-text); }
 .nav-item.restricted .icon { color: var(--locked-text); }
-.nav-item.restricted.active { background: var(--locked-bg); }
+.nav-item.restricted.active { background: var(--locked-bg); border-left-color: var(--locked); }
 .nav-item .icon { width: 14px; height: 14px; flex: none; opacity: 0.9; }
 .nav-item .badge-mini { margin-left: auto; }
 
@@ -153,13 +179,14 @@
 #app.rail .sidebar-group-label span,
 #app.rail .nav-item span { display: none; }
 #app.rail .nav-item { justify-content: center; padding: 8px 0; width: calc(100% - 12px); }
+#app.rail .nav-item.active { border-left: none; border-radius: 7px; }
 #app.rail .brand .sub, #app.rail .brand .word { display: none; }
 
 /* main */
 .main {
   grid-area: main;
   overflow-y: auto;
-  background: var(--bg-0);
+  background: transparent;
 }
 .page {
   max-width: var(--content-max);
@@ -173,36 +200,52 @@
   display: flex; align-items: center; gap: 6px;
   font-size: 10px; color: var(--text-3);
   margin-bottom: 6px;
-  text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
 }
 .breadcrumbs .sep { opacity: 0.5; }
 .page-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
-.page-title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.page-title {
+  font-size: 19px; font-weight: 700; letter-spacing: -0.01em;
+  background: var(--grad-text);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
 .page-answer { margin-top: 4px; color: var(--text-2); font-size: 12.5px; max-width: 72ch; }
 .page-answer b { color: var(--text-1); }
 .page-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 
-/* subnav — tabs */
+/* subnav — neon tabs */
 .subnav {
-  display: flex; gap: 2px;
+  display: flex; gap: 3px;
   border-bottom: 1px solid var(--line);
   margin: 16px 0 20px;
   overflow-x: auto;
 }
 .subnav a {
+  position: relative;
   font-size: var(--fs-13);
   color: var(--text-2);
-  padding: 6px 12px;
-  border: none; border-bottom: 2px solid transparent;
-  border-radius: 4px 4px 0 0;
+  padding: 7px 14px;
+  border: none;
+  border-radius: 8px 8px 0 0;
   white-space: nowrap;
   cursor: pointer;
+  transition: color var(--t-fast), background var(--t-fast);
 }
 .subnav a:hover { color: var(--text-1); background: var(--bg-2); text-decoration: none; }
 .subnav a.active {
-  color: var(--text-1); font-weight: 600;
-  border-bottom-color: var(--accent);
-  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 650;
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.13), rgba(34, 211, 238, 0.03));
+}
+/* luminous run-line under the active tab */
+.subnav a.active::after {
+  content: "";
+  position: absolute; left: 10px; right: 10px; bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--grad-line);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.75);
 }
 
 /* responsive */
@@ -217,6 +260,8 @@
     transform: translateX(-100%);
     width: 240px;
     border-right: 1px solid var(--line-strong);
+    transition: transform var(--t-med);
+    box-shadow: var(--shadow-2);
   }
   #app.nav-open .sidebar { transform: translateX(0); }
   .nav-toggle { display: inline-flex !important; }
@@ -232,7 +277,8 @@
 .scrim {
   display: none;
   position: fixed; inset: 0; top: var(--header-h);
-  background: rgba(4, 6, 10, 0.55);
+  background: rgba(2, 4, 10, 0.6);
+  backdrop-filter: blur(2px);
   z-index: 25;
 }
 #app.nav-open .scrim { display: block; }

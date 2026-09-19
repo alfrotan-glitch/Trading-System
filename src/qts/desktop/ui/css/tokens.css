@@ -1,42 +1,55 @@
-/* QTS TOKENS — professional operator workstation
-   No decorative glows, blurs, gradients. Borders carry structure.
-   One spacing scale, one typography scale, one accent, semantic states
-   with redundant encoding beyond color. */
+/* QTS TOKENS — neon operator workstation
+   Deep-space surfaces with luminous ambient depth, a bright cyan accent and
+   a violet secondary. Glow is earned attention: accents, active tabs,
+   running states, popovers. Structure still carries truth — semantic states
+   keep redundant (non-color) encodings; one scale for spacing, type, radii. */
 
 :root {
-  /* surfaces — flat graphite, no gradient */
-  --bg-0: #0b0e14;
-  --bg-1: #10141c;
-  --bg-2: #161b25;
-  --bg-3: #1d2431;
-  --bg-inset: #0d1119;
+  /* surfaces — layered deep space */
+  --bg-0: #04070f;
+  --bg-1: #0a0f1f;
+  --bg-2: #0e1528;
+  --bg-3: #131c34;
+  --bg-inset: #060a16;
 
-  /* lines — single hierarchy */
-  --line: #222a38;
-  --line-strong: #303b4e;
-  --line-soft: #1a212d;
+  /* ambient light washes (cyan corner / violet corner) */
+  --amb-cyan: rgba(34, 211, 238, 0.08);
+  --amb-violet: rgba(167, 139, 250, 0.07);
 
-  /* text — 3 levels, WCAG AA on bg-1 */
-  --text-1: #e8edf5;
-  --text-2: #a3b0c2;
-  --text-3: #6e7d93;
-  --text-inverse: #0b0e14;
+  /* lines — single hierarchy, cool-tinted */
+  --line: #1a2440;
+  --line-strong: #2b3c64;
+  --line-soft: #121a2e;
 
-  /* accent — single restrained blue, flat */
-  --accent: #4f9cf9;
-  --accent-strong: #2f7fe0;
-  --accent-soft: rgba(79, 156, 249, 0.12);
-  --accent-text: #8ec2ff;
+  /* text — 3 levels */
+  --text-1: #e8f2ff;
+  --text-2: #9cb2d7;
+  --text-3: #64769c;
+  --text-inverse: #04101c;
+
+  /* accent — neon cyan, violet secondary */
+  --accent: #22d3ee;
+  --accent-strong: #06b6d4;
+  --accent-soft: rgba(34, 211, 238, 0.14);
+  --accent-text: #7ceaff;
+  --accent-2: #a78bfa;
+  --accent-2-soft: rgba(167, 139, 250, 0.14);
+  --accent-2-text: #cbb9ff;
+
+  /* gradients — reserved: primary actions, brand, active tab runs */
+  --grad-accent: linear-gradient(135deg, #0891c4 0%, #22d3ee 62%, #2fd893 135%);
+  --grad-text: linear-gradient(115deg, #eaf4ff 25%, #7ceaff 62%, #a78bfa 100%);
+  --grad-line: linear-gradient(90deg, #22d3ee, #a78bfa);
 
   /* semantic — tint/border/text trios, never color alone */
-  --ok: #34b374;      --ok-bg: rgba(52, 179, 116, 0.12);      --ok-text: #7fdcae;      --ok-line: rgba(52, 179, 116, 0.45);
-  --run: #4f9cf9;     --run-bg: rgba(79, 156, 249, 0.12);     --run-text: #8ec2ff;     --run-line: rgba(79, 156, 249, 0.45);
-  --info: #38bdf8;    --info-bg: rgba(56, 189, 248, 0.10);    --info-text: #7dd3fc;    --info-line: rgba(56, 189, 248, 0.40);
-  --warn: #d9a13b;    --warn-bg: rgba(217, 161, 59, 0.12);    --warn-text: #ecc07a;    --warn-line: rgba(217, 161, 59, 0.45);
-  --err: #e0564f;     --err-bg: rgba(224, 86, 79, 0.12);      --err-text: #f19a95;     --err-line: rgba(224, 86, 79, 0.50);
+  --ok: #2fd893;      --ok-bg: rgba(47, 216, 147, 0.12);      --ok-text: #7cecc0;      --ok-line: rgba(47, 216, 147, 0.45);
+  --run: #22d3ee;     --run-bg: rgba(34, 211, 238, 0.12);     --run-text: #7ceaff;     --run-line: rgba(34, 211, 238, 0.45);
+  --info: #38bdf8;    --info-bg: rgba(56, 189, 248, 0.10);    --info-text: #83d4ff;    --info-line: rgba(56, 189, 248, 0.40);
+  --warn: #f0b429;    --warn-bg: rgba(240, 180, 41, 0.12);    --warn-text: #ffd479;    --warn-line: rgba(240, 180, 41, 0.45);
+  --err: #ff5470;     --err-bg: rgba(255, 84, 112, 0.12);     --err-text: #ff97aa;     --err-line: rgba(255, 84, 112, 0.50);
   --neutral: #8b98ac; --neutral-bg: rgba(139, 152, 172, 0.10);--neutral-text: #aab6c8; --neutral-line: rgba(139, 152, 172, 0.40);
-  --research: #9d7cf9;--research-bg: rgba(157, 124, 249, 0.12);--research-text: #c4adfc;--research-line: rgba(157, 124, 249, 0.45);
-  --locked: #e0564f;  --locked-bg: rgba(224, 86, 79, 0.10);   --locked-text: #f19a95;  --locked-line: rgba(224, 86, 79, 0.55);
+  --research: #a78bfa;--research-bg: rgba(167, 139, 250, 0.13);--research-text: #cbb9ff;--research-line: rgba(167, 139, 250, 0.45);
+  --locked: #ff5470;  --locked-bg: rgba(255, 84, 112, 0.10);  --locked-text: #ff97aa;  --locked-line: rgba(255, 84, 112, 0.55);
 
   /* typography — Inter UI, JetBrains Mono numbers */
   --font-ui: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
@@ -54,13 +67,15 @@
   --sp-1: 0.25rem;  --sp-2: 0.5rem;  --sp-3: 0.75rem; --sp-4: 1rem;
   --sp-5: 1.25rem;  --sp-6: 1.5rem;  --sp-8: 2rem;    --sp-10: 2.5rem;
 
-  /* radii — professional, not pill-shaped cards */
-  --r-sm: 4px; --r-md: 6px; --r-lg: 6px;
+  /* radii — modern, soft corners */
+  --r-sm: 6px; --r-md: 8px; --r-lg: 12px;
 
-  /* elevation — borders carry structure, shadows none */
-  --shadow-1: none;
-  --shadow-2: none;
-  --shadow-3: none;
+  /* elevation & glow — shadows carry depth, glows carry meaning */
+  --shadow-1: 0 1px 2px rgba(2, 5, 12, 0.55);
+  --shadow-2: 0 10px 32px rgba(2, 5, 12, 0.65);
+  --shadow-3: 0 20px 64px rgba(2, 5, 12, 0.75);
+  --glow-accent: 0 0 16px rgba(34, 211, 238, 0.35);
+  --glow-accent-soft: 0 0 36px rgba(34, 211, 238, 0.16);
 
   /* layout — operator workspace */
   --header-h: 56px;
@@ -68,9 +83,9 @@
   --sidebar-w-collapsed: 52px;
   --content-max: 1440px;
 
-  /* motion — only for focus and color, never for decoration */
-  --t-fast: 100ms ease;
-  --t-med: 150ms ease;
+  /* motion — meaningful state changes only */
+  --t-fast: 120ms ease;
+  --t-med: 180ms cubic-bezier(0.2, 0.6, 0.2, 1);
 
   /* status glyphs — redundant beyond color */
   --dot-ok: "●"; --dot-warn: "▲"; --dot-err: "■"; --dot-neutral: "○";

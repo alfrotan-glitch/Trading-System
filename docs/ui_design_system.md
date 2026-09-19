@@ -1,6 +1,6 @@
 # QTS UI — Design System & Operator Workstation
 
-The desktop interface is a **professional research and market-operations workstation**. Modern does not mean dark mode or gradients. It means clarity, speed, trust, hierarchy, and controlled complexity. The UI renders canonical backend state and never invents its own.
+The desktop interface is a **professional research and market-operations workstation** with a deliberate **neon-deep-space visual identity**: layered dark surfaces with ambient cyan/violet depth, luminous primary actions, glowing active tabs and meaningful state glows. Rich visuals are in service of the same priorities — clarity, speed, trust, hierarchy, controlled complexity. The UI renders canonical backend state and never invents its own; visual richness never changes what a state means (see §5 truthfulness, which is unchanged and binding).
 
 ## 1. Architecture — what was changed and why
 
@@ -34,8 +34,8 @@ Routes are hash-based and deep-linkable. Sidebar has a local filter input. Ctrl+
 
 ## 3. Design tokens and workstation layer
 
-- Surfaces: graphite `--bg-0…3`, 1px borders carry structure. `workstation.css` removes ambient glows, hover lifts and breathing animations — motion is reserved for meaningful state only.
-- Type: Inter/Segoe UI + JetBrains Mono with tabular-nums for numeric columns. 11–28px scale, one spacing system (4px), one radii system (4/6/8/12).
+- Surfaces: deep-space layered `--bg-0…3` over an ambient cyan/violet wash; borders plus elevation shadows carry structure. Gradients are reserved for primary actions, the brand mark, active tab/nav runs and text accents; glows mark meaningful state (`run`, `err`, LIVE-locked, connections) and focus — never ambient decoration. `workstation.css` is the operator-density layer on top.
+- Type: Inter/Segoe UI + JetBrains Mono with tabular-nums for numeric columns. 11–28px scale, one spacing system (4px), one radii system (6/8/12).
 - Density: compact (6px table padding) vs comfortable (11px), focused (1440px) vs wide (2400px) content width. Remembers only presentation, never authority.
 - Semantic states: `ok · run · info · warn · err · neutral · research · locked` each with bg/line/text trio plus redundant mark `● ▲ ■ ○ ✓ ✕`. `UNAVAILABLE` is a word, never `0` or `-`.
 - Responsive: header wraps at 1120px, sidebar becomes overlay drawer below 920px, operator facts table scrolls horizontally with keyboard focus ring at 640px. No horizontal overflow at 900px.
@@ -63,7 +63,7 @@ Routes are hash-based and deep-linkable. Sidebar has a local filter input. Ctrl+
 
 **Navigation minimal cost:** 8 groups, searchable sidebar, palette with fuzzy scoring, shallow hierarchy, `aria-current=page`, skip link, workspace preferences.
 
-**Consistency:** One spacing, typography, icon (24px stroke), state, table, button hierarchy. No decorative gradients in workstation layer.
+**Consistency:** One spacing, typography, icon (24px stroke), state, table, button hierarchy. Visual treatments (gradients, glows, shadows) are tokenized and reused, never one-off.
 
 **Accessibility:** Skip link, landmarks, visible focus, inert background for modals/drawers, focus containment, Escape handling, sortable headers keyboard accessible, `aria-sort`, `aria-activedescendant`, live region for operator activity changes.
 
