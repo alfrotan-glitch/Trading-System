@@ -1,0 +1,223 @@
+{
+  "schema": "qts.data_gap_matrix.v1",
+  "as_of": "2026-09-19",
+  "purpose": "Authoritative inventory of datasets required for later chronological, cost-adjusted, regime-specific hedge research. A catalog opportunity is not acquisition, a manifest is not raw evidence, and no row below grants licensing or research eligibility.",
+  "status_vocabulary": {
+    "acquisition_status": [
+      "ACQUIRED",
+      "PARTIAL",
+      "NOT_ACQUIRED",
+      "NOT_YET_ACQUIRED",
+      "NOT_AVAILABLE_IN_CHECKOUT",
+      "CAPABILITY_UNVERIFIED"
+    ],
+    "quality_status": [
+      "MEASURED",
+      "MEASURED_WITH_GAPS",
+      "NOT_ASSESSED",
+      "UNAVAILABLE",
+      "QUALITY_FAILED"
+    ],
+    "provenance_status": [
+      "QUALIFIED_PARTIAL",
+      "SOURCE_DECLARED_ONLY",
+      "UNVERIFIED",
+      "NOT_AVAILABLE"
+    ],
+    "licensing_status": [
+      "DECLARED_NOT_VERIFIED",
+      "UNVERIFIED",
+      "NOT_APPLICABLE",
+      "NOT_AVAILABLE"
+    ],
+    "research_eligibility_status": [
+      "RESEARCH_ELIGIBLE_FOR_DECLARED_SCOPE_ONLY",
+      "NOT_RESEARCH_ELIGIBLE",
+      "EXECUTION_INELIGIBLE",
+      "NOT_ELIGIBLE_PENDING_PROVENANCE",
+      "NOT_ELIGIBLE_PENDING_QUALITY",
+      "NOT_ASSESSED"
+    ]
+  },
+  "global_evidence_boundary": "Internal consistency, a provider catalog, a checksum, or a derived manifest does not independently prove physical MT5 origin. The absent canonical SQLite store means raw/canonical tick-level evidence is not present in the repository.",
+  "rows": [
+    {
+      "dataset_id": "mt5_broker_history_ticks_bid_ask",
+      "required_scope": "Current WM Markets MT5 DEMO terminal: historical broker-specific XAUUSD tick records with bid, ask, raw MT5 timestamps, normalized UTC timestamps, server offset/basis, receipt time, and provenance.",
+      "instrument_or_family": ["XAUUSD"],
+      "granularity": ["tick", "bid_ask"],
+      "acquisition_status": "NOT_AVAILABLE_IN_CHECKOUT",
+      "quality_status": "UNAVAILABLE",
+      "provenance_status": "NOT_AVAILABLE",
+      "licensing_status": "NOT_AVAILABLE",
+      "research_eligibility_status": "NOT_ELIGIBLE_PENDING_PROVENANCE",
+      "evidence_refs": ["docs/mt5_historical_capability_probe.md", "data/evidence/forward_observation_manifest.json"],
+      "disposition": "No MT5 Windows terminal or canonical SQLite store is available in this checkout. Historical ticks must be queried/exported from the terminal and independently inspected; candles must not be treated as tick history."
+    },
+    {
+      "dataset_id": "mt5_demo_xauusd_forward_execution_evidence",
+      "required_scope": "Forward observation and separately captured execution evidence: quote age at decision/submission, bid/ask, submission time, broker acknowledgement, fill time/price, slippage, broker response, and order identifiers.",
+      "instrument_or_family": ["XAUUSD"],
+      "granularity": ["tick", "event"],
+      "acquisition_status": "PARTIAL",
+      "quality_status": "MEASURED_WITH_GAPS",
+      "provenance_status": "QUALIFIED_PARTIAL",
+      "licensing_status": "DECLARED_NOT_VERIFIED",
+      "research_eligibility_status": "EXECUTION_INELIGIBLE",
+      "evidence_refs": ["src/qts/observability/demo_collector.py", "docs/forward_observation_protocol.md", "docs/mt5_demo_setup.md", "data/evidence/forward_observation_manifest.json"],
+      "disposition": "The observe-only contract can preserve accepted DEMO quotes and acquisition attempts, but the repository contains no canonical SQLite store and no broker-order execution evidence. DEMO_EXECUTION remains disabled by policy; LIVE remains locked."
+    },
+    {
+      "dataset_id": "xauusd_dukascopy_15m_history",
+      "required_scope": "Chronological XAUUSD historical bars for context and declared research scope, with raw source lineage, coverage/gap measurements, UTC timestamps, bid/ask or a clearly labelled mid construction, and licensing evidence.",
+      "instrument_or_family": ["XAUUSD"],
+      "granularity": ["15m", "OHLC"],
+      "acquisition_status": "ACQUIRED",
+      "quality_status": "MEASURED_WITH_GAPS",
+      "provenance_status": "QUALIFIED_PARTIAL",
+      "licensing_status": "UNVERIFIED",
+      "research_eligibility_status": "NOT_ELIGIBLE_PENDING_QUALITY",
+      "evidence_refs": ["data/evidence/data_source_audit.json", "docs/data_provenance_xauusd_dukascopy.md", "docs/data_completeness_disposition.md"],
+      "disposition": "This is historical bar evidence, not broker-specific MT5 execution evidence. Missing bid/ask, tick-level, fill, slippage, and licensing evidence keep it execution-ineligible and do not authorize a new hedge claim or a rerun of the frozen impulse study."
+    },
+    {
+      "dataset_id": "comex_gc_futures",
+      "required_scope": "COMEX Gold futures GC contract history with contract identifiers, expiry/roll rules, exchange timestamps, trades or bid/ask, volume/open interest, and a documented continuous-contract construction.",
+      "instrument_or_family": ["GC"],
+      "granularity": ["trade_or_quote", "bar", "contract"],
+      "acquisition_status": "NOT_YET_ACQUIRED",
+      "quality_status": "NOT_ASSESSED",
+      "provenance_status": "SOURCE_DECLARED_ONLY",
+      "licensing_status": "DECLARED_NOT_VERIFIED",
+      "research_eligibility_status": "NOT_ELIGIBLE_PENDING_PROVENANCE",
+      "evidence_refs": ["data/evidence/data_source_catalog.json", "docs/cross_market_research.md"],
+      "disposition": "Provider opportunities are catalog entries only. No CME/COMEX history, exchange license, roll policy, or quality-passed dataset is present in the repository."
+    },
+    {
+      "dataset_id": "xagusd_spot",
+      "required_scope": "XAGUSD chronological spot quotes/bars with bid/ask where execution or hedge-cost analysis is intended, UTC event and receipt timestamps, venue/source identity, and spread/quality diagnostics.",
+      "instrument_or_family": ["XAGUSD"],
+      "granularity": ["tick_or_bar", "bid_ask_preferred"],
+      "acquisition_status": "NOT_YET_ACQUIRED",
+      "quality_status": "NOT_ASSESSED",
+      "provenance_status": "SOURCE_DECLARED_ONLY",
+      "licensing_status": "DECLARED_NOT_VERIFIED",
+      "research_eligibility_status": "NOT_ASSESSED",
+      "evidence_refs": ["data/evidence/data_source_catalog.json", "docs/cross_market_research.md"],
+      "disposition": "No XAGUSD dataset has been acquired or quality-passed. Any relationship to XAUUSD is a future hypothesis, not a hedge."
+    },
+    {
+      "dataset_id": "eurusd_spot",
+      "required_scope": "EURUSD spot history with bid/ask or explicitly labelled mid, UTC timestamps, source/venue, spread, gap, and session-quality measurements.",
+      "instrument_or_family": ["EURUSD"],
+      "granularity": ["tick_or_bar", "bid_ask_preferred"],
+      "acquisition_status": "NOT_YET_ACQUIRED",
+      "quality_status": "NOT_ASSESSED",
+      "provenance_status": "SOURCE_DECLARED_ONLY",
+      "licensing_status": "DECLARED_NOT_VERIFIED",
+      "research_eligibility_status": "NOT_ASSESSED",
+      "evidence_refs": ["data/evidence/data_source_catalog.json", "docs/cross_market_research.md"],
+      "disposition": "Catalogued FX opportunity only; no acquired, license-verified, research-eligible EURUSD dataset is present."
+    },
+    {
+      "dataset_id": "usdjpy_spot",
+      "required_scope": "USDJPY spot history with bid/ask or explicitly labelled mid, UTC timestamps, source/venue, spread, gap, and session-quality measurements.",
+      "instrument_or_family": ["USDJPY"],
+      "granularity": ["tick_or_bar", "bid_ask_preferred"],
+      "acquisition_status": "NOT_YET_ACQUIRED",
+      "quality_status": "NOT_ASSESSED",
+      "provenance_status": "SOURCE_DECLARED_ONLY",
+      "licensing_status": "DECLARED_NOT_VERIFIED",
+      "research_eligibility_status": "NOT_ASSESSED",
+      "evidence_refs": ["data/evidence/data_source_catalog.json", "docs/cross_market_research.md"],
+      "disposition": "Catalogued FX opportunity only; no acquired, license-verified, research-eligible USDJPY dataset is present."
+    },
+    {
+      "dataset_id": "dollar_indexes",
+      "required_scope": "Declared dollar-index series (for example DXY or a reproducible broad-dollar index), with constituent weights, rebalance history, timestamp convention, and provider identity.",
+      "instrument_or_family": ["DXY", "broad_usd_index"],
+      "granularity": ["bar"],
+      "acquisition_status": "NOT_YET_ACQUIRED",
+      "quality_status": "NOT_ASSESSED",
+      "provenance_status": "SOURCE_DECLARED_ONLY",
+      "licensing_status": "DECLARED_NOT_VERIFIED",
+      "research_eligibility_status": "NOT_ASSESSED",
+      "evidence_refs": ["docs/cross_market_research.md", "data/evidence/data_source_catalog.json"],
+      "disposition": "Index identity and constituent methodology are not interchangeable. No series has passed acquisition, provenance, or licensing review."
+    },
+    {
+      "dataset_id": "treasury_nominal_yields",
+      "required_scope": "Nominal Treasury constant-maturity yields with release date/time, observation date, maturity definition, revision/vintage policy, and timezone.",
+      "instrument_or_family": ["US_Treasury_2Y", "US_Treasury_5Y", "US_Treasury_10Y", "US_Treasury_30Y"],
+      "granularity": ["daily", "release_event"],
+      "acquisition_status": "NOT_YET_ACQUIRED",
+      "quality_status": "NOT_ASSESSED",
+      "provenance_status": "SOURCE_DECLARED_ONLY",
+      "licensing_status": "DECLARED_NOT_VERIFIED",
+      "research_eligibility_status": "NOT_ELIGIBLE_PENDING_PROVENANCE",
+      "evidence_refs": ["docs/cross_market_research.md"],
+      "disposition": "A yield level without vintage/release timing is not sufficient for chronological macro research. No Treasury nominal-yield series is acquired here."
+    },
+    {
+      "dataset_id": "treasury_real_yields",
+      "required_scope": "Real Treasury/TIPS yields or a declared real-yield proxy with maturity, methodology, release time, observation date, vintage/revision policy, and source license.",
+      "instrument_or_family": ["US_TIPS_5Y", "US_TIPS_10Y", "US_TIPS_30Y"],
+      "granularity": ["daily", "release_event"],
+      "acquisition_status": "NOT_YET_ACQUIRED",
+      "quality_status": "NOT_ASSESSED",
+      "provenance_status": "SOURCE_DECLARED_ONLY",
+      "licensing_status": "DECLARED_NOT_VERIFIED",
+      "research_eligibility_status": "NOT_ELIGIBLE_PENDING_PROVENANCE",
+      "evidence_refs": ["docs/cross_market_research.md"],
+      "disposition": "No real-yield series, vintage archive, or licensing evidence is present. Nominal and real yields must remain separate datasets."
+    },
+    {
+      "dataset_id": "cftc_commitments_of_traders",
+      "required_scope": "CFTC COT positioning with report type, trader categories, contract, reporting date, public release timestamp, revisions, and mapping to the research instrument.",
+      "instrument_or_family": ["COMEX_GC", "COMEX_SI", "FX_contracts_if_used"],
+      "granularity": ["weekly", "release_event"],
+      "acquisition_status": "NOT_YET_ACQUIRED",
+      "quality_status": "NOT_ASSESSED",
+      "provenance_status": "SOURCE_DECLARED_ONLY",
+      "licensing_status": "DECLARED_NOT_VERIFIED",
+      "research_eligibility_status": "NOT_ELIGIBLE_PENDING_PROVENANCE",
+      "evidence_refs": ["docs/cross_market_research.md"],
+      "disposition": "Positioning can be stale relative to a price decision and requires release-timestamp alignment. No COT dataset is acquired here."
+    },
+    {
+      "dataset_id": "macro_release_timestamps",
+      "required_scope": "Point-in-time macro release calendar and actual/consensus/previous values with publication timezone, revision/vintage, embargo/release timestamp, and source identity.",
+      "instrument_or_family": ["US_CPI", "US_NFP", "US_FOMC", "US_PCE", "US_ISM", "EU_and_JP_releases_if_used"],
+      "granularity": ["event"],
+      "acquisition_status": "NOT_YET_ACQUIRED",
+      "quality_status": "NOT_ASSESSED",
+      "provenance_status": "SOURCE_DECLARED_ONLY",
+      "licensing_status": "DECLARED_NOT_VERIFIED",
+      "research_eligibility_status": "NOT_ELIGIBLE_PENDING_PROVENANCE",
+      "evidence_refs": ["docs/cross_market_research.md", "docs/data_requirements.md"],
+      "disposition": "Announcement date alone is insufficient; later work must use release-time and vintage-aware joins. No macro release event dataset is acquired here."
+    },
+    {
+      "dataset_id": "optional_licensed_market_datasets",
+      "required_scope": "Optional licensed tick/order-book/quote, futures, options, news, macro-vintage, or broker-specific datasets selected only after a written field, license, and research-use assessment.",
+      "instrument_or_family": ["provider_specific"],
+      "granularity": ["provider_specific"],
+      "acquisition_status": "NOT_YET_ACQUIRED",
+      "quality_status": "NOT_ASSESSED",
+      "provenance_status": "SOURCE_DECLARED_ONLY",
+      "licensing_status": "UNVERIFIED",
+      "research_eligibility_status": "NOT_ASSESSED",
+      "evidence_refs": ["data/evidence/data_source_catalog.json"],
+      "disposition": "Provider catalogs identify opportunities only. No purchase, license grant, download, or quality pass is claimed."
+    }
+  ],
+  "cross_cutting_missing_fields": {
+    "observation_vs_execution": {
+      "observation_evidence": ["raw broker stamp", "normalized UTC event time", "server offset and basis", "receipt time", "bid", "ask", "accepted/rejected attempt outcome", "provenance"],
+      "execution_evidence": ["quote age at decision", "quote age at submission", "submission timestamp", "broker acknowledgement timestamp", "order identifier", "fill timestamp", "fill price", "requested price", "slippage", "broker response/reject code", "partial-fill state"],
+      "current_disposition": "Execution evidence is NOT_AVAILABLE for this repository's observe-only session; no execution claim is permitted."
+    },
+    "hedge_research_requirements": ["chronological point-in-time joins", "explicit transaction and financing costs", "regime taxonomy fixed before testing", "walk-forward and out-of-sample validation", "multiple-testing correction", "stability and sensitivity testing", "instrument mapping and roll policy", "missingness and revision audit"]
+  },
+  "research_gate": "No hedge is declared. No correlation alone can establish a hedge. A later study must create new immutable dataset versions and independent provenance records; it must not modify frozen REAL data, the locked research partition, or rerun the frozen impulse study."
+}
