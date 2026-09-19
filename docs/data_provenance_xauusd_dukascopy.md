@@ -4,12 +4,15 @@
 **Machine evidence:** `data/evidence/xauusd_dukascopy_acquisition.json`,
 `data/evidence/xauusd_event_spread_evidence.json`,
 `data/evidence/data_inventory.json`, `data/evidence/data_source_audit.json`
+**Completeness disposition:** `docs/data_completeness_disposition.md`
 **Acquisition script:** `scripts/acquire_xauusd_dukascopy.py`
 
-This document is the provenance record for the first REAL, claim-eligible dataset
+This document is the provenance record for the first REAL dataset acquired and
 registered in QTS. It states what the bytes are, where they came from, how they
-were verified, and what they do **not** support. Nothing here is a broker
-measurement and nothing here overrides an existing gate.
+were verified, and what they do **not** support. The frozen research run treated
+it as claim-eligible under the prior gate; the current gap audit records
+completeness `FAIL`. Nothing here is a broker measurement and nothing here
+overrides the current gate.
 
 ## 1. Source and lineage
 
@@ -39,7 +42,9 @@ measurement and nothing here overrides an existing gate.
 |---|---|
 | Version | `20260918-010+8f120133-1ba57af7` |
 | Dataset checksum (processed) | `sha256:1ba57af7d9d034d9` |
-| Instrument / venue / timeframe | XAUUSD / MT5 (namespace) / 15m |
+| Instrument / legacy venue namespace / timeframe | XAUUSD / MT5 (namespace only) / 15m |
+| Source provider / source feed / source venue | Dukascopy-derived upstream mirror / XAU/USD tick-derived mid OHLC / Dukascopy XAU/USD feed |
+| Execution target / execution venue | `null` / `null` — this dataset is not execution evidence |
 | Bars | 26,038 |
 | Range (UTC bar opens) | 2025-08-06 00:00 → 2026-09-16 23:45 (last close 2026-09-17 00:00) |
 | Span | 407.00 days |
@@ -101,22 +106,44 @@ spread history and is **not** wired into the adequacy gate — R5 remains FAIL.
 
 ## 4. Quality, gaps, duplicates, precision
 
-- `qts data validate --version 20260918-010+8f120133-1ba57af7` → **12/12 PASS**
-  (monotonic_time, tz_aware, no_future, ohlc_invariants, positive_prices,
-  abnormal_spreads, no_duplicates, single_symbol, no_missing_bars,
-  session_boundaries, no_broker_artifacts, volume_non_negative).
+- The frozen acquisition/research snapshot recorded `qts data validate
+  --version 20260918-010+8f120133-1ba57af7` as **12/12 PASS** under the
+  previous event-count-only `no_missing_bars` implementation. The current
+  audited implementation uses unexpected missing *interval duration* and would
+  **FAIL** this dataset. The frozen legacy inventory records 1,493 unexpected
+  15m intervals (5.42% of its legacy active span), while the current
+  weekend-boundary-only recomputation finds 1,785 unexpected intervals (6.42%
+  of 27,823 active expected intervals). Both exceed the unchanged 2% limit.
+  The frozen result is preserved as historical lineage; no research rerun was
+  performed. See `docs/data_completeness_disposition.md` for the root-cause and
+  recovery disposition.
+
+  The other checks remain the same (monotonic_time, tz_aware, no_future,
+  ohlc_invariants, positive_prices, abnormal_spreads, no_duplicates,
+  single_symbol, session_boundaries, no_broker_artifacts,
+  volume_non_negative).
 - Duplicates: **0** duplicate open timestamps; timestamps strictly increasing.
 - Precision: prices are float64 mid values as published upstream (typically 4–6
   significant decimals); tick counts are integers.
 - Gaps (two honest measures with different definitions):
-  - canonical inventory (`data/evidence/data_inventory.json`, modal 900 s
-    cadence, closure gaps excluded): 278 gaps, 58 closure gaps,
-    max abnormal gap 102,600 s, 1,493 missing 15m intervals ≈ 5.42 % within the
-    measured active span;
-  - manifest span measure (`missing_data_stats`): 39,073 expected vs 26,038
-    actual = 33.36 % of the calendar span has no bar — this is dominated by
-    weekend/market closures, not unexplained holes.
-- Gaps are genuine market closures / data unavailability and are left absent.
+  - frozen canonical inventory snapshot (`data/evidence/data_inventory.json`,
+    modal 900 s cadence): 278 legacy gap events, 58 legacy closure events, and
+    1,493 legacy unexpected missing 15m intervals ≈ 5.42% within its active
+    expected span; this historical field is preserved, not treated as current
+    PASS evidence;
+  - independent current recomputation: 336 transitions, 57 recognized weekend
+    closure events, 1,785 unexpected intervals, and 6.42% of 27,823 active
+    expected intervals;
+  - frozen manifest span measure (`missing_data_stats`) remains a historical
+    39,073-expected/26,038-actual calendar-span export. Calendar absence
+    includes closures and is not a quality PASS measure; the independent
+    endpoint-exclusive recomputation is 39,072 expected and 13,034 missing;
+  - the audit does not assume unknown multi-day holes are closures. Only the
+    documented weekend policy is excluded by default; holidays require explicit
+    schedule evidence.
+- Missing observations remain absent. The acquisition is immutable; the
+  corrected gate makes the current data-quality status conservative rather than
+  rewriting the historical research artifact.
 
 ## 5. Reproducing the acquisition
 

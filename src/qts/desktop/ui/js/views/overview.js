@@ -28,6 +28,27 @@ export async function renderOverview(root) {
     h("div", { class: "next-action" }, h("div", { class: "eyebrow" }, "NEXT MEANINGFUL ACTION"), next, nextWhy)));
   root.appendChild(announce);
 
+  // High-level posture strip: four decisions an operator should understand
+  // before opening any drill-down. Values are populated from the same
+  // operationalState authority as the facts table; this is presentation only.
+  const pulse = {
+    mode: { value: h("strong", null, "UNAVAILABLE"), detail: h("span", null, "Waiting for authority") },
+    observation: { value: h("strong", null, "UNAVAILABLE"), detail: h("span", null, "No collector state") },
+    evidence: { value: h("strong", null, "UNAVAILABLE"), detail: h("span", null, "No current evidence") },
+    safety: { value: h("strong", null, "NO_TRADE"), detail: h("span", null, "Execution disabled by policy") },
+  };
+  const pulseCard = (key, label, ic, tone = "neutral") => h("div", { class: `pulse-card ${tone}`, dataset: { pulse: key } },
+    h("div", { class: "pulse-top" }, icon(ic, 14), h("span", null, label)),
+    h("div", { class: "pulse-value" }, pulse[key].value),
+    h("div", { class: "pulse-detail" }, pulse[key].detail),
+  );
+  root.appendChild(h("section", { class: "high-level-strip", "aria-label": "High-level system posture" },
+    pulseCard("mode", "Environment", "layers"),
+    pulseCard("observation", "Observation", "eye"),
+    pulseCard("evidence", "Evidence", "fileCheck"),
+    pulseCard("safety", "Safety boundary", "shield", "locked"),
+  ));
+
   const definitions = [
     ["mode", "Environment / mode", "health", "#/system/diagnostics"],
     ["broker", "Broker (MT5)", "health", "#/system/mt5"],
@@ -176,6 +197,29 @@ export async function renderOverview(root) {
     refresh.disabled = Object.values(store.data.resources).some((m) => m.loading);
     const summary = `${s.activity}; DEMO ${s.permission}; LIVE ${s.liveLabel}`;
     if (summary !== lastAnnouncement) { setText(announce, summary); lastAnnouncement = summary; }
+
+    // Keep the glance layer concise and honest. A stale source is never
+    // collapsed into a healthy-looking fallback value.
+    const pulseState = (key, value, detail, tone = "neutral") => {
+      setText(pulse[key].value, value);
+      setText(pulse[key].detail, detail);
+      const cardNode = root.querySelector(`[data-pulse="${key}"]`);
+      if (cardNode) cardNode.className = `pulse-card ${tone}`;
+    };
+    pulseState("mode", s.sources.health.current ? s.mode.mode : "UNAVAILABLE",
+      s.sources.health.current ? s.mode.blurb : "Health source is stale or unavailable",
+      s.sources.health.current ? "info" : "neutral");
+    pulseState("observation", s.observation,
+      s.observing ? "Worker alive · no order path" : "No execution permission inferred",
+      s.observing ? "run" : s.observation === "UNAVAILABLE" ? "neutral" : "warn");
+    pulseState("evidence", s.sources.observe.current && s.obs?.ticks_recorded != null
+      ? `${fmtInt(s.obs.ticks_recorded)} recorded`
+      : "INSUFFICIENT",
+      s.sources.observe.current && s.obs?.last_tick_time ? `Last event ${fmtUtc(s.obs.last_tick_time)}` : "A count is not complete history",
+      s.sources.observe.current && s.obs?.ticks_recorded != null ? "info" : "neutral");
+    pulseState("safety", s.permission,
+      `LIVE ${s.liveLabel} · NO_TRADE`, "locked");
+
     const meanings = {
       mode: "Environment capability is not execution permission.",
       broker: "Terminal connectivity; not proof of a healthy current quote.",

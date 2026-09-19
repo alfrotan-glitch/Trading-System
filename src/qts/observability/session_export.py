@@ -54,8 +54,11 @@ ARTIFACT_VERSION = "qts.session_evidence.v1"
 _META_ALLOWLIST = frozenset(
     {
         "kind",
+        "product_mode",
+        "observation_mode",
         "mode",
         "environment",
+        "application_mode",
         "canonical_symbol",
         "broker_symbol",
         "broker",
@@ -63,6 +66,8 @@ _META_ALLOWLIST = frozenset(
         "timestamp_basis",
         "code_version",
         "readiness_checks_passed",
+        "readiness_report",
+        "terminal_failure",
         "orders_possible",
         "started_at",
         "ended_at",
@@ -429,6 +434,18 @@ def _verify_artifact(artifact: Any) -> dict[str, Any]:
             redacted.append(key)
         elif key == "readiness_checks_passed":
             _count(value, "meta.readiness_checks_passed")
+        elif key == "readiness_report":
+            _require(isinstance(value, dict), "meta.readiness_report: expected object")
+            if isinstance(value, dict):
+                _require(value.get("passed") is True, "meta.readiness_report.passed must be true")
+                _require(isinstance(value.get("checks"), dict), "meta.readiness_report.checks: expected object")
+                _require(isinstance(value.get("blocked_reasons", []), list), "meta.readiness_report.blocked_reasons: expected list")
+        elif key == "terminal_failure":
+            _require(isinstance(value, dict), "meta.terminal_failure: expected object")
+            if isinstance(value, dict):
+                _text(value.get("category"), "meta.terminal_failure.category")
+                _stamp(value.get("timestamp"), "meta.terminal_failure.timestamp")
+                _count(value.get("consecutive_failures"), "meta.terminal_failure.consecutive_failures")
         elif key != "orders_possible":
             _text(value, f"meta.{key}")
     _require(

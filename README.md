@@ -4,6 +4,8 @@
 
 QTS is a desktop research and trading platform for XAUUSD (gold) on MetaTrader 5 — built so a non-technical user can **clone, install, double-click, connect a DEMO account, and observe markets** without accidentally risking real money. It never claims a profitable edge and never hides failed experiments.
 
+> **Current state:** The canonical current-state and roadmap summary is [`docs/current_state.md`](docs/current_state.md). The registered REAL XAUUSD 15m study is `REGIME_DEPENDENT` with `go_block = BLOCK`; R5 execution-cost history and a real MT5 observation session remain pending. DEMO execution is disabled by policy and LIVE is locked.
+
 ---
 
 ## What is QTS?
@@ -13,7 +15,7 @@ A modular desktop app with a local FastAPI backend + native window (pywebview) t
 - Manage market data with provenance (where every bar/tick came from)
 - Run bounded research campaigns (every trial logged, no hidden trials)
 - Validate strategies with strict scientific gates (DSR, PBO, PSR, costs, regime, perturbation, null/placebo)
-- Paper-trade (simulated), shadow-trade (would-be), and **demo-forward trade** (real MT5 demo) — all compared automatically
+- Paper-trade (simulated), shadow-trade (would-be), and **DEMO_FORWARD observe-only** (real MT5 demo quotes) — kept as separate evidence classes
 - See everything in a clean desktop UI with audit, risk, reconciliation, and live-lock
 - Work inside a coherent 8-area interface (Overview · Research · Market · Trading · Risk · Evidence · System · Governance) with a command palette (`Ctrl+K`), a guided setup journey, and honest states everywhere — `UNAVAILABLE` is never shown as `0`, and LIVE is always visibly LOCKED. See `docs/ui_design_system.md`
 
@@ -22,8 +24,8 @@ A modular desktop app with a local FastAPI backend + native window (pywebview) t
 1. **Data Observatory** — what data you have, what’s missing, which external source can fill it, historical depth needed, execution realism.
 2. **Research Lab** — generate falsifiable hypotheses, run 11-step autonomous campaigns, track failures, prevent rediscovery. Includes the pre-registered **impulse-continuation event study** (`qts research impulse` — research-only, fail-closed data-adequacy gate, Holm/DSR multiple-testing penalties, locked test never touched; see `docs/research/impulse_continuation_evidence.md` for the current REAL-data run and `docs/research/impulse_continuation_report.md` for the synthetic mechanism baseline).
 3. **Validation** — walk-forward, purged CPCV, costs 1.0/1.5/2.0×, slippage, regime, null/placebo, expectancy — only survivors become candidates.
-4. **Forward Observation** — runs live market data without capital, recording quotes/spreads/signals/NO_TRADE/hypothetical fills.
-5. **Execution & Risk** — order lifecycle INTENT→RISK→SUBMISSION→ACCEPTED→FILLED/REJECTED, hard limits, kill switch, reconciliation.
+4. **Forward Observation** — runs real MT5 demo quote observation without capital, recording provenance and acquisition outcomes through the order-free canonical observatory; signals, orders, fills, and realized P&L remain out of scope.
+5. **Execution & Risk** — retains separately gated generic order lifecycle/risk/reconciliation components; this does not make DEMO_FORWARD executable.
 6. **Evidence** — every decision in `data/evidence/*.json` + SQLite + audit log, PROMOTION is one-way, no skip.
 
 ## Does it automatically trade?
@@ -36,14 +38,14 @@ A modular desktop app with a local FastAPI backend + native window (pywebview) t
 |------|---------|-------------|-------|---------|
 | **Paper** | No — next-bar-open simulation | No | PAPER | Estimate fills with conservative spread/slippage |
 | **Shadow** | No — would-be intents | No | SHADOW | Check what *would* have been sent, measure risk/spread vetoes |
-| **Demo Forward** | **Yes — real MT5 terminal + demo account + market data; observation only** | No | **DEMO** | Measure ticks/provenance and hypothetical divergence; zero orders |
+| **Demo Forward** | **Yes — real MT5 terminal + demo account + market data; observation only** | No | **DEMO** | Record provenance-bound sampled quotes and acquisition outcomes; zero orders |
 | **Live** | Yes — real account | **Yes** | LIVE | **LOCKED** — requires everything to pass |
 
 `DEMO` results are **never** automatically promoted to `LIVE`.
 
 ## Why is Live locked?
 
-System defaults to `BLOCK — KEEP NO_TRADE`. The current repository fixture is explicitly `SYNTHETIC`, claim-ineligible, and only supports labelled mechanism validation. Dataset-specific DSR/PBO/PSR/cost values are shown only when their trial-bound evidence is present; missing controls, cost decomposition, forward divergence, reconciliation, or risk evidence remain `UNAVAILABLE`/`INSUFFICIENT_EVIDENCE` and block promotion. See `data/evidence/edge_validation.json` and `docs/release_readiness_report.md` for current blockers.
+System defaults to `BLOCK — KEEP NO_TRADE`. The repository contains a provenance-qualified REAL XAUUSD 15m history and a completed REAL impulse study, but that study concludes `REGIME_DEPENDENT` / `go_block = BLOCK`; it does not establish a validated profitable edge. The unchanged synthetic fixture supports mechanism validation only. Continuous historical execution-cost evidence (R5), real MT5 observation evidence, and other required controls remain unavailable or incomplete and block promotion. See [`docs/current_state.md`](docs/current_state.md), the REAL impulse evidence, and `docs/release_readiness_report.md`.
 
 ## How do I install on Windows? (Clean Clone)
 
@@ -80,6 +82,13 @@ Desktop shows: Home (System Status, Environment, MT5, Account Type, Market Data,
 2. Launch QTS → **Setup Wizard** → set MT5 terminal path `C:\Program Files\MetaTrader 5\terminal64.exe` and symbol `XAUUSD`.
 3. Set credentials via Windows Credential Manager or `.env` (never plain repo): `QTS_MT5_LOGIN`, `QTS_MT5_PASSWORD`, `QTS_MT5_SERVER`. See `docs/mt5_demo_setup.md`.
 4. **MT5 Demo Connection Checker** (Setup Wizard → Test MT5 Connection or Demo Forward view) runs 14 checks: MT5 installed, terminal running, account connected, account is DEMO, broker, symbol available/tradable/spec valid, market data fresh, bid/ask valid, spread acceptable, account state, risk config, reconciliation. Only after all pass may DEMO_FORWARD observation start; this never enables DEMO_EXECUTION.
+
+For bounded historical bid/ask acquisition from the connected DEMO terminal, use
+[`docs/mt5_historical_acquisition.md`](docs/mt5_historical_acquisition.md).
+`acquire_mt5_history.py` persists raw MT5 rows to private Parquet first;
+`analyze_mt5_history.py` performs quality analysis later from local files. The
+capability probe does not create a raw dataset, and raw broker ticks must never
+be committed to Git.
 
 ## How do I start observation?
 
@@ -142,6 +151,6 @@ Docs start `docs/00-overview.md` → `docs/13-adrs.md`. Build exe: `scripts/buil
 
 ## Current Status
 
-`BLOCK — KEEP NO_TRADE`, Live LOCKED. Observation-boundary status (what is closed, what each evidence layer proves, what remains unavailable) is tracked in **`docs/forward_observation_status.md`** — the historical FO-R1 design document is a baseline snapshot of its inspection date and is not rewritten. Test and static-check counts are run-dependent and are not treated as research evidence. LIVE gate evidence is tiered (structural / integration / real-environment); MT5 connectivity passes only with a REAL terminal — mock-based connectivity evidence is banned. `data/curated/` and `data/manifests/` are deliberately **not tracked** — a clean clone establishes its dataset via `qts data bootstrap` (truthful provenance, `SYNTHETIC` label). Remaining limitations in `docs/release_readiness_report.md` K.
+`BLOCK — KEEP NO_TRADE`, Live LOCKED. The single current-state and roadmap summary is **`docs/current_state.md`**; the hardened observation-boundary details are in **`docs/forward_observation_status.md`**. Test and static-check counts are run-dependent and are not treated as research evidence. LIVE gate evidence is tiered (structural / integration / real-environment); MT5 connectivity passes only with a REAL terminal — mock-based connectivity evidence is banned. `data/curated/` and `data/manifests/` are deliberately **not tracked** — a clean clone establishes its dataset via `qts data bootstrap` (truthful provenance, `SYNTHETIC` label). Remaining blockers are summarized in section G of `docs/release_readiness_report.md`.
 
 Never treat BACKTEST/PAPER/SHADOW/DEMO as LIVE. No profitability claimed.

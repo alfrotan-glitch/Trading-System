@@ -151,7 +151,10 @@ class Tick(BaseModel):
     event_time: datetime  # canonical: timestamp
     tick_type: str = "unknown"  # e.g., quote, trade, bid, ask
     session: str = "unknown"  # e.g., London, NY, Asian, weekend_closed
-    source: str = "REAL"  # REAL/SYNTHETIC/SIMULATED/ESTIMATED/IMPUTED/BROKER_DERIVED/MODEL_DERIVED — must be explicit, never synthetic as REAL
+    # Fail-closed: callers must explicitly label verified market evidence.
+    # Bare domain ticks are commonly used by tests/adapters and must never
+    # become REAL merely because the source argument was omitted.
+    source: str = "UNVERIFIED"  # REAL/SYNTHETIC/SIMULATED/ESTIMATED/IMPUTED/BROKER-DERIVED/MODEL-DERIVED/DEMO/UNVERIFIED
     # Broker-timestamp provenance (optional): raw server-basis stamps, the
     # measured server<->UTC offset and its basis, broker symbol, receipt time.
     # Makes the normalized event_time auditable; None for non-broker ticks.
@@ -165,7 +168,17 @@ class Tick(BaseModel):
     @field_validator("source")
     @classmethod
     def _source_label(cls, v: str) -> str:
-        allowed = {"REAL", "SYNTHETIC", "SIMULATED", "ESTIMATED", "IMPUTED", "BROKER-DERIVED", "MODEL-DERIVED"}
+        allowed = {
+            "REAL",
+            "SYNTHETIC",
+            "SIMULATED",
+            "ESTIMATED",
+            "IMPUTED",
+            "BROKER-DERIVED",
+            "MODEL-DERIVED",
+            "DEMO",
+            "UNVERIFIED",
+        }
         up = v.strip().upper()
         if up not in allowed:
             raise ValueError(f"source must be one of {allowed}, got {v!r}")

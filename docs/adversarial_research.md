@@ -24,20 +24,25 @@ verdict. Missing attack evidence is a blocker, not a pass.
 
 ## Current negative evidence
 
-The canonical inventory now contains a REAL, claim-eligible dataset:
+The frozen inventory evidence contains a REAL dataset:
 `20260918-010+8f120133-1ba57af7` (XAUUSD 15m, 26,038 Dukascopy tick-derived
-mid OHLC bars, 407.00 days, 12/12 quality checks pass, readiness `READY`;
-provenance record `docs/data_provenance_xauusd_dukascopy.md`). The 500-bar
+mid OHLC bars, 407.00 days; the frozen acquisition snapshot reported
+12/12 quality checks and readiness `READY` under the frozen historical run,
+but the frozen inventory's legacy gap audit records 1,493 unexpected missing
+15m intervals (5.42%). The current conservative gap model finds 1,785 intervals
+(6.42% of active expected coverage), so the unchanged completeness gate is FAIL.
+It is not a current quality PASS.
+Provenance record: `docs/data_provenance_xauusd_dukascopy.md`. The 500-bar
 synthetic XAUUSD 1H fixture remains registered, labelled `SYNTHETIC`, and is
 mechanism-validation-only.
 
-The pre-registered impulse study has been re-run against the REAL dataset in
-`REAL_CLAIMS` mode. The measured conclusion is `REGIME_DEPENDENT` /
-`go_block = BLOCK`: no candidate is promoted and the system remains
-`NO_TRADE`. R5 (continuous bid/ask/tick execution-cost history) remains
-`FAIL`, so execution-realism attacks are still unavailable rather than passed;
-campaign/edge artifacts generated from the synthetic fixture remain
-`BLOCKED_INSUFFICIENT_DATA`.
+The preserved pre-registered impulse study was run against the REAL dataset in
+`REAL_CLAIMS` mode before this gap-semantics correction. Its measured conclusion
+is `REGIME_DEPENDENT` / `go_block = BLOCK`: no candidate is promoted and the
+system remains `NO_TRADE`. This audit did not rerun it. R5 (continuous
+bid/ask/tick execution-cost history) remains `FAIL`, so execution-realism
+attacks are still unavailable rather than passed; campaign/edge artifacts
+generated from the synthetic fixture remain `BLOCKED_INSUFFICIENT_DATA`.
 
 The paper/shadow comparison has event alignment evidence for its available
 records, but DEMO execution is disabled and the canonical observation store
@@ -51,9 +56,10 @@ stored in the cumulative research/experiment ledger. Similar failed searches
 remain discoverable through research memory. Trial count is never reset to
 make a candidate look more significant.
 
-**Adversarial conclusion:** the acquired REAL dataset was attacked by the
+**Adversarial conclusion:** the frozen REAL dataset was attacked by the
 existing controls (chronological splits, locked partition untouched, Holm
 correction, deflated Sharpe against the full ledger, cost multiplication) and
-survived only as `REGIME_DEPENDENT` with a `BLOCK`. Execution-realism attacks
-remain unavailable until continuous bid/ask/tick history is acquired and
-bound to the same lineage. Keep `NO_TRADE`.
+its preserved result is only `REGIME_DEPENDENT` with a `BLOCK`. The corrected
+completeness gate is now an additional blocker; execution-realism attacks
+remain unavailable until continuous bid/ask/tick history is acquired and bound
+to the same lineage. Keep `NO_TRADE`.

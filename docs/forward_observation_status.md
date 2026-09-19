@@ -1,9 +1,10 @@
 # FO-R1 — current observation-boundary status
 
-**Status:** current as of the FO-R1 hardening change delivered in commit
-`2050541` on `arena/01a0b483-trading-system` (which itself closes the boundary on
-top of `cd7948b`); this page is maintained in the same change set. This page is the canonical statement of what the
-observe-only boundary can and cannot do **today**. It deliberately does NOT
+**Status:** current for the repository branch `arena/01a0b574-trading-system`.
+This page is the canonical statement of what the observe-only boundary can and
+cannot do **today**. The historical hardening commit identifiers retained in the
+blocker table are implementation lineage from the original observation change;
+they are not the current branch identifier. This page deliberately does NOT
 rewrite the historical design/baseline documents:
 `docs/forward_observation_research_plan.md` remains the FO-R1 design of record and its
 "acquisition prerequisites" table is a snapshot of the baseline it inspected
@@ -144,9 +145,14 @@ Transfer only the exported artifacts. `*.session_evidence.json` and
 `*.research_snapshot.json` are git-ignored: raw observation data must not enter
 project history.
 
-## 8. Verification status of this change set
+## 8. Verification status of the hardening snapshot
 
-Run on the delivered commit (`2050541`), Python 3.11 in `.venv`, Linux sandbox.
+The verification table below is the historical hardening snapshot from the
+original observation change (`2050541`), retained for its evidence lineage. It
+is not a current test count for the `arena/01a0b574-trading-system` branch. The
+current branch's code is the authority for present behavior; no real Windows/MT5
+operator session is implied by these controlled-environment checks.
+
 The repo's CI definition (`docs/ci/ci.yml`) is executed manually — there is no
 `.github/workflows` in this repository.
 

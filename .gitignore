@@ -61,3 +61,15 @@ artifacts/
 # Raw Desktop observation exports must not enter history, regardless of location.
 *.session_evidence.json
 *.research_snapshot.json
+
+# Private MT5 historical raw Parquet acquisitions and their sidecars. These
+# are broker data, not repository evidence; keep them in controlled local
+# storage and publish only approved derived summaries/digests.
+**/*mt5*history*.parquet/
+**/*mt5*history*.parquet.metadata.json
+**/*mt5*history*.analysis.json
+**/.XAUUSD*parquet.partial-*/
+**/.*.parquet.partial-*/
+**/.*.parquet.partial-*.metadata.json
+**/*.parquet.metadata.json
+**/*.parquet.analysis.json

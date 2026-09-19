@@ -3,14 +3,17 @@ Version: 0.1.0
 Updated: 2026-09-18
 
 **Current inventory (see `data/evidence/data_inventory.json`)**: one REAL,
-claim-eligible dataset `20260918-010+8f120133-1ba57af7` — XAUUSD 15m, 26,038
-tick-derived mid OHLC bars, 407.00 days (2025-08-06 → 2026-09-17 UTC),
-12/12 quality checks pass, readiness READY; provenance and limits in
-`docs/data_provenance_xauusd_dukascopy.md`. A 1H aggregation of the same bars
-was **rejected by the existing ingest gap gate** (276 abnormal intraday gaps
-> 2 % of bars) and is not registered. The synthetic 1H fixture
-`20260918-010+…-572728d9` remains registered, labelled SYNTHETIC, and is
-mechanism-validation-only.
+acquired dataset `20260918-010+8f120133-1ba57af7` — XAUUSD 15m, 26,038
+tick-derived mid OHLC bars, 407.00 days (2025-08-06 → 2026-09-17 UTC). The
+frozen acquisition snapshot reported 12/12 quality checks and readiness READY,
+but the preserved inventory's legacy gap audit records 1,493 unexpected
+15m intervals (5.42%). The current conservative model finds 1,785 intervals
+(6.42% of active expected coverage), so the hardened completeness quality gate
+is FAIL. Provenance and the full disposition are in
+`docs/data_completeness_disposition.md`.
+A 1H aggregation of the same bars was rejected by the existing ingest gate and
+is not registered. The synthetic 1H fixture remains registered, labelled
+SYNTHETIC, and is mechanism-validation-only.
 
 | Research Type | Required Data | Current Availability | Missing | Scientific Consequence | Justification |
 |---------------|---------------|----------------------|---------|------------------------|---------------|
@@ -29,16 +32,19 @@ mechanism-validation-only.
 | Multi-timeframe | 1H + 15m + 4H | 15m registered (+ 1H aggregation rejected by gate) | Registered 1H, 4H | Cannot test MTF structure | Need additional registered timeframes |
 | Cross-asset | XAUUSD + EURUSD/BTC | Only XAUUSD | EURUSD/BTC history | Cannot test generality | Need second market |
 | Regime research | Volatility/trend time series | REAL 15m, 407 days | Multi-year regimes (2 y target) | Regime coverage incomplete; R3 ≥180 d passes, 2 y target unmet | Need 2 years |
-| Forward observation | Live quotes/signals/NO_TRADE/hypothetical fills | ForwardObservatory simulated 10 ticks | Real live capture | Simulated not real | ForwardObservatory can run safely but currently simulated |
+| Forward observation | Real MT5 demo quotes with provenance | Canonical store: 0 real observations; `simulate_observation` is TEST-ONLY SYNTHETIC | Real Windows/MT5 observation session | No session evidence yet | Structural collector exists; no real session has run |
 
 **Reasoning**: Each requirement derives from the strategy's reliance on a
 specific market feature (spread-sensitive needs real spread; microstructure
 needs tick). The inventory now contains one REAL dataset whose depth/span meet
 the block-level minimums for bar research, plus the unchanged synthetic fixture.
 
-**Result**: Data quality PASS and bar-research depth/span PASS for the REAL 15m
-dataset; **execution realism (R5), continuous spread/tick data, multi-year
-regime coverage, cross-asset generality, and licensed provenance remain
-unavailable** → research quality gate is **OPEN for XAUUSD 15m bar research**
-with declared cost assumptions, and still **BLOCKED for execution-realism,
-microstructure, spread-sensitive and multi-year regime claims**.
+**Result**: The frozen REAL 15m artifact has sufficient recorded depth/span for
+its historical run, but the current audited completeness result is **FAIL**
+(the preserved legacy count is 1,493 unexpected intervals / 5.42%; current
+conservative semantics find 1,785 / 6.42%, versus the unchanged 2% limit). The
+frozen research evidence is preserved and not rerun. **R5**, continuous
+spread/tick data, multi-year regime coverage, cross-asset generality, and
+licensed provenance remain unavailable; current promotion/readiness remains
+**BLOCKED**. The completeness root cause and recovery outcome are formally
+recorded; no gate is weakened.

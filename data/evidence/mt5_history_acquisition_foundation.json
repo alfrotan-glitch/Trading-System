@@ -1,0 +1,43 @@
+{
+  "schema": "qts.mt5_history_acquisition_foundation.v1",
+  "recorded_at": "2026-09-19",
+  "architecture": {
+    "acquisition": "scripts/acquire_mt5_history.py -> qts.data.mt5_history.acquire_mt5_ticks",
+    "local_source_copy": "private Parquet directory, one bounded MT5 response per chunk",
+    "deferred_analysis": "scripts/analyze_mt5_history.py -> qts.data.mt5_history.analyze_mt5_dataset",
+    "probe_change": "scripts/probe_mt5_history.py records capability shape/count only; no row audit",
+    "raw_row_transforms_during_acquisition": false,
+    "raw_rows_committed_to_repository": false
+  },
+  "current_checkout_execution": {
+    "status": "NOT_EXECUTED_LIVE_IN_THIS_LINUX_CHECKOUT",
+    "reason": "MetaTrader5 Python package and the connected Windows terminal are unavailable in this checkout",
+    "command_result": "MT5_PACKAGE_UNAVAILABLE",
+    "no_broker_orders": true,
+    "no_order_api_invocation": true
+  },
+  "prior_operator_capability_evidence": {
+    "status": "CAPABILITY_VERIFIED_LIMITED_HISTORY",
+    "broker": "WM Markets DEMO",
+    "mt5_package_version": "5.0.6180",
+    "actual_symbol": "XAUUSD@",
+    "windows": {
+      "1d": {"status": "RESPONSE_RECEIVED_BID_ASK_PRESENT", "rows": 165418},
+      "7d": {"status": "RESPONSE_RECEIVED_BID_ASK_PRESENT", "rows": 970303},
+      "30d": {"status": "RESPONSE_RECEIVED_BID_ASK_PRESENT", "rows": 4292917},
+      "365d": {"status": "QUERY_ERROR", "error": "(-1, Terminal: Call failed)"}
+    },
+    "raw/canonical tick-level evidence is not present in the repository": true,
+    "interpretation": "The 365-day error does not establish a retention boundary. The prior operator report did not preserve a raw Parquet dataset for independent audit."
+  },
+  "research_boundary": {
+    "timestamp_basis": "UNVERIFIED",
+    "historical_bid_ask_quality": "NOT_ASSESSED",
+    "execution_fill_evidence": "NOT_PRESENT",
+    "slippage": "NOT_PRESENT",
+    "latency": "NOT_PRESENT",
+    "realized_transaction_costs": "NOT_PRESENT",
+    "frozen_research_modified": false,
+    "r5_solved": false
+  }
+}

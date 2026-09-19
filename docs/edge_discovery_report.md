@@ -1,7 +1,8 @@
 # Edge Discovery Report — Research Memory and Current Evidence
 
 **Updated:** 2026-09-18
-**Branch:** `arena/01a0b358-trading-system`
+**Branch:** `arena/01a0b574-trading-system`
+**Current-state authority:** [`docs/current_state.md`](current_state.md)
 **Scope:** research plane only; no DEMO execution and no LIVE.
 
 This report supersedes older snapshots that described duplicate datasets,
@@ -29,27 +30,24 @@ QTS provides a bounded modular-monolith research path with:
 - evidence exports that distinguish `MEASURED`, `UNAVAILABLE`,
   `INSUFFICIENT_EVIDENCE`, and `BLOCKED_INSUFFICIENT_DATA`.
 
-These capabilities do not imply that the current fixture has enough evidence
-for a market claim.
+These capabilities do not imply that any current dataset or result proves a
+profitable market edge.
 
-## B. Canonical dataset and readiness
+## B. Canonical datasets and readiness
 
-At the time of this snapshot the canonical inventory contained one dataset
-version (a REAL Dukascopy-derived XAUUSD 15m dataset,
-`20260918-010+8f120133-1ba57af7`, is now also registered — see
-`docs/data_provenance_xauusd_dukascopy.md`):
+The current research population includes:
 
-- `XAUUSD_1H_500`, version `20260918-010-572728d9`;
-- 500 UTC OHLC bars spanning approximately 20.83 days;
-- source `SYNTHETIC:fixture:XAUUSD_1H_500.csv`, class `SYNTHETIC`;
-- fixture quality checks pass, but bid/ask, tick, broker session, measured
-  spread, real-volume semantics, and execution history are unavailable;
-- research status: `MECHANISM_VALIDATION_ONLY`.
+- REAL XAUUSD 15m history `20260918-010+8f120133-1ba57af7`, 26,038 bars,
+  approximately 407 days, class `REAL`, suitable for the executed bar-based
+  impulse study under declared costs;
+- unchanged synthetic XAUUSD 1H fixture `20260918-010-572728d9`, 500 bars,
+  approximately 20.83 days, class `SYNTHETIC`, mechanism-validation-only.
 
-The readiness gate blocks claim-grade research because provenance is not an
-allowed real-market class, depth is below 5,000 bars, and span is below 180
-days. Duplicate raw/curated inventory rows are not counted as separate
-samples.
+The REAL impulse study returned `REGIME_DEPENDENT` / `go_block = BLOCK`.
+Continuous historical bid/ask/tick execution-cost evidence is absent, so R5
+remains FAIL/non-blocking. Duplicate raw/curated representations are not
+independent samples. See `docs/current_state.md` and
+`docs/data_provenance_xauusd_dukascopy.md`.
 
 ## C. Current campaign evidence
 
@@ -102,12 +100,12 @@ No old JSON sample is relabeled as a real observation.
 ## F. Research memory and next falsification action
 
 Negative evidence is retained in the experiment ledger and research memory so
-similar blocked searches are not silently presented as novel winners. The
-next meaningful experiment requires a provenance-qualified dataset with a
-declared population, horizon, timestamp/session semantics, enough depth/span,
-and measured cost fields. Then regenerate all controls from that one dataset,
-lock the validation partition before selection, and inspect both evidence for
-and evidence against the hypothesis.
+similar blocked searches are not silently presented as novel winners. The REAL
+bar-based study has now run and must not be rerun merely to seek a favorable
+result. The next research milestone is improved execution-cost evidence (R5),
+followed by a rerun of the same preregistered design if that evidence is
+acquired. A separate operator milestone is the first real Windows/MT5
+observation session.
 
-**Conclusion:** no validated edge is demonstrated. Keep `NO_TRADE`; acquire
-claim-eligible data before interpreting model returns.
+**Conclusion:** no validated edge is demonstrated. Keep `NO_TRADE`; the REAL
+result remains `REGIME_DEPENDENT / BLOCK`.

@@ -30,6 +30,59 @@
 .next-action { border-left: 2px solid var(--accent); padding-left: 16px; }
 .next-action .btn { margin: 8px 0 2px; }
 
+/* glance layer — an operator can understand posture before opening detail */
+.high-level-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 16px 0 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--line-strong);
+}
+.pulse-card {
+  min-width: 0;
+  min-height: 94px;
+  padding: 14px 16px 13px;
+  background: var(--bg-2);
+  border-top: 2px solid var(--info);
+}
+.pulse-card.run { border-top-color: var(--run); }
+.pulse-card.warn { border-top-color: var(--warn); }
+.pulse-card.locked { border-top-color: var(--locked); background: var(--locked-bg); }
+.pulse-card.neutral { border-top-color: var(--neutral); }
+.pulse-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.pulse-top svg { color: var(--accent-text); flex: 0 0 auto; }
+.pulse-card.locked .pulse-top svg { color: var(--locked-text); }
+.pulse-value {
+  margin-top: 12px;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.pulse-card.locked .pulse-value { color: var(--locked-text); }
+.pulse-detail {
+  margin-top: 5px;
+  color: var(--text-2);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 /* sections — uppercase eyebrow, dense */
 .operator-section { margin-top: 20px; min-width: 0; }
 .operator-section h2 { font-size: 11px; font-weight: 650; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); }
@@ -90,7 +143,12 @@ body[data-density="comfortable"] .card-body { padding: 16px 18px; }
   .operator-workspace { padding: 16px; }
   .operator-summary { margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
 }
+@media (max-width: 900px) {
+  .high-level-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 640px) {
+  .high-level-strip { grid-template-columns: 1fr; }
+
   .operator-summary { grid-template-columns: 1fr; gap: 12px; }
   .operator-summary h2 { font-size: 15px; }
   .operator-workspace { padding: 12px; }

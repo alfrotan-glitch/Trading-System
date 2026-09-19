@@ -1,17 +1,24 @@
 # Impulse Continuation Research — Evidence Pointer
 
+> Current project status and sequencing: [`docs/current_state.md`](../current_state.md).
+
 **Updated:** 2026-09-18
-**Current (REAL) artifact:** `data/evidence/impulse_research_xauusd_dukascopy_15m.json`
-**Current (REAL) report:** `docs/research/impulse_continuation_report_xauusd_dukascopy_15m.md`
+**Frozen REAL artifact:** `data/evidence/impulse_research_xauusd_dukascopy_15m.json`
+**Frozen REAL report:** `docs/research/impulse_continuation_report_xauusd_dukascopy_15m.md`
 **Historical (synthetic) artifact:** `data/evidence/impulse_research.json`
 **Historical (synthetic) report:** `docs/research/impulse_continuation_report.md`
 
-## Current run — REAL dataset
+## Frozen REAL run — preserved research evidence
 
-The pre-registered impulse studies were re-run unchanged against the first
-claim-eligible dataset, `20260918-010+8f120133-1ba57af7` (XAUUSD 15m, 26,038
-Dukascopy tick-derived mid OHLC bars, 407.00 days, class `REAL`, 12/12 quality
-checks pass). It executed in `REAL_CLAIMS` mode and passed the adequacy checks
+The pre-registered impulse studies were run unchanged against the first
+acquired REAL dataset, `20260918-010+8f120133-1ba57af7` (XAUUSD 15m, 26,038
+Dukascopy tick-derived mid OHLC bars, 407.00 days, class `REAL`). The frozen
+run recorded 12/12 quality checks under the previous event-count-only gap gate;
+the preserved legacy inventory records 1,493 unexpected missing 15m intervals
+(5.42%), while the current conservative audit finds 1,785 intervals (6.42% of
+27,823 active expected intervals). The hardened completeness gate is now FAIL.
+This report remains frozen research lineage; no rerun was performed. It executed in
+`REAL_CLAIMS` mode and passed the adequacy checks
 R1 (provenance), R2 (depth), R3 (span), R4 (freshness) and R6 (event count);
 R5 (tick/execution-cost data) remains **FAIL and non-blocking** because the
 canonical bars contain no continuous bid/ask or tick history.

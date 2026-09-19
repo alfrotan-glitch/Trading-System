@@ -1,7 +1,8 @@
 # MT5 Boundary Report — Connectivity Contract, Not Production Readiness
 
 **Updated:** 2026-09-18
-**Branch:** `arena/01a0b358-trading-system`
+**Branch:** `arena/01a0b574-trading-system`
+**Current-state authority:** [`docs/current_state.md`](current_state.md)
 **Environment:** Linux development sandbox; MetaTrader 5 is not installed and
 no broker terminal/account was connected.
 

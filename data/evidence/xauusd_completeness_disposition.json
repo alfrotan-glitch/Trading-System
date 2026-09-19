@@ -1,0 +1,160 @@
+{
+  "schema": "qts.xauusd_completeness_disposition.v1",
+  "audit_date": "2026-09-18",
+  "status": "AUDIT_COMPLETE_NO_RESEARCH_RERUN",
+  "recovery_outcome": "RECOVERABLE ONLY BY NEW ACQUISITION",
+  "scope_controls": {
+    "frozen_real_snapshot_modified": false,
+    "locked_research_partition_modified": false,
+    "trial_accounting_reset": false,
+    "research_rerun": false,
+    "strategy_search": false,
+    "source_bars_acquired_from_raw_dukascopy": false,
+    "bars_interpolated_or_synthesized": false,
+    "execution_enabled": false
+  },
+  "frozen_snapshot": {
+    "dataset_version": "20260918-010+8f120133-1ba57af7",
+    "source_commit": "4d6f15543e6285fad91fd57fe42f716bc7273075",
+    "instrument": "XAUUSD",
+    "timeframe": "15m",
+    "rows": 26038,
+    "source_files": 14,
+    "export_sha256_15m": "7271892fa9bacf2a4ad20655d6a019020a4aaf057510e769bb42c5ba59d0a074",
+    "export_sha256_1h": "97b457d6ac42743613a6ee48cf6a02c5fe4475e648fc4c1575003ca5e6c624b0",
+    "legacy_frozen_inventory": {
+      "gap_events": 278,
+      "closure_gap_events": 58,
+      "unexpected_missing_intervals": 1493,
+      "active_span_missing_pct": 5.42,
+      "calendar_span_missing_intervals": 13035
+    },
+    "legacy_note": "The 1493 frozen unexpected-slot count is preserved as evidence. It used a legacy >=48-hour closure heuristic, including the 292-slot Easter-period absence. It is not silently rewritten."
+  },
+  "independent_recomputation": {
+    "source_rows": 26038,
+    "strictly_increasing_unique_timestamps": true,
+    "normal_900_second_deltas": 25701,
+    "non_modal_transitions": 336,
+    "calendar_span_missing_intervals": 13034,
+    "current_conservative_closure_policy": "weekend_boundary_only",
+    "recognized_closure_events": 57,
+    "recognized_closure_intervals": 11249,
+    "unexpected_gap_events": 279,
+    "unexpected_missing_intervals": 1785,
+    "active_span_expected_intervals": 27823,
+    "active_span_missing_pct": 6.42,
+    "active_span_missing_fraction": 0.06415555475685585,
+    "quality_gate": "FAIL",
+    "policy_note": "The independent 13034 calendar-slot result is the recomputed endpoint-exclusive population; the frozen 13035 inventory field remains unchanged historical evidence."
+  },
+  "missing_interval_disposition": {
+    "population_basis": "frozen legacy unexpected count is 1493; current conservative gate additionally exposes 292 Easter-period slots rather than forgiving them",
+    "categories": [
+      {
+        "category": "SOURCE_ABSENCE_OR_UPSTREAM_FEED_POLICY",
+        "slots_in_frozen_1493": 1098,
+        "classification": "source absence / expected low-liquidity policy",
+        "evidence": "Recurring daily NY-close/low-liquidity gaps covered by upstream fix_gaps.py policy",
+        "recovery": "not recoverable from the pinned snapshot; do not relabel as closures in QTS without schedule evidence"
+      },
+      {
+        "category": "SOURCE_ABSENCE_OR_KNOWN_HOLIDAY",
+        "slots_in_frozen_1493": 28,
+        "classification": "source absence / documented upstream holiday policy",
+        "intervals": ["2025-09-01", "2026-05-25"],
+        "evidence": "Upstream fix_gaps.py explicitly documents Labor Day and Memorial Day afternoon gaps",
+        "recovery": "requires a new authoritative source acquisition if bars are required; no bars were acquired"
+      },
+      {
+        "category": "SOURCE_ABSENCE_OR_HOLIDAY_CLOSURE",
+        "slots_in_frozen_1493": 213,
+        "classification": "source absence / upstream multi-day holiday-closure policy",
+        "intervals": ["2025-12-24/25", "2025-12-31/2026-01-01"],
+        "evidence": "Upstream policy treats multi-day weekend/holiday gaps as expected; QTS does not silently forgive unknown closures",
+        "recovery": "requires a new authoritative source acquisition if bars are required; no bars were acquired"
+      },
+      {
+        "category": "UPSTREAM_ACQUISITION_OR_ROLLING_REFRESH_LOSS",
+        "slots_in_frozen_1493": 154,
+        "classification": "upstream update/acquisition loss, not QTS ingestion or transformation loss",
+        "evidence": "Earlier upstream commits contain the corresponding bars and later five-day rolling refreshes remove them; commit 2d3a3dc documents timeout-induced silent gaps and fail-open download behavior",
+        "recovery": "140 bars were materialized from earlier upstream parquet history into a separate candidate; 14 remain absent from inspected historical files and require new authoritative acquisition"
+      }
+    ],
+    "current_policy_additional_population": {
+      "slots": 292,
+      "classification": "source absence / Easter-period closure under upstream policy; unexpected under QTS default weekend-only evidence policy",
+      "effect": "current conservative unexpected population is 1785 rather than the frozen legacy 1493"
+    },
+    "qts_ingestion_loss_slots": 0,
+    "qts_transformation_loss_slots": 0,
+    "timestamp_or_utc_normalization_loss_slots": 0,
+    "session_classification_error_slots": 0,
+    "unresolved_interval_classification_slots": 0,
+    "raw_source_availability": "UNVERIFIED — representative Dukascopy endpoint probes failed with TLS/SSL EOF; no raw source data was saved or ingested"
+  },
+  "lineage_integrity": {
+    "qts_15m_export_matches_frozen_hash": true,
+    "qts_1h_export_matches_frozen_hash": true,
+    "ingestion_drop_or_repair_found": false,
+    "aggregation_drop_or_repair_found": false,
+    "timestamp_normalization_drop_or_repair_found": false,
+    "pinned_source_commit": "4d6f15543e6285fad91fd57fe42f716bc7273075"
+  },
+  "recovery_candidate": {
+    "manifest": "data/evidence/xauusd_recovery_candidate_manifest.json",
+    "version": "20260918-recovery-140-e563c57e",
+    "status": "RECOVERY_CANDIDATE_NOT_PROMOTED",
+    "rows": 26178,
+    "recovered_slots": 140,
+    "candidate_csv_sha256": "e563c57e7bdee0b1a311c1f88fc9c45311fb24d364866c0aa98600198131b67d",
+    "qts_checksum": "sha256:7f28bf03bdbb4f90",
+    "quality_passed": false,
+    "unexpected_missing_intervals_after_candidate": 1645,
+    "active_span_missing_pct_after_candidate": 5.91,
+    "promotion_decision": "REJECTED_BY_UNCHANGED_2_PERCENT_GATE"
+  },
+  "dataset_lifecycle": {
+    "states": [
+      "ACQUIRED_FROZEN",
+      "QUALITY_FAILED",
+      "RECOVERY_CANDIDATE",
+      "RESEARCH_BLOCKED",
+      "RESEARCH_ELIGIBLE",
+      "RETIRED"
+    ],
+    "frozen_real_snapshot": ["ACQUIRED_FROZEN", "QUALITY_FAILED", "RESEARCH_BLOCKED"],
+    "recovery_candidate": ["RECOVERY_CANDIDATE", "QUALITY_FAILED", "RESEARCH_BLOCKED"],
+    "transition_rule": "State transitions create a new immutable version and provenance record; no failed version is mutated or promoted by documentation alone"
+  },
+  "research_impact": {
+    "frozen_impulse_artifact_preserved": true,
+    "locked_partition_preserved": true,
+    "trial_ledger_preserved": true,
+    "current_claim_status": "BLOCKED_INSUFFICIENT_DATA",
+    "conclusion": "The frozen REAL impulse result remains historical event-study evidence, not a currently admissible real-market claim under the corrected completeness gate; no study rerun was performed",
+    "r5_execution_data": "FAIL / non-blocking remains unchanged"
+  },
+  "evidence_separation": {
+    "historical_source_provider": "Dukascopy-derived upstream repository",
+    "historical_source_feed": "Dukascopy XAU/USD tick feed transformed upstream to mid OHLC",
+    "historical_source_venue": "Dukascopy XAU/USD feed",
+    "historical_execution_target": null,
+    "historical_execution_venue": null,
+    "mt5_namespace": "legacy storage/partition namespace only; not proof of MT5 broker history",
+    "demo_forward": "separate DEMO broker observation evidence; never converted to REAL historical evidence"
+  },
+  "safety": {
+    "DEMO_EXECUTION": "DISABLED BY POLICY",
+    "LIVE": "LOCKED",
+    "NO_TRADE": "unchanged",
+    "broker_orders": 0,
+    "demo_forward_session_started": false
+  },
+  "next_milestone": {
+    "decision": "INDEPENDENT_BUT_NOT_STARTED",
+    "milestone": "Windows + MT5 DEMO_FORWARD observe-only session with zero orders",
+    "boundary": "This milestone uses separate broker/demo evidence, does not repair or validate the frozen REAL history, and cannot enable DEMO_EXECUTION or LIVE"
+  }
+}

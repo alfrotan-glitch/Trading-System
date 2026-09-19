@@ -1,6 +1,13 @@
 # Data Source Comparison
 Generated: 2026-09-16 — `data/evidence/data_source_catalog.json`
 
+**Status:** the provider table is a historical/planning catalog, not evidence
+that any provider route or license has been acquired. Licensing descriptions
+are unverified metadata and must not be read as permission to redistribute or
+commercially use data. The separately acquired Dukascopy-derived dataset has no
+upstream LICENSE and is restricted to internal research pending legal review;
+see the provenance record.
+
 | Provider | Depth | Granularity | Bid/Ask | Tick | Timezone | Licensing | Access | Reliability | Quality | Mapping | Timestamp | Limitations | Cost | Research Suitability | Execution Suitability |
 |----------|-------|-------------|---------|------|----------|-----------|--------|-------------|---------|---------|-----------|-------------|------|----------------------|----------------------|
 | **dukascopy** | 2003+ FX | tick,1m,1H,1D | ✅ | ✅ | UTC/Geneva | Free personal, no redistribution | https://dukascopy.com + dukascopy-node | High | Good FX | XAU/USD needs verify | UTC | FX only, not broker spread | Free | High FX/cross | Medium XAUUSD |

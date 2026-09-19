@@ -80,7 +80,7 @@ class RegimeObservatory:
         if not obs:
             return {
                 "count": 0,
-                "note": "No regime observations yet — run forward_observatory.simulate_observation to generate",
+                "note": "No regime observations yet — the available simulate helper is TEST-ONLY/SYNTHETIC and is not forward evidence",
             }
         vols = [o.volatility_regime for o in obs]
         from collections import Counter

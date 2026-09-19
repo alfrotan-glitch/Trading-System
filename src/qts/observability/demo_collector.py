@@ -60,6 +60,9 @@ from qts.observability.forward_observatory import ForwardObservatory, Observatio
 
 MIN_INTERVAL_S = 0.2
 MAX_INTERVAL_S = 60.0
+OBSERVATION_PRODUCT_MODE = "DEMO_FORWARD"
+OBSERVATION_MODE = "OBSERVE_ONLY"
+OBSERVATION_ENVIRONMENT = "DEMO_FORWARD"
 
 #: Bounded journal backlog: attempts whose ledger row could not be written are
 #: carried and flushed (flagged `deferred`) on the next successful write. The
@@ -116,6 +119,8 @@ class ObservationCollector:
         self.duplicates_skipped = 0
         self.consecutive_failures = 0
         self.last_error: str | None = None
+        self.last_failure_category: str | None = None
+        self._last_failure_at: str | None = None
         self.last_tick_time: str | None = None  # broker event time (true UTC), ISO
         self.last_timestamp_basis: str | None = None
         self._last_raw_key: tuple[Any, Any, float] | None = None
@@ -123,8 +128,17 @@ class ObservationCollector:
         #: outage at the transition). `stop()` retries it, so a session is
         #: never left permanently ACTIVE through inaction.
         self._terminal_persist_pending = False
+        #: Derived terminal manifest publication also has a retry marker. The
+        #: manifest is not canonical, but a stale terminal projection must be
+        #: surfaced and repairable by an idempotent stop.
+        self._terminal_manifest_pending = False
+        #: The authoritative end timestamp returned by the canonical store.
+        #: ``stopped_at`` and terminal manifests are derived from this value;
+        #: it is never replaced by a later wall-clock read.
+        self._authoritative_end: str | None = None
         #: The terminal failure reason captured at the transition (retry-safe).
         self._terminal_error: str | None = None
+        self._terminal_failure: dict[str, Any] | None = None
 
         # ------------------------------------------------ acquisition ledger
         #: Monotonic per-session attempt counter (seq 0 = SESSION_START anchor).
@@ -159,6 +173,21 @@ class ObservationCollector:
         with self._lock:
             if self.state == "OBSERVING":
                 return self.status()  # idempotent: no duplicate collector/session
+            if self._terminal_persist_pending and self.session_id:
+                # Never open a replacement session while the previous
+                # canonical row is still ACTIVE.  Reuse the same retry path as
+                # idempotent stop; if it remains unavailable, fail closed.
+                end = self._persist_session_end(self.state, self._terminal_error)
+                if end is None:
+                    return self.status()
+                self._authoritative_end = end
+                self.stopped_at = end
+                self._terminal_manifest_pending = False
+                try:
+                    self.write_manifest(state_override=self.state)
+                except Exception as e:  # noqa: BLE001 — retry remains fail-closed
+                    self._terminal_manifest_pending = True
+                    self._note_diagnostic(f"terminal manifest retry failed: {type(e).__name__}: {e}")
             if not readiness.get("passed"):
                 self.state = "BLOCKED"
                 self.blocked_reasons = [str(b) for b in readiness.get("blocked_reasons", [])] or [
@@ -168,20 +197,31 @@ class ObservationCollector:
             from qts.domain.modes import resolve_mode
             from qts.observability.lineage import code_version
 
-            mode = resolve_mode()
+            application_mode = resolve_mode()
+            readiness_checks = dict(readiness.get("checks") or {})
             self.readiness_at_start = {
                 "passed": True,
                 "timestamp": readiness.get("timestamp"),
-                "checks_passed": sum(1 for v in (readiness.get("checks") or {}).values() if v),
+                "checks_passed": sum(1 for v in readiness_checks.values() if v),
+                "checks": readiness_checks,
+                "blocked_reasons": list(readiness.get("blocked_reasons") or []),
             }
-            run_metadata = self._build_run_metadata(mode=mode.value)
-            # Canonical session identity (finding #5): environment, broker,
-            # symbol, timestamp basis, code version — bound at session start.
+            # A running application's development mode is not the identity of
+            # the broker observation.  This collector is only an observe-only
+            # MT5 DEMO forward session; bind that identity explicitly and keep
+            # the application mode only as non-authoritative diagnostics.
+            run_metadata = self._build_run_metadata(mode=OBSERVATION_PRODUCT_MODE)
+            # Canonical session identity (finding #5): product/environment,
+            # observation mode, broker, symbol, timestamp basis, and code
+            # version — bound at session start.
             self.session_id = self.observatory.start_session(
                 meta={
                     "kind": "LIVE_OBSERVATION",
-                    "mode": mode.value,
-                    "environment": mode.value,
+                    "product_mode": OBSERVATION_PRODUCT_MODE,
+                    "observation_mode": OBSERVATION_MODE,
+                    "mode": OBSERVATION_MODE,
+                    "environment": OBSERVATION_ENVIRONMENT,
+                    "application_mode": application_mode.value,
                     "canonical_symbol": self.instrument.symbol,
                     "broker_symbol": self.broker_symbol,
                     "broker": "MT5",
@@ -189,10 +229,30 @@ class ObservationCollector:
                     "timestamp_basis": "broker-normalized(measured-m1-bar|assumed-utc-fallback)",
                     "code_version": code_version(),
                     "readiness_checks_passed": self.readiness_at_start["checks_passed"],
+                    "readiness_report": dict(readiness),
                     "orders_possible": False,  # observe-only runtime has no order path
                     "run_metadata": run_metadata,
                 }
             )
+            # A collector instance may be deliberately restarted after a
+            # completed session.  Every runtime counter and terminal marker is
+            # scoped to the new canonical session.
+            self.started_at = None
+            self.stopped_at = None
+            self._authoritative_end = None
+            self._terminal_persist_pending = False
+            self._terminal_manifest_pending = False
+            self._terminal_error = None
+            self._terminal_failure = None
+            self.last_error = None
+            self.last_failure_category = None
+            self._last_failure_at = None
+            self.ticks_recorded = 0
+            self.duplicates_skipped = 0
+            self.consecutive_failures = 0
+            self.last_tick_time = None
+            self.last_timestamp_basis = None
+            self._last_raw_key = None
             self._stop.clear()
             self.state = "OBSERVING"
             self.started_at = datetime.now(UTC).isoformat()
@@ -223,18 +283,31 @@ class ObservationCollector:
             return self.status()
 
     def stop(self) -> dict[str, Any]:
-        """Deterministic stop: signal, persist session end + manifest, join.
+        """Deterministic, idempotent stop with a canonical end timestamp.
 
         The join happens OUTSIDE the lock: the poll thread needs the lock for
         its bookkeeping, so joining under the lock would deadlock until the
-        join timeout (observed as a multi-second stop).
+        join timeout.  A retry after a terminal persistence outage also
+        refreshes the terminal manifest, so the public projection catches up
+        to the canonical session row without inventing a new end time.
         """
         with self._lock:
             if self.state != "OBSERVING":
                 if self._terminal_persist_pending and self.session_id:
                     # The transition happened while storage was unavailable.
                     # Retry now so the session row cannot stay ACTIVE forever.
-                    self._persist_session_end(self.state, self._terminal_error)
+                    end = self._persist_session_end(self.state, self._terminal_error)
+                    if end is not None:
+                        self._authoritative_end = end
+                        self.stopped_at = end
+                        self._terminal_manifest_pending = True
+                if self._terminal_manifest_pending:
+                    self._terminal_manifest_pending = False
+                    try:
+                        self.write_manifest(state_override=self.state)
+                    except Exception as e:  # noqa: BLE001 — retry remains fail-closed
+                        self._terminal_manifest_pending = True
+                        self._note_diagnostic(f"terminal manifest retry failed: {type(e).__name__}: {e}")
                 return self.status()  # idempotent
             thread = self._finish("STOPPED")
         self._join(thread)
@@ -245,7 +318,10 @@ class ObservationCollector:
         with self._lock:
             return {
                 "state": self.state,
-                "mode": "OBSERVE_ONLY",
+                "product_mode": OBSERVATION_PRODUCT_MODE,
+                "observation_mode": OBSERVATION_MODE,
+                "mode": OBSERVATION_MODE,
+                "environment": OBSERVATION_ENVIRONMENT,
                 "orders_submitted": 0,  # invariant: this runtime has no order path
                 "session_id": self.session_id,
                 "symbol": self.broker_symbol,
@@ -258,9 +334,14 @@ class ObservationCollector:
                 "last_tick_time": self.last_tick_time,
                 "timestamp_basis": self.last_timestamp_basis,
                 "last_error": self.last_error,
+                "last_failure_category": self.last_failure_category,
                 "blocked_reasons": list(self.blocked_reasons),
                 "started_at": self.started_at,
                 "stopped_at": self.stopped_at,
+                "authoritative_end": self._authoritative_end,
+                "terminal_failure": self._terminal_failure,
+                "terminal_persist_pending": self._terminal_persist_pending,
+                "terminal_manifest_pending": self._terminal_manifest_pending,
                 "readiness_at_start": self.readiness_at_start,
                 "thread_alive": self.thread_alive,
                 # Acquisition-ledger mirror (in-memory; the durable ledger in
@@ -283,7 +364,10 @@ class ObservationCollector:
             try:
                 self._poll_once()
             except Exception as e:  # noqa: BLE001 — last resort: the worker must never die silently
-                self._register_failure(f"unexpected poll loop error: {type(e).__name__}: {e}")
+                self._register_failure(
+                    f"unexpected poll loop error: {type(e).__name__}: {e}",
+                    category="WORKER_CRASH",
+                )
             if self._stop.wait(self.interval_s):
                 break
 
@@ -304,7 +388,7 @@ class ObservationCollector:
         try:
             self._poll_and_record()
         except Exception as e:  # noqa: BLE001 — fail-closed: ANY poll error counts
-            self._register_failure(f"{type(e).__name__}: {e}")
+            self._register_failure(f"{type(e).__name__}: {e}", category=self._failure_category(str(e)))
 
     def _poll_and_record(self) -> None:
         """One acquisition attempt: classify its outcome in the durable ledger.
@@ -332,7 +416,10 @@ class ObservationCollector:
                 reason=f"{type(e).__name__}: {e}",
                 extra=clock,
             )
-            self._register_failure(f"{type(e).__name__}: {e}")
+            self._register_failure(
+                f"{type(e).__name__}: {e}",
+                category="RETRIEVAL_UNAVAILABLE" if getattr(e, "kind", "validation") == "unavailable" else self._failure_category(str(e)),
+            )
             return
         except Exception as e:  # noqa: BLE001 — retrieval/normalization failure
             self._journal(
@@ -344,7 +431,9 @@ class ObservationCollector:
                 reason=f"{type(e).__name__}: {e}",
                 extra=clock,
             )
-            self._register_failure(f"{type(e).__name__}: {e}")
+            self._register_failure(
+                f"{type(e).__name__}: {e}", category="RETRIEVAL_ERROR"
+            )
             return
 
         if tick is None:  # broker returned no tick (feed/terminal unavailable)
@@ -357,7 +446,7 @@ class ObservationCollector:
                 reason="RuntimeError: no tick available from the broker",
                 extra=clock,
             )
-            self._register_failure("RuntimeError: no tick available from the broker")
+            self._register_failure("RuntimeError: no tick available from the broker", category="RETRIEVAL_UNAVAILABLE")
             return
 
         prov = tick.provenance or {}
@@ -426,7 +515,12 @@ class ObservationCollector:
             recorded = self.ticks_recorded
         self._observe_aggregate(obs)
         if recorded % self.manifest_every_ticks == 0:
-            self.write_manifest()
+            try:
+                self.write_manifest()
+            except Exception as e:  # noqa: BLE001 — derived export is failure-accounted
+                self._register_failure(
+                    f"{type(e).__name__}: {e}", category="MANIFEST_EXPORT_ERROR"
+                )
 
     # ------------------------------------------------- acquisition ledger
 
@@ -581,11 +675,30 @@ class ObservationCollector:
         )
         return rec
 
-    def _register_failure(self, message: str) -> None:
+    @staticmethod
+    def _failure_category(message: str) -> str:
+        """Classify diagnostics without changing the safety thresholds."""
+        text = message.lower()
+        if "stale" in text:
+            return "STALE_DATA"
+        if "future" in text:
+            return "FUTURE_DATA"
+        if "spread" in text or "bid/ask" in text:
+            return "QUOTE_VALIDATION"
+        if "storage" in text or "sqlite" in text or "integrityerror" in text or "database" in text:
+            return "STORAGE_ERROR"
+        if "manifest" in text or "no space" in text:
+            return "MANIFEST_EXPORT_ERROR"
+        return "RUNTIME_ERROR"
+
+    def _register_failure(self, message: str, *, category: str | None = None) -> None:
         thread: threading.Thread | None = None
         with self._lock:
             self.consecutive_failures += 1
-            self.last_error = f"{datetime.now(UTC).isoformat()} {message}"
+            failure_at = datetime.now(UTC).isoformat()
+            self._last_failure_at = failure_at
+            self.last_failure_category = category or self._failure_category(message)
+            self.last_error = f"{failure_at} {message}"
             if self.consecutive_failures >= self.max_consecutive_failures:
                 thread = self._finish("STOPPED_ON_ERRORS")
         self._join(thread)  # no-op when called from the poll thread itself
@@ -595,38 +708,41 @@ class ObservationCollector:
             thread.join(timeout=self.interval_s + 5.0)
 
     def _finish(self, new_state: str) -> threading.Thread | None:
-        """Persist the terminal state; caller holds self._lock.
+        """Persist the terminal state and derive all terminal projections.
 
-        Returns the poll thread so the CALLER can join it outside the lock.
+        Caller holds ``self._lock``.  The canonical SQLite end timestamp is
+        obtained first and then copied to ``stopped_at`` and the manifest.  If
+        SQLite is unavailable, the terminal transition is still fail-closed
+        and loud, but ``_terminal_persist_pending`` remains set; a later
+        idempotent ``stop()`` retries and republishes the manifest.
         """
-        # Persist BEFORE flipping state: an observer that sees the terminal
-        # state must be able to rely on the session end already being durable
-        # (state transition == persistence point, never the reverse). The
-        # manifest records the TERMINAL state explicitly — it is written
-        # during the transition, before `state` itself flips.
         self._stop.set()
         if self.session_id:
-            # Terminal-error semantics: the session `error` is the reason the
-            # session FAILED, never the last transient runtime diagnostic. A
-            # normal operator stop is ENDED with NO terminal error; only an
-            # error auto-stop (ENDED_ON_ERRORS) carries the terminal reason.
-            # ``self.last_error`` stays a runtime diagnostic and is surfaced
-            # where it already is (status()/derived manifest), never promoted
-            # to terminal failure cause.
             self._terminal_error = self.last_error if new_state != "STOPPED" else None
-            # Storage failures must not escape the worker thread or leave the
-            # session row ACTIVE silently; this is bounded-retried and never
-            # raises (see _persist_session_end).
-            self._persist_session_end(new_state, self._terminal_error)
+            self._terminal_failure = None
+            if new_state != "STOPPED":
+                self._terminal_failure = {
+                    "category": self.last_failure_category or "RUNTIME_ERROR",
+                    "timestamp": self._last_failure_at or datetime.now(UTC).isoformat(),
+                    "consecutive_failures": self.consecutive_failures,
+                }
+            end = self._persist_session_end(new_state, self._terminal_error)
+            if end is not None:
+                self._authoritative_end = end
+                self.stopped_at = end
+            else:
+                self._authoritative_end = None
+                self.stopped_at = None
         # The DERIVED manifest export must never be able to block the lifecycle
-        # transition: a manifest failure is recorded as a diagnostic and the
-        # state still flips below.
+        # transition. It is generated after the state/end snapshot is set, so
+        # a successful terminal export agrees with canonical SQLite.
+        self._terminal_manifest_pending = False
         try:
             self.write_manifest(state_override=new_state)
         except Exception as e:  # noqa: BLE001 — derived export, never lifecycle-fatal
+            self._terminal_manifest_pending = True
             self._note_diagnostic(f"terminal manifest write failed: {type(e).__name__}: {e}")
         self.state = new_state
-        self.stopped_at = datetime.now(UTC).isoformat()
         thread = self._thread
         self._thread = None
         return thread
@@ -636,34 +752,44 @@ class ObservationCollector:
         stamped = f"{datetime.now(UTC).isoformat()} {message}"
         self.last_error = stamped if not self.last_error else f"{self.last_error} | {stamped}"
 
-    def _persist_session_end(self, new_state: str, terminal_error: str | None) -> None:
+    def _persist_session_end(self, new_state: str, terminal_error: str | None) -> str | None:
         """Persist the terminal session row; bounded-retried, never raises.
 
-        Called with ``self._lock`` held, BEFORE ``state`` flips, so an observer
-        that sees the terminal state can rely on the session end already being
-        durable. If storage stays unavailable the failure is surfaced as a
-        diagnostic and ``_terminal_persist_pending`` stays set so ``stop()``
-        retries once storage recovers — the session can never silently remain
-        ACTIVE, and the worker never dies from a storage exception.
+        The returned value is the timestamp committed by SQLite.  It is the
+        only valid source for ``stopped_at``.  The terminal failure object is
+        written once with the canonical row and is reused on persistence retry.
         """
         status = "ENDED" if new_state == "STOPPED" else "ENDED_ON_ERRORS"
         session_id = self.session_id
         if session_id is None:  # pragma: no cover — _finish() only runs inside a started session
             self._terminal_persist_pending = False
-            return
+            return None
         last: Exception | None = None
         for attempt in range(_TERMINAL_PERSIST_ATTEMPTS):
             try:
-                self.observatory.end_session(session_id, status=status, error=terminal_error)
+                kwargs: dict[str, Any] = {"status": status, "error": terminal_error}
+                if self._terminal_failure is not None:
+                    kwargs["terminal_failure"] = self._terminal_failure
+                committed_end = self.observatory.end_session(session_id, **kwargs)
+                if not committed_end:
+                    # Backward-compatible adapter/test doubles may persist
+                    # correctly but omit the new return value.  Accept only a
+                    # timestamp read back from the canonical session row; do
+                    # not turn ``None`` into a fabricated string.
+                    persisted = self.observatory.session(session_id) or {}
+                    committed_end = persisted.get("end")
+                if not committed_end:
+                    raise RuntimeError("canonical end_session returned no committed timestamp")
             except Exception as e:  # noqa: BLE001 — persistence must never escape the worker
                 last = e
                 if attempt + 1 < _TERMINAL_PERSIST_ATTEMPTS:
                     time.sleep(_TERMINAL_PERSIST_RETRY_S)
                 continue
             self._terminal_persist_pending = False
-            return
+            return str(committed_end)
         self._terminal_persist_pending = True
         self._note_diagnostic(f"terminal session persist failed: {type(last).__name__}: {last}")
+        return None
 
     # ------------------------------------------------- reputation metadata
 
@@ -885,7 +1011,10 @@ class ObservationCollector:
                 "no synthetic, no simulation, no fixture data in this manifest; "
                 "provenance class DEMO (real broker, demo account) — never presented as LIVE/REAL-money evidence"
             ),
-            "mode": "OBSERVE_ONLY",
+            "product_mode": OBSERVATION_PRODUCT_MODE,
+            "observation_mode": OBSERVATION_MODE,
+            "mode": OBSERVATION_MODE,
+            "environment": OBSERVATION_ENVIRONMENT,
             "orders_submitted": 0,
             "order_send_called": False,
             "canonical_store": str(self.observatory.db_path),
@@ -907,6 +1036,10 @@ class ObservationCollector:
             "server_utc_offsets_s": agg["server_utc_offsets_s"],
             "spread_bps": agg["spread_bps"],
             "last_error": status_snapshot["last_error"],
+            "last_failure_category": status_snapshot.get("last_failure_category"),
+            "terminal_failure": status_snapshot.get("terminal_failure"),
+            "authoritative_end": status_snapshot.get("authoritative_end"),
+            "terminal_persist_pending": status_snapshot.get("terminal_persist_pending"),
             "acquisition_ledger": status_snapshot.get("acquisition_ledger"),
             "pipeline": "MT5Adapter.ticks -> MarketDataProvider.get_tick (validated) -> ForwardObservatory",
             "timestamp_contract": "docs/mt5_demo_setup.md#canonical-timestamp-contract-ticks--observations",

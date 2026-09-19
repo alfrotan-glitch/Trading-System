@@ -1,8 +1,10 @@
 # Market Data Observatory
 
 **Updated:** 2026-09-18
-**Decision:** `KEEP NO_TRADE`; acquire claim-eligible data before interpreting
-strategy results.
+**Current-state authority:** [`docs/current_state.md`](current_state.md)
+**Decision:** `KEEP NO_TRADE`; the REAL XAUUSD 15m history is acquired and the
+registered impulse result is `REGIME_DEPENDENT / BLOCK`. R5 execution-cost
+history and broader evidence remain incomplete.
 
 ## Purpose
 
@@ -26,9 +28,11 @@ research conclusions and never turns a proxy into a broker measurement.
 
 ## Current canonical inventory
 
-There are **two** canonical dataset versions in this checkout.
+The frozen inventory evidence records **two** dataset versions. The
+checked-in inventory/source-audit exports are derived snapshots; manifests and
+the canonical store remain the primary runtime authorities.
 
-**Real, claim-eligible (registered 2026-09-18):**
+**REAL acquired; current completeness gate blocked (registered 2026-09-18):**
 
 - `20260918-010+8f120133-1ba57af7`, `XAUUSD`, `15m`, 26,038 UTC mid-price
   OHLC bars built from Dukascopy bid/ask ticks (`mid = (bid + ask) / 2`, with
@@ -37,15 +41,21 @@ There are **two** canonical dataset versions in this checkout.
   data class `REAL`, checksum `sha256:1ba57af7d9d034d9`;
 - range 2025-08-06 00:00 through 2026-09-17 00:00 UTC (close of last bar),
   407.00 days;
-- 12/12 quality checks pass; research readiness `READY`; the pre-registered
-  impulse adequacy gate passes R1–R4 and R6 (R5 execution-data remains FAIL,
-  non-blocking — no continuous spread/tick history in the canonical bars);
+- frozen acquisition snapshot reported 12/12 quality checks and research
+  readiness `READY`; the current audited gap model instead marks quality
+  completeness **FAIL** (the frozen legacy inventory records 1,493 unexpected
+  intervals = 5.42%, while the current conservative recomputation is 1,785 =
+  6.42% of active expected span, above the unchanged 2% limit). The
+  pre-registered impulse adequacy
+  artifact passes R1–R4 and R6 in its frozen run; no rerun was performed. R5
+  execution-data remains FAIL/non-blocking.
 - provenance, checksums, gaps, licensing limits, and the exact
   original/processed checksums are recorded in
   `docs/data_provenance_xauusd_dukascopy.md`;
-- eligibility: bar-based XAUUSD 15m research **within this window and with
-  declared cost assumptions** — not execution-realism or microstructure
-  evidence.
+- frozen-run eligibility: bar-based XAUUSD 15m research **within this window
+  and with declared cost assumptions** — not execution-realism or microstructure
+  evidence. Current completeness status is `FAIL` pending evidence review; this
+  audit does not rerun or promote the study.
 
 **Synthetic, mechanism-only (unchanged):**
 
@@ -64,31 +74,44 @@ An aggregated 1H series derived from the real 15m bars was exported and
 documentation. Duplicate raw/curated representations are not independent
 observations.
 
-Machine-readable exports:
+Machine-readable exports include:
 
 - `data/evidence/data_inventory.json`
 - `data/evidence/data_source_audit.json`
 - `data/evidence/data_quality_summary.json`
 - `data/evidence/historical_depth.json`
 - `data/evidence/data_source_catalog.json`
+- `data/evidence/research_integrity_audit.json` — current audit result; it does
+  not rewrite the frozen snapshots above.
 
-`data_quality_summary.json` and `historical_depth.json` were generated for the
-synthetic-fixture era and do not yet include the REAL dataset; the per-dataset
-canonical records are `data_inventory.json`, `data_source_audit.json`, and the
-research artifacts under `data/evidence/`.
+The inventory/quality/depth exports are derived snapshots, not substitutes
+for the underlying canonical stores and research artifacts. The tracked
+`data_inventory.json` includes both registered versions, including the REAL
+15m dataset. `data_quality_summary.json` and `historical_depth.json`, however,
+were generated for the synthetic-fixture era and do not provide the complete
+post-acquisition quality/depth summary. Use
+[`docs/data_provenance_xauusd_dukascopy.md`](data_provenance_xauusd_dukascopy.md)
+and the REAL impulse evidence at
+`data/evidence/impulse_research_xauusd_dukascopy_15m.json` for the current
+dataset claim, and treat the older quality/depth exports as explicitly limited
+snapshots until regenerated.
 
 ## Requirements and missing evidence
 
 A claim-grade dataset must declare instrument/population, timeframe, horizon,
 license/source lineage, timestamp basis, depth/span, quality, session
-semantics, and the cost fields needed by the hypothesis. The **real dataset**
-satisfies the block-level minimums for bar research:
+semantics, and the cost fields needed by the hypothesis. The **frozen REAL dataset** satisfies the recorded depth/span floors for its
+historical bar-study design, but the current completeness gate blocks a current
+quality PASS:
 
 - provenance class `REAL` (Dukascopy tick-derived), not `SYNTHETIC`;
 - 26,038 bars ≥ 5,000-bar minimum;
 - 407.00 days ≥ 180-day span minimum;
-- 12/12 quality checks pass; no fabrication or interpolation;
-- freshness within the 7-day gate at run time.
+- the frozen run recorded 12/12 checks, but the current gap audit supersedes
+  that quality interpretation: completeness is **FAIL** at 6.42% (1,785
+  unexpected intervals under current conservative semantics; the preserved
+  legacy inventory count is 1,493 / 5.42%);
+- freshness within the 7-day gate at the historical run time.
 
 It still lacks: measured continuous bid/ask/spread (only 23 supplementary
 event windows), broker session/fill/latency data, real-volume semantics,

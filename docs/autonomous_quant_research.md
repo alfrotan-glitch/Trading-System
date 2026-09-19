@@ -2,8 +2,13 @@
 Version: 0.1.0 — 2026-09-18
 
 > This document describes the research machinery. Current machine evidence is
-> authoritative over historical examples; the current fixture remains
-> mechanism-validation-only and does not support a real-market claim.
+> authoritative over historical examples. The registered REAL XAUUSD 15m
+> dataset is preserved as frozen lineage for the executed bar-based impulse
+> study, whose conclusion is `REGIME_DEPENDENT / BLOCK`; current completeness is
+> FAIL under the unchanged 2% gate and the study is not currently claim-eligible.
+> The unchanged synthetic fixture remains mechanism-validation-only. See
+> [`docs/current_state.md`](current_state.md) and
+> [`docs/data_completeness_disposition.md`](data_completeness_disposition.md).
 
 ## Mission
 Turn the system into DISCOVER→INVENT→TEST→ATTACK→FALSIFY→REFINE→RE-TEST→PROVE while structurally hostile to false discoveries.
@@ -29,7 +34,12 @@ Beyond classic indicators: `src/qts/research/invented_strategies.py` (state-mach
 `src/qts/research/feature_discovery.py`: `FeatureSpec` with definition, source, timestamp semantics, lookback, data dependencies, version, lineage, code_hash. Controlled set 6 features (returns_1, range_5, volatility_20, spread_proxy, session_hour, range_compression) computed at `close_time` using only bars ≤ N, no future/post-trade/normalization leakage, no locked test contamination. `FeatureStore` registers, checks leakage string, tracks lineage.
 
 ## Multiple Markets/Timeframes
-`src/qts/data/audit.py` audits available sources: currently 500 XAUUSD 1H sample only — explicitly reported limitation. Minimum expansion needed: 5000+ bars, 2 years, XAUUSD+EURUSD, 1H+15m, varied regimes, real bid/ask/tick. Never increase data until looks good; expansion only for uncertainty reduction. See `docs/data_source_audit.md`.
+`src/qts/data/audit.py` and the current evidence cover a REAL XAUUSD 15m
+history (26,038 bars, approximately 407 days) plus the unchanged 500-bar
+synthetic XAUUSD 1H fixture. Independent markets/timeframes, longer regime
+coverage and continuous execution-cost evidence remain incomplete. Expansion is
+for uncertainty reduction only, never to seek a favorable result. See
+`docs/current_state.md` and `docs/data_source_audit.md`.
 
 ## Market Microstructure / Execution-Aware
 `src/qts/edge/cost_robustness.py` + `src/qts/backtest/engine.py` next-bar-open execution, spread/slippage/latency stress 1.0/1.5/2.0×, partial fills, price jumps, stop behavior. Every strategy answers "what remains after realistic execution?" — `cost_break_even_bps` must exceed 20bps.
@@ -87,8 +97,9 @@ This doc + 7 others, machine evidence `data/evidence/autonomous_research.json`, 
 The current machine-readable evidence is authoritative:
 
 - canonical datasets: `20260918-010+8f120133-1ba57af7` — XAUUSD 15m, 26,038
-  tick-derived mid bars, 407 days, `REAL`, readiness `READY` (provenance:
-  `docs/data_provenance_xauusd_dukascopy.md`) — and the unchanged synthetic
+  tick-derived mid bars, 407 days, `REAL`, acquired but current gap
+  completeness `FAIL` under the audited duration-based gate (frozen snapshot
+  had recorded `READY`; provenance: `docs/data_provenance_xauusd_dukascopy.md`) — and the unchanged synthetic
   fixture `20260918-010+…-572728d9` (XAUUSD 1H, 500 bars, `SYNTHETIC`,
   `BLOCKED_INSUFFICIENT_DATA`);
 - `data/evidence/campaign_last.json`: 2 bounded trials, 0 passed,
@@ -97,8 +108,10 @@ The current machine-readable evidence is authoritative:
   self-audit blocked;
 - `data/evidence/edge_validation.json`: blocked, with cumulative trial
   accounting and unavailable/missing controls retained;
-- `data/evidence/impulse_research.json`: mechanism validation only, not a
-  real-market claim;
+- `data/evidence/impulse_research_xauusd_dukascopy_15m.json`: REAL bar-based
+  impulse research; `REGIME_DEPENDENT`, `go_block = BLOCK`, no promotion;
+- `data/evidence/impulse_research.json`: historical synthetic mechanism
+  validation only, not a real-market claim;
 - no candidate is promoted and the operational conclusion remains
   `NO_TRADE`.
 

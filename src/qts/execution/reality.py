@@ -37,8 +37,10 @@ class ExecutionObservation(BaseModel):
     cancellation_reason: str | None = None
     partial_fill: bool = False
     market_state: str = "unknown"  # e.g., "open", "high_vol", "low_liquidity"
+    # Fail-closed: an execution observation is not a verified REAL fill merely
+    # because a caller omitted its provenance.
     source: str = (
-        "REAL"  # REAL, SYNTHETIC, SIMULATED, ESTIMATED, MODEL_DERIVED — must be explicit, never synthetic as real
+        "UNVERIFIED"  # REAL, DEMO, SYNTHETIC, SIMULATED, ESTIMATED, MODEL_DERIVED
     )
 
     def compute_slippage(self):

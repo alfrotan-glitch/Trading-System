@@ -2,7 +2,15 @@
 
 **Design version:** 1.0, 2026-09-18. **Baseline inspected:** `56079627014fa3c1edd13786baba2c2094a5d87a`.
 
-**Status: DESIGN ONLY; production research collection is BLOCKED on acquisition prerequisites below.** This document does not start a collector, implement instrumentation, change a gate, create a hypothesis/strategy or grant execution permission. Numeric thresholds below are proposed, preregisterable design choices, not measured achievements or universal sample-size guarantees.
+**Status: DESIGN BASELINE / campaign specification.** This document does not start a collector, implement instrumentation, change a gate, create a hypothesis/strategy or grant execution permission. Numeric thresholds below are proposed, preregisterable design choices, not measured achievements or universal sample-size guarantees.
+
+The acquisition-prerequisite table below is retained as the original FO-R1
+design baseline. The repository's current engineering closure is recorded in
+[`forward_observation_status.md`](forward_observation_status.md): the storage,
+acquisition-accounting, snapshot and integrity blockers listed there are closed
+in code. A real Windows/MT5 observation session has **not** yet been run, so
+research-grade collection remains an operator milestone rather than a completed
+result.
 
 ## 1. Objective and non-negotiable boundary
 
@@ -178,4 +186,6 @@ Keep raw SQLite, full quotes, rejects and session evidence out of Git/public iss
 - [ ] Private storage/backup/licensing and analyst access controls approved.
 - [ ] Protocol/code/config hashes frozen. Any unmet item means **NOT STARTED / ENGINEERING ONLY**, not research-grade collection.
 
-**Recommended next action:** implement and test the observation-storage and acquisition-accounting prerequisites in a separate zero-order engineering task, then run the five-day qualification. Do not immediately start a 12-week campaign with the current collector and assume volume alone will make it scientific.
+**Historical baseline recommendation:** implement and test the observation-storage and acquisition-accounting prerequisites in a separate zero-order engineering task. Those engineering prerequisites are now closed in the repository; this sentence is retained to preserve the original design history.
+
+**Current next action:** on a real Windows/MT5 operator machine, run the existing readiness-gated zero-order observation protocol and retain its canonical evidence. Do not treat the absence of a real session as solved by structural tests, and do not start a multi-week research campaign until the current scope, licensing, coverage and quality criteria are explicitly reviewed.

@@ -728,9 +728,12 @@ def research_impulse(
         f"bars={evidence['provenance']['bars_read']}"
     )
     click.echo(
-        f"events: detected={t['events_detected_total']} measured={t['events_measured_total']} "
+        f"event-study units: detected={t['events_detected_total']} family-scoped event records; "
+        f"primary_outcomes={t.get('primary_outcomes_measured_total', t['events_detected_total'])}; "
+        f"all_horizon_outcomes={t.get('all_horizon_outcomes_measured_total', t['events_measured_total'])}; "
         f"excluded={t['events_excluded_total']} trials_recorded={t['trials_recorded']}"
     )
+    click.echo("event-study outcomes: see the human-readable report; units are measured event outcomes, not executed trades")
     click.echo(f"conclusion: {concl['conclusion']} (research {concl['go_block']})")
     for reason in concl["reasons"]:
         click.echo(f"  - {reason}")

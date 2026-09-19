@@ -1,25 +1,31 @@
 # QTS Engineering Report — Authority, Evidence, and Safety Boundaries
 
-**Status:** superseded audit report reconciled with the current checkout
+**Status:** historical superseded audit snapshot; not the current-state authority
 **Updated:** 2026-09-18
-**Branch:** `arena/01a0b358-trading-system`
+**Snapshot branch:** `arena/01a0b358-trading-system`
 **Inspected base:** `a885f65d252e`
+**Current-state authority:** [`docs/current_state.md`](current_state.md)
 **Environment:** Linux development sandbox; no MT5 terminal or broker session.
 
-This report records the current engineering contract. It does not claim that
+This report records the engineering contract as inspected in its snapshot. It
+does not claim that
 the sandbox has produced real broker observations or a validated trading edge.
 The release-level operator summary is `docs/release_readiness_report.md`.
 
-> **Current status (2026-09-18, post-snapshot):** this document is a historical
-> snapshot of the 2026-09-17 checkout. Since then a REAL, provenance-qualified
-> XAUUSD 15m dataset has been registered (`20260918-010+8f120133-1ba57af7`,
-> 26,038 Dukascopy tick-derived mid OHLC bars, 407.00 days, 12/12 quality
-> checks, readiness `READY`; see `docs/data_provenance_xauusd_dukascopy.md`),
-> and the pre-registered impulse study was re-run on it in `REAL_CLAIMS` mode
-> with the measured conclusion `REGIME_DEPENDENT` → `BLOCK` and no promotion
-> (`docs/research/impulse_continuation_evidence.md`). Where this snapshot says
-> "one synthetic fixture", read it as snapshot-time wording; the synthetic
-> fixture itself is unchanged and remains `MECHANISM_VALIDATION_ONLY`.
+## Current status (2026-09-18, post-snapshot)
+
+This document is a historical snapshot of the 2026-09-17 checkout. Since then
+one REAL, provenance-qualified XAUUSD 15m dataset was registered
+(`20260918-010+8f120133-1ba57af7`, 26,038 Dukascopy tick-derived mid OHLC bars,
+407.00 days). Its frozen acquisition run recorded 12/12 checks and readiness
+`READY` under the prior event-count gate, but the current conservative
+completeness audit is `FAIL` at 1,785 unexpected intervals / 6.42% of active
+expected coverage; the frozen 1,493 legacy count is preserved. The
+pre-registered impulse study remains frozen with `REGIME_DEPENDENT` → `BLOCK`
+and no promotion. See `docs/data_completeness_disposition.md` and
+`docs/research/impulse_continuation_evidence.md`. Where this snapshot says
+"one synthetic fixture", read it as snapshot-time wording; the synthetic
+fixture itself is unchanged and remains `MECHANISM_VALIDATION_ONLY`.
 
 ## 1. Canonical authorities
 
@@ -137,6 +143,9 @@ outputs as explicit `MEASURED_INVALID` blocking checks. It never replaces
    external dependencies/flags and are not silently counted as passed.
 5. DEMO_EXECUTION remains intentionally disabled and LIVE remains locked.
 
-The next operator action is to acquire and register provenance-qualified
-history, then regenerate and inspect the falsification/evidence bundle. No
-execution mode should be enabled to satisfy a test or demonstration.
+The next-action wording above is retained as historical snapshot context. For
+current sequencing, use [`docs/current_state.md`](current_state.md): the REAL
+history is already registered; the remaining milestones are R5 execution-cost
+evidence, a real Windows/MT5 observation session, unchanged research rerun on
+improved evidence, and later breadth/governance. No execution mode should be
+enabled to satisfy a test or demonstration.

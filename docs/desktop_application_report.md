@@ -24,7 +24,8 @@ Startup:
 1. Load durable state from `data/sqlite/qts.db` (promotion_state, experiments, hypotheses, audit_log, risk_state, idempotency).
 2. Restore suspension (RiskEngine kill switch).
 3. Restore pending/ambiguous orders from idempotency + audit.
-4. Verify data: manifest quality 12/12.
+4. Verify data: read the manifest's explicit quality/gap status; a historical
+   12/12 snapshot is not a universal current-data PASS.
 5. Verify config via `load_settings()` env separation.
 6. Verify account/MT5 if requested (mock vs real).
 7. Run reconciliation (drift check).

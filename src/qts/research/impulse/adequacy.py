@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from qts.data.bootstrap import classify_source
+from qts.data.quality import MAX_UNEXPECTED_MISSING_FRACTION, analyze_gap_semantics
 from qts.domain.value_objects import Bar
 
 # ---------------------------------------------------------------------------
@@ -105,6 +106,31 @@ def assess_data_adequacy(
     # absent provenance as UNVERIFIED; neither path can satisfy REAL claims.
     data_class = classify_source(source_label or "synthetic_or_csv")
     checks: list[RequirementCheck] = []
+
+    # Completeness is a claim gate, not merely an inventory statistic.  Keep
+    # the policy aligned with qts.data.quality so direct impulse callers cannot
+    # bypass the frozen 2% unexpected-gap limit.
+    gap_stats = analyze_gap_semantics(list(bars))
+    completeness_passed = (
+        gap_stats.active_span_missing_fraction is not None
+        and gap_stats.active_span_missing_fraction <= MAX_UNEXPECTED_MISSING_FRACTION
+    )
+    checks.append(
+        RequirementCheck(
+            "R0-DATA-COMPLETENESS",
+            "Unexpected missing intervals must be at or below the active-span completeness limit",
+            "unexpected missing fraction <= 2.00% (unrounded)",
+            (
+                f"{gap_stats.unexpected_missing_intervals} missing / "
+                f"{gap_stats.active_span_expected_intervals} expected = "
+                f"{gap_stats.active_span_missing_pct:.2f}%"
+                if gap_stats.active_span_missing_pct is not None
+                else "unavailable — no active span"
+            ),
+            completeness_passed,
+            True,
+        )
+    )
 
     checks.append(
         RequirementCheck(

@@ -90,6 +90,16 @@ test("overview: operational hierarchy and truthful broker state", () => {
   assert.equal(document.querySelectorAll(".rail-node").length, 0, "no implied lifecycle completion");
   assert.equal(document.querySelectorAll(".journey-step").length, 0, "no execution-enabling checklist in primary layer");
 });
+test("overview: high-level posture strip is truthful and keeps safety visible", async () => {
+  await waitUntil(() => document.querySelectorAll(".pulse-card").length === 4, 15000, "posture strip");
+  assert.equal(document.querySelectorAll(".high-level-strip .pulse-card").length, 4);
+  const safety = document.querySelector('[data-pulse="safety"]');
+  assert.ok(safety.classList.contains("locked"), "safety boundary remains visually locked");
+  assert.match(safety.textContent, /NO_TRADE|DISABLED BY POLICY/i);
+  const evidence = document.querySelector('[data-pulse="evidence"]');
+  assert.match(evidence.textContent, /INSUFFICIENT|recorded/i, "evidence stays explicit at a glance");
+});
+
 test("overview: authority, evidence and technical disclosure are distinct", async () => {
   await waitUntil(() => document.querySelector('[data-fact="permission"]').textContent.includes("DISABLED"));
   await waitUntil(() => document.querySelector('[data-fact="liveLabel"]').textContent.includes("LOCKED"));
