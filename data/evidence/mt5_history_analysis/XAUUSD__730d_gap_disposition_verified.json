@@ -1,0 +1,3196 @@
+{
+  "analysis_software": {
+    "name": "analyze_mt5_gap_disposition",
+    "schema": "qts.mt5_gap_disposition.v1",
+    "version": "1.0.0"
+  },
+  "analysis_timestamp_utc": "2026-09-19T12:00:00+00:00",
+  "analytical_boundary": "A large gap in tick arrivals is an observation. It is not automatically missing data, market closure, bad acquisition, or a trading halt. Weekend-looking gaps remain UNRESOLVED without documented evidence.",
+  "analyzed_gap_threshold": ">24h",
+  "analyzed_gap_threshold_ms": 86400000,
+  "counts_by_classification": {
+    "EXPECTED_DOCUMENTED_MARKET_CLOSURE": 0,
+    "EXPECTED_DOCUMENTED_MARKET_HOLIDAY": 0,
+    "EXPECTED_WEEKEND_CLOSURE": 0,
+    "UNEXPECTED_DATA_GAP": 0,
+    "UNRESOLVED": 108
+  },
+  "dataset_path": "data\\raw\\mt5_ticks\\XAUUSD_\\730d__20260919T114013Z",
+  "dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789",
+  "evidence_sources": [
+    {
+      "accessed_utc": "2026-09-19",
+      "evidence_type": "official_direct_timestamp_basis",
+      "publication_or_update_date": "2022-03-21 (page metadata; MetaQuotes page does not state a separate update date)",
+      "relevant_wording": "MetaTrader 5 stores tick and bar open time in UTC time zone (without the shift)... The data obtained from MetaTrader 5 have UTC time.",
+      "scope": "Directly applies to data returned by the documented Python copy_ticks_range function. The page's return description exposes time and the Python example exposes time_msc; the wording establishes UTC for obtained tick data, but does not separately define time_msc precision semantics.",
+      "source_name": "MetaQuotes MQL5 Python Integration: copy_ticks_range",
+      "url": "https://www.mql5.com/en/docs/python_metatrader5/mt5copyticksrange_py"
+    },
+    {
+      "classification_scope": "Does not establish WM Markets trading hours or closures.",
+      "evidence_type": "OFFICIAL_TIMESTAMP_BASIS_ONLY",
+      "relevant_fact": "MT5 stores tick time in UTC and obtained data have UTC time.",
+      "source_date": "2022-03-21 page metadata",
+      "source_name": "MetaQuotes MQL5 Python Integration: copy_ticks_range",
+      "source_title": "copy_ticks_range / Python Integration",
+      "source_url": "https://www.mql5.com/en/docs/python_metatrader5/mt5copyticksrange_py"
+    }
+  ],
+  "gaps": [
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-09-20",
+        "2024-09-21",
+        "2024-09-22",
+        "2024-09-23"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461147,
+      "duration_seconds": 176461.147,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1727053201141,
+        "before": 1726876739994
+      },
+      "gap_id": "gap-0001",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-09-23T01:00:01.141000+00:00",
+        "start": "2024-09-20T23:58:59.994000+00:00"
+      },
+      "raw_end_time_msc": 1727053201141,
+      "raw_start_time_msc": 1726876739994,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1727053201141,
+        "before_time_msc": 1726876739994
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-09-27",
+        "2024-09-28",
+        "2024-09-29",
+        "2024-09-30"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461976,
+      "duration_seconds": 176461.976,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1727658001455,
+        "before": 1727481539479
+      },
+      "gap_id": "gap-0002",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-09-30T01:00:01.455000+00:00",
+        "start": "2024-09-27T23:58:59.479000+00:00"
+      },
+      "raw_end_time_msc": 1727658001455,
+      "raw_start_time_msc": 1727481539479,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1727658001455,
+        "before_time_msc": 1727481539479
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-10-04",
+        "2024-10-05",
+        "2024-10-06",
+        "2024-10-07"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176464188,
+      "duration_seconds": 176464.188,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1728262801869,
+        "before": 1728086337681
+      },
+      "gap_id": "gap-0003",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-10-07T01:00:01.869000+00:00",
+        "start": "2024-10-04T23:58:57.681000+00:00"
+      },
+      "raw_end_time_msc": 1728262801869,
+      "raw_start_time_msc": 1728086337681,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1728262801869,
+        "before_time_msc": 1728086337681
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-10-11",
+        "2024-10-12",
+        "2024-10-13",
+        "2024-10-14"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461570,
+      "duration_seconds": 176461.57,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1728867601160,
+        "before": 1728691139590
+      },
+      "gap_id": "gap-0004",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-10-14T01:00:01.160000+00:00",
+        "start": "2024-10-11T23:58:59.590000+00:00"
+      },
+      "raw_end_time_msc": 1728867601160,
+      "raw_start_time_msc": 1728691139590,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1728867601160,
+        "before_time_msc": 1728691139590
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-10-18",
+        "2024-10-19",
+        "2024-10-20",
+        "2024-10-21"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461372,
+      "duration_seconds": 176461.372,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1729472401161,
+        "before": 1729295939789
+      },
+      "gap_id": "gap-0005",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-10-21T01:00:01.161000+00:00",
+        "start": "2024-10-18T23:58:59.789000+00:00"
+      },
+      "raw_end_time_msc": 1729472401161,
+      "raw_start_time_msc": 1729295939789,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1729472401161,
+        "before_time_msc": 1729295939789
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-10-25",
+        "2024-10-26",
+        "2024-10-27",
+        "2024-10-28"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 172861186,
+      "duration_seconds": 172861.186,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1730073601180,
+        "before": 1729900739994
+      },
+      "gap_id": "gap-0006",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-10-28T00:00:01.180000+00:00",
+        "start": "2024-10-25T23:58:59.994000+00:00"
+      },
+      "raw_end_time_msc": 1730073601180,
+      "raw_start_time_msc": 1729900739994,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1730073601180,
+        "before_time_msc": 1729900739994
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-11-01",
+        "2024-11-02",
+        "2024-11-03",
+        "2024-11-04"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 180061337,
+      "duration_seconds": 180061.337,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1730682001313,
+        "before": 1730501939976
+      },
+      "gap_id": "gap-0007",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-11-04T01:00:01.313000+00:00",
+        "start": "2024-11-01T22:58:59.976000+00:00"
+      },
+      "raw_end_time_msc": 1730682001313,
+      "raw_start_time_msc": 1730501939976,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1730682001313,
+        "before_time_msc": 1730501939976
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-11-08",
+        "2024-11-09",
+        "2024-11-10",
+        "2024-11-11"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462595,
+      "duration_seconds": 176462.595,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1731286801364,
+        "before": 1731110338769
+      },
+      "gap_id": "gap-0008",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-11-11T01:00:01.364000+00:00",
+        "start": "2024-11-08T23:58:58.769000+00:00"
+      },
+      "raw_end_time_msc": 1731286801364,
+      "raw_start_time_msc": 1731110338769,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1731286801364,
+        "before_time_msc": 1731110338769
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-11-15",
+        "2024-11-16",
+        "2024-11-17",
+        "2024-11-18"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461523,
+      "duration_seconds": 176461.523,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1731891601312,
+        "before": 1731715139789
+      },
+      "gap_id": "gap-0009",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-11-18T01:00:01.312000+00:00",
+        "start": "2024-11-15T23:58:59.789000+00:00"
+      },
+      "raw_end_time_msc": 1731891601312,
+      "raw_start_time_msc": 1731715139789,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1731891601312,
+        "before_time_msc": 1731715139789
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-11-22",
+        "2024-11-23",
+        "2024-11-24",
+        "2024-11-25"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463403,
+      "duration_seconds": 176463.403,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1732496402646,
+        "before": 1732319939243
+      },
+      "gap_id": "gap-0010",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-11-25T01:00:02.646000+00:00",
+        "start": "2024-11-22T23:58:59.243000+00:00"
+      },
+      "raw_end_time_msc": 1732496402646,
+      "raw_start_time_msc": 1732319939243,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1732496402646,
+        "before_time_msc": 1732319939243
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-11-29",
+        "2024-11-30",
+        "2024-12-01",
+        "2024-12-02"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 184502326,
+      "duration_seconds": 184502.326,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1733101201146,
+        "before": 1732916698820
+      },
+      "gap_id": "gap-0011",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-12-02T01:00:01.146000+00:00",
+        "start": "2024-11-29T21:44:58.820000+00:00"
+      },
+      "raw_end_time_msc": 1733101201146,
+      "raw_start_time_msc": 1732916698820,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1733101201146,
+        "before_time_msc": 1732916698820
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-12-06",
+        "2024-12-07",
+        "2024-12-08",
+        "2024-12-09"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461381,
+      "duration_seconds": 176461.381,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1733706001313,
+        "before": 1733529539932
+      },
+      "gap_id": "gap-0012",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-12-09T01:00:01.313000+00:00",
+        "start": "2024-12-06T23:58:59.932000+00:00"
+      },
+      "raw_end_time_msc": 1733706001313,
+      "raw_start_time_msc": 1733529539932,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1733706001313,
+        "before_time_msc": 1733529539932
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-12-13",
+        "2024-12-14",
+        "2024-12-15",
+        "2024-12-16"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463056,
+      "duration_seconds": 176463.056,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1734310802476,
+        "before": 1734134339420
+      },
+      "gap_id": "gap-0013",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-12-16T01:00:02.476000+00:00",
+        "start": "2024-12-13T23:58:59.420000+00:00"
+      },
+      "raw_end_time_msc": 1734310802476,
+      "raw_start_time_msc": 1734134339420,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1734310802476,
+        "before_time_msc": 1734134339420
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-12-20",
+        "2024-12-21",
+        "2024-12-22",
+        "2024-12-23"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176464214,
+      "duration_seconds": 176464.214,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1734915603600,
+        "before": 1734739139386
+      },
+      "gap_id": "gap-0014",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-12-23T01:00:03.600000+00:00",
+        "start": "2024-12-20T23:58:59.386000+00:00"
+      },
+      "raw_end_time_msc": 1734915603600,
+      "raw_start_time_msc": 1734739139386,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1734915603600,
+        "before_time_msc": 1734739139386
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-12-24",
+        "2024-12-25",
+        "2024-12-26"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 101705438,
+      "duration_seconds": 101705.438,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1735174804046,
+        "before": 1735073098608
+      },
+      "gap_id": "gap-0015",
+      "overlaps_saturday_or_sunday_under_provisional_utc": false,
+      "provisional_utc": {
+        "end": "2024-12-26T01:00:04.046000+00:00",
+        "start": "2024-12-24T20:44:58.608000+00:00"
+      },
+      "raw_end_time_msc": 1735174804046,
+      "raw_start_time_msc": 1735073098608,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1735174804046,
+        "before_time_msc": 1735073098608
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-12-27",
+        "2024-12-28",
+        "2024-12-29",
+        "2024-12-30"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461400,
+      "duration_seconds": 176461.4,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1735520401143,
+        "before": 1735343939743
+      },
+      "gap_id": "gap-0016",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2024-12-30T01:00:01.143000+00:00",
+        "start": "2024-12-27T23:58:59.743000+00:00"
+      },
+      "raw_end_time_msc": 1735520401143,
+      "raw_start_time_msc": 1735343939743,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1735520401143,
+        "before_time_msc": 1735343939743
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2024-12-31",
+        "2025-01-01",
+        "2025-01-02"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 100805458,
+      "duration_seconds": 100805.458,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1735779604442,
+        "before": 1735678798984
+      },
+      "gap_id": "gap-0017",
+      "overlaps_saturday_or_sunday_under_provisional_utc": false,
+      "provisional_utc": {
+        "end": "2025-01-02T01:00:04.442000+00:00",
+        "start": "2024-12-31T20:59:58.984000+00:00"
+      },
+      "raw_end_time_msc": 1735779604442,
+      "raw_start_time_msc": 1735678798984,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1735779604442,
+        "before_time_msc": 1735678798984
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-01-03",
+        "2025-01-04",
+        "2025-01-05",
+        "2025-01-06"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461689,
+      "duration_seconds": 176461.689,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1736125201074,
+        "before": 1735948739385
+      },
+      "gap_id": "gap-0018",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-01-06T01:00:01.074000+00:00",
+        "start": "2025-01-03T23:58:59.385000+00:00"
+      },
+      "raw_end_time_msc": 1736125201074,
+      "raw_start_time_msc": 1735948739385,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1736125201074,
+        "before_time_msc": 1735948739385
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-01-10",
+        "2025-01-11",
+        "2025-01-12",
+        "2025-01-13"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462665,
+      "duration_seconds": 176462.665,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1736730001126,
+        "before": 1736553538461
+      },
+      "gap_id": "gap-0019",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-01-13T01:00:01.126000+00:00",
+        "start": "2025-01-10T23:58:58.461000+00:00"
+      },
+      "raw_end_time_msc": 1736730001126,
+      "raw_start_time_msc": 1736553538461,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1736730001126,
+        "before_time_msc": 1736553538461
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-01-17",
+        "2025-01-18",
+        "2025-01-19",
+        "2025-01-20"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463734,
+      "duration_seconds": 176463.734,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1737334802566,
+        "before": 1737158338832
+      },
+      "gap_id": "gap-0020",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-01-20T01:00:02.566000+00:00",
+        "start": "2025-01-17T23:58:58.832000+00:00"
+      },
+      "raw_end_time_msc": 1737334802566,
+      "raw_start_time_msc": 1737158338832,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1737334802566,
+        "before_time_msc": 1737158338832
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-01-24",
+        "2025-01-25",
+        "2025-01-26",
+        "2025-01-27"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176473601,
+      "duration_seconds": 176473.601,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1737939601149,
+        "before": 1737763127548
+      },
+      "gap_id": "gap-0021",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-01-27T01:00:01.149000+00:00",
+        "start": "2025-01-24T23:58:47.548000+00:00"
+      },
+      "raw_end_time_msc": 1737939601149,
+      "raw_start_time_msc": 1737763127548,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1737939601149,
+        "before_time_msc": 1737763127548
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-01-31",
+        "2025-02-01",
+        "2025-02-02",
+        "2025-02-03"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176469694,
+      "duration_seconds": 176469.694,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1738544405660,
+        "before": 1738367935966
+      },
+      "gap_id": "gap-0022",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-02-03T01:00:05.660000+00:00",
+        "start": "2025-01-31T23:58:55.966000+00:00"
+      },
+      "raw_end_time_msc": 1738544405660,
+      "raw_start_time_msc": 1738367935966,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1738544405660,
+        "before_time_msc": 1738367935966
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-02-07",
+        "2025-02-08",
+        "2025-02-09",
+        "2025-02-10"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463234,
+      "duration_seconds": 176463.234,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1739149201616,
+        "before": 1738972738382
+      },
+      "gap_id": "gap-0023",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-02-10T01:00:01.616000+00:00",
+        "start": "2025-02-07T23:58:58.382000+00:00"
+      },
+      "raw_end_time_msc": 1739149201616,
+      "raw_start_time_msc": 1738972738382,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1739149201616,
+        "before_time_msc": 1738972738382
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-02-14",
+        "2025-02-15",
+        "2025-02-16",
+        "2025-02-17"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463056,
+      "duration_seconds": 176463.056,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1739754001527,
+        "before": 1739577538471
+      },
+      "gap_id": "gap-0024",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-02-17T01:00:01.527000+00:00",
+        "start": "2025-02-14T23:58:58.471000+00:00"
+      },
+      "raw_end_time_msc": 1739754001527,
+      "raw_start_time_msc": 1739577538471,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1739754001527,
+        "before_time_msc": 1739577538471
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-02-21",
+        "2025-02-22",
+        "2025-02-23",
+        "2025-02-24"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462915,
+      "duration_seconds": 176462.915,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1740358802542,
+        "before": 1740182339627
+      },
+      "gap_id": "gap-0025",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-02-24T01:00:02.542000+00:00",
+        "start": "2025-02-21T23:58:59.627000+00:00"
+      },
+      "raw_end_time_msc": 1740358802542,
+      "raw_start_time_msc": 1740182339627,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1740358802542,
+        "before_time_msc": 1740182339627
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-02-28",
+        "2025-03-01",
+        "2025-03-02",
+        "2025-03-03"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462103,
+      "duration_seconds": 176462.103,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1740963601269,
+        "before": 1740787139166
+      },
+      "gap_id": "gap-0026",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-03-03T01:00:01.269000+00:00",
+        "start": "2025-02-28T23:58:59.166000+00:00"
+      },
+      "raw_end_time_msc": 1740963601269,
+      "raw_start_time_msc": 1740787139166,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1740963601269,
+        "before_time_msc": 1740787139166
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-03-07",
+        "2025-03-08",
+        "2025-03-09",
+        "2025-03-10"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 172862024,
+      "duration_seconds": 172862.024,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1741564801209,
+        "before": 1741391939185
+      },
+      "gap_id": "gap-0027",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-03-10T00:00:01.209000+00:00",
+        "start": "2025-03-07T23:58:59.185000+00:00"
+      },
+      "raw_end_time_msc": 1741564801209,
+      "raw_start_time_msc": 1741391939185,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1741564801209,
+        "before_time_msc": 1741391939185
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-03-14",
+        "2025-03-15",
+        "2025-03-16",
+        "2025-03-17"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461231,
+      "duration_seconds": 176461.231,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1742169601087,
+        "before": 1741993139856
+      },
+      "gap_id": "gap-0028",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-03-17T00:00:01.087000+00:00",
+        "start": "2025-03-14T22:58:59.856000+00:00"
+      },
+      "raw_end_time_msc": 1742169601087,
+      "raw_start_time_msc": 1741993139856,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1742169601087,
+        "before_time_msc": 1741993139856
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-03-21",
+        "2025-03-22",
+        "2025-03-23",
+        "2025-03-24"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461681,
+      "duration_seconds": 176461.681,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1742774401210,
+        "before": 1742597939529
+      },
+      "gap_id": "gap-0029",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-03-24T00:00:01.210000+00:00",
+        "start": "2025-03-21T22:58:59.529000+00:00"
+      },
+      "raw_end_time_msc": 1742774401210,
+      "raw_start_time_msc": 1742597939529,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1742774401210,
+        "before_time_msc": 1742597939529
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-03-28",
+        "2025-03-29",
+        "2025-03-30",
+        "2025-03-31"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 180068965,
+      "duration_seconds": 180068.965,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1743382806142,
+        "before": 1743202737177
+      },
+      "gap_id": "gap-0030",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-03-31T01:00:06.142000+00:00",
+        "start": "2025-03-28T22:58:57.177000+00:00"
+      },
+      "raw_end_time_msc": 1743382806142,
+      "raw_start_time_msc": 1743202737177,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1743382806142,
+        "before_time_msc": 1743202737177
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-04-04",
+        "2025-04-05",
+        "2025-04-06",
+        "2025-04-07"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176467789,
+      "duration_seconds": 176467.789,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1743987604925,
+        "before": 1743811137136
+      },
+      "gap_id": "gap-0031",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-04-07T01:00:04.925000+00:00",
+        "start": "2025-04-04T23:58:57.136000+00:00"
+      },
+      "raw_end_time_msc": 1743987604925,
+      "raw_start_time_msc": 1743811137136,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1743987604925,
+        "before_time_msc": 1743811137136
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-04-11",
+        "2025-04-12",
+        "2025-04-13",
+        "2025-04-14"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176467229,
+      "duration_seconds": 176467.229,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1744592403975,
+        "before": 1744415936746
+      },
+      "gap_id": "gap-0032",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-04-14T01:00:03.975000+00:00",
+        "start": "2025-04-11T23:58:56.746000+00:00"
+      },
+      "raw_end_time_msc": 1744592403975,
+      "raw_start_time_msc": 1744415936746,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1744592403975,
+        "before_time_msc": 1744415936746
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-04-17",
+        "2025-04-18",
+        "2025-04-19",
+        "2025-04-20",
+        "2025-04-21"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 262864844,
+      "duration_seconds": 262864.844,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1745197201502,
+        "before": 1744934336658
+      },
+      "gap_id": "gap-0033",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-04-21T01:00:01.502000+00:00",
+        "start": "2025-04-17T23:58:56.658000+00:00"
+      },
+      "raw_end_time_msc": 1745197201502,
+      "raw_start_time_msc": 1744934336658,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1745197201502,
+        "before_time_msc": 1744934336658
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-04-25",
+        "2025-04-26",
+        "2025-04-27",
+        "2025-04-28"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176468824,
+      "duration_seconds": 176468.824,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1745802004138,
+        "before": 1745625535314
+      },
+      "gap_id": "gap-0034",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-04-28T01:00:04.138000+00:00",
+        "start": "2025-04-25T23:58:55.314000+00:00"
+      },
+      "raw_end_time_msc": 1745802004138,
+      "raw_start_time_msc": 1745625535314,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1745802004138,
+        "before_time_msc": 1745625535314
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-05-02",
+        "2025-05-03",
+        "2025-05-04",
+        "2025-05-05"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461487,
+      "duration_seconds": 176461.487,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1746406801444,
+        "before": 1746230339957
+      },
+      "gap_id": "gap-0035",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-05-05T01:00:01.444000+00:00",
+        "start": "2025-05-02T23:58:59.957000+00:00"
+      },
+      "raw_end_time_msc": 1746406801444,
+      "raw_start_time_msc": 1746230339957,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1746406801444,
+        "before_time_msc": 1746230339957
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-05-09",
+        "2025-05-10",
+        "2025-05-11",
+        "2025-05-12"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176466043,
+      "duration_seconds": 176466.043,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1747011603861,
+        "before": 1746835137818
+      },
+      "gap_id": "gap-0036",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-05-12T01:00:03.861000+00:00",
+        "start": "2025-05-09T23:58:57.818000+00:00"
+      },
+      "raw_end_time_msc": 1747011603861,
+      "raw_start_time_msc": 1746835137818,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1747011603861,
+        "before_time_msc": 1746835137818
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-05-16",
+        "2025-05-17",
+        "2025-05-18",
+        "2025-05-19"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176464916,
+      "duration_seconds": 176464.916,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1747616404695,
+        "before": 1747439939779
+      },
+      "gap_id": "gap-0037",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-05-19T01:00:04.695000+00:00",
+        "start": "2025-05-16T23:58:59.779000+00:00"
+      },
+      "raw_end_time_msc": 1747616404695,
+      "raw_start_time_msc": 1747439939779,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1747616404695,
+        "before_time_msc": 1747439939779
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-05-23",
+        "2025-05-24",
+        "2025-05-25",
+        "2025-05-26"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463351,
+      "duration_seconds": 176463.351,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1748221203086,
+        "before": 1748044739735
+      },
+      "gap_id": "gap-0038",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-05-26T01:00:03.086000+00:00",
+        "start": "2025-05-23T23:58:59.735000+00:00"
+      },
+      "raw_end_time_msc": 1748221203086,
+      "raw_start_time_msc": 1748044739735,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1748221203086,
+        "before_time_msc": 1748044739735
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-05-30",
+        "2025-05-31",
+        "2025-06-01",
+        "2025-06-02"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461654,
+      "duration_seconds": 176461.654,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1748826001228,
+        "before": 1748649539574
+      },
+      "gap_id": "gap-0039",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-06-02T01:00:01.228000+00:00",
+        "start": "2025-05-30T23:58:59.574000+00:00"
+      },
+      "raw_end_time_msc": 1748826001228,
+      "raw_start_time_msc": 1748649539574,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1748826001228,
+        "before_time_msc": 1748649539574
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-06-06",
+        "2025-06-07",
+        "2025-06-08",
+        "2025-06-09"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461386,
+      "duration_seconds": 176461.386,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1749430801379,
+        "before": 1749254339993
+      },
+      "gap_id": "gap-0040",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-06-09T01:00:01.379000+00:00",
+        "start": "2025-06-06T23:58:59.993000+00:00"
+      },
+      "raw_end_time_msc": 1749430801379,
+      "raw_start_time_msc": 1749254339993,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1749430801379,
+        "before_time_msc": 1749254339993
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-06-13",
+        "2025-06-14",
+        "2025-06-15",
+        "2025-06-16"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176465651,
+      "duration_seconds": 176465.651,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1750035604655,
+        "before": 1749859139004
+      },
+      "gap_id": "gap-0041",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-06-16T01:00:04.655000+00:00",
+        "start": "2025-06-13T23:58:59.004000+00:00"
+      },
+      "raw_end_time_msc": 1750035604655,
+      "raw_start_time_msc": 1749859139004,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1750035604655,
+        "before_time_msc": 1749859139004
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-06-20",
+        "2025-06-21",
+        "2025-06-22",
+        "2025-06-23"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462028,
+      "duration_seconds": 176462.028,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1750640401709,
+        "before": 1750463939681
+      },
+      "gap_id": "gap-0042",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-06-23T01:00:01.709000+00:00",
+        "start": "2025-06-20T23:58:59.681000+00:00"
+      },
+      "raw_end_time_msc": 1750640401709,
+      "raw_start_time_msc": 1750463939681,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1750640401709,
+        "before_time_msc": 1750463939681
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-06-27",
+        "2025-06-28",
+        "2025-06-29",
+        "2025-06-30"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461404,
+      "duration_seconds": 176461.404,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1751245201303,
+        "before": 1751068739899
+      },
+      "gap_id": "gap-0043",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-06-30T01:00:01.303000+00:00",
+        "start": "2025-06-27T23:58:59.899000+00:00"
+      },
+      "raw_end_time_msc": 1751245201303,
+      "raw_start_time_msc": 1751068739899,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1751245201303,
+        "before_time_msc": 1751068739899
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-07-04",
+        "2025-07-05",
+        "2025-07-06",
+        "2025-07-07"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 191702362,
+      "duration_seconds": 191702.362,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1751850001249,
+        "before": 1751658298887
+      },
+      "gap_id": "gap-0044",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-07-07T01:00:01.249000+00:00",
+        "start": "2025-07-04T19:44:58.887000+00:00"
+      },
+      "raw_end_time_msc": 1751850001249,
+      "raw_start_time_msc": 1751658298887,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1751850001249,
+        "before_time_msc": 1751658298887
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-07-11",
+        "2025-07-12",
+        "2025-07-13",
+        "2025-07-14"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461626,
+      "duration_seconds": 176461.626,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1752454801241,
+        "before": 1752278339615
+      },
+      "gap_id": "gap-0045",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-07-14T01:00:01.241000+00:00",
+        "start": "2025-07-11T23:58:59.615000+00:00"
+      },
+      "raw_end_time_msc": 1752454801241,
+      "raw_start_time_msc": 1752278339615,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1752454801241,
+        "before_time_msc": 1752278339615
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-07-18",
+        "2025-07-19",
+        "2025-07-20",
+        "2025-07-21"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176498962,
+      "duration_seconds": 176498.962,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1753059637980,
+        "before": 1752883139018
+      },
+      "gap_id": "gap-0046",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-07-21T01:00:37.980000+00:00",
+        "start": "2025-07-18T23:58:59.018000+00:00"
+      },
+      "raw_end_time_msc": 1753059637980,
+      "raw_start_time_msc": 1752883139018,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1753059637980,
+        "before_time_msc": 1752883139018
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-07-25",
+        "2025-07-26",
+        "2025-07-27",
+        "2025-07-28"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176465428,
+      "duration_seconds": 176465.428,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1753664404572,
+        "before": 1753487939144
+      },
+      "gap_id": "gap-0047",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-07-28T01:00:04.572000+00:00",
+        "start": "2025-07-25T23:58:59.144000+00:00"
+      },
+      "raw_end_time_msc": 1753664404572,
+      "raw_start_time_msc": 1753487939144,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1753664404572,
+        "before_time_msc": 1753487939144
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-08-01",
+        "2025-08-02",
+        "2025-08-03",
+        "2025-08-04"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461683,
+      "duration_seconds": 176461.683,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1754269201123,
+        "before": 1754092739440
+      },
+      "gap_id": "gap-0048",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-08-04T01:00:01.123000+00:00",
+        "start": "2025-08-01T23:58:59.440000+00:00"
+      },
+      "raw_end_time_msc": 1754269201123,
+      "raw_start_time_msc": 1754092739440,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1754269201123,
+        "before_time_msc": 1754092739440
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-08-08",
+        "2025-08-09",
+        "2025-08-10",
+        "2025-08-11"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461816,
+      "duration_seconds": 176461.816,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1754874001446,
+        "before": 1754697539630
+      },
+      "gap_id": "gap-0049",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-08-11T01:00:01.446000+00:00",
+        "start": "2025-08-08T23:58:59.630000+00:00"
+      },
+      "raw_end_time_msc": 1754874001446,
+      "raw_start_time_msc": 1754697539630,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1754874001446,
+        "before_time_msc": 1754697539630
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-08-15",
+        "2025-08-16",
+        "2025-08-17",
+        "2025-08-18"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461894,
+      "duration_seconds": 176461.894,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1755478801304,
+        "before": 1755302339410
+      },
+      "gap_id": "gap-0050",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-08-18T01:00:01.304000+00:00",
+        "start": "2025-08-15T23:58:59.410000+00:00"
+      },
+      "raw_end_time_msc": 1755478801304,
+      "raw_start_time_msc": 1755302339410,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1755478801304,
+        "before_time_msc": 1755302339410
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-08-22",
+        "2025-08-23",
+        "2025-08-24",
+        "2025-08-25"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461726,
+      "duration_seconds": 176461.726,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1756083601420,
+        "before": 1755907139694
+      },
+      "gap_id": "gap-0051",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-08-25T01:00:01.420000+00:00",
+        "start": "2025-08-22T23:58:59.694000+00:00"
+      },
+      "raw_end_time_msc": 1756083601420,
+      "raw_start_time_msc": 1755907139694,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1756083601420,
+        "before_time_msc": 1755907139694
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-08-29",
+        "2025-08-30",
+        "2025-08-31",
+        "2025-09-01"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461783,
+      "duration_seconds": 176461.783,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1756688401411,
+        "before": 1756511939628
+      },
+      "gap_id": "gap-0052",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-09-01T01:00:01.411000+00:00",
+        "start": "2025-08-29T23:58:59.628000+00:00"
+      },
+      "raw_end_time_msc": 1756688401411,
+      "raw_start_time_msc": 1756511939628,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1756688401411,
+        "before_time_msc": 1756511939628
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-09-05",
+        "2025-09-06",
+        "2025-09-07",
+        "2025-09-08"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461451,
+      "duration_seconds": 176461.451,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1757293201383,
+        "before": 1757116739932
+      },
+      "gap_id": "gap-0053",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-09-08T01:00:01.383000+00:00",
+        "start": "2025-09-05T23:58:59.932000+00:00"
+      },
+      "raw_end_time_msc": 1757293201383,
+      "raw_start_time_msc": 1757116739932,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1757293201383,
+        "before_time_msc": 1757116739932
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-09-12",
+        "2025-09-13",
+        "2025-09-14",
+        "2025-09-15"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462604,
+      "duration_seconds": 176462.604,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1757898001088,
+        "before": 1757721538484
+      },
+      "gap_id": "gap-0054",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-09-15T01:00:01.088000+00:00",
+        "start": "2025-09-12T23:58:58.484000+00:00"
+      },
+      "raw_end_time_msc": 1757898001088,
+      "raw_start_time_msc": 1757721538484,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1757898001088,
+        "before_time_msc": 1757721538484
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-09-19",
+        "2025-09-20",
+        "2025-09-21",
+        "2025-09-22"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176466544,
+      "duration_seconds": 176466.544,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1758502801203,
+        "before": 1758326334659
+      },
+      "gap_id": "gap-0055",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-09-22T01:00:01.203000+00:00",
+        "start": "2025-09-19T23:58:54.659000+00:00"
+      },
+      "raw_end_time_msc": 1758502801203,
+      "raw_start_time_msc": 1758326334659,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1758502801203,
+        "before_time_msc": 1758326334659
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-09-26",
+        "2025-09-27",
+        "2025-09-28",
+        "2025-09-29"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463958,
+      "duration_seconds": 176463.958,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1759107603385,
+        "before": 1758931139427
+      },
+      "gap_id": "gap-0056",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-09-29T01:00:03.385000+00:00",
+        "start": "2025-09-26T23:58:59.427000+00:00"
+      },
+      "raw_end_time_msc": 1759107603385,
+      "raw_start_time_msc": 1758931139427,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1759107603385,
+        "before_time_msc": 1758931139427
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-10-03",
+        "2025-10-04",
+        "2025-10-05",
+        "2025-10-06"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176464999,
+      "duration_seconds": 176464.999,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1759712403707,
+        "before": 1759535938708
+      },
+      "gap_id": "gap-0057",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-10-06T01:00:03.707000+00:00",
+        "start": "2025-10-03T23:58:58.708000+00:00"
+      },
+      "raw_end_time_msc": 1759712403707,
+      "raw_start_time_msc": 1759535938708,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1759712403707,
+        "before_time_msc": 1759535938708
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-10-10",
+        "2025-10-11",
+        "2025-10-12",
+        "2025-10-13"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462809,
+      "duration_seconds": 176462.809,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1760317202663,
+        "before": 1760140739854
+      },
+      "gap_id": "gap-0058",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-10-13T01:00:02.663000+00:00",
+        "start": "2025-10-10T23:58:59.854000+00:00"
+      },
+      "raw_end_time_msc": 1760317202663,
+      "raw_start_time_msc": 1760140739854,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1760317202663,
+        "before_time_msc": 1760140739854
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-10-17",
+        "2025-10-18",
+        "2025-10-19",
+        "2025-10-20"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462352,
+      "duration_seconds": 176462.352,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1760922000437,
+        "before": 1760745538085
+      },
+      "gap_id": "gap-0059",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-10-20T01:00:00.437000+00:00",
+        "start": "2025-10-17T23:58:58.085000+00:00"
+      },
+      "raw_end_time_msc": 1760922000437,
+      "raw_start_time_msc": 1760745538085,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1760922000437,
+        "before_time_msc": 1760745538085
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-10-24",
+        "2025-10-25",
+        "2025-10-26",
+        "2025-10-27"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 172861071,
+      "duration_seconds": 172861.071,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1761523201010,
+        "before": 1761350339939
+      },
+      "gap_id": "gap-0060",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-10-27T00:00:01.010000+00:00",
+        "start": "2025-10-24T23:58:59.939000+00:00"
+      },
+      "raw_end_time_msc": 1761523201010,
+      "raw_start_time_msc": 1761350339939,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1761523201010,
+        "before_time_msc": 1761350339939
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-10-31",
+        "2025-11-01",
+        "2025-11-02",
+        "2025-11-03"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 180062010,
+      "duration_seconds": 180062.01,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1762131601549,
+        "before": 1761951539539
+      },
+      "gap_id": "gap-0061",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-11-03T01:00:01.549000+00:00",
+        "start": "2025-10-31T22:58:59.539000+00:00"
+      },
+      "raw_end_time_msc": 1762131601549,
+      "raw_start_time_msc": 1761951539539,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1762131601549,
+        "before_time_msc": 1761951539539
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-11-07",
+        "2025-11-08",
+        "2025-11-09",
+        "2025-11-10"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176460412,
+      "duration_seconds": 176460.412,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1762736400379,
+        "before": 1762559939967
+      },
+      "gap_id": "gap-0062",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-11-10T01:00:00.379000+00:00",
+        "start": "2025-11-07T23:58:59.967000+00:00"
+      },
+      "raw_end_time_msc": 1762736400379,
+      "raw_start_time_msc": 1762559939967,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1762736400379,
+        "before_time_msc": 1762559939967
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-11-14",
+        "2025-11-15",
+        "2025-11-16",
+        "2025-11-17"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176460874,
+      "duration_seconds": 176460.874,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1763341200459,
+        "before": 1763164739585
+      },
+      "gap_id": "gap-0063",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-11-17T01:00:00.459000+00:00",
+        "start": "2025-11-14T23:58:59.585000+00:00"
+      },
+      "raw_end_time_msc": 1763341200459,
+      "raw_start_time_msc": 1763164739585,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1763341200459,
+        "before_time_msc": 1763164739585
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-11-21",
+        "2025-11-22",
+        "2025-11-23",
+        "2025-11-24"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461619,
+      "duration_seconds": 176461.619,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1763946000454,
+        "before": 1763769538835
+      },
+      "gap_id": "gap-0064",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-11-24T01:00:00.454000+00:00",
+        "start": "2025-11-21T23:58:58.835000+00:00"
+      },
+      "raw_end_time_msc": 1763946000454,
+      "raw_start_time_msc": 1763769538835,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1763946000454,
+        "before_time_msc": 1763769538835
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-11-28",
+        "2025-11-29",
+        "2025-11-30",
+        "2025-12-01"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 184500789,
+      "duration_seconds": 184500.789,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1764550800706,
+        "before": 1764366299917
+      },
+      "gap_id": "gap-0065",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-12-01T01:00:00.706000+00:00",
+        "start": "2025-11-28T21:44:59.917000+00:00"
+      },
+      "raw_end_time_msc": 1764550800706,
+      "raw_start_time_msc": 1764366299917,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1764550800706,
+        "before_time_msc": 1764366299917
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-12-05",
+        "2025-12-06",
+        "2025-12-07",
+        "2025-12-08"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463104,
+      "duration_seconds": 176463.104,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1765155600967,
+        "before": 1764979137863
+      },
+      "gap_id": "gap-0066",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-12-08T01:00:00.967000+00:00",
+        "start": "2025-12-05T23:58:57.863000+00:00"
+      },
+      "raw_end_time_msc": 1765155600967,
+      "raw_start_time_msc": 1764979137863,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1765155600967,
+        "before_time_msc": 1764979137863
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-12-12",
+        "2025-12-13",
+        "2025-12-14",
+        "2025-12-15"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176465266,
+      "duration_seconds": 176465.266,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1765760400849,
+        "before": 1765583935583
+      },
+      "gap_id": "gap-0067",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-12-15T01:00:00.849000+00:00",
+        "start": "2025-12-12T23:58:55.583000+00:00"
+      },
+      "raw_end_time_msc": 1765760400849,
+      "raw_start_time_msc": 1765583935583,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1765760400849,
+        "before_time_msc": 1765583935583
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-12-19",
+        "2025-12-20",
+        "2025-12-21",
+        "2025-12-22"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461117,
+      "duration_seconds": 176461.117,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1766365200833,
+        "before": 1766188739716
+      },
+      "gap_id": "gap-0068",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-12-22T01:00:00.833000+00:00",
+        "start": "2025-12-19T23:58:59.716000+00:00"
+      },
+      "raw_end_time_msc": 1766365200833,
+      "raw_start_time_msc": 1766188739716,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1766365200833,
+        "before_time_msc": 1766188739716
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-12-24",
+        "2025-12-25",
+        "2025-12-26"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 126900365,
+      "duration_seconds": 126900.365,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1766736000332,
+        "before": 1766609099967
+      },
+      "gap_id": "gap-0069",
+      "overlaps_saturday_or_sunday_under_provisional_utc": false,
+      "provisional_utc": {
+        "end": "2025-12-26T08:00:00.332000+00:00",
+        "start": "2025-12-24T20:44:59.967000+00:00"
+      },
+      "raw_end_time_msc": 1766736000332,
+      "raw_start_time_msc": 1766609099967,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1766736000332,
+        "before_time_msc": 1766609099967
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-12-26",
+        "2025-12-27",
+        "2025-12-28",
+        "2025-12-29"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461415,
+      "duration_seconds": 176461.415,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1766970000861,
+        "before": 1766793539446
+      },
+      "gap_id": "gap-0070",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2025-12-29T01:00:00.861000+00:00",
+        "start": "2025-12-26T23:58:59.446000+00:00"
+      },
+      "raw_end_time_msc": 1766970000861,
+      "raw_start_time_msc": 1766793539446,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1766970000861,
+        "before_time_msc": 1766793539446
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2025-12-31",
+        "2026-01-01",
+        "2026-01-02"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 93600913,
+      "duration_seconds": 93600.913,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1767315600739,
+        "before": 1767221999826
+      },
+      "gap_id": "gap-0071",
+      "overlaps_saturday_or_sunday_under_provisional_utc": false,
+      "provisional_utc": {
+        "end": "2026-01-02T01:00:00.739000+00:00",
+        "start": "2025-12-31T22:59:59.826000+00:00"
+      },
+      "raw_end_time_msc": 1767315600739,
+      "raw_start_time_msc": 1767221999826,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1767315600739,
+        "before_time_msc": 1767221999826
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-01-02",
+        "2026-01-03",
+        "2026-01-04",
+        "2026-01-05"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176464184,
+      "duration_seconds": 176464.184,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1767574804156,
+        "before": 1767398339972
+      },
+      "gap_id": "gap-0072",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-01-05T01:00:04.156000+00:00",
+        "start": "2026-01-02T23:58:59.972000+00:00"
+      },
+      "raw_end_time_msc": 1767574804156,
+      "raw_start_time_msc": 1767398339972,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1767574804156,
+        "before_time_msc": 1767398339972
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-01-09",
+        "2026-01-10",
+        "2026-01-11",
+        "2026-01-12"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461437,
+      "duration_seconds": 176461.437,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1768179600964,
+        "before": 1768003139527
+      },
+      "gap_id": "gap-0073",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-01-12T01:00:00.964000+00:00",
+        "start": "2026-01-09T23:58:59.527000+00:00"
+      },
+      "raw_end_time_msc": 1768179600964,
+      "raw_start_time_msc": 1768003139527,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1768179600964,
+        "before_time_msc": 1768003139527
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-01-16",
+        "2026-01-17",
+        "2026-01-18",
+        "2026-01-19"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462446,
+      "duration_seconds": 176462.446,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1768784401061,
+        "before": 1768607938615
+      },
+      "gap_id": "gap-0074",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-01-19T01:00:01.061000+00:00",
+        "start": "2026-01-16T23:58:58.615000+00:00"
+      },
+      "raw_end_time_msc": 1768784401061,
+      "raw_start_time_msc": 1768607938615,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1768784401061,
+        "before_time_msc": 1768607938615
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-01-23",
+        "2026-01-24",
+        "2026-01-25",
+        "2026-01-26"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176464984,
+      "duration_seconds": 176464.984,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1769389204974,
+        "before": 1769212739990
+      },
+      "gap_id": "gap-0075",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-01-26T01:00:04.974000+00:00",
+        "start": "2026-01-23T23:58:59.990000+00:00"
+      },
+      "raw_end_time_msc": 1769389204974,
+      "raw_start_time_msc": 1769212739990,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1769389204974,
+        "before_time_msc": 1769212739990
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-01-30",
+        "2026-01-31",
+        "2026-02-01",
+        "2026-02-02"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176551622,
+      "duration_seconds": 176551.622,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1769994091587,
+        "before": 1769817539965
+      },
+      "gap_id": "gap-0076",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-02-02T01:01:31.587000+00:00",
+        "start": "2026-01-30T23:58:59.965000+00:00"
+      },
+      "raw_end_time_msc": 1769994091587,
+      "raw_start_time_msc": 1769817539965,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1769994091587,
+        "before_time_msc": 1769817539965
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-02-06",
+        "2026-02-07",
+        "2026-02-08",
+        "2026-02-09"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176464163,
+      "duration_seconds": 176464.163,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1770598800836,
+        "before": 1770422336673
+      },
+      "gap_id": "gap-0077",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-02-09T01:00:00.836000+00:00",
+        "start": "2026-02-06T23:58:56.673000+00:00"
+      },
+      "raw_end_time_msc": 1770598800836,
+      "raw_start_time_msc": 1770422336673,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1770598800836,
+        "before_time_msc": 1770422336673
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-02-13",
+        "2026-02-14",
+        "2026-02-15",
+        "2026-02-16"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176470993,
+      "duration_seconds": 176470.993,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1771203600947,
+        "before": 1771027129954
+      },
+      "gap_id": "gap-0078",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-02-16T01:00:00.947000+00:00",
+        "start": "2026-02-13T23:58:49.954000+00:00"
+      },
+      "raw_end_time_msc": 1771203600947,
+      "raw_start_time_msc": 1771027129954,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1771203600947,
+        "before_time_msc": 1771027129954
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-02-20",
+        "2026-02-21",
+        "2026-02-22",
+        "2026-02-23"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176460860,
+      "duration_seconds": 176460.86,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1771808400769,
+        "before": 1771631939909
+      },
+      "gap_id": "gap-0079",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-02-23T01:00:00.769000+00:00",
+        "start": "2026-02-20T23:58:59.909000+00:00"
+      },
+      "raw_end_time_msc": 1771808400769,
+      "raw_start_time_msc": 1771631939909,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1771808400769,
+        "before_time_msc": 1771631939909
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-02-27",
+        "2026-02-28",
+        "2026-03-01",
+        "2026-03-02"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462214,
+      "duration_seconds": 176462.214,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1772413200155,
+        "before": 1772236737941
+      },
+      "gap_id": "gap-0080",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-03-02T01:00:00.155000+00:00",
+        "start": "2026-02-27T23:58:57.941000+00:00"
+      },
+      "raw_end_time_msc": 1772413200155,
+      "raw_start_time_msc": 1772236737941,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1772413200155,
+        "before_time_msc": 1772236737941
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-03-06",
+        "2026-03-07",
+        "2026-03-08",
+        "2026-03-09"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 172862720,
+      "duration_seconds": 172862.72,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1773014401290,
+        "before": 1772841538570
+      },
+      "gap_id": "gap-0081",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-03-09T00:00:01.290000+00:00",
+        "start": "2026-03-06T23:58:58.570000+00:00"
+      },
+      "raw_end_time_msc": 1773014401290,
+      "raw_start_time_msc": 1772841538570,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1773014401290,
+        "before_time_msc": 1772841538570
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-03-13",
+        "2026-03-14",
+        "2026-03-15",
+        "2026-03-16"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462377,
+      "duration_seconds": 176462.377,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1773619201394,
+        "before": 1773442739017
+      },
+      "gap_id": "gap-0082",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-03-16T00:00:01.394000+00:00",
+        "start": "2026-03-13T22:58:59.017000+00:00"
+      },
+      "raw_end_time_msc": 1773619201394,
+      "raw_start_time_msc": 1773442739017,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1773619201394,
+        "before_time_msc": 1773442739017
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-03-20",
+        "2026-03-21",
+        "2026-03-22",
+        "2026-03-23"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176519263,
+      "duration_seconds": 176519.263,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1774224002267,
+        "before": 1774047483004
+      },
+      "gap_id": "gap-0083",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-03-23T00:00:02.267000+00:00",
+        "start": "2026-03-20T22:58:03.004000+00:00"
+      },
+      "raw_end_time_msc": 1774224002267,
+      "raw_start_time_msc": 1774047483004,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1774224002267,
+        "before_time_msc": 1774047483004
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-03-27",
+        "2026-03-28",
+        "2026-03-29",
+        "2026-03-30"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 180060923,
+      "duration_seconds": 180060.923,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1774832400884,
+        "before": 1774652339961
+      },
+      "gap_id": "gap-0084",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-03-30T01:00:00.884000+00:00",
+        "start": "2026-03-27T22:58:59.961000+00:00"
+      },
+      "raw_end_time_msc": 1774832400884,
+      "raw_start_time_msc": 1774652339961,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1774832400884,
+        "before_time_msc": 1774652339961
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-04-02",
+        "2026-04-03",
+        "2026-04-04",
+        "2026-04-05",
+        "2026-04-06"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 262862257,
+      "duration_seconds": 262862.257,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1775437200756,
+        "before": 1775174338499
+      },
+      "gap_id": "gap-0085",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-04-06T01:00:00.756000+00:00",
+        "start": "2026-04-02T23:58:58.499000+00:00"
+      },
+      "raw_end_time_msc": 1775437200756,
+      "raw_start_time_msc": 1775174338499,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1775437200756,
+        "before_time_msc": 1775174338499
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-04-10",
+        "2026-04-11",
+        "2026-04-12",
+        "2026-04-13"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176468686,
+      "duration_seconds": 176468.686,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1776042001094,
+        "before": 1775865532408
+      },
+      "gap_id": "gap-0086",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-04-13T01:00:01.094000+00:00",
+        "start": "2026-04-10T23:58:52.408000+00:00"
+      },
+      "raw_end_time_msc": 1776042001094,
+      "raw_start_time_msc": 1775865532408,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1776042001094,
+        "before_time_msc": 1775865532408
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-04-17",
+        "2026-04-18",
+        "2026-04-19",
+        "2026-04-20"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461703,
+      "duration_seconds": 176461.703,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1776646800987,
+        "before": 1776470339284
+      },
+      "gap_id": "gap-0087",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-04-20T01:00:00.987000+00:00",
+        "start": "2026-04-17T23:58:59.284000+00:00"
+      },
+      "raw_end_time_msc": 1776646800987,
+      "raw_start_time_msc": 1776470339284,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1776646800987,
+        "before_time_msc": 1776470339284
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-04-24",
+        "2026-04-25",
+        "2026-04-26",
+        "2026-04-27"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463507,
+      "duration_seconds": 176463.507,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1777251601035,
+        "before": 1777075137528
+      },
+      "gap_id": "gap-0088",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-04-27T01:00:01.035000+00:00",
+        "start": "2026-04-24T23:58:57.528000+00:00"
+      },
+      "raw_end_time_msc": 1777251601035,
+      "raw_start_time_msc": 1777075137528,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1777251601035,
+        "before_time_msc": 1777075137528
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-05-01",
+        "2026-05-02",
+        "2026-05-03",
+        "2026-05-04"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463225,
+      "duration_seconds": 176463.225,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1777856400613,
+        "before": 1777679937388
+      },
+      "gap_id": "gap-0089",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-05-04T01:00:00.613000+00:00",
+        "start": "2026-05-01T23:58:57.388000+00:00"
+      },
+      "raw_end_time_msc": 1777856400613,
+      "raw_start_time_msc": 1777679937388,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1777856400613,
+        "before_time_msc": 1777679937388
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-05-08",
+        "2026-05-09",
+        "2026-05-10",
+        "2026-05-11"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461640,
+      "duration_seconds": 176461.64,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1778461200842,
+        "before": 1778284739202
+      },
+      "gap_id": "gap-0090",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-05-11T01:00:00.842000+00:00",
+        "start": "2026-05-08T23:58:59.202000+00:00"
+      },
+      "raw_end_time_msc": 1778461200842,
+      "raw_start_time_msc": 1778284739202,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1778461200842,
+        "before_time_msc": 1778284739202
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-05-15",
+        "2026-05-16",
+        "2026-05-17",
+        "2026-05-18"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461037,
+      "duration_seconds": 176461.037,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1779066000740,
+        "before": 1778889539703
+      },
+      "gap_id": "gap-0091",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-05-18T01:00:00.740000+00:00",
+        "start": "2026-05-15T23:58:59.703000+00:00"
+      },
+      "raw_end_time_msc": 1779066000740,
+      "raw_start_time_msc": 1778889539703,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1779066000740,
+        "before_time_msc": 1778889539703
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-05-22",
+        "2026-05-23",
+        "2026-05-24",
+        "2026-05-25"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462060,
+      "duration_seconds": 176462.06,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1779670801251,
+        "before": 1779494339191
+      },
+      "gap_id": "gap-0092",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-05-25T01:00:01.251000+00:00",
+        "start": "2026-05-22T23:58:59.191000+00:00"
+      },
+      "raw_end_time_msc": 1779670801251,
+      "raw_start_time_msc": 1779494339191,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1779670801251,
+        "before_time_msc": 1779494339191
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-05-29",
+        "2026-05-30",
+        "2026-05-31",
+        "2026-06-01"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463706,
+      "duration_seconds": 176463.706,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1780275600742,
+        "before": 1780099137036
+      },
+      "gap_id": "gap-0093",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-06-01T01:00:00.742000+00:00",
+        "start": "2026-05-29T23:58:57.036000+00:00"
+      },
+      "raw_end_time_msc": 1780275600742,
+      "raw_start_time_msc": 1780099137036,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1780275600742,
+        "before_time_msc": 1780099137036
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-06-05",
+        "2026-06-06",
+        "2026-06-07",
+        "2026-06-08"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461275,
+      "duration_seconds": 176461.275,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1780880400966,
+        "before": 1780703939691
+      },
+      "gap_id": "gap-0094",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-06-08T01:00:00.966000+00:00",
+        "start": "2026-06-05T23:58:59.691000+00:00"
+      },
+      "raw_end_time_msc": 1780880400966,
+      "raw_start_time_msc": 1780703939691,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1780880400966,
+        "before_time_msc": 1780703939691
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-06-12",
+        "2026-06-13",
+        "2026-06-14",
+        "2026-06-15"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176467999,
+      "duration_seconds": 176467.999,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1781485203954,
+        "before": 1781308735955
+      },
+      "gap_id": "gap-0095",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-06-15T01:00:03.954000+00:00",
+        "start": "2026-06-12T23:58:55.955000+00:00"
+      },
+      "raw_end_time_msc": 1781485203954,
+      "raw_start_time_msc": 1781308735955,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1781485203954,
+        "before_time_msc": 1781308735955
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-06-19",
+        "2026-06-20",
+        "2026-06-21",
+        "2026-06-22"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 190800789,
+      "duration_seconds": 190800.789,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1782090000749,
+        "before": 1781899199960
+      },
+      "gap_id": "gap-0096",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-06-22T01:00:00.749000+00:00",
+        "start": "2026-06-19T19:59:59.960000+00:00"
+      },
+      "raw_end_time_msc": 1782090000749,
+      "raw_start_time_msc": 1781899199960,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1782090000749,
+        "before_time_msc": 1781899199960
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-06-26",
+        "2026-06-27",
+        "2026-06-28",
+        "2026-06-29"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461490,
+      "duration_seconds": 176461.49,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1782694800823,
+        "before": 1782518339333
+      },
+      "gap_id": "gap-0097",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-06-29T01:00:00.823000+00:00",
+        "start": "2026-06-26T23:58:59.333000+00:00"
+      },
+      "raw_end_time_msc": 1782694800823,
+      "raw_start_time_msc": 1782518339333,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1782694800823,
+        "before_time_msc": 1782518339333
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-07-03",
+        "2026-07-04",
+        "2026-07-05",
+        "2026-07-06"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 190800789,
+      "duration_seconds": 190800.789,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1783299600737,
+        "before": 1783108799948
+      },
+      "gap_id": "gap-0098",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-07-06T01:00:00.737000+00:00",
+        "start": "2026-07-03T19:59:59.948000+00:00"
+      },
+      "raw_end_time_msc": 1783299600737,
+      "raw_start_time_msc": 1783108799948,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1783299600737,
+        "before_time_msc": 1783108799948
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-07-10",
+        "2026-07-11",
+        "2026-07-12",
+        "2026-07-13"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462069,
+      "duration_seconds": 176462.069,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1783904400720,
+        "before": 1783727938651
+      },
+      "gap_id": "gap-0099",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-07-13T01:00:00.720000+00:00",
+        "start": "2026-07-10T23:58:58.651000+00:00"
+      },
+      "raw_end_time_msc": 1783904400720,
+      "raw_start_time_msc": 1783727938651,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1783904400720,
+        "before_time_msc": 1783727938651
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-07-17",
+        "2026-07-18",
+        "2026-07-19",
+        "2026-07-20"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176467702,
+      "duration_seconds": 176467.702,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1784509200885,
+        "before": 1784332733183
+      },
+      "gap_id": "gap-0100",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-07-20T01:00:00.885000+00:00",
+        "start": "2026-07-17T23:58:53.183000+00:00"
+      },
+      "raw_end_time_msc": 1784509200885,
+      "raw_start_time_msc": 1784332733183,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1784509200885,
+        "before_time_msc": 1784332733183
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-07-24",
+        "2026-07-25",
+        "2026-07-26",
+        "2026-07-27"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176516207,
+      "duration_seconds": 176516.207,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1785114000987,
+        "before": 1784937484780
+      },
+      "gap_id": "gap-0101",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-07-27T01:00:00.987000+00:00",
+        "start": "2026-07-24T23:58:04.780000+00:00"
+      },
+      "raw_end_time_msc": 1785114000987,
+      "raw_start_time_msc": 1784937484780,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1785114000987,
+        "before_time_msc": 1784937484780
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-07-31",
+        "2026-08-01",
+        "2026-08-02",
+        "2026-08-03"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462074,
+      "duration_seconds": 176462.074,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1785718801307,
+        "before": 1785542339233
+      },
+      "gap_id": "gap-0102",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-08-03T01:00:01.307000+00:00",
+        "start": "2026-07-31T23:58:59.233000+00:00"
+      },
+      "raw_end_time_msc": 1785718801307,
+      "raw_start_time_msc": 1785542339233,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1785718801307,
+        "before_time_msc": 1785542339233
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-08-07",
+        "2026-08-08",
+        "2026-08-09",
+        "2026-08-10"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176460899,
+      "duration_seconds": 176460.899,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1786323600872,
+        "before": 1786147139973
+      },
+      "gap_id": "gap-0103",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-08-10T01:00:00.872000+00:00",
+        "start": "2026-08-07T23:58:59.973000+00:00"
+      },
+      "raw_end_time_msc": 1786323600872,
+      "raw_start_time_msc": 1786147139973,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1786323600872,
+        "before_time_msc": 1786147139973
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-08-14",
+        "2026-08-15",
+        "2026-08-16",
+        "2026-08-17"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176461267,
+      "duration_seconds": 176461.267,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1786928400807,
+        "before": 1786751939540
+      },
+      "gap_id": "gap-0104",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-08-17T01:00:00.807000+00:00",
+        "start": "2026-08-14T23:58:59.540000+00:00"
+      },
+      "raw_end_time_msc": 1786928400807,
+      "raw_start_time_msc": 1786751939540,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1786928400807,
+        "before_time_msc": 1786751939540
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-08-21",
+        "2026-08-22",
+        "2026-08-23",
+        "2026-08-24"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462391,
+      "duration_seconds": 176462.391,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1787533200676,
+        "before": 1787356738285
+      },
+      "gap_id": "gap-0105",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-08-24T01:00:00.676000+00:00",
+        "start": "2026-08-21T23:58:58.285000+00:00"
+      },
+      "raw_end_time_msc": 1787533200676,
+      "raw_start_time_msc": 1787356738285,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1787533200676,
+        "before_time_msc": 1787356738285
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-08-28",
+        "2026-08-29",
+        "2026-08-30",
+        "2026-08-31"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176460956,
+      "duration_seconds": 176460.956,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1788138000780,
+        "before": 1787961539824
+      },
+      "gap_id": "gap-0106",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-08-31T01:00:00.780000+00:00",
+        "start": "2026-08-28T23:58:59.824000+00:00"
+      },
+      "raw_end_time_msc": 1788138000780,
+      "raw_start_time_msc": 1787961539824,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1788138000780,
+        "before_time_msc": 1787961539824
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-09-04",
+        "2026-09-05",
+        "2026-09-06",
+        "2026-09-07"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176463092,
+      "duration_seconds": 176463.092,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1788742800797,
+        "before": 1788566337705
+      },
+      "gap_id": "gap-0107",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-09-07T01:00:00.797000+00:00",
+        "start": "2026-09-04T23:58:57.705000+00:00"
+      },
+      "raw_end_time_msc": 1788742800797,
+      "raw_start_time_msc": 1788566337705,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1788742800797,
+        "before_time_msc": 1788566337705
+      }
+    },
+    {
+      "calendar_dates_covered_provisional_utc": [
+        "2026-09-11",
+        "2026-09-12",
+        "2026-09-13",
+        "2026-09-14"
+      ],
+      "classification": "UNRESOLVED",
+      "classification_basis": "No authoritative WM Markets historical XAUUSD schedule or closure notice establishing that this exact observed interval was closed was located. Recurrence and weekend overlap are empirical observations only and do not establish broker closure.",
+      "duration_ms": 176462047,
+      "duration_seconds": 176462.047,
+      "evidence_refs": [],
+      "exact_surrounding_tick_timestamps": {
+        "after": 1789347600701,
+        "before": 1789171138654
+      },
+      "gap_id": "gap-0108",
+      "overlaps_saturday_or_sunday_under_provisional_utc": true,
+      "provisional_utc": {
+        "end": "2026-09-14T01:00:00.701000+00:00",
+        "start": "2026-09-11T23:58:58.654000+00:00"
+      },
+      "raw_end_time_msc": 1789347600701,
+      "raw_start_time_msc": 1789171138654,
+      "rows_immediately_before_and_after": {
+        "after_time_msc": 1789347600701,
+        "before_time_msc": 1789171138654
+      }
+    }
+  ],
+  "manifest_dataset_digest": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789",
+  "manifest_sha256": "d9a61ad583002c6e24f2ad04aee6399e6ec00a9a47928712a7c3f4418e15972f",
+  "privacy_statement": "This bounded report contains no bid, ask, last, volume, flags, or raw Parquet payloads; the immutable raw dataset is neither modified nor copied.",
+  "provisional_timestamp_statement": "UTC rendering is provisional until the historical timestamp basis is independently verified; it is not a timestamp conversion or classification proof.",
+  "raw_tick_payloads_included": false,
+  "row_count": 139930971,
+  "schema": "qts.mt5_gap_disposition.v1",
+  "timestamp_basis_disposition": {
+    "not_established": [
+      "WM Markets broker server-local time",
+      "historical broker offset",
+      "DST/session schedule",
+      "broker-specific closure calendar"
+    ],
+    "raw_fields": {
+      "time": "UTC epoch seconds as documented for obtained tick data",
+      "time_msc": "millisecond field returned in the same documented tick structure; precision is represented, but separate precision wording was not found"
+    },
+    "source_ref": "https://www.mql5.com/en/docs/python_metatrader5/mt5copyticksrange_py",
+    "statement": "Official MetaQuotes documentation establishes UTC for data obtained through copy_ticks_range; it does not establish WM Markets session rules or historical broker schedule facts.",
+    "status": "VERIFIED_BY_OFFICIAL_MT5_DOCUMENTATION"
+  },
+  "total_gaps_over_24h": 108,
+  "unresolved_count": 108
+}
