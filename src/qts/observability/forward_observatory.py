@@ -250,11 +250,35 @@ class ForwardObservatory:
             con.commit()
         return sid
 
-    def end_session(self, session_id: str, *, status: str = "ENDED", error: str | None = None):
+    def end_session(
+        self,
+        session_id: str,
+        *,
+        status: str = "ENDED",
+        error: str | None = None,
+        terminal_failure: dict[str, Any] | None = None,
+    ) -> str:
+        """Persist and return the authoritative session end timestamp.
+
+        Returning the committed timestamp prevents the derived collector
+        manifest from inventing a second ``stopped_at`` clock value.  Terminal
+        failure metadata is stored with the canonical session row so exports
+        can preserve the exact category and consecutive-failure count.
+        """
         body: dict[str, Any] = {"ended_at": datetime.now(UTC).isoformat()}
         if error:
             body["error"] = error
+        if terminal_failure is not None:
+            body["terminal_failure"] = terminal_failure
         with db_connect(self.db_path) as con:
+            existing = con.execute(
+                "SELECT end, status FROM observation_sessions WHERE id=?", (session_id,)
+            ).fetchone()
+            # Terminal writes are idempotent.  This protects repeated stop,
+            # restart recovery, and a caller retry after an ambiguous commit
+            # from manufacturing a second end timestamp.
+            if existing and existing[0] and existing[1] != "ACTIVE":
+                return str(existing[0])
             con.execute(
                 "UPDATE observation_sessions SET end=?, status=?, meta=COALESCE(meta,'') WHERE id=?",
                 (body["ended_at"], status, session_id),
@@ -271,6 +295,7 @@ class ForwardObservatory:
                 except ValueError:
                     pass
             con.commit()
+        return body["ended_at"]
 
     # ---------------------------------------------------------------- reads
     def list_ticks(

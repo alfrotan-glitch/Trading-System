@@ -62,8 +62,11 @@ _ALLOWED_PROVENANCE = frozenset({"DEMO", "REAL"})
 _RESEARCH_META_ALLOWLIST = frozenset(
     {
         "kind",
+        "product_mode",
+        "observation_mode",
         "mode",
         "environment",
+        "application_mode",
         "canonical_symbol",
         "broker_symbol",
         "broker",
@@ -71,6 +74,8 @@ _RESEARCH_META_ALLOWLIST = frozenset(
         "timestamp_basis",
         "code_version",
         "readiness_checks_passed",
+        "readiness_report",
+        "terminal_failure",
         "orders_possible",
         "started_at",
         "ended_at",
@@ -478,6 +483,17 @@ def verify_research_snapshot(artifact: Any) -> dict[str, Any]:
                 )
             elif key not in _RESEARCH_META_ALLOWLIST:
                 check(value == "<REDACTED:non-allowlisted>", f"non-allowlisted meta key {key!r} not redacted")
+            elif key == "readiness_report":
+                check(isinstance(value, dict), "meta.readiness_report must be an object")
+                if isinstance(value, dict):
+                    check(value.get("passed") is True, "meta.readiness_report.passed must be true")
+                    check(isinstance(value.get("checks"), dict), "meta.readiness_report.checks must be an object")
+            elif key == "terminal_failure":
+                check(isinstance(value, dict), "meta.terminal_failure must be an object")
+                if isinstance(value, dict):
+                    check(isinstance(value.get("category"), str), "meta.terminal_failure.category must be text")
+                    check(isinstance(value.get("timestamp"), str), "meta.terminal_failure.timestamp must be text")
+                    check(isinstance(value.get("consecutive_failures"), int), "meta.terminal_failure.consecutive_failures must be integer")
 
     if isinstance(meta, dict) and session.get("status") == "ENDED":
         check("error" not in meta, "ENDED session declares a terminal error")

@@ -15,7 +15,7 @@ Pins the Phase-9 contract:
 - A frozen feed (identical raw quote repeated) is recorded ONCE, further
   duplicates counted — never re-observed as new data.
 - ``stop()`` is deterministic: thread joined, session ENDED + end timestamp
-  persisted, evidence manifest rewritten with ``class: REAL`` and
+  persisted, evidence manifest rewritten with ``class: DEMO`` and
   ``orders_submitted: 0``.
 - Terminal-error semantics: a normal operator stop persists ``ENDED`` with NO
   terminal ``error`` even when a transient runtime error occurred earlier and
@@ -526,10 +526,14 @@ def test_terminal_persist_failure_is_loud_and_never_leaves_worker_untrusted(tmp_
     assert collector._terminal_persist_pending is True
 
     # storage recovers -> the operator's Stop retries and the row becomes terminal
-    collector.stop()
+    retry_status = collector.stop()
     row = _session_rows(tmp_path / "obs.db")[0]
     assert row["status"] == "ENDED" and row["end"]
     assert collector._terminal_persist_pending is False
+    assert retry_status["stopped_at"] == row["end"]
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["state"] == "STOPPED" and manifest["stopped_at"] == row["end"]
+    assert manifest["session"]["end"] == row["end"]
     art = export_session_evidence(collector.session_id, db_path=collector.observatory.db_path)
     assert art["session"]["status"] == "ENDED"
     assert verify_session_export(art)["verdict"] == "CONSISTENT"
