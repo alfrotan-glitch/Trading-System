@@ -1,12 +1,48 @@
 {
-  "canonical_store": "data/sqlite/forward_observatory.db",
-  "active_observation_sessions": 0,
-  "ticks_recorded": 0,
+  "class": "DEMO",
+  "data_class_note": "live MT5 DEMO feed via OBSERVE-ONLY ObservationCollector behind a PASSED readiness gate; no synthetic, no simulation, no fixture data in this manifest; provenance class DEMO (real broker, demo account) \u2014 never presented as LIVE/REAL-money evidence",
+  "mode": "OBSERVE_ONLY",
+  "orders_submitted": 0,
+  "order_send_called": false,
+  "canonical_store": "data\\sqlite\\forward_observatory.db",
+  "derived_export": true,
+  "symbols": [
+    "XAUUSD@"
+  ],
+  "session": {
+    "id": "FS-f374b6",
+    "start": "2026-09-18T13:56:27.342045+00:00",
+    "end": "2026-09-18T19:41:21.015311+00:00",
+    "status": "ENDED_ON_ERRORS",
+    "meta": {
+      "kind": "LIVE_OBSERVATION",
+      "mode": "DEVELOPMENT",
+      "environment": "DEVELOPMENT",
+      "canonical_symbol": "XAUUSD@",
+      "broker_symbol": "XAUUSD@",
+      "broker": "MT5",
+      "data_source": "MT5Adapter.ticks -> MarketDataProvider.get_tick",
+      "timestamp_basis": "broker-normalized(measured-m1-bar|assumed-utc-fallback)",
+      "code_version": "0.1.0+cd7948b5b712",
+      "readiness_checks_passed": 14,
+      "orders_possible": false,
+      "started_at": "2026-09-18T13:56:27.342045+00:00",
+      "ended_at": "2026-09-18T19:41:21.015311+00:00",
+      "error": "2026-09-18T19:41:21.015270+00:00 MarketDataError: tick stale: age 35.1s > 5.0s for XAUUSD@"
+    }
+  },
+  "state": "STOPPED_ON_ERRORS",
+  "started_at": "2026-09-18T13:56:27.349806+00:00",
+  "stopped_at": null,
+  "readiness_at_start": {
+    "passed": true,
+    "timestamp": "2026-09-18T13:56:27.131018+00:00",
+    "checks_passed": 14
+  },
+  "ticks_recorded": 13222,
   "signals_recorded": 0,
-  "real_market_ticks": 0,
-  "ticks_by_provenance": {},
   "divergence": {
-    "session_id": null,
+    "session_id": "FS-f374b6",
     "signals": 0,
     "no_trade_signals": 0,
     "hypothetical_price_divergence": {
@@ -29,13 +65,22 @@
       "execution_engine_reachable": false
     }
   },
-  "no_capital_exposure": true,
-  "code_version": "0.1.0+64fab8dae9dc",
-  "safety": "No live trading \u2014 OBSERVE_ONLY market observations only; no orders or executions recorded",
-  "measurement_limits": "Hypothetical price divergence may be measured; realized execution/PnL is UNAVAILABLE",
-  "sample_ticks": [],
-  "sample_signals": [],
-  "generated_at": "2026-09-18T10:20:58.376059+00:00",
-  "derived_from": "data/sqlite/forward_observatory.db",
-  "forward_observation_protocol": "docs/forward_observation_protocol.md"
+  "duplicates_skipped": 615,
+  "first_event_time": "2026-09-18T13:56:28.107000Z",
+  "last_event_time": "2026-09-18T19:40:45.964000Z",
+  "timestamp_bases": {
+    "broker-normalized(measured-m1-bar)": 13222
+  },
+  "server_utc_offsets_s": [
+    10800.0
+  ],
+  "spread_bps": {
+    "min": 0.4591157430788302,
+    "avg": 0.5669959345546053,
+    "max": 1.1943699239278234
+  },
+  "last_error": "2026-09-18T19:41:21.015270+00:00 MarketDataError: tick stale: age 35.1s > 5.0s for XAUUSD@",
+  "pipeline": "MT5Adapter.ticks -> MarketDataProvider.get_tick (validated) -> ForwardObservatory",
+  "timestamp_contract": "docs/mt5_demo_setup.md#canonical-timestamp-contract-ticks--observations",
+  "generated_at": "2026-09-18T19:41:21.296436+00:00"
 }
