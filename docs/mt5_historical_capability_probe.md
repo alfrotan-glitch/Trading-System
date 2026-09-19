@@ -19,18 +19,38 @@ A successful candle query does **not** answer questions 1 or 2. OHLC bars must n
 
 ## Safe probe protocol
 
+The repository now includes a minimal read-only probe at
+`scripts/probe_mt5_history.py`. It uses the already-running terminal session,
+queries only `symbol_info`, `symbol_select`, account/terminal diagnostics, and
+`copy_ticks_range`, and emits bounded metadata, first/last field samples, and SHA-256 digests
+rather than a raw tick-history export. It never calls `order_send` or any
+execution endpoint.
+
 The probe is read-only and must not call `order_send` or any execution endpoint.
+
+From PowerShell, with the already-connected WM Markets DEMO terminal open, the single operator action is:
+
+```powershell
+python scripts\probe_mt5_history.py --output "$env:TEMP\qts_mt5_history_probe.json"
+```
+
+This does not request credentials, submit orders, alter permissions, or write
+inside the repository. Return the generated JSON report in the next step; do
+not commit it yet. If `QTS_MT5_SYMBOL` is unset, the probe starts with
+`XAUUSD` and reports broker-symbol candidates rather than guessing a symbol.
+
+The probe records:
 
 ```text
 product_mode       = DEMO_FORWARD
 observation_mode   = OBSERVE_ONLY
 environment        = DEMO_FORWARD
 execution_policy   = DEMO_EXECUTION = DISABLED BY POLICY; LIVE = LOCKED
-symbol             = exact broker symbol returned by the terminal
-query              = bounded historical range, then a second bounded range
+symbol             = requested symbol plus exact terminal symbol/candidates
+query              = bounded 1d, 7d, 30d, and 365d windows
 fields required    = time, time_msc, bid, ask, flags/volume when available
 recorded alongside = terminal build, broker server, symbol specification,
-                     query range, request timestamp, response count, raw response hash
+                     query range, request timestamp, response count, raw-row SHA-256
 ```
 
 For each response, record a dataset-specific outcome using the matrix vocabulary:
