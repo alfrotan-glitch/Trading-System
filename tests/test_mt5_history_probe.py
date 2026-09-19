@@ -1,11 +1,18 @@
-"""Read-only MT5 historical capability probe contracts."""
+"""Read-only MT5 historical capability probe contracts (lightweight probe).
+
+The probe answers the capability question only: fields, row counts, status,
+bounded first/last samples, raw time_msc bounds.  Row-level duplicate/spread/
+digest auditing was removed from the acquisition path by design (a multi-hour
+run was interrupted inside the old per-row audit); those contracts now live in
+tests/test_mt5_history_analysis.py against the deferred analysis layer.
+"""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
-from scripts.probe_mt5_history import _audit_rows, probe_mt5_history
+from scripts.probe_mt5_history import probe_mt5_history
 
 
 class FakeMT5:
@@ -86,7 +93,24 @@ def test_probe_reports_bid_ask_fields_without_orders() -> None:
     assert report["capability"]["bid_ask_status"] == "PRESENT"
     assert report["live_timestamp_basis"]["status"] == "MEASURED"
     assert len(report["windows"]) == 2
-    assert all(window["raw_rows_sha256"] for window in report["windows"])
+    for window in report["windows"]:
+        assert window["row_count"] == 2
+        assert window["raw_time_msc_min"] is not None
+        assert window["raw_time_msc_max"] is not None
+        assert window["first_row"] and window["last_row"]
+        assert window["timestamp_basis"].startswith("RAW_MT5_FIELDS_ONLY")
+        # Regression pin: the probe must stay acquisition-light.  No per-row
+        # audit keys, no row hashing, no duplicate/spread statistics here.
+        for banned in (
+            "raw_rows_sha256",
+            "same_time_msc_excess_rows",
+            "identical_full_row_excess_count",
+            "duplicate_time_msc_count",
+            "spread_bps",
+            "consecutive_identical_quote_state_excess_rows",
+        ):
+            assert banned not in window
+        assert "deferred_analysis" in window
     assert fake.order_send_calls == 0
 
 
@@ -112,20 +136,6 @@ def test_probe_reports_no_response_without_promoting_candles() -> None:
     assert report["capability"]["status"] == "NO_TICK_RESPONSE"
     assert report["capability"]["bid_ask_status"] == "ABSENT_OR_UNAVAILABLE"
     assert report["windows"][0]["status"] == "NO_RESPONSE"
-
-
-def test_equal_millisecond_rows_are_not_automatically_duplicates() -> None:
-    rows = [
-        {"time_msc": 1000, "time": 1, "bid": 2000.0, "ask": 2000.5},
-        {"time_msc": 1000, "time": 1, "bid": 2000.1, "ask": 2000.6},
-        {"time_msc": 1000, "time": 1, "bid": 2000.1, "ask": 2000.6},
-        {"time_msc": 1001, "time": 1, "bid": 2000.1, "ask": 2000.6},
-    ]
-    audit = _audit_rows(rows, ["time", "time_msc", "bid", "ask"])
-    assert audit["same_time_msc_excess_rows"] == 2
-    assert audit["same_time_msc_distinct_quote_rows"] == 2
-    assert audit["identical_full_row_excess_count"] == 1
-    assert audit["consecutive_identical_quote_state_excess_rows"] == 2
 
 
 def test_probe_reports_unknown_symbol_and_does_not_query_history() -> None:

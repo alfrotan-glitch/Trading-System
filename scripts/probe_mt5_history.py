@@ -4,17 +4,25 @@ This script intentionally produces a bounded metadata report rather than a
 market-data export. It never calls an order API and never writes credentials or
 raw tick payloads. Run it on the Windows machine where the already-running
 MetaTrader 5 terminal is connected to the DEMO account.
+
+Heavy per-row auditing (JSON serialization + SHA-256 per row, duplicate
+analysis, spread statistics) used to run here, while MT5 was still being
+queried; a multi-hour run was interrupted inside that audit.  That work now
+lives exclusively in the deferred analysis layer
+(:mod:`qts.data.mt5_history_analysis`), which reads the stored raw dataset
+after acquisition — see ``scripts/acquire_mt5_history.py`` and
+``docs/mt5_history_acquisition.md``.  This probe answers only the capability
+question: does the terminal serve historical tick bid/ask at all, for which
+fields, in which count range.
 """
 
 from __future__ import annotations
 
 import argparse
 import contextlib
-import hashlib
 import json
 import math
 import os
-import statistics
 import time
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
@@ -23,6 +31,13 @@ from typing import Any
 
 _REQUIRED_TICK_FIELDS = ("time", "time_msc", "bid", "ask")
 _OPTIONAL_TICK_FIELDS = ("last", "volume", "time", "time_msc", "flags", "volume_real")
+
+DEFERRED_ANALYSIS_NOTE = (
+    "No per-row audit runs in this probe. Row-level duplicate/spread/digest "
+    "analysis is deliberately deferred to qts.data.mt5_history_analysis over "
+    "the persisted raw dataset (scripts/acquire_mt5_history.py), so capability "
+    "queries stay cheap and interruptible."
+)
 
 
 def _last_error(mt5: Any) -> str | None:
@@ -77,129 +92,23 @@ def _row_projection(row: Any, fields: Iterable[str]) -> dict[str, Any]:
     return {field: _value(row, field) for field in fields}
 
 
-def _canonical_row_json(row: Any, fields: list[str]) -> str:
-    return json.dumps(_row_projection(row, fields), sort_keys=True, separators=(",", ":"), default=str)
+def _raw_time_msc_bounds(rows: Any, fields: list[str], row_count: int) -> tuple[float | None, float | None]:
+    """Vectorized raw time_msc min/max for provenance; no row transformation."""
+    if not row_count or "time_msc" not in fields:
+        return None, None
+    try:
+        import numpy as np
 
-
-def _audit_rows(rows: Any, fields: list[str]) -> dict[str, Any]:
-    """Audit rows without treating equal timestamps as duplicate ticks.
-
-    MT5 responses are normally ordered by ``time_msc``.  The audit uses a
-    streaming timestamp group, so a large 30-day response does not require a
-    second database or a set containing millions of rows.  If ordering fails,
-    the non-monotonic count is reported and the result remains diagnostic-only.
-    """
-    digest = hashlib.sha256()
-    previous_stamp: float | None = None
-    group_stamp: float | None = None
-    group_first_hash: str | None = None
-    group_hashes: set[str] = set()
-    group_count = 0
-    same_timestamp_groups = 0
-    same_timestamp_excess = 0
-    distinct_same_timestamp_rows = 0
-    identical_full_row_excess = 0
-    non_monotonic = 0
-    raw_time_min: float | None = None
-    raw_time_max: float | None = None
-    previous_quote_state: str | None = None
-    consecutive_identical_quote_state = 0
-    invalid_bid = invalid_ask = ask_below_bid = 0
-    zero_spread = negative_spread = 0
-    spreads_bps: list[float] = []
-
-    def finish_group() -> None:
-        nonlocal same_timestamp_groups, same_timestamp_excess
-        if group_count > 1:
-            same_timestamp_groups += 1
-            same_timestamp_excess += group_count - 1
-
-    for row in rows:
-        body = _canonical_row_json(row, fields)
-        digest.update(body.encode("utf-8"))
-        digest.update(b"\n")
-        row_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
-        stamp = _numeric(_value(row, "time_msc"))
-        if stamp is not None:
-            raw_time_min = stamp if raw_time_min is None else min(raw_time_min, stamp)
-            raw_time_max = stamp if raw_time_max is None else max(raw_time_max, stamp)
-            if previous_stamp is not None and stamp < previous_stamp:
-                non_monotonic += 1
-            previous_stamp = stamp
-            if stamp != group_stamp:
-                finish_group()
-                group_stamp = stamp
-                group_first_hash = row_hash
-                group_hashes = {row_hash}
-                group_count = 1
-            else:
-                group_count += 1
-                if row_hash in group_hashes:
-                    identical_full_row_excess += 1
-                else:
-                    group_hashes.add(row_hash)
-                if row_hash != group_first_hash:
-                    distinct_same_timestamp_rows += 1
-
-        bid = _numeric(_value(row, "bid"))
-        ask = _numeric(_value(row, "ask"))
-        if bid is not None and bid <= 0:
-            invalid_bid += 1
-        if ask is not None and ask <= 0:
-            invalid_ask += 1
-        if bid is not None and ask is not None:
-            if ask < bid:
-                ask_below_bid += 1
-            spread = ask - bid
-            if spread == 0:
-                zero_spread += 1
-            if spread < 0:
-                negative_spread += 1
-            if bid > 0 and ask > 0 and spread >= 0:
-                mid = (bid + ask) / 2
-                if mid > 0 and math.isfinite(mid):
-                    spreads_bps.append(spread / mid * 10000)
-
-        quote_fields = [field for field in ("bid", "ask", "last", "volume", "volume_real", "flags") if field in fields]
-        quote_state = json.dumps(_row_projection(row, quote_fields), sort_keys=True, separators=(",", ":"), default=str)
-        if quote_state == previous_quote_state:
-            consecutive_identical_quote_state += 1
-        previous_quote_state = quote_state
-    finish_group()
-
-    spread_stats: dict[str, float | int | None] = {
-        "count": len(spreads_bps),
-        "min_bps": min(spreads_bps) if spreads_bps else None,
-        "mean_bps": statistics.fmean(spreads_bps) if spreads_bps else None,
-        "median_bps": statistics.median(spreads_bps) if spreads_bps else None,
-        "p95_bps": (statistics.quantiles(spreads_bps, n=100, method="inclusive")[94] if len(spreads_bps) > 1 else None),
-        "max_bps": max(spreads_bps) if spreads_bps else None,
-    }
-    return {
-        "raw_rows_sha256": digest.hexdigest(),
-        "duplicate_semantics": {
-            "identical_full_row_excess_count": "exact canonical row repeats within a timestamp group; retained, never discarded",
-            "same_time_msc_excess_rows": "additional rows sharing a millisecond; not automatically duplicates",
-            "same_time_msc_distinct_quote_rows": "collision rows whose full payload differs from the first row in that timestamp group",
-            "consecutive_identical_quote_state_excess_rows": "adjacent repeated bid/ask/etc. state; standing quote candidate, not a duplicate tick",
-        },
-        "raw_time_msc_min": raw_time_min,
-        "raw_time_msc_max": raw_time_max,
-        "identical_full_row_excess_count": identical_full_row_excess,
-        "non_monotonic_time_msc_count": non_monotonic,
-        "same_time_msc_groups": same_timestamp_groups,
-        "same_time_msc_excess_rows": same_timestamp_excess,
-        "same_time_msc_distinct_quote_rows": distinct_same_timestamp_rows,
-        "consecutive_identical_quote_state_excess_rows": consecutive_identical_quote_state,
-        "invalid_bid_count": invalid_bid,
-        "invalid_ask_count": invalid_ask,
-        "ask_below_bid_count": ask_below_bid,
-        "zero_spread_count": zero_spread,
-        "negative_spread_count": negative_spread,
-        "spread_bps": spread_stats,
-        "price_jump_assessment": "NOT_CLASSIFIED; no jump threshold was declared",
-        "gap_assessment": "NOT_INFERRED_FROM_TICKS; no fixed tick schedule exists",
-    }
+        if isinstance(rows, np.ndarray) and rows.dtype.names:
+            stamps = rows["time_msc"].astype(np.float64, copy=False)
+            return float(np.min(stamps)), float(np.max(stamps))
+    except Exception:  # noqa: BLE001 — fall back to the bounded loop below
+        pass
+    values = [_numeric(_value(row, "time_msc")) for row in rows]
+    clean = [value for value in values if value is not None]
+    if not clean:
+        return None, None
+    return min(clean), max(clean)
 
 
 def _numeric(value: Any) -> float | None:
@@ -364,31 +273,7 @@ def _window_report(mt5: Any, symbol: str, days: int, end_utc: datetime, flags: A
     has_bid_ask = required_present["bid"] and required_present["ask"]
     first = _row_projection(rows[0], fields) if row_count else None
     last = _row_projection(rows[-1], fields) if row_count else None
-    audit = _audit_rows(rows, fields) if row_count else {
-        "raw_rows_sha256": hashlib.sha256().hexdigest(),
-        "duplicate_semantics": {
-            "identical_full_row_excess_count": "exact canonical row repeats; retained, never discarded",
-            "same_time_msc_excess_rows": "additional rows sharing a millisecond; not automatically duplicates",
-            "same_time_msc_distinct_quote_rows": "collision rows whose full payload differs from the first row in that timestamp group",
-            "consecutive_identical_quote_state_excess_rows": "adjacent repeated bid/ask/etc. state; standing quote candidate, not a duplicate tick",
-        },
-        "raw_time_msc_min": None,
-        "raw_time_msc_max": None,
-        "non_monotonic_time_msc_count": 0,
-        "same_time_msc_groups": 0,
-        "same_time_msc_excess_rows": 0,
-        "same_time_msc_distinct_quote_rows": 0,
-        "identical_full_row_excess_count": 0,
-        "consecutive_identical_quote_state_excess_rows": 0,
-        "invalid_bid_count": 0,
-        "invalid_ask_count": 0,
-        "ask_below_bid_count": 0,
-        "zero_spread_count": 0,
-        "negative_spread_count": 0,
-        "spread_bps": {"count": 0, "min_bps": None, "mean_bps": None, "median_bps": None, "p95_bps": None, "max_bps": None},
-        "price_jump_assessment": "NOT_CLASSIFIED; no jump threshold was declared",
-        "gap_assessment": "NOT_INFERRED_FROM_TICKS; no fixed tick schedule exists",
-    }
+    raw_min, raw_max = _raw_time_msc_bounds(rows, fields, row_count)
     return {
         **request,
         "status": "RESPONSE_RECEIVED_BID_ASK_PRESENT" if row_count and has_bid_ask else (
@@ -400,9 +285,10 @@ def _window_report(mt5: Any, symbol: str, days: int, end_utc: datetime, flags: A
         "bid_ask_present": has_bid_ask,
         "first_row": first,
         "last_row": last,
-        **audit,
-        "duplicate_time_msc_count": audit["same_time_msc_excess_rows"],
+        "raw_time_msc_min": raw_min,
+        "raw_time_msc_max": raw_max,
         "timestamp_basis": "RAW_MT5_FIELDS_ONLY; no UTC normalization or broker-offset inference performed",
+        "deferred_analysis": DEFERRED_ANALYSIS_NOTE,
         "sample": {"first": first, "last": last},
     }
 
@@ -417,7 +303,7 @@ def probe_mt5_history(
     """Run a read-only capability probe against an initialized MT5 module."""
     end_utc = end_utc or datetime.now(UTC)
     report: dict[str, Any] = {
-        "schema": "qts.mt5_history_capability_probe.v1",
+        "schema": "qts.mt5_history_capability_probe.v2",
         "probe_started_at_utc": end_utc.isoformat(),
         "read_only": True,
         "orders_submitted": 0,
@@ -429,6 +315,7 @@ def probe_mt5_history(
         "live_timestamp_basis": {},
         "capability": {},
         "windows": [],
+        "deferred_analysis": DEFERRED_ANALYSIS_NOTE,
     }
     try:
         terminal = mt5.terminal_info()
@@ -478,7 +365,10 @@ def probe_mt5_history(
         ),
         "timestamp_fields": sorted({field for window in received for field in window.get("fields", [])}),
         "timestamp_basis": "RAW_MT5_FIELDS_ONLY; direct server/UTC basis remains unverified",
-        "reproducibility": "Each window records exact UTC request bounds, response count, and raw-row SHA-256.",
+        "reproducibility": (
+            "Each window records exact UTC request bounds, response count, fields and raw time_msc bounds. "
+            "Row-level SHA-256 is produced by the deferred analysis over the persisted dataset, not here."
+        ),
     }
     return report
 
@@ -499,14 +389,18 @@ def main(argv: list[str] | None = None) -> int:
     try:
         import MetaTrader5 as mt5
     except ImportError:
-        print(json.dumps({"schema": "qts.mt5_history_capability_probe.v1", "status": "MT5_PACKAGE_UNAVAILABLE"}, indent=2))
+        print(
+            json.dumps(
+                {"schema": "qts.mt5_history_capability_probe.v2", "status": "MT5_PACKAGE_UNAVAILABLE"}, indent=2
+            )
+        )
         return 2
 
     path = os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH")
     initialized = bool(mt5.initialize(path=path) if path else mt5.initialize())
     if not initialized:
         report = {
-            "schema": "qts.mt5_history_capability_probe.v1",
+            "schema": "qts.mt5_history_capability_probe.v2",
             "status": "INITIALIZE_FAILED",
             "read_only": True,
             "orders_submitted": 0,

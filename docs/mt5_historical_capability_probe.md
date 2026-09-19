@@ -1,5 +1,16 @@
 # MT5 historical tick / bid-ask capability probe
 
+> **Superseding workflow (engineered, pending operator terminal):** raw tick
+> **acquisition with deferred analysis** now lives in
+> `docs/mt5_history_acquisition.md` (`scripts/acquire_mt5_history.py` +
+> `qts.data.mt5_history_acquisition` / `qts.data.mt5_history_analysis`).
+> The heavy per-row audit was **removed from this probe** by design — a
+> multi-hour run was interrupted inside `_audit_rows()` while MT5 was still
+> being queried. This probe remains a seconds-scale capability check only
+> (fields, row counts, statuses, bounded first/last samples, raw time_msc
+> bounds, schema `v2`); all row-level quality analysis is deferred to the
+> analysis layer over the persisted raw dataset.
+
 **Disposition after the operator probe: `CAPABILITY_VERIFIED_LIMITED_HISTORY`; acquisition status `PARTIAL`; quality status `NOT_ASSESSED`.**
 
 The operator reported a real read-only WM Markets DEMO response from MetaTrader5 `5.0.6180` for exact symbol `XAUUSD@`: 1-day, 7-day, and 30-day `copy_ticks_range` requests returned bid, ask, time, and time_msc fields; the 365-day request returned `(-1, 'Terminal: Call failed')`. This verifies a limited historical tick/bid/ask capability, not the maximum retention boundary or research eligibility. The current Linux checkout still has no canonical `data/sqlite/forward_observatory.db`; **raw/canonical tick-level evidence is not present in the repository.** The safe operator report is recorded in `data/evidence/mt5_history_capability_report.json` without raw rows.
@@ -22,9 +33,11 @@ A successful candle query does **not** answer questions 1 or 2. OHLC bars must n
 The repository now includes a minimal read-only probe at
 `scripts/probe_mt5_history.py`. It uses the already-running terminal session,
 queries only `symbol_info`, `symbol_select`, account/terminal diagnostics, and
-`copy_ticks_range`, and emits bounded metadata, first/last field samples, and SHA-256 digests
-rather than a raw tick-history export. It never calls `order_send` or any
-execution endpoint.
+`copy_ticks_range`, and emits bounded metadata, first/last field samples, and
+field inventories rather than a raw tick-history export. It never calls
+`order_send` or any execution endpoint. Per-row SHA-256 of the raw response is
+produced by the deferred analysis layer over the acquired dataset (see
+`docs/mt5_history_acquisition.md`), not here.
 
 The probe is read-only and must not call `order_send` or any execution endpoint.
 
@@ -50,7 +63,9 @@ symbol             = requested symbol plus exact terminal symbol/candidates
 query              = bounded 1d, 7d, 30d, and 365d windows
 fields required    = time, time_msc, bid, ask, flags/volume when available
 recorded alongside = terminal build, broker server, symbol specification,
-                     query range, request timestamp, response count, raw-row SHA-256
+                     query range, request timestamp, response count, field inventory,
+                     raw time_msc bounds (row-level SHA-256 is produced by the
+                     deferred analysis over the acquired dataset)
 ```
 
 For each response, record a dataset-specific outcome using the matrix vocabulary:

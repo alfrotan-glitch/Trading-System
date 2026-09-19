@@ -2,7 +2,8 @@
 
 **Status:** canonical current-state summary
 **Repository branch:** `arena/01a0b574-trading-system`
-**Checked:** 2026-09-18
+**Checked:** 2026-09-18 (updated 2026-09-19 on `arena/01a0b8b1-trading-system`: MT5 raw tick
+acquisition/analysis separation engineered; live broker acquisition still pending operator terminal)
 **Current posture:** research-first, fail-closed, `NO_TRADE`
 
 This is the current-state authority for status and sequencing. Historical design
@@ -23,6 +24,7 @@ identify.
 | Trade outcome transparency | **Implemented.** Existing event-level `net_return_bps` outcomes are reported per family and primary horizon as measured directional event-study outcomes. They are not executed broker trades or fills. | `src/qts/research/impulse/measurement.py`, `analysis.py`, `report.py`, `docs/research/impulse_continuation_report_xauusd_dukascopy_15m.md` |
 | FO-R1 observation infrastructure | **Engineered and hardened at the repository boundary.** SQLite canonical storage, durable acquisition accounting, snapshot support, integrity checks, long-session protections and structural order-free enforcement exist. | `docs/forward_observation_status.md`, `src/qts/observability/forward_observatory.py`, `src/qts/observability/research_snapshot.py` |
 | Real MT5 observation evidence | **Pending.** No real Windows/MT5 observation session is present in repository evidence. A real operator run is required; all current verification is structural/controlled-environment verification. | `docs/forward_observation_status.md`, canonical observatory state |
+| MT5 raw tick history acquisition | **Architecture engineered and tested; broker data pending operator terminal.** Acquisition is separated from analysis: chunked lossless Parquet preservation (every returned field/row, interrupt-safe, resumable, digest-anchored) into gitignored `data/raw/mt5_ticks/`, then an offline analysis layer with no MT5 dependency. The only run executed in this checkout recorded `MT5_PACKAGE_UNAVAILABLE` (Linux sandbox); raw rows remain absent and unfabricated. Verified-limited broker capability (1/7/30d responses, 365d query failure) remains operator-reported private evidence. | `docs/mt5_history_acquisition.md`, `scripts/acquire_mt5_history.py`, `data/evidence/mt5_history_acquisition.json`, `data/evidence/mt5_history_capability_report.json` |
 | Research breadth | **Incomplete.** The current real result is one XAUUSD/timeframe study. Feature-store maturity, broader regime coverage, independent markets/timeframes and additional preregistered hypothesis families remain future research work. | `docs/timeframe_research.md`, `docs/cross_market_research.md` |
 | Validated profitable edge | **Not established.** No result authorizes a profitability claim, candidate promotion or execution. | REAL impulse conclusion, campaign/edge artifacts, release report |
 | DEMO execution | **Disabled by policy.** `DEMO_FORWARD` is observation-only and structurally order-free. `DEMO_EXECUTION = DISABLED BY POLICY`. | `qts.lifecycle.demo_authority`, `docs/canonical_authorities.md` |
@@ -74,6 +76,19 @@ Acquire or license provenance-qualified continuous bid/ask/tick and, where
 available, broker-session/execution-cost history. Register it as a new immutable
 dataset or explicitly versioned evidence source. Do not relabel the current mid
 bars, and do not promote the supplementary 23-window spread study into R5.
+
+The read-only lossless MT5 raw tick acquisition workflow
+(`docs/mt5_history_acquisition.md`) is the engineered foundation for the
+quote-side of this milestone on the verified `XAUUSD@` DEMO terminal. It
+produces broker-specific **quote** evidence with full provenance and deferred
+quality analysis; it cannot by itself produce execution-cost evidence (fills,
+slippage, latency), boundary depth beyond the acquired windows, or a verified
+historical timestamp basis. The incremental boundary ladder
+(7→365d, chunked with adaptive split) is ready; the live run requires the
+operator terminal and has not been performed in this checkout
+(`MT5_PACKAGE_UNAVAILABLE`, recorded in
+`data/evidence/mt5_history_acquisition.json`). Do not modify the frozen dataset
+or rerun the frozen study with it.
 
 ### D. Research milestone — rerun the existing preregistered study on improved evidence
 

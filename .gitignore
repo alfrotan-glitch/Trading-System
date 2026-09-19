@@ -20,6 +20,13 @@ logs/
 !data/fixtures/*.parquet
 !data/fixtures/*.csv
 
+# Raw private broker tick acquisitions (MT5 history) — COMPLETE directory tree:
+# parquet parts, manifests, ledgers and in-progress temp files are private
+# broker data and must never enter Git history (only bounded evidence JSON
+# summaries under data/evidence/ are committable).
+data/raw/mt5_ticks/
+data/mt5_ticks/
+
 # Secrets / env
 .env
 .env.*

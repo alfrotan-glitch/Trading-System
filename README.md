@@ -90,6 +90,12 @@ Desktop shows: Home (System Status, Environment, MT5, Account Type, Market Data,
 - **DEMO execution is disabled by product policy.** A readiness pass never creates order permission; `/api/demo/enable` returns a durable 409 refusal after optional diagnostic probing and does not write an enabled state. Direct authority calls are refused too. The only broker-facing product path is DEMO_FORWARD observation with zero orders.
 - Fabricated legacy "demo observations" were quarantined to `data/evidence/quarantine/` with documented violations; they satisfy no gate and no claim.
 
+## How do I acquire MT5 historical ticks? (read-only, raw, deferred analysis)
+
+- `python scripts/acquire_mt5_history.py --symbol XAUUSD@ --windows-days 7,30,45,60,90,120,180,270,365` on the Windows DEMO terminal: chunked **lossless** Parquet acquisition (every field/row MT5 returns, no dedupe, no normalization, interrupt-safe and resumable) into gitignored `data/raw/mt5_ticks/`, then a deferred offline analysis (`qts.data.mt5_history_analysis`) over the stored dataset — never a per-row audit while MT5 is being queried. Acquisition and analysis are separate layers; the heavy work runs against local files only.
+- `scripts/probe_mt5_history.py` is the seconds-scale capability check (fields, counts, bounds only).
+- Contract, status vocabulary, integrity/digest definitions, and the honest research boundary (quotes ≠ execution evidence; R5 not solved): `docs/mt5_history_acquisition.md`.
+
 ## Why is demo execution disabled?
 
 This workstation intentionally stops at `DEMO_FORWARD/OBSERVE_ONLY`: a fresh readiness report can authorize recording real MT5 demo-account observations, but it cannot authorize an order path. `/api/demo/enable` is a durable 409 refusal, and `LIVE` remains separately locked. See `docs/demo_forward_protocol.md` for the observation contract.
