@@ -147,9 +147,14 @@
   cursor: pointer;
   text-align: left;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast);
+  transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
 }
-.nav-item:hover { background: var(--bg-2); color: var(--text-1); }
+.nav-item:hover {
+  background: linear-gradient(90deg, rgba(148, 180, 255, 0.07), rgba(148, 180, 255, 0.02));
+  color: var(--text-1);
+  transform: translateX(2px);
+}
+.nav-item.active:hover { transform: none; }
 .nav-item.active {
   background: linear-gradient(90deg, rgba(34, 211, 238, 0.16), rgba(34, 211, 238, 0.05) 70%, transparent);
   color: var(--text-1);
@@ -192,6 +197,7 @@
   max-width: var(--content-max);
   margin: 0 auto;
   padding: 20px 24px 48px;
+  animation: page-in 200ms cubic-bezier(0.2, 0.6, 0.2, 1);
 }
 
 /* page head — hierarchy */
@@ -232,7 +238,11 @@
   cursor: pointer;
   transition: color var(--t-fast), background var(--t-fast);
 }
-.subnav a:hover { color: var(--text-1); background: var(--bg-2); text-decoration: none; }
+.subnav a:hover {
+  color: #cfe4ff;
+  background: linear-gradient(180deg, rgba(148, 180, 255, 0.09), rgba(148, 180, 255, 0.02));
+  text-decoration: none;
+}
 .subnav a.active {
   color: var(--accent-text);
   font-weight: 650;

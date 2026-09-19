@@ -24,12 +24,21 @@
   gap: 24px;
   margin: 0 -24px;
   padding: 18px 24px;
+  position: relative;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background:
     radial-gradient(720px 220px at 12% 0%, var(--amb-cyan), transparent 65%),
     linear-gradient(180deg, rgba(14, 21, 40, 0.9), rgba(8, 12, 24, 0.9));
-  box-shadow: inset 0 -1px 0 rgba(34, 211, 238, 0.08);
+  box-shadow: var(--shadow-2), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+/* luminous seam under the hero band */
+.operator-summary::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.5), rgba(167, 139, 250, 0.3) 50%, transparent 85%);
+  pointer-events: none;
 }
 .operator-summary h2 { font-size: 16px; line-height: 1.25; margin: 8px 0; font-weight: 700; }
 .operator-summary p { margin: 6px 0 0; font-size: 12px; }
@@ -89,10 +98,12 @@
 /* quote — bid/ask/spread as a luminous ticker panel */
 .quote {
   display: flex; gap: 24px; padding: 12px 14px;
-  background: linear-gradient(135deg, rgba(34, 211, 238, 0.06), rgba(14, 21, 40, 0.85) 55%);
-  border: 1px solid var(--line-strong);
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.06), rgba(14, 21, 40, 0.85) 55%) padding-box,
+    linear-gradient(135deg, rgba(34, 211, 238, 0.5), rgba(167, 139, 250, 0.28) 60%, rgba(34, 211, 238, 0.1)) border-box;
+  border: 1px solid transparent;
   border-radius: 10px;
-  box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 26px rgba(34, 211, 238, 0.08);
 }
 .q-side { display: flex; flex-direction: column; gap: 2px; }
 .q-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-3); }
