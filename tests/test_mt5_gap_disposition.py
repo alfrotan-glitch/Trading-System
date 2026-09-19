@@ -24,6 +24,8 @@ def test_weekend_gap_stays_unresolved_and_has_no_payload(tmp_path):
     assert result["unresolved_count"] == 2
     assert result["gaps"][0]["classification"] == "UNRESOLVED"
     assert result["raw_tick_payloads_included"] is False
+    assert result["timestamp_basis_disposition"]["status"] == "VERIFIED_BY_OFFICIAL_MT5_DOCUMENTATION"
+    assert result["evidence_sources"][0]["evidence_type"] == "official_direct_timestamp_basis"
     assert "bid" not in json.dumps(result["gaps"])
 
 def test_documented_and_unexpected_are_explicit(tmp_path):

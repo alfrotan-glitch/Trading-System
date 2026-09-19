@@ -14,6 +14,15 @@ import pyarrow.parquet as pq
 SCHEMA = "qts.mt5_gap_disposition.v1"
 ALLOWED = {"EXPECTED_WEEKEND_CLOSURE", "EXPECTED_DOCUMENTED_MARKET_HOLIDAY", "EXPECTED_DOCUMENTED_MARKET_CLOSURE", "UNEXPECTED_DATA_GAP", "UNRESOLVED"}
 BASIS = "UTC rendering is provisional until the historical timestamp basis is independently verified; it is not a timestamp conversion or classification proof."
+OFFICIAL_TIMESTAMP_SOURCE = {
+    "source_name": "MetaQuotes MQL5 Python Integration: copy_ticks_range",
+    "url": "https://www.mql5.com/en/docs/python_metatrader5/mt5copyticksrange_py",
+    "accessed_utc": "2026-09-19",
+    "publication_or_update_date": "2022-03-21 (page metadata; MetaQuotes page does not state a separate update date)",
+    "relevant_wording": "MetaTrader 5 stores tick and bar open time in UTC time zone (without the shift)... The data obtained from MetaTrader 5 have UTC time.",
+    "scope": "Directly applies to data returned by the documented Python copy_ticks_range function. The page's return description exposes time and the Python example exposes time_msc; the wording establishes UTC for obtained tick data, but does not separately define time_msc precision semantics.",
+    "evidence_type": "official_direct_timestamp_basis",
+}
 
 def iso(ms: int) -> str:
     return datetime.fromtimestamp(ms / 1000, UTC).isoformat()
@@ -86,7 +95,14 @@ def analyze(dataset: Path, evidence: Path | None = None, threshold_ms: int = 86_
         "total_gaps_over_24h": len(gaps),
         "counts_by_classification": counts,
         "gaps": gaps,
-        "evidence_sources": json.loads(evidence.read_text(encoding="utf-8")).get("sources", []) if evidence else [],
+        "evidence_sources": [OFFICIAL_TIMESTAMP_SOURCE] + (json.loads(evidence.read_text(encoding="utf-8")).get("sources", []) if evidence else []),
+        "timestamp_basis_disposition": {
+            "status": "VERIFIED_BY_OFFICIAL_MT5_DOCUMENTATION",
+            "raw_fields": {"time": "UTC epoch seconds as documented for obtained tick data", "time_msc": "millisecond field returned in the same documented tick structure; precision is represented, but separate precision wording was not found"},
+            "source_ref": OFFICIAL_TIMESTAMP_SOURCE["url"],
+            "not_established": ["WM Markets broker server-local time", "historical broker offset", "DST/session schedule", "broker-specific closure calendar"],
+            "statement": "Official MetaQuotes documentation establishes UTC for data obtained through copy_ticks_range; it does not establish WM Markets session rules or historical broker schedule facts.",
+        },
         "unresolved_count": counts["UNRESOLVED"],
         "analysis_timestamp_utc": analysis_timestamp or datetime.now(UTC).isoformat(),
         "analysis_software": {"name": "analyze_mt5_gap_disposition", "version": "1.0.0", "schema": SCHEMA},
