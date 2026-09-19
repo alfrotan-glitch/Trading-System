@@ -1,8 +1,8 @@
 # MT5 historical tick / bid-ask capability probe
 
-**Disposition as of 2026-09-19: `CAPABILITY_UNVERIFIED`; acquisition status `NOT_AVAILABLE_IN_CHECKOUT`.**
+**Disposition after the operator probe: `CAPABILITY_VERIFIED_LIMITED_HISTORY`; acquisition status `PARTIAL`; quality status `NOT_ASSESSED`.**
 
-This is a capability finding, not a claim that the WM Markets MT5 terminal can or cannot provide a particular history. The current Linux checkout has no Windows MT5 terminal, no broker login session, and no canonical `data/sqlite/forward_observatory.db`. Therefore the repository cannot report a successful historical broker query. **Raw/canonical tick-level evidence is not present in the repository.**
+The operator reported a real read-only WM Markets DEMO response from MetaTrader5 `5.0.6180` for exact symbol `XAUUSD@`: 1-day, 7-day, and 30-day `copy_ticks_range` requests returned bid, ask, time, and time_msc fields; the 365-day request returned `(-1, 'Terminal: Call failed')`. This verifies a limited historical tick/bid/ask capability, not the maximum retention boundary or research eligibility. The current Linux checkout still has no canonical `data/sqlite/forward_observatory.db`; **raw/canonical tick-level evidence is not present in the repository.** The safe operator report is recorded in `data/evidence/mt5_history_capability_report.json` without raw rows.
 
 ## What must be established on the actual terminal
 

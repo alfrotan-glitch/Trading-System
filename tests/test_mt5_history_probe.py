@@ -5,12 +5,13 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
-from scripts.probe_mt5_history import probe_mt5_history
+from scripts.probe_mt5_history import _audit_rows, probe_mt5_history
 
 
 class FakeMT5:
     COPY_TICKS_ALL = 7
     ACCOUNT_TRADE_MODE_DEMO = 0
+    TIMEFRAME_M1 = 1
 
     def __init__(self, *, with_history: bool = True, with_bid_ask: bool = True) -> None:
         self.with_history = with_history
@@ -49,6 +50,9 @@ class FakeMT5:
     def symbols_get(self):
         return [SimpleNamespace(name="XAUUSD@")]
 
+    def copy_rates_from_pos(self, symbol, timeframe, start, count):
+        return [{"time": int(datetime.now(UTC).timestamp())}]
+
     def copy_ticks_range(self, symbol, start, end, flags):
         if not self.with_history:
             return None
@@ -80,6 +84,7 @@ def test_probe_reports_bid_ask_fields_without_orders() -> None:
     assert report["symbol"]["actual_symbol"] == "XAUUSD@"
     assert report["capability"]["status"] == "RESPONSE_RECEIVED"
     assert report["capability"]["bid_ask_status"] == "PRESENT"
+    assert report["live_timestamp_basis"]["status"] == "MEASURED"
     assert len(report["windows"]) == 2
     assert all(window["raw_rows_sha256"] for window in report["windows"])
     assert fake.order_send_calls == 0
@@ -107,6 +112,20 @@ def test_probe_reports_no_response_without_promoting_candles() -> None:
     assert report["capability"]["status"] == "NO_TICK_RESPONSE"
     assert report["capability"]["bid_ask_status"] == "ABSENT_OR_UNAVAILABLE"
     assert report["windows"][0]["status"] == "NO_RESPONSE"
+
+
+def test_equal_millisecond_rows_are_not_automatically_duplicates() -> None:
+    rows = [
+        {"time_msc": 1000, "time": 1, "bid": 2000.0, "ask": 2000.5},
+        {"time_msc": 1000, "time": 1, "bid": 2000.1, "ask": 2000.6},
+        {"time_msc": 1000, "time": 1, "bid": 2000.1, "ask": 2000.6},
+        {"time_msc": 1001, "time": 1, "bid": 2000.1, "ask": 2000.6},
+    ]
+    audit = _audit_rows(rows, ["time", "time_msc", "bid", "ask"])
+    assert audit["same_time_msc_excess_rows"] == 2
+    assert audit["same_time_msc_distinct_quote_rows"] == 2
+    assert audit["identical_full_row_excess_count"] == 1
+    assert audit["consecutive_identical_quote_state_excess_rows"] == 2
 
 
 def test_probe_reports_unknown_symbol_and_does_not_query_history() -> None:

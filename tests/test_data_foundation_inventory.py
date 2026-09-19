@@ -29,6 +29,10 @@ def test_data_gap_matrix_covers_required_families_and_status_dimensions() -> Non
         "optional_licensed_market_datasets",
     }
     assert required <= rows.keys()
+    mt5 = rows["mt5_broker_history_ticks_bid_ask"]
+    assert mt5["capability_status"] == "CAPABILITY_VERIFIED_LIMITED_HISTORY"
+    assert mt5["acquisition_status"] == "PARTIAL"
+    assert mt5["research_eligibility_status"] == "NOT_ELIGIBLE_PENDING_QUALITY"
     dimensions = {
         "acquisition_status",
         "quality_status",
@@ -44,6 +48,18 @@ def test_data_gap_matrix_covers_required_families_and_status_dimensions() -> Non
                 "RESEARCH_ELIGIBLE",
                 "QUALITY_PASSED",
             }
+
+
+def test_operator_mt5_history_report_preserves_limited_capability_boundary() -> None:
+    report = json.loads((ROOT / "data/evidence/mt5_history_capability_report.json").read_text(encoding="utf-8"))
+    assert report["capability_status"] == "CAPABILITY_VERIFIED_LIMITED_HISTORY"
+    assert report["probe"]["orders_submitted"] == 0
+    assert report["symbol"]["actual_broker_symbol"] == "XAUUSD@"
+    assert report["windows"][2]["rows"] == 4292917
+    assert report["windows"][2]["raw_rows_sha256"].endswith("5d675fad02")
+    assert report["windows"][3]["status"] == "QUERY_ERROR"
+    assert report["timestamp_assessment"]["normalization_applied"] is False
+    assert report["raw_evidence_custody"]["repository_presence"] is False
 
 
 def test_hedge_spec_is_a_gate_not_a_claim() -> None:

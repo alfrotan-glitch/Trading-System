@@ -3,13 +3,18 @@
   "as_of": "2026-09-19",
   "purpose": "Authoritative inventory of datasets required for later chronological, cost-adjusted, regime-specific hedge research. A catalog opportunity is not acquisition, a manifest is not raw evidence, and no row below grants licensing or research eligibility.",
   "status_vocabulary": {
+    "capability_status": [
+      "CAPABILITY_VERIFIED_LIMITED_HISTORY",
+      "CAPABILITY_UNVERIFIED",
+      "CAPABILITY_NOT_EXPOSED",
+      "CAPABILITY_PENDING_BOUNDARY"
+    ],
     "acquisition_status": [
       "ACQUIRED",
       "PARTIAL",
       "NOT_ACQUIRED",
       "NOT_YET_ACQUIRED",
-      "NOT_AVAILABLE_IN_CHECKOUT",
-      "CAPABILITY_UNVERIFIED"
+      "NOT_AVAILABLE_IN_CHECKOUT"
     ],
     "quality_status": [
       "MEASURED",
@@ -46,13 +51,14 @@
       "required_scope": "Current WM Markets MT5 DEMO terminal: historical broker-specific XAUUSD tick records with bid, ask, raw MT5 timestamps, normalized UTC timestamps, server offset/basis, receipt time, and provenance.",
       "instrument_or_family": ["XAUUSD"],
       "granularity": ["tick", "bid_ask"],
-      "acquisition_status": "NOT_AVAILABLE_IN_CHECKOUT",
-      "quality_status": "UNAVAILABLE",
-      "provenance_status": "NOT_AVAILABLE",
-      "licensing_status": "NOT_AVAILABLE",
-      "research_eligibility_status": "NOT_ELIGIBLE_PENDING_PROVENANCE",
-      "evidence_refs": ["docs/mt5_historical_capability_probe.md", "data/evidence/forward_observation_manifest.json"],
-      "disposition": "No MT5 Windows terminal or canonical SQLite store is available in this checkout. Historical ticks must be queried/exported from the terminal and independently inspected; candles must not be treated as tick history."
+      "capability_status": "CAPABILITY_VERIFIED_LIMITED_HISTORY",
+      "acquisition_status": "PARTIAL",
+      "quality_status": "NOT_ASSESSED",
+      "provenance_status": "QUALIFIED_PARTIAL",
+      "licensing_status": "DECLARED_NOT_VERIFIED",
+      "research_eligibility_status": "NOT_ELIGIBLE_PENDING_QUALITY",
+      "evidence_refs": ["docs/mt5_historical_capability_probe.md", "data/evidence/mt5_history_capability_report.json"],
+      "disposition": "Operator evidence confirms broker-specific copy_ticks_range responses for 1, 7, and 30 days with bid, ask, time, and time_msc; a 365-day request failed with Terminal: Call failed. Raw rows remain private and absent from this checkout, duplicate semantics and historical UTC basis still require audit, and the practical boundary is not yet established. Candles must not be treated as tick history."
     },
     {
       "dataset_id": "mt5_demo_xauusd_forward_execution_evidence",

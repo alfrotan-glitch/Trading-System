@@ -12,7 +12,10 @@ import argparse
 import contextlib
 import hashlib
 import json
+import math
 import os
+import statistics
+import time
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -74,13 +77,129 @@ def _row_projection(row: Any, fields: Iterable[str]) -> dict[str, Any]:
     return {field: _value(row, field) for field in fields}
 
 
-def _rows_digest(rows: Any, fields: list[str]) -> str:
+def _canonical_row_json(row: Any, fields: list[str]) -> str:
+    return json.dumps(_row_projection(row, fields), sort_keys=True, separators=(",", ":"), default=str)
+
+
+def _audit_rows(rows: Any, fields: list[str]) -> dict[str, Any]:
+    """Audit rows without treating equal timestamps as duplicate ticks.
+
+    MT5 responses are normally ordered by ``time_msc``.  The audit uses a
+    streaming timestamp group, so a large 30-day response does not require a
+    second database or a set containing millions of rows.  If ordering fails,
+    the non-monotonic count is reported and the result remains diagnostic-only.
+    """
     digest = hashlib.sha256()
+    previous_stamp: float | None = None
+    group_stamp: float | None = None
+    group_first_hash: str | None = None
+    group_hashes: set[str] = set()
+    group_count = 0
+    same_timestamp_groups = 0
+    same_timestamp_excess = 0
+    distinct_same_timestamp_rows = 0
+    identical_full_row_excess = 0
+    non_monotonic = 0
+    raw_time_min: float | None = None
+    raw_time_max: float | None = None
+    previous_quote_state: str | None = None
+    consecutive_identical_quote_state = 0
+    invalid_bid = invalid_ask = ask_below_bid = 0
+    zero_spread = negative_spread = 0
+    spreads_bps: list[float] = []
+
+    def finish_group() -> None:
+        nonlocal same_timestamp_groups, same_timestamp_excess
+        if group_count > 1:
+            same_timestamp_groups += 1
+            same_timestamp_excess += group_count - 1
+
     for row in rows:
-        body = json.dumps(_row_projection(row, fields), sort_keys=True, separators=(",", ":"), default=str)
+        body = _canonical_row_json(row, fields)
         digest.update(body.encode("utf-8"))
         digest.update(b"\n")
-    return digest.hexdigest()
+        row_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
+        stamp = _numeric(_value(row, "time_msc"))
+        if stamp is not None:
+            raw_time_min = stamp if raw_time_min is None else min(raw_time_min, stamp)
+            raw_time_max = stamp if raw_time_max is None else max(raw_time_max, stamp)
+            if previous_stamp is not None and stamp < previous_stamp:
+                non_monotonic += 1
+            previous_stamp = stamp
+            if stamp != group_stamp:
+                finish_group()
+                group_stamp = stamp
+                group_first_hash = row_hash
+                group_hashes = {row_hash}
+                group_count = 1
+            else:
+                group_count += 1
+                if row_hash in group_hashes:
+                    identical_full_row_excess += 1
+                else:
+                    group_hashes.add(row_hash)
+                if row_hash != group_first_hash:
+                    distinct_same_timestamp_rows += 1
+
+        bid = _numeric(_value(row, "bid"))
+        ask = _numeric(_value(row, "ask"))
+        if bid is not None and bid <= 0:
+            invalid_bid += 1
+        if ask is not None and ask <= 0:
+            invalid_ask += 1
+        if bid is not None and ask is not None:
+            if ask < bid:
+                ask_below_bid += 1
+            spread = ask - bid
+            if spread == 0:
+                zero_spread += 1
+            if spread < 0:
+                negative_spread += 1
+            if bid > 0 and ask > 0 and spread >= 0:
+                mid = (bid + ask) / 2
+                if mid > 0 and math.isfinite(mid):
+                    spreads_bps.append(spread / mid * 10000)
+
+        quote_fields = [field for field in ("bid", "ask", "last", "volume", "volume_real", "flags") if field in fields]
+        quote_state = json.dumps(_row_projection(row, quote_fields), sort_keys=True, separators=(",", ":"), default=str)
+        if quote_state == previous_quote_state:
+            consecutive_identical_quote_state += 1
+        previous_quote_state = quote_state
+    finish_group()
+
+    spread_stats: dict[str, float | int | None] = {
+        "count": len(spreads_bps),
+        "min_bps": min(spreads_bps) if spreads_bps else None,
+        "mean_bps": statistics.fmean(spreads_bps) if spreads_bps else None,
+        "median_bps": statistics.median(spreads_bps) if spreads_bps else None,
+        "p95_bps": (statistics.quantiles(spreads_bps, n=100, method="inclusive")[94] if len(spreads_bps) > 1 else None),
+        "max_bps": max(spreads_bps) if spreads_bps else None,
+    }
+    return {
+        "raw_rows_sha256": digest.hexdigest(),
+        "duplicate_semantics": {
+            "identical_full_row_excess_count": "exact canonical row repeats within a timestamp group; retained, never discarded",
+            "same_time_msc_excess_rows": "additional rows sharing a millisecond; not automatically duplicates",
+            "same_time_msc_distinct_quote_rows": "collision rows whose full payload differs from the first row in that timestamp group",
+            "consecutive_identical_quote_state_excess_rows": "adjacent repeated bid/ask/etc. state; standing quote candidate, not a duplicate tick",
+        },
+        "raw_time_msc_min": raw_time_min,
+        "raw_time_msc_max": raw_time_max,
+        "identical_full_row_excess_count": identical_full_row_excess,
+        "non_monotonic_time_msc_count": non_monotonic,
+        "same_time_msc_groups": same_timestamp_groups,
+        "same_time_msc_excess_rows": same_timestamp_excess,
+        "same_time_msc_distinct_quote_rows": distinct_same_timestamp_rows,
+        "consecutive_identical_quote_state_excess_rows": consecutive_identical_quote_state,
+        "invalid_bid_count": invalid_bid,
+        "invalid_ask_count": invalid_ask,
+        "ask_below_bid_count": ask_below_bid,
+        "zero_spread_count": zero_spread,
+        "negative_spread_count": negative_spread,
+        "spread_bps": spread_stats,
+        "price_jump_assessment": "NOT_CLASSIFIED; no jump threshold was declared",
+        "gap_assessment": "NOT_INFERRED_FROM_TICKS; no fixed tick schedule exists",
+    }
 
 
 def _numeric(value: Any) -> float | None:
@@ -161,6 +280,57 @@ def _symbol_report(mt5: Any, symbol: str) -> dict[str, Any]:
     }
 
 
+def _live_offset_report(mt5: Any, symbol: str) -> dict[str, Any]:
+    """Measure the existing QTS broker-server offset contract, read-only."""
+    getter = getattr(mt5, "copy_rates_from_pos", None)
+    if not callable(getter):
+        return {
+            "status": "UNAVAILABLE",
+            "reason": "copy_rates_from_pos unavailable; no live M1 basis check performed",
+            "historical_compatibility": "UNVERIFIED",
+        }
+    try:
+        rates = getter(symbol, getattr(mt5, "TIMEFRAME_M1", 1), 0, 1)
+        bar = rates[0] if rates else None
+        raw = _value(bar, "time") if bar is not None else None
+        bar_time = _numeric(raw)
+    except Exception as exc:  # noqa: BLE001 — basis check must not guess
+        return {
+            "status": "ERROR",
+            "reason": f"{type(exc).__name__}: {exc}",
+            "historical_compatibility": "UNVERIFIED",
+        }
+    if bar_time is None:
+        return {
+            "status": "UNAVAILABLE",
+            "reason": "latest M1 bar has no usable raw time",
+            "historical_compatibility": "UNVERIFIED",
+        }
+    if bar_time > 1e12:
+        bar_time /= 1000.0
+    now_epoch = time.time()
+    lower = bar_time - now_epoch
+    upper = lower + 60.0
+    grid = math.ceil(lower / 900.0) * 900.0
+    if not (lower <= grid < upper) or abs(grid) > 14 * 3600:
+        return {
+            "status": "UNAVAILABLE",
+            "bar_time_raw": bar_time,
+            "utc_now_epoch": now_epoch,
+            "reason": "no unambiguous 15-minute UTC offset grid point in the forming M1 window",
+            "historical_compatibility": "UNVERIFIED",
+        }
+    return {
+        "status": "MEASURED",
+        "bar_time_raw": bar_time,
+        "utc_now_epoch": now_epoch,
+        "server_utc_offset_s": float(grid),
+        "offset_basis": "measured-m1-bar",
+        "historical_compatibility": "REQUIRES_COMPARISON_WITH_HISTORICAL_RAW_TIME",
+        "note": "This measures the current live-bar basis only; it does not silently normalize historical rows.",
+    }
+
+
 def _window_report(mt5: Any, symbol: str, days: int, end_utc: datetime, flags: Any) -> dict[str, Any]:
     start_utc = end_utc - timedelta(days=days)
     request = {
@@ -194,10 +364,31 @@ def _window_report(mt5: Any, symbol: str, days: int, end_utc: datetime, flags: A
     has_bid_ask = required_present["bid"] and required_present["ask"]
     first = _row_projection(rows[0], fields) if row_count else None
     last = _row_projection(rows[-1], fields) if row_count else None
-    stamp_values = [_numeric(_value(row, "time_msc")) for row in rows] if row_count else []
-    stamp_values = [value for value in stamp_values if value is not None]
-    duplicate_stamps = len(stamp_values) - len(set(stamp_values))
-    non_monotonic = sum(1 for before, after in zip(stamp_values, stamp_values[1:], strict=False) if after < before)
+    audit = _audit_rows(rows, fields) if row_count else {
+        "raw_rows_sha256": hashlib.sha256().hexdigest(),
+        "duplicate_semantics": {
+            "identical_full_row_excess_count": "exact canonical row repeats; retained, never discarded",
+            "same_time_msc_excess_rows": "additional rows sharing a millisecond; not automatically duplicates",
+            "same_time_msc_distinct_quote_rows": "collision rows whose full payload differs from the first row in that timestamp group",
+            "consecutive_identical_quote_state_excess_rows": "adjacent repeated bid/ask/etc. state; standing quote candidate, not a duplicate tick",
+        },
+        "raw_time_msc_min": None,
+        "raw_time_msc_max": None,
+        "non_monotonic_time_msc_count": 0,
+        "same_time_msc_groups": 0,
+        "same_time_msc_excess_rows": 0,
+        "same_time_msc_distinct_quote_rows": 0,
+        "identical_full_row_excess_count": 0,
+        "consecutive_identical_quote_state_excess_rows": 0,
+        "invalid_bid_count": 0,
+        "invalid_ask_count": 0,
+        "ask_below_bid_count": 0,
+        "zero_spread_count": 0,
+        "negative_spread_count": 0,
+        "spread_bps": {"count": 0, "min_bps": None, "mean_bps": None, "median_bps": None, "p95_bps": None, "max_bps": None},
+        "price_jump_assessment": "NOT_CLASSIFIED; no jump threshold was declared",
+        "gap_assessment": "NOT_INFERRED_FROM_TICKS; no fixed tick schedule exists",
+    }
     return {
         **request,
         "status": "RESPONSE_RECEIVED_BID_ASK_PRESENT" if row_count and has_bid_ask else (
@@ -209,13 +400,9 @@ def _window_report(mt5: Any, symbol: str, days: int, end_utc: datetime, flags: A
         "bid_ask_present": has_bid_ask,
         "first_row": first,
         "last_row": last,
-        "raw_time_msc_min": min(stamp_values) if stamp_values else None,
-        "raw_time_msc_max": max(stamp_values) if stamp_values else None,
-        "duplicate_time_msc_count": duplicate_stamps,
-        "non_monotonic_time_msc_count": non_monotonic,
-        "raw_rows_sha256": _rows_digest(rows, fields),
+        **audit,
+        "duplicate_time_msc_count": audit["same_time_msc_excess_rows"],
         "timestamp_basis": "RAW_MT5_FIELDS_ONLY; no UTC normalization or broker-offset inference performed",
-        "gap_assessment": "NOT_INFERRED_FROM_TICKS; an expected tick schedule is not defined",
         "sample": {"first": first, "last": last},
     }
 
@@ -239,6 +426,7 @@ def probe_mt5_history(
         "account": _account_report(mt5),
         "terminal": {},
         "symbol": {},
+        "live_timestamp_basis": {},
         "capability": {},
         "windows": [],
     }
@@ -254,6 +442,8 @@ def probe_mt5_history(
             "community_account": getattr(terminal, "community_account", None),
         }
     report["symbol"] = _symbol_report(mt5, symbol)
+    if report["symbol"].get("status") == "AVAILABLE":
+        report["live_timestamp_basis"] = _live_offset_report(mt5, symbol)
     copy_ticks = getattr(mt5, "copy_ticks_range", None)
     if not callable(copy_ticks):
         report["capability"] = {
