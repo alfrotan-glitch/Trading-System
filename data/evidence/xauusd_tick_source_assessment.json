@@ -1,0 +1,28 @@
+{
+  "schema": "qts.public_xauusd_tick_source_assessment.v1",
+  "assessed_at_utc": "2026-09-20T00:00:00Z",
+  "decision": "DATA_BLOCKED",
+  "selected_source": {
+    "provider": "Dukascopy Bank SA public datafeed",
+    "instrument": "XAUUSD",
+    "granularity": "native tick",
+    "documented_url_pattern": "https://datafeed.dukascopy.com/datafeed/XAUUSD/{year}/{zero_based_month}/{day}/{hour}h_ticks.bi5",
+    "format": "BI5 compressed tick files; requires documented decoder",
+    "semantics_expected": "bid/ask tick records with UTC-derived timestamps, subject to source documentation and file validation",
+    "reproducibility": "date/hour URL addressability; exact downloaded-file hashes required",
+    "coverage": "public archive claims long historical coverage; no local coverage claim made because acquisition failed",
+    "license_status": "source redistribution/licensing terms not independently established in this run; raw files would remain local"
+  },
+  "attempt": {
+    "requested_window": "2025-08-06 UTC, 24 hourly files",
+    "urls_attempted": "datafeed.dukascopy.com/datafeed/XAUUSD/2025/07/06/{00..23}h_ticks.bi5",
+    "result": "NO_FILES_ACQUIRED",
+    "transport_error": "OpenSSL SSL_connect: SSL_ERROR_SYSCALL / empty HTTP reply",
+    "files_downloaded": 0,
+    "bytes_downloaded": 0
+  },
+  "validation": {"schema":"NOT_RUN","timestamps":"NOT_RUN","bid_ask_integrity":"NOT_RUN","duplicates":"NOT_RUN","ordering":"NOT_RUN","gaps":"NOT_RUN","coverage":"NOT_RUN","checksum":"NOT_RUN"},
+  "research_status": "NOT_STARTED",
+  "stop_reason": "No tick payload was obtained; no dataset may be registered or researched. The existing QTS 15-minute bar source is not substituted because it is not tick data.",
+  "capital": "NO_TRADE"
+}
