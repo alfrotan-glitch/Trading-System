@@ -56,6 +56,8 @@ export async function dispatch() {
   if (!main) return;
   if (currentHost) dispose(currentHost);
   const start = performance.now();
+  main.setAttribute("aria-busy", "true");
+  main.setAttribute("aria-label", route.page?.label ? `${route.page.label} view` : "QTS view");
   main.scrollTop = 0; // new page — scroll to top
   document.getElementById("app")?.classList.remove("nav-open");
   if (route.page?.label) document.title = `${route.page.label} · QTS Trading System`;
@@ -70,10 +72,14 @@ export async function dispatch() {
   main.focus({ preventScroll: true }); // SPA a11y: announce the new page to AT
   try {
     await route.render(host);
-    if (currentHost === host) measure("route", route.page.label, performance.now() - start);
+    if (currentHost === host) {
+      main.setAttribute("aria-busy", "false");
+      measure("route", route.page.label, performance.now() - start);
+    }
   } catch (e) {
     console.error("view render failed", e);
     if (currentHost !== host) return;
+    main.setAttribute("aria-busy", "false");
     const { errorBox } = await import("./components.js");
     if (currentHost !== host) return;
     host.replaceChildren(errorBox({

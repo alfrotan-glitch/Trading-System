@@ -24,13 +24,16 @@ from qts.lifecycle.demo_authority import DEMO_EXECUTION_DISABLED, DEMO_EXECUTION
 
 app = FastAPI(title="QTS Desktop API", version="0.1.0")
 
-# Allow desktop webview origin
+# The desktop UI uses same-origin requests and sends no cookies or bearer
+# credentials. Keep CORS permissive for an embedded/webview origin without
+# enabling credentialed wildcard CORS (which browsers reject and which would
+# make future credential-bearing endpoints unsafe by default).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 
