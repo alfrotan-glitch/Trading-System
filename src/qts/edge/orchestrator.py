@@ -254,6 +254,9 @@ depth/span, quality, costs, controls, and forward evidence.
     promo_state = PromotionLedger().get_state(strategy_id).value
     emergency = EmergencyControls()
     evidence = {
+        # Record the strategy this run actually executed. Omitting it made every
+        # later reader free to stamp a caller-supplied id onto the file.
+        "strategy_id": strategy_id,
         "dataset": {
             "manifest": {
                 **(manifest.model_dump() if hasattr(manifest, "model_dump") else manifest.dict()),

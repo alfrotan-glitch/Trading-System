@@ -27,18 +27,25 @@ export async function renderExplorer(root) {
   let v = null;
   try { v = await api.get("/api/validation/sma_breakout"); } catch { v = null; }
 
-  activity.textContent = v ? `Validation evidence loaded — context ${ctx.symbol} — self-audit below` : `No validation evidence — context ${ctx.symbol} — honest empty`;
+  const attr = v?.attribution;
+  const unattributed = attr && attr.attributed === false;
+  activity.textContent = !v
+    ? `No validation evidence — context ${ctx.symbol} — honest empty`
+    : unattributed
+      ? `Validation file on disk is not attributed to sma_breakout — ${attr.reason}`
+      : `Validation evidence loaded for ${attr?.evidence_strategy_id ?? "the requested strategy"} — context ${ctx.symbol}`;
 
-  const edge = v?.evidence?.edge_survival;
+  const edge = unattributed ? null : v?.evidence?.edge_survival;
+  const notEstablished = "not established by the loaded evidence — absence is not a pass";
   const audit = [
-    ["Did we leak information?", "NO — locked test partition, purged CPCV, embargo", true],
-    ["Did we cherry-pick?", "NO — full trial ledger preserved; selection uses pre-registered gates", true],
-    ["Did we over-search?", edge ? `CHECK — ${v.evidence?.trial_ledger?.trial_count ?? "?"} trials; DSR ${edge.dsr ?? "—"} vs required 0.95` : "no validation evidence loaded", null],
-    ["Did we reset trial counts?", "NO — N is immutable (DSR honesty)", true],
-    ["Did we reuse test set?", "NO — monotonic time, single-use partitions", true],
-    ["Are we overfit?", edge?.passed ? "controlled — perturbation gates passed" : "YES by current evidence — parameter perturbation fragile", false],
-    ["Did we under-model costs?", "NO — spread stress ×1/1.5/2 + cost break-even gate", true],
-    ["Did we assume unrealistic fills?", "NO — next-bar-open, slippage, latency, partial fills modeled", true],
+    ["Did we leak information?", notEstablished, null],
+    ["Did we cherry-pick?", notEstablished, null],
+    ["Did we over-search?", edge ? `recorded trials=${v.evidence?.trial_ledger?.trial_count ?? "not recorded"}; DSR ${edge.dsr ?? "not recorded"} — a number is not a pass` : notEstablished, null],
+    ["Did we reset trial counts?", notEstablished, null],
+    ["Did we reuse test set?", v?.evidence?.dataset?.locked_partition?.is_frozen === true && !unattributed ? "locked_partition.is_frozen=true is recorded; that is not proof the test set was unused" : notEstablished, null],
+    ["Are we overfit?", edge ? `edge_survival.passed=${edge.passed} — a gate result is not a diagnosis` : notEstablished, null],
+    ["Did we under-model costs?", v?.evidence?.cost_robustness?.status && !unattributed ? `cost_robustness.status=${v.evidence.cost_robustness.status} — status is not proof costs were adequate` : notEstablished, null],
+    ["Did we assume unrealistic fills?", notEstablished, null],
   ];
   host.appendChild(card({
     title: `Self-audit — 8 uncomfortable questions, answered from evidence — context ${ctx.symbol}`, sub: "not intention, but evidence", icon: "fileCheck",

@@ -118,7 +118,8 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
             mode = os.getenv("QTS_MT5_MODE", "MOCK")
             if mode == "MOCK":
                 return True, "MT5 MOCK — no real broker connection (correct for dev)"
-            return True, f"MT5 mode {mode}"
+            # A mode name is not a connection. This check does not probe a terminal.
+            return False, f"MT5 mode {mode!r} was not probed — a mode name is not a connection"
         except Exception as e:
             return False, str(e)
 

@@ -266,6 +266,22 @@ export async function renderValidation(root) {
 }
 
 function scorecard(strategyId, v) {
+  const attr = v.attribution;
+  if (attr && attr.attributed === false) {
+    // The file on disk is disclosed, not hidden, and is not this strategy's result.
+    return h("div", { class: "stack" },
+      banner("err", "UNATTRIBUTED — this file is not this strategy's validation", attr.reason ?? "evidence does not name this strategy", "shield"),
+      card({
+        title: "On-disk validation file — not a scorecard",
+        sub: `requested ${strategyId} · evidence strategy_id ${attr.evidence_strategy_id ?? "none"}`,
+        icon: "fileCheck",
+        body: h("div", { class: "stack" },
+          h("p", { class: "gate-note" }, "Gates below are not rendered. A file that does not name this strategy is not its pass or its block."),
+          h("details", null, h("summary", null, "Raw file — disclosed, not attributed"), tech(v.evidence ?? {}, "Raw validation file")),
+        ),
+      }),
+    );
+  }
   const ev = v.evidence ?? {};
   const edge = ev.edge_survival ?? {};
   const verdict = v.decision ?? v.verdict ?? (edge.passed ? "PASS" : "BLOCK");
@@ -289,8 +305,10 @@ function scorecard(strategyId, v) {
         gate("Edge survival (all checks)", edge.passed, "OOS + PSR + DSR + PBO + WFE + cost break-even"),
         gate("Null control rejected", ev.null_control?.rejected, `${(ev.null_control?.control_sharpes ?? []).length} null strategies`),
         gate("Placebo rejected", ev.placebo?.rejected, `${(ev.placebo?.placebo_sharpes ?? []).length} placebo tests`),
-        gate("Cost robustness", ev.cost_robustness ? true : null, ev.cost_robustness?.stress ? `stress: ${trunc(JSON.stringify(ev.cost_robustness.stress),80)}` : null),
-        gate("Locked test partition", ds.locked_partition ? true : null, "test set untouched during discovery"),
+        // Presence of an object is not a pass. cost_robustness exists on files
+        // whose own edge_survival.checks.cost is false.
+        gate("Cost robustness", edge.checks?.cost === true ? true : edge.checks?.cost === false ? false : null, ev.cost_robustness?.stress ? `stress: ${trunc(JSON.stringify(ev.cost_robustness.stress),80)}` : "no explicit cost check"),
+        gate("Locked test partition", ds.locked_partition?.is_frozen === true ? true : ds.locked_partition?.is_frozen === false ? false : null, `is_frozen=${ds.locked_partition?.is_frozen ?? "not recorded"} — a partition object is not proof the test set was unused`),
         gate("Dataset quality", ds.quality_passed, `${(ds.quality_checks ?? []).length} ingestion checks`),
       ),
     }),

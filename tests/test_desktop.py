@@ -47,14 +47,27 @@ def test_ui_backend_connection():
         assert r.status_code == 200, f"{endpoint} failed {r.text[:200]}"
 
 
-def test_state_restoration():
+def test_state_restoration(tmp_path):
+    """A readable store is restored, and reading it twice is not loss.
+
+    This used to call ``restore_state()`` with no path, so it passed only when
+    a leftover ``data/sqlite/qts.db`` happened to exist in the workspace and
+    failed in a clean clone. It now owns its database.
+    """
+    from qts.db import connect as db_connect
     from qts.desktop.state import restore_state, verify_no_state_loss
 
-    before = restore_state()
-    after = restore_state()
+    db = tmp_path / "qts.db"
+    with db_connect(db) as con:
+        con.execute("CREATE TABLE audit_events (event_id TEXT PRIMARY KEY)")
+        con.execute("INSERT INTO audit_events VALUES ('e1')")
+        con.commit()
+    before = restore_state(db)
+    after = restore_state(db)
     ok, msg = verify_no_state_loss(before, after)
     assert ok, msg
     assert after["restored"] is True
+    assert after["audit_count"] == 1
 
 
 def test_suspension_persistence():
@@ -711,3 +724,181 @@ def test_live_status_error_path_keeps_the_same_contract(tmp_path, monkeypatch):
     assert not any(j["checklist"].values()), "an unevaluable gate must not satisfy any item"
     assert all("could not be evaluated" in d for d in j["checklist_detail"].values())
     assert any("gate dependency unavailable" in r for r in j["blocked_reasons"])
+
+
+def test_scorecard_does_not_stamp_a_requested_strategy_onto_unattributed_evidence(tmp_path, monkeypatch):
+    """``/api/strategies/{id}/scorecard`` used to write the URL strategy id into
+    whatever ``edge_validation.json`` contained, then build a scorecard as if
+    that file were that strategy's evidence. The committed file records no
+    strategy_id. A caller-supplied id is not attribution.
+    """
+    monkeypatch.chdir(tmp_path)
+    ev_dir = tmp_path / "data" / "evidence"
+    ev_dir.mkdir(parents=True)
+    (ev_dir / "edge_validation.json").write_text(
+        json.dumps({"edge_survival": {"passed": True, "psr": 0.99}, "dataset": {"manifest": {"instrument": "XAUUSD"}}}),
+        encoding="utf-8",
+    )
+    r = _client().get("/api/strategies/sma_breakout/scorecard")
+    assert r.status_code == 409, r.text
+    body = r.json()
+    detail = body.get("detail", body)
+    assert detail["attributed"] is False
+    assert detail["evidence_strategy_id"] is None
+    assert "strategy_id" not in json.dumps(detail) or detail.get("evidence_strategy_id") is None
+    # the requested id must not come back as the evidence's identity
+    assert detail.get("evidence_strategy_id") != "sma_breakout"
+
+
+def test_scorecard_refuses_another_strategys_evidence(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    ev_dir = tmp_path / "data" / "evidence"
+    ev_dir.mkdir(parents=True)
+    (ev_dir / "edge_validation.json").write_text(
+        json.dumps({"strategy_id": "other_strategy", "edge_survival": {"passed": True}}),
+        encoding="utf-8",
+    )
+    r = _client().get("/api/strategies/sma_breakout/scorecard")
+    assert r.status_code == 409, r.text
+    detail = r.json()["detail"]
+    assert detail["evidence_strategy_id"] == "other_strategy"
+    assert detail["requested_strategy_id"] == "sma_breakout"
+    assert detail["attributed"] is False
+
+
+def test_validation_endpoint_does_not_present_unattributed_file_as_the_strategy(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    ev_dir = tmp_path / "data" / "evidence"
+    ev_dir.mkdir(parents=True)
+    (ev_dir / "edge_validation.json").write_text(
+        json.dumps({"edge_survival": {"passed": True, "dsr": 0.2}, "conclusion": "BLOCKED_INSUFFICIENT_DATA"}),
+        encoding="utf-8",
+    )
+    j = _client().get("/api/validation/sma_breakout").json()
+    assert j["attribution"]["attributed"] is False
+    assert j["attribution"]["evidence_strategy_id"] is None
+    assert j["scorecard"] is None
+    assert j["decision"] == "UNATTRIBUTED"
+    # the file is disclosed, not hidden
+    assert j["evidence"]["conclusion"] == "BLOCKED_INSUFFICIENT_DATA"
+    assert j["evidence"].get("strategy_id") is None
+
+
+def test_strategy_list_does_not_copy_validation_by_symbol(tmp_path, monkeypatch):
+    """A passing file for one strategy, or an unattributed file on the same
+    symbol, must not mark a different registry record VALIDATED."""
+    monkeypatch.chdir(tmp_path)
+    from qts.research.registry import StrategyRecord, StrategyRegistry
+
+    StrategyRegistry().register(
+        StrategyRecord(
+            strategy_id="not_the_validated_one",
+            name="not validated",
+            hypothesis="symbol match is not strategy identity",
+            data_manifest="v1",
+            feature_definition={"x": 1},
+            parameter_definition={"p": 1},
+            execution_assumptions={"mode": "research"},
+            risk_assumptions={"max": 1},
+            symbol="XAUUSD",
+        )
+    )
+    ev_dir = tmp_path / "data" / "evidence"
+    ev_dir.mkdir(parents=True)
+    (ev_dir / "edge_validation.json").write_text(
+        json.dumps(
+            {
+                "strategy_id": "some_other_strategy",
+                "edge_survival": {"passed": True, "psr": 0.99, "dsr": 0.99, "pbo": 0.01},
+                "dataset": {"manifest": {"instrument": "XAUUSD"}},
+                "generated_at": "2020-01-01T00:00:00+00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
+    rows = _client().get("/api/strategies").json()
+    row = next(r for r in rows if r["strategy_id"] == "not_the_validated_one")
+    assert row["decision"] != "VALIDATED"
+    assert "dsr" not in row
+    assert "oos_sharpe" not in row
+
+
+def test_unattributed_pass_does_not_satisfy_live_validated_edge(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    ev_dir = tmp_path / "data" / "evidence"
+    ev_dir.mkdir(parents=True)
+    (ev_dir / "edge_validation.json").write_text(
+        json.dumps({"edge_survival": {"passed": True}, "forward": {"signals": 50}}),
+        encoding="utf-8",
+    )
+    j = _client().get("/api/live/status").json()
+    assert j["checklist"]["validated_edge"] is False
+    assert "strategy_id" in j["checklist_detail"]["validated_edge"]
+    # forward.signals on an unattributed validation file is not forward observation
+    assert j["checklist"]["forward_observation"] is False
+
+
+def test_shadow_does_not_invent_divergence_reasons(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    ev = tmp_path / "data" / "evidence"
+    ev.mkdir(parents=True)
+    (ev / "shadow_intents.json").write_text(json.dumps({"intents_sample": [{"price": 1.0}]}), encoding="utf-8")
+    (ev / "paper_trades.json").write_text(json.dumps({"fills": [{"price": 2.0}]}), encoding="utf-8")
+    j = _client().get("/api/shadow").json()
+    blob = json.dumps(j["reasons"])
+    assert "spread limit" not in blob
+    assert "risk veto" not in blob
+    assert j["reasons"]["status"] == "UNAVAILABLE"
+
+
+def test_startup_health_does_not_pass_an_unprobed_mt5_mode(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("QTS_MT5_MODE", "LIVE")
+    from qts.desktop.health import startup_health_check
+
+    health = startup_health_check()
+    mt5 = next(c for c in health["checks"] if c["name"] == "verify_account_MT5")
+    assert mt5["passed"] is False
+    assert "not probed" in mt5["detail"]
+
+
+def test_restore_state_reads_the_real_audit_and_kill_tables(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from qts.db import connect as db_connect
+    from qts.desktop.state import restore_state, verify_no_state_loss
+
+    db = tmp_path / "data" / "sqlite" / "qts.db"
+    db.parent.mkdir(parents=True)
+    with db_connect(db) as con:
+        con.execute(
+            "CREATE TABLE audit_events (event_id TEXT PRIMARY KEY, event_type TEXT, event_time TEXT,"
+            " recorded_at TEXT, source TEXT, payload TEXT, code_version TEXT, data_version TEXT)"
+        )
+        con.execute("INSERT INTO audit_events VALUES ('e1','NO_TRADE','t','t','s','{}','c',NULL)")
+        con.execute("CREATE TABLE risk_state (k INTEGER PRIMARY KEY, killed INTEGER, reason TEXT, updated_at TEXT)")
+        con.execute("INSERT INTO risk_state VALUES (1,1,'halt','t')")
+        con.execute(
+            "CREATE TABLE reconcile_state (k INTEGER PRIMARY KEY, suspended INTEGER, reason TEXT, updated_at TEXT)"
+        )
+        con.execute("INSERT INTO reconcile_state VALUES (1,1,'drift','t')")
+        con.commit()
+
+    info = restore_state(db)
+    assert info["restored"] is True
+    assert info["audit_count"] == 1
+    assert info["killed"] is True
+    assert info["suspended"] is True
+    assert "audit_log" not in json.dumps(info)
+    assert info.get("read_error") is None
+
+    # a second read of the same store is not loss
+    ok, msg = verify_no_state_loss(info, restore_state(db))
+    assert ok, msg
+
+    # clearing the durable kill is loss, not "state preserved"
+    with db_connect(db) as con:
+        con.execute("DELETE FROM risk_state")
+        con.commit()
+    ok, msg = verify_no_state_loss(info, restore_state(db))
+    assert ok is False
+    assert "kill" in msg

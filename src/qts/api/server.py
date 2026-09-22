@@ -48,6 +48,47 @@ def _db_path() -> Path:
     return Path("data/sqlite/qts.db")
 
 
+def _evidence_strategy_id(ev: dict[str, Any]) -> str | None:
+    """Strategy identity recorded IN the evidence. Never inferred.
+
+    A caller-supplied id, a URL path, or a matching instrument symbol is not
+    attribution. An absent or blank ``strategy_id`` means the file does not
+    name a strategy.
+    """
+    sid = ev.get("strategy_id") if isinstance(ev, dict) else None
+    if isinstance(sid, str) and sid.strip():
+        return sid.strip()
+    return None
+
+
+def _evidence_attribution(ev: dict[str, Any], requested: str) -> dict[str, Any]:
+    """Whether ``ev`` is validation of ``requested``, and why not if it isn't."""
+    found = _evidence_strategy_id(ev)
+    if found is None:
+        return {
+            "attributed": False,
+            "requested_strategy_id": requested,
+            "evidence_strategy_id": None,
+            "reason": (
+                "evidence file does not record a strategy_id; it cannot be treated as "
+                "validation of the requested strategy"
+            ),
+        }
+    if found != requested:
+        return {
+            "attributed": False,
+            "requested_strategy_id": requested,
+            "evidence_strategy_id": found,
+            "reason": f"evidence strategy_id={found!r} does not match requested {requested!r}",
+        }
+    return {
+        "attributed": True,
+        "requested_strategy_id": requested,
+        "evidence_strategy_id": found,
+        "reason": "evidence strategy_id matches the request",
+    }
+
+
 def _reconciliation_status() -> tuple[bool, str, str]:
     """(healthy, status, detail) from the DURABLE reconcile-suspension row.
 
@@ -333,7 +374,9 @@ def list_strategies() -> list[dict[str, Any]]:
                 ev_path = Path("data/evidence/edge_validation.json")
                 if ev_path.exists():
                     ev = json.loads(ev_path.read_text(encoding="utf-8"))
-                    if ev.get("dataset", {}).get("manifest", {}).get("instrument") == r.symbol:
+                    # Symbol match is not strategy identity. Metrics are copied
+                    # only when the file itself names this strategy_id.
+                    if _evidence_strategy_id(ev) == r.strategy_id:
                         es = ev.get("edge_survival", {})
                         d["oos_sharpe"] = es.get("psr")
                         d["dsr"] = es.get("dsr")
@@ -342,6 +385,7 @@ def list_strategies() -> list[dict[str, Any]]:
                         d["cost_tolerance"] = es.get("cost_break_even_bps")
                         d["last_validation"] = ev.get("generated_at")
                         d["decision"] = "BLOCKED" if not es.get("passed") else "VALIDATED"
+                        d["evidence_strategy_id"] = r.strategy_id
                     else:
                         d["decision"] = r.lifecycle_state
                 else:
@@ -371,12 +415,18 @@ def strategy_scorecard(strategy_id: str) -> dict[str, Any]:
     if not ev_path.exists():
         raise HTTPException(404, "no evidence")
     ev = json.loads(ev_path.read_text(encoding="utf-8"))
+    attribution = _evidence_attribution(ev, strategy_id)
+    if not attribution["attributed"]:
+        # Do not stamp the URL id onto the file and do not build a scorecard
+        # that would present another strategy's (or nobody's) evidence as this
+        # strategy's result.
+        raise HTTPException(409, attribution)
     from qts.edge.scorecard import EdgeScorecard
 
-    # Inject strategy_id if not in evidence
-    ev["strategy_id"] = strategy_id
     sc = EdgeScorecard.from_evidence(ev)
-    return sc.to_dict()
+    out = sc.to_dict()
+    out["attribution"] = attribution
+    return out
 
 
 @app.get("/api/research/campaigns")
@@ -439,7 +489,16 @@ def validation_detail(strategy_id: str) -> dict[str, Any]:
         "expectancy": "Net expectancy = win_rate*avg_win - loss_rate*avg_loss - costs",
         "economic_edge": "Remaining edge after conservative costs + uncertainty + model penalty must be >0 and >20% cost",
     }
-    return {"evidence": ev, "definitions": definitions, "scorecard": ev.get("edge_survival", {})}
+    attribution = _evidence_attribution(ev, strategy_id)
+    return {
+        "evidence": ev,
+        "definitions": definitions,
+        # An unattributed or mismatched file is disclosed, not hidden, and is
+        # not presented as this strategy's scorecard.
+        "scorecard": ev.get("edge_survival", {}) if attribution["attributed"] else None,
+        "attribution": attribution,
+        "decision": "ATTRIBUTED" if attribution["attributed"] else "UNATTRIBUTED",
+    }
 
 
 @app.get("/api/paper")
@@ -494,7 +553,14 @@ def shadow_center() -> dict[str, Any]:
         "would_be_trades": shadow.get("intents_sample", [])[:10],
         "estimated_fills": shadow.get("would_be_fills", [])[:10] if isinstance(shadow, dict) else [],
         "skipped_trades": shadow.get("skipped", [])[:10] if isinstance(shadow, dict) else [],
-        "reasons": ["spread limit", "risk veto"] if disc else [],
+        # Divergence reasons are not inferred. The comparison result does not
+        # record why intents and fills differ; inventing "spread limit" / "risk
+        # veto" turned every comparison into a fabricated explanation.
+        "reasons": {
+            "status": "UNAVAILABLE",
+            "value": None,
+            "reason": "the comparison does not record why intents and fills diverged; reasons are not inferred",
+        },
         "shadow_vs_paper_discrepancy": disc,
     }
 
@@ -590,7 +656,8 @@ def risk_center() -> dict[str, Any]:
     if not blocked_reasons:
         try:
             ev = json.loads(Path("data/evidence/edge_validation.json").read_text(encoding="utf-8"))
-            if not ev.get("edge_survival", {}).get("passed"):
+            # A passing file that does not name a strategy is not a validated edge.
+            if not (_evidence_strategy_id(ev) and ev.get("edge_survival", {}).get("passed")):
                 blocked_reasons.append("NO_VALIDATED_EDGE")
         except Exception:
             blocked_reasons.append("NO_VALIDATED_EDGE")
@@ -776,12 +843,35 @@ def live_status() -> dict[str, Any]:
 
         try:
             ev = json.loads(Path("data/evidence/edge_validation.json").read_text(encoding="utf-8"))
-            if ev.get("edge_survival", {}).get("passed"):
+            sid = _evidence_strategy_id(ev)
+            if sid and ev.get("edge_survival", {}).get("passed"):
                 checklist["validated_edge"] = True
-                checklist_detail["validated_edge"] = "edge_survival.passed=true in data/evidence/edge_validation.json"
-            if ev.get("forward", {}).get("signals", 0) >= 10:
+                checklist_detail["validated_edge"] = (
+                    f"edge_survival.passed=true for strategy_id={sid!r} in data/evidence/edge_validation.json"
+                )
+            elif ev.get("edge_survival", {}).get("passed"):
+                checklist_detail["validated_edge"] = (
+                    "edge_survival.passed=true but the file records no strategy_id — "
+                    "unattributed evidence is not a validated edge"
+                )
+            else:
+                checklist_detail["validated_edge"] = "edge_survival.passed is not true"
+            # forward.signals on this validation file is not a forward-observation
+            # record. The producer writes observation counts under a different
+            # shape, and an unattributed file must not satisfy the item by a
+            # caller-placed integer.
+            forward = ev.get("forward") if isinstance(ev.get("forward"), dict) else {}
+            forward_sid = _evidence_strategy_id(forward) or sid
+            signals = forward.get("signals")
+            if forward_sid and isinstance(signals, int) and signals >= 10 and forward.get("status") != "UNAVAILABLE":
                 checklist["forward_observation"] = True
-                checklist_detail["forward_observation"] = f"forward.signals={ev['forward']['signals']} (>=10)"
+                checklist_detail["forward_observation"] = (
+                    f"forward.signals={signals} (>=10) for strategy_id={forward_sid!r}"
+                )
+            else:
+                checklist_detail["forward_observation"] = (
+                    f"no attributed forward-observation record (strategy_id={forward_sid!r}, signals={signals!r})"
+                )
         except Exception as e:
             checklist_detail["validated_edge"] = f"edge_validation evidence unreadable: {type(e).__name__}: {e}"
             checklist_detail["forward_observation"] = checklist_detail["validated_edge"]
@@ -897,11 +987,16 @@ def notifications() -> list[dict[str, Any]]:
     with contextlib.suppress(Exception):
         ev = json.loads(Path("data/evidence/edge_validation.json").read_text(encoding="utf-8"))
         if not ev.get("edge_survival", {}).get("passed"):
+            sid = _evidence_strategy_id(ev)
             alerts.append(
                 {
                     "level": "warning",
                     "title": "Validation failure",
-                    "detail": "Current strategy BLOCKED — keep NO_TRADE",
+                    "detail": (
+                        f"strategy {sid} validation did not pass — keep NO_TRADE"
+                        if sid
+                        else "validation file on disk did not pass and does not name a strategy — not a current-strategy verdict"
+                    ),
                     "persistent": False,
                 }
             )
