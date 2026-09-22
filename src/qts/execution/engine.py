@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import sqlite3
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -44,25 +45,17 @@ class OrderManager:
         self.idempotency = idempotency
 
     def submit(self, intent: OrderIntent) -> Order:
-        # persistent idempotency check
-        if self.idempotency and self.idempotency.seen(intent.client_order_id):
-            # return existing if we have it, else create a stub REJECT to avoid double-send
-            if intent.client_order_id in self.orders:
-                return self.orders[intent.client_order_id]
-            # unknown but seen before – treat as duplicate, do not create new economic order
-            # return a synthetic REJECTED order to signal duplicate
-            # but for idempotency we return existing order if possible; here create PENDING that will be vetoed
-            # Instead we record and return existing
-            existing = self.orders.get(intent.client_order_id)
-            if existing:
-                return existing
-            # if not in memory but persisted, create a PENDING that will be recognized as duplicate
-            # we still create order but mark as duplicate – caller should treat as no new order
-            # To ensure ONE economic order, we return a dummy that won't be submitted again
-            # So we create order but flag it; for now just create and return
-            pass
         if intent.client_order_id in self.orders:
             return self.orders[intent.client_order_id]
+        # Persistent idempotency check. The durable store can know an id this
+        # process does not (restart). That case previously fell through an
+        # unfinished branch (a bare ``pass`` behind comments saying "do not
+        # create new economic order") and created a FRESH PENDING order with a
+        # new order_id — a duplicate economic order for an id already recorded
+        # as, e.g., FILLED. It is now restored from the persisted status and
+        # returned without any new submission path.
+        if self.idempotency and self.idempotency.seen(intent.client_order_id):
+            return self._restore_persisted_duplicate(intent)
         order = Order(
             order_id=uuid7(),
             client_order_id=intent.client_order_id,
@@ -86,6 +79,52 @@ class OrderManager:
                         "client_order_id": order.client_order_id,
                         "state": order.state.value,
                         "strategy_id": order.strategy_id,
+                    },
+                )
+            )
+        return order
+
+    def _restore_persisted_duplicate(self, intent: OrderIntent) -> Order:
+        """Rebuild the order for an id the DURABLE store already knows.
+
+        Never creates a new economic order and never returns a fresh PENDING:
+        the restored state is the persisted one, so a duplicate submission
+        after restart cannot be mistaken for a new order by a caller. An
+        unparseable/absent persisted status restores as REJECTED (fail closed);
+        AMBIGUOUS is preserved because it must not auto-heal without reconcile.
+        """
+        persisted_status = self.idempotency.get_status(intent.client_order_id) if self.idempotency else None
+        try:
+            restored_state = OrderState(persisted_status) if persisted_status else OrderState.REJECTED
+        except ValueError:
+            restored_state = OrderState.REJECTED
+        order = Order(
+            order_id=intent.client_order_id,
+            client_order_id=intent.client_order_id,
+            instrument=intent.instrument,
+            side=intent.side,
+            quantity=intent.quantity,
+            order_type=intent.order_type,
+            limit_price=intent.limit_price,
+            stop_price=intent.stop_price,
+            state=restored_state,
+            strategy_id=intent.strategy_id,
+            reject_reason="duplicate-persistent-ambiguous"
+            if restored_state is OrderState.AMBIGUOUS
+            else "duplicate-persistent",
+        )
+        self.orders[intent.client_order_id] = order
+        if self.audit:
+            self.audit.emit(
+                DomainEvent(
+                    event_type=EventType.ORDER_EVENT,
+                    payload={
+                        "client_order_id": intent.client_order_id,
+                        "duplicate": True,
+                        "restored": True,
+                        "persistent": True,
+                        "existing_state": restored_state.value,
+                        "persisted_status": persisted_status,
                     },
                 )
             )
@@ -311,10 +350,28 @@ class ExecutionEngine:
             con.commit()
 
     def _load_reconcile_suspend(self) -> tuple[bool, str | None]:
-        with contextlib.suppress(Exception), db_connect(self._db_path) as con:
-            row = con.execute("SELECT suspended, reason FROM reconcile_state WHERE k=1").fetchone()
-            if row:
-                return bool(row[0]), row[1]
+        """Restore the durable suspension flag — FAIL CLOSED on a read error.
+
+        Every exception used to be suppressed and ``(False, None)`` returned, so
+        a locked, corrupt or otherwise unreadable suspension store silently
+        restarted the engine as HEALTHY and defeated the durable-suspend
+        recovery guarantee the live gate claims to check. Now:
+
+        * a recorded row is restored exactly;
+        * "no such table" honestly means no suspension was ever persisted;
+        * any other read failure is treated as SUSPENDED.
+        """
+        try:
+            with db_connect(self._db_path) as con:
+                row = con.execute("SELECT suspended, reason FROM reconcile_state WHERE k=1").fetchone()
+        except sqlite3.OperationalError as e:
+            if "no such table" in str(e).lower():
+                return False, None
+            return True, f"reconcile suspend state unreadable — fail closed ({type(e).__name__}: {e})"
+        except Exception as e:
+            return True, f"reconcile suspend state unreadable — fail closed ({type(e).__name__}: {e})"
+        if row:
+            return bool(row[0]), row[1]
         return False, None
 
     def _persist_reconcile_suspend(self, suspended: bool, reason: str | None) -> None:

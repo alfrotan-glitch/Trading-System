@@ -180,13 +180,36 @@ def test_state_survives_restart_as_disabled_policy_state(tmp_path: Path):
 
 
 def test_readiness_age_seconds_uses_report_timestamp():
-    from qts.lifecycle.demo_authority import readiness_age_seconds
+    import math
+
+    from qts.lifecycle.demo_authority import REVERIFY_TTL_S, readiness_age_seconds
 
     rpt = {"timestamp": datetime.now(UTC).isoformat()}
     assert readiness_age_seconds(rpt) < 5.0
     old = {"timestamp": (datetime.now(UTC) - timedelta(seconds=999)).isoformat()}
     assert 998 < readiness_age_seconds(old) < 1005
-    assert readiness_age_seconds({}) == 0.0
+    # FAIL CLOSED. Undated or unparseable evidence has NO provable age, so it
+    # must be infinitely old — never "just verified". This helper used to
+    # return 0.0 for a missing timestamp, which made the least trustworthy
+    # possible report look like the freshest possible one, and the old
+    # assertion `readiness_age_seconds({}) == 0.0` enshrined that trap.
+    for undated in (
+        {},
+        {"timestamp": None},
+        {"timestamp": ""},
+        {"timestamp": "not-a-timestamp"},
+        {"timestamp": 12345},
+        "not-a-dict",
+        None,
+    ):
+        age = readiness_age_seconds(undated)
+        assert age == math.inf
+        # the operative consequence: always beyond the re-verify TTL, so
+        # permission can never be assumed from undated evidence
+        assert age > REVERIFY_TTL_S
+    # a naive timestamp is read as UTC, never as local time
+    naive = {"timestamp": (datetime.now(UTC) - timedelta(seconds=999)).replace(tzinfo=None).isoformat()}
+    assert 998 < readiness_age_seconds(naive) < 1005
 
 
 # ---------------------------------------------------------------------------

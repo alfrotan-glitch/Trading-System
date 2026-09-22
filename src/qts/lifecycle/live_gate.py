@@ -172,6 +172,16 @@ def _lineage_checked_evidence(candidates: list[Path], expected_mode: str, requir
         if missing_lineage:
             reasons.append(f"{p}: lacks lineage {missing_lineage} — regenerate with current CLI")
             continue
+        # A code identity that could not be resolved is not lineage. The
+        # lineage contract states results that cannot be traced to a code
+        # version are not promotion-grade, so "0.1.0+unknown" (a packaged
+        # build with no resolvable source tree) must not pass as traced.
+        if "unknown" in str(data["code_version"]).lower():
+            reasons.append(
+                f"{p}: code_version={data['code_version']!r} is not a traceable code identity — "
+                "regenerate inside a resolvable source tree"
+            )
+            continue
         try:
             generated = datetime.fromisoformat(str(data["generated_at"]))
             age_days = (datetime.now(UTC) - generated).total_seconds() / 86400.0
@@ -228,10 +238,16 @@ def check_audit_evidence() -> tuple[bool, str]:
             return False, "audit log empty"
         # Check for required event types
         types = {e.event_type.value for e in events}
-        # Need at least some of these
+        # At least one decision-bearing event type must actually be present.
+        # This requirement was computed and then DISCARDED (the result was
+        # bound to `_has` and the function returned True unconditionally), so
+        # any five audit events at all satisfied the LIVE gate's audit-evidence
+        # prerequisite.
         needed = {"OrderEvent", "Fill", "NoTrade", "ReconcileReport"}
-        _has = any(n in str(types) for n in needed)
-        return True, f"audit evidence present: {types}"
+        present = sorted(needed & types)
+        if not present:
+            return False, f"audit evidence lacks any decision-bearing event {sorted(needed)} — found {sorted(types)}"
+        return True, f"audit evidence present: {present} (observed types: {sorted(types)})"
     except Exception as e:
         return False, f"audit check failed: {e}"
 
@@ -355,20 +371,37 @@ def check_symbol_spec() -> tuple[bool, str]:
 
 
 def check_reconciliation_health() -> tuple[bool, str]:
+    """No unresolved reconcile suspension in the durable state.
+
+    A missing ``reconcile_state`` table means no ExecutionEngine has ever
+    persisted suspension state — honestly "nothing suspended", not a failure.
+    Previously that benign case raised and was reported as a gate failure
+    whenever another component had created ``qts.db`` first, so the result
+    depended on which subsystem happened to touch the database.
+
+    ONLY "no such table" is benign. Every other read failure — a locked store,
+    a damaged page, a permission error — fails CLOSED, because "could not read
+    the suspension flag" must never be reported as "not suspended".
+
+    The structural reconcile capability itself is asserted separately by
+    :func:`check_reconciliation`; this check is the durable-state probe.
+    """
+    import sqlite3
+    from pathlib import Path
+
+    db = Path("data/sqlite/qts.db")
+    if not db.exists():
+        return True, "reconciliation health OK — no qts.db, so no recorded suspension"
     try:
-        import inspect
-        from pathlib import Path
-
-        from qts.execution.engine import ExecutionEngine
-
-        _src = inspect.getsource(ExecutionEngine.reconcile)
-        # Already checked in check_reconciliation, but also check no unresolved suspend
-        db = Path("data/sqlite/qts.db")
-        if db.exists():
-            with db_connect(db) as con:
+        with db_connect(db) as con:
+            try:
                 row = con.execute("SELECT suspended FROM reconcile_state WHERE k=1").fetchone()
-                if row and row[0]:
-                    return False, f"unresolved SUSPENDED in {db} — must heal"
+            except sqlite3.OperationalError as e:
+                if "no such table" in str(e).lower():
+                    return True, f"reconciliation health OK — no reconcile_state table recorded ({e})"
+                return False, f"reconcile suspension state unreadable — fail closed ({type(e).__name__}: {e})"
+        if row and row[0]:
+            return False, f"unresolved SUSPENDED in {db} — must heal"
         return True, "reconciliation health OK, no unresolved suspension"
     except Exception as e:
         return False, f"reconcile health failed: {e}"
@@ -376,20 +409,26 @@ def check_reconciliation_health() -> tuple[bool, str]:
 
 def check_validation_evidence() -> tuple[bool, str]:
     try:
-        from pathlib import Path
-
-        # Check that validation evidence exists (backtest + validation)
-        # We emit VALIDATION audit events; also check that at least one validation run exists
+        # Check that validation evidence exists (backtest + validation).
+        # VALIDATION outcomes are emitted as audit events; a validation run
+        # must be traceable, not merely present on disk.
         from qts.observability.audit import SqliteAuditLog
 
         log = SqliteAuditLog()
         events = log.query(limit=50)
-        has_validation = any("VALIDATION" in str(e.payload) for e in events)
-        # Also accept presence of paper/shadow as validation evidence fallback
-        paper = Path("data/evidence/paper_trades.json").exists()
-        if has_validation or paper:
-            return True, "validation evidence present (audit VALIDATION or paper)"
-        return False, "validation evidence missing — run `qts validate` and `qts run --mode paper`"
+        validation_events = [e for e in events if "VALIDATION" in str(e.payload)]
+        if validation_events:
+            return True, f"validation evidence present: {len(validation_events)} VALIDATION audit event(s)"
+        # A paper artifact on disk is NOT validation evidence. Bare file
+        # existence is exactly what _lineage_checked_evidence rejects
+        # (finding #22) — and data/evidence/paper_trades.json is committed, so
+        # the old `.exists()` fallback made this gate pass in every clone
+        # regardless of whether validation ever ran. Fall back to the
+        # lineage-checked paper gate so one provenance standard applies.
+        ok, detail = check_paper_evidence()
+        if ok:
+            return True, f"validation evidence present via lineage-checked paper evidence — {detail}"
+        return False, f"validation evidence missing — run `qts validate` and `qts run --mode paper` ({detail})"
     except Exception as e:
         return False, f"validation evidence check failed: {e}"
 

@@ -37,18 +37,23 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
         except Exception as e:
             return False, f"state load failed: {e}"
 
-    # 2 suspension
+    # 2 suspension — the DURABLE kill-switch authority (the same flag
+    # RiskEngine.pre_trade enforces). The old probe called a method that did
+    # not exist and silently fell back to False, so an ACTIVE kill switch was
+    # reported as "suspension state healthy" and system_status could never
+    # become "Suspended".
     def check_suspension():
         try:
             from qts.risk.engine import RiskEngine, RiskLimits
 
-            eng = RiskEngine(RiskLimits())
-            killed = eng.is_killed() if hasattr(eng, "is_killed") else False
-            if killed:
-                return False, "kill switch active — trading suspended"
-            return True, "suspension state healthy"
+            state = RiskEngine(RiskLimits()).kill_state()
+            if state.get("killed"):
+                reason = state.get("reason") or "no reason recorded"
+                return False, f"kill switch active — trading suspended ({reason})"
+            return True, f"suspension state healthy (source={state.get('source')})"
         except Exception as e:
-            return True, f"suspension check soft pass: {e}"
+            # Fail closed: an unreadable kill-switch state is treated as active.
+            return False, f"kill switch state unreadable — fail closed: {type(e).__name__}: {e}"
 
     # 3 pending orders
     def check_pending():
@@ -62,7 +67,8 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
                 return False, f"{len(ambiguous)} ambiguous orders require reconciliation"
             return True, "pending/ambiguous orders none"
         except Exception as e:
-            return True, f"pending check: {e}"
+            # Fail closed: unverified pending/ambiguous state is not clean state.
+            return False, f"pending/ambiguous order state unreadable: {type(e).__name__}: {e}"
 
     # 4 data
     def check_data():
@@ -129,7 +135,9 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
                 return False, "reconciliation drift previously detected — requires review"
             return True, "reconciliation healthy"
         except Exception as e:
-            return True, f"recon check soft: {e}"
+            # Fail closed: reconciliation health that could not be measured is
+            # never reported as healthy.
+            return False, f"reconciliation health unreadable: {type(e).__name__}: {e}"
 
     _check("load_durable_state", check_state)
     _check("restore_suspension", check_suspension)
@@ -141,7 +149,15 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
 
     results["overall"] = all(c["passed"] for c in results["checks"])
     results["system_status"] = "Running" if results["overall"] else "Blocked"
-    if any("kill" in c["detail"].lower() for c in results["checks"]):
+    suspension = next((c for c in results["checks"] if c["name"] == "restore_suspension"), None)
+    # The named suspension check is the authority for "Suspended" — it is read
+    # directly rather than inferred from wording. The keyword scan is kept only
+    # as a backstop so that a kill condition reported by any OTHER check still
+    # wins the conservative status; both directions fail safe.
+    kill_reported = (suspension is not None and not suspension["passed"]) or any(
+        "kill" in c["detail"].lower() for c in results["checks"]
+    )
+    if kill_reported:
         results["system_status"] = "Suspended"
     return results
 

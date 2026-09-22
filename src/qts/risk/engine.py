@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -114,6 +115,8 @@ class RiskEngine:
         self.limits = limits
         self.db_path = Path(db_path)
         self.persist_kill = persist_kill
+        #: Set when the durable kill flag could not be read (fail closed to True).
+        self._kill_read_error: str | None = None
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         if self.persist_kill:
             self._init_db()
@@ -135,7 +138,58 @@ class RiskEngine:
 
     @property
     def killed(self) -> bool:
+        """The DURABLE kill-switch flag — the one ``pre_trade`` enforces.
+
+        When ``persist_kill`` is active the persisted row is authoritative and
+        is re-read on access. The kill switch can be raised by ANOTHER process
+        (``qts risk kill``, ``ExecutionEngine.handle_kill``) after this engine
+        was constructed; a long-lived engine must never keep trading against a
+        stale in-memory ``False``. A read failure is treated as KILLED (fail
+        closed) and surfaced through :meth:`kill_state`.
+
+        When ``persist_kill`` is disabled (isolated research/backtest runs) the
+        flag stays purely local by design — those runs must neither read nor
+        disturb the durable production kill switch.
+        """
+        if not self.persist_kill:
+            return self._killed
+        try:
+            self._killed = self._load_killed()
+            self._kill_read_error = None
+        except Exception as exc:  # fail closed: unknown kill state == killed
+            self._killed = True
+            self._kill_read_error = f"{type(exc).__name__}: {exc}"
         return self._killed
+
+    def is_killed(self) -> bool:
+        """Explicit durable kill-switch query for reporting surfaces and gates.
+
+        Status code previously probed ``hasattr(engine, "is_killed")`` and
+        silently fell back to ``False`` because the method did not exist, so an
+        ACTIVE kill switch was reported as healthy/armed by ``/api/health``,
+        ``/api/risk`` and the startup health check. Enforcement and reporting
+        now share one answer.
+        """
+        return self.killed
+
+    def kill_state(self) -> dict[str, Any]:
+        """Durable kill-switch record for honest status reporting."""
+        killed = self.killed
+        reason: str | None = None
+        updated_at: str | None = None
+        if killed and self.persist_kill and self._kill_read_error is None:
+            with contextlib.suppress(Exception):
+                with db_connect(self.db_path) as con:
+                    row = con.execute("SELECT reason, updated_at FROM risk_state WHERE k=1").fetchone()
+                if row:
+                    reason, updated_at = row[0], row[1]
+        return {
+            "killed": killed,
+            "reason": reason or (self._kill_read_error if killed else None),
+            "updated_at": updated_at,
+            "source": "durable:risk_state" if self.persist_kill else "process-local",
+            "read_error": self._kill_read_error,
+        }
 
     def kill_switch(self, reason: str) -> None:
         self._killed = True
@@ -162,7 +216,7 @@ class RiskEngine:
 
     def pre_trade(self, intent: OrderIntent, ctx: RiskContext) -> RiskDecision:
         sym = intent.instrument.symbol
-        if self._killed:
+        if self.killed:
             return RiskDecision(
                 allowed=False,
                 veto_reason=RiskVetoReason.KILL_SWITCH_ACTIVE,
@@ -384,7 +438,7 @@ class RiskEngine:
             out.append(RiskDecision(allowed=False, veto_reason=RiskVetoReason.DAILY_LOSS_BREACH))
         if ctx.drawdown >= self.limits.max_drawdown:
             out.append(RiskDecision(allowed=False, veto_reason=RiskVetoReason.DRAWDOWN_BREACH))
-        if self._killed:
+        if self.killed:
             out.append(RiskDecision(allowed=False, veto_reason=RiskVetoReason.KILL_SWITCH_ACTIVE))
         return out
 

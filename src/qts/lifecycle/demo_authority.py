@@ -16,6 +16,7 @@ remains an observation concern, not an execution switch.
 from __future__ import annotations
 
 import contextlib
+import math
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -623,14 +624,22 @@ class DemoExecutionAuthority:
 
 
 def readiness_age_seconds(report: dict[str, Any], *, now: datetime | None = None) -> float:
-    """Age of a readiness report computed from its own timestamp (0.0 if absent)."""
+    """Age of a readiness report computed from its own timestamp.
+
+    FAILS CLOSED: a report with an absent or unparseable timestamp has NO
+    provable age, so it is reported as infinitely old (:data:`math.inf`) and
+    therefore always beyond ``REVERIFY_TTL_S``. Returning ``0.0`` for undated
+    evidence treated the least trustworthy report as the freshest possible one
+    — exactly the "permission must be re-proven, never assumed from an old
+    pass" contract this module documents.
+    """
     ts = report.get("timestamp") if isinstance(report, dict) else None
     if not ts:
-        return 0.0
+        return math.inf
     try:
         t = datetime.fromisoformat(str(ts))
         if t.tzinfo is None:
             t = t.replace(tzinfo=UTC)
         return max(((now or datetime.now(UTC)) - t).total_seconds(), 0.0)
     except (TypeError, ValueError):
-        return 0.0
+        return math.inf

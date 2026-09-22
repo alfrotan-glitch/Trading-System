@@ -29,3 +29,49 @@ store (`data/sqlite/forward_observatory.db`) written by the readiness-gated
 OBSERVE-ONLY collector with explicit provenance, session identity, and
 timestamp lineage. JSON files under `data/evidence/` are derived exports
 only.
+
+## micro.fabricated-mock-broker.json (quarantined 2026-09-22)
+
+Committed as `data/evidence/micro.json`; moved here because it is not broker
+execution evidence. Every field is traceable to the in-process `MagicMock`
+that `qts run --mode micro` used to construct by default (`src/qts/cli.py`,
+"Mock MT5 that simulates successful micro execution"):
+
+| Claimed evidence field | Value | Actual origin in the mock |
+| --- | --- | --- |
+| `order.exchange_id` | `"123456"` | `_res.order = 123456` on a `MagicMock` `order_send` result |
+| `order.state` | `"FILLED"` | synthesized fill record appended by the CLI, not a broker state transition |
+| `fills[0].price` | `"2000.5"` | `_t.ask = 2000.5` on a `MagicMock` tick |
+| `portfolio.equity` | `"10000"` | `_mock.account_info.return_value = MagicMock(balance=10000, equity=10000, ...)` |
+| `portfolio.positions` | `1` | a position injected into the mock's `positions_get` return by the CLI |
+| `reconcile.drift` | `"NONE"` | computed against that same injected mock position |
+| `audit_count` | `100` | audit rows from the rehearsal run, not from a broker interaction |
+
+Violations under the canonical provenance model:
+
+1. **No order was ever sent to a broker.** `order_send` was called on a
+   `MagicMock`; `terminal_contacted` was false. The artifact nonetheless
+   recorded `state: FILLED` and an `exchange_id`, presenting a simulated
+   rehearsal as broker execution reality.
+2. **No provenance or lineage.** The artifact carried no `is_mock`,
+   `broker_source`, `terminal_contacted`, `data_class`, `generated_at` or
+   `code_version` field, so nothing in it allowed a reader or a gate to tell
+   it apart from a real execution record.
+3. **Fixture price regime.** `2000.5` is the synthetic fixture/mock tick
+   territory, inconsistent with any real XAUUSD session.
+4. **Stale location.** It sat at the primary `data/evidence/` path that
+   README describes as the audit trail, alongside real derived exports.
+
+Classification: **SYNTHETIC / MECHANISM-VALIDATION-ONLY**. It may be cited
+only as evidence that the micro rehearsal code path runs end to end against a
+simulated broker. It must never be cited as execution, fill, slippage,
+latency, reconciliation or DEMO/LIVE reality evidence, and it satisfies no
+forward-evidence, paper-evidence or promotion gate.
+
+Replacement: `qts run --mode micro` now (a) refuses to synthesize a fill or
+inject a position, (b) records `is_mock`, `terminal_contacted`,
+`broker_source`, `data_class`, `data_class_reason`, `dataset_class`,
+`dataset_source`, `generated_at` and `code_version` in the artifact it writes,
+and (c) prints a stderr warning whenever the mock broker was used. Micro
+execution evidence is only produced in the operator's own workspace, never
+committed here.

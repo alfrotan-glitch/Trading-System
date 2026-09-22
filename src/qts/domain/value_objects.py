@@ -22,9 +22,36 @@ def _ensure_utc(dt: datetime) -> datetime:
 
 
 def uuid7() -> str:
-    # UUID7-like time-ordered using uuid1 + uuid4 fallback for portability
-    # Use uuid4 with timestamp prefix for sorting if uuid7 not available (Python 3.11 lacks uuid7)
-    # We embed time prefix to keep ordering deterministic for tests
+    """Return a random 128-bit identifier as 32 lowercase hex characters.
+
+    NAMING WARNING — read before relying on ordering. Despite the name this is
+    **not** UUIDv7 and **not** time-ordered; it is exactly ``uuid.uuid4().hex``:
+
+    * random, with no embedded timestamp — lexicographic order of these ids
+      carries NO information about creation order;
+    * unhyphenated 32-char hex rather than the canonical 8-4-4-4-12 form, so
+      ``uuid.UUID(value)`` parses it but ``str(uuid.UUID(value)) != value``;
+    * version/variant bits are random, so nothing marks the value as version 7.
+
+    The previous comments here claimed a "uuid1 + uuid4 fallback", a "time
+    prefix" and deterministic ordering for tests. None of that was in the
+    implementation, and the claim is dangerous: a reader could reasonably sort
+    by these ids and get an arbitrary order for orders, fills, events and
+    observation records.
+
+    The misleading name is retained because ~20 call sites across execution,
+    observability, regime and research modules import it, and changing the
+    emitted format would silently mix id formats with values already persisted
+    in SQLite/Parquet and recorded in committed evidence artifacts. Correcting
+    the documentation is the non-destructive fix; changing the format is a
+    deliberate, versioned data-format change that needs an owner decision.
+
+    CONTRACT: ordering must always come from an explicit timestamp column
+    (``created_at``, ``open_time``, ``event_time``), never from these ids. If
+    monotonic k-sortable identifiers ever become a requirement, adopt a real
+    UUIDv7 generator deliberately rather than assuming this function provides
+    one.
+    """
     return uuid.uuid4().hex
 
 

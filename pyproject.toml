@@ -61,6 +61,13 @@ check_untyped_defs = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --strict-markers"
+# `scripts/` is a plain directory (no package install), so the repository root
+# must be importable for `from scripts.<module> import ...` in the test suite.
+# Without this, the README-documented `pytest -q` entry point fails collection
+# for tests/test_mt5_gap_disposition.py, tests/test_mt5_history_driver.py and
+# tests/test_mt5_history_probe.py (only `python -m pytest` happened to work,
+# because it prepends the cwd). Fail closed: the whole suite must collect.
+pythonpath = ["."]
 markers = [
     "integration: integration tests requiring fixtures",
 ]

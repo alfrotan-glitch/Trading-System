@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import contextlib
 import gc
+import hashlib
 import pathlib
+import subprocess
 import tempfile
 
 import pytest
@@ -312,3 +314,94 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "integration" in item.keywords:
             item.add_marker(skip_integration)
+
+
+# ---------------------------------------------------------------------------
+# Repository-evidence immutability guard
+# ---------------------------------------------------------------------------
+# ``data/evidence/*.json`` is the audit trail (README: "evidence is audit
+# trail"; the repository's standing invariants forbid deleting, hiding or
+# rewriting failed/blocked/inconvenient evidence). Several of those exports are
+# documented as "derived, regenerable" — but their canonical SQLite stores are
+# gitignored, so on a fresh clone the committed export is the ONLY surviving
+# record. A test that re-derives one from an empty local store therefore
+# destroys real evidence while still passing.
+#
+# That happened: ``test_forward_manifest_has_required_fields`` overwrote
+# ``data/evidence/forward_observation_manifest.json`` (real MT5 DEMO session
+# FS-f374b6, 13222 ticks, ENDED_ON_ERRORS) with an all-zero manifest.
+#
+# Tests must be side-effect-free on the repository working tree. This guard
+# hashes every git-tracked file at session start and fails the session if the
+# run changed or deleted any of them. It only reports changes made DURING the
+# session, so a pre-existing dirty working tree is not blamed on the tests.
+
+_REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def _guard_tracked_files() -> list[pathlib.Path]:
+    """Git-tracked files to protect, or [] when this is not a usable checkout."""
+    try:
+        proc = subprocess.run(  # noqa: S603 - fixed argv, no shell
+            ["git", "ls-files", "-z"],
+            cwd=_REPO_ROOT,
+            capture_output=True,
+            timeout=120,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if proc.returncode != 0:
+        return []
+    names = proc.stdout.decode("utf-8", "replace").split("\0")
+    out: list[pathlib.Path] = []
+    for name in names:
+        if not name:
+            continue
+        p = _REPO_ROOT / name
+        # only files that exist right now can be part of the baseline
+        if p.is_file():
+            out.append(p)
+    return out
+
+
+def _guard_digest(path: pathlib.Path) -> str | None:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+@pytest.fixture(scope="session", autouse=True)
+def repository_tracked_files_must_not_be_modified_by_tests():
+    """Fail the session if the test run mutated or deleted tracked files."""
+    baseline: dict[pathlib.Path, str] = {}
+    for path in _guard_tracked_files():
+        digest = _guard_digest(path)
+        if digest is not None:
+            baseline[path] = digest
+    yield
+    if not baseline:
+        return  # not a usable git checkout — nothing to compare against
+
+    mutated: list[str] = []
+    deleted: list[str] = []
+    for path, want in baseline.items():
+        got = _guard_digest(path)
+        rel = path.relative_to(_REPO_ROOT).as_posix()
+        if got is None:
+            deleted.append(rel)
+        elif got != want:
+            mutated.append(rel)
+    if mutated or deleted:
+        lines = [
+            "the test suite modified the repository working tree; tests must be",
+            "side-effect-free on tracked files (committed data/evidence/*.json is",
+            "the audit trail and is NOT regenerable once its gitignored canonical",
+            "store is absent). Point derived exports at tmp_path instead.",
+        ]
+        if mutated:
+            lines.append("modified: " + ", ".join(sorted(mutated)))
+        if deleted:
+            lines.append("deleted: " + ", ".join(sorted(deleted)))
+        pytest.fail("\n".join(lines), pytrace=False)

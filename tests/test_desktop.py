@@ -1,5 +1,6 @@
 """Desktop UI / research engine tests — covers Part B requirements."""
 
+import contextlib
 import json
 import tempfile
 from pathlib import Path
@@ -57,26 +58,109 @@ def test_state_restoration():
 
 
 def test_suspension_persistence():
+    """The kill switch is DURABLE and visible to every engine that reads it.
+
+    This test used to build a second engine (`_eng2`) to check durability and
+    then assert on the FIRST one, with a comment conceding "If not, at least
+    first eng killed check passes". The durability claim in its own name was
+    therefore never exercised, and it passed while a restarted process could
+    not see an active kill switch.
+    """
     from qts.risk.engine import RiskEngine, RiskLimits
 
     db = Path(tempfile.mktemp(suffix=".db"))
-    eng = RiskEngine(RiskLimits(), db_path=db)
-    # kill
-    eng.kill_switch("test")
-    assert eng.killed is True
-    # new instance should see persisted kill (if durable) — for file db it should
-    _eng2 = RiskEngine(RiskLimits(), db_path=db)
-    # If RiskEngine persists kill via DB, this should still be killed
-    # If not, at least first eng killed check passes
-    assert eng.killed is True
-    # reset
-    eng.reset_kill()
-    assert eng.killed is False
+    eng = eng2 = None
+    try:
+        eng = RiskEngine(RiskLimits(), db_path=db)
+        assert eng.killed is False
+        eng.kill_switch("test")
+        assert eng.killed is True
+
+        # durability across a restart: a NEW engine on the same store must see it
+        eng2 = RiskEngine(RiskLimits(), db_path=db)
+        assert eng2.killed is True, "kill switch must survive a process restart"
+        assert eng2.is_killed() is True
+        state = eng2.kill_state()
+        assert state["killed"] is True
+        assert state["reason"] == "test"
+        assert state["source"] == "durable:risk_state"
+        assert state["updated_at"]
+
+        # reset is durable too, and visible to the other instances
+        eng.reset_kill()
+        assert eng.killed is False
+        assert eng2.killed is False
+        assert RiskEngine(RiskLimits(), db_path=db).killed is False
+    finally:
+        for _e in (eng, eng2):
+            if _e is not None:
+                _e.close()
+
+
+def test_kill_switch_raised_by_another_process_is_visible_to_a_long_lived_engine():
+    """Regression: a long-lived engine must not trade against a stale flag.
+
+    ``RiskEngine._killed`` used to be cached at construction, so an engine
+    built before an operator ran ``qts risk kill`` (or before
+    ``ExecutionEngine.handle_kill``) in ANOTHER process kept answering
+    ``killed == False`` forever. Enforcement and reporting must share one
+    durable answer.
+    """
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    db = Path(tempfile.mktemp(suffix=".db"))
+    long_lived = other_process = None
+    try:
+        long_lived = RiskEngine(RiskLimits(), db_path=db)
+        assert long_lived.killed is False
+
+        other_process = RiskEngine(RiskLimits(), db_path=db)
+        other_process.kill_switch("raised by another process")
+
+        assert long_lived.killed is True, "stale in-memory kill flag: cross-process kill was invisible"
+        assert long_lived.is_killed() is True
+        assert long_lived.kill_state()["reason"] == "raised by another process"
+    finally:
+        for _e in (long_lived, other_process):
+            if _e is not None:
+                _e.close()
+
+
+def test_unreadable_kill_state_fails_closed_to_killed():
+    """An unreadable durable kill flag must read as KILLED, never as healthy."""
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    db = Path(tempfile.mktemp(suffix=".db"))
+    eng = None
+    try:
+        eng = RiskEngine(RiskLimits(), db_path=db)
+        assert eng.killed is False
+        eng.close()
+        # corrupt the store out from under the running engine
+        for suffix in ("", "-wal", "-shm"):
+            with contextlib.suppress(OSError):
+                Path(str(db) + suffix).unlink()
+        db.write_bytes(b"this is definitively not a sqlite database file" * 4)
+
+        assert eng.killed is True, "unreadable kill state must fail closed"
+        state = eng.kill_state()
+        assert state["killed"] is True
+        assert state["read_error"], "the read failure must be surfaced, not swallowed"
+    finally:
+        if eng is not None:
+            eng.close()
 
 
 def test_reconciliation():
+    """Reconciliation must detect REAL drift and enforce a durable suspension.
+
+    This test used to assert only ``report is not None``, which any returned
+    object satisfies — it verified nothing about reconciliation, drift
+    detection, suspension, or suspension recovery across a restart.
+    """
     from decimal import Decimal
 
+    from qts.domain.value_objects import Instrument, Position
     from qts.execution.engine import ExecutionEngine, OrderManager, PaperBrokerAdapter
     from qts.execution.idempotency import IdempotencyStore
     from qts.execution.matching import MatchingConfig, MatchingEngine
@@ -85,16 +169,69 @@ def test_reconciliation():
     from qts.risk.engine import RiskEngine, RiskLimits
 
     db = Path(tempfile.mktemp(suffix=".db"))
-    risk = RiskEngine(RiskLimits(), db_path=db)
-    audit = InMemoryAuditLog()
-    om = OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db))
-    broker = PaperBrokerAdapter()
-    matching = MatchingEngine(MatchingConfig())
-    pf = Portfolio(initial_balance=Decimal("10000"))
-    eng = ExecutionEngine(om, risk, broker, matching, pf, audit=audit, db_path=db)
-    # reconcile with no drift should be healthy
-    report = eng.reconcile()
-    assert report is not None
+
+    def _engine() -> ExecutionEngine:
+        audit = InMemoryAuditLog()
+        return ExecutionEngine(
+            OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db)),
+            RiskEngine(RiskLimits(), db_path=db),
+            PaperBrokerAdapter(),
+            MatchingEngine(MatchingConfig()),
+            Portfolio(initial_balance=Decimal("10000")),
+            audit=audit,
+            db_path=db,
+        )
+
+    eng = _engine()
+    try:
+        # flat local book, venue reachable -> genuinely healthy
+        report = eng.reconcile()
+        assert report.drift == "NONE", report.details
+        assert report.is_ok() is True
+        assert report.requires_suspend is False
+        assert eng.is_suspended is False
+
+        # a local position the venue does not hold -> real drift, must suspend
+        eng.portfolio.positions["XAUUSD"] = Position(
+            instrument=Instrument(symbol="XAUUSD"),
+            quantity=Decimal("0.10"),
+            avg_price=Decimal("2000"),
+        )
+        drifted = eng.reconcile()
+        assert drifted.drift == "MISSING_POSITION", drifted.details
+        assert drifted.is_ok() is False
+        assert drifted.requires_suspend is True
+        assert eng.is_suspended is True, "critical drift must suspend trading"
+
+        # the suspension is DURABLE — a restarted engine comes back suspended
+        restarted = _engine()
+        try:
+            assert restarted.is_suspended is True, "suspension must survive a restart"
+            # a healthy reconcile must NOT silently auto-heal the suspension
+            assert restarted.reconcile().drift == "NONE"
+            assert restarted.is_suspended is True, "healthy reconcile must not auto-heal a suspension"
+
+            # only an explicit heal reactivates, and the heal is durable
+            restarted.heal_reconcile("operator verified venue state")
+            assert restarted.is_suspended is False
+        finally:
+            restarted.close()
+
+        # a further restart sees the healed state (the heal was persisted, not
+        # just held in the healing instance's memory). NOTE the deliberate
+        # asymmetry: `_suspended` is loaded at construction and is not
+        # live-reloaded afterwards, so an ALREADY-RUNNING engine keeps its own
+        # answer. Every writer of `reconcile_state` is the engine itself, so the
+        # only staleness this can produce is an engine staying SUSPENDED after
+        # something else healed — i.e. it fails closed, which is the safe
+        # direction and is not a defect.
+        after_heal = _engine()
+        try:
+            assert after_heal.is_suspended is False, "durable heal must survive a restart"
+        finally:
+            after_heal.close()
+    finally:
+        eng.close()
 
 
 def test_mode_switching():
@@ -130,16 +267,65 @@ def test_live_gate():
     assert r.json()["live_trading"] == "LOCKED"
 
 
-def test_risk_veto_visibility():
+def test_risk_veto_visibility(tmp_path, monkeypatch):
+    """/api/risk must state WHY trading is blocked, unconditionally.
+
+    Two defects here: every meaningful assertion was wrapped in
+    ``if j["blocked"]:`` — so the test passed while verifying nothing whenever
+    the endpoint reported "allowed" — and it ran against the repository's real
+    data root instead of an isolated workspace.
+    """
+    monkeypatch.chdir(tmp_path)
     c = _client()
-    r = c.get("/api/risk")
-    j = r.json()
+    j = c.get("/api/risk").json()
     assert "limits" in j
     assert "blocked_reasons" in j
-    # Should show why blocked
-    if j["blocked"]:
-        assert len(j["blocked_reasons"]) > 0
-        assert j["status_text"] == "TRADING BLOCKED"
+    # `blocked` and `blocked_reasons` must never disagree with each other or
+    # with the operator-facing status text
+    assert j["blocked"] == (len(j["blocked_reasons"]) > 0)
+    assert j["status_text"] == ("TRADING BLOCKED" if j["blocked"] else "TRADING ALLOWED (demo-family only)")
+    # an empty workspace has no validated edge and no evidence, so trading MUST
+    # be blocked and the endpoint MUST say why
+    assert j["blocked"] is True, "an empty workspace must not report trading allowed"
+    assert len(j["blocked_reasons"]) > 0
+    assert j["limits"]["kill_switch"] == "ARMED"
+    assert j["kill_switch_detail"]["killed"] is False
+
+    # Regression: an ACTIVE durable kill switch must be visible through the API.
+    # /api/risk used to consult a freshly constructed in-memory
+    # EmergencyControls, which always answered "not killed", so an operator
+    # kill switch was displayed as ARMED while pre_trade() was vetoing
+    # everything — the UI and the enforcement path disagreed.
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    eng = RiskEngine(RiskLimits())
+    try:
+        eng.kill_switch("operator halt")
+    finally:
+        eng.close()
+
+    j2 = c.get("/api/risk").json()
+    assert j2["kill_switch_detail"]["killed"] is True
+    assert j2["kill_switch_detail"]["reason"] == "operator halt"
+    assert j2["limits"]["kill_switch"] == "ACTIVE", "an active kill switch must not display as ARMED"
+    assert "KILL_SWITCH_ACTIVE" in j2["blocked_reasons"]
+    assert j2["blocked"] is True
+    assert j2["status_text"] == "TRADING BLOCKED"
+
+    # and the same durable fact must reach /api/health, which is what the
+    # desktop UI and the startup check actually read
+    h = c.get("/api/health").json()
+    assert h["system_status"] == "Suspended", f"kill switch invisible to /api/health: {h}"
+    assert h["risk"] == "Suspended"
+    assert h["kill_switch"]["state"] == "ACTIVE"
+    assert h["kill_switch"]["reason"] == "operator halt"
+    assert h["kill_switch"]["source"] == "durable:risk_state"
+
+    # clearing it must be visible again — reporting follows the durable flag
+    RiskEngine(RiskLimits()).reset_kill()
+    j3 = c.get("/api/risk").json()
+    assert j3["limits"]["kill_switch"] == "ARMED"
+    assert "KILL_SWITCH_ACTIVE" not in j3["blocked_reasons"]
 
 
 def test_research_campaign_execution():
@@ -407,3 +593,121 @@ def test_health_config_reports_canonical_mode_not_fabricated_default():
 
     reported = detail.split("mode=")[-1].strip()
     assert reported in {m.value for m in ExecutionMode}, f"non-canonical mode reported: {reported!r}"
+
+
+# ---------------------------------------------------------------------------
+# /api/live/status — the LIVE-gate checklist must be derived, never asserted
+# ---------------------------------------------------------------------------
+
+_CHECKLIST_KEYS = {
+    "validated_edge",
+    "forward_observation",
+    "risk_configuration",
+    "mt5_connectivity",
+    "reconciliation",
+    "human_approval",
+}
+
+
+def test_live_status_checklist_is_derived_not_hardcoded(tmp_path, monkeypatch):
+    """No LIVE-gate checklist item may read as satisfied without an authority.
+
+    ``risk_configuration`` and ``reconciliation`` were hardcoded ``True`` in the
+    endpoint, and the Governance view renders every true item as "satisfied —
+    independently evidenced". The UI therefore asserted independently evidenced
+    risk approval and broker reconciliation on every request in every clone,
+    with no evidence consulted at all. ``mt5_connectivity`` was read back from
+    ``/api/health``'s own hardcoded ``"Disconnected"``, so it could never be
+    satisfied and reported an unmeasured connection as a measured absent one.
+    """
+    monkeypatch.chdir(tmp_path)
+    j = _client().get("/api/live/status").json()
+
+    assert j["live_trading"] == "LOCKED"
+    assert j["eligible"] is False
+    assert j["explicit_confirmation_required"] is True
+    assert set(j["checklist"]) == _CHECKLIST_KEYS
+    # every item must state which authority satisfied or blocked it
+    assert set(j["checklist_detail"]) == _CHECKLIST_KEYS
+    for key, satisfied in j["checklist"].items():
+        assert isinstance(satisfied, bool), f"{key} must be a boolean, not a truthy string"
+        assert j["checklist_detail"][key], f"{key} must explain what satisfied or blocked it"
+
+    # In an empty workspace nothing is evidenced, so the items that need real
+    # evidence, an approved authority or a real terminal must all be False.
+    satisfied = sorted(k for k, v in j["checklist"].items() if v)
+    for key in ("validated_edge", "forward_observation", "risk_configuration", "mt5_connectivity", "human_approval"):
+        assert key not in satisfied, f"{key} read as satisfied with no evidence — hardcoded or inferred"
+    # `reconciliation` is the one item that can legitimately hold with no data:
+    # it is a structural capability check plus the durable "no unresolved
+    # suspension" probe, and both are true when nothing was ever persisted. It
+    # must still be DERIVED — naming both checks — and never a constant.
+    assert satisfied in ([], ["reconciliation"]), f"unexpected satisfied items: {satisfied}"
+    if "reconciliation" in satisfied:
+        detail = j["checklist_detail"]["reconciliation"]
+        assert "reconciliation:" in detail and "reconciliation_health:" in detail, detail
+    # human approval is never inferred from anything else
+    assert j["checklist"]["human_approval"] is False
+    assert "human approval" in j["checklist_detail"]["human_approval"].lower()
+
+
+def test_live_status_risk_configuration_reflects_the_durable_kill_switch(tmp_path, monkeypatch):
+    """An ACTIVE kill switch must fail the risk-configuration item even when the
+    resolved limits carry an explicit operator approval."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "configs").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "configs" / "live.yaml").write_text(
+        "env: live\nexecution:\n  mode: live\nrisk:\n  approved: true\n", encoding="utf-8"
+    )
+    monkeypatch.setenv("QTS_ENV", "live")
+    c = _client()
+
+    before = c.get("/api/live/status").json()
+    # The detail must name the actual authority inputs. Whether `approved`
+    # resolves True depends on the risk authority's own config contract, so the
+    # safety claim asserted here is the kill-switch transition, not the config.
+    assert "risk.approved=" in before["checklist_detail"]["risk_configuration"]
+    assert "kill_switch=ARMED" in before["checklist_detail"]["risk_configuration"]
+    assert "config_hash=" in before["checklist_detail"]["risk_configuration"]
+
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    eng = RiskEngine(RiskLimits())
+    try:
+        eng.kill_switch("operator halt")
+    finally:
+        eng.close()
+
+    after = c.get("/api/live/status").json()
+    assert after["checklist"]["risk_configuration"] is False, (
+        "an active kill switch must fail the LIVE gate's risk-configuration item"
+    )
+    assert "kill_switch=ACTIVE" in after["checklist_detail"]["risk_configuration"]
+    # the gate itself stays LOCKED either way — this item never enables LIVE
+    assert after["live_trading"] == "LOCKED"
+
+
+def test_live_status_error_path_keeps_the_same_contract(tmp_path, monkeypatch):
+    """A gate that cannot be evaluated satisfies nothing and still explains why.
+
+    The error path used to return ``checklist: {}``, so the Governance grid
+    rendered no items at all — an unevaluable gate looked like a gate with no
+    requirements.
+    """
+    monkeypatch.chdir(tmp_path)
+    import qts.lifecycle.live_gate as live_gate
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("gate dependency unavailable")
+
+    monkeypatch.setattr(live_gate, "live_readiness_report", _boom)
+    j = _client().get("/api/live/status").json()
+
+    assert j["live_trading"] == "LOCKED"
+    assert j["eligible"] is False
+    assert j["explicit_confirmation_required"] is True
+    assert set(j["checklist"]) == _CHECKLIST_KEYS
+    assert set(j["checklist_detail"]) == _CHECKLIST_KEYS
+    assert not any(j["checklist"].values()), "an unevaluable gate must not satisfy any item"
+    assert all("could not be evaluated" in d for d in j["checklist_detail"].values())
+    assert any("gate dependency unavailable" in r for r in j["blocked_reasons"])

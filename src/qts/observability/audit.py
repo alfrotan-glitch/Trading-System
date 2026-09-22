@@ -4,12 +4,51 @@ from __future__ import annotations
 
 import contextlib
 import json
+import re
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from qts.db import connect as db_connect
 from qts.domain.events import DomainEvent, EventType
+
+#: Credential-shaped payload keys are redacted in EVERY audit sink, and
+#: login-shaped values are masked. Same discipline as
+#: ``qts.observability.session_export`` / ``qts.observability.research_snapshot``
+#: so the durable audit store is not the least-protected copy of an event.
+_CREDENTIAL_KEY_RE = re.compile(r"(password|passwd|token|secret|api_?key|credential)", re.I)
+_LOGIN_KEY_RE = re.compile(r"login", re.I)
+_REDACTED = "***REDACTED***"
+
+
+def _mask_login(value: Any) -> str:
+    text = str(value)
+    return f"****{text[-2:]}" if len(text) > 2 else "****"
+
+
+def sanitize_audit_payload(payload: Any) -> Any:
+    """Recursively redact credential-shaped keys and mask login-shaped values.
+
+    Applied ONCE per event; every sink writes the same sanitized value.
+    Redaction previously touched only the JSONL copy — it mutated a
+    ``model_dump`` clone — while the SQLite ``audit_events`` table (the durable
+    store queried by ``/api/audit`` and rendered in the desktop UI) received
+    ``event.payload`` raw. Nested payloads were never inspected either.
+    """
+    if isinstance(payload, dict):
+        out: dict[Any, Any] = {}
+        for key, value in payload.items():
+            name = str(key)
+            if _CREDENTIAL_KEY_RE.search(name):
+                out[key] = _REDACTED
+            elif _LOGIN_KEY_RE.search(name):
+                out[key] = _mask_login(value)
+            else:
+                out[key] = sanitize_audit_payload(value)
+        return out
+    if isinstance(payload, (list, tuple)):
+        return [sanitize_audit_payload(v) for v in payload]
+    return payload
 
 
 class AuditLog(Protocol):
@@ -81,19 +120,17 @@ class SqliteAuditLog:
             con.commit()
 
     def emit(self, event: DomainEvent) -> None:
-        # JSONL
-        if self.jsonl_path:
-            line = event.model_dump(mode="json")
-            # safe logging: redact known secret keys
-            payload = line.get("payload", {})
-            for k in list(payload.keys()):
-                if any(s in k.lower() for s in ["password", "secret", "token"]):
-                    payload[k] = "***REDACTED***"
-            with open(self.jsonl_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(line, default=str) + "\n")
-        # SQLite
+        # Sanitize ONCE and write the SAME value to every sink.
+        payload = sanitize_audit_payload(event.payload)
+        payload_json = json.dumps(payload, default=str)
+
+        # The durable SQLite store is written FIRST and is authoritative: if it
+        # cannot append the event, emit() fails loudly and the derived JSONL log
+        # is not written either, so the two sinks can never diverge. A silently
+        # ignored append (duplicate event_id) is a lost audit record and is
+        # surfaced rather than swallowed.
         with db_connect(self.db_path) as con:
-            con.execute(
+            cur = con.execute(
                 "INSERT OR IGNORE INTO audit_events VALUES (?,?,?,?,?,?,?,?)",
                 (
                     event.event_id,
@@ -101,12 +138,25 @@ class SqliteAuditLog:
                     event.event_time.isoformat(),
                     event.recorded_at.isoformat(),
                     event.source,
-                    json.dumps(event.payload, default=str),
+                    payload_json,
                     event.code_version,
                     event.data_version,
                 ),
             )
+            if cur.rowcount != 1:
+                raise ValueError(
+                    f"audit event {event.event_id} was NOT appended (event_id already present) — "
+                    "an append-only audit log must never silently drop an event"
+                )
             con.commit()
+        if self.jsonl_path:
+            # The derived sink carries the SAME sanitized payload as the
+            # authoritative store; serializing it is skipped entirely when the
+            # JSONL sink is disabled.
+            line = event.model_dump(mode="json")
+            line["payload"] = payload
+            with open(self.jsonl_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(line, default=str) + "\n")
 
     def query(
         self,

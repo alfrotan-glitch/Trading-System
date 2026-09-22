@@ -1388,10 +1388,119 @@ def test_micro_full_lifecycle(cli_workspace):
                 assert result.exit_code == 2, "micro lifecycle must fail closed without REAL MT5"
                 return
             ev = json.loads(Path("data/evidence/micro.json").read_text(encoding="utf-8"))
+
+            # Provenance first: this branch only runs where a REAL terminal
+            # exists, so the artifact must say so. The micro path used to invent
+            # a Fill and force the order to FILLED against an in-process
+            # MagicMock, which made the four outcome assertions below pass
+            # without any broker ever being contacted — and the artifact carried
+            # no field that could expose it.
+            assert ev["is_mock"] is False, "micro claims a real-terminal proof but ran the mock broker"
+            assert ev["terminal_contacted"] is True
+            assert ev["broker_source"] == "REAL_MT5_TERMINAL"
+            assert ev["data_class"] != "SIMULATED"
+            assert ev["data_class_reason"], "the data class must be justified, not just labeled"
+            assert ev["symbol_spec"]["source"] == "MT5 SymbolInfo"
+            assert ev["generated_at"]
+            # lineage is recorded whatever it resolves to; in a temp workspace
+            # with no git checkout code_version() honestly reports "+unknown"
+            assert ev["code_version"]
+
+            # The real-environment proof itself.
             assert ev["order"]["state"] == "FILLED"
+            assert ev["order"]["exchange_id"], "a real fill carries a broker order id"
             assert ev["reconcile"]["drift"] == "NONE"
             assert ev["poll_fills"] >= 1
             assert ev["portfolio"]["positions"] == 1
+    finally:
+        if created and live_yaml.exists():
+            live_yaml.unlink()
+
+
+def test_micro_rehearsal_evidence_is_labeled_simulated_and_not_fabricated(cli_workspace, monkeypatch):
+    """Deterministic coverage of the micro REHEARSAL path (in-process mock broker).
+
+    Without a real MT5 terminal the honest gate refuses with exit 2, so in CI
+    the code that actually writes ``data/evidence/micro.json`` never runs and
+    its provenance labels were untested. This drives it by patching ONLY the two
+    readiness checks the micro gate consults. Patching the gate makes the
+    rehearsal RUN; it must not make the output look REAL.
+
+    Asserted here: the artifact declares itself SIMULATED end to end, warns on
+    stderr, and never claims a broker outcome it did not observe — an order may
+    not be FILLED with zero recorded fills, which is exactly the fabrication the
+    previous implementation performed (invented Fill, forced FILLED, and
+    positions rigged so reconcile could only answer "drift NONE").
+    """
+    import contextlib
+    import json
+
+    from click.testing import CliRunner
+
+    import qts.lifecycle.live_gate as live_gate
+    from qts.cli import main
+
+    live_yaml = Path("configs/live.yaml")
+    created = False
+    if not live_yaml.exists():
+        live_yaml.write_text("env: live\nexecution:\n  mode: live\nrisk:\n  approved: true\n", encoding="utf-8")
+        created = True
+
+    real_report = live_gate.live_readiness_report
+
+    def _rehearsal_gate():
+        # Only the two checks the micro gate consults are forced. Everything
+        # else — including the real blocked_reasons — stays exactly as measured,
+        # and the forced detail says plainly that no terminal was probed.
+        rpt = dict(real_report())
+        rpt["mt5_connectivity"] = {"passed": True, "detail": "TEST-PATCHED: no real terminal was probed"}
+        rpt["symbol_spec"] = {"passed": True, "detail": "TEST-PATCHED"}
+        return rpt
+
+    monkeypatch.setattr(live_gate, "live_readiness_report", _rehearsal_gate)
+    # the real terminal must NOT be used, so the rehearsal path is the one taken
+    monkeypatch.delenv("QTS_USE_REAL_MT5", raising=False)
+    try:
+        runner = CliRunner()
+        with patch.dict(os.environ, {"QTS_MICRO_ENABLED": "true", "QTS_ENV": "live"}):
+            result = runner.invoke(
+                main, ["run", "--mode", "micro", "--data-version", cli_workspace.version, "--confirm", "live"]
+            )
+        assert result.exit_code == 0, f"rehearsal should run once the gate is patched: {result.output}"
+
+        combined = result.output or ""
+        with contextlib.suppress(Exception):
+            combined += result.stderr or ""
+
+        ev_path = Path("data/evidence/micro.json")
+        assert ev_path.exists(), "the rehearsal must still write its evidence artifact"
+        ev = json.loads(ev_path.read_text(encoding="utf-8"))
+
+        # ---- the artifact must declare that no broker was contacted ----
+        assert ev["is_mock"] is True
+        assert ev["terminal_contacted"] is False
+        assert ev["broker_source"] == "MOCK_SIMULATED"
+        assert ev["data_class"] == "SIMULATED"
+        assert ev["data_class"] != "UNVERIFIED", "a simulated run must not borrow an unverified-real label"
+        assert "simulated broker" in ev["data_class_reason"]
+        assert ev["symbol_spec"]["source"] == "MOCK_SIMULATED"
+        assert ev["generated_at"]
+        assert ev["code_version"]
+        assert ev["dataset_class"], "the dataset behind the rehearsal must be classified too"
+
+        # ---- and the operator must be told, not just the file ----
+        assert "SIMULATED" in combined, "a simulated micro run must warn on stderr"
+
+        # ---- no fabricated broker outcome ----
+        assert ev["quantity"] == "0.01", "micro must use volume_min and never scale"
+        assert ev["order"]["client_order_id"] == f"micro:sma_breakout:{cli_workspace.version}:001"
+        fills_recorded = len(ev["fills"]) + int(ev["poll_fills"])
+        assert ev["order"]["state"] != "FILLED" or fills_recorded >= 1, (
+            "an order may not be reported FILLED with zero recorded fills — that is a fabricated execution"
+        )
+        assert ev["reconcile"]["drift"] in {"NONE", "MISSING_POSITION", "QUANTITY_MISMATCH", "BROKER_DISCONNECT"}
+        assert isinstance(ev["reconcile"]["suspended"], bool)
+        assert ev["audit_count"] > 0, "the rehearsal must leave an audit trail"
     finally:
         if created and live_yaml.exists():
             live_yaml.unlink()

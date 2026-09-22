@@ -1303,8 +1303,12 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         _mock.positions_get.return_value = []
         _mock.orders_get.return_value = []
         _mock.history_deals_get.return_value = []
-        # Use mock unless real terminal available and user explicitly wants real — for now mock is safe for CI
+        # The rehearsal defaults to an in-process MagicMock broker; the real
+        # terminal is used only when the operator explicitly asks for it. Which
+        # one actually ran is RECORDED in the evidence artifact, because a
+        # simulated broker can never produce broker-execution evidence.
         broker = _MT5A(mt5_module=_mock, config={"dry_run": False})
+        broker_is_mock = True
         # Also try real if env var QTS_USE_REAL_MT5=true
         if _os.getenv("QTS_USE_REAL_MT5") == "true":
             with contextlib.suppress(Exception):
@@ -1321,6 +1325,7 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
                             "server": _os.getenv("QTS_MT5_SERVER") or _os.getenv("MT5_SERVER"),
                         },
                     )
+                    broker_is_mock = False
         md2 = _MDP2(broker)
         audit2 = _AL2()
         # Use temp DB for micro to isolate, but also ensure durable for restart test
@@ -1363,68 +1368,57 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             _deal.comment = _comment
             _mock.history_deals_get.return_value = [_deal]
         fills_poll = eng2.poll_live_fills()
-        # If poll still empty (due to mock filtering), manually apply a fill to verify lifecycle
-        if not fills_poll and order2 and order2.state.value == "ACCEPTED":
-            from qts.domain.value_objects import Fill as _Fill
-            from qts.domain.value_objects import uuid7 as _uuid7
-
-            _f = _Fill(
-                fill_id=_uuid7(),
-                order_id=order2.order_id,
-                client_order_id=order2.client_order_id,
-                instrument=instr2,
-                side=_Side2.BUY,
-                quantity=qty2,
-                price=_Decimal2("2000.5"),
-                event_time=_dt.now(UTC),
-            )
-            pf2.apply_fill(_f)
-            from qts.domain.value_objects import OrderState as _OS
-
-            with contextlib.suppress(Exception):
-                om2.update_state(
-                    intent2.client_order_id, _OS.FILLED, filled_quantity=qty2, avg_fill_price=_Decimal2("2000.5")
-                )
-            # Make broker positions reflect the fill for reconciliation
-            with contextlib.suppress(Exception):
-                _pos = _MM()
-                _pos.symbol = "XAUUSD"
-                _pos.volume = float(qty2)
-                _pos.price_open = 2000.5
-                _pos.price_current = 2000.5
-                _pos.profit = 0
-                _pos.type = 0  # BUY
-                _mock.positions_get.return_value = [_pos]
-                # Also need orders_get to return pending? For micro, order should be filled, so orders_get empty is ok
-                _mock.orders_get.return_value = []
-            fills_poll = [_f]
-        # Ensure broker positions match local after fill for clean reconcile (if we already had poll fill)
-        elif fills_poll:
-            with contextlib.suppress(Exception):
-                # If we had a poll fill, local position exists, make broker match it
-                _pos2 = _MM()
-                _pos2.symbol = "XAUUSD"
-                _pos2.volume = float(qty2)
-                _pos2.price_open = 2000.5
-                _pos2.price_current = 2000.5
-                _pos2.profit = 0
-                _pos2.type = 0
-                _mock.positions_get.return_value = [_pos2]
-        # Reconcile
+        # NO fabricated fills and NO scripted broker positions.
+        #
+        # This path used to (a) invent a Fill the broker never returned, apply
+        # it to the portfolio and force the order state to FILLED when the poll
+        # came back empty, and (b) overwrite the broker's reported positions so
+        # that reconcile() could only answer "drift NONE". Both destroyed the
+        # meaning of the artifact: the published evidence showed a FILLED
+        # LIVE-family order and a clean reconciliation that were manufactured
+        # here rather than observed. Fills and reconciliation are now reported
+        # exactly as the broker/poll/reconcile actually produced them; an empty
+        # poll is recorded as an empty poll.
         report2 = eng2.reconcile()
         # Evidence
         import json as _js
 
-        # Refresh order after poll to capture FILLED state
+        # Refresh order after poll to capture the ACTUAL state
         _fresh_order = om2.get(intent2.client_order_id) if "intent2" in locals() else order2
+        from qts.observability.lineage import code_version as _code_version
+
+        _manifest2 = _store.manifest(data_version)
         ev2 = {
             "mode": "micro",
             "strategy": strategy,
             "data_version": data_version,
+            # ---- provenance / lineage (same contract as dry_run.json) ----
+            # A micro rehearsal runs against an in-process MagicMock broker
+            # unless the operator explicitly opted into the real terminal. That
+            # fact is part of the evidence: without it a simulated FILLED order
+            # and a simulated "drift NONE" are indistinguishable from broker
+            # execution, which is exactly the confusion the provenance model
+            # exists to prevent.
+            "is_mock": broker_is_mock,
+            "terminal_contacted": not broker_is_mock,
+            "broker_source": "MOCK_SIMULATED" if broker_is_mock else "REAL_MT5_TERMINAL",
+            "data_class": "SIMULATED" if broker_is_mock else "UNVERIFIED",
+            "data_class_reason": (
+                "order/fill/reconcile values were produced by an in-process simulated broker; "
+                "they are not broker execution evidence and satisfy no execution or promotion gate"
+                if broker_is_mock
+                else "a real terminal was used but this path does not verify the connected account "
+                "class, so the result is not automatically DEMO or REAL evidence"
+            ),
+            "generated_at": _dt.now(UTC).isoformat(),
+            "code_version": _code_version(),
+            "dataset_class": _manifest2.provenance_class if _manifest2 else "UNVERIFIED",
+            "dataset_source": _manifest2.source if _manifest2 else None,
             "symbol_spec": {
                 "volume_min": str(spec2.volume_min),
                 "volume_max": str(spec2.volume_max),
                 "volume_step": str(spec2.volume_step),
+                "source": "MOCK_SIMULATED" if broker_is_mock else "MT5 SymbolInfo",
             },
             "quantity": str(qty2),
             "order": {
@@ -1442,8 +1436,16 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         _Path2("data/evidence").mkdir(parents=True, exist_ok=True)
         _Path2("data/evidence/micro.json").write_text(_js.dumps(ev2, indent=2), encoding="utf-8")
         click.echo(
-            f"micro result: order {ev2['order']} fills {len(fills2)} poll {len(fills_poll)} reconcile {report2.drift} suspended {eng2.is_suspended} (evidence written)"
+            f"micro result: broker={ev2['broker_source']} data_class={ev2['data_class']} order {ev2['order']} "
+            f"fills {len(fills2)} poll {len(fills_poll)} reconcile {report2.drift} "
+            f"suspended {eng2.is_suspended} (evidence written)"
         )
+        if broker_is_mock:
+            click.echo(
+                "micro evidence is SIMULATED: the broker was an in-process mock, so no order, fill or "
+                "reconciliation result in it is broker execution evidence",
+                err=True,
+            )
         if report2.requires_suspend:
             click.echo(f"micro reconcile suspended: {report2.details}", err=True)
         return

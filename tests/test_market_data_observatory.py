@@ -479,17 +479,31 @@ def test_research_quality_gate_blocks_if_insufficient(tmp_path):
     assert exec_sum.get("count", 0) == 0 or exec_sum.get("real_count", 0) == 0
 
 
-def test_forward_manifest_has_required_fields():
+def test_forward_manifest_has_required_fields(tmp_path, monkeypatch):
     # The manifest is a DERIVED export regenerated from the canonical SQLite
     # store (finding #5) — never a hand-maintained committed file.
+    #
+    # It must be derived into a scratch directory. The committed
+    # data/evidence/forward_observation_manifest.json is the ONLY surviving
+    # record of a real MT5 DEMO observation session (FS-f374b6, 13222 ticks,
+    # ended ENDED_ON_ERRORS): its canonical SQLite store is gitignored, so on
+    # a fresh clone the export is NOT regenerable. Deriving it from an empty
+    # local store silently overwrites real, inconvenient evidence with zeros —
+    # which is exactly what this test used to do.
     from qts.observability.forward_observatory import ForwardObservatory
 
-    m = ForwardObservatory().to_manifest()
+    monkeypatch.chdir(tmp_path)
+    store = tmp_path / "data" / "sqlite" / "forward_observatory.db"
+    derived = tmp_path / "data" / "evidence" / "forward_observation_manifest.json"
+    m = ForwardObservatory(db_path=store).to_manifest(derived)
     assert "ticks_recorded" in m
     assert "signals_recorded" in m
     assert "no_capital_exposure" in m
     assert m["no_capital_exposure"] is True
     assert m.get("canonical_store")
+    # the derived export was written to the scratch path, never to the repo
+    assert derived.exists()
+    assert m["derived_from"] == str(store)
 
 
 def test_market_regime_observations_has_required():

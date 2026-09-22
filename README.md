@@ -143,7 +143,7 @@ python -m qts data ingest --source csv --path data/raw/synthetic_XAUUSD_1m.csv -
 python -m qts backtest --strategy sma_breakout --data-version <version> --seed 42 --determinism-check
 python -m qts validate --strategy sma_breakout --data-version <version>
 pytest -q
-python -m qts.health
+python -m qts health
 ```
 
 Docs start `docs/00-overview.md` → `docs/13-adrs.md`. Build exe: `scripts/build_windows.bat`.

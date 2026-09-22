@@ -114,7 +114,16 @@ export async function renderGovernance(root) {
             h("div", { class: "mark", "aria-hidden": "true" }, v === true ? "✓" : "✕"),
             h("div", null,
               h("div", { class: "name" }, labels[k] ?? humanKey(k)),
-              h("div", { class: "detail" }, v === true ? "satisfied — independently evidenced" : "not satisfied — see blockers below — what missing, what next explicit"),
+              // The API now reports, per item, exactly which authority satisfied
+              // or blocked it. Show that instead of the generic placeholder: two
+              // of these items used to be hardcoded true server-side, so this
+              // line printed "satisfied — independently evidenced" for risk
+              // configuration and reconciliation with no evidence consulted.
+              h("div", { class: "detail" },
+                live.checklist_detail?.[k]
+                  ?? (v === true
+                    ? "satisfied — independently evidenced"
+                    : "not satisfied — see blockers below — what missing, what next explicit")),
             ),
           )),
       ),
