@@ -1,9 +1,9 @@
 # XAUUSD edge discovery map
 
-This is the search plan. It is not a result and not a strategy. Statuses here
-are `NOT TESTED` or `BLOCKED` until a preregistered test is measured. The
-canonical archive is not repaired. The last 40 percent of the raw `time_msc`
-span is locked and is not used to choose a hypothesis.
+This is the search ledger. It is not a strategy. A row stays `NOT TESTED` or
+`BLOCKED` until a preregistered test is measured. Measured rejections stay
+rejections. The canonical archive is not repaired. The last 40 percent of the
+raw `time_msc` span is locked and is not used to choose a hypothesis.
 
 ## Separation
 
@@ -32,11 +32,15 @@ remain usable.
 | Quote process | Do short gaps precede larger 16-quote absolute moves? | H-VOL-01 REJECTED. Ratio below the floor. |
 | Quote process | Does a widen precede a larger 16-quote move than a tighten? | H-SPR-01 REJECTED. |
 | Trade prints | Size, aggressor, or last-price behavior | BLOCKED. `volume` and `last` are zero on every row. |
-| Statistical structure | Dependence, clustering, and variance beyond those two tests | NOT TESTED |
-| Regimes | Behavior conditional on a causal state label | NOT TESTED |
+| State magnitude | Does wide-and-active have a larger 256-quote absolute move than wide-and-quiet? | H-ST-01 REJECTED. Ratio 1.20, below 1.25. Exceed-spread lift 3.8 pp, below 5. |
+| State magnitude | Does a high recent 16-quote absolute move predict a larger 256-quote absolute move? | H-ST-02 TESTED. Ratio 1.48. Process structure, not a directional trade and not a strategy. |
+| State direction | After a mid-sign run of length at least 5, does the 256-quote move fade? | H-ST-03 REJECTED. Fade rate 0.494. Residual after one spread plus one cent is negative. |
+| State magnitude | Does leaving a persistent spread enlarge the 256-quote absolute move? | H-ST-04 REJECTED. Ratio 1.07, below 1.15. Not the rejected widen-versus-tighten test. |
+| Statistical structure | Dependence beyond the locked families | NOT TESTED. H-ST-02 is one absolute-move contrast, not a general dependence claim. |
+| Regimes | State labels other than the locked family | NOT TESTED. Ranked panel cells are hypothesis generators, not tests. The 38-cent mode stays descriptive. |
 | Temporal structure | Hour, session, weekday | BLOCKED. Timestamp basis is not confirmed. |
-| Event/state behavior | Sequences other than the two preregistered quote events | NOT TESTED |
-| Cross-feature conditionals | Interactions beyond spread and the next quote | NOT TESTED |
+| Event/state behavior | Sequences other than the locked state family | NOT TESTED. Horizon 4096 signed cells were descriptive and were not confirmed. |
+| Cross-feature conditionals | Interactions other than wide×activity, recent volatility, and persistence leave/stay | NOT TESTED. |
 
-No family is assumed to be the edge. No model is fit because a simpler test has
-not yet established a reason to.
+No family is assumed to be the edge. No model is fit. The measured magnitude
+clustering is not a reason to add one.
