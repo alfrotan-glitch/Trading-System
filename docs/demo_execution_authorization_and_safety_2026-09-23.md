@@ -413,7 +413,33 @@ Two loop-level gaps were fixed alongside: the signal provider is instantiated **
 (a fresh object every cycle would re-emit the same signal), and every cycle now re-checks
 reconciliation health and halts if a suspension is required.
 
-### 16.4 Unit / adversarial coverage
+### 16.4 API contract (the surface the 409 lived on)
+
+`tests/test_demo_api.py` (13 tests, always run) pins the behaviour at the HTTP layer, because the
+original symptom — `POST /api/demo/enable -> 409 execution_permitted=false` — is something an operator
+meets through the API:
+
+* `GET /api/demo/authorization` — reports the artifact, `live_locked: true`, `real_capital_exposure_usd: 0`
+  and the resolved policy `ENABLED_AUTHORIZED`;
+* `POST /api/demo/enable` without `confirmed`/`risk_ack` → **400**;
+* `POST /api/demo/enable` with **no** authorization artifact → **409** `state=DISABLED`,
+  `policy="DISABLED BY POLICY"`, `demo_execution_disabled: true` — the shipped default, unchanged;
+* with an artifact but a **failing fresh readiness** → **409** (authorized, still refused);
+* with an artifact and a **fresh passing readiness** → **200** `execution_permitted: true`, and
+  `POST /api/demo/disable` revokes it again;
+* `GET /api/demo/preflight` → 409 while any check is unresolved (`no_unknown_checks` FAILs: nothing
+  unknown is counted as a pass);
+* `POST /api/demo/order` with no registered strategy → **409** `NO_TRADE`; with an armed session and a
+  registered strategy → **200**, exactly one minimum-size `RESEARCH_DEMO_ORDER` journaled with its
+  strategy config hash;
+* `POST /api/demo/kill` → kill switch raised **and stage HALTED**;
+* `GET /api/demo/journal` → labelled `RESEARCH_DEMO_ORDER`, `capital_class: DEMO`, empty by default;
+* `GET /api/demo/stage` → `DISABLED`, `orders_permitted: false` on a fresh database.
+
+Every durable side effect in those tests (DB, audit log, kill-switch self test, identity pin) is
+redirected to `tmp_path`, so the suite never touches the operator's state.
+
+### 16.5 Unit / adversarial coverage
 
 New/updated tests (all passing in this checkout):
 
@@ -431,6 +457,9 @@ New/updated tests (all passing in this checkout):
   against a simulated DEMO terminal (see §16.1).
 * `tests/integration/test_demo_autopilot_loop.py` — 8 tests (`--run-integration`): autonomous loop,
   position lifecycle and research-integrity refusals (see §16.2/§16.3).
+* `tests/test_demo_api.py` — 13 tests: the HTTP contract above (see §16.4).
+* Shared fixtures: `tests/fakes_mt5_demo.py` (stateful fake terminal), `tests/fakes_demo_provider.py`
+  (frozen deterministic provider + deliberately non-compliant variants).
 
 Invariants stated by this document and pinned by tests:
 

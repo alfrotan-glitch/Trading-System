@@ -28,6 +28,26 @@ FUTURE_TOLERANCE_S = 5.0  # minor same-basis clock skew only; NOT a clamp for ti
 _MIN_VALID_EPOCH_S = 1e9  # ~2001-09-09; anything at/below is garbage (0, missing, wrong units)
 
 
+
+#: The 14 checks that must all pass for DEMO readiness (order is the contract).
+#: Exported so callers (CLI, API, tests) reference the same list the gate uses.
+READINESS_REQUIRED_CHECKS: tuple[str, ...] = (
+    "mt5_installed",
+    "terminal_running",
+    "account_connected",
+    "account_is_demo",
+    "broker_identified",
+    "symbol_available",
+    "symbol_tradable",
+    "symbol_spec_valid",
+    "market_data_fresh",
+    "bid_ask_valid",
+    "spread_acceptable",
+    "account_state_valid",
+    "risk_config_valid",
+    "reconciliation_healthy",
+)
+
 def _as_epoch_seconds(raw: Any) -> float | None:
     """Normalize an MT5 timestamp to epoch seconds, or None if unusable.
 
@@ -459,22 +479,7 @@ def demo_forward_readiness_report(
         check("reconciliation_healthy", False, str(e), "Reconciliation not healthy")
 
     # Overall
-    required = [
-        "mt5_installed",
-        "terminal_running",
-        "account_connected",
-        "account_is_demo",
-        "broker_identified",
-        "symbol_available",
-        "symbol_tradable",
-        "symbol_spec_valid",
-        "market_data_fresh",
-        "bid_ask_valid",
-        "spread_acceptable",
-        "account_state_valid",
-        "risk_config_valid",
-        "reconciliation_healthy",
-    ]
+    required = list(READINESS_REQUIRED_CHECKS)
     passed = all(checks.get(k, False) for k in required)
     # ``passed`` authorizes DEMO_FORWARD observation readiness only. Product
     # policy intentionally keeps DEMO_EXECUTION disabled, so the legacy field
