@@ -26,6 +26,9 @@ logs/
 # summaries under data/evidence/ are committable).
 data/raw/mt5_ticks/
 data/mt5_ticks/
+# Only an independently attested discovery-only view may feed H-DIR-01.
+# Private quotes and local source manifests are never committed.
+data/raw/xauusd_discovery_view/
 
 # Secrets / env
 .env

@@ -1,0 +1,35 @@
+{
+  "schema": "qts.xauusd_directional.v1",
+  "preregistration": "docs/xauusd_directional_next_step_2026-09-23.md",
+  "generated_at_utc": "2026-09-23T11:43:53.033242+00:00",
+  "status": "NOT_RUN_ACCESS_BLOCKED",
+  "reason": "Metadata-only source audit found part-000441.parquet crosses the original discovery split: 50,716 required Discovery rows and 81,989 held-out rows share one ZIP-compressed Parquet member. No independently authenticated finer index or safe complete Discovery-only view exists; no view authority is pinned. H-DIR-01 is NOT RUN (see reports/xauusd_discovery_boundary_audit.json).",
+  "decision": "INCONCLUSIVE",
+  "hypotheses": {
+    "H-DIR-01": {
+      "status": "NOT RUN",
+      "reason": "Metadata-only source audit found part-000441.parquet crosses the original discovery split: 50,716 required Discovery rows and 81,989 held-out rows share one ZIP-compressed Parquet member. No independently authenticated finer index or safe complete Discovery-only view exists; no view authority is pinned. H-DIR-01 is NOT RUN (see reports/xauusd_discovery_boundary_audit.json)."
+    }
+  },
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "held_out_span_opened": false,
+  "window": {
+    "held_out_rows_read": 0
+  },
+  "safety": {
+    "DEMO_EXECUTION": "DISABLED",
+    "confirm_live": false,
+    "orders_submitted": 0
+  },
+  "access_boundary": {
+    "status": "NOT_ESTABLISHED",
+    "source_audit": "reports/xauusd_discovery_boundary_audit.json",
+    "source_audit_run": "https://github.com/alfrotan-glitch/Trading-System/actions/runs/35856015114",
+    "source_audit_sha256": "f2864545873f98adac4f6b0bd37a806810bca580f006641e3e854efaf3df1153",
+    "mixed_original_part": "part-000441.parquet",
+    "discovery_view_present": false,
+    "independently_pinned_view_authority_present": false,
+    "runner_proven_unable_to_access_held_out_in_a_real_run": false
+  }
+}

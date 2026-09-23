@@ -71,8 +71,66 @@ than `manifest.json`. The expected report is a **boundary audit**, not a
 trading or H-DIR-01 result. No promotion, Demo execution, order submission,
 or held-out quote inspection is authorized.
 
-## Audit outcome
+## Independent audit outcome — BLOCKED (no H-DIR-01 run)
 
-Awaiting independent metadata-only runner evidence. Until then the discovery
-view and separate H-DIR execution boundary are **NOT VERIFIED** and H-DIR-01
-remains **NOT RUN**.
+The [metadata-only Actions run](https://github.com/alfrotan-glitch/Trading-System/actions/runs/35856015114)
+completed successfully at code commit `90a16333e83c60803dc48a111e11c176cc5b9cdb`.
+Its archive-handling job checked the full ZIP's **opaque-byte SHA-256** against
+the published release checksum, opened only `manifest.json`, checked its SHA-256
+against the previous verified gap disposition, reconciled its 734-part ledger
+and dataset digest, and inspected the ZIP central directory. It did **not**
+open, extract or decode a Parquet/quote member. A separate publisher job with
+**only the small audit JSON** committed
+[`reports/xauusd_discovery_boundary_audit.json`](../reports/xauusd_discovery_boundary_audit.json)
+to this branch (`de95a87ece1a7ad9847c8aee67bcb79acc21b3a4`);
+report file SHA-256:
+`f2864545873f98adac4f6b0bd37a806810bca580f006641e3e854efaf3df1153`.
+No quote archive or derived rows were published. This report is **metadata
+about the original source**, not a discovery quote view or research result.
+
+The exact 70,834,426-row Discovery prefix **does not** end on an immutable
+original part boundary:
+
+| Original source part / row interval (zero-based) | Rows | Split |
+| --- | ---: | --- |
+| `part-000441.parquet`, global `[70,783,710, 70,916,415)` | 132,705 | 50,716 Discovery rows at the start; **81,989 held-out rows** at the end |
+
+The first held-out original row is global index **70,834,426**; the last
+Discovery row is **70,834,425**. The previous part, `part-000440.parquet`, is
+**empty** and ends at 70,783,710. The ledger's chunk request window for the
+mixed part, 2025-11-30T11:40:13.383522+00:00 to
+2025-12-01T11:40:13.383522+00:00, is *not* a verified raw row-time range.
+The locked raw-time cutoff remains `time_msc < 1764563969254`; original
+dataset bounds and the 69,096,545 held-out row count come from the **earlier
+published full inventory**, not any held-out row inspection in this audit.
+Exact values of the *last Discovery row's* and *first held-out row's* raw
+`time_msc` are not provided by the published metadata; the threshold and
+original-row positions are exact, but we will not invent those two values or
+open the held-out quote row to obtain one.
+
+The source release contains only the ZIP; the ZIP has only 734 Parquet parts
+plus the acquisition manifest. There is no separate part/row-group/page index
+or immutable discovery partition in its inventory or repository tooling.
+The manifest lists part row counts but no per-part raw timestamp or internal
+row-group/page bounds. The [prior ZIP central-directory inventory](../reports/canonical_zip_inventory.json)
+lists the mixed member as 1,112,372 compressed versus 1,185,224
+uncompressed bytes: it is **ZIP-compressed**. Reading its inner footer or
+selecting 50,716 rows would require opening/decompressing a member that also
+contains 81,989 held-out quote rows. This is forbidden by
+the agreed access rule. The metadata audit therefore cannot establish a
+complete, independently verified Discovery-only view. It did not try to read
+the boundary part or infer a safe row group from its request dates. There is
+**no** pinned view authority and **no** view to mount into an isolated
+H-DIR-01 runner. Separate-runner enforcement for a real measurement remains
+**unverified, not merely inconvenient**.
+
+**Disposition: STOP — `NO_SAFE_DISCOVERY_VIEW_FROM_IMMUTABLE_PARTS`.** H-DIR-01
+is **NOT RUN / ACCESS BLOCKED**. Zero held-out quote members were opened and
+zero quote rows were decoded **in this audit**; the earlier published inventory
+had its own historical access. No hypothesis result, strategy promotion, Demo
+execution or orders exist. Do not run H-DIR-01 by slicing/truncating the mixed
+part, loosening the cutoff, skipping the missing 50,716 Discovery rows, or
+replacing the canonical ZIP. Reconsider only if an independently authenticated
+pre-existing index/partition can prove and provide the *complete* prefix
+without accessing the mixed member's held-out rows; do not treat this as
+permission to construct one by reading them.
