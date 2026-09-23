@@ -24,7 +24,9 @@ Release metadata is listed. `gh release view` shows the asset uploaded, 1,019,72
 
 Transfer is still blocked. `github.com`, `api.github.com`, and `codeload.github.com` complete TLS. `release-assets.githubusercontent.com`, `objects.githubusercontent.com`, and `releaseassetproduction.blob.core.windows.net` accept TCP and then close the handshake with zero certificate bytes. Authenticated `HEAD` and GraphQL both return a redirect to those hosts. No byte of the zip was retrieved. The expected SHA-256 was not verified.
 
-A workflow that would download the asset on a GitHub-hosted runner, verify the hash, and inventory without repair is in `scripts/github-workflow-canonical-xauusd-zip-inventory.yml`. It is not installed. Pushing it to `.github/workflows/` was refused: this GitHub App token lacks `workflows` permission. Codespaces access returned HTTP 403. The runner therefore did not start.
+Release CDN access is stopped. The zip was not re-uploaded or regenerated. It is not in this runtime, so it was not hashed and not extracted. Research has not started.
+
+Arena chat upload does not accept `.zip`. The sandbox file API on port 49983 accepts a file only with a signature or access token, and that credential is not inside the sandbox. The project intake path, once a signed write places the existing workstation file, is `data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip`. Verification must match SHA-256 `975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723` before any extraction.
 
 Inventory, time range, timezone, duplicates, gaps, tick frequency, bid/ask, spread, abnormal spreads, timestamp irregularities, session/calendar, and provenance of the tick archive are `UNAVAILABLE`. No defects were classified. No repairs were applied. The machine-readable access record is `reports/dataset_access_xauusd_730d.json`.
 
