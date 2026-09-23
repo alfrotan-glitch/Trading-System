@@ -285,10 +285,7 @@ def evaluate_marketmaking(scan: MarketMakingScan, *, complete_rows: int = DISCOV
         max_t = max_exc[mask_t]
         delay_t = delay_both[mask_t]
         net_t = net[mask_t]
-        # compute via helper on subset
-        sub = stats_for(is_F_t, is_U_t)
-        # But stats_for uses global both/abs etc, so we need to adjust: create local function
-        # Instead compute manually:
+        # compute manually (stats_for would use global arrays and mismatch, so inlined):
         p_F = float(np.mean(both_t[is_F_t])) if n_F else None
         p_U = float(np.mean(both_t[is_U_t])) if n_U else None
         lift = (p_F - p_U) if (p_F is not None and p_U is not None) else None
@@ -321,11 +318,7 @@ def evaluate_marketmaking(scan: MarketMakingScan, *, complete_rows: int = DISCOV
     gap_mask = gap_clear
     gap_stats = None
     if np.any(gap_mask):
-        is_F_g = is_F[gap_mask]
-        is_U_g = is_U[gap_mask]
-        gap_stats = stats_for(is_F_g, is_U_g)
-        # But stats_for uses global arrays, need filtered
-        # Instead recompute filtered
+        # stats_for would mismatch (global vs subset), so compute manually
         n_F = int(np.count_nonzero(is_F[gap_mask]))
         n_U = int(np.count_nonzero(is_U[gap_mask]))
         both_g = both[gap_mask]
