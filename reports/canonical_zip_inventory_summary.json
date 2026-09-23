@@ -7,12 +7,12 @@
   "edge_claim": "NOT ESTABLISHED",
   "decision_supported": false,
   "defect_codes": [
-    "INTEGRITY_FAIL",
+    "ZIP_PATH_SEPARATOR",
     "TIMESTAMP_BASIS_UNVERIFIED"
   ],
   "dataset_count": 1,
-  "row_count": 0,
-  "time_msc_min": null,
-  "time_msc_max": null,
-  "recomputed_dataset_sha256": null
+  "row_count": 139930971,
+  "time_msc_min": 1726746013452,
+  "time_msc_max": 1789775939790,
+  "recomputed_dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789"
 }
