@@ -1,0 +1,93 @@
+name: Canonical XAUUSD verifiable Discovery view (H-DIR-02)
+
+on:
+  push:
+    branches:
+      - arena/01a0cdf1-trading-system
+    paths:
+      - .github/workflows/canonical-xauusd-verifiable-discovery-view.yml
+      - scripts/build_verifiable_discovery_view.py
+      - scripts/run_xauusd_directional_verifiable.py
+      - docs/xauusd_directional_next_step_H-DIR-02_2026-09-23.md
+      - src/qts/research/xauusd_directional_view.py
+      - src/qts/research/xauusd_directional.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: canonical-xauusd-verifiable-discovery-view
+  cancel-in-progress: false
+
+jobs:
+  build-view-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install QTS
+        run: pip install -e .
+
+      - name: Download canonical ZIP on this runner only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/qts_view"
+          gh release download dataset-xauusd-730d-20260919 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "XAUUSD_730d_20260919T114013Z.zip" \
+            --dir "${RUNNER_TEMP}/qts_view" \
+            --clobber
+          test -f "${RUNNER_TEMP}/qts_view/XAUUSD_730d_20260919T114013Z.zip"
+          ls -lh "${RUNNER_TEMP}/qts_view"
+
+      - name: Build verifiable Discovery-only view (never opens straddling part)
+        run: |
+          set -euo pipefail
+          python scripts/build_verifiable_discovery_view.py \
+            --zip "${RUNNER_TEMP}/qts_view/XAUUSD_730d_20260919T114013Z.zip" \
+            --view-dir "${RUNNER_TEMP}/qts_verifiable_view" \
+            --authority-out "${RUNNER_TEMP}/qts_verifiable_authority.json"
+          echo "View built:"
+          ls -lh "${RUNNER_TEMP}/qts_verifiable_view"
+          cat "${RUNNER_TEMP}/qts_verifiable_view/manifest.json" | head -n 100
+          cat "${RUNNER_TEMP}/qts_verifiable_authority.json"
+
+      - name: Run H-DIR-02 on verifiable view (separate logical step, same runner but no ZIP held-out access)
+        run: |
+          set -euo pipefail
+          # Ensure ZIP is not in the view directory and held-out is not accessible via view
+          test ! -f "${RUNNER_TEMP}/qts_verifiable_view/XAUUSD_730d_20260919T114013Z.zip"
+          python scripts/run_xauusd_directional_verifiable.py \
+            --view-dir "${RUNNER_TEMP}/qts_verifiable_view" \
+            --authority "${RUNNER_TEMP}/qts_verifiable_authority.json" \
+            --output reports/xauusd_directional_H-DIR-02_state.json \
+            --markdown reports/xauusd_directional_H-DIR-02_state.md
+          cat reports/xauusd_directional_H-DIR-02_state.json | head -n 200
+          cat reports/xauusd_directional_H-DIR-02_state.md
+
+      - name: Commit verifiable view authority and H-DIR-02 result
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Authority is published to docs/ so the next runner can verify without the ZIP
+          cp "${RUNNER_TEMP}/qts_verifiable_authority.json" docs/xauusd_directional_view_authority_H-DIR-02.json
+          # View manifest is also published for audit (small, no quotes)
+          cp "${RUNNER_TEMP}/qts_verifiable_view/manifest.json" reports/xauusd_directional_H-DIR-02_view_manifest.json
+          git add docs/xauusd_directional_view_authority_H-DIR-02.json reports/xauusd_directional_H-DIR-02_view_manifest.json reports/xauusd_directional_H-DIR-02_state.json reports/xauusd_directional_H-DIR-02_state.md
+          if git diff --cached --quiet; then
+            echo "no change to commit"
+            exit 0
+          fi
+          git commit -m "H-DIR-02 verifiable Discovery view (70,783,710 rows) and directional measurement — maximal prefix without opening straddling part [skip ci]"
+          git push origin HEAD:arena/01a0cdf1-trading-system
