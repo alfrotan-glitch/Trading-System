@@ -32,9 +32,12 @@ ZIP, view or view authority is available in this checkout.
   Actions runner may download the archive and hash its opaque compressed
   bytes (to establish identity); read ZIP central-directory metadata and
   **open only `manifest.json`**. It must not extract, open or decode *any*
-  Parquet/quote member. It publishes only the small boundary audit JSON, never
-  the archive or quotes. This job cannot invoke the H-DIR runner. The archive
-  is discarded when the preparation runner exits.
+  Parquet/quote member. It uploads only the small boundary audit JSON, never
+  the archive or quotes. A **different** runner, with no archive, checks and
+  publishes that bounded JSON via GitHub's Contents API to this branch (the
+  sandbox cannot download the Actions artifact from its CDN). Neither job
+  can invoke the H-DIR runner. The archive is discarded when the preparation
+  runner exits.
 
 ## Precommitted decision rule
 
