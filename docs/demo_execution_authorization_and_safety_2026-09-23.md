@@ -439,7 +439,28 @@ meets through the API:
 Every durable side effect in those tests (DB, audit log, kill-switch self test, identity pin) is
 redirected to `tmp_path`, so the suite never touches the operator's state.
 
-### 16.5 Unit / adversarial coverage
+### 16.5 Operator CLI (the documented procedure, executed)
+
+`tests/integration/test_demo_cli.py` (9 tests, `--run-integration`) runs the §15 procedure through the
+CLI with the fake terminal injected as `sys.modules["MetaTrader5"]`, so the real 14-check readiness
+gate, authority, stage machine and pre-trade gate all execute:
+
+* `qts demo connectivity` → `readiness passed: True`, `account: demo=True login=123456`,
+  `XAUUSD -> XAUUSD@`, spread, `STAGE_1_READY: True`, and **zero broker requests** (Stage 1 sends nothing);
+  `--json-out` writes the full report;
+* `connectivity --pin` → pin `PENDING_REVIEW`; `connectivity --confirm-pin` → owner confirmation;
+* `arm --stage 1` → `arm --stage 2` → `authority: ENABLED permitted=True` (each stage re-proves its
+  prerequisites); `arm --stage 2` **without** `--confirm --risk-ack` is `REFUSED` (exit 2);
+* `order` with no registered strategy → exit 2 `NO_TRADE`; with one → a single minimum-size
+  `RESEARCH_DEMO_ORDER`, journaled and visible in `qts demo journal`;
+* `journal --export` writes the forward-validation JSONL (label, broker id, strategy config hash);
+* `preflight` submits nothing;
+* `run --dry-run` halts on the research gate (`NO_TRADE`, 0 orders, 0 broker requests) once armed;
+* `kill` raises the durable kill switch and a subsequent `arm` is `REFUSED`;
+* `revoke` writes an **additive** sidecar (`…json.revocation.json`), leaves the artifact byte-identical,
+  and execution is disabled again — `status` reports `DISABLED BY POLICY` and `order` refuses.
+
+### 16.6 Unit / adversarial coverage
 
 New/updated tests (all passing in this checkout):
 
@@ -458,6 +479,7 @@ New/updated tests (all passing in this checkout):
 * `tests/integration/test_demo_autopilot_loop.py` — 8 tests (`--run-integration`): autonomous loop,
   position lifecycle and research-integrity refusals (see §16.2/§16.3).
 * `tests/test_demo_api.py` — 13 tests: the HTTP contract above (see §16.4).
+* `tests/integration/test_demo_cli.py` — 9 tests (`--run-integration`): the operator CLI procedure (§16.5).
 * Shared fixtures: `tests/fakes_mt5_demo.py` (stateful fake terminal), `tests/fakes_demo_provider.py`
   (frozen deterministic provider + deliberately non-compliant variants).
 
