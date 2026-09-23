@@ -1,28 +1,30 @@
 {
   "report_id": "cycle-2026-09-23-xauusd-edge",
-  "generated_at": "2026-09-23T06:23:38Z",
+  "generated_at": "2026-09-23T07:27:37Z",
   "code_identity": {
-    "git_head": "79fd10b74c1d47cffa4ba9c4445691f46beb42e6",
     "branch": "arena/01a0c9cc-trading-system",
-    "working_tree": "DIRTY",
-    "note": "Trustworthiness edits are uncommitted on this branch. HEAD alone does not identify the code that was executed."
+    "note": "HEAD at report generation is the parent of the runner-workflow commit. The runner report, when it returns, identifies its own GITHUB_SHA."
   },
   "decision": "INCONCLUSIVE",
-  "decision_reason": "The canonical tick archive was not retrieved, so no discovery, validation, or execution result exists. A profitable backtest was not produced and is not claimed.",
+  "decision_reason": "The canonical tick archive has not been verified in this runtime. A GitHub-hosted runner was dispatched to verify it. No discovery, validation, or execution result exists.",
   "safety": {
     "confirm_live": false,
     "execution_mode": "backtest",
     "demo_forward_enabled": false,
     "DEMO_EXECUTION": "DISABLED BY POLICY",
     "LIVE": "LOCKED",
-    "real_money": false
+    "real_money": false,
+    "source": "load_settings() at 2026-09-23T07:27:37Z"
   },
   "data": {
     "canonical_release": "dataset-xauusd-730d-20260919",
     "canonical_asset": "XAUUSD_730d_20260919T114013Z.zip",
     "expected_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
     "verified_sha256": null,
+    "bytes_in_this_runtime": 0,
     "status": "UNAVAILABLE",
+    "runner_workflow": ".github/workflows/canonical-xauusd-zip-inventory.yml",
+    "runner_result": "NOT RETURNED",
     "inventory": "UNAVAILABLE",
     "time_range": "UNAVAILABLE",
     "timezone": "UNAVAILABLE",
@@ -40,7 +42,7 @@
     "hypotheses_tested": [],
     "rejections": [],
     "survivors": [],
-    "reason": "Discovery was not run against a substitute dataset. The synthetic fixture registered locally by a reproducibility test is not the canonical archive."
+    "preregistered_not_tested": ["H-MS-01", "H-MS-02", "H-TOD-01"]
   },
   "validation": {
     "status": "NOT RUN",
@@ -53,20 +55,13 @@
     "execution_assumptions": "UNAVAILABLE — no candidate reached execution testing"
   },
   "engineering": {
-    "short_id": "Truncated labels no longer slice the UUIDv7 timestamp prefix. uuid7() remains RFC 9562, 32 hex, version nibble 7. Session labels stay FS-<6 hex>.",
-    "tests_executed_this_session": [
-      "tests/test_trustworthiness_fixes.py",
-      "tests/test_poll_fill_attribution.py",
-      "tests/adversarial/test_no_fabrication.py",
-      "tests/test_observation_attempt_journal.py",
-      "tests/test_research_integrity_audit.py",
-      "tests/unit",
-      "tests/test_market_data_observatory.py::test_forward_observatory_safe_no_capital",
-      "tests/test_market_data_observatory.py::test_regime_observatory_transitions",
-      "tests/test_market_data_observatory.py::test_clean_room_reproducibility",
-      "tests/test_observe_only_collector.py::test_record_identity_is_collision_resistant_and_session_ids_stay_canonical"
+    "uuid7": "unchanged; uuid.uuid4().hex; not RFC 9562",
+    "prior_101_test_claim": "NOT THIS HEAD. Not re-executed. Not cited as a pass.",
+    "tests_executed_for_this_commit": [
+      "tests/test_canonical_zip_inventory.py",
+      "tests/test_github_runner_inventory_support.py"
     ],
-    "tests_not_executed": "The full suite was not run. A passing subset is not a full-suite result.",
+    "tests_passed": 7,
     "full_suite_claim": false
   }
 }

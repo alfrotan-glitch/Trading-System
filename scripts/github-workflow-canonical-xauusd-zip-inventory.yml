@@ -1,7 +1,7 @@
-# Do not use this file to fetch the GitHub Release. The owner forbade
-# Release CDN access, re-upload, and regeneration. Inventory only a file
-# already present at the gitignored path, after the SHA-256 check inside
-# scripts/inventory_canonical_xauusd_zip.py.
+# Not installed. Do not copy this file to .github/workflows/ and do not run
+# it in the research sandbox. The installed runner job is
+# .github/workflows/canonical-xauusd-zip-inventory.yml. That job is the only
+# place that reads the listed release asset. This copy does not download it.
 name: Canonical XAUUSD zip inventory
 
 on:

@@ -19,10 +19,10 @@
   "bid_ask": null,
   "spread": null,
   "session_calendar": null,
-  "provenance": "NOT ESTABLISHED. The release lists the asset. This sandbox did not download it. No workflow exists to transfer it, and this token cannot create one. SHA-256 was not verified. The archive was not extracted or modified.",
+  "provenance": "NOT ESTABLISHED. This runtime has not downloaded or hashed the archive. A GitHub-hosted runner job is installed to read the already-listed release asset, verify SHA-256 before extraction, and commit the inventory report. That measurement has not returned.",
   "repairs_applied": [],
   "decision_supported": false,
-  "probed_at": "2026-09-23T06:55:00Z",
+  "probed_at": "2026-09-23T07:27:37Z",
   "release_metadata": {
     "status": "LISTED",
     "tag": "dataset-xauusd-730d-20260919",
@@ -36,31 +36,15 @@
     "source": "gh release view dataset-xauusd-730d-20260919"
   },
   "transfer": {
-    "status": "BLOCKED_MISSING_WORKFLOWS_PERMISSION",
+    "status": "RUNNER_DISPATCHED",
     "release_asset_id": 582342011,
     "release_asset_bytes_declared": 1019727380,
     "sandbox_release_cdn_download": "NOT PERFORMED",
-    "existing_workflows": 0,
-    "workflow_file_on_main": "NOT FOUND",
-    "contents_api_create_workflow": "403 Resource not accessible by integration",
-    "git_push_workflow_file": "rejected: GitHub App lacks workflows permission",
-    "actions_permission_api": "403 Resource not accessible by integration",
-    "codespaces": "403",
-    "mechanism_that_can_read_existing_release_asset": "A GitHub-hosted Actions runner using the repository GITHUB_TOKEN. The API returns a redirect; the runner follows it. This sandbox must not.",
-    "why_it_cannot_be_started": "Creating .github/workflows/* requires workflows permission, which this GitHub App token does not have. Nothing is available to dispatch.",
-    "return_paths_this_runtime_can_read": [
-      "api.github.com",
-      "github.com",
-      "codeload.github.com"
-    ],
-    "return_paths_this_runtime_cannot_read": [
-      "actions artifact blob storage",
-      "media.githubusercontent.com",
-      "lfs.github.com",
-      "ghcr.io",
-      "npm.pkg.github.com"
-    ],
-    "git_blob_limit": "GitHub rejects files over 100 MB, so the 1,019,727,380-byte zip cannot be committed as one blob even by a runner.",
+    "workflow": ".github/workflows/canonical-xauusd-zip-inventory.yml",
+    "workflow_runs_on": "ubuntu-latest",
+    "permission": "GitHub App repository permission Workflows: Read and write is present. A contents API create of .github/workflows/* returned 201.",
+    "permission_probe_workflow": "REMOVED. .github/workflows/qts-permission-probe.yml was an invalid probe and is not a data path.",
+    "return_path": "The runner commits reports/canonical_zip_inventory.json to arena/01a0c9cc-trading-system. This runtime does not read Actions artifact storage.",
     "checksum_verified": false,
     "extracted": false,
     "research_started": false
