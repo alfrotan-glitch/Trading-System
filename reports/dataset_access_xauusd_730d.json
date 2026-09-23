@@ -19,10 +19,10 @@
   "bid_ask": null,
   "spread": null,
   "session_calendar": null,
-  "provenance": "NOT ESTABLISHED \u2014 release metadata lists the 1,019,727,380-byte asset, but neither this sandbox nor an Actions runner retrieved the bytes. Expected SHA-256 was not verified.",
+  "provenance": "NOT ESTABLISHED \u2014 the exact zip is not in this runtime. Release CDN access was stopped. The archive was not re-uploaded or regenerated. SHA-256 was not verified. Research was not started.",
   "repairs_applied": [],
   "decision_supported": false,
-  "probed_at": "2026-09-23T06:39:00Z",
+  "probed_at": "2026-09-23T06:47:30Z",
   "release_metadata": {
     "status": "LISTED",
     "tag": "dataset-xauusd-730d-20260919",
@@ -36,16 +36,17 @@
     "source": "gh release view dataset-xauusd-730d-20260919"
   },
   "transfer": {
-    "status": "UNAVAILABLE",
+    "status": "NOT_IN_RUNTIME",
+    "release_cdn": "NOT ACCESSED this turn, by owner instruction",
     "bytes_retrieved": 0,
     "checksum_verified": false,
-    "github_com_tls": "OK",
-    "api_github_com_tls": "OK",
-    "codeload_github_com_tls": "OK",
-    "release_assets_tls": "EOF during handshake; 0 certificate bytes",
-    "objects_githubusercontent_tls": "EOF during handshake; 0 certificate bytes",
-    "azure_blob_tls": "EOF during handshake to releaseassetproduction.blob.core.windows.net",
-    "actions_workflow": "NOT INSTALLED \u2014 GitHub App token refused to create .github/workflows without workflows permission",
-    "codespaces": "NOT ACCESSIBLE \u2014 integration token HTTP 403"
+    "arena_chat_attachment": "DOCUMENTED types do not include .zip; not a path for this archive",
+    "sandbox_file_api": "envd :49983 requires a signed upload URL or access token, which is not present inside the sandbox",
+    "project_intake_path": "data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip",
+    "intake_present": false,
+    "reupload": false,
+    "regenerated": false,
+    "extracted": false,
+    "research_started": false
   }
 }

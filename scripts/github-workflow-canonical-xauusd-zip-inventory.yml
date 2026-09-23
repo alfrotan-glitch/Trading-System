@@ -1,6 +1,7 @@
-# Not installed. This token cannot push `.github/workflows/*` (missing
-# workflows permission). Copy this file there from an account that can,
-# then dispatch it. Until then it does not run.
+# Do not use this file to fetch the GitHub Release. The owner forbade
+# Release CDN access, re-upload, and regeneration. Inventory only a file
+# already present at the gitignored path, after the SHA-256 check inside
+# scripts/inventory_canonical_xauusd_zip.py.
 name: Canonical XAUUSD zip inventory
 
 on:
@@ -30,16 +31,9 @@ jobs:
       - name: Install QTS
         run: pip install -e .
 
-      - name: Download canonical release asset
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Require the already-present canonical zip
         run: |
-          mkdir -p data/raw/mt5_ticks
-          gh release download dataset-xauusd-730d-20260919 \
-            --repo "${{ github.repository }}" \
-            --pattern "XAUUSD_730d_20260919T114013Z.zip" \
-            --dir data/raw/mt5_ticks \
-            --clobber
+          test -f data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip
 
       - name: Inventory without repair
         id: inventory
