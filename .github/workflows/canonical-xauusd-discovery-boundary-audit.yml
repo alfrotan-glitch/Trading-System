@@ -1,0 +1,61 @@
+# Metadata-only preparation on an isolated Actions runner. This job does NOT
+# execute H-DIR-01, extract any quote member, or supply an archive to research.
+# It hashes the original release ZIP as opaque compressed bytes, reads only its
+# central directory + manifest.json, uploads a small JSON boundary audit, and
+# discards the ZIP when the runner exits. No canonical asset is changed.
+name: Canonical XAUUSD discovery boundary (manifest only)
+
+on:
+  push:
+    branches:
+      - arena/01a0cdf1-trading-system
+    paths:
+      - .github/workflows/canonical-xauusd-discovery-boundary-audit.yml
+      - scripts/audit_xauusd_discovery_boundary.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canonical-xauusd-discovery-boundary-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Hash archive bytes and open acquisition manifest ONLY
+        id: boundary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          dir="${RUNNER_TEMP}/qts_boundary_audit"
+          mkdir -p "$dir" reports
+          trap 'rm -rf "$dir"' EXIT
+          gh release download dataset-xauusd-730d-20260919 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "XAUUSD_730d_20260919T114013Z.zip" \
+            --dir "$dir"
+          python scripts/audit_xauusd_discovery_boundary.py \
+            --zip "$dir/XAUUSD_730d_20260919T114013Z.zip" \
+            --output reports/xauusd_discovery_boundary_audit.json
+
+      - name: Publish ONLY bounded metadata, never ZIP or quotes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xauusd-discovery-boundary-audit
+          path: reports/xauusd_discovery_boundary_audit.json
+          if-no-files-found: warn
+          retention-days: 30
