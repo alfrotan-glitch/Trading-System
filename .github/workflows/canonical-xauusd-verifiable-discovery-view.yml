@@ -53,14 +53,16 @@ jobs:
       - name: Build verifiable Discovery-only view (never opens straddling part)
         run: |
           set -euo pipefail
+          set -x
           python scripts/build_verifiable_discovery_view.py \
             --zip "${RUNNER_TEMP}/qts_view/XAUUSD_730d_20260919T114013Z.zip" \
             --view-dir "${RUNNER_TEMP}/qts_verifiable_view" \
-            --authority-out "${RUNNER_TEMP}/qts_verifiable_authority.json"
+            --authority-out "${RUNNER_TEMP}/qts_verifiable_authority.json" 2>&1 | tee /tmp/build.log
           echo "View built:"
-          ls -lh "${RUNNER_TEMP}/qts_verifiable_view"
-          cat "${RUNNER_TEMP}/qts_verifiable_view/manifest.json" | head -n 100
-          cat "${RUNNER_TEMP}/qts_verifiable_authority.json"
+          ls -lh "${RUNNER_TEMP}/qts_verifiable_view" || true
+          cat "${RUNNER_TEMP}/qts_verifiable_view/manifest.json" | head -n 200 || true
+          cat "${RUNNER_TEMP}/qts_verifiable_authority.json" || true
+          cat /tmp/build.log || true
 
       - name: Run H-DIR-02 on verifiable view (separate logical step, same runner but no ZIP held-out access)
         run: |

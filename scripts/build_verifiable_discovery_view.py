@@ -77,8 +77,10 @@ def build_view(zip_path: Path, view_dir: Path, authority_path: Path) -> dict:
         def safe_name(n: str) -> str:
             return n.replace("\\", "/")
         members = {safe_name(info.filename): info for info in infos}
+        # Debug: log central directory shape without opening quotes
+        print(f"ZIP central directory: {len(members)} members, sample: {list(members)[:3]}", file=sys.stderr)
         if "manifest.json" not in members:
-            raise SystemExit("manifest.json missing")
+            raise SystemExit(f"manifest.json missing; members sample {list(members)[:5]}")
         # Only allowed open: manifest.json
         manifest_bytes = z.read(members["manifest.json"])
         manifest_sha = hashlib.sha256(manifest_bytes).hexdigest()
@@ -109,10 +111,12 @@ def build_view(zip_path: Path, view_dir: Path, authority_path: Path) -> dict:
             m = PART_RE.fullmatch("parts/" + str(name))
             if m is None or int(m.group(1)) != idx:
                 raise SystemExit(f"non-contiguous part ledger at {idx}: {name}")
-            if name not in members:
-                # Should have file in ZIP but we check central dir
-                # For empty parts, the ZIP member may still exist with 0 bytes? Check.
-                pass
+            # members are keyed as "parts/part-XXXXXX.parquet"
+            if f"parts/{name}" not in members:
+                # Empty parts may be missing from ZIP central directory; allow but log
+                print(f"WARNING: parts/{name} not in ZIP central dir (rows={rows})", file=sys.stderr)
+                if rows > 0:
+                    raise SystemExit(f"ZIP member missing for non-empty part {name}")
             if not isinstance(rows, int) or rows < 0:
                 raise SystemExit(f"invalid rows for {name}")
             if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha):
@@ -160,26 +164,14 @@ def build_view(zip_path: Path, view_dir: Path, authority_path: Path) -> dict:
             name = part["part"]
             rows = part["rows"]
             sha = part["sha256"]
-            member_name = "parts/" + name
-            # ZIP stores with backslash? Need to handle both
-            zip_member = None
-            for cand in [member_name, member_name.replace("/", "\\")]:
-                if cand in members or cand.replace("\\", "/") in members:
-                    zip_member = cand
-                    break
-            # Fallback: try members dict with normalized keys
-            if zip_member is None:
-                # Find by normalized lookup
-                for k in members:
-                    if k.endswith(name):
-                        zip_member = k
-                        break
-            if zip_member is None:
-                raise SystemExit(f"ZIP member missing for selected part {name}")
+            member_name = f"parts/{name}"
+            if member_name not in members:
+                raise SystemExit(f"ZIP member missing for selected part {name}; looked for {member_name}")
+            zip_info = members[member_name]
 
             # Extract without decompressing held-out member: we only extract selected
             # Use read() which decompresses only this member's bytes (fully discovery)
-            data = z.read(members[zip_member] if zip_member in members else members[safe_name(zip_member)])
+            data = z.read(zip_info)
             # Verify length matches? We check hash after writing
             tmp_path = parts_dir / name
             tmp_path.write_bytes(data)
