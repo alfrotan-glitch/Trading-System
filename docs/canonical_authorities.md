@@ -17,7 +17,7 @@ ONE canonical `ExecutionMode`:
 | `PAPER` | no (simulation) | **no** | no |
 | `SHADOW` | no (intents only) | **no** | no |
 | `DEMO_FORWARD` | **yes** (real MT5) | **no — structurally** | no |
-| `DEMO_EXECUTION` | **yes** | **no — disabled by product policy** | no |
+| `DEMO_EXECUTION` | **yes** | **authorized only** — requires a recorded owner authorization artifact, staged arming, pinned identity, an eligible registered strategy and 22 pre-trade checks | no |
 | `LIVE` | **yes** | yes (gated) | **yes** |
 
 Resolution precedence (highest wins): explicit argument → `QTS_MODE` →
@@ -35,15 +35,22 @@ no silent mid-session mode change.
 `demo_execution_state` + audit events). It is an execution boundary, not an
 enable switch:
 
-- `/api/demo/enable` returns HTTP 409 with the policy refusal and diagnostic
-  readiness evidence. It never creates order permission.
-- `DemoExecutionAuthority.enable(...)` is refused while the current product
-  policy is `DEMO_EXECUTION = DISABLED BY POLICY`; direct callers receive a
-  durable refusal and no `enabled=1` state. The authority boundary remains
-  retained for a later explicitly authorized policy change.
-- `/api/demo/state` and `authority.is_execution_permitted(...)` always report
-  `DISABLED` / `false` while the product policy is active, including when an
-  old or tampered database contains an enabled row.
+- The effective policy is resolved from the recorded owner authorization
+  (`qts.lifecycle.demo_authorization`). With no valid artifact it is
+  `DEMO_EXECUTION = DISABLED BY POLICY` (the shipped default); a valid,
+  in-scope, un-revoked artifact resolves it to `ENABLED_AUTHORIZED` for an
+  explicit DEMO-only scope with `LIVE` locked and zero real capital exposure.
+- `/api/demo/enable` returns HTTP 200 only when the authorization is valid
+  *and* every gate passes (explicit confirmation, risk acknowledgement, FRESH
+  passing readiness, required checks, broker-capable mode). It returns HTTP 409
+  with `execution_permitted=false` and the reasons on any refusal, and never
+  writes an enabled state on a refusal.
+- `/api/demo/state` and `authority.is_execution_permitted(...)` report
+  `DISABLED` / `false` while the policy is un-authorized, including when an old
+  or tampered database contains an enabled row.
+- Per-order permission is a separate question from policy: the pre-trade gate
+  (`qts.execution.demo_pretrade`) and the stage machine
+  (`qts.lifecycle.demo_stage`) must also pass in the same cycle.
 - DEMO_FORWARD readiness is still useful for starting the zero-order
   observation collector; it is not an execution prerequisite that can be
   promoted.

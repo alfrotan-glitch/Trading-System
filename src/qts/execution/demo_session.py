@@ -1,0 +1,830 @@
+"""Controlled DEMO execution session — the one wired path from policy to order.
+
+This module assembles the pieces that already existed (MT5 adapter, execution
+engine, risk authority, idempotency, reconciliation, kill switch, readiness
+gate) with the new authorization, identity, registry, pre-trade gate, stage
+machine and journal. It is the *only* place where a DEMO order request is
+turned into a broker order, so every caller (CLI, API, autopilot) inherits the
+same safeguards.
+
+Flow for a single order:
+
+1. resolve the owner authorization and the durable authority permission;
+2. Stage 1 probes: terminal, DEMO account, pinned broker identity, canonical
+   symbol, live quote, order-check dry-run;
+3. run the 21-check pre-trade gate (:mod:`qts.execution.demo_pretrade`);
+4. on PASS → submit through :class:`~qts.execution.engine.ExecutionEngine`
+   (risk veto + idempotency + kill switch + market-data safety still apply),
+   then **reconcile immediately** and journal the receipt;
+5. on any FAIL/UNKNOWN → record a NO_TRADE signal and refuse. There is no
+   "retry with relaxed checks" path anywhere in this module.
+
+Nothing here can reach a LIVE account: the authorization scope forbids it, the
+mode gate forbids it, and the identity check refuses any non-DEMO trade_mode.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from decimal import Decimal
+from pathlib import Path
+from typing import Any
+
+from qts.domain.modes import ExecutionMode
+from qts.execution.demo_journal import DemoOrderJournal
+from qts.execution.demo_pretrade import DemoPretradeContext, run_pretrade_gate
+from qts.lifecycle.demo_authorization import resolve_demo_execution_policy
+from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStageMachine
+
+DEFAULT_DB_PATH = Path("data/sqlite/qts.db")
+SELF_TEST_DB = Path("data/sqlite/demo_killswitch_selftest.db")
+
+
+def new_client_order_id(prefix: str = "demo") -> str:
+    return f"{prefix}-{datetime.now(UTC).strftime('%Y%m%dT%H%M%S')}-{uuid.uuid4().hex[:10]}"
+
+
+@dataclass
+class DemoSessionConfig:
+    """Operator-supplied connection/selection inputs (no secrets here)."""
+
+    symbol: str = "XAUUSD"
+    terminal_path: str | None = None
+    symbol_map: dict[str, str] = field(default_factory=dict)
+    db_path: Path = DEFAULT_DB_PATH
+    actor: str = "cli"
+    mt5_module: Any | None = None
+    max_tick_age_s: float = 60.0
+    max_spread_bps: float = 30.0
+
+
+@dataclass
+class SubmissionResult:
+    allowed: bool
+    client_order_id: str | None = None
+    journal_id: int | None = None
+    broker_order_id: str | None = None
+    broker_position_id: str | None = None
+    state: str = "NO_TRADE"
+    reasons: list[str] = field(default_factory=list)
+    verdict: dict[str, Any] | None = None
+    executed_price: str | None = None
+    spread_bps: float | None = None
+    slippage_bps: float | None = None
+    latency_ms: float | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "allowed": self.allowed,
+            "client_order_id": self.client_order_id,
+            "journal_id": self.journal_id,
+            "broker_order_id": self.broker_order_id,
+            "broker_position_id": self.broker_position_id,
+            "state": self.state,
+            "reasons": list(self.reasons),
+            "verdict": self.verdict,
+            "executed_price": self.executed_price,
+            "spread_bps": self.spread_bps,
+            "slippage_bps": self.slippage_bps,
+            "latency_ms": self.latency_ms,
+        }
+
+
+class DemoSession:
+    """A wired DEMO execution session. Every method fails closed."""
+
+    def __init__(self, config: DemoSessionConfig) -> None:
+        self.config = config
+        self.db_path = Path(config.db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.journal = DemoOrderJournal(db_path=self.db_path)
+        self.stage = DemoStageMachine(db_path=self.db_path)
+        self._mt5: Any = config.mt5_module
+        self._adapter: Any = None
+        self._engine: Any = None
+        self._risk: Any = None
+        self._idempotency: Any = None
+        self._market_data: Any = None
+        self._last_reconcile_at: datetime | None = None
+        self._last_reconcile: Any = None
+        self._reconcile_attempted: bool = False
+        self._authority: Any = None
+
+    # ------------------------------------------------------------- properties
+    @property
+    def policy(self):
+        return resolve_demo_execution_policy(mode=ExecutionMode.DEMO_EXECUTION.value)
+
+    @property
+    def authorization(self):
+        return self.policy.authorization
+
+    @property
+    def adapter(self) -> Any:
+        if self._adapter is None:
+            from qts.adapters.mt5_adapter import MT5Adapter
+
+            self._adapter = MT5Adapter(
+                config={
+                    "path": self.config.terminal_path or "",
+                    "symbol_map": dict(self.config.symbol_map or {}),
+                    "db_path": str(self.db_path),
+                },
+                mt5_module=self._mt5,
+                db_path=self.db_path,
+            )
+        return self._adapter
+
+    @property
+    def authority(self) -> Any:
+        if self._authority is None:
+            from qts.lifecycle.demo_authority import DemoExecutionAuthority
+            from qts.observability.audit import SqliteAuditLog
+
+            try:
+                audit: Any = SqliteAuditLog()
+            except Exception:
+                audit = None
+            # Bound to the canonical mode: a DEMO_FORWARD process can never
+            # hold DEMO_EXECUTION permission, even with a valid authorization.
+            self._authority = DemoExecutionAuthority(
+                db_path=self.db_path,
+                audit=audit,
+                mode=ExecutionMode.DEMO_EXECUTION.value,
+            )
+        return self._authority
+
+    # ------------------------------------------------------------ Stage 1
+    def connectivity_report(self) -> dict[str, Any]:
+        """Stage 1 — prove the environment, take no action.
+
+        Reports: terminal link, DEMO account + broker identity (pinned or not),
+        canonical symbol mapping, live quote freshness/spread, account state
+        and an order-check dry-run. Never submits anything.
+        """
+        from qts.lifecycle.demo_gate import demo_forward_readiness_report
+
+        report: dict[str, Any] = {
+            "checked_at": datetime.now(UTC).isoformat(),
+            "stage": self.stage.current().stage,
+            "policy": self.policy.as_dict(),
+            "symbol": self.config.symbol,
+        }
+
+        try:
+            readiness = demo_forward_readiness_report(
+                mt5_module=self._mt5,
+                terminal_path=self.config.terminal_path,
+                symbol=self.config.symbol,
+                symbol_map=dict(self.config.symbol_map or {}) or None,
+            )
+        except Exception as exc:
+            readiness = {"passed": False, "blocked_reasons": [f"readiness probe failed: {exc}"], "checks": {}}
+        report["readiness"] = readiness
+
+        report["identity"] = self._identity_probe()
+        report["identity_pin"] = self._pin_probe()
+        report["symbol_mapping"] = self._symbol_probe()
+        report["quote"] = self._quote_probe()
+        report["account"] = self._account_probe()
+        report["order_check"] = self._order_check_probe()
+        report["ready_for_stage_1"] = bool(
+            readiness.get("passed")
+            and report["identity"].get("is_demo") is True
+            and report["symbol_mapping"].get("ok")
+            and report["quote"].get("fresh")
+        )
+        return report
+
+    def _identity_probe(self) -> dict[str, Any]:
+        try:
+            identity = self.adapter.broker_identity()
+        except Exception as exc:
+            return {"ok": False, "is_demo": None, "error": f"{type(exc).__name__}: {exc}"}
+        return {"ok": True, **identity.as_dict()}
+
+    def _pin_probe(self) -> dict[str, Any]:
+        from qts.execution.demo_identity import load_pin, verify_pin
+
+        pin, reasons = load_pin()
+        identity = None
+        with contextlib.suppress(Exception):
+            identity = self.adapter.broker_identity()
+        verified: bool | None = None
+        detail: list[str] = []
+        if identity is not None and pin is not None:
+            verified, detail = verify_pin(identity, pin)
+        return {
+            "pinned": pin is not None,
+            "status": (pin or {}).get("status"),
+            "fingerprint": (pin or {}).get("fingerprint"),
+            "verified": verified,
+            "detail": detail or reasons,
+            "identity": (pin or {}).get("identity"),
+        }
+
+    def _symbol_probe(self) -> dict[str, Any]:
+        try:
+            canonical = self.config.symbol
+            broker_symbol = self.adapter._map_symbol(canonical)
+            spec = self.adapter.get_symbol_spec(canonical)
+            visible = bool(self.adapter.ensure_symbol_visible(broker_symbol))
+            return {
+                "ok": True,
+                "canonical": canonical,
+                "broker_symbol": broker_symbol,
+                "visible": visible,
+                "tradable": bool(spec.trade_allowed),
+                "volume_min": str(spec.volume_min),
+                "volume_max": str(spec.volume_max),
+                "volume_step": str(spec.volume_step),
+                "contract_size": str(spec.contract_size),
+                "digits": spec.digits,
+                "stops_level": spec.stops_level,
+            }
+        except Exception as exc:
+            return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+
+    def _quote_probe(self) -> dict[str, Any]:
+        from qts.domain.value_objects import Instrument
+
+        instrument = Instrument(symbol=self.config.symbol, venue="MT5")
+        try:
+            provider = self.market_data
+            tick = provider.get_tick(instrument)
+        except Exception as exc:
+            return {"ok": False, "fresh": False, "error": f"{type(exc).__name__}: {exc}"}
+        age = self._tick_age(tick)
+        spread = self._spread_bps(tick.bid, tick.ask)
+        return {
+            "ok": True,
+            "fresh": bool(age is not None and age <= self.config.max_tick_age_s),
+            "age_s": age,
+            "bid": str(tick.bid),
+            "ask": str(tick.ask),
+            "spread_bps": spread,
+            "event_time": tick.event_time.isoformat(),
+        }
+
+    def _account_probe(self) -> dict[str, Any]:
+        try:
+            account = self.adapter.account()
+        except Exception as exc:
+            return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        return {
+            "ok": True,
+            "balance": str(account.balance),
+            "equity": str(account.equity),
+            "free_margin": str(account.free_margin),
+            "leverage": None if account.leverage is None else str(account.leverage),
+            "currency": account.currency,
+            "source": account.source,
+        }
+
+    def _order_check_probe(self, lots: Decimal | None = None) -> dict[str, Any]:
+        """Dry-run of an order request — proves the plumbing without sending."""
+        try:
+            from qts.adapters.order_check import mt5_order_check
+            from qts.domain.value_objects import Instrument, OrderIntent, OrderType, Side
+
+            spec = self.adapter.get_symbol_spec(self.config.symbol)
+            size = lots if lots is not None else Decimal(str(spec.volume_min))
+            quote = self._quote_probe()
+            if not quote.get("ok"):
+                return {"ok": False, "error": quote.get("error", "quote unavailable")}
+            price = Decimal(quote["ask"])
+            intent = OrderIntent(
+                instrument=Instrument(symbol=self.config.symbol, venue="MT5"),
+                side=Side.BUY,
+                quantity=size,
+                order_type=OrderType.MARKET,
+                client_order_id=new_client_order_id("check"),
+                strategy_id="connectivity-probe",
+            )
+            result = mt5_order_check(self.adapter, intent, market_price=price)
+            return {
+                "ok": bool(result.ok),
+                "retcode": result.retcode,
+                "comment": result.comment,
+                "probe_size_lots": str(size),
+                "reference_price": str(price),
+            }
+        except Exception as exc:
+            return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+
+    @property
+    def market_data(self) -> Any:
+        if self._market_data is None:
+            from qts.adapters.market_data import MarketDataProvider
+
+            self._market_data = MarketDataProvider(
+                broker=self.adapter,
+                max_tick_age_s=self.config.max_tick_age_s,
+                max_spread_bps=self.config.max_spread_bps,
+            )
+        return self._market_data
+
+    def _tick_age(self, tick: Any) -> float | None:
+        """Age of a normalized tick (``MT5Adapter.ticks`` maps server stamps
+        to true UTC using the measured offset and keeps the raw stamps in
+        ``Tick.provenance``).
+
+        A tick stamped in the future is reported as ``inf`` so no caller can
+        mistake clock skew for freshness.
+        """
+        try:
+            age = (datetime.now(UTC) - tick.event_time).total_seconds()
+        except Exception:
+            return None
+        if age < 0:
+            return float("inf")
+        return age
+
+    @staticmethod
+    def _spread_bps(bid: Decimal, ask: Decimal) -> float | None:
+        if bid is None or ask is None or bid <= 0:
+            return None
+        mid = (bid + ask) / Decimal("2")
+        return float((ask - bid) / mid * Decimal("10000")) if mid > 0 else None
+
+    # ------------------------------------------------------------- controls
+    def kill_switch_self_test(self) -> tuple[bool, str]:
+        """Prove the durable kill switch works — on a scratch database.
+
+        Raising the production kill flag as a test would halt every other
+        process, so the test uses its own SQLite file and leaves the real flag
+        untouched.
+        """
+        try:
+            from qts.risk.engine import RiskEngine, RiskLimits
+
+            scratch = SELF_TEST_DB
+            scratch.parent.mkdir(parents=True, exist_ok=True)
+            engine = RiskEngine(RiskLimits(), db_path=scratch, persist_kill=True)
+            if engine.is_killed():
+                engine.reset_kill()
+            engine.kill_switch("demo pre-trade self-test")
+            armed = engine.is_killed()
+            engine.reset_kill()
+            cleared = not engine.is_killed()
+            ok = bool(armed and cleared)
+            return ok, ("kill switch armed and cleared on scratch DB" if ok else
+                        f"kill switch self-test failed (armed={armed}, cleared={cleared})")
+        except Exception as exc:
+            return False, f"kill switch self-test error: {type(exc).__name__}: {exc}"
+
+    def kill_switch_state(self) -> dict[str, Any]:
+        try:
+            from qts.risk.engine import RiskEngine, RiskLimits
+
+            engine = RiskEngine(RiskLimits(), db_path=self.db_path, persist_kill=True)
+            return {"readable": True, **engine.kill_state()}
+        except Exception as exc:
+            return {"readable": False, "killed": None, "reason": f"{type(exc).__name__}: {exc}"}
+
+    def raise_kill_switch(self, reason: str) -> dict[str, Any]:
+        """Operator halt: durable kill + stage HALTED."""
+        from qts.risk.engine import RiskEngine, RiskLimits
+
+        engine = RiskEngine(RiskLimits(), db_path=self.db_path, persist_kill=True)
+        engine.kill_switch(reason)
+        record = self.stage.halt(reason=reason, actor=self.config.actor)
+        return {"killed": True, "reason": reason, "stage": record.as_dict()}
+
+    def reconcile(self) -> dict[str, Any]:
+        engine = self.engine
+        report = engine.reconcile()
+        self._last_reconcile = report
+        self._last_reconcile_at = datetime.now(UTC)
+        return {
+            "drift": str(getattr(report, "drift", "")),
+            "details": str(getattr(report, "details", "")),
+            "requires_suspend": bool(getattr(report, "requires_suspend", False)),
+            "suspended": bool(getattr(engine, "is_suspended", False)),
+            "at": self._last_reconcile_at.isoformat(),
+        }
+
+    @property
+    def engine(self) -> Any:
+        """The wired execution engine (risk + idempotency + reconcile)."""
+        if self._engine is not None:
+            return self._engine
+        from qts.execution.engine import ExecutionEngine, OrderManager
+        from qts.execution.idempotency import IdempotencyStore
+        from qts.execution.matching import MatchingEngine
+        from qts.observability.audit import SqliteAuditLog
+        from qts.portfolio.portfolio import Portfolio
+        from qts.risk.engine import RiskEngine, RiskLimits
+
+        try:
+            audit: Any = SqliteAuditLog()
+        except Exception:
+            audit = None
+        self._idempotency = IdempotencyStore(db_path=self.db_path)
+        from qts.risk.authority import resolve_risk_limits
+
+        snapshot = resolve_risk_limits(ExecutionMode.DEMO_EXECUTION)
+        limits = RiskLimits(
+            max_quantity=snapshot.limits.max_quantity,
+            min_quantity=snapshot.limits.min_quantity,
+            quantity_step=snapshot.limits.quantity_step,
+            max_notional=snapshot.limits.max_notional,
+            max_exposure_lots=snapshot.limits.max_exposure_lots,
+            max_leverage=snapshot.limits.max_leverage,
+            max_correlated_exposure=snapshot.limits.max_correlated_exposure,
+            max_open_orders=snapshot.limits.max_open_orders,
+            daily_loss_limit=snapshot.limits.daily_loss_limit,
+            max_drawdown=snapshot.limits.max_drawdown,
+            kill_switch_enabled=True,
+            stop_loss_required=bool(snapshot.limits.stop_loss_required),
+        )
+        self._risk = RiskEngine(limits, db_path=self.db_path, persist_kill=True)
+        portfolio = Portfolio(initial_balance=Decimal("0"))  # broker equity is authoritative
+        self._engine = ExecutionEngine(
+            OrderManager(audit=audit, idempotency=self._idempotency),
+            self._risk,
+            self.adapter,
+            MatchingEngine(),
+            portfolio,
+            audit=audit,
+            db_path=self.db_path,
+            market_data=self.market_data,
+        )
+        return self._engine
+
+    # -------------------------------------------------------------- gateway
+    def build_context(
+        self,
+        *,
+        side: str,
+        lots: Decimal,
+        stop_loss: Decimal | None = None,
+        take_profit: Decimal | None = None,
+        client_order_id: str | None = None,
+        entry: Any | None = None,
+        autonomous: bool = False,
+    ) -> DemoPretradeContext:
+        """Probe every live fact the gate needs. Missing fact ⇒ UNKNOWN."""
+        from qts.execution.demo_identity import load_pin
+        from qts.lifecycle.demo_registry import load_registry, resolve_entry
+        from qts.risk.authority import resolve_risk_limits
+
+        policy = self.policy
+        permitted, authority_reasons = self.authority.is_execution_permitted()
+
+        identity = None
+        with contextlib.suppress(Exception):
+            identity = self.adapter.broker_identity()
+        pin, pin_reasons = load_pin()
+
+        symbol_probe = self._symbol_probe()
+        quote = self._quote_probe()
+        bid = Decimal(quote["bid"]) if quote.get("bid") else None
+        ask = Decimal(quote["ask"]) if quote.get("ask") else None
+
+        account = None
+        with contextlib.suppress(Exception):
+            account = self.adapter.account()
+        positions: list[Any] = []
+        open_orders: list[Any] = []
+        with contextlib.suppress(Exception):
+            positions = list(self.adapter.positions())
+        with contextlib.suppress(Exception):
+            open_orders = list(self.adapter.orders())
+
+        kill_state = self.kill_switch_state()
+        kill_active = kill_state.get("killed") if kill_state.get("readable") else None
+        self_test_ok, self_test_detail = self.kill_switch_self_test()
+
+        # Reconciliation must have run at least once before an order: an
+        # unreconciled internal state is not a known state (fail closed). The
+        # probe is read-only (positions/orders vs internal) and is attempted at
+        # most once per session so a broken link cannot spin.
+        if self._last_reconcile is None and not self._reconcile_attempted:
+            self._reconcile_attempted = True
+            with contextlib.suppress(Exception):
+                self.reconcile()
+
+        reconcile_suspended: bool | None = None
+        reconcile_drift: str | None = None
+        try:
+            engine = self.engine
+            reconcile_suspended = bool(getattr(engine, "is_suspended", False))
+        except Exception:
+            reconcile_suspended = None
+        age: float | None = None
+        if self._last_reconcile_at is not None:
+            age = (datetime.now(UTC) - self._last_reconcile_at).total_seconds()
+        elif self._last_reconcile is None:
+            age = None
+        if self._last_reconcile is not None:
+            drift = str(getattr(self._last_reconcile, "drift", "") or "")
+            reconcile_drift = drift if drift and drift.upper() not in ("OK", "NONE", "") else None
+
+        registry = load_registry()
+        entry, _entry_reasons = resolve_entry(registry, entry.strategy_id if entry else None)
+
+        limits = resolve_risk_limits(ExecutionMode.DEMO_EXECUTION)
+
+        order_check_ok: bool | None = None
+        order_check_detail = ""
+        try:
+            probe = self._order_check_probe(lots=Decimal(str(lots)))
+            order_check_ok = bool(probe.get("ok"))
+            order_check_detail = str(probe.get("comment") or probe.get("error") or "")
+        except Exception as exc:
+            order_check_ok = None
+            order_check_detail = f"{type(exc).__name__}: {exc}"
+
+        return DemoPretradeContext(
+            policy=policy,
+            authorization=policy.authorization,
+            authority_permitted=permitted,
+            authority_reasons=list(authority_reasons or []),
+            mode=ExecutionMode.DEMO_EXECUTION.value,
+            stage=self.stage.current().stage,
+            identity=identity,
+            pin=pin,
+            pin_reasons=list(pin_reasons),
+            symbol=self.config.symbol,
+            broker_symbol=symbol_probe.get("broker_symbol"),
+            symbol_visible=symbol_probe.get("visible"),
+            symbol_tradable=symbol_probe.get("tradable"),
+            spec=(self.adapter.get_symbol_spec(self.config.symbol) if symbol_probe.get("ok") else None),
+            order_check_ok=order_check_ok,
+            order_check_detail=order_check_detail,
+            tick=quote,
+            tick_age_s=quote.get("age_s"),
+            max_tick_age_s=self.config.max_tick_age_s,
+            bid=bid,
+            ask=ask,
+            spread_bps=quote.get("spread_bps"),
+            account=account,
+            open_positions=positions,
+            open_orders=open_orders,
+            daily_realized_pnl=self.journal.daily_realized_pnl(),
+            side=side,
+            intended_lots=Decimal(str(lots)),
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            stop_required=bool((entry.stop_policy or {}).get("required", True)) if entry else True,
+            client_order_id=client_order_id,
+            idempotency_status=(
+                self._idempotency.get_status(client_order_id)
+                if (client_order_id and self._idempotency is not None)
+                else None
+            ),
+            recent_order_epochs=self.journal.recent_order_epochs(60.0),
+            autonomous=autonomous,
+            kill_switch_active=kill_active,
+            kill_switch_readable=bool(kill_state.get("readable")),
+            kill_switch_self_test=self_test_ok,
+            kill_switch_detail=self_test_detail,
+            reconcile_suspended=reconcile_suspended,
+            reconcile_drift=reconcile_drift,
+            last_reconcile_age_s=age,
+            adapter_captures_broker_ids=(
+                self.adapter.broker_references_available() if hasattr(self.adapter, "broker_references_available") else None
+            ),
+            journal_ready=True,
+            record_fields_available=DemoOrderJournal.record_fields_available(),
+            entry=entry,
+            strategy_config_hash=(entry.params_hash if entry else None),
+            limits=limits,
+        )
+
+    def preflight(
+        self,
+        *,
+        side: str = "BUY",
+        lots: Decimal | None = None,
+        stop_loss: Decimal | None = None,
+        entry: Any | None = None,
+        autonomous: bool = False,
+    ) -> dict[str, Any]:
+        """Evaluate the full gate for a would-be order — submits nothing."""
+        size = self._resolve_size(lots, entry)
+        ctx = self.build_context(
+            side=side,
+            lots=size,
+            stop_loss=stop_loss,
+            client_order_id=new_client_order_id("preflight"),
+            entry=entry,
+            autonomous=autonomous,
+        )
+        verdict = run_pretrade_gate(ctx)
+        return {
+            "verdict": verdict.as_dict(),
+            "intended_order": {
+                "symbol": self.config.symbol,
+                "broker_symbol": ctx.broker_symbol,
+                "side": side,
+                "lots": str(size),
+                "stop_loss": None if stop_loss is None else str(stop_loss),
+            },
+            "order_check": self._order_check_probe(lots=size),
+            "stage": self.stage.current().as_dict(),
+        }
+
+    def _resolve_size(self, lots: Decimal | None, entry: Any | None) -> Decimal:
+        if lots is not None:
+            return Decimal(str(lots))
+        policy = (entry.size_policy or {}) if entry else {}
+        mode = str(policy.get("mode") or "broker_minimum").lower()
+        try:
+            spec = self.adapter.get_symbol_spec(self.config.symbol)
+            broker_min = Decimal(str(spec.volume_min))
+        except Exception:
+            broker_min = Decimal("0.01")
+        if mode in ("broker_minimum", "minimum", "min"):
+            return broker_min
+        fixed = policy.get("lots")
+        return Decimal(str(fixed)) if fixed else broker_min
+
+    def submit(
+        self,
+        *,
+        side: str,
+        lots: Decimal | None = None,
+        stop_loss: Decimal | None = None,
+        take_profit: Decimal | None = None,
+        rationale: str = "",
+        entry: Any | None = None,
+        signal_id: str | None = None,
+        autonomous: bool = False,
+    ) -> SubmissionResult:
+        """Gate → submit → reconcile → journal. Refuses on any failed check."""
+        from qts.domain.value_objects import Instrument, OrderIntent, OrderType, Side
+
+        size = self._resolve_size(lots, entry)
+        client_order_id = new_client_order_id("demo")
+        strategy_id = entry.strategy_id if entry else "unregistered"
+        config_hash = entry.params_hash if entry else ""
+
+        ctx = self.build_context(
+            side=side,
+            lots=size,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            client_order_id=client_order_id,
+            entry=entry,
+            autonomous=autonomous,
+        )
+        verdict = run_pretrade_gate(ctx)
+        if not verdict.passed:
+            self.journal.record_signal(
+                strategy_id=strategy_id,
+                strategy_config_hash=config_hash,
+                symbol=self.config.symbol,
+                decision="NO_TRADE",
+                side=side,
+                signal_id=signal_id,
+                rationale=rationale,
+                reason="; ".join(verdict.reasons),
+                authorization_id=(self.authorization.authorization_id if self.authorization else None),
+            )
+            return SubmissionResult(
+                allowed=False,
+                client_order_id=client_order_id,
+                state="NO_TRADE",
+                reasons=list(verdict.reasons),
+                verdict=verdict.as_dict(),
+            )
+
+        # Stage guard (defence in depth — the gate already checked it).
+        if self.stage.current().stage not in ORDER_STAGES:
+            return SubmissionResult(
+                allowed=False,
+                client_order_id=client_order_id,
+                state="NO_TRADE",
+                reasons=[f"stage {self.stage.current().stage} does not permit orders"],
+                verdict=verdict.as_dict(),
+            )
+
+        requested_at = datetime.now(UTC)
+        quote = self._quote_probe()
+        requested_price = Decimal(quote["ask"] if side.upper() == "BUY" else quote["bid"]) if quote.get("ok") else None
+        intent = OrderIntent(
+            instrument=Instrument(symbol=self.config.symbol, venue="MT5"),
+            side=Side.BUY if side.upper() == "BUY" else Side.SELL,
+            quantity=size,
+            order_type=OrderType.MARKET,
+            client_order_id=client_order_id,
+            strategy_id=strategy_id,
+            signal_id=signal_id,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+        )
+        try:
+            order_request = self.adapter.build_broker_request(intent)
+        except Exception as exc:
+            order_request = {"error": f"{type(exc).__name__}: {exc}"}
+
+        journal_id = self.journal.open_order(
+            client_order_id=client_order_id,
+            strategy_id=strategy_id,
+            strategy_config_hash=config_hash,
+            hypothesis_id=(entry.hypothesis_id if entry else None),
+            registry_entry_hash=(entry.params_hash if entry else None),
+            symbol=self.config.symbol,
+            broker_symbol=ctx.broker_symbol,
+            side=side,
+            requested_lots=size,
+            requested_price=requested_price,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            order_request=order_request,
+            signal_snapshot={"rationale": rationale, "signal_id": signal_id},
+            signal_at=requested_at.isoformat(),
+            market_state_entry=quote,
+            authorization_id=(self.authorization.authorization_id if self.authorization else None),
+            notes="RESEARCH_DEMO_ORDER — DEMO account, no real capital",
+        )
+
+        try:
+            order, _fills = self.engine.submit_intent(intent, tick=None)
+        except Exception as exc:
+            self.journal.mark_outcome(journal_id, state="REJECTED", exit_reason=f"submit error: {exc}")
+            self.reconcile()
+            return SubmissionResult(
+                allowed=False,
+                client_order_id=client_order_id,
+                journal_id=journal_id,
+                state="REJECTED",
+                reasons=[f"submission error: {type(exc).__name__}: {exc}"],
+                verdict=verdict.as_dict(),
+            )
+
+        receipt = getattr(self.adapter, "last_submission", None) or {}
+        submitted_at = datetime.now(UTC)
+        latency_ms = (submitted_at - requested_at).total_seconds() * 1000.0
+        broker_order_id = str(receipt.get("broker_order_id") or (getattr(order, "exchange_order_id", None) or "") or "")
+        broker_position_id = str(receipt.get("broker_position_id") or "")
+
+        if order is None:
+            self.journal.mark_outcome(
+                journal_id,
+                state="REJECTED",
+                exit_reason="; ".join(verdict.reasons) or "risk/engine veto (see audit log)",
+            )
+            self.reconcile()
+            return SubmissionResult(
+                allowed=False,
+                client_order_id=client_order_id,
+                journal_id=journal_id,
+                state="NO_TRADE",
+                reasons=["execution engine refused the intent — see audit log (risk veto / kill / suspend)"],
+                verdict=verdict.as_dict(),
+            )
+
+        executed_price = receipt.get("executed_price") or ""
+        self.journal.mark_submitted(
+            journal_id,
+            submitted_at=submitted_at.isoformat(),
+            broker_order_id=broker_order_id or None,
+            broker_position_id=broker_position_id or None,
+            broker_retcode=str(receipt.get("retcode") or ""),
+            latency_ms=latency_ms,
+        )
+        if executed_price:
+            self.journal.mark_fill(
+                journal_id,
+                filled_lots=Decimal(str(receipt.get("executed_volume") or size)),
+                executed_price=Decimal(str(executed_price)),
+                requested_price=requested_price,
+                spread_bps=quote.get("spread_bps"),
+                market_state_entry=quote,
+                broker_position_id=broker_position_id or None,
+            )
+
+        # Reconciliation after EVERY submitted order (safeguard #13).
+        reconciliation = self.reconcile()
+        self.journal.mark_reconciled(
+            journal_id,
+            ok=not reconciliation["requires_suspend"],
+            note=f"{reconciliation['drift']} {reconciliation['details']}".strip()[:200],
+        )
+        if reconciliation["requires_suspend"]:
+            self.stage.halt(reason=f"reconciliation drift after {client_order_id}", actor=self.config.actor)
+
+        row = self.journal.get(journal_id) or {}
+        return SubmissionResult(
+            allowed=True,
+            client_order_id=client_order_id,
+            journal_id=journal_id,
+            broker_order_id=broker_order_id or None,
+            broker_position_id=broker_position_id or None,
+            state=str(order.state.value if hasattr(order.state, "value") else order.state),
+            reasons=[],
+            verdict=verdict.as_dict(),
+            executed_price=executed_price or None,
+            spread_bps=quote.get("spread_bps"),
+            slippage_bps=(float(row["slippage_bps"]) if row.get("slippage_bps") is not None else None),
+            latency_ms=latency_ms,
+        )
+
+
+

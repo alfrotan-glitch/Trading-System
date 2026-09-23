@@ -253,6 +253,13 @@ class OrderIntent(BaseModel):
     order_type: OrderType = OrderType.MARKET
     limit_price: Decimal | None = None
     stop_price: Decimal | None = None
+    #: Protective stop-loss price. Required by DEMO execution for any strategy
+    #: whose registered policy sets ``stop_policy.required = true``; it is sent
+    #: with the order so protection exists from the first tick of exposure
+    #: (never added afterwards, which would leave an unprotected window).
+    stop_loss: Decimal | None = None
+    #: Optional take-profit price (same atomic-submission rationale).
+    take_profit: Decimal | None = None
     time_in_force: TimeInForce = TimeInForce.GTC
     client_order_id: str
     strategy_id: str
@@ -292,6 +299,9 @@ class Order(BaseModel):
     state: OrderState = OrderState.PENDING
     limit_price: Decimal | None = None
     stop_price: Decimal | None = None
+    #: Protective levels echoed back from the intent/broker for auditability.
+    stop_loss: Decimal | None = None
+    take_profit: Decimal | None = None
     filled_quantity: Decimal = Decimal("0")
     avg_fill_price: Decimal | None = None
     strategy_id: str

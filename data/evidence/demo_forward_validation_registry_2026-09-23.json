@@ -1,0 +1,42 @@
+{
+  "schema": "qts.demo_forward_registry.v1",
+  "updated_at": "2026-09-23T14:57:17+00:00",
+  "current_status": "NO_TRADE",
+  "status_note": "No strategy has passed the required research gates on 2026-09-23: every preregistered XAUUSD family (H-DIR-02, H-DIR-03, H-TEMP-01, H-ST-02WF, H-XF-01, H-XF-02, H-MM-01, H-MM-02, H-1M-01, 15m impulse) is REJECTED or INCONCLUSIVE and strategy_promoted=false in reports/xauusd_*_state.json. DEMO_EXECUTION is therefore ENABLED (authorized) while the trading state remains NO_TRADE until a hypothesis is preregistered and registered here with status ELIGIBLE.",
+  "research_integrity": {
+    "optimization_allowed": false,
+    "no_forward_fitting": true,
+    "parameters_frozen": true,
+    "demo_results_are_not_edge_evidence": true,
+    "forward_observations_never_reused_as_research": true
+  },
+  "entry_template": {
+    "strategy_id": "EXAMPLE-XAUUSD-v1",
+    "status": "ELIGIBLE|NO_TRADE|HALTED",
+    "hypothesis_id": "H-...-NN",
+    "preregistration_artifact": "docs/preregistration_....json",
+    "signal_provider": "qts.research.<module>:<ProviderClass>",
+    "params": {
+      "example": 1
+    },
+    "params_hash": "sha256 of canonical params JSON \u2014 recomputed and compared at runtime",
+    "size_policy": {
+      "mode": "broker_minimum|fixed",
+      "lots": 0.01
+    },
+    "stop_policy": {
+      "required": true,
+      "justification": ""
+    },
+    "exit_policy": {
+      "max_hold_seconds": 0,
+      "close_on_registry_expiry": false
+    },
+    "allowed_symbols": [
+      "XAUUSD"
+    ],
+    "max_orders_per_day": 1,
+    "notes": ""
+  },
+  "entries": []
+}

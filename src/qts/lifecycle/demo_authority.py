@@ -1,16 +1,24 @@
 """Authoritative DEMO execution boundary — observation only under current policy.
 
-``DEMO_EXECUTION = DISABLED BY POLICY`` today. DEMO_FORWARD may collect real
-demo-account observations with zero orders; the retained authority, durable
-state, audit, readiness, risk, and execution-boundary architecture remains the
-future path for a separately authorized re-enable after research and safety
-milestones. Current policy cannot be overridden by readiness, a request
-payload, SQLite contents, environment variables, or a direct authority call.
+Policy source
+-------------
+The shipped default is ``DEMO_EXECUTION = DISABLED BY POLICY``: a checkout with
+no recorded owner authorization resolves to disabled, and nothing in this
+module can change that by itself.
 
-The durable state table is retained for audit/history and fail-closed
-inspection. ``current()`` and ``is_execution_permitted()`` never grant broker
-permission while this product policy is active. API/UI readiness therefore
-remains an observation concern, not an execution switch.
+The *only* way to reach ``ENABLED_AUTHORIZED`` is a recorded, hashed,
+revocable owner authorization artifact (``qts.lifecycle.demo_authorization``)
+scoped to DEMO with ``LIVE`` locked and zero real-capital exposure. That
+artifact does not bypass any gate in this file — it opens the path so the
+existing gates (explicit confirmation, risk acknowledgement, fresh 14-check
+readiness, required checks, DEMO-only account, broker-capable mode, TTL decay,
+audit-before-write) apply exactly as written.
+
+Even with a valid artifact, ``current()`` and ``is_execution_permitted()``
+still fail closed on expired evidence, a non-broker-capable mode, or an
+unreadable durable state. Readiness remains an observation concern for
+DEMO_FORWARD and only becomes execution evidence when supplied fresh to
+``enable()``.
 """
 
 from __future__ import annotations
@@ -23,14 +31,27 @@ from typing import Any
 
 from qts.db import connect as db_connect
 
+_UNSET = object()
+
+
+def _load_authorization_for(path: Any) -> tuple[Any, list[str]]:
+    from qts.lifecycle.demo_authorization import load_authorization
+
+    return load_authorization(path)
+
+
 #: How long an enablement's readiness evidence stays authoritative. Broker
 #: conditions (terminal down, market closed, spread blown) change; permission
 #: must be re-proven against the live gate, never assumed from an old pass.
 REVERIFY_TTL_S = 120.0
-# Explicit product-policy switch, separate from the retained authority and
-# execution-boundary capability. It is not an environment override.
+# Explicit product-policy switch: the SHIPPED DEFAULT of a checkout that
+# carries no owner authorization artifact. It is a statement about the default
+# state, never an override — the effective policy is resolved through
+# `qts.lifecycle.demo_authorization.resolve_demo_execution_policy`, which can
+# only return ENABLED_AUTHORIZED for a valid, in-scope, un-revoked artifact.
 DEMO_EXECUTION_POLICY = "DISABLED BY POLICY"
 DEMO_EXECUTION_DISABLED = True
+POLICY_ENABLED_AUTHORIZED = "ENABLED_AUTHORIZED"
 
 GATE_VERSION = 2  # bumped when the readiness contract itself changes
 
@@ -139,12 +160,37 @@ class DemoExecutionAuthority:
         *,
         audit: Any | None = None,
         mode: str | None = None,
+        authorization: Any | None = _UNSET,
     ) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._audit = audit  # any qts.audit AuditLog (emit(DomainEvent))
         self._mode = mode
+        # `authorization`:
+        #   omitted        -> resolve from the owner authorization artifact
+        #   LoadedAuthorization / dict path -> use that authorization
+        #   None           -> explicitly un-authorized (tests, proofs-of-refusal)
+        self._authorization = authorization
         self._init_db()
+
+    def policy(self):
+        """The resolved DEMO execution policy for this authority instance."""
+        from qts.lifecycle.demo_authorization import (
+            LoadedAuthorization,
+            resolve_demo_execution_policy,
+        )
+
+        auth = self._authorization
+        if auth is _UNSET:
+            return resolve_demo_execution_policy(mode=self._mode)
+        if auth is None:
+            return resolve_demo_execution_policy(None, mode=self._mode, load=False)
+        if isinstance(auth, (str, Path)):
+            loaded, _reasons = _load_authorization_for(auth)
+            return resolve_demo_execution_policy(loaded, mode=self._mode, load=False)
+        if isinstance(auth, LoadedAuthorization):
+            return resolve_demo_execution_policy(auth, mode=self._mode, load=False)
+        return resolve_demo_execution_policy(None, mode=self._mode, load=False)
 
     def _emit_audit(self, action: str, payload: dict[str, Any]) -> None:
         """Audit through the standard domain-event protocol."""
@@ -269,16 +315,19 @@ class DemoExecutionAuthority:
         report age.
         """
         row = self._latest()
+        policy = self.policy()
+        state_is_demo_forward = str(self._mode) == "DEMO_FORWARD"
         if row is None or not row["enabled"]:
             policy_reasons = (
                 [str(row["reason"] or "disabled")]
                 if row and not row["enabled"]
                 else ["never enabled"]
             )
-            if DEMO_EXECUTION_DISABLED:
-                policy_reason = f"DEMO_EXECUTION = {DEMO_EXECUTION_POLICY}"
+            if not policy.enabled:
+                policy_reason = f"DEMO_EXECUTION = {policy.state}"
                 if policy_reason not in policy_reasons:
                     policy_reasons.insert(0, policy_reason)
+                policy_reasons.extend(policy.reasons)
             return DemoPermissionDecision(
                 enabled=bool(row and row["enabled"]),
                 execution_permitted=False,
@@ -291,16 +340,16 @@ class DemoExecutionAuthority:
                 mode=row["mode"] if row else None,
             )
 
-        if DEMO_EXECUTION_DISABLED:
+        if not policy.enabled:
+            reasons = [f"DEMO_EXECUTION = {policy.state}", *policy.reasons]
+            if state_is_demo_forward:
+                reasons.append("DEMO_FORWARD observation-only is the only broker mode")
             return DemoPermissionDecision(
                 enabled=False,
                 execution_permitted=False,
                 state="DISABLED",
                 decided_at=row["decided_at"],
-                reasons=[
-                    f"DEMO_EXECUTION = {DEMO_EXECUTION_POLICY}",
-                    "DEMO_FORWARD observation-only is the only broker mode",
-                ],
+                reasons=reasons,
                 readiness=row["readiness"],
                 readiness_age_s=row["readiness_age_s"],
                 readiness_expired=False,
@@ -402,16 +451,18 @@ class DemoExecutionAuthority:
     ) -> DemoPermissionDecision:
         """Apply the policy gate, then the durable authority gates.
 
-        ``DEMO_EXECUTION`` is currently unreachable because product policy is
-        ``DEMO_EXECUTION = DISABLED BY POLICY``. The authority/state/audit and
-        readiness checks below remain intact as the explicitly reviewed future
-        boundary if product policy is later changed after research and safety
-        milestones. No environment variable, request payload, or test can
-        bypass the current policy gate.
+        The policy gate is resolved from the recorded owner authorization
+        (``qts.lifecycle.demo_authorization``). Without a valid, in-scope,
+        un-revoked artifact this returns the durable refusal that the product
+        shipped with — no environment variable, request payload, readiness pass
+        or test can bypass it. With one, every gate below still applies:
+        explicit confirmation, risk acknowledgement, fresh passing readiness,
+        required checks, DEMO-only account and a broker-capable mode.
         """
-        if DEMO_EXECUTION_DISABLED:
-            reason = f"DEMO_EXECUTION = {DEMO_EXECUTION_POLICY}; use DEMO_FORWARD OBSERVE_ONLY"
-            reasons = [reason]
+        policy = self.policy()
+        if not policy.enabled:
+            reason = f"DEMO_EXECUTION = {policy.state}; use DEMO_FORWARD OBSERVE_ONLY"
+            reasons = [reason, *policy.reasons]
             if not confirmed or not risk_ack:
                 reasons.append(
                     "explicit confirmation (confirmed=true) and risk acknowledgement (risk_ack=true) are still required"
@@ -451,12 +502,15 @@ class DemoExecutionAuthority:
                 readiness_age_s=readiness_age_s,
                 readiness_expired=False,
                 mode=self._mode,
-                detail={"product_policy": f"DEMO_EXECUTION = {DEMO_EXECUTION_POLICY}"},
+                detail={
+                    "product_policy": f"DEMO_EXECUTION = {policy.state}",
+                    "authorization_id": policy.authorization_id,
+                },
             )
 
-        # Future explicitly authorized path. This remains behind the product
-        # policy switch above; changing that switch requires a separate
-        # research/safety/governance decision and does not remove these gates.
+        # ---- Authorized path (a valid owner authorization artifact exists) ----
+        # Nothing below was weakened to obtain it: the same gates that guarded
+        # the retained boundary now guard the live one.
         if not confirmed or not risk_ack:
             self._record(
                 enabled=False,
@@ -469,6 +523,28 @@ class DemoExecutionAuthority:
             )
             return self._refused(
                 "explicit confirmation (confirmed=true) and risk acknowledgement (risk_ack=true) required"
+            )
+
+        # Evidence freshness: permission is proven now, never inherited from an
+        # old report. An undated report is infinitely old (readiness_age_seconds
+        # fails closed) and can therefore never enable execution.
+        freshness_age = readiness_age_s
+        if freshness_age is None:
+            freshness_age = readiness_age_seconds(readiness)
+        if freshness_age is None or freshness_age > REVERIFY_TTL_S:
+            self._record(
+                enabled=False,
+                reason=f"refused: readiness evidence not fresh (age={freshness_age})",
+                confirmed=confirmed,
+                risk_ack=risk_ack,
+                readiness=readiness,
+                readiness_age_s=freshness_age,
+                actor=actor,
+            )
+            return self._refused(
+                "readiness evidence is not fresh — re-run the readiness probe and retry "
+                f"(age={freshness_age}s > {REVERIFY_TTL_S:.0f}s)",
+                readiness=readiness,
             )
 
         checks = readiness.get("checks") or {}
@@ -554,6 +630,12 @@ class DemoExecutionAuthority:
                         "mode": self._mode,
                         "gate_version": GATE_VERSION,
                         "actor": actor,
+                        "authorization_id": policy.authorization_id,
+                        "authorization_fingerprint": (
+                            policy.authorization.fingerprint if policy.authorization else None
+                        ),
+                        "live_locked": True,
+                        "real_capital_exposure_usd": 0,
                     },
                 )
             except Exception as e:

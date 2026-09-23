@@ -73,7 +73,7 @@ SAFETY_BOUNDARY = {
     "PAPER": "simulated fills, no broker orders, next-bar-open",
     "SHADOW": "would-be intents, no submission",
     "DEMO_FORWARD": "REAL MT5 terminal + REAL market data + REAL DEMO account + observation ONLY — no order path exists in this mode",
-    "DEMO_EXECUTION": "DISABLED by product policy — no demo order lifecycle, never LIVE; DEMO_FORWARD remains observation-only with zero orders",
+    "DEMO_EXECUTION": "AUTHORIZED for DEMO only (owner authorization artifact, hashed and revocable) — staged arming + pinned broker identity + registered strategy + 22 pre-trade checks per order; never LIVE, never real capital",
     "LIVE": "REAL money, separately gated, requires env=live + --confirm live + risk.approved + validation.passed + reconciliation + human approval — LOCKED unless all pass",
 }
 

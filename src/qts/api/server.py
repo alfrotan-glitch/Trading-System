@@ -17,7 +17,6 @@ from fastapi.staticfiles import StaticFiles
 
 from qts.config.settings import load_settings
 from qts.domain.modes import effective_mode_report
-from qts.lifecycle.demo_authority import DEMO_EXECUTION_DISABLED, DEMO_EXECUTION_POLICY
 
 # Product policy: this workstation supports real MT5 DEMO_FORWARD observation
 # only. The same constant is consumed by the authority and API so the policy
@@ -1447,7 +1446,8 @@ def env_boundary() -> dict[str, Any]:
         "resolution": effective_mode_report(),
         "boundary": SAFETY_BOUNDARY,
         "demo_forward_separate": True,
-        "demo_execution_disabled": DEMO_EXECUTION_DISABLED,
+        "demo_execution_disabled": not _demo_policy().enabled,
+        "demo_execution_policy": _demo_policy().state,
         "live_locked": True,
         "label_for_demo": "DEMO",
         "label_for_paper": "PAPER",
@@ -1472,8 +1472,8 @@ def demo_config() -> dict[str, Any]:
     return {
         "env": load_settings().env,
         "mode": mode.value,
-        "mode_can_submit_orders": False if DEMO_EXECUTION_DISABLED else mode.can_submit_broker_orders,
-        "demo_execution_disabled": DEMO_EXECUTION_DISABLED,
+        "mode_can_submit_orders": (mode.can_submit_broker_orders and _demo_policy().enabled),
+        "demo_execution_disabled": not _demo_policy().enabled,
         "demo_execution": decision.as_dict(),
         "risk": limits,
         "observation_mode": "OBSERVE_ONLY",  # observe endpoint is physically order-free
@@ -1485,8 +1485,47 @@ def demo_config() -> dict[str, Any]:
             "SHADOW_VERIFIED",
             "DEMO_OBSERVATION",
         ],
-        "demo_execution_policy": f"DEMO_EXECUTION = {DEMO_EXECUTION_POLICY} — no order path is reachable while current product policy is active; authority boundary retained for future explicit authorization",
+        "demo_execution_policy": (
+            f"DEMO_EXECUTION = {_demo_policy().state} — resolved from the recorded owner authorization "
+            "(DEMO only, LIVE locked); per-order permission additionally requires the staged progression "
+            "and the 22-check pre-trade gate"
+        ),
     }
+
+
+def _demo_policy() -> Any:
+    """The resolved DEMO execution policy for this API process.
+
+    Resolved from the recorded owner authorization artifact
+    (``qts.lifecycle.demo_authorization``). Without a valid artifact this
+    returns ``DEMO_EXECUTION = DISABLED BY POLICY``, which is the shipped
+    default; the artifact itself can never permit LIVE.
+    """
+    from qts.domain.modes import resolve_mode
+    from qts.lifecycle.demo_authorization import resolve_demo_execution_policy
+
+    return resolve_demo_execution_policy(mode=resolve_mode().value)
+
+
+def _demo_session(symbol: str | None = None) -> Any:
+    """One wired DEMO session for API calls (same safeguards as the CLI)."""
+    from qts.execution.demo_session import DemoSession, DemoSessionConfig
+    from qts.lifecycle.demo_registry import load_registry, resolve_entry
+
+    setup = _wizard_setup_kwargs(None, None)
+    session = DemoSession(
+        DemoSessionConfig(
+            symbol=symbol or setup.get("symbol") or "XAUUSD",
+            terminal_path=setup.get("terminal_path"),
+            symbol_map=setup.get("symbol_map") or {},
+            db_path=_db_path(),
+            actor="api",
+        )
+    )
+    registry = load_registry()
+    entry, _reasons = resolve_entry(registry)
+    session._entry = entry
+    return session
 
 
 def _demo_authority() -> Any:
@@ -1510,52 +1549,71 @@ def _demo_authority() -> Any:
             _DEMO_AUTHORITY = DemoExecutionAuthority(
                 db_path=_db_path(),
                 audit=audit,
-                # DEMO_EXECUTION is intentionally disabled in the product
-                # build. Binding the API authority to observation-only mode
-                # makes a readiness pass unable to create order permission.
-                mode="DEMO_FORWARD" if DEMO_EXECUTION_DISABLED else resolve_mode().value,
+                # Binding the authority to the canonical resolved mode keeps a
+                # DEMO_FORWARD (observe-only) process unable to hold execution
+                # permission. When no owner authorization is recorded the API
+                # stays observation-only, exactly as the product shipped.
+                mode=resolve_mode().value if _demo_policy().enabled else "DEMO_FORWARD",
             )
         return _DEMO_AUTHORITY
 
 
 @app.post("/api/demo/enable")
-def demo_enable(payload: dict[str, Any]) -> Any:  # current policy refusal; future path remains authority-gated
-    """Return diagnostics for the current DEMO_EXECUTION policy refusal.
+def demo_enable(payload: dict[str, Any]) -> Any:
+    """Enable DEMO execution — authority-gated, never a policy bypass.
 
-    Readiness is probed only to explain the operator's current observation
-    prerequisites. It cannot cross the current product-policy gate; the
-    authority and execution boundary remain retained for a later, separately
-    authorized policy change.
+    With no valid owner authorization artifact this is the durable 409 refusal
+    the product shipped with (``DEMO_EXECUTION = DISABLED BY POLICY``). With
+    one, every retained gate still applies: explicit confirmation, risk
+    acknowledgement, a FRESH passing readiness report, the required checks and
+    a broker-capable mode. A refused attempt is recorded in the durable
+    authority table and the audit log.
     """
     confirmed = bool(payload.get("confirmed"))
     risk_ack = bool(payload.get("risk_ack"))
     if not confirmed or not risk_ack:
         raise HTTPException(400, "DEMO execution requires explicit confirmed=true and risk_ack=true")
 
+    from qts.lifecycle.demo_authority import readiness_age_seconds
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
 
+    policy = _demo_policy()
+    setup = _wizard_setup_kwargs(None, None)
     try:
-        rpt = demo_forward_readiness_report(**_wizard_setup_kwargs(None, None))
-        diagnostic_reasons = list(rpt.get("blocked_reasons", []))
+        rpt = demo_forward_readiness_report(**setup)
     except Exception as exc:
-        rpt = {"passed": False, "checks": {}, "blocked_reasons": [str(exc)]}
-        diagnostic_reasons = [str(exc)]
-    return JSONResponse(
-        status_code=409,
-        content={
-            "authority": "demo_execution_state",
-            "enabled": False,
-            "execution_permitted": False,
-            "state": "DISABLED",
-            "reasons": [
-                "DEMO_EXECUTION is disabled by product policy; use DEMO_FORWARD OBSERVE_ONLY",
-                *diagnostic_reasons,
-            ],
-            "mode": "DEMO_FORWARD",
-            "demo_execution_disabled": True,
-            "readiness": rpt,
-        },
+        rpt = {"passed": False, "checks": {}, "blocked_reasons": [f"readiness probe failed: {exc}"]}
+
+    if not policy.enabled:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "authority": "demo_execution_state",
+                "enabled": False,
+                "execution_permitted": False,
+                "state": "DISABLED",
+                "policy": policy.state,
+                "reasons": list(policy.reasons)
+                or ["no valid owner authorization artifact — DEMO_EXECUTION = DISABLED BY POLICY"],
+                "mode": "DEMO_FORWARD",
+                "demo_execution_disabled": True,
+                "readiness": rpt,
+            },
+        )
+
+    decision = _demo_authority().enable(
+        readiness=rpt,
+        confirmed=True,
+        risk_ack=True,
+        readiness_age_s=readiness_age_seconds(rpt),
+        actor="api",
     )
+    body = decision.as_dict()
+    body["policy"] = policy.state
+    body["authorization_id"] = policy.authorization_id
+    if not decision.execution_permitted:
+        return JSONResponse(status_code=409, content=body)
+    return body
 
 
 @app.get("/api/demo/state")
@@ -1591,7 +1649,9 @@ def demo_state() -> dict[str, Any]:
         "passed": bool(rpt.get("passed")),
         "blocked_reasons": rpt.get("blocked_reasons", []),
     }
-    out["demo_execution_disabled"] = DEMO_EXECUTION_DISABLED
+    out["demo_execution_disabled"] = not _demo_policy().enabled
+    out["demo_execution_policy"] = _demo_policy().state
+    out["policy_reasons"] = list(_demo_policy().reasons)
     return out
 
 
@@ -1599,6 +1659,108 @@ def demo_state() -> dict[str, Any]:
 def demo_disable() -> dict[str, Any]:
     decision = _demo_authority().disable(reason="operator requested via API")
     return decision.as_dict()
+
+
+@app.get("/api/demo/authorization")
+def demo_authorization() -> dict[str, Any]:
+    """The owner authorization artifact: what it grants, and its validation."""
+    from qts.lifecycle.demo_authorization import authorization_status
+
+    status = authorization_status()
+    policy = _demo_policy()
+    return {
+        "authorization": status.as_dict(),
+        "resolved_policy": policy.as_dict(),
+        "live_locked": True,
+        "real_capital_exposure_usd": 0,
+    }
+
+
+@app.get("/api/demo/stage")
+def demo_stage() -> dict[str, Any]:
+    """DEMO execution stage machine (staged progression, never a jump)."""
+    return _demo_session().stage.as_dict()
+
+
+@app.get("/api/demo/preflight")
+@app.post("/api/demo/preflight")
+def demo_preflight(side: str = "BUY", lots: str | None = None, stop_loss: str | None = None) -> dict[str, Any]:
+    """Run the DEMO pre-trade gate for a would-be order — submits nothing."""
+    from decimal import Decimal
+
+    session = _demo_session()
+    out = session.preflight(
+        side=side,
+        lots=Decimal(lots) if lots else None,
+        stop_loss=Decimal(stop_loss) if stop_loss else None,
+        entry=getattr(session, "_entry", None),
+    )
+    return JSONResponse(
+        status_code=200 if out["verdict"]["passed"] else 409,
+        content=out,
+    )
+
+
+@app.post("/api/demo/order")
+def demo_order(payload: dict[str, Any]) -> Any:
+    """Submit ONE DEMO order through the gate (409 on any failed safeguard)."""
+    from decimal import Decimal
+
+    side = str(payload.get("side") or "").upper()
+    if side not in ("BUY", "SELL"):
+        raise HTTPException(400, "side must be BUY or SELL")
+    if not payload.get("confirmed") or not payload.get("risk_ack"):
+        raise HTTPException(400, "DEMO order requires explicit confirmed=true and risk_ack=true")
+
+    session = _demo_session(payload.get("symbol"))
+    entry = getattr(session, "_entry", None)
+    if entry is None:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "allowed": False,
+                "state": "NO_TRADE",
+                "reasons": ["no eligible strategy in the forward-validation registry — DEMO_EXECUTION may be "
+                            "ENABLED while no strategy has passed the research gates"],
+            },
+        )
+    if payload.get("dry_run"):
+        return session.preflight(
+            side=side,
+            lots=Decimal(str(payload["lots"])) if payload.get("lots") else None,
+            stop_loss=Decimal(str(payload["stop_loss"])) if payload.get("stop_loss") else None,
+            entry=entry,
+        )
+    result = session.submit(
+        side=side,
+        lots=Decimal(str(payload["lots"])) if payload.get("lots") else None,
+        stop_loss=Decimal(str(payload["stop_loss"])) if payload.get("stop_loss") else None,
+        take_profit=Decimal(str(payload["take_profit"])) if payload.get("take_profit") else None,
+        rationale=str(payload.get("rationale") or "RESEARCH_DEMO_ORDER via API"),
+        entry=entry,
+    )
+    return JSONResponse(status_code=200 if result.allowed else 409, content=result.as_dict())
+
+
+@app.post("/api/demo/kill")
+def demo_kill(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Raise the durable kill switch and halt the DEMO stage machine."""
+    reason = str((payload or {}).get("reason") or "operator kill via API")
+    return _demo_session().raise_kill_switch(reason)
+
+
+@app.get("/api/demo/journal")
+def demo_journal(limit: int = 50) -> dict[str, Any]:
+    """Forward-observation audit trail for DEMO orders."""
+    from qts.execution.demo_journal import summarize
+
+    session = _demo_session()
+    return {
+        "summary": summarize(session.journal).as_dict(),
+        "orders": session.journal.list_orders(limit=limit),
+        "label": "RESEARCH_DEMO_ORDER",
+        "capital_class": "DEMO",
+    }
 
 
 # Mount static UI if exists

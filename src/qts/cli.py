@@ -1759,3 +1759,350 @@ def research_autonomous(
     click.echo(f"overall {ev['overall']}")
     if ev["overall"].startswith("BLOCK"):
         click.echo("BLOCK — keep NO_TRADE — no genuine economic edge demonstrated")
+
+
+# ---------------------------------------------------------------------------
+# DEMO execution — explicit, staged, auditable (LIVE remains locked)
+# ---------------------------------------------------------------------------
+
+
+def _demo_session(symbol: str, db: str, terminal_path: str | None = None) -> Any:
+    from qts.config.wizard import load_setup
+    from qts.execution.demo_session import DemoSession, DemoSessionConfig
+
+    saved = load_setup()
+    symbol_map = saved.get("symbol_map")
+    return DemoSession(
+        DemoSessionConfig(
+            symbol=symbol or saved.get("symbol") or "XAUUSD",
+            terminal_path=terminal_path or saved.get("terminal_path") or None,
+            symbol_map=symbol_map if isinstance(symbol_map, dict) else {},
+            db_path=Path(db),
+            actor="cli",
+        )
+    )
+
+
+@main.group()
+def demo() -> None:
+    """Controlled DEMO execution (authorization-gated; LIVE stays locked)."""
+
+
+@demo.command("authorization")
+def demo_authorization() -> None:
+    """Show the owner authorization artifact and its validation result."""
+    from qts.lifecycle.demo_authorization import authorization_status, resolve_demo_execution_policy
+
+    status = authorization_status()
+    click.echo(json.dumps(status.as_dict(), indent=2, default=str))
+    policy = resolve_demo_execution_policy(mode="DEMO_EXECUTION")
+    click.echo(f"policy(DEMO_EXECUTION): {policy.state}")
+    live_policy = resolve_demo_execution_policy(mode="LIVE")
+    click.echo(f"policy(LIVE): {live_policy.state} — {'; '.join(live_policy.reasons)}")
+
+
+@demo.command("status")
+@click.option("--symbol", default=None)
+@click.option("--db", default="data/sqlite/qts.db")
+def demo_status(symbol: str | None, db: str) -> None:
+    """One honest snapshot: policy, stage, registry, journal, kill switch."""
+    from qts.execution.demo_journal import summarize
+    from qts.lifecycle.demo_registry import registry_status
+
+    session = _demo_session(symbol or "", db)
+    policy = session.policy
+    out = {
+        "mode": "DEMO_EXECUTION",
+        "policy": policy.as_dict(),
+        "stage": session.stage.as_dict(),
+        "registry": registry_status(),
+        "kill_switch": session.kill_switch_state(),
+        "journal": summarize(session.journal).as_dict(),
+        "live_locked": True,
+        "real_capital_exposure_usd": 0,
+    }
+    click.echo(json.dumps(out, indent=2, default=str))
+
+
+@demo.command("connectivity")
+@click.option("--symbol", default=None)
+@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--terminal-path", default=None)
+@click.option("--pin", is_flag=True, help="record the observed identity as a pin (PENDING_REVIEW)")
+@click.option("--confirm-pin", is_flag=True, help="owner confirmation of the recorded pin")
+@click.option("--json-out", default=None, help="write the full report to this path")
+def demo_connectivity(
+    symbol: str | None,
+    db: str,
+    terminal_path: str | None,
+    pin: bool,
+    confirm_pin: bool,
+    json_out: str | None,
+) -> None:
+    """Stage 1 — verify terminal, DEMO account, broker, symbol, quote. No orders."""
+    session = _demo_session(symbol or "", db, terminal_path)
+    report = session.connectivity_report()
+
+    if pin:
+        from qts.execution.demo_identity import write_pin
+
+        with contextlib.suppress(Exception):
+            identity = session.adapter.broker_identity()
+            path = write_pin(identity, actor="cli")
+            report["pin_written"] = str(path)
+            click.echo(f"identity pin written (PENDING_REVIEW): {path}")
+    if confirm_pin:
+        from qts.execution.demo_identity import confirm_pin
+
+        ok, detail = confirm_pin(actor="owner")
+        report["pin_confirmation"] = {"ok": ok, "detail": detail}
+        click.echo(f"pin confirmation: {detail}")
+
+    readiness = report.get("readiness") or {}
+    click.echo(f"readiness passed: {bool(readiness.get('passed'))} blockers={readiness.get('blocked_reasons', [])}")
+    identity = report.get("identity") or {}
+    click.echo(
+        f"account: demo={identity.get('is_demo')} login={identity.get('login')} "
+        f"server={identity.get('server')} company={identity.get('company')} type={identity.get('account_type')}"
+    )
+    mapping = report.get("symbol_mapping") or {}
+    click.echo(
+        f"symbol: {mapping.get('canonical')} -> {mapping.get('broker_symbol')} "
+        f"visible={mapping.get('visible')} tradable={mapping.get('tradable')}"
+    )
+    quote = report.get("quote") or {}
+    click.echo(f"quote: bid={quote.get('bid')} ask={quote.get('ask')} age={quote.get('age_s')} spread_bps={quote.get('spread_bps')}")
+    click.echo(f"order_check dry-run: {report.get('order_check')}")
+    click.echo(f"STAGE_1_READY: {report['ready_for_stage_1']}")
+
+    if json_out:
+        Path(json_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(json_out).write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+        click.echo(f"report written to {json_out}")
+
+
+@demo.command("arm")
+@click.option("--stage", required=True, type=click.Choice(["1", "2", "3"]))
+@click.option("--symbol", default=None)
+@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--confirm", is_flag=True, help="explicit operator confirmation (required)")
+@click.option("--risk-ack", is_flag=True, help="explicit risk acknowledgement (required)")
+@click.option("--strategy", default=None, help="registry strategy_id (required for stage 3)")
+def demo_arm(stage: str, symbol: str | None, db: str, confirm: bool, risk_ack: bool, strategy: str | None) -> None:
+    """Advance the DEMO stage machine. Each stage proves its prerequisites."""
+    from qts.lifecycle.demo_stage import DemoStage, StageTransitionError
+
+    session = _demo_session(symbol or "", db)
+    target = {"1": DemoStage.STAGE_1_CONNECTIVITY, "2": DemoStage.STAGE_2_MIN_SIZE_ORDER,
+              "3": DemoStage.STAGE_3_FORWARD_OBSERVATION}[stage]
+
+    prereq: dict[str, bool] = {}
+    if target in (DemoStage.STAGE_1_CONNECTIVITY, DemoStage.STAGE_2_MIN_SIZE_ORDER,
+                  DemoStage.STAGE_3_FORWARD_OBSERVATION):
+        report = session.connectivity_report()
+        prereq["readiness_passed"] = bool((report.get("readiness") or {}).get("passed"))
+        prereq["account_is_demo"] = (report.get("identity") or {}).get("is_demo") is True
+        prereq["symbol_ok"] = bool((report.get("symbol_mapping") or {}).get("ok"))
+        prereq["quote_fresh"] = bool((report.get("quote") or {}).get("fresh"))
+    if target in (DemoStage.STAGE_2_MIN_SIZE_ORDER, DemoStage.STAGE_3_FORWARD_OBSERVATION):
+        prereq["policy_authorized"] = session.policy.enabled
+        prereq["identity_pinned_confirmed"] = (report.get("identity_pin") or {}).get("verified") is True
+        prereq["operator_confirmation"] = bool(confirm and risk_ack)
+        if prereq["operator_confirmation"]:
+            from qts.lifecycle.demo_authority import readiness_age_seconds
+            from qts.lifecycle.demo_gate import demo_forward_readiness_report
+
+            rpt = demo_forward_readiness_report(
+                mt5_module=None,
+                terminal_path=session.config.terminal_path,
+                symbol=session.config.symbol,
+                symbol_map=session.config.symbol_map or None,
+            )
+            decision = session.authority.enable(
+                readiness=rpt,
+                confirmed=True,
+                risk_ack=True,
+                readiness_age_s=readiness_age_seconds(rpt),
+                actor="cli:demo-arm",
+            )
+            prereq["authority_enabled"] = bool(decision.execution_permitted)
+            click.echo(f"authority: {decision.state} permitted={decision.execution_permitted} {decision.reasons}")
+        else:
+            prereq["authority_enabled"] = False
+    if target is DemoStage.STAGE_3_FORWARD_OBSERVATION:
+        from qts.execution.demo_journal import summarize
+
+        summary = summarize(session.journal)
+        prereq["stage2_order_recorded"] = summary.orders > 0
+        prereq["strategy_selected"] = bool(strategy)
+
+    try:
+        record = session.stage.advance(
+            target, actor="cli", reason=f"operator arm to stage {stage}", prerequisites=prereq
+        )
+    except StageTransitionError as exc:
+        click.echo(f"REFUSED: {exc}", err=True)
+        click.echo(json.dumps(prereq, indent=2, default=str), err=True)
+        raise SystemExit(2) from exc
+    click.echo(json.dumps(record.as_dict(), indent=2, default=str))
+
+
+@demo.command("preflight")
+@click.option("--symbol", default=None)
+@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--side", default="BUY", type=click.Choice(["BUY", "SELL"]))
+@click.option("--lots", default=None)
+@click.option("--stop-loss", default=None)
+def demo_preflight(symbol: str | None, db: str, side: str, lots: str | None, stop_loss: str | None) -> None:
+    """Run the full pre-trade gate for a would-be order. Submits nothing."""
+    from decimal import Decimal
+
+    from qts.lifecycle.demo_registry import load_registry, resolve_entry
+
+    session = _demo_session(symbol or "", db)
+    registry = load_registry()
+    entry, _reasons = resolve_entry(registry)
+    out = session.preflight(
+        side=side,
+        lots=Decimal(lots) if lots else None,
+        stop_loss=Decimal(stop_loss) if stop_loss else None,
+        entry=entry,
+    )
+    verdict = out["verdict"]
+    click.echo(f"PREFLIGHT {'PASS' if verdict['passed'] else 'REFUSE'}")
+    for name, check in verdict["checks"].items():
+        click.echo(f"  [{check['status']:7}] {name}: {check['detail']}")
+    if not verdict["passed"]:
+        click.echo(f"blocked by: {', '.join(verdict['failed'])}")
+
+
+@demo.command("order")
+@click.option("--symbol", default=None)
+@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--side", required=True, type=click.Choice(["BUY", "SELL"]))
+@click.option("--lots", default=None)
+@click.option("--stop-loss", default=None)
+@click.option("--take-profit", default=None)
+@click.option("--strategy", default=None)
+@click.option("--rationale", default="")
+@click.option("--dry-run", is_flag=True, help="evaluate the gate without submitting")
+def demo_order(
+    symbol: str | None,
+    db: str,
+    side: str,
+    lots: str | None,
+    stop_loss: str | None,
+    take_profit: str | None,
+    strategy: str | None,
+    rationale: str,
+    dry_run: bool,
+) -> None:
+    """Submit ONE DEMO order through the gate (or dry-run it)."""
+    from decimal import Decimal
+
+    from qts.lifecycle.demo_registry import load_registry, resolve_entry
+
+    session = _demo_session(symbol or "", db)
+    registry = load_registry()
+    entry, reasons = resolve_entry(registry, strategy)
+    if entry is None:
+        click.echo(f"NO_TRADE — {'; '.join(reasons)}", err=True)
+        raise SystemExit(2)
+    if dry_run:
+        out = session.preflight(
+            side=side,
+            lots=Decimal(lots) if lots else None,
+            stop_loss=Decimal(stop_loss) if stop_loss else None,
+            entry=entry,
+        )
+        click.echo(json.dumps(out, indent=2, default=str))
+        return
+    result = session.submit(
+        side=side,
+        lots=Decimal(lots) if lots else None,
+        stop_loss=Decimal(stop_loss) if stop_loss else None,
+        take_profit=Decimal(take_profit) if take_profit else None,
+        rationale=rationale or "operator-initiated RESEARCH_DEMO_ORDER",
+        entry=entry,
+    )
+    click.echo(json.dumps(result.as_dict(), indent=2, default=str))
+    if not result.allowed:
+        raise SystemExit(2)
+
+
+@demo.command("run")
+@click.option("--symbol", default=None)
+@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--strategy", default=None)
+@click.option("--poll-interval", default=5.0, type=float)
+@click.option("--max-iterations", default=0, type=int)
+@click.option("--max-runtime", default=0.0, type=float)
+@click.option("--dry-run", is_flag=True, help="evaluate the gate every cycle, submit nothing")
+def demo_run(
+    symbol: str | None,
+    db: str,
+    strategy: str | None,
+    poll_interval: float,
+    max_iterations: int,
+    max_runtime: float,
+    dry_run: bool,
+) -> None:
+    """Autonomous DEMO trading under the registered policy (never LIVE)."""
+    from qts.execution.demo_autopilot import AutopilotConfig, run_autopilot
+
+    session = _demo_session(symbol or "", db)
+    config = AutopilotConfig(
+        symbol=session.config.symbol,
+        poll_interval_s=poll_interval,
+        max_iterations=max_iterations,
+        max_runtime_s=max_runtime,
+        strategy_id=strategy,
+        dry_run=dry_run,
+        actor="cli:demo-run",
+    )
+    report = run_autopilot(session, config)
+    click.echo(json.dumps(report.as_dict(), indent=2, default=str))
+    if report.halted:
+        click.echo(f"HALTED: {report.halt_reason}", err=True)
+
+
+@demo.command("kill")
+@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--reason", default="operator kill via CLI")
+def demo_kill(db: str, reason: str) -> None:
+    """Raise the durable kill switch and halt the DEMO stage machine."""
+    session = _demo_session("", db)
+    out = session.raise_kill_switch(reason)
+    click.echo(json.dumps(out, indent=2, default=str))
+
+
+@demo.command("journal")
+@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--limit", default=20, type=int)
+@click.option("--export", "export_path", default=None)
+def demo_journal(db: str, limit: int, export_path: str | None) -> None:
+    """Show/export the DEMO order journal (forward-observation audit trail)."""
+    session = _demo_session("", db)
+    if export_path:
+        path = session.journal.export_jsonl(export_path)
+        click.echo(f"exported to {path}")
+        return
+    for row in session.journal.list_orders(limit=limit):
+        click.echo(
+            f"#{row['journal_id']} {row['created_at']} {row['label']} {row['side']} {row['requested_lots']} "
+            f"{row['symbol']} state={row['state']} broker_order={row['broker_order_id']} "
+            f"pos={row['broker_position_id']} px={row['executed_price']} slip_bps={row['slippage_bps']} "
+            f"pnl={row['realized_pnl']} exit={row['exit_reason']}"
+        )
+
+
+@demo.command("revoke")
+@click.option("--reason", required=True)
+@click.option("--actor", default="owner")
+def demo_revoke(reason: str, actor: str) -> None:
+    """Revoke the DEMO authorization (additive record; artifact is never edited)."""
+    from qts.lifecycle.demo_authorization import revoke_authorization
+
+    path = revoke_authorization(reason=reason, actor=actor)
+    click.echo(f"revocation written: {path}")
+    click.echo("DEMO_EXECUTION is DISABLED BY POLICY again until a new authorization artifact is recorded.")

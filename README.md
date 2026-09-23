@@ -81,13 +81,13 @@ Desktop shows: Home (System Status, Environment, MT5, Account Type, Market Data,
 1. Install MT5 terminal, open a **DEMO** account (never live for demo_forward).
 2. Launch QTS → **Setup Wizard** → set MT5 terminal path `C:\Program Files\MetaTrader 5\terminal64.exe` and symbol `XAUUSD`.
 3. Set credentials via Windows Credential Manager or `.env` (never plain repo): `QTS_MT5_LOGIN`, `QTS_MT5_PASSWORD`, `QTS_MT5_SERVER`. See `docs/mt5_demo_setup.md`.
-4. **MT5 Demo Connection Checker** (Setup Wizard → Test MT5 Connection or Demo Forward view) runs 14 checks: MT5 installed, terminal running, account connected, account is DEMO, broker, symbol available/tradable/spec valid, market data fresh, bid/ask valid, spread acceptable, account state, risk config, reconciliation. Only after all pass may DEMO_FORWARD observation start; this never enables DEMO_EXECUTION.
+4. **MT5 Demo Connection Checker** (Setup Wizard → Test MT5 Connection or Demo Forward view) runs 14 checks: MT5 installed, terminal running, account connected, account is DEMO, broker, symbol available/tradable/spec valid, market data fresh, bid/ask valid, spread acceptable, account state, risk config, reconciliation. Only after all pass may DEMO_FORWARD observation start. Readiness is *not* execution permission: DEMO_EXECUTION additionally requires a recorded owner authorization (see below).
 
 ## How do I start observation?
 
 - **Observe Only** (safe, no orders): Demo Forward → *Start Observation*. Requires all 14 readiness checks to pass; then records real MT5 demo-account observations as provenance class `DEMO` with full provenance into the **canonical observation store** (`data/sqlite/forward_observatory.db`) bound to an audited session (environment, broker, symbol, timestamp basis, code version). `data/evidence/forward_observation_manifest.json` is a derived, regenerable export and is never `REAL`-money evidence.
 - Observation is physically order-free: the observe runtime has no order path at all (structurally pinned by tests).
-- **DEMO execution is disabled by product policy.** A readiness pass never creates order permission; `/api/demo/enable` returns a durable 409 refusal after optional diagnostic probing and does not write an enabled state. Direct authority calls are refused too. The only broker-facing product path is DEMO_FORWARD observation with zero orders.
+- **DEMO execution is authorized, staged and gated — but not trading.** `DEMO_EXECUTION = ENABLED_AUTHORIZED` only because an explicit owner authorization artifact exists (`data/evidence/demo_execution_authorization_2026-09-23.json`, DEMO account only, `LIVE = LOCKED`, zero real capital). A readiness pass still never creates order permission by itself; `/api/demo/enable` returns 200 only when the authorization is valid *and* every gate passes, and 409 otherwise. Orders additionally require the staged progression (`qts demo arm`), a pinned+confirmed broker identity, an eligible strategy in the forward-validation registry, and 22 pre-trade checks passing in the same cycle. See `docs/demo_execution_authorization_and_safety_2026-09-23.md`.
 - Fabricated legacy "demo observations" were quarantined to `data/evidence/quarantine/` with documented violations; they satisfy no gate and no claim.
 
 ## How do I acquire MT5 historical ticks? (read-only, raw, deferred analysis)
@@ -96,9 +96,9 @@ Desktop shows: Home (System Status, Environment, MT5, Account Type, Market Data,
 - `scripts/probe_mt5_history.py` is the seconds-scale capability check (fields, counts, bounds only).
 - Contract, status vocabulary, integrity/digest definitions, and the honest research boundary (quotes ≠ execution evidence; R5 not solved): `docs/mt5_history_acquisition.md`.
 
-## Why is demo execution disabled?
+## Why is the system not trading even though DEMO execution is enabled?
 
-This workstation intentionally stops at `DEMO_FORWARD/OBSERVE_ONLY`: a fresh readiness report can authorize recording real MT5 demo-account observations, but it cannot authorize an order path. `/api/demo/enable` is a durable 409 refusal, and `LIVE` remains separately locked. See `docs/demo_forward_protocol.md` for the observation contract.
+Because authorization and validation are different questions. `DEMO_EXECUTION = ENABLED_AUTHORIZED` (owner authorization recorded, `LIVE = LOCKED`, real capital exposure 0) while the **trading state is `NO_TRADE`**: no strategy has passed the research gates, so the forward-validation registry is empty and every order request is refused with `strategy_registered_frozen: no registered forward-validation strategy — NO_TRADE`. DEMO_FORWARD observation remains structurally order-free; a fresh readiness report can authorize recording real MT5 demo-account observations but never an order path on its own. See `docs/demo_execution_authorization_and_safety_2026-09-23.md`.
 
 ## How do I stop it?
 
@@ -116,7 +116,7 @@ This workstation intentionally stops at `DEMO_FORWARD/OBSERVE_ONLY`: a fresh rea
 ## Canonical authorities (read this before touching limits/modes/gates)
 
 - **Mode**: `qts.domain.modes` — DEVELOPMENT / PAPER / SHADOW / DEMO_FORWARD / DEMO_EXECUTION / LIVE; unknown selections fail closed
-- **DEMO execution policy**: `qts.lifecycle.demo_authority` — `DEMO_EXECUTION = DISABLED BY POLICY` today; one durable refusal/history boundary is retained for future explicit authorization; direct enablement and API/UI/execution order permission are unreachable
+- **DEMO execution policy**: `qts.lifecycle.demo_authority` + `qts.lifecycle.demo_authorization` — the shipped default of a checkout with no owner authorization is `DEMO_EXECUTION = DISABLED BY POLICY`; a recorded, hashed, revocable owner authorization resolves it to `ENABLED_AUTHORIZED` (DEMO only). Either way the pre-trade gate (`qts.execution.demo_pretrade`) and the stage machine (`qts.lifecycle.demo_stage`) decide individual orders; `LIVE` stays locked
 - **Risk limits**: `qts.risk.authority` — one canonical set; mode restrictions may only tighten; every snapshot carries a config hash
 - **Broker metadata**: `qts.adapters.mt5_adapter` — alias-resolved, zero defaults, fail-closed
 - **Metrics**: `qts.domain.provenance.MetricValue` — MEASURED or UNAVAILABLE/INSUFFICIENT_EVIDENCE, never a placeholder zero

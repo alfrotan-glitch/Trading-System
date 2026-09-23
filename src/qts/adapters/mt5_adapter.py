@@ -167,6 +167,16 @@ def _resolve_contract_size(info: Any, symbol: str) -> Decimal:
     return _required_numeric(info, "contract_size", symbol, positive=True)
 
 
+def _optional_mt5_module() -> Any | None:
+    """The real MetaTrader5 module when importable — never a stand-in."""
+    import importlib
+
+    try:
+        return importlib.import_module("MetaTrader5")
+    except ImportError:
+        return None
+
+
 class MT5Adapter(BrokerAdapter):
     """Isolated MT5 broker adapter. All MT5 access is via _mt5 (injected or imported)."""
 
@@ -214,7 +224,34 @@ class MT5Adapter(BrokerAdapter):
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         # symbol -> (offset_seconds, basis, measured_at_epoch); see server_utc_offset
         self._server_offset_cache: dict[str, tuple[float, str, float]] = {}
+        #: Raw receipt of the most recent successful ``order_send`` (broker order
+        #: id, position/deal id, executed price) — consumed by the DEMO journal.
+        self.last_submission: dict[str, Any] | None = None
         self._init_comment_db()
+
+    def broker_identity(self) -> Any:
+        """Connected account/broker identity straight from the terminal.
+
+        Used by the DEMO pre-trade gate to prove the account is DEMO and that
+        the broker/server matches the pinned identity. Raises
+        ``BrokerIdentityError`` when the terminal cannot prove identity.
+        """
+        from qts.execution.demo_identity import probe_broker_identity
+
+        return probe_broker_identity(self._mt5)
+
+    def broker_references_available(self) -> bool:
+        """Whether this adapter can capture broker order/position identifiers.
+
+        A DEMO order may only be sent through an adapter that returns the
+        broker's own identifiers — otherwise the order cannot be reconciled or
+        journaled (safeguards #13 and #14).
+        """
+        mt5 = self._mt5
+        module = mt5 if mt5 is not None else _optional_mt5_module()
+        if module is None:
+            return False
+        return all(hasattr(module, name) for name in ("order_send", "positions_get", "last_error"))
 
     def _init_comment_db(self) -> None:
         with db_connect(self._db_path) as con:
@@ -562,7 +599,46 @@ class MT5Adapter(BrokerAdapter):
         }
         if price:
             request["price"] = price
+        # Protective levels ride along with the order: exposure must never
+        # exist without its stop, not even for the milliseconds between a fill
+        # and a follow-up modify request.
+        sl = self.validate_price_precision(intent.stop_loss, spec) if intent.stop_loss else None
+        tp = self.validate_price_precision(intent.take_profit, spec) if intent.take_profit else None
+        if sl is not None or tp is not None:
+            reference = limit_price or stop_price
+            if reference is None:
+                # Market order: the executable side price is the only honest
+                # reference for a stops_level distance check.
+                reference = self._executable_reference(mt5, mt5_symbol, intent.side)
+            if reference and reference > 0:
+                self.validate_sl_tp(reference, sl, tp, spec, intent.side)
+        if sl is not None:
+            request["sl"] = float(sl)
+        if tp is not None:
+            request["tp"] = float(tp)
         return request
+
+    def _executable_reference(self, mt5: Any, mt5_symbol: str, side: Side) -> Decimal:
+        """Executable price for a market order — BUY→ask, SELL→bid.
+
+        Fail closed: without a quote the stop distance cannot be validated
+        against ``stops_level``, and an unvalidated stop is not acceptable
+        protection.
+        """
+        try:
+            tick = mt5.symbol_info_tick(mt5_symbol)
+        except Exception as exc:
+            raise ValueError(f"tick unavailable for {mt5_symbol} — stop distance not verifiable: {exc}") from exc
+        if tick is None:
+            raise ValueError(f"tick unavailable for {mt5_symbol} — stop distance not verifiable")
+        raw = getattr(tick, "ask", None) if side == Side.BUY else getattr(tick, "bid", None)
+        try:
+            value = Decimal(str(raw))
+        except (TypeError, InvalidOperation) as exc:
+            raise ValueError(f"invalid executable price for {mt5_symbol}: {raw!r}") from exc
+        if not value.is_finite() or value <= 0:
+            raise ValueError(f"non-positive executable price for {mt5_symbol}: {raw!r}")
+        return value
 
     def validate_sl_tp(
         self, price: Decimal, sl: Decimal | None, tp: Decimal | None, spec: SymbolSpec, side: Side
@@ -755,6 +831,18 @@ class MT5Adapter(BrokerAdapter):
         if retcode in (self.RETCODE_DONE, self.RETCODE_PLACED, self.RETCODE_DONE_PARTIAL):
             # Accepted — create Order with exchange_order_id = result.order
             exchange_id = str(getattr(result, "order", "")) or str(getattr(result, "deal", ""))
+            # Full broker receipt for the DEMO journal (order id, position/deal
+            # id, executed price/volume). Captured here because this is the only
+            # place the raw result exists.
+            self.last_submission = {
+                "retcode": retcode,
+                "broker_order_id": str(getattr(result, "order", "") or ""),
+                "broker_position_id": str(getattr(result, "deal", "") or getattr(result, "position_id", "") or ""),
+                "executed_price": str(getattr(result, "price", "") or ""),
+                "executed_volume": str(getattr(result, "volume", "") or ""),
+                "comment": str(getattr(result, "comment", "") or ""),
+                "request": dict(request),
+            }
             return Order(
                 order_id=str(exchange_id) or intent.client_order_id,
                 client_order_id=intent.client_order_id,
@@ -764,6 +852,8 @@ class MT5Adapter(BrokerAdapter):
                 order_type=intent.order_type,
                 limit_price=limit_price,
                 stop_price=stop_price,
+                stop_loss=intent.stop_loss,
+                take_profit=intent.take_profit,
                 state=OrderState.ACCEPTED,
                 strategy_id=intent.strategy_id,
                 exchange_order_id=str(exchange_id) if exchange_id else None,
@@ -859,6 +949,118 @@ class MT5Adapter(BrokerAdapter):
                 )
             )
         return out
+
+    def position_details(self) -> list[dict[str, Any]]:
+        """Broker-authoritative open positions (ticket, SL/TP, profit, stamps).
+
+        ``positions()`` returns the domain projection (symbol/quantity/price)
+        used by risk and reconciliation. Position *management* — closing a
+        specific ticket, observing stop/target behaviour, recording unrealized
+        P&L — needs the broker identifiers and protective levels, so they are
+        exposed here verbatim instead of being re-derived or guessed.
+        """
+        mt5 = self._require_mt5()
+        raw = mt5.positions_get()
+        if raw is None:
+            err = mt5.last_error()
+            if err and err[0] != 1:  # 1 = RES_S_OK
+                raise ConnectionError(f"MT5 positions_get failed: {err}")
+            return []
+        out: list[dict[str, Any]] = []
+        for p in raw:
+            out.append(
+                {
+                    "ticket": getattr(p, "ticket", None),
+                    "symbol": getattr(p, "symbol", None),
+                    "broker_symbol": getattr(p, "symbol", None),
+                    "volume": str(getattr(p, "volume", 0)),
+                    "type": getattr(p, "type", None),  # 0 = BUY, 1 = SELL
+                    "side": "BUY" if getattr(p, "type", 0) == 0 else "SELL",
+                    "price_open": str(getattr(p, "price_open", 0)),
+                    "price_current": str(getattr(p, "price_current", 0)),
+                    "sl": str(getattr(p, "sl", 0) or 0),
+                    "tp": str(getattr(p, "tp", 0) or 0),
+                    "profit": str(getattr(p, "profit", 0)),
+                    "swap": str(getattr(p, "swap", 0)),
+                    "comment": str(getattr(p, "comment", "") or ""),
+                    "time": getattr(p, "time", None),
+                    "magic": getattr(p, "magic", None),
+                }
+            )
+        return out
+
+    def close_position(self, ticket: int, *, volume: Decimal | None = None, comment: str = "qts-close") -> dict[str, Any]:
+        """Close an open position by ticket (TRADE_ACTION_DEAL, opposite side).
+
+        Returns the raw broker receipt so the caller can journal the closing
+        deal/order id and realized P&L. Raises on failure — a close that
+        cannot be confirmed must never be assumed successful.
+        """
+        mt5 = self._require_mt5()
+        raw = None
+        try:
+            raw = mt5.positions_get(ticket=int(ticket))
+        except TypeError:
+            # Some builds/mocks only support the no-argument form.
+            raw = mt5.positions_get()
+            raw = [p for p in (raw or []) if getattr(p, "ticket", None) == int(ticket)] or None
+        if raw is None or len(raw) == 0:
+            raise ValueError(f"position {ticket} not found — refusing to send a speculative close")
+        pos = raw[0]
+        symbol = getattr(pos, "symbol", None)
+        if not symbol:
+            raise ValueError(f"position {ticket} has no symbol — close refused")
+        volume_dec = Decimal(str(volume)) if volume is not None else Decimal(str(getattr(pos, "volume", 0)))
+        if volume_dec <= 0:
+            raise ValueError(f"close volume {volume_dec} must be > 0")
+        pos_type = getattr(pos, "type", 0)
+        close_type = mt5.ORDER_TYPE_SELL if pos_type == 0 else mt5.ORDER_TYPE_BUY
+        tick = mt5.symbol_info_tick(symbol)
+        if tick is None:
+            raise ConnectionError(f"tick unavailable for {symbol} — close refused")
+        price = float(tick.bid) if pos_type == 0 else float(tick.ask)
+        if not price or price <= 0:
+            raise ConnectionError(f"executable price unavailable for {symbol} — close refused")
+        spec = self.get_symbol_spec(symbol)
+        # ``spec`` is broker-authoritative (get_symbol_spec fails closed), so
+        # the filling mode is read directly — never defaulted.
+        filling = getattr(mt5, "ORDER_FILLING_IOC", 1)
+        if spec.filling_mode == 1:
+            filling = mt5.ORDER_FILLING_IOC
+        elif spec.filling_mode == 2:
+            filling = mt5.ORDER_FILLING_FOK
+        else:
+            filling = mt5.ORDER_FILLING_RETURN
+        request: dict[str, Any] = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": symbol,
+            "volume": float(volume_dec),
+            "type": close_type,
+            "position": int(ticket),
+            "price": price,
+            "deviation": int(self.config.get("deviation", 20)),
+            "magic": int(self.config.get("magic", 20250916)),
+            "comment": str(comment)[:31],
+            "type_time": getattr(mt5, "ORDER_TIME_GTC", 0),
+            "type_filling": filling,
+        }
+        result = mt5.order_send(request)
+        if result is None:
+            raise TimeoutError(f"MT5 close returned None for position {ticket}: {mt5.last_error()}")
+        retcode = getattr(result, "retcode", None)
+        receipt = {
+            "retcode": retcode,
+            "broker_order_id": str(getattr(result, "order", "") or ""),
+            "broker_position_id": str(getattr(result, "deal", "") or ""),
+            "executed_price": str(getattr(result, "price", "") or ""),
+            "executed_volume": str(getattr(result, "volume", "") or ""),
+            "comment": str(getattr(result, "comment", "") or ""),
+            "request": dict(request),
+        }
+        if retcode not in (self.RETCODE_DONE, self.RETCODE_PLACED, self.RETCODE_DONE_PARTIAL):
+            raise ValueError(f"MT5 close of position {ticket} failed retcode {retcode}: {receipt['comment']}")
+        self.last_submission = receipt
+        return receipt
 
     def orders(self) -> list[Order]:
         mt5 = self._require_mt5()

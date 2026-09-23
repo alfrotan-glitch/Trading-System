@@ -29,24 +29,35 @@ approval gates and remains locked.
 - No `order_send`, no order path, no capital. `data/evidence/forward_observation_manifest.json` is a DERIVED export.
 - Legacy `demo_forward_observations.json` (fabricated fills) was quarantined — see `data/evidence/quarantine/README.md`; it satisfies nothing.
 
-## Phase 2: DEMO_EXECUTION (Disabled)
+## Phase 2: DEMO_EXECUTION (authorized — currently NO_TRADE)
 
-`POST /api/demo/enable` returns HTTP 409 with an explicit
-`DEMO_EXECUTION = DISABLED BY POLICY` reason and may include a diagnostic
-readiness probe, but never performs an authority enablement or creates an
-order permission today. A passing 14-check readiness report can authorize
-**observation only**; it never creates order permission. Consequently there
-are no actual demo fills, execution latency, slippage, broker responses,
-positions, exits, or P&L records in this product path. Those fields remain
-`UNAVAILABLE`, not zero or simulated. The authority and execution boundary
-remain retained for a later explicit policy decision.
+An owner authorization artifact (`data/evidence/demo_execution_authorization_2026-09-23.json`,
+DEMO account only, `LIVE = LOCKED`, zero real capital) resolves
+`DEMO_EXECUTION = ENABLED_AUTHORIZED`; without such an artifact the resolved
+policy is `DEMO_EXECUTION = DISABLED BY POLICY`, which remains the shipped
+default of a clean checkout. A passing 14-check readiness report can authorize
+**observation only** — by itself it never creates order permission.
+
+`POST /api/demo/enable` returns HTTP 200 only when the authorization is valid
+**and** every gate passes (explicit confirmation, risk acknowledgement, FRESH
+passing readiness, required checks, broker-capable mode); otherwise it returns
+HTTP 409 with `execution_permitted=false` and the reasons, and writes no
+enabled state. Per-order permission is a further, separate decision
+(staged arming, pinned+confirmed broker identity, eligible registered
+strategy, 22 pre-trade checks in the same cycle) — see
+`docs/demo_execution_authorization_and_safety_2026-09-23.md`.
+
+No strategy has passed the research gates, so this path currently has no
+actual demo fills, execution latency, slippage, broker responses, positions,
+exits, or P&L records. Those fields remain `UNAVAILABLE`, not zero or
+simulated.
 
 ## Comparison
 The canonical observation store can measure signal/theoretical-price versus
 hypothetical-price divergence when both fields are present. Execution/fill
 divergence, realized P&L, and paper/shadow-to-broker fill differences are
-`UNAVAILABLE` because DEMO_EXECUTION is disabled and OBSERVE_ONLY submits no
-orders. The API reports these states explicitly rather than deriving them from
+`UNAVAILABLE` because OBSERVE_ONLY submits no orders and the DEMO execution
+path has not traded (no eligible strategy — `NO_TRADE`). The API reports these states explicitly rather than deriving them from
 simulation.
 
 ## Position Management Research

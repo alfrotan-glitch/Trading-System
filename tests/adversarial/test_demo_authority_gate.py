@@ -1,15 +1,25 @@
-"""Adversarial tests for the current DEMO execution policy boundary.
+"""Adversarial tests for the DEMO execution policy boundary.
 
-``DEMO_EXECUTION = DISABLED BY POLICY`` today. The retained authority,
-readiness, audit, and execution-boundary architecture remains the future path
-for an explicitly authorized re-enable after research and safety milestones.
-A readiness report, request payload, acknowledgement, direct authority call,
-restart, or tampered SQLite row must not bypass today's policy. Refusals remain
-inspectable and durable so negative evidence is not lost.
+Two regimes are exercised explicitly, because "the default" and "authorized"
+must never be confused:
+
+* **Un-authorized** (``authorization=None``) — the shipped default of a
+  checkout with no owner authorization artifact. Here the answer is always
+  ``DEMO_EXECUTION = DISABLED BY POLICY``: a readiness report, request payload,
+  acknowledgement, direct authority call, restart, or tampered SQLite row must
+  not produce permission.
+* **Authorized** — a valid, in-scope, un-revoked owner authorization artifact
+  exists. Every gate still applies and is tested here too: explicit
+  confirmation, risk acknowledgement, FRESH passing readiness, required checks,
+  DEMO-only account, broker-capable mode, TTL decay, and audit-before-write.
+
+Refusals remain inspectable and durable in both regimes so negative evidence
+is never lost.
 """
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -40,7 +50,51 @@ def _readiness(passed: bool = True, **extra) -> dict:
 
 @pytest.fixture()
 def authority(tmp_path: Path):
-    return DemoExecutionAuthority(db_path=tmp_path / "qts.db")
+    """Un-authorized authority — the shipped default of a clean checkout."""
+    return DemoExecutionAuthority(db_path=tmp_path / "qts.db", authorization=None)
+
+
+def _authorization_doc(**overrides) -> dict:
+    from qts.lifecycle.demo_authorization import document_fingerprint
+
+    doc = {
+        "schema": "qts.demo_execution_authorization.v1",
+        "authorization_id": "DEMO-AUTH-TEST",
+        "authorized_at": datetime.now(UTC).isoformat(),
+        "authorized_by": "test harness",
+        "statement": "test authorization — DEMO only, LIVE locked, zero real capital exposure",
+        "scope": {
+            "account_type": "demo",
+            "modes_allowed": ["DEMO_EXECUTION"],
+            "symbols_allowed": ["XAUUSD"],
+            "live_locked": True,
+            "real_capital_exposure_usd": 0,
+            "funds_transfer_permitted": False,
+            "broker_switch_permitted": False,
+            "autonomous_order_management": True,
+        },
+        "risk_ceiling": {},
+        "research_integrity": {
+            "no_forward_optimization": True,
+            "strategy_registry_required": True,
+        },
+        "expires_at": None,
+    }
+    doc.update(overrides)
+    doc["integrity"] = {"content_sha256": document_fingerprint(doc)}
+    return doc
+
+
+@pytest.fixture()
+def authorized_authority(tmp_path: Path):
+    """Authority carrying a valid owner authorization artifact."""
+    from qts.lifecycle.demo_authorization import load_authorization
+
+    path = tmp_path / "authorization.json"
+    path.write_text(json.dumps(_authorization_doc(), indent=2), encoding="utf-8")
+    auth, reasons = load_authorization(path)
+    assert auth is not None, reasons
+    return DemoExecutionAuthority(db_path=tmp_path / "auth.db", authorization=auth, mode="DEMO_EXECUTION")
 
 
 def test_current_policy_is_explicit_and_authority_boundary_is_retained(authority: DemoExecutionAuthority):
@@ -125,7 +179,7 @@ def test_fresh_failed_readiness_cannot_override_policy_refusal(authority: DemoEx
 
 
 def test_observe_only_mode_can_never_hold_execution_permission(tmp_path: Path):
-    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", mode="DEMO_FORWARD")
+    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", authorization=None, mode="DEMO_FORWARD")
     d = auth.enable(readiness=_readiness(), confirmed=True, risk_ack=True)
     assert d.enabled is False
     assert any("observation-only" in r or "product policy" in r for r in d.reasons)
@@ -142,7 +196,7 @@ def test_observe_only_mode_can_never_hold_execution_permission(tmp_path: Path):
 
 
 def test_unknown_stored_mode_fails_closed(tmp_path: Path):
-    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", mode="NOT_A_MODE")
+    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", authorization=None, mode="NOT_A_MODE")
     auth.enable(readiness=_readiness(), confirmed=True, risk_ack=True)
     cur = auth.current()
     assert cur.enabled is False
@@ -163,7 +217,7 @@ def test_audit_failure_prevents_enablement(tmp_path: Path):
         def emit(self, event):  # noqa: ANN001
             raise RuntimeError("audit sink down")
 
-    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", audit=ExplodingAudit())
+    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", authorization=None, audit=ExplodingAudit())
     d = auth.enable(readiness=_readiness(), confirmed=True, risk_ack=True)
     assert d.enabled is False
     assert "audit failed" in " ".join(d.reasons)
@@ -172,9 +226,9 @@ def test_audit_failure_prevents_enablement(tmp_path: Path):
 
 def test_state_survives_restart_as_disabled_policy_state(tmp_path: Path):
     db = tmp_path / "q.db"
-    a1 = DemoExecutionAuthority(db_path=db)
+    a1 = DemoExecutionAuthority(db_path=db, authorization=None)
     a1.enable(readiness=_readiness(), confirmed=True, risk_ack=True)
-    a2 = DemoExecutionAuthority(db_path=db)
+    a2 = DemoExecutionAuthority(db_path=db, authorization=None)
     assert a2.current().enabled is False
     assert a2.current().execution_permitted is False
 
@@ -265,7 +319,7 @@ def _tamper_enabled_row(db_path: Path, *, mode: str | None) -> None:
 
 
 def test_tampered_capable_mode_row_refused_in_observe_only_process(tmp_path: Path):
-    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", mode="DEMO_FORWARD")
+    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", authorization=None, mode="DEMO_FORWARD")
     _tamper_enabled_row(auth.db_path, mode="DEMO_EXECUTION")
     d = auth.current().as_dict()
     assert d["enabled"] is False
@@ -275,7 +329,7 @@ def test_tampered_capable_mode_row_refused_in_observe_only_process(tmp_path: Pat
 
 
 def test_tampered_null_mode_row_refused_in_observe_only_process(tmp_path: Path):
-    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", mode="DEMO_FORWARD")
+    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", authorization=None, mode="DEMO_FORWARD")
     _tamper_enabled_row(auth.db_path, mode=None)
     d = auth.current().as_dict()
     assert d["enabled"] is False
@@ -284,14 +338,14 @@ def test_tampered_null_mode_row_refused_in_observe_only_process(tmp_path: Path):
 
 
 def test_tampered_row_refused_in_development_process(tmp_path: Path):
-    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", mode="DEVELOPMENT")
+    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", authorization=None, mode="DEVELOPMENT")
     _tamper_enabled_row(auth.db_path, mode="DEMO_EXECUTION")
     assert auth.current().execution_permitted is False
     assert auth.is_execution_permitted()[0] is False
 
 
 def test_policy_veto_is_not_mislabeled_as_readiness_expired(tmp_path: Path):
-    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", mode="DEVELOPMENT")
+    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", authorization=None, mode="DEVELOPMENT")
     _tamper_enabled_row(auth.db_path, mode="DEMO_EXECUTION")
     d = auth.current().as_dict()
     assert d["execution_permitted"] is False
@@ -300,10 +354,169 @@ def test_policy_veto_is_not_mislabeled_as_readiness_expired(tmp_path: Path):
 
 
 def test_demo_execution_process_honors_disabled_product_policy(tmp_path: Path):
-    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", mode="DEMO_EXECUTION")
+    auth = DemoExecutionAuthority(db_path=tmp_path / "q.db", authorization=None, mode="DEMO_EXECUTION")
     d = auth.enable(readiness=_readiness(), confirmed=True, risk_ack=True)
     assert d.execution_permitted is False
     cur = auth.current()
     assert cur.execution_permitted is False
     assert cur.enabled is False
     assert cur.state == "DISABLED"
+
+
+# ---------------------------------------------------------------------------
+# Authorized regime.
+#
+# A valid owner authorization artifact opens the DEMO execution path. It does
+# NOT relax a single gate inside it: confirmation, risk acknowledgement, FRESH
+# readiness, required checks, DEMO-only account and broker-capable mode all
+# still apply, and LIVE stays locked no matter what the artifact says.
+# ---------------------------------------------------------------------------
+
+
+def test_shipped_default_constant_remains_disabled():
+    """The source-level default of a clean checkout is still DISABLED."""
+    assert DEMO_EXECUTION_DISABLED is True
+    assert DEMO_EXECUTION_POLICY == "DISABLED BY POLICY"
+
+
+def test_authorized_authority_enables_with_fresh_readiness(authorized_authority: DemoExecutionAuthority):
+    d = authorized_authority.enable(readiness=_readiness(), confirmed=True, risk_ack=True)
+    assert d.enabled is True
+    assert d.execution_permitted is True
+    assert d.state == "ENABLED"
+    cur = authorized_authority.current()
+    assert cur.execution_permitted is True
+
+
+def test_authorized_enable_still_requires_explicit_confirmation(
+    authorized_authority: DemoExecutionAuthority,
+):
+    d = authorized_authority.enable(readiness=_readiness(), confirmed=False, risk_ack=True)
+    assert d.enabled is False
+    assert any("confirmed=true" in r for r in d.reasons)
+
+
+def test_authorized_enable_refuses_failed_readiness(authorized_authority: DemoExecutionAuthority):
+    d = authorized_authority.enable(readiness=_readiness(passed=False), confirmed=True, risk_ack=True)
+    assert d.enabled is False
+    assert any("readiness" in r.lower() for r in d.reasons)
+
+
+def test_authorized_enable_refuses_stale_readiness_evidence(
+    authorized_authority: DemoExecutionAuthority,
+):
+    stale = _readiness()
+    stale["timestamp"] = (datetime.now(UTC) - timedelta(seconds=REVERIFY_TTL_S + 60)).isoformat()
+    d = authorized_authority.enable(readiness=stale, confirmed=True, risk_ack=True)
+    assert d.enabled is False
+    assert any("fresh" in r.lower() for r in d.reasons)
+
+
+def test_authorized_enable_refuses_undated_readiness_evidence(
+    authorized_authority: DemoExecutionAuthority,
+):
+    """An undated report is infinitely old — never 'just verified'."""
+    undated = _readiness()
+    undated.pop("timestamp")
+    d = authorized_authority.enable(readiness=undated, confirmed=True, risk_ack=True)
+    assert d.enabled is False
+
+
+def test_authorized_enable_refuses_live_account_in_demo(authorized_authority: DemoExecutionAuthority):
+    d = authorized_authority.enable(readiness=_readiness(warn_live_in_demo=True), confirmed=True, risk_ack=True)
+    assert d.enabled is False
+    assert any("LIVE account" in r for r in d.reasons)
+
+
+def test_authorized_enable_refuses_when_required_check_missing(
+    authorized_authority: DemoExecutionAuthority,
+):
+    rpt = _readiness()
+    rpt["checks"]["account_connected"] = False
+    rpt["passed"] = True  # forged pass with a failing required check
+    d = authorized_authority.enable(readiness=rpt, confirmed=True, risk_ack=True)
+    assert d.enabled is False
+    assert any("account_connected" in r for r in d.reasons)
+
+
+def test_authorized_audit_failure_still_prevents_enablement(tmp_path: Path):
+    from qts.lifecycle.demo_authorization import load_authorization
+
+    class ExplodingAudit:
+        def emit(self, event):  # noqa: ANN001
+            raise RuntimeError("audit sink down")
+
+    path = tmp_path / "authorization.json"
+    path.write_text(json.dumps(_authorization_doc(), indent=2), encoding="utf-8")
+    auth, _reasons = load_authorization(path)
+    authority = DemoExecutionAuthority(
+        db_path=tmp_path / "q.db", authorization=auth, mode="DEMO_EXECUTION", audit=ExplodingAudit()
+    )
+    d = authority.enable(readiness=_readiness(), confirmed=True, risk_ack=True)
+    assert d.enabled is False
+    assert "audit failed" in " ".join(d.reasons)
+
+
+def test_authorized_permission_decays_after_ttl(authorized_authority: DemoExecutionAuthority):
+    authorized_authority.enable(readiness=_readiness(), confirmed=True, risk_ack=True)
+    with db_connect(authorized_authority.db_path) as con:
+        old = (datetime.now(UTC) - timedelta(seconds=REVERIFY_TTL_S + 10)).isoformat()
+        con.execute("UPDATE demo_execution_state SET decided_at=? WHERE enabled=1", (old,))
+        con.commit()
+    cur = authorized_authority.current()
+    assert cur.execution_permitted is False
+    assert cur.readiness_expired is True
+
+
+def test_live_mode_is_never_enabled_by_any_authorization(tmp_path: Path):
+    """LIVE = LOCKED is an invariant, not a clause in the artifact."""
+    from qts.lifecycle.demo_authorization import load_authorization
+
+    path = tmp_path / "authorization.json"
+    path.write_text(json.dumps(_authorization_doc(), indent=2), encoding="utf-8")
+    auth, _reasons = load_authorization(path)
+    authority = DemoExecutionAuthority(db_path=tmp_path / "q.db", authorization=auth, mode="LIVE")
+    d = authority.enable(readiness=_readiness(), confirmed=True, risk_ack=True)
+    assert d.enabled is False
+    assert d.execution_permitted is False
+    assert any("LIVE" in r for r in d.reasons)
+
+
+def test_tampered_authorization_artifact_disables_execution_again(tmp_path: Path):
+    """Editing the artifact after signing breaks the hash → DISABLED."""
+    from qts.lifecycle.demo_authorization import load_authorization
+
+    path = tmp_path / "authorization.json"
+    doc = _authorization_doc()
+    path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    auth, reasons = load_authorization(path)
+    assert auth is not None, reasons
+
+    doc["scope"]["live_locked"] = False  # attempt to unlock LIVE
+    path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    auth2, reasons2 = load_authorization(path)
+    assert auth2 is None
+    assert any("hash mismatch" in r for r in reasons2)
+
+
+def test_authorization_artifact_cannot_loosen_risk_limits(tmp_path: Path):
+    from qts.lifecycle.demo_authorization import load_authorization
+
+    path = tmp_path / "authorization.json"
+    doc = _authorization_doc(risk_ceiling={"max_quantity": 999.0})
+    path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    auth, reasons = load_authorization(path)
+    assert auth is None
+    assert any("exceeds canonical DEMO limit" in r for r in reasons)
+
+
+def test_authorization_revocation_disables_execution(tmp_path: Path):
+    from qts.lifecycle.demo_authorization import load_authorization, revoke_authorization
+
+    path = tmp_path / "authorization.json"
+    path.write_text(json.dumps(_authorization_doc(), indent=2), encoding="utf-8")
+    assert load_authorization(path)[0] is not None
+    revoke_authorization(path, reason="owner withdrew authorization", actor="test")
+    auth, reasons = load_authorization(path)
+    assert auth is None
+    assert any("revoked" in r for r in reasons)

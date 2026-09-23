@@ -488,7 +488,11 @@ def demo_forward_readiness_report(
         "passed": passed,
         "demo_enabled": demo_enabled,
         "demo_execution_enabled": False,
-        "demo_execution_note": "DEMO_EXECUTION is disabled by product policy; passed readiness only permits DEMO_FORWARD observation",
+        "demo_execution_note": (
+            "passed readiness permits DEMO_FORWARD observation; DEMO_EXECUTION additionally requires a recorded "
+            "owner authorization, staged arming, a pinned+confirmed broker identity and an eligible registered "
+            "strategy — see docs/demo_execution_authorization_and_safety_2026-09-23.md"
+        ),
         "required_checks": required,
         "account_is_demo": is_demo,
         "warn_live_in_demo": not is_demo and account_info is not None,
