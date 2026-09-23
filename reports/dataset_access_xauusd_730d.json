@@ -19,10 +19,10 @@
   "bid_ask": null,
   "spread": null,
   "session_calendar": null,
-  "provenance": "NOT ESTABLISHED \u2014 the exact zip is not in this runtime. Release CDN access was stopped. The archive was not re-uploaded or regenerated. SHA-256 was not verified. Research was not started.",
+  "provenance": "NOT ESTABLISHED. The release lists the asset. This sandbox did not download it. No workflow exists to transfer it, and this token cannot create one. SHA-256 was not verified. The archive was not extracted or modified.",
   "repairs_applied": [],
   "decision_supported": false,
-  "probed_at": "2026-09-23T06:47:30Z",
+  "probed_at": "2026-09-23T06:55:00Z",
   "release_metadata": {
     "status": "LISTED",
     "tag": "dataset-xauusd-730d-20260919",
@@ -36,16 +36,32 @@
     "source": "gh release view dataset-xauusd-730d-20260919"
   },
   "transfer": {
-    "status": "NOT_IN_RUNTIME",
-    "release_cdn": "NOT ACCESSED this turn, by owner instruction",
-    "bytes_retrieved": 0,
+    "status": "BLOCKED_MISSING_WORKFLOWS_PERMISSION",
+    "release_asset_id": 582342011,
+    "release_asset_bytes_declared": 1019727380,
+    "sandbox_release_cdn_download": "NOT PERFORMED",
+    "existing_workflows": 0,
+    "workflow_file_on_main": "NOT FOUND",
+    "contents_api_create_workflow": "403 Resource not accessible by integration",
+    "git_push_workflow_file": "rejected: GitHub App lacks workflows permission",
+    "actions_permission_api": "403 Resource not accessible by integration",
+    "codespaces": "403",
+    "mechanism_that_can_read_existing_release_asset": "A GitHub-hosted Actions runner using the repository GITHUB_TOKEN. The API returns a redirect; the runner follows it. This sandbox must not.",
+    "why_it_cannot_be_started": "Creating .github/workflows/* requires workflows permission, which this GitHub App token does not have. Nothing is available to dispatch.",
+    "return_paths_this_runtime_can_read": [
+      "api.github.com",
+      "github.com",
+      "codeload.github.com"
+    ],
+    "return_paths_this_runtime_cannot_read": [
+      "actions artifact blob storage",
+      "media.githubusercontent.com",
+      "lfs.github.com",
+      "ghcr.io",
+      "npm.pkg.github.com"
+    ],
+    "git_blob_limit": "GitHub rejects files over 100 MB, so the 1,019,727,380-byte zip cannot be committed as one blob even by a runner.",
     "checksum_verified": false,
-    "arena_chat_attachment": "DOCUMENTED types do not include .zip; not a path for this archive",
-    "sandbox_file_api": "envd :49983 requires a signed upload URL or access token, which is not present inside the sandbox",
-    "project_intake_path": "data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip",
-    "intake_present": false,
-    "reupload": false,
-    "regenerated": false,
     "extracted": false,
     "research_started": false
   }
