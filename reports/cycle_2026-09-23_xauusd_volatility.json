@@ -1,0 +1,37 @@
+{
+  "schema": "qts.research_cycle.v1",
+  "generated_from": "reports/xauusd_volatility_state.json",
+  "actions_run": "35850795793",
+  "code_identity": "a22f9dc50c9fe60afc4d01d5ea0cbf59f105d762",
+  "measurement_commit": "308b432",
+  "dataset": {
+    "release": "dataset-xauusd-730d-20260919",
+    "asset": "XAUUSD_730d_20260919T114013Z.zip",
+    "zip_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+    "manifest_dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789"
+  },
+  "hypotheses": {
+    "H-VL-01": "TESTED",
+    "H-VL-02": "TESTED",
+    "H-VL-03": "TESTED",
+    "H-VL-04": "TESTED"
+  },
+  "process_structure": [
+    "H-ST-02 absolute-move clustering reproduced on the same discovery contrast",
+    "that contrast clears spread plus two cents and reaches spread plus one cent sooner",
+    "extreme continues beyond ordinary high volatility",
+    "quiet-to-expansion exceeds stay-quiet by a thin dollar margin",
+    "persistent high exceeds contraction onset"
+  ],
+  "hypothesis_generators": "NOT TESTED",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "held_out_span_opened": false,
+  "demo_readiness": "NOT ESTABLISHED",
+  "decision": "INCONCLUSIVE",
+  "safety": {
+    "confirm_live": false,
+    "orders_submitted": 0,
+    "DEMO_EXECUTION": "DISABLED"
+  }
+}

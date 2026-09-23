@@ -36,6 +36,10 @@ remain usable.
 | State magnitude | Does a high recent 16-quote absolute move predict a larger 256-quote absolute move? | H-ST-02 TESTED. Ratio 1.48. Process structure, not a directional trade and not a strategy. |
 | State direction | After a mid-sign run of length at least 5, does the 256-quote move fade? | H-ST-03 REJECTED. Fade rate 0.494. Residual after one spread plus one cent is negative. |
 | State magnitude | Does leaving a persistent spread enlarge the 256-quote absolute move? | H-ST-04 REJECTED. Ratio 1.07, below 1.15. Not the rejected widen-versus-tighten test. |
+| Volatility cost | Does the H-ST-02 contrast still clear spread plus two cents, and does high reach spread plus one cent sooner? | H-VL-01 TESTED. Lift 7.5 percentage points. Median wait 17 versus 29 quotes. Not a trade. |
+| Volatility tail | Does a recent move of at least $0.40 have a larger 256-quote absolute move than high-but-not-extreme? | H-VL-02 TESTED. Ratio 1.36. Dollar gap $0.34. Not a trade. |
+| Volatility transition | Does quiet-to-expansion have a larger 256-quote absolute move than staying quiet? | H-VL-03 TESTED. Ratio 1.34. Dollar gap $0.223, just above the $0.22 floor. Not a trade. |
+| Volatility persistence | Does persistent high have a larger 256-quote absolute move than contraction onset? | H-VL-04 TESTED. Ratio 1.45. Dollar gap $0.43. Not an exhaustion trade. |
 | Statistical structure | Dependence beyond the locked families | NOT TESTED. H-ST-02 is one absolute-move contrast, not a general dependence claim. |
 | Regimes | State labels other than the locked family | NOT TESTED. Ranked panel cells are hypothesis generators, not tests. The 38-cent mode stays descriptive. |
 | Temporal structure | Hour, session, weekday | BLOCKED. Timestamp basis is not confirmed. |
@@ -43,4 +47,5 @@ remain usable.
 | Cross-feature conditionals | Interactions other than wide×activity, recent volatility, and persistence leave/stay | NOT TESTED. |
 
 No family is assumed to be the edge. No model is fit. The measured magnitude
-clustering is not a reason to add one.
+clustering survived the locked cost filter and is still not a reason to add a
+model, to invent a side, or to open the held-out span.
