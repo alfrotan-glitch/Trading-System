@@ -1,0 +1,5341 @@
+{
+  "schema": "qts.canonical_zip_inventory.v1",
+  "generated_at_utc": "2026-09-23T07:30:48.041411+00:00",
+  "canonical_release": "dataset-xauusd-730d-20260919",
+  "canonical_asset": "XAUUSD_730d_20260919T114013Z.zip",
+  "zip_path": "data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip",
+  "expected_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+  "verified_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+  "checksum_match": true,
+  "bytes_present": 1019727380,
+  "status": "INVENTORIED",
+  "extracted": true,
+  "repairs_applied": [],
+  "defects": [
+    {
+      "code": "INTEGRITY_FAIL",
+      "detail": "acquisition manifest did not match recomputed files",
+      "repaired": false
+    },
+    {
+      "code": "TIMESTAMP_BASIS_UNVERIFIED",
+      "detail": "no UTC conversion was applied; session labels stay unavailable",
+      "repaired": false
+    }
+  ],
+  "inventory": {
+    "member_count": 735,
+    "members_listed": 735,
+    "members_truncated": false,
+    "compressed_bytes": 1019634772,
+    "uncompressed_bytes": 1085915311,
+    "members": [
+      {
+        "name": "parts\\part-000000.parquet",
+        "compressed_bytes": 128258,
+        "uncompressed_bytes": 140191,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000001.parquet",
+        "compressed_bytes": 109996,
+        "uncompressed_bytes": 121222,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000002.parquet",
+        "compressed_bytes": 369816,
+        "uncompressed_bytes": 395056,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000003.parquet",
+        "compressed_bytes": 381519,
+        "uncompressed_bytes": 415956,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000004.parquet",
+        "compressed_bytes": 560939,
+        "uncompressed_bytes": 606615,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000005.parquet",
+        "compressed_bytes": 1017878,
+        "uncompressed_bytes": 1102607,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000006.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000007.parquet",
+        "compressed_bytes": 564280,
+        "uncompressed_bytes": 611426,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000008.parquet",
+        "compressed_bytes": 1185963,
+        "uncompressed_bytes": 1280062,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000009.parquet",
+        "compressed_bytes": 1522908,
+        "uncompressed_bytes": 1636803,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000010.parquet",
+        "compressed_bytes": 1329616,
+        "uncompressed_bytes": 1460110,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000011.parquet",
+        "compressed_bytes": 1533567,
+        "uncompressed_bytes": 1642662,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000012.parquet",
+        "compressed_bytes": 1049832,
+        "uncompressed_bytes": 1135011,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000013.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000014.parquet",
+        "compressed_bytes": 560261,
+        "uncompressed_bytes": 609504,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000015.parquet",
+        "compressed_bytes": 1317410,
+        "uncompressed_bytes": 1419303,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000016.parquet",
+        "compressed_bytes": 1379081,
+        "uncompressed_bytes": 1482895,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000017.parquet",
+        "compressed_bytes": 1313027,
+        "uncompressed_bytes": 1403721,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000018.parquet",
+        "compressed_bytes": 1236313,
+        "uncompressed_bytes": 1333517,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000019.parquet",
+        "compressed_bytes": 980664,
+        "uncompressed_bytes": 1052716,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000020.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000021.parquet",
+        "compressed_bytes": 408757,
+        "uncompressed_bytes": 440622,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000022.parquet",
+        "compressed_bytes": 1459896,
+        "uncompressed_bytes": 1557843,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000023.parquet",
+        "compressed_bytes": 1618655,
+        "uncompressed_bytes": 1746901,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000024.parquet",
+        "compressed_bytes": 1429085,
+        "uncompressed_bytes": 1576003,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000025.parquet",
+        "compressed_bytes": 1447841,
+        "uncompressed_bytes": 1560437,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000026.parquet",
+        "compressed_bytes": 850181,
+        "uncompressed_bytes": 914166,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000027.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000028.parquet",
+        "compressed_bytes": 653403,
+        "uncompressed_bytes": 707154,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000029.parquet",
+        "compressed_bytes": 1297557,
+        "uncompressed_bytes": 1419539,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000030.parquet",
+        "compressed_bytes": 1410966,
+        "uncompressed_bytes": 1519618,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000031.parquet",
+        "compressed_bytes": 1396188,
+        "uncompressed_bytes": 1530175,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000032.parquet",
+        "compressed_bytes": 1448328,
+        "uncompressed_bytes": 1556625,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000033.parquet",
+        "compressed_bytes": 952232,
+        "uncompressed_bytes": 1050580,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000034.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000035.parquet",
+        "compressed_bytes": 680994,
+        "uncompressed_bytes": 749330,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000036.parquet",
+        "compressed_bytes": 1430797,
+        "uncompressed_bytes": 1549549,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000037.parquet",
+        "compressed_bytes": 1388341,
+        "uncompressed_bytes": 1524870,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000038.parquet",
+        "compressed_bytes": 1630276,
+        "uncompressed_bytes": 1749806,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000039.parquet",
+        "compressed_bytes": 1390908,
+        "uncompressed_bytes": 1498172,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000040.parquet",
+        "compressed_bytes": 961047,
+        "uncompressed_bytes": 1036358,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000041.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000042.parquet",
+        "compressed_bytes": 718810,
+        "uncompressed_bytes": 787602,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000043.parquet",
+        "compressed_bytes": 1365842,
+        "uncompressed_bytes": 1478734,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000044.parquet",
+        "compressed_bytes": 1515236,
+        "uncompressed_bytes": 1629941,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000045.parquet",
+        "compressed_bytes": 1412258,
+        "uncompressed_bytes": 1559436,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000046.parquet",
+        "compressed_bytes": 1634145,
+        "uncompressed_bytes": 1771363,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000047.parquet",
+        "compressed_bytes": 1048119,
+        "uncompressed_bytes": 1137104,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000048.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000049.parquet",
+        "compressed_bytes": 744672,
+        "uncompressed_bytes": 831274,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000050.parquet",
+        "compressed_bytes": 1416589,
+        "uncompressed_bytes": 1533139,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000051.parquet",
+        "compressed_bytes": 1682766,
+        "uncompressed_bytes": 1805256,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000052.parquet",
+        "compressed_bytes": 1984110,
+        "uncompressed_bytes": 2108070,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000053.parquet",
+        "compressed_bytes": 1862642,
+        "uncompressed_bytes": 1996733,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000054.parquet",
+        "compressed_bytes": 1057840,
+        "uncompressed_bytes": 1137217,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000055.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000056.parquet",
+        "compressed_bytes": 762815,
+        "uncompressed_bytes": 841188,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000057.parquet",
+        "compressed_bytes": 1718716,
+        "uncompressed_bytes": 1847841,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000058.parquet",
+        "compressed_bytes": 1591783,
+        "uncompressed_bytes": 1714190,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000059.parquet",
+        "compressed_bytes": 1783835,
+        "uncompressed_bytes": 1917650,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000060.parquet",
+        "compressed_bytes": 1709177,
+        "uncompressed_bytes": 1835391,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000061.parquet",
+        "compressed_bytes": 1115127,
+        "uncompressed_bytes": 1225190,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000062.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000063.parquet",
+        "compressed_bytes": 806802,
+        "uncompressed_bytes": 870633,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000064.parquet",
+        "compressed_bytes": 1710647,
+        "uncompressed_bytes": 1848236,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000065.parquet",
+        "compressed_bytes": 1740690,
+        "uncompressed_bytes": 1904457,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000066.parquet",
+        "compressed_bytes": 1790894,
+        "uncompressed_bytes": 1922366,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000067.parquet",
+        "compressed_bytes": 1939453,
+        "uncompressed_bytes": 2106850,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000068.parquet",
+        "compressed_bytes": 1294465,
+        "uncompressed_bytes": 1404833,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000069.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000070.parquet",
+        "compressed_bytes": 1202760,
+        "uncompressed_bytes": 1300545,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000071.parquet",
+        "compressed_bytes": 1992513,
+        "uncompressed_bytes": 2125716,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000072.parquet",
+        "compressed_bytes": 1700704,
+        "uncompressed_bytes": 1827815,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000073.parquet",
+        "compressed_bytes": 1637669,
+        "uncompressed_bytes": 1759122,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000074.parquet",
+        "compressed_bytes": 1183893,
+        "uncompressed_bytes": 1262937,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000075.parquet",
+        "compressed_bytes": 1019749,
+        "uncompressed_bytes": 1112252,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000076.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000077.parquet",
+        "compressed_bytes": 996411,
+        "uncompressed_bytes": 1074744,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000078.parquet",
+        "compressed_bytes": 1768261,
+        "uncompressed_bytes": 1952156,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000079.parquet",
+        "compressed_bytes": 1550624,
+        "uncompressed_bytes": 1689641,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000080.parquet",
+        "compressed_bytes": 1663533,
+        "uncompressed_bytes": 1793088,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000081.parquet",
+        "compressed_bytes": 1575545,
+        "uncompressed_bytes": 1701040,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000082.parquet",
+        "compressed_bytes": 1162183,
+        "uncompressed_bytes": 1264978,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000083.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000084.parquet",
+        "compressed_bytes": 942950,
+        "uncompressed_bytes": 1007585,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000085.parquet",
+        "compressed_bytes": 1784353,
+        "uncompressed_bytes": 1910972,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000086.parquet",
+        "compressed_bytes": 1767658,
+        "uncompressed_bytes": 1899203,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000087.parquet",
+        "compressed_bytes": 1485949,
+        "uncompressed_bytes": 1587191,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000088.parquet",
+        "compressed_bytes": 1518469,
+        "uncompressed_bytes": 1619348,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000089.parquet",
+        "compressed_bytes": 970551,
+        "uncompressed_bytes": 1051895,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000090.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000091.parquet",
+        "compressed_bytes": 601780,
+        "uncompressed_bytes": 655841,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000092.parquet",
+        "compressed_bytes": 1503014,
+        "uncompressed_bytes": 1648768,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000093.parquet",
+        "compressed_bytes": 1618942,
+        "uncompressed_bytes": 1752998,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000094.parquet",
+        "compressed_bytes": 2035335,
+        "uncompressed_bytes": 2185137,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000095.parquet",
+        "compressed_bytes": 1946521,
+        "uncompressed_bytes": 2071428,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000096.parquet",
+        "compressed_bytes": 1257197,
+        "uncompressed_bytes": 1346503,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000097.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000098.parquet",
+        "compressed_bytes": 546254,
+        "uncompressed_bytes": 596103,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000099.parquet",
+        "compressed_bytes": 1347697,
+        "uncompressed_bytes": 1454092,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000100.parquet",
+        "compressed_bytes": 573594,
+        "uncompressed_bytes": 612205,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000101.parquet",
+        "compressed_bytes": 369465,
+        "uncompressed_bytes": 401133,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000102.parquet",
+        "compressed_bytes": 1265082,
+        "uncompressed_bytes": 1388614,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000103.parquet",
+        "compressed_bytes": 862574,
+        "uncompressed_bytes": 944285,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000104.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000105.parquet",
+        "compressed_bytes": 503538,
+        "uncompressed_bytes": 554623,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000106.parquet",
+        "compressed_bytes": 1436152,
+        "uncompressed_bytes": 1540351,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000107.parquet",
+        "compressed_bytes": 795776,
+        "uncompressed_bytes": 861696,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000108.parquet",
+        "compressed_bytes": 653606,
+        "uncompressed_bytes": 726605,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000109.parquet",
+        "compressed_bytes": 1649038,
+        "uncompressed_bytes": 1777175,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000110.parquet",
+        "compressed_bytes": 1055829,
+        "uncompressed_bytes": 1151840,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000111.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000112.parquet",
+        "compressed_bytes": 879962,
+        "uncompressed_bytes": 953503,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000113.parquet",
+        "compressed_bytes": 1795120,
+        "uncompressed_bytes": 1906713,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000114.parquet",
+        "compressed_bytes": 1736790,
+        "uncompressed_bytes": 1860103,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000115.parquet",
+        "compressed_bytes": 1667199,
+        "uncompressed_bytes": 1789591,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000116.parquet",
+        "compressed_bytes": 1567605,
+        "uncompressed_bytes": 1696725,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000117.parquet",
+        "compressed_bytes": 1433928,
+        "uncompressed_bytes": 1510345,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000118.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000119.parquet",
+        "compressed_bytes": 911489,
+        "uncompressed_bytes": 986434,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000120.parquet",
+        "compressed_bytes": 1895424,
+        "uncompressed_bytes": 2022972,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000121.parquet",
+        "compressed_bytes": 1658916,
+        "uncompressed_bytes": 1795066,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000122.parquet",
+        "compressed_bytes": 1733319,
+        "uncompressed_bytes": 1848493,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000123.parquet",
+        "compressed_bytes": 1750307,
+        "uncompressed_bytes": 1877274,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000124.parquet",
+        "compressed_bytes": 1148490,
+        "uncompressed_bytes": 1263298,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000125.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000126.parquet",
+        "compressed_bytes": 818539,
+        "uncompressed_bytes": 884881,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000127.parquet",
+        "compressed_bytes": 1612741,
+        "uncompressed_bytes": 1701454,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000128.parquet",
+        "compressed_bytes": 1792029,
+        "uncompressed_bytes": 1923035,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000129.parquet",
+        "compressed_bytes": 1523919,
+        "uncompressed_bytes": 1665068,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000130.parquet",
+        "compressed_bytes": 1849429,
+        "uncompressed_bytes": 1980319,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000131.parquet",
+        "compressed_bytes": 1144172,
+        "uncompressed_bytes": 1255197,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000132.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000133.parquet",
+        "compressed_bytes": 1038684,
+        "uncompressed_bytes": 1125666,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000134.parquet",
+        "compressed_bytes": 1950395,
+        "uncompressed_bytes": 2086973,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000135.parquet",
+        "compressed_bytes": 1512042,
+        "uncompressed_bytes": 1634030,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000136.parquet",
+        "compressed_bytes": 1711784,
+        "uncompressed_bytes": 1857511,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000137.parquet",
+        "compressed_bytes": 1851847,
+        "uncompressed_bytes": 1981747,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000138.parquet",
+        "compressed_bytes": 1404313,
+        "uncompressed_bytes": 1495749,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000139.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000140.parquet",
+        "compressed_bytes": 1196650,
+        "uncompressed_bytes": 1278063,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000141.parquet",
+        "compressed_bytes": 1969584,
+        "uncompressed_bytes": 2097682,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000142.parquet",
+        "compressed_bytes": 1866419,
+        "uncompressed_bytes": 2001033,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000143.parquet",
+        "compressed_bytes": 1875082,
+        "uncompressed_bytes": 1998883,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000144.parquet",
+        "compressed_bytes": 1665398,
+        "uncompressed_bytes": 1787425,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000145.parquet",
+        "compressed_bytes": 1251523,
+        "uncompressed_bytes": 1329049,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000146.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000147.parquet",
+        "compressed_bytes": 933847,
+        "uncompressed_bytes": 1006668,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000148.parquet",
+        "compressed_bytes": 1958667,
+        "uncompressed_bytes": 2113245,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000149.parquet",
+        "compressed_bytes": 1930357,
+        "uncompressed_bytes": 2045891,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000150.parquet",
+        "compressed_bytes": 1867431,
+        "uncompressed_bytes": 2010237,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000151.parquet",
+        "compressed_bytes": 1743950,
+        "uncompressed_bytes": 1876178,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000152.parquet",
+        "compressed_bytes": 1424718,
+        "uncompressed_bytes": 1534102,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000153.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000154.parquet",
+        "compressed_bytes": 777673,
+        "uncompressed_bytes": 834632,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000155.parquet",
+        "compressed_bytes": 1206248,
+        "uncompressed_bytes": 1311770,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000156.parquet",
+        "compressed_bytes": 1574715,
+        "uncompressed_bytes": 1684286,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000157.parquet",
+        "compressed_bytes": 1586018,
+        "uncompressed_bytes": 1701552,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000158.parquet",
+        "compressed_bytes": 1722585,
+        "uncompressed_bytes": 1838587,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000159.parquet",
+        "compressed_bytes": 1111913,
+        "uncompressed_bytes": 1214982,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000160.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000161.parquet",
+        "compressed_bytes": 857433,
+        "uncompressed_bytes": 917386,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000162.parquet",
+        "compressed_bytes": 1662709,
+        "uncompressed_bytes": 1783559,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000163.parquet",
+        "compressed_bytes": 1845761,
+        "uncompressed_bytes": 1977468,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000164.parquet",
+        "compressed_bytes": 1670430,
+        "uncompressed_bytes": 1776779,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000165.parquet",
+        "compressed_bytes": 1935374,
+        "uncompressed_bytes": 2060628,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000166.parquet",
+        "compressed_bytes": 1268391,
+        "uncompressed_bytes": 1351317,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000167.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000168.parquet",
+        "compressed_bytes": 795654,
+        "uncompressed_bytes": 872517,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000169.parquet",
+        "compressed_bytes": 1692550,
+        "uncompressed_bytes": 1812041,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000170.parquet",
+        "compressed_bytes": 1828050,
+        "uncompressed_bytes": 1954550,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000171.parquet",
+        "compressed_bytes": 1864104,
+        "uncompressed_bytes": 1994924,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000172.parquet",
+        "compressed_bytes": 1435662,
+        "uncompressed_bytes": 1534999,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000173.parquet",
+        "compressed_bytes": 1033085,
+        "uncompressed_bytes": 1113599,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000174.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000175.parquet",
+        "compressed_bytes": 505914,
+        "uncompressed_bytes": 544743,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000176.parquet",
+        "compressed_bytes": 1370610,
+        "uncompressed_bytes": 1475620,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000177.parquet",
+        "compressed_bytes": 1082130,
+        "uncompressed_bytes": 1166059,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000178.parquet",
+        "compressed_bytes": 1150043,
+        "uncompressed_bytes": 1222751,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000179.parquet",
+        "compressed_bytes": 1320605,
+        "uncompressed_bytes": 1428049,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000180.parquet",
+        "compressed_bytes": 812235,
+        "uncompressed_bytes": 872626,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000181.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000182.parquet",
+        "compressed_bytes": 351159,
+        "uncompressed_bytes": 376767,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000183.parquet",
+        "compressed_bytes": 1121418,
+        "uncompressed_bytes": 1198346,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000184.parquet",
+        "compressed_bytes": 1172551,
+        "uncompressed_bytes": 1253712,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000185.parquet",
+        "compressed_bytes": 1274925,
+        "uncompressed_bytes": 1356287,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000186.parquet",
+        "compressed_bytes": 1256264,
+        "uncompressed_bytes": 1346488,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000187.parquet",
+        "compressed_bytes": 814052,
+        "uncompressed_bytes": 877668,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000188.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000189.parquet",
+        "compressed_bytes": 539639,
+        "uncompressed_bytes": 589020,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000190.parquet",
+        "compressed_bytes": 1215363,
+        "uncompressed_bytes": 1298775,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000191.parquet",
+        "compressed_bytes": 1168631,
+        "uncompressed_bytes": 1245148,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000192.parquet",
+        "compressed_bytes": 1208373,
+        "uncompressed_bytes": 1296247,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000193.parquet",
+        "compressed_bytes": 1485142,
+        "uncompressed_bytes": 1602134,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000194.parquet",
+        "compressed_bytes": 936824,
+        "uncompressed_bytes": 1014232,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000195.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000196.parquet",
+        "compressed_bytes": 649511,
+        "uncompressed_bytes": 695255,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000197.parquet",
+        "compressed_bytes": 1501125,
+        "uncompressed_bytes": 1606307,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000198.parquet",
+        "compressed_bytes": 1387016,
+        "uncompressed_bytes": 1476023,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000199.parquet",
+        "compressed_bytes": 1812320,
+        "uncompressed_bytes": 1922865,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000200.parquet",
+        "compressed_bytes": 1894177,
+        "uncompressed_bytes": 2047593,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000201.parquet",
+        "compressed_bytes": 1502394,
+        "uncompressed_bytes": 1593913,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000202.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000203.parquet",
+        "compressed_bytes": 1151384,
+        "uncompressed_bytes": 1226183,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000204.parquet",
+        "compressed_bytes": 1926743,
+        "uncompressed_bytes": 2045427,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000205.parquet",
+        "compressed_bytes": 1961878,
+        "uncompressed_bytes": 2081488,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000206.parquet",
+        "compressed_bytes": 2210178,
+        "uncompressed_bytes": 2349956,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000207.parquet",
+        "compressed_bytes": 2234782,
+        "uncompressed_bytes": 2361125,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000208.parquet",
+        "compressed_bytes": 1298477,
+        "uncompressed_bytes": 1384305,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000209.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000210.parquet",
+        "compressed_bytes": 743429,
+        "uncompressed_bytes": 798748,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000211.parquet",
+        "compressed_bytes": 1449762,
+        "uncompressed_bytes": 1538252,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000212.parquet",
+        "compressed_bytes": 1483585,
+        "uncompressed_bytes": 1577675,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000213.parquet",
+        "compressed_bytes": 1723474,
+        "uncompressed_bytes": 1841763,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000214.parquet",
+        "compressed_bytes": 1147048,
+        "uncompressed_bytes": 1227375,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000215.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000216.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000217.parquet",
+        "compressed_bytes": 794932,
+        "uncompressed_bytes": 868250,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000218.parquet",
+        "compressed_bytes": 1871085,
+        "uncompressed_bytes": 1988818,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000219.parquet",
+        "compressed_bytes": 2336508,
+        "uncompressed_bytes": 2466500,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000220.parquet",
+        "compressed_bytes": 2064032,
+        "uncompressed_bytes": 2180672,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000221.parquet",
+        "compressed_bytes": 1846618,
+        "uncompressed_bytes": 1963482,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000222.parquet",
+        "compressed_bytes": 1096784,
+        "uncompressed_bytes": 1175219,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000223.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000224.parquet",
+        "compressed_bytes": 805417,
+        "uncompressed_bytes": 866876,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000225.parquet",
+        "compressed_bytes": 1627073,
+        "uncompressed_bytes": 1740267,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000226.parquet",
+        "compressed_bytes": 1442333,
+        "uncompressed_bytes": 1528852,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000227.parquet",
+        "compressed_bytes": 1733091,
+        "uncompressed_bytes": 1847215,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000228.parquet",
+        "compressed_bytes": 1473295,
+        "uncompressed_bytes": 1562108,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000229.parquet",
+        "compressed_bytes": 1229639,
+        "uncompressed_bytes": 1326985,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000230.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000231.parquet",
+        "compressed_bytes": 649869,
+        "uncompressed_bytes": 691113,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000232.parquet",
+        "compressed_bytes": 1781972,
+        "uncompressed_bytes": 1887107,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000233.parquet",
+        "compressed_bytes": 1835398,
+        "uncompressed_bytes": 1965142,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000234.parquet",
+        "compressed_bytes": 1827029,
+        "uncompressed_bytes": 1936859,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000235.parquet",
+        "compressed_bytes": 1859277,
+        "uncompressed_bytes": 1977113,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000236.parquet",
+        "compressed_bytes": 996913,
+        "uncompressed_bytes": 1066403,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000237.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000238.parquet",
+        "compressed_bytes": 1061596,
+        "uncompressed_bytes": 1127099,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000239.parquet",
+        "compressed_bytes": 1820829,
+        "uncompressed_bytes": 1939607,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000240.parquet",
+        "compressed_bytes": 1625818,
+        "uncompressed_bytes": 1728072,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000241.parquet",
+        "compressed_bytes": 1973995,
+        "uncompressed_bytes": 2101583,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000242.parquet",
+        "compressed_bytes": 1827042,
+        "uncompressed_bytes": 1942738,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000243.parquet",
+        "compressed_bytes": 1103476,
+        "uncompressed_bytes": 1186013,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000244.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000245.parquet",
+        "compressed_bytes": 802567,
+        "uncompressed_bytes": 867273,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000246.parquet",
+        "compressed_bytes": 1519730,
+        "uncompressed_bytes": 1617741,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000247.parquet",
+        "compressed_bytes": 1723491,
+        "uncompressed_bytes": 1846684,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000248.parquet",
+        "compressed_bytes": 1793017,
+        "uncompressed_bytes": 1911763,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000249.parquet",
+        "compressed_bytes": 1863530,
+        "uncompressed_bytes": 1979975,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000250.parquet",
+        "compressed_bytes": 1182459,
+        "uncompressed_bytes": 1265944,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000251.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000252.parquet",
+        "compressed_bytes": 652760,
+        "uncompressed_bytes": 694915,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000253.parquet",
+        "compressed_bytes": 1197419,
+        "uncompressed_bytes": 1267025,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000254.parquet",
+        "compressed_bytes": 1475310,
+        "uncompressed_bytes": 1561937,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000255.parquet",
+        "compressed_bytes": 1679269,
+        "uncompressed_bytes": 1790464,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000256.parquet",
+        "compressed_bytes": 1556721,
+        "uncompressed_bytes": 1666755,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000257.parquet",
+        "compressed_bytes": 1070856,
+        "uncompressed_bytes": 1139097,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000258.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000259.parquet",
+        "compressed_bytes": 721064,
+        "uncompressed_bytes": 777283,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000260.parquet",
+        "compressed_bytes": 1618847,
+        "uncompressed_bytes": 1740471,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000261.parquet",
+        "compressed_bytes": 1402334,
+        "uncompressed_bytes": 1490645,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000262.parquet",
+        "compressed_bytes": 1487737,
+        "uncompressed_bytes": 1582589,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000263.parquet",
+        "compressed_bytes": 1894058,
+        "uncompressed_bytes": 2018767,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000264.parquet",
+        "compressed_bytes": 1161003,
+        "uncompressed_bytes": 1242610,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000265.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000266.parquet",
+        "compressed_bytes": 711816,
+        "uncompressed_bytes": 757891,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000267.parquet",
+        "compressed_bytes": 1413806,
+        "uncompressed_bytes": 1505400,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000268.parquet",
+        "compressed_bytes": 1382877,
+        "uncompressed_bytes": 1472540,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000269.parquet",
+        "compressed_bytes": 1666442,
+        "uncompressed_bytes": 1773898,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000270.parquet",
+        "compressed_bytes": 1874263,
+        "uncompressed_bytes": 1985958,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000271.parquet",
+        "compressed_bytes": 1128361,
+        "uncompressed_bytes": 1202813,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000272.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000273.parquet",
+        "compressed_bytes": 803182,
+        "uncompressed_bytes": 859818,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000274.parquet",
+        "compressed_bytes": 1452683,
+        "uncompressed_bytes": 1547255,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000275.parquet",
+        "compressed_bytes": 1470072,
+        "uncompressed_bytes": 1571106,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000276.parquet",
+        "compressed_bytes": 1498615,
+        "uncompressed_bytes": 1593757,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000277.parquet",
+        "compressed_bytes": 1181798,
+        "uncompressed_bytes": 1257904,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000278.parquet",
+        "compressed_bytes": 810154,
+        "uncompressed_bytes": 868034,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000279.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000280.parquet",
+        "compressed_bytes": 711131,
+        "uncompressed_bytes": 765289,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000281.parquet",
+        "compressed_bytes": 1645004,
+        "uncompressed_bytes": 1759818,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000282.parquet",
+        "compressed_bytes": 1328922,
+        "uncompressed_bytes": 1411373,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000283.parquet",
+        "compressed_bytes": 1269216,
+        "uncompressed_bytes": 1356024,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000284.parquet",
+        "compressed_bytes": 1482825,
+        "uncompressed_bytes": 1586440,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000285.parquet",
+        "compressed_bytes": 1043360,
+        "uncompressed_bytes": 1104179,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000286.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000287.parquet",
+        "compressed_bytes": 640394,
+        "uncompressed_bytes": 684583,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000288.parquet",
+        "compressed_bytes": 1338365,
+        "uncompressed_bytes": 1435129,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000289.parquet",
+        "compressed_bytes": 1340280,
+        "uncompressed_bytes": 1431161,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000290.parquet",
+        "compressed_bytes": 1280434,
+        "uncompressed_bytes": 1370178,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000291.parquet",
+        "compressed_bytes": 1253721,
+        "uncompressed_bytes": 1341517,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000292.parquet",
+        "compressed_bytes": 347417,
+        "uncompressed_bytes": 373186,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000293.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000294.parquet",
+        "compressed_bytes": 706345,
+        "uncompressed_bytes": 753476,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000295.parquet",
+        "compressed_bytes": 1428078,
+        "uncompressed_bytes": 1520123,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000296.parquet",
+        "compressed_bytes": 1464918,
+        "uncompressed_bytes": 1582912,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000297.parquet",
+        "compressed_bytes": 1256832,
+        "uncompressed_bytes": 1351091,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000298.parquet",
+        "compressed_bytes": 1280989,
+        "uncompressed_bytes": 1369075,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000299.parquet",
+        "compressed_bytes": 970623,
+        "uncompressed_bytes": 1038572,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000300.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000301.parquet",
+        "compressed_bytes": 620844,
+        "uncompressed_bytes": 666617,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000302.parquet",
+        "compressed_bytes": 1176136,
+        "uncompressed_bytes": 1257109,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000303.parquet",
+        "compressed_bytes": 1277916,
+        "uncompressed_bytes": 1367171,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000304.parquet",
+        "compressed_bytes": 1433899,
+        "uncompressed_bytes": 1517670,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000305.parquet",
+        "compressed_bytes": 1202710,
+        "uncompressed_bytes": 1286735,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000306.parquet",
+        "compressed_bytes": 686557,
+        "uncompressed_bytes": 749239,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000307.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000308.parquet",
+        "compressed_bytes": 433109,
+        "uncompressed_bytes": 463447,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000309.parquet",
+        "compressed_bytes": 1294925,
+        "uncompressed_bytes": 1381975,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000310.parquet",
+        "compressed_bytes": 1451256,
+        "uncompressed_bytes": 1551682,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000311.parquet",
+        "compressed_bytes": 1496498,
+        "uncompressed_bytes": 1608081,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000312.parquet",
+        "compressed_bytes": 1259475,
+        "uncompressed_bytes": 1343088,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000313.parquet",
+        "compressed_bytes": 851990,
+        "uncompressed_bytes": 920506,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000314.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000315.parquet",
+        "compressed_bytes": 512812,
+        "uncompressed_bytes": 549468,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000316.parquet",
+        "compressed_bytes": 1278184,
+        "uncompressed_bytes": 1359503,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000317.parquet",
+        "compressed_bytes": 1210539,
+        "uncompressed_bytes": 1291976,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000318.parquet",
+        "compressed_bytes": 1469729,
+        "uncompressed_bytes": 1582982,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000319.parquet",
+        "compressed_bytes": 1291000,
+        "uncompressed_bytes": 1379368,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000320.parquet",
+        "compressed_bytes": 1103844,
+        "uncompressed_bytes": 1176633,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000321.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000322.parquet",
+        "compressed_bytes": 500576,
+        "uncompressed_bytes": 535108,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000323.parquet",
+        "compressed_bytes": 1106632,
+        "uncompressed_bytes": 1174529,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000324.parquet",
+        "compressed_bytes": 1099965,
+        "uncompressed_bytes": 1167693,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000325.parquet",
+        "compressed_bytes": 1315983,
+        "uncompressed_bytes": 1398570,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000326.parquet",
+        "compressed_bytes": 2016570,
+        "uncompressed_bytes": 2132147,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000327.parquet",
+        "compressed_bytes": 1386683,
+        "uncompressed_bytes": 1467000,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000328.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000329.parquet",
+        "compressed_bytes": 788349,
+        "uncompressed_bytes": 845345,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000330.parquet",
+        "compressed_bytes": 1369525,
+        "uncompressed_bytes": 1463151,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000331.parquet",
+        "compressed_bytes": 1392175,
+        "uncompressed_bytes": 1478794,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000332.parquet",
+        "compressed_bytes": 1297300,
+        "uncompressed_bytes": 1388512,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000333.parquet",
+        "compressed_bytes": 1259472,
+        "uncompressed_bytes": 1337419,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000334.parquet",
+        "compressed_bytes": 644801,
+        "uncompressed_bytes": 699416,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000335.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000336.parquet",
+        "compressed_bytes": 557519,
+        "uncompressed_bytes": 592380,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000337.parquet",
+        "compressed_bytes": 1091027,
+        "uncompressed_bytes": 1161900,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000338.parquet",
+        "compressed_bytes": 1016932,
+        "uncompressed_bytes": 1080621,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000339.parquet",
+        "compressed_bytes": 1005052,
+        "uncompressed_bytes": 1067251,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000340.parquet",
+        "compressed_bytes": 1119381,
+        "uncompressed_bytes": 1186971,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000341.parquet",
+        "compressed_bytes": 888211,
+        "uncompressed_bytes": 962218,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000342.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000343.parquet",
+        "compressed_bytes": 326686,
+        "uncompressed_bytes": 349016,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000344.parquet",
+        "compressed_bytes": 1111464,
+        "uncompressed_bytes": 1190282,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000345.parquet",
+        "compressed_bytes": 1171745,
+        "uncompressed_bytes": 1249058,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000346.parquet",
+        "compressed_bytes": 1182769,
+        "uncompressed_bytes": 1263671,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000347.parquet",
+        "compressed_bytes": 1329435,
+        "uncompressed_bytes": 1427258,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000348.parquet",
+        "compressed_bytes": 1147386,
+        "uncompressed_bytes": 1246280,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000349.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000350.parquet",
+        "compressed_bytes": 920717,
+        "uncompressed_bytes": 1000412,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000351.parquet",
+        "compressed_bytes": 1375883,
+        "uncompressed_bytes": 1457452,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000352.parquet",
+        "compressed_bytes": 1936883,
+        "uncompressed_bytes": 2063380,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000353.parquet",
+        "compressed_bytes": 1857219,
+        "uncompressed_bytes": 1977278,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000354.parquet",
+        "compressed_bytes": 1541387,
+        "uncompressed_bytes": 1638822,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000355.parquet",
+        "compressed_bytes": 1298204,
+        "uncompressed_bytes": 1382360,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000356.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000357.parquet",
+        "compressed_bytes": 851724,
+        "uncompressed_bytes": 914119,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000358.parquet",
+        "compressed_bytes": 1699891,
+        "uncompressed_bytes": 1814870,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000359.parquet",
+        "compressed_bytes": 1720471,
+        "uncompressed_bytes": 1842229,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000360.parquet",
+        "compressed_bytes": 1543484,
+        "uncompressed_bytes": 1653381,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000361.parquet",
+        "compressed_bytes": 1577458,
+        "uncompressed_bytes": 1668999,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000362.parquet",
+        "compressed_bytes": 921737,
+        "uncompressed_bytes": 998729,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000363.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000364.parquet",
+        "compressed_bytes": 664605,
+        "uncompressed_bytes": 712474,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000365.parquet",
+        "compressed_bytes": 1656985,
+        "uncompressed_bytes": 1771387,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000366.parquet",
+        "compressed_bytes": 1602996,
+        "uncompressed_bytes": 1711869,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000367.parquet",
+        "compressed_bytes": 1998817,
+        "uncompressed_bytes": 2135885,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000368.parquet",
+        "compressed_bytes": 1742849,
+        "uncompressed_bytes": 1876333,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000369.parquet",
+        "compressed_bytes": 1119102,
+        "uncompressed_bytes": 1204696,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000370.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000371.parquet",
+        "compressed_bytes": 862935,
+        "uncompressed_bytes": 931893,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000372.parquet",
+        "compressed_bytes": 1819278,
+        "uncompressed_bytes": 1952156,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000373.parquet",
+        "compressed_bytes": 1925850,
+        "uncompressed_bytes": 2043227,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000374.parquet",
+        "compressed_bytes": 1814031,
+        "uncompressed_bytes": 1943757,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000375.parquet",
+        "compressed_bytes": 1848005,
+        "uncompressed_bytes": 1959326,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000376.parquet",
+        "compressed_bytes": 1238138,
+        "uncompressed_bytes": 1325530,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000377.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000378.parquet",
+        "compressed_bytes": 1006746,
+        "uncompressed_bytes": 1079166,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000379.parquet",
+        "compressed_bytes": 1809955,
+        "uncompressed_bytes": 1925212,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000380.parquet",
+        "compressed_bytes": 1802602,
+        "uncompressed_bytes": 1933568,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000381.parquet",
+        "compressed_bytes": 1679640,
+        "uncompressed_bytes": 1791994,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000382.parquet",
+        "compressed_bytes": 1747520,
+        "uncompressed_bytes": 1877170,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000383.parquet",
+        "compressed_bytes": 1201073,
+        "uncompressed_bytes": 1281281,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000384.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000385.parquet",
+        "compressed_bytes": 1098843,
+        "uncompressed_bytes": 1183597,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000386.parquet",
+        "compressed_bytes": 2001862,
+        "uncompressed_bytes": 2139655,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000387.parquet",
+        "compressed_bytes": 2011418,
+        "uncompressed_bytes": 2138714,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000388.parquet",
+        "compressed_bytes": 2157638,
+        "uncompressed_bytes": 2294775,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000389.parquet",
+        "compressed_bytes": 2441979,
+        "uncompressed_bytes": 2558269,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000390.parquet",
+        "compressed_bytes": 1694871,
+        "uncompressed_bytes": 1799903,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000391.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000392.parquet",
+        "compressed_bytes": 1134353,
+        "uncompressed_bytes": 1210431,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000393.parquet",
+        "compressed_bytes": 2230755,
+        "uncompressed_bytes": 2364766,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000394.parquet",
+        "compressed_bytes": 2132764,
+        "uncompressed_bytes": 2257590,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000395.parquet",
+        "compressed_bytes": 1976126,
+        "uncompressed_bytes": 2106319,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000396.parquet",
+        "compressed_bytes": 3081387,
+        "uncompressed_bytes": 3221997,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000397.parquet",
+        "compressed_bytes": 2088058,
+        "uncompressed_bytes": 2160032,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000398.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000399.parquet",
+        "compressed_bytes": 1308348,
+        "uncompressed_bytes": 1384746,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000400.parquet",
+        "compressed_bytes": 2604165,
+        "uncompressed_bytes": 2723888,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000401.parquet",
+        "compressed_bytes": 2888884,
+        "uncompressed_bytes": 3002182,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000402.parquet",
+        "compressed_bytes": 2628509,
+        "uncompressed_bytes": 2765702,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000403.parquet",
+        "compressed_bytes": 1940870,
+        "uncompressed_bytes": 2058541,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000404.parquet",
+        "compressed_bytes": 1434500,
+        "uncompressed_bytes": 1519388,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000405.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000406.parquet",
+        "compressed_bytes": 1190453,
+        "uncompressed_bytes": 1261766,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000407.parquet",
+        "compressed_bytes": 2330946,
+        "uncompressed_bytes": 2460820,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000408.parquet",
+        "compressed_bytes": 2021564,
+        "uncompressed_bytes": 2150572,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000409.parquet",
+        "compressed_bytes": 2202343,
+        "uncompressed_bytes": 2313328,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000410.parquet",
+        "compressed_bytes": 2072069,
+        "uncompressed_bytes": 2193552,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000411.parquet",
+        "compressed_bytes": 1265556,
+        "uncompressed_bytes": 1361531,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000412.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000413.parquet",
+        "compressed_bytes": 922718,
+        "uncompressed_bytes": 989215,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000414.parquet",
+        "compressed_bytes": 1859415,
+        "uncompressed_bytes": 1974551,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000415.parquet",
+        "compressed_bytes": 1833498,
+        "uncompressed_bytes": 1956725,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000416.parquet",
+        "compressed_bytes": 1472007,
+        "uncompressed_bytes": 1559579,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000417.parquet",
+        "compressed_bytes": 1615848,
+        "uncompressed_bytes": 1731216,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000418.parquet",
+        "compressed_bytes": 1162635,
+        "uncompressed_bytes": 1239864,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000419.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000420.parquet",
+        "compressed_bytes": 854556,
+        "uncompressed_bytes": 915904,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000421.parquet",
+        "compressed_bytes": 1754603,
+        "uncompressed_bytes": 1863892,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000422.parquet",
+        "compressed_bytes": 1752001,
+        "uncompressed_bytes": 1877916,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000423.parquet",
+        "compressed_bytes": 2211497,
+        "uncompressed_bytes": 2337374,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000424.parquet",
+        "compressed_bytes": 2464640,
+        "uncompressed_bytes": 2599960,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000425.parquet",
+        "compressed_bytes": 1648329,
+        "uncompressed_bytes": 1742810,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000426.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000427.parquet",
+        "compressed_bytes": 1169416,
+        "uncompressed_bytes": 1249595,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000428.parquet",
+        "compressed_bytes": 2414859,
+        "uncompressed_bytes": 2546010,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000429.parquet",
+        "compressed_bytes": 2228323,
+        "uncompressed_bytes": 2379696,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000430.parquet",
+        "compressed_bytes": 2483628,
+        "uncompressed_bytes": 2630528,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000431.parquet",
+        "compressed_bytes": 2537166,
+        "uncompressed_bytes": 2683192,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000432.parquet",
+        "compressed_bytes": 1679734,
+        "uncompressed_bytes": 1782679,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000433.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000434.parquet",
+        "compressed_bytes": 971118,
+        "uncompressed_bytes": 1043457,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000435.parquet",
+        "compressed_bytes": 1997932,
+        "uncompressed_bytes": 2110358,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000436.parquet",
+        "compressed_bytes": 2011195,
+        "uncompressed_bytes": 2154413,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000437.parquet",
+        "compressed_bytes": 1725345,
+        "uncompressed_bytes": 1832406,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000438.parquet",
+        "compressed_bytes": 869796,
+        "uncompressed_bytes": 918802,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000439.parquet",
+        "compressed_bytes": 959117,
+        "uncompressed_bytes": 1022915,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000440.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000441.parquet",
+        "compressed_bytes": 1112372,
+        "uncompressed_bytes": 1185224,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000442.parquet",
+        "compressed_bytes": 2043730,
+        "uncompressed_bytes": 2180692,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000443.parquet",
+        "compressed_bytes": 1853629,
+        "uncompressed_bytes": 1973759,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000444.parquet",
+        "compressed_bytes": 2022152,
+        "uncompressed_bytes": 2140798,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000445.parquet",
+        "compressed_bytes": 1778463,
+        "uncompressed_bytes": 1891487,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000446.parquet",
+        "compressed_bytes": 1261253,
+        "uncompressed_bytes": 1350042,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000447.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000448.parquet",
+        "compressed_bytes": 778771,
+        "uncompressed_bytes": 830129,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000449.parquet",
+        "compressed_bytes": 1738639,
+        "uncompressed_bytes": 1842118,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000450.parquet",
+        "compressed_bytes": 1781736,
+        "uncompressed_bytes": 1890264,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000451.parquet",
+        "compressed_bytes": 2017754,
+        "uncompressed_bytes": 2135121,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000452.parquet",
+        "compressed_bytes": 1949851,
+        "uncompressed_bytes": 2076118,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000453.parquet",
+        "compressed_bytes": 1593224,
+        "uncompressed_bytes": 1670701,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000454.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000455.parquet",
+        "compressed_bytes": 861114,
+        "uncompressed_bytes": 923344,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000456.parquet",
+        "compressed_bytes": 2145517,
+        "uncompressed_bytes": 2280120,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000457.parquet",
+        "compressed_bytes": 2550680,
+        "uncompressed_bytes": 2711740,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000458.parquet",
+        "compressed_bytes": 2243897,
+        "uncompressed_bytes": 2372198,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000459.parquet",
+        "compressed_bytes": 2395410,
+        "uncompressed_bytes": 2526541,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000460.parquet",
+        "compressed_bytes": 1476016,
+        "uncompressed_bytes": 1554494,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000461.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000462.parquet",
+        "compressed_bytes": 921971,
+        "uncompressed_bytes": 994846,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000463.parquet",
+        "compressed_bytes": 1819840,
+        "uncompressed_bytes": 1922854,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000464.parquet",
+        "compressed_bytes": 2495617,
+        "uncompressed_bytes": 2626905,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000465.parquet",
+        "compressed_bytes": 1129095,
+        "uncompressed_bytes": 1200407,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000466.parquet",
+        "compressed_bytes": 312669,
+        "uncompressed_bytes": 329413,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000467.parquet",
+        "compressed_bytes": 1699364,
+        "uncompressed_bytes": 1804718,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000468.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000469.parquet",
+        "compressed_bytes": 1613162,
+        "uncompressed_bytes": 1689996,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000470.parquet",
+        "compressed_bytes": 2603562,
+        "uncompressed_bytes": 2716387,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000471.parquet",
+        "compressed_bytes": 2488157,
+        "uncompressed_bytes": 2627102,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000472.parquet",
+        "compressed_bytes": 1323147,
+        "uncompressed_bytes": 1415522,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000473.parquet",
+        "compressed_bytes": 851728,
+        "uncompressed_bytes": 911989,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000474.parquet",
+        "compressed_bytes": 1475222,
+        "uncompressed_bytes": 1565809,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000475.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000476.parquet",
+        "compressed_bytes": 1143063,
+        "uncompressed_bytes": 1212138,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000477.parquet",
+        "compressed_bytes": 2220763,
+        "uncompressed_bytes": 2355155,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000478.parquet",
+        "compressed_bytes": 2360669,
+        "uncompressed_bytes": 2504201,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000479.parquet",
+        "compressed_bytes": 2523877,
+        "uncompressed_bytes": 2658454,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000480.parquet",
+        "compressed_bytes": 2172262,
+        "uncompressed_bytes": 2298309,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000481.parquet",
+        "compressed_bytes": 1339825,
+        "uncompressed_bytes": 1429327,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000482.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000483.parquet",
+        "compressed_bytes": 1263588,
+        "uncompressed_bytes": 1346860,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000484.parquet",
+        "compressed_bytes": 2210716,
+        "uncompressed_bytes": 2342970,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000485.parquet",
+        "compressed_bytes": 2224126,
+        "uncompressed_bytes": 2368056,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000486.parquet",
+        "compressed_bytes": 2510290,
+        "uncompressed_bytes": 2654730,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000487.parquet",
+        "compressed_bytes": 2165355,
+        "uncompressed_bytes": 2303215,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000488.parquet",
+        "compressed_bytes": 1468791,
+        "uncompressed_bytes": 1560187,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000489.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000490.parquet",
+        "compressed_bytes": 1033937,
+        "uncompressed_bytes": 1110254,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000491.parquet",
+        "compressed_bytes": 1475664,
+        "uncompressed_bytes": 1574023,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000492.parquet",
+        "compressed_bytes": 2309715,
+        "uncompressed_bytes": 2457972,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000493.parquet",
+        "compressed_bytes": 2418284,
+        "uncompressed_bytes": 2541973,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000494.parquet",
+        "compressed_bytes": 2063236,
+        "uncompressed_bytes": 2184044,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000495.parquet",
+        "compressed_bytes": 1424426,
+        "uncompressed_bytes": 1521836,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000496.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000497.parquet",
+        "compressed_bytes": 1330755,
+        "uncompressed_bytes": 1406292,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000498.parquet",
+        "compressed_bytes": 2855395,
+        "uncompressed_bytes": 2985750,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000499.parquet",
+        "compressed_bytes": 2988171,
+        "uncompressed_bytes": 3121021,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000500.parquet",
+        "compressed_bytes": 3404739,
+        "uncompressed_bytes": 3548161,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000501.parquet",
+        "compressed_bytes": 3671440,
+        "uncompressed_bytes": 3807180,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000502.parquet",
+        "compressed_bytes": 2415564,
+        "uncompressed_bytes": 2494025,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000503.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000504.parquet",
+        "compressed_bytes": 2455846,
+        "uncompressed_bytes": 2512226,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000505.parquet",
+        "compressed_bytes": 3732746,
+        "uncompressed_bytes": 3883322,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000506.parquet",
+        "compressed_bytes": 3097798,
+        "uncompressed_bytes": 3258647,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000507.parquet",
+        "compressed_bytes": 3271217,
+        "uncompressed_bytes": 3409617,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000508.parquet",
+        "compressed_bytes": 3349346,
+        "uncompressed_bytes": 3489007,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000509.parquet",
+        "compressed_bytes": 1578572,
+        "uncompressed_bytes": 1666636,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000510.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000511.parquet",
+        "compressed_bytes": 1186159,
+        "uncompressed_bytes": 1256354,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000512.parquet",
+        "compressed_bytes": 2342832,
+        "uncompressed_bytes": 2471745,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000513.parquet",
+        "compressed_bytes": 2147085,
+        "uncompressed_bytes": 2303902,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000514.parquet",
+        "compressed_bytes": 2263429,
+        "uncompressed_bytes": 2408985,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000515.parquet",
+        "compressed_bytes": 2379844,
+        "uncompressed_bytes": 2504084,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000516.parquet",
+        "compressed_bytes": 1478037,
+        "uncompressed_bytes": 1563871,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000517.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000518.parquet",
+        "compressed_bytes": 911589,
+        "uncompressed_bytes": 977578,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000519.parquet",
+        "compressed_bytes": 1557383,
+        "uncompressed_bytes": 1662358,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000520.parquet",
+        "compressed_bytes": 2073546,
+        "uncompressed_bytes": 2204273,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000521.parquet",
+        "compressed_bytes": 1974963,
+        "uncompressed_bytes": 2088964,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000522.parquet",
+        "compressed_bytes": 1942214,
+        "uncompressed_bytes": 2072949,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000523.parquet",
+        "compressed_bytes": 1471706,
+        "uncompressed_bytes": 1559235,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000524.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000525.parquet",
+        "compressed_bytes": 1167558,
+        "uncompressed_bytes": 1249221,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000526.parquet",
+        "compressed_bytes": 1754531,
+        "uncompressed_bytes": 1867763,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000527.parquet",
+        "compressed_bytes": 1870883,
+        "uncompressed_bytes": 1975051,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000528.parquet",
+        "compressed_bytes": 2118523,
+        "uncompressed_bytes": 2257822,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000529.parquet",
+        "compressed_bytes": 2224153,
+        "uncompressed_bytes": 2368922,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000530.parquet",
+        "compressed_bytes": 1649036,
+        "uncompressed_bytes": 1742157,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000531.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000532.parquet",
+        "compressed_bytes": 1745935,
+        "uncompressed_bytes": 1823970,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000533.parquet",
+        "compressed_bytes": 3436488,
+        "uncompressed_bytes": 3566983,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000534.parquet",
+        "compressed_bytes": 3623623,
+        "uncompressed_bytes": 3763456,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000535.parquet",
+        "compressed_bytes": 2748203,
+        "uncompressed_bytes": 2871536,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000536.parquet",
+        "compressed_bytes": 2817016,
+        "uncompressed_bytes": 2934831,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000537.parquet",
+        "compressed_bytes": 1782106,
+        "uncompressed_bytes": 1867752,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000538.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000539.parquet",
+        "compressed_bytes": 1804328,
+        "uncompressed_bytes": 1891187,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000540.parquet",
+        "compressed_bytes": 2597267,
+        "uncompressed_bytes": 2724103,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000541.parquet",
+        "compressed_bytes": 2223887,
+        "uncompressed_bytes": 2371158,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000542.parquet",
+        "compressed_bytes": 2166355,
+        "uncompressed_bytes": 2306640,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000543.parquet",
+        "compressed_bytes": 2313384,
+        "uncompressed_bytes": 2427119,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000544.parquet",
+        "compressed_bytes": 1495693,
+        "uncompressed_bytes": 1593846,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000545.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000546.parquet",
+        "compressed_bytes": 1484704,
+        "uncompressed_bytes": 1576533,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000547.parquet",
+        "compressed_bytes": 2183835,
+        "uncompressed_bytes": 2343527,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000548.parquet",
+        "compressed_bytes": 1858583,
+        "uncompressed_bytes": 1991789,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000549.parquet",
+        "compressed_bytes": 3099263,
+        "uncompressed_bytes": 3253439,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000550.parquet",
+        "compressed_bytes": 3263458,
+        "uncompressed_bytes": 3390131,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000551.parquet",
+        "compressed_bytes": 1941508,
+        "uncompressed_bytes": 2024296,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000552.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000553.parquet",
+        "compressed_bytes": 2223981,
+        "uncompressed_bytes": 2301111,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000554.parquet",
+        "compressed_bytes": 3942854,
+        "uncompressed_bytes": 4080753,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000555.parquet",
+        "compressed_bytes": 3376959,
+        "uncompressed_bytes": 3490716,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000556.parquet",
+        "compressed_bytes": 3114912,
+        "uncompressed_bytes": 3242761,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000557.parquet",
+        "compressed_bytes": 2947506,
+        "uncompressed_bytes": 3075626,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000558.parquet",
+        "compressed_bytes": 1767961,
+        "uncompressed_bytes": 1875364,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000559.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000560.parquet",
+        "compressed_bytes": 1489695,
+        "uncompressed_bytes": 1565510,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000561.parquet",
+        "compressed_bytes": 2801842,
+        "uncompressed_bytes": 2937073,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000562.parquet",
+        "compressed_bytes": 3005839,
+        "uncompressed_bytes": 3153206,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000563.parquet",
+        "compressed_bytes": 2900479,
+        "uncompressed_bytes": 3042149,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000564.parquet",
+        "compressed_bytes": 1800866,
+        "uncompressed_bytes": 1888267,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000565.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000566.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000567.parquet",
+        "compressed_bytes": 1259374,
+        "uncompressed_bytes": 1340901,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000568.parquet",
+        "compressed_bytes": 2385638,
+        "uncompressed_bytes": 2520488,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000569.parquet",
+        "compressed_bytes": 2834232,
+        "uncompressed_bytes": 2981232,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000570.parquet",
+        "compressed_bytes": 2345213,
+        "uncompressed_bytes": 2476036,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000571.parquet",
+        "compressed_bytes": 2145732,
+        "uncompressed_bytes": 2288224,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000572.parquet",
+        "compressed_bytes": 1369261,
+        "uncompressed_bytes": 1461782,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000573.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000574.parquet",
+        "compressed_bytes": 1285668,
+        "uncompressed_bytes": 1382809,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000575.parquet",
+        "compressed_bytes": 2158485,
+        "uncompressed_bytes": 2303318,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000576.parquet",
+        "compressed_bytes": 2173872,
+        "uncompressed_bytes": 2303714,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000577.parquet",
+        "compressed_bytes": 2067406,
+        "uncompressed_bytes": 2199758,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000578.parquet",
+        "compressed_bytes": 2382007,
+        "uncompressed_bytes": 2519286,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000579.parquet",
+        "compressed_bytes": 1775484,
+        "uncompressed_bytes": 1847454,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000580.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000581.parquet",
+        "compressed_bytes": 1409742,
+        "uncompressed_bytes": 1518417,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000582.parquet",
+        "compressed_bytes": 2275492,
+        "uncompressed_bytes": 2417458,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000583.parquet",
+        "compressed_bytes": 2695224,
+        "uncompressed_bytes": 2823486,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000584.parquet",
+        "compressed_bytes": 2474953,
+        "uncompressed_bytes": 2629769,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000585.parquet",
+        "compressed_bytes": 2971643,
+        "uncompressed_bytes": 3126494,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000586.parquet",
+        "compressed_bytes": 1663691,
+        "uncompressed_bytes": 1763542,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000587.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000588.parquet",
+        "compressed_bytes": 1302215,
+        "uncompressed_bytes": 1397124,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000589.parquet",
+        "compressed_bytes": 2423320,
+        "uncompressed_bytes": 2592505,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000590.parquet",
+        "compressed_bytes": 2785862,
+        "uncompressed_bytes": 2927617,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000591.parquet",
+        "compressed_bytes": 3061924,
+        "uncompressed_bytes": 3239604,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000592.parquet",
+        "compressed_bytes": 2535975,
+        "uncompressed_bytes": 2669952,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000593.parquet",
+        "compressed_bytes": 1643926,
+        "uncompressed_bytes": 1728365,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000594.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000595.parquet",
+        "compressed_bytes": 1241180,
+        "uncompressed_bytes": 1332341,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000596.parquet",
+        "compressed_bytes": 2551253,
+        "uncompressed_bytes": 2709034,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000597.parquet",
+        "compressed_bytes": 2493943,
+        "uncompressed_bytes": 2633841,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000598.parquet",
+        "compressed_bytes": 2687042,
+        "uncompressed_bytes": 2849609,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000599.parquet",
+        "compressed_bytes": 2791900,
+        "uncompressed_bytes": 2937599,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000600.parquet",
+        "compressed_bytes": 1434437,
+        "uncompressed_bytes": 1530752,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000601.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000602.parquet",
+        "compressed_bytes": 1336616,
+        "uncompressed_bytes": 1415067,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000603.parquet",
+        "compressed_bytes": 2479913,
+        "uncompressed_bytes": 2606434,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000604.parquet",
+        "compressed_bytes": 2579273,
+        "uncompressed_bytes": 2707244,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000605.parquet",
+        "compressed_bytes": 2539135,
+        "uncompressed_bytes": 2670141,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000606.parquet",
+        "compressed_bytes": 2827694,
+        "uncompressed_bytes": 2991236,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000607.parquet",
+        "compressed_bytes": 1739550,
+        "uncompressed_bytes": 1816893,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000608.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000609.parquet",
+        "compressed_bytes": 1590780,
+        "uncompressed_bytes": 1682550,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000610.parquet",
+        "compressed_bytes": 2839281,
+        "uncompressed_bytes": 2987394,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000611.parquet",
+        "compressed_bytes": 2401618,
+        "uncompressed_bytes": 2520049,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000612.parquet",
+        "compressed_bytes": 1746861,
+        "uncompressed_bytes": 1841838,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000613.parquet",
+        "compressed_bytes": 2062897,
+        "uncompressed_bytes": 2191044,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000614.parquet",
+        "compressed_bytes": 1120712,
+        "uncompressed_bytes": 1190405,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000615.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000616.parquet",
+        "compressed_bytes": 1201132,
+        "uncompressed_bytes": 1287508,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000617.parquet",
+        "compressed_bytes": 1723310,
+        "uncompressed_bytes": 1836096,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000618.parquet",
+        "compressed_bytes": 2015217,
+        "uncompressed_bytes": 2154115,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000619.parquet",
+        "compressed_bytes": 2280558,
+        "uncompressed_bytes": 2401687,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000620.parquet",
+        "compressed_bytes": 2520345,
+        "uncompressed_bytes": 2637100,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000621.parquet",
+        "compressed_bytes": 1611920,
+        "uncompressed_bytes": 1701778,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000622.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000623.parquet",
+        "compressed_bytes": 1243425,
+        "uncompressed_bytes": 1330300,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000624.parquet",
+        "compressed_bytes": 2252617,
+        "uncompressed_bytes": 2387227,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000625.parquet",
+        "compressed_bytes": 1822533,
+        "uncompressed_bytes": 1935859,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000626.parquet",
+        "compressed_bytes": 1731906,
+        "uncompressed_bytes": 1845337,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000627.parquet",
+        "compressed_bytes": 1775600,
+        "uncompressed_bytes": 1886621,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000628.parquet",
+        "compressed_bytes": 1548416,
+        "uncompressed_bytes": 1643818,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000629.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000630.parquet",
+        "compressed_bytes": 1623981,
+        "uncompressed_bytes": 1712361,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000631.parquet",
+        "compressed_bytes": 2823648,
+        "uncompressed_bytes": 2997093,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000632.parquet",
+        "compressed_bytes": 3150453,
+        "uncompressed_bytes": 3271710,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000633.parquet",
+        "compressed_bytes": 3631059,
+        "uncompressed_bytes": 3761811,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000634.parquet",
+        "compressed_bytes": 3469351,
+        "uncompressed_bytes": 3606658,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000635.parquet",
+        "compressed_bytes": 1853308,
+        "uncompressed_bytes": 1935549,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000636.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000637.parquet",
+        "compressed_bytes": 1341268,
+        "uncompressed_bytes": 1428753,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000638.parquet",
+        "compressed_bytes": 2310327,
+        "uncompressed_bytes": 2485519,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000639.parquet",
+        "compressed_bytes": 2134084,
+        "uncompressed_bytes": 2267393,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000640.parquet",
+        "compressed_bytes": 2869192,
+        "uncompressed_bytes": 3028866,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000641.parquet",
+        "compressed_bytes": 2895945,
+        "uncompressed_bytes": 3038081,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000642.parquet",
+        "compressed_bytes": 987825,
+        "uncompressed_bytes": 1053656,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000643.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000644.parquet",
+        "compressed_bytes": 1471228,
+        "uncompressed_bytes": 1568926,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000645.parquet",
+        "compressed_bytes": 2885398,
+        "uncompressed_bytes": 3028090,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000646.parquet",
+        "compressed_bytes": 3097457,
+        "uncompressed_bytes": 3246611,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000647.parquet",
+        "compressed_bytes": 3381517,
+        "uncompressed_bytes": 3504559,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000648.parquet",
+        "compressed_bytes": 2990935,
+        "uncompressed_bytes": 3154953,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000649.parquet",
+        "compressed_bytes": 1685947,
+        "uncompressed_bytes": 1791591,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000650.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000651.parquet",
+        "compressed_bytes": 1412079,
+        "uncompressed_bytes": 1499595,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000652.parquet",
+        "compressed_bytes": 2720482,
+        "uncompressed_bytes": 2864699,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000653.parquet",
+        "compressed_bytes": 2613402,
+        "uncompressed_bytes": 2782782,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000654.parquet",
+        "compressed_bytes": 2895632,
+        "uncompressed_bytes": 3035243,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000655.parquet",
+        "compressed_bytes": 2866341,
+        "uncompressed_bytes": 3022588,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000656.parquet",
+        "compressed_bytes": 792007,
+        "uncompressed_bytes": 864140,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000657.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000658.parquet",
+        "compressed_bytes": 1407578,
+        "uncompressed_bytes": 1515884,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000659.parquet",
+        "compressed_bytes": 2254076,
+        "uncompressed_bytes": 2416758,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000660.parquet",
+        "compressed_bytes": 2357574,
+        "uncompressed_bytes": 2513246,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000661.parquet",
+        "compressed_bytes": 2372671,
+        "uncompressed_bytes": 2520399,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000662.parquet",
+        "compressed_bytes": 1700852,
+        "uncompressed_bytes": 1820137,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000663.parquet",
+        "compressed_bytes": 1027361,
+        "uncompressed_bytes": 1107335,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000664.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000665.parquet",
+        "compressed_bytes": 1274039,
+        "uncompressed_bytes": 1389261,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000666.parquet",
+        "compressed_bytes": 2324247,
+        "uncompressed_bytes": 2456950,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000667.parquet",
+        "compressed_bytes": 2149266,
+        "uncompressed_bytes": 2295325,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000668.parquet",
+        "compressed_bytes": 2196188,
+        "uncompressed_bytes": 2340615,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000669.parquet",
+        "compressed_bytes": 2337073,
+        "uncompressed_bytes": 2505715,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000670.parquet",
+        "compressed_bytes": 1396112,
+        "uncompressed_bytes": 1506652,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000671.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000672.parquet",
+        "compressed_bytes": 1062603,
+        "uncompressed_bytes": 1155915,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000673.parquet",
+        "compressed_bytes": 1938487,
+        "uncompressed_bytes": 2077047,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000674.parquet",
+        "compressed_bytes": 1918403,
+        "uncompressed_bytes": 2052980,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000675.parquet",
+        "compressed_bytes": 1953024,
+        "uncompressed_bytes": 2090708,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000676.parquet",
+        "compressed_bytes": 2077373,
+        "uncompressed_bytes": 2227382,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000677.parquet",
+        "compressed_bytes": 997380,
+        "uncompressed_bytes": 1073103,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000678.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000679.parquet",
+        "compressed_bytes": 921846,
+        "uncompressed_bytes": 1002867,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000680.parquet",
+        "compressed_bytes": 1960347,
+        "uncompressed_bytes": 2089790,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000681.parquet",
+        "compressed_bytes": 1850180,
+        "uncompressed_bytes": 1976140,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000682.parquet",
+        "compressed_bytes": 2498131,
+        "uncompressed_bytes": 2633813,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000683.parquet",
+        "compressed_bytes": 2126714,
+        "uncompressed_bytes": 2277772,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000684.parquet",
+        "compressed_bytes": 1323156,
+        "uncompressed_bytes": 1434604,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000685.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000686.parquet",
+        "compressed_bytes": 1082550,
+        "uncompressed_bytes": 1166265,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000687.parquet",
+        "compressed_bytes": 1754179,
+        "uncompressed_bytes": 1874396,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000688.parquet",
+        "compressed_bytes": 2254843,
+        "uncompressed_bytes": 2410323,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000689.parquet",
+        "compressed_bytes": 2394122,
+        "uncompressed_bytes": 2524301,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000690.parquet",
+        "compressed_bytes": 2098630,
+        "uncompressed_bytes": 2251797,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000691.parquet",
+        "compressed_bytes": 1512573,
+        "uncompressed_bytes": 1604190,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000692.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000693.parquet",
+        "compressed_bytes": 927736,
+        "uncompressed_bytes": 1010250,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000694.parquet",
+        "compressed_bytes": 2082256,
+        "uncompressed_bytes": 2230363,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000695.parquet",
+        "compressed_bytes": 1751452,
+        "uncompressed_bytes": 1890153,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000696.parquet",
+        "compressed_bytes": 1556653,
+        "uncompressed_bytes": 1675834,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000697.parquet",
+        "compressed_bytes": 1543290,
+        "uncompressed_bytes": 1651697,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000698.parquet",
+        "compressed_bytes": 840785,
+        "uncompressed_bytes": 913756,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000699.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000700.parquet",
+        "compressed_bytes": 689215,
+        "uncompressed_bytes": 743358,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000701.parquet",
+        "compressed_bytes": 1445775,
+        "uncompressed_bytes": 1555145,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000702.parquet",
+        "compressed_bytes": 1546040,
+        "uncompressed_bytes": 1663438,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000703.parquet",
+        "compressed_bytes": 1738347,
+        "uncompressed_bytes": 1858974,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000704.parquet",
+        "compressed_bytes": 1716771,
+        "uncompressed_bytes": 1848068,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000705.parquet",
+        "compressed_bytes": 1025438,
+        "uncompressed_bytes": 1107765,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000706.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000707.parquet",
+        "compressed_bytes": 905108,
+        "uncompressed_bytes": 975960,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000708.parquet",
+        "compressed_bytes": 1722459,
+        "uncompressed_bytes": 1847755,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000709.parquet",
+        "compressed_bytes": 1561322,
+        "uncompressed_bytes": 1680944,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000710.parquet",
+        "compressed_bytes": 1538335,
+        "uncompressed_bytes": 1668933,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000711.parquet",
+        "compressed_bytes": 1521940,
+        "uncompressed_bytes": 1651836,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000712.parquet",
+        "compressed_bytes": 1185118,
+        "uncompressed_bytes": 1272686,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000713.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000714.parquet",
+        "compressed_bytes": 825604,
+        "uncompressed_bytes": 894848,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000715.parquet",
+        "compressed_bytes": 1552463,
+        "uncompressed_bytes": 1684025,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000716.parquet",
+        "compressed_bytes": 1746419,
+        "uncompressed_bytes": 1880055,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000717.parquet",
+        "compressed_bytes": 1687317,
+        "uncompressed_bytes": 1808753,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000718.parquet",
+        "compressed_bytes": 1592244,
+        "uncompressed_bytes": 1704156,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000719.parquet",
+        "compressed_bytes": 992916,
+        "uncompressed_bytes": 1066370,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000720.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000721.parquet",
+        "compressed_bytes": 687343,
+        "uncompressed_bytes": 740950,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000722.parquet",
+        "compressed_bytes": 1187339,
+        "uncompressed_bytes": 1279421,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000723.parquet",
+        "compressed_bytes": 1517161,
+        "uncompressed_bytes": 1637684,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000724.parquet",
+        "compressed_bytes": 1505442,
+        "uncompressed_bytes": 1624540,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000725.parquet",
+        "compressed_bytes": 1780853,
+        "uncompressed_bytes": 1917854,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000726.parquet",
+        "compressed_bytes": 1016895,
+        "uncompressed_bytes": 1095542,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000727.parquet",
+        "compressed_bytes": 591,
+        "uncompressed_bytes": 1410,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000728.parquet",
+        "compressed_bytes": 740171,
+        "uncompressed_bytes": 806066,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000729.parquet",
+        "compressed_bytes": 1585654,
+        "uncompressed_bytes": 1710225,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000730.parquet",
+        "compressed_bytes": 1488676,
+        "uncompressed_bytes": 1609926,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000731.parquet",
+        "compressed_bytes": 1696298,
+        "uncompressed_bytes": 1814513,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000732.parquet",
+        "compressed_bytes": 1600294,
+        "uncompressed_bytes": 1721632,
+        "is_dir": false
+      },
+      {
+        "name": "parts\\part-000733.parquet",
+        "compressed_bytes": 958453,
+        "uncompressed_bytes": 1041776,
+        "is_dir": false
+      },
+      {
+        "name": "manifest.json",
+        "compressed_bytes": 57812,
+        "uncompressed_bytes": 505964,
+        "is_dir": false
+      }
+    ]
+  },
+  "datasets": [
+    {
+      "path": "/home/runner/work/_temp/qts_canonical_zip",
+      "acquisition_status": "COMPLETE",
+      "manifest_dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789",
+      "recomputed_dataset_sha256": null,
+      "matches_published_gap_report_digest": false,
+      "published_gap_report_digest": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789",
+      "integrity": {
+        "overall": "FAIL",
+        "checks": [
+          {
+            "check": "manifest_present",
+            "status": "PASS",
+            "detail": "/home/runner/work/_temp/qts_canonical_zip/manifest.json"
+          },
+          {
+            "check": "manifest_required_keys",
+            "status": "PASS",
+            "detail": "all present"
+          },
+          {
+            "check": "manifest_schema",
+            "status": "PASS",
+            "detail": "schema='qts.mt5_raw_tick_acquisition.v1'"
+          },
+          {
+            "check": "manifest_status_final",
+            "status": "PASS",
+            "detail": "status='COMPLETE' (final)"
+          },
+          {
+            "check": "read_only_flags",
+            "status": "PASS",
+            "detail": "read_only=True orders_submitted=0"
+          },
+          {
+            "check": "no_unrecorded_part_files",
+            "status": "PASS",
+            "detail": "none"
+          },
+          {
+            "check": "all_ledgered_parts_present",
+            "status": "FAIL",
+            "detail": "missing=['part-000000.parquet', 'part-000001.parquet', 'part-000002.parquet', 'part-000003.parquet', 'part-000004.parquet', 'part-000005.parquet', 'part-000006.parquet', 'part-000007.parquet', 'part-000008.parquet', 'part-000009.parquet', 'part-000010.parquet', 'part-000011.parquet', 'part-000012.parquet', 'part-000013.parquet', 'part-000014.parquet', 'part-000015.parquet', 'part-000016.parquet', 'part-000017.parquet', 'part-000018.parquet', 'part-000019.parquet', 'part-000020.parquet', 'part-000021.parquet', 'part-000022.parquet', 'part-000023.parquet', 'part-000024.parquet', 'part-000025.parquet', 'part-000026.parquet', 'part-000027.parquet', 'part-000028.parquet', 'part-000029.parquet', 'part-000030.parquet', 'part-000031.parquet', 'part-000032.parquet', 'part-000033.parquet', 'part-000034.parquet', 'part-000035.parquet', 'part-000036.parquet', 'part-000037.parquet', 'part-000038.parquet', 'part-000039.parquet', 'part-000040.parquet', 'part-000041.parquet', 'part-000042.parquet', 'part-000043.parquet', 'part-000044.parquet', 'part-000045.parquet', 'part-000046.parquet', 'part-000047.parquet', 'part-000048.parquet', 'part-000049.parquet', 'part-000050.parquet', 'part-000051.parquet', 'part-000052.parquet', 'part-000053.parquet', 'part-000054.parquet', 'part-000055.parquet', 'part-000056.parquet', 'part-000057.parquet', 'part-000058.parquet', 'part-000059.parquet', 'part-000060.parquet', 'part-000061.parquet', 'part-000062.parquet', 'part-000063.parquet', 'part-000064.parquet', 'part-000065.parquet', 'part-000066.parquet', 'part-000067.parquet', 'part-000068.parquet', 'part-000069.parquet', 'part-000070.parquet', 'part-000071.parquet', 'part-000072.parquet', 'part-000073.parquet', 'part-000074.parquet', 'part-000075.parquet', 'part-000076.parquet', 'part-000077.parquet', 'part-000078.parquet', 'part-000079.parquet', 'part-000080.parquet', 'part-000081.parquet', 'part-000082.parquet', 'part-000083.parquet', 'part-000084.parquet', 'part-000085.parquet', 'part-000086.parquet', 'part-000087.parquet', 'part-000088.parquet', 'part-000089.parquet', 'part-000090.parquet', 'part-000091.parquet', 'part-000092.parquet', 'part-000093.parquet', 'part-000094.parquet', 'part-000095.parquet', 'part-000096.parquet', 'part-000097.parquet', 'part-000098.parquet', 'part-000099.parquet', 'part-000100.parquet', 'part-000101.parquet', 'part-000102.parquet', 'part-000103.parquet', 'part-000104.parquet', 'part-000105.parquet', 'part-000106.parquet', 'part-000107.parquet', 'part-000108.parquet', 'part-000109.parquet', 'part-000110.parquet', 'part-000111.parquet', 'part-000112.parquet', 'part-000113.parquet', 'part-000114.parquet', 'part-000115.parquet', 'part-000116.parquet', 'part-000117.parquet', 'part-000118.parquet', 'part-000119.parquet', 'part-000120.parquet', 'part-000121.parquet', 'part-000122.parquet', 'part-000123.parquet', 'part-000124.parquet', 'part-000125.parquet', 'part-000126.parquet', 'part-000127.parquet', 'part-000128.parquet', 'part-000129.parquet', 'part-000130.parquet', 'part-000131.parquet', 'part-000132.parquet', 'part-000133.parquet', 'part-000134.parquet', 'part-000135.parquet', 'part-000136.parquet', 'part-000137.parquet', 'part-000138.parquet', 'part-000139.parquet', 'part-000140.parquet', 'part-000141.parquet', 'part-000142.parquet', 'part-000143.parquet', 'part-000144.parquet', 'part-000145.parquet', 'part-000146.parquet', 'part-000147.parquet', 'part-000148.parquet', 'part-000149.parquet', 'part-000150.parquet', 'part-000151.parquet', 'part-000152.parquet', 'part-000153.parquet', 'part-000154.parquet', 'part-000155.parquet', 'part-000156.parquet', 'part-000157.parquet', 'part-000158.parquet', 'part-000159.parquet', 'part-000160.parquet', 'part-000161.parquet', 'part-000162.parquet', 'part-000163.parquet', 'part-000164.parquet', 'part-000165.parquet', 'part-000166.parquet', 'part-000167.parquet', 'part-000168.parquet', 'part-000169.parquet', 'part-000170.parquet', 'part-000171.parquet', 'part-000172.parquet', 'part-000173.parquet', 'part-000174.parquet', 'part-000175.parquet', 'part-000176.parquet', 'part-000177.parquet', 'part-000178.parquet', 'part-000179.parquet', 'part-000180.parquet', 'part-000181.parquet', 'part-000182.parquet', 'part-000183.parquet', 'part-000184.parquet', 'part-000185.parquet', 'part-000186.parquet', 'part-000187.parquet', 'part-000188.parquet', 'part-000189.parquet', 'part-000190.parquet', 'part-000191.parquet', 'part-000192.parquet', 'part-000193.parquet', 'part-000194.parquet', 'part-000195.parquet', 'part-000196.parquet', 'part-000197.parquet', 'part-000198.parquet', 'part-000199.parquet', 'part-000200.parquet', 'part-000201.parquet', 'part-000202.parquet', 'part-000203.parquet', 'part-000204.parquet', 'part-000205.parquet', 'part-000206.parquet', 'part-000207.parquet', 'part-000208.parquet', 'part-000209.parquet', 'part-000210.parquet', 'part-000211.parquet', 'part-000212.parquet', 'part-000213.parquet', 'part-000214.parquet', 'part-000215.parquet', 'part-000216.parquet', 'part-000217.parquet', 'part-000218.parquet', 'part-000219.parquet', 'part-000220.parquet', 'part-000221.parquet', 'part-000222.parquet', 'part-000223.parquet', 'part-000224.parquet', 'part-000225.parquet', 'part-000226.parquet', 'part-000227.parquet', 'part-000228.parquet', 'part-000229.parquet', 'part-000230.parquet', 'part-000231.parquet', 'part-000232.parquet', 'part-000233.parquet', 'part-000234.parquet', 'part-000235.parquet', 'part-000236.parquet', 'part-000237.parquet', 'part-000238.parquet', 'part-000239.parquet', 'part-000240.parquet', 'part-000241.parquet', 'part-000242.parquet', 'part-000243.parquet', 'part-000244.parquet', 'part-000245.parquet', 'part-000246.parquet', 'part-000247.parquet', 'part-000248.parquet', 'part-000249.parquet', 'part-000250.parquet', 'part-000251.parquet', 'part-000252.parquet', 'part-000253.parquet', 'part-000254.parquet', 'part-000255.parquet', 'part-000256.parquet', 'part-000257.parquet', 'part-000258.parquet', 'part-000259.parquet', 'part-000260.parquet', 'part-000261.parquet', 'part-000262.parquet', 'part-000263.parquet', 'part-000264.parquet', 'part-000265.parquet', 'part-000266.parquet', 'part-000267.parquet', 'part-000268.parquet', 'part-000269.parquet', 'part-000270.parquet', 'part-000271.parquet', 'part-000272.parquet', 'part-000273.parquet', 'part-000274.parquet', 'part-000275.parquet', 'part-000276.parquet', 'part-000277.parquet', 'part-000278.parquet', 'part-000279.parquet', 'part-000280.parquet', 'part-000281.parquet', 'part-000282.parquet', 'part-000283.parquet', 'part-000284.parquet', 'part-000285.parquet', 'part-000286.parquet', 'part-000287.parquet', 'part-000288.parquet', 'part-000289.parquet', 'part-000290.parquet', 'part-000291.parquet', 'part-000292.parquet', 'part-000293.parquet', 'part-000294.parquet', 'part-000295.parquet', 'part-000296.parquet', 'part-000297.parquet', 'part-000298.parquet', 'part-000299.parquet', 'part-000300.parquet', 'part-000301.parquet', 'part-000302.parquet', 'part-000303.parquet', 'part-000304.parquet', 'part-000305.parquet', 'part-000306.parquet', 'part-000307.parquet', 'part-000308.parquet', 'part-000309.parquet', 'part-000310.parquet', 'part-000311.parquet', 'part-000312.parquet', 'part-000313.parquet', 'part-000314.parquet', 'part-000315.parquet', 'part-000316.parquet', 'part-000317.parquet', 'part-000318.parquet', 'part-000319.parquet', 'part-000320.parquet', 'part-000321.parquet', 'part-000322.parquet', 'part-000323.parquet', 'part-000324.parquet', 'part-000325.parquet', 'part-000326.parquet', 'part-000327.parquet', 'part-000328.parquet', 'part-000329.parquet', 'part-000330.parquet', 'part-000331.parquet', 'part-000332.parquet', 'part-000333.parquet', 'part-000334.parquet', 'part-000335.parquet', 'part-000336.parquet', 'part-000337.parquet', 'part-000338.parquet', 'part-000339.parquet', 'part-000340.parquet', 'part-000341.parquet', 'part-000342.parquet', 'part-000343.parquet', 'part-000344.parquet', 'part-000345.parquet', 'part-000346.parquet', 'part-000347.parquet', 'part-000348.parquet', 'part-000349.parquet', 'part-000350.parquet', 'part-000351.parquet', 'part-000352.parquet', 'part-000353.parquet', 'part-000354.parquet', 'part-000355.parquet', 'part-000356.parquet', 'part-000357.parquet', 'part-000358.parquet', 'part-000359.parquet', 'part-000360.parquet', 'part-000361.parquet', 'part-000362.parquet', 'part-000363.parquet', 'part-000364.parquet', 'part-000365.parquet', 'part-000366.parquet', 'part-000367.parquet', 'part-000368.parquet', 'part-000369.parquet', 'part-000370.parquet', 'part-000371.parquet', 'part-000372.parquet', 'part-000373.parquet', 'part-000374.parquet', 'part-000375.parquet', 'part-000376.parquet', 'part-000377.parquet', 'part-000378.parquet', 'part-000379.parquet', 'part-000380.parquet', 'part-000381.parquet', 'part-000382.parquet', 'part-000383.parquet', 'part-000384.parquet', 'part-000385.parquet', 'part-000386.parquet', 'part-000387.parquet', 'part-000388.parquet', 'part-000389.parquet', 'part-000390.parquet', 'part-000391.parquet', 'part-000392.parquet', 'part-000393.parquet', 'part-000394.parquet', 'part-000395.parquet', 'part-000396.parquet', 'part-000397.parquet', 'part-000398.parquet', 'part-000399.parquet', 'part-000400.parquet', 'part-000401.parquet', 'part-000402.parquet', 'part-000403.parquet', 'part-000404.parquet', 'part-000405.parquet', 'part-000406.parquet', 'part-000407.parquet', 'part-000408.parquet', 'part-000409.parquet', 'part-000410.parquet', 'part-000411.parquet', 'part-000412.parquet', 'part-000413.parquet', 'part-000414.parquet', 'part-000415.parquet', 'part-000416.parquet', 'part-000417.parquet', 'part-000418.parquet', 'part-000419.parquet', 'part-000420.parquet', 'part-000421.parquet', 'part-000422.parquet', 'part-000423.parquet', 'part-000424.parquet', 'part-000425.parquet', 'part-000426.parquet', 'part-000427.parquet', 'part-000428.parquet', 'part-000429.parquet', 'part-000430.parquet', 'part-000431.parquet', 'part-000432.parquet', 'part-000433.parquet', 'part-000434.parquet', 'part-000435.parquet', 'part-000436.parquet', 'part-000437.parquet', 'part-000438.parquet', 'part-000439.parquet', 'part-000440.parquet', 'part-000441.parquet', 'part-000442.parquet', 'part-000443.parquet', 'part-000444.parquet', 'part-000445.parquet', 'part-000446.parquet', 'part-000447.parquet', 'part-000448.parquet', 'part-000449.parquet', 'part-000450.parquet', 'part-000451.parquet', 'part-000452.parquet', 'part-000453.parquet', 'part-000454.parquet', 'part-000455.parquet', 'part-000456.parquet', 'part-000457.parquet', 'part-000458.parquet', 'part-000459.parquet', 'part-000460.parquet', 'part-000461.parquet', 'part-000462.parquet', 'part-000463.parquet', 'part-000464.parquet', 'part-000465.parquet', 'part-000466.parquet', 'part-000467.parquet', 'part-000468.parquet', 'part-000469.parquet', 'part-000470.parquet', 'part-000471.parquet', 'part-000472.parquet', 'part-000473.parquet', 'part-000474.parquet', 'part-000475.parquet', 'part-000476.parquet', 'part-000477.parquet', 'part-000478.parquet', 'part-000479.parquet', 'part-000480.parquet', 'part-000481.parquet', 'part-000482.parquet', 'part-000483.parquet', 'part-000484.parquet', 'part-000485.parquet', 'part-000486.parquet', 'part-000487.parquet', 'part-000488.parquet', 'part-000489.parquet', 'part-000490.parquet', 'part-000491.parquet', 'part-000492.parquet', 'part-000493.parquet', 'part-000494.parquet', 'part-000495.parquet', 'part-000496.parquet', 'part-000497.parquet', 'part-000498.parquet', 'part-000499.parquet', 'part-000500.parquet', 'part-000501.parquet', 'part-000502.parquet', 'part-000503.parquet', 'part-000504.parquet', 'part-000505.parquet', 'part-000506.parquet', 'part-000507.parquet', 'part-000508.parquet', 'part-000509.parquet', 'part-000510.parquet', 'part-000511.parquet', 'part-000512.parquet', 'part-000513.parquet', 'part-000514.parquet', 'part-000515.parquet', 'part-000516.parquet', 'part-000517.parquet', 'part-000518.parquet', 'part-000519.parquet', 'part-000520.parquet', 'part-000521.parquet', 'part-000522.parquet', 'part-000523.parquet', 'part-000524.parquet', 'part-000525.parquet', 'part-000526.parquet', 'part-000527.parquet', 'part-000528.parquet', 'part-000529.parquet', 'part-000530.parquet', 'part-000531.parquet', 'part-000532.parquet', 'part-000533.parquet', 'part-000534.parquet', 'part-000535.parquet', 'part-000536.parquet', 'part-000537.parquet', 'part-000538.parquet', 'part-000539.parquet', 'part-000540.parquet', 'part-000541.parquet', 'part-000542.parquet', 'part-000543.parquet', 'part-000544.parquet', 'part-000545.parquet', 'part-000546.parquet', 'part-000547.parquet', 'part-000548.parquet', 'part-000549.parquet', 'part-000550.parquet', 'part-000551.parquet', 'part-000552.parquet', 'part-000553.parquet', 'part-000554.parquet', 'part-000555.parquet', 'part-000556.parquet', 'part-000557.parquet', 'part-000558.parquet', 'part-000559.parquet', 'part-000560.parquet', 'part-000561.parquet', 'part-000562.parquet', 'part-000563.parquet', 'part-000564.parquet', 'part-000565.parquet', 'part-000566.parquet', 'part-000567.parquet', 'part-000568.parquet', 'part-000569.parquet', 'part-000570.parquet', 'part-000571.parquet', 'part-000572.parquet', 'part-000573.parquet', 'part-000574.parquet', 'part-000575.parquet', 'part-000576.parquet', 'part-000577.parquet', 'part-000578.parquet', 'part-000579.parquet', 'part-000580.parquet', 'part-000581.parquet', 'part-000582.parquet', 'part-000583.parquet', 'part-000584.parquet', 'part-000585.parquet', 'part-000586.parquet', 'part-000587.parquet', 'part-000588.parquet', 'part-000589.parquet', 'part-000590.parquet', 'part-000591.parquet', 'part-000592.parquet', 'part-000593.parquet', 'part-000594.parquet', 'part-000595.parquet', 'part-000596.parquet', 'part-000597.parquet', 'part-000598.parquet', 'part-000599.parquet', 'part-000600.parquet', 'part-000601.parquet', 'part-000602.parquet', 'part-000603.parquet', 'part-000604.parquet', 'part-000605.parquet', 'part-000606.parquet', 'part-000607.parquet', 'part-000608.parquet', 'part-000609.parquet', 'part-000610.parquet', 'part-000611.parquet', 'part-000612.parquet', 'part-000613.parquet', 'part-000614.parquet', 'part-000615.parquet', 'part-000616.parquet', 'part-000617.parquet', 'part-000618.parquet', 'part-000619.parquet', 'part-000620.parquet', 'part-000621.parquet', 'part-000622.parquet', 'part-000623.parquet', 'part-000624.parquet', 'part-000625.parquet', 'part-000626.parquet', 'part-000627.parquet', 'part-000628.parquet', 'part-000629.parquet', 'part-000630.parquet', 'part-000631.parquet', 'part-000632.parquet', 'part-000633.parquet', 'part-000634.parquet', 'part-000635.parquet', 'part-000636.parquet', 'part-000637.parquet', 'part-000638.parquet', 'part-000639.parquet', 'part-000640.parquet', 'part-000641.parquet', 'part-000642.parquet', 'part-000643.parquet', 'part-000644.parquet', 'part-000645.parquet', 'part-000646.parquet', 'part-000647.parquet', 'part-000648.parquet', 'part-000649.parquet', 'part-000650.parquet', 'part-000651.parquet', 'part-000652.parquet', 'part-000653.parquet', 'part-000654.parquet', 'part-000655.parquet', 'part-000656.parquet', 'part-000657.parquet', 'part-000658.parquet', 'part-000659.parquet', 'part-000660.parquet', 'part-000661.parquet', 'part-000662.parquet', 'part-000663.parquet', 'part-000664.parquet', 'part-000665.parquet', 'part-000666.parquet', 'part-000667.parquet', 'part-000668.parquet', 'part-000669.parquet', 'part-000670.parquet', 'part-000671.parquet', 'part-000672.parquet', 'part-000673.parquet', 'part-000674.parquet', 'part-000675.parquet', 'part-000676.parquet', 'part-000677.parquet', 'part-000678.parquet', 'part-000679.parquet', 'part-000680.parquet', 'part-000681.parquet', 'part-000682.parquet', 'part-000683.parquet', 'part-000684.parquet', 'part-000685.parquet', 'part-000686.parquet', 'part-000687.parquet', 'part-000688.parquet', 'part-000689.parquet', 'part-000690.parquet', 'part-000691.parquet', 'part-000692.parquet', 'part-000693.parquet', 'part-000694.parquet', 'part-000695.parquet', 'part-000696.parquet', 'part-000697.parquet', 'part-000698.parquet', 'part-000699.parquet', 'part-000700.parquet', 'part-000701.parquet', 'part-000702.parquet', 'part-000703.parquet', 'part-000704.parquet', 'part-000705.parquet', 'part-000706.parquet', 'part-000707.parquet', 'part-000708.parquet', 'part-000709.parquet', 'part-000710.parquet', 'part-000711.parquet', 'part-000712.parquet', 'part-000713.parquet', 'part-000714.parquet', 'part-000715.parquet', 'part-000716.parquet', 'part-000717.parquet', 'part-000718.parquet', 'part-000719.parquet', 'part-000720.parquet', 'part-000721.parquet', 'part-000722.parquet', 'part-000723.parquet', 'part-000724.parquet', 'part-000725.parquet', 'part-000726.parquet', 'part-000727.parquet', 'part-000728.parquet', 'part-000729.parquet', 'part-000730.parquet', 'part-000731.parquet', 'part-000732.parquet', 'part-000733.parquet']"
+          },
+          {
+            "check": "part_sha256_match",
+            "status": "PASS",
+            "detail": "all part file hashes match the ledger"
+          },
+          {
+            "check": "dataset_digest_match",
+            "status": "PASS",
+            "detail": "recomputed=26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789"
+          },
+          {
+            "check": "row_count_matches_parts",
+            "status": "FAIL",
+            "detail": "ledger_rows=139930971 manifest_row_count=139930971"
+          }
+        ],
+        "manifest_status": "COMPLETE",
+        "statement": "integrity validation recomputes hashes and ledger arithmetic from disk; a PARTIAL dataset is valid evidence for its committed chunks but must never be read as complete"
+      },
+      "content": {
+        "row_count": 0,
+        "fields_present": [],
+        "incomplete_parts": [
+          "missing-part:part-000000.parquet",
+          "missing-part:part-000001.parquet",
+          "missing-part:part-000002.parquet",
+          "missing-part:part-000003.parquet",
+          "missing-part:part-000004.parquet",
+          "missing-part:part-000005.parquet",
+          "missing-part:part-000006.parquet",
+          "missing-part:part-000007.parquet",
+          "missing-part:part-000008.parquet",
+          "missing-part:part-000009.parquet",
+          "missing-part:part-000010.parquet",
+          "missing-part:part-000011.parquet",
+          "missing-part:part-000012.parquet",
+          "missing-part:part-000013.parquet",
+          "missing-part:part-000014.parquet",
+          "missing-part:part-000015.parquet",
+          "missing-part:part-000016.parquet",
+          "missing-part:part-000017.parquet",
+          "missing-part:part-000018.parquet",
+          "missing-part:part-000019.parquet",
+          "missing-part:part-000020.parquet",
+          "missing-part:part-000021.parquet",
+          "missing-part:part-000022.parquet",
+          "missing-part:part-000023.parquet",
+          "missing-part:part-000024.parquet",
+          "missing-part:part-000025.parquet",
+          "missing-part:part-000026.parquet",
+          "missing-part:part-000027.parquet",
+          "missing-part:part-000028.parquet",
+          "missing-part:part-000029.parquet",
+          "missing-part:part-000030.parquet",
+          "missing-part:part-000031.parquet",
+          "missing-part:part-000032.parquet",
+          "missing-part:part-000033.parquet",
+          "missing-part:part-000034.parquet",
+          "missing-part:part-000035.parquet",
+          "missing-part:part-000036.parquet",
+          "missing-part:part-000037.parquet",
+          "missing-part:part-000038.parquet",
+          "missing-part:part-000039.parquet",
+          "missing-part:part-000040.parquet",
+          "missing-part:part-000041.parquet",
+          "missing-part:part-000042.parquet",
+          "missing-part:part-000043.parquet",
+          "missing-part:part-000044.parquet",
+          "missing-part:part-000045.parquet",
+          "missing-part:part-000046.parquet",
+          "missing-part:part-000047.parquet",
+          "missing-part:part-000048.parquet",
+          "missing-part:part-000049.parquet",
+          "missing-part:part-000050.parquet",
+          "missing-part:part-000051.parquet",
+          "missing-part:part-000052.parquet",
+          "missing-part:part-000053.parquet",
+          "missing-part:part-000054.parquet",
+          "missing-part:part-000055.parquet",
+          "missing-part:part-000056.parquet",
+          "missing-part:part-000057.parquet",
+          "missing-part:part-000058.parquet",
+          "missing-part:part-000059.parquet",
+          "missing-part:part-000060.parquet",
+          "missing-part:part-000061.parquet",
+          "missing-part:part-000062.parquet",
+          "missing-part:part-000063.parquet",
+          "missing-part:part-000064.parquet",
+          "missing-part:part-000065.parquet",
+          "missing-part:part-000066.parquet",
+          "missing-part:part-000067.parquet",
+          "missing-part:part-000068.parquet",
+          "missing-part:part-000069.parquet",
+          "missing-part:part-000070.parquet",
+          "missing-part:part-000071.parquet",
+          "missing-part:part-000072.parquet",
+          "missing-part:part-000073.parquet",
+          "missing-part:part-000074.parquet",
+          "missing-part:part-000075.parquet",
+          "missing-part:part-000076.parquet",
+          "missing-part:part-000077.parquet",
+          "missing-part:part-000078.parquet",
+          "missing-part:part-000079.parquet",
+          "missing-part:part-000080.parquet",
+          "missing-part:part-000081.parquet",
+          "missing-part:part-000082.parquet",
+          "missing-part:part-000083.parquet",
+          "missing-part:part-000084.parquet",
+          "missing-part:part-000085.parquet",
+          "missing-part:part-000086.parquet",
+          "missing-part:part-000087.parquet",
+          "missing-part:part-000088.parquet",
+          "missing-part:part-000089.parquet",
+          "missing-part:part-000090.parquet",
+          "missing-part:part-000091.parquet",
+          "missing-part:part-000092.parquet",
+          "missing-part:part-000093.parquet",
+          "missing-part:part-000094.parquet",
+          "missing-part:part-000095.parquet",
+          "missing-part:part-000096.parquet",
+          "missing-part:part-000097.parquet",
+          "missing-part:part-000098.parquet",
+          "missing-part:part-000099.parquet",
+          "missing-part:part-000100.parquet",
+          "missing-part:part-000101.parquet",
+          "missing-part:part-000102.parquet",
+          "missing-part:part-000103.parquet",
+          "missing-part:part-000104.parquet",
+          "missing-part:part-000105.parquet",
+          "missing-part:part-000106.parquet",
+          "missing-part:part-000107.parquet",
+          "missing-part:part-000108.parquet",
+          "missing-part:part-000109.parquet",
+          "missing-part:part-000110.parquet",
+          "missing-part:part-000111.parquet",
+          "missing-part:part-000112.parquet",
+          "missing-part:part-000113.parquet",
+          "missing-part:part-000114.parquet",
+          "missing-part:part-000115.parquet",
+          "missing-part:part-000116.parquet",
+          "missing-part:part-000117.parquet",
+          "missing-part:part-000118.parquet",
+          "missing-part:part-000119.parquet",
+          "missing-part:part-000120.parquet",
+          "missing-part:part-000121.parquet",
+          "missing-part:part-000122.parquet",
+          "missing-part:part-000123.parquet",
+          "missing-part:part-000124.parquet",
+          "missing-part:part-000125.parquet",
+          "missing-part:part-000126.parquet",
+          "missing-part:part-000127.parquet",
+          "missing-part:part-000128.parquet",
+          "missing-part:part-000129.parquet",
+          "missing-part:part-000130.parquet",
+          "missing-part:part-000131.parquet",
+          "missing-part:part-000132.parquet",
+          "missing-part:part-000133.parquet",
+          "missing-part:part-000134.parquet",
+          "missing-part:part-000135.parquet",
+          "missing-part:part-000136.parquet",
+          "missing-part:part-000137.parquet",
+          "missing-part:part-000138.parquet",
+          "missing-part:part-000139.parquet",
+          "missing-part:part-000140.parquet",
+          "missing-part:part-000141.parquet",
+          "missing-part:part-000142.parquet",
+          "missing-part:part-000143.parquet",
+          "missing-part:part-000144.parquet",
+          "missing-part:part-000145.parquet",
+          "missing-part:part-000146.parquet",
+          "missing-part:part-000147.parquet",
+          "missing-part:part-000148.parquet",
+          "missing-part:part-000149.parquet",
+          "missing-part:part-000150.parquet",
+          "missing-part:part-000151.parquet",
+          "missing-part:part-000152.parquet",
+          "missing-part:part-000153.parquet",
+          "missing-part:part-000154.parquet",
+          "missing-part:part-000155.parquet",
+          "missing-part:part-000156.parquet",
+          "missing-part:part-000157.parquet",
+          "missing-part:part-000158.parquet",
+          "missing-part:part-000159.parquet",
+          "missing-part:part-000160.parquet",
+          "missing-part:part-000161.parquet",
+          "missing-part:part-000162.parquet",
+          "missing-part:part-000163.parquet",
+          "missing-part:part-000164.parquet",
+          "missing-part:part-000165.parquet",
+          "missing-part:part-000166.parquet",
+          "missing-part:part-000167.parquet",
+          "missing-part:part-000168.parquet",
+          "missing-part:part-000169.parquet",
+          "missing-part:part-000170.parquet",
+          "missing-part:part-000171.parquet",
+          "missing-part:part-000172.parquet",
+          "missing-part:part-000173.parquet",
+          "missing-part:part-000174.parquet",
+          "missing-part:part-000175.parquet",
+          "missing-part:part-000176.parquet",
+          "missing-part:part-000177.parquet",
+          "missing-part:part-000178.parquet",
+          "missing-part:part-000179.parquet",
+          "missing-part:part-000180.parquet",
+          "missing-part:part-000181.parquet",
+          "missing-part:part-000182.parquet",
+          "missing-part:part-000183.parquet",
+          "missing-part:part-000184.parquet",
+          "missing-part:part-000185.parquet",
+          "missing-part:part-000186.parquet",
+          "missing-part:part-000187.parquet",
+          "missing-part:part-000188.parquet",
+          "missing-part:part-000189.parquet",
+          "missing-part:part-000190.parquet",
+          "missing-part:part-000191.parquet",
+          "missing-part:part-000192.parquet",
+          "missing-part:part-000193.parquet",
+          "missing-part:part-000194.parquet",
+          "missing-part:part-000195.parquet",
+          "missing-part:part-000196.parquet",
+          "missing-part:part-000197.parquet",
+          "missing-part:part-000198.parquet",
+          "missing-part:part-000199.parquet",
+          "missing-part:part-000200.parquet",
+          "missing-part:part-000201.parquet",
+          "missing-part:part-000202.parquet",
+          "missing-part:part-000203.parquet",
+          "missing-part:part-000204.parquet",
+          "missing-part:part-000205.parquet",
+          "missing-part:part-000206.parquet",
+          "missing-part:part-000207.parquet",
+          "missing-part:part-000208.parquet",
+          "missing-part:part-000209.parquet",
+          "missing-part:part-000210.parquet",
+          "missing-part:part-000211.parquet",
+          "missing-part:part-000212.parquet",
+          "missing-part:part-000213.parquet",
+          "missing-part:part-000214.parquet",
+          "missing-part:part-000215.parquet",
+          "missing-part:part-000216.parquet",
+          "missing-part:part-000217.parquet",
+          "missing-part:part-000218.parquet",
+          "missing-part:part-000219.parquet",
+          "missing-part:part-000220.parquet",
+          "missing-part:part-000221.parquet",
+          "missing-part:part-000222.parquet",
+          "missing-part:part-000223.parquet",
+          "missing-part:part-000224.parquet",
+          "missing-part:part-000225.parquet",
+          "missing-part:part-000226.parquet",
+          "missing-part:part-000227.parquet",
+          "missing-part:part-000228.parquet",
+          "missing-part:part-000229.parquet",
+          "missing-part:part-000230.parquet",
+          "missing-part:part-000231.parquet",
+          "missing-part:part-000232.parquet",
+          "missing-part:part-000233.parquet",
+          "missing-part:part-000234.parquet",
+          "missing-part:part-000235.parquet",
+          "missing-part:part-000236.parquet",
+          "missing-part:part-000237.parquet",
+          "missing-part:part-000238.parquet",
+          "missing-part:part-000239.parquet",
+          "missing-part:part-000240.parquet",
+          "missing-part:part-000241.parquet",
+          "missing-part:part-000242.parquet",
+          "missing-part:part-000243.parquet",
+          "missing-part:part-000244.parquet",
+          "missing-part:part-000245.parquet",
+          "missing-part:part-000246.parquet",
+          "missing-part:part-000247.parquet",
+          "missing-part:part-000248.parquet",
+          "missing-part:part-000249.parquet",
+          "missing-part:part-000250.parquet",
+          "missing-part:part-000251.parquet",
+          "missing-part:part-000252.parquet",
+          "missing-part:part-000253.parquet",
+          "missing-part:part-000254.parquet",
+          "missing-part:part-000255.parquet",
+          "missing-part:part-000256.parquet",
+          "missing-part:part-000257.parquet",
+          "missing-part:part-000258.parquet",
+          "missing-part:part-000259.parquet",
+          "missing-part:part-000260.parquet",
+          "missing-part:part-000261.parquet",
+          "missing-part:part-000262.parquet",
+          "missing-part:part-000263.parquet",
+          "missing-part:part-000264.parquet",
+          "missing-part:part-000265.parquet",
+          "missing-part:part-000266.parquet",
+          "missing-part:part-000267.parquet",
+          "missing-part:part-000268.parquet",
+          "missing-part:part-000269.parquet",
+          "missing-part:part-000270.parquet",
+          "missing-part:part-000271.parquet",
+          "missing-part:part-000272.parquet",
+          "missing-part:part-000273.parquet",
+          "missing-part:part-000274.parquet",
+          "missing-part:part-000275.parquet",
+          "missing-part:part-000276.parquet",
+          "missing-part:part-000277.parquet",
+          "missing-part:part-000278.parquet",
+          "missing-part:part-000279.parquet",
+          "missing-part:part-000280.parquet",
+          "missing-part:part-000281.parquet",
+          "missing-part:part-000282.parquet",
+          "missing-part:part-000283.parquet",
+          "missing-part:part-000284.parquet",
+          "missing-part:part-000285.parquet",
+          "missing-part:part-000286.parquet",
+          "missing-part:part-000287.parquet",
+          "missing-part:part-000288.parquet",
+          "missing-part:part-000289.parquet",
+          "missing-part:part-000290.parquet",
+          "missing-part:part-000291.parquet",
+          "missing-part:part-000292.parquet",
+          "missing-part:part-000293.parquet",
+          "missing-part:part-000294.parquet",
+          "missing-part:part-000295.parquet",
+          "missing-part:part-000296.parquet",
+          "missing-part:part-000297.parquet",
+          "missing-part:part-000298.parquet",
+          "missing-part:part-000299.parquet",
+          "missing-part:part-000300.parquet",
+          "missing-part:part-000301.parquet",
+          "missing-part:part-000302.parquet",
+          "missing-part:part-000303.parquet",
+          "missing-part:part-000304.parquet",
+          "missing-part:part-000305.parquet",
+          "missing-part:part-000306.parquet",
+          "missing-part:part-000307.parquet",
+          "missing-part:part-000308.parquet",
+          "missing-part:part-000309.parquet",
+          "missing-part:part-000310.parquet",
+          "missing-part:part-000311.parquet",
+          "missing-part:part-000312.parquet",
+          "missing-part:part-000313.parquet",
+          "missing-part:part-000314.parquet",
+          "missing-part:part-000315.parquet",
+          "missing-part:part-000316.parquet",
+          "missing-part:part-000317.parquet",
+          "missing-part:part-000318.parquet",
+          "missing-part:part-000319.parquet",
+          "missing-part:part-000320.parquet",
+          "missing-part:part-000321.parquet",
+          "missing-part:part-000322.parquet",
+          "missing-part:part-000323.parquet",
+          "missing-part:part-000324.parquet",
+          "missing-part:part-000325.parquet",
+          "missing-part:part-000326.parquet",
+          "missing-part:part-000327.parquet",
+          "missing-part:part-000328.parquet",
+          "missing-part:part-000329.parquet",
+          "missing-part:part-000330.parquet",
+          "missing-part:part-000331.parquet",
+          "missing-part:part-000332.parquet",
+          "missing-part:part-000333.parquet",
+          "missing-part:part-000334.parquet",
+          "missing-part:part-000335.parquet",
+          "missing-part:part-000336.parquet",
+          "missing-part:part-000337.parquet",
+          "missing-part:part-000338.parquet",
+          "missing-part:part-000339.parquet",
+          "missing-part:part-000340.parquet",
+          "missing-part:part-000341.parquet",
+          "missing-part:part-000342.parquet",
+          "missing-part:part-000343.parquet",
+          "missing-part:part-000344.parquet",
+          "missing-part:part-000345.parquet",
+          "missing-part:part-000346.parquet",
+          "missing-part:part-000347.parquet",
+          "missing-part:part-000348.parquet",
+          "missing-part:part-000349.parquet",
+          "missing-part:part-000350.parquet",
+          "missing-part:part-000351.parquet",
+          "missing-part:part-000352.parquet",
+          "missing-part:part-000353.parquet",
+          "missing-part:part-000354.parquet",
+          "missing-part:part-000355.parquet",
+          "missing-part:part-000356.parquet",
+          "missing-part:part-000357.parquet",
+          "missing-part:part-000358.parquet",
+          "missing-part:part-000359.parquet",
+          "missing-part:part-000360.parquet",
+          "missing-part:part-000361.parquet",
+          "missing-part:part-000362.parquet",
+          "missing-part:part-000363.parquet",
+          "missing-part:part-000364.parquet",
+          "missing-part:part-000365.parquet",
+          "missing-part:part-000366.parquet",
+          "missing-part:part-000367.parquet",
+          "missing-part:part-000368.parquet",
+          "missing-part:part-000369.parquet",
+          "missing-part:part-000370.parquet",
+          "missing-part:part-000371.parquet",
+          "missing-part:part-000372.parquet",
+          "missing-part:part-000373.parquet",
+          "missing-part:part-000374.parquet",
+          "missing-part:part-000375.parquet",
+          "missing-part:part-000376.parquet",
+          "missing-part:part-000377.parquet",
+          "missing-part:part-000378.parquet",
+          "missing-part:part-000379.parquet",
+          "missing-part:part-000380.parquet",
+          "missing-part:part-000381.parquet",
+          "missing-part:part-000382.parquet",
+          "missing-part:part-000383.parquet",
+          "missing-part:part-000384.parquet",
+          "missing-part:part-000385.parquet",
+          "missing-part:part-000386.parquet",
+          "missing-part:part-000387.parquet",
+          "missing-part:part-000388.parquet",
+          "missing-part:part-000389.parquet",
+          "missing-part:part-000390.parquet",
+          "missing-part:part-000391.parquet",
+          "missing-part:part-000392.parquet",
+          "missing-part:part-000393.parquet",
+          "missing-part:part-000394.parquet",
+          "missing-part:part-000395.parquet",
+          "missing-part:part-000396.parquet",
+          "missing-part:part-000397.parquet",
+          "missing-part:part-000398.parquet",
+          "missing-part:part-000399.parquet",
+          "missing-part:part-000400.parquet",
+          "missing-part:part-000401.parquet",
+          "missing-part:part-000402.parquet",
+          "missing-part:part-000403.parquet",
+          "missing-part:part-000404.parquet",
+          "missing-part:part-000405.parquet",
+          "missing-part:part-000406.parquet",
+          "missing-part:part-000407.parquet",
+          "missing-part:part-000408.parquet",
+          "missing-part:part-000409.parquet",
+          "missing-part:part-000410.parquet",
+          "missing-part:part-000411.parquet",
+          "missing-part:part-000412.parquet",
+          "missing-part:part-000413.parquet",
+          "missing-part:part-000414.parquet",
+          "missing-part:part-000415.parquet",
+          "missing-part:part-000416.parquet",
+          "missing-part:part-000417.parquet",
+          "missing-part:part-000418.parquet",
+          "missing-part:part-000419.parquet",
+          "missing-part:part-000420.parquet",
+          "missing-part:part-000421.parquet",
+          "missing-part:part-000422.parquet",
+          "missing-part:part-000423.parquet",
+          "missing-part:part-000424.parquet",
+          "missing-part:part-000425.parquet",
+          "missing-part:part-000426.parquet",
+          "missing-part:part-000427.parquet",
+          "missing-part:part-000428.parquet",
+          "missing-part:part-000429.parquet",
+          "missing-part:part-000430.parquet",
+          "missing-part:part-000431.parquet",
+          "missing-part:part-000432.parquet",
+          "missing-part:part-000433.parquet",
+          "missing-part:part-000434.parquet",
+          "missing-part:part-000435.parquet",
+          "missing-part:part-000436.parquet",
+          "missing-part:part-000437.parquet",
+          "missing-part:part-000438.parquet",
+          "missing-part:part-000439.parquet",
+          "missing-part:part-000440.parquet",
+          "missing-part:part-000441.parquet",
+          "missing-part:part-000442.parquet",
+          "missing-part:part-000443.parquet",
+          "missing-part:part-000444.parquet",
+          "missing-part:part-000445.parquet",
+          "missing-part:part-000446.parquet",
+          "missing-part:part-000447.parquet",
+          "missing-part:part-000448.parquet",
+          "missing-part:part-000449.parquet",
+          "missing-part:part-000450.parquet",
+          "missing-part:part-000451.parquet",
+          "missing-part:part-000452.parquet",
+          "missing-part:part-000453.parquet",
+          "missing-part:part-000454.parquet",
+          "missing-part:part-000455.parquet",
+          "missing-part:part-000456.parquet",
+          "missing-part:part-000457.parquet",
+          "missing-part:part-000458.parquet",
+          "missing-part:part-000459.parquet",
+          "missing-part:part-000460.parquet",
+          "missing-part:part-000461.parquet",
+          "missing-part:part-000462.parquet",
+          "missing-part:part-000463.parquet",
+          "missing-part:part-000464.parquet",
+          "missing-part:part-000465.parquet",
+          "missing-part:part-000466.parquet",
+          "missing-part:part-000467.parquet",
+          "missing-part:part-000468.parquet",
+          "missing-part:part-000469.parquet",
+          "missing-part:part-000470.parquet",
+          "missing-part:part-000471.parquet",
+          "missing-part:part-000472.parquet",
+          "missing-part:part-000473.parquet",
+          "missing-part:part-000474.parquet",
+          "missing-part:part-000475.parquet",
+          "missing-part:part-000476.parquet",
+          "missing-part:part-000477.parquet",
+          "missing-part:part-000478.parquet",
+          "missing-part:part-000479.parquet",
+          "missing-part:part-000480.parquet",
+          "missing-part:part-000481.parquet",
+          "missing-part:part-000482.parquet",
+          "missing-part:part-000483.parquet",
+          "missing-part:part-000484.parquet",
+          "missing-part:part-000485.parquet",
+          "missing-part:part-000486.parquet",
+          "missing-part:part-000487.parquet",
+          "missing-part:part-000488.parquet",
+          "missing-part:part-000489.parquet",
+          "missing-part:part-000490.parquet",
+          "missing-part:part-000491.parquet",
+          "missing-part:part-000492.parquet",
+          "missing-part:part-000493.parquet",
+          "missing-part:part-000494.parquet",
+          "missing-part:part-000495.parquet",
+          "missing-part:part-000496.parquet",
+          "missing-part:part-000497.parquet",
+          "missing-part:part-000498.parquet",
+          "missing-part:part-000499.parquet",
+          "missing-part:part-000500.parquet",
+          "missing-part:part-000501.parquet",
+          "missing-part:part-000502.parquet",
+          "missing-part:part-000503.parquet",
+          "missing-part:part-000504.parquet",
+          "missing-part:part-000505.parquet",
+          "missing-part:part-000506.parquet",
+          "missing-part:part-000507.parquet",
+          "missing-part:part-000508.parquet",
+          "missing-part:part-000509.parquet",
+          "missing-part:part-000510.parquet",
+          "missing-part:part-000511.parquet",
+          "missing-part:part-000512.parquet",
+          "missing-part:part-000513.parquet",
+          "missing-part:part-000514.parquet",
+          "missing-part:part-000515.parquet",
+          "missing-part:part-000516.parquet",
+          "missing-part:part-000517.parquet",
+          "missing-part:part-000518.parquet",
+          "missing-part:part-000519.parquet",
+          "missing-part:part-000520.parquet",
+          "missing-part:part-000521.parquet",
+          "missing-part:part-000522.parquet",
+          "missing-part:part-000523.parquet",
+          "missing-part:part-000524.parquet",
+          "missing-part:part-000525.parquet",
+          "missing-part:part-000526.parquet",
+          "missing-part:part-000527.parquet",
+          "missing-part:part-000528.parquet",
+          "missing-part:part-000529.parquet",
+          "missing-part:part-000530.parquet",
+          "missing-part:part-000531.parquet",
+          "missing-part:part-000532.parquet",
+          "missing-part:part-000533.parquet",
+          "missing-part:part-000534.parquet",
+          "missing-part:part-000535.parquet",
+          "missing-part:part-000536.parquet",
+          "missing-part:part-000537.parquet",
+          "missing-part:part-000538.parquet",
+          "missing-part:part-000539.parquet",
+          "missing-part:part-000540.parquet",
+          "missing-part:part-000541.parquet",
+          "missing-part:part-000542.parquet",
+          "missing-part:part-000543.parquet",
+          "missing-part:part-000544.parquet",
+          "missing-part:part-000545.parquet",
+          "missing-part:part-000546.parquet",
+          "missing-part:part-000547.parquet",
+          "missing-part:part-000548.parquet",
+          "missing-part:part-000549.parquet",
+          "missing-part:part-000550.parquet",
+          "missing-part:part-000551.parquet",
+          "missing-part:part-000552.parquet",
+          "missing-part:part-000553.parquet",
+          "missing-part:part-000554.parquet",
+          "missing-part:part-000555.parquet",
+          "missing-part:part-000556.parquet",
+          "missing-part:part-000557.parquet",
+          "missing-part:part-000558.parquet",
+          "missing-part:part-000559.parquet",
+          "missing-part:part-000560.parquet",
+          "missing-part:part-000561.parquet",
+          "missing-part:part-000562.parquet",
+          "missing-part:part-000563.parquet",
+          "missing-part:part-000564.parquet",
+          "missing-part:part-000565.parquet",
+          "missing-part:part-000566.parquet",
+          "missing-part:part-000567.parquet",
+          "missing-part:part-000568.parquet",
+          "missing-part:part-000569.parquet",
+          "missing-part:part-000570.parquet",
+          "missing-part:part-000571.parquet",
+          "missing-part:part-000572.parquet",
+          "missing-part:part-000573.parquet",
+          "missing-part:part-000574.parquet",
+          "missing-part:part-000575.parquet",
+          "missing-part:part-000576.parquet",
+          "missing-part:part-000577.parquet",
+          "missing-part:part-000578.parquet",
+          "missing-part:part-000579.parquet",
+          "missing-part:part-000580.parquet",
+          "missing-part:part-000581.parquet",
+          "missing-part:part-000582.parquet",
+          "missing-part:part-000583.parquet",
+          "missing-part:part-000584.parquet",
+          "missing-part:part-000585.parquet",
+          "missing-part:part-000586.parquet",
+          "missing-part:part-000587.parquet",
+          "missing-part:part-000588.parquet",
+          "missing-part:part-000589.parquet",
+          "missing-part:part-000590.parquet",
+          "missing-part:part-000591.parquet",
+          "missing-part:part-000592.parquet",
+          "missing-part:part-000593.parquet",
+          "missing-part:part-000594.parquet",
+          "missing-part:part-000595.parquet",
+          "missing-part:part-000596.parquet",
+          "missing-part:part-000597.parquet",
+          "missing-part:part-000598.parquet",
+          "missing-part:part-000599.parquet",
+          "missing-part:part-000600.parquet",
+          "missing-part:part-000601.parquet",
+          "missing-part:part-000602.parquet",
+          "missing-part:part-000603.parquet",
+          "missing-part:part-000604.parquet",
+          "missing-part:part-000605.parquet",
+          "missing-part:part-000606.parquet",
+          "missing-part:part-000607.parquet",
+          "missing-part:part-000608.parquet",
+          "missing-part:part-000609.parquet",
+          "missing-part:part-000610.parquet",
+          "missing-part:part-000611.parquet",
+          "missing-part:part-000612.parquet",
+          "missing-part:part-000613.parquet",
+          "missing-part:part-000614.parquet",
+          "missing-part:part-000615.parquet",
+          "missing-part:part-000616.parquet",
+          "missing-part:part-000617.parquet",
+          "missing-part:part-000618.parquet",
+          "missing-part:part-000619.parquet",
+          "missing-part:part-000620.parquet",
+          "missing-part:part-000621.parquet",
+          "missing-part:part-000622.parquet",
+          "missing-part:part-000623.parquet",
+          "missing-part:part-000624.parquet",
+          "missing-part:part-000625.parquet",
+          "missing-part:part-000626.parquet",
+          "missing-part:part-000627.parquet",
+          "missing-part:part-000628.parquet",
+          "missing-part:part-000629.parquet",
+          "missing-part:part-000630.parquet",
+          "missing-part:part-000631.parquet",
+          "missing-part:part-000632.parquet",
+          "missing-part:part-000633.parquet",
+          "missing-part:part-000634.parquet",
+          "missing-part:part-000635.parquet",
+          "missing-part:part-000636.parquet",
+          "missing-part:part-000637.parquet",
+          "missing-part:part-000638.parquet",
+          "missing-part:part-000639.parquet",
+          "missing-part:part-000640.parquet",
+          "missing-part:part-000641.parquet",
+          "missing-part:part-000642.parquet",
+          "missing-part:part-000643.parquet",
+          "missing-part:part-000644.parquet",
+          "missing-part:part-000645.parquet",
+          "missing-part:part-000646.parquet",
+          "missing-part:part-000647.parquet",
+          "missing-part:part-000648.parquet",
+          "missing-part:part-000649.parquet",
+          "missing-part:part-000650.parquet",
+          "missing-part:part-000651.parquet",
+          "missing-part:part-000652.parquet",
+          "missing-part:part-000653.parquet",
+          "missing-part:part-000654.parquet",
+          "missing-part:part-000655.parquet",
+          "missing-part:part-000656.parquet",
+          "missing-part:part-000657.parquet",
+          "missing-part:part-000658.parquet",
+          "missing-part:part-000659.parquet",
+          "missing-part:part-000660.parquet",
+          "missing-part:part-000661.parquet",
+          "missing-part:part-000662.parquet",
+          "missing-part:part-000663.parquet",
+          "missing-part:part-000664.parquet",
+          "missing-part:part-000665.parquet",
+          "missing-part:part-000666.parquet",
+          "missing-part:part-000667.parquet",
+          "missing-part:part-000668.parquet",
+          "missing-part:part-000669.parquet",
+          "missing-part:part-000670.parquet",
+          "missing-part:part-000671.parquet",
+          "missing-part:part-000672.parquet",
+          "missing-part:part-000673.parquet",
+          "missing-part:part-000674.parquet",
+          "missing-part:part-000675.parquet",
+          "missing-part:part-000676.parquet",
+          "missing-part:part-000677.parquet",
+          "missing-part:part-000678.parquet",
+          "missing-part:part-000679.parquet",
+          "missing-part:part-000680.parquet",
+          "missing-part:part-000681.parquet",
+          "missing-part:part-000682.parquet",
+          "missing-part:part-000683.parquet",
+          "missing-part:part-000684.parquet",
+          "missing-part:part-000685.parquet",
+          "missing-part:part-000686.parquet",
+          "missing-part:part-000687.parquet",
+          "missing-part:part-000688.parquet",
+          "missing-part:part-000689.parquet",
+          "missing-part:part-000690.parquet",
+          "missing-part:part-000691.parquet",
+          "missing-part:part-000692.parquet",
+          "missing-part:part-000693.parquet",
+          "missing-part:part-000694.parquet",
+          "missing-part:part-000695.parquet",
+          "missing-part:part-000696.parquet",
+          "missing-part:part-000697.parquet",
+          "missing-part:part-000698.parquet",
+          "missing-part:part-000699.parquet",
+          "missing-part:part-000700.parquet",
+          "missing-part:part-000701.parquet",
+          "missing-part:part-000702.parquet",
+          "missing-part:part-000703.parquet",
+          "missing-part:part-000704.parquet",
+          "missing-part:part-000705.parquet",
+          "missing-part:part-000706.parquet",
+          "missing-part:part-000707.parquet",
+          "missing-part:part-000708.parquet",
+          "missing-part:part-000709.parquet",
+          "missing-part:part-000710.parquet",
+          "missing-part:part-000711.parquet",
+          "missing-part:part-000712.parquet",
+          "missing-part:part-000713.parquet",
+          "missing-part:part-000714.parquet",
+          "missing-part:part-000715.parquet",
+          "missing-part:part-000716.parquet",
+          "missing-part:part-000717.parquet",
+          "missing-part:part-000718.parquet",
+          "missing-part:part-000719.parquet",
+          "missing-part:part-000720.parquet",
+          "missing-part:part-000721.parquet",
+          "missing-part:part-000722.parquet",
+          "missing-part:part-000723.parquet",
+          "missing-part:part-000724.parquet",
+          "missing-part:part-000725.parquet",
+          "missing-part:part-000726.parquet",
+          "missing-part:part-000727.parquet",
+          "missing-part:part-000728.parquet",
+          "missing-part:part-000729.parquet",
+          "missing-part:part-000730.parquet",
+          "missing-part:part-000731.parquet",
+          "missing-part:part-000732.parquet",
+          "missing-part:part-000733.parquet"
+        ],
+        "time_msc_min": null,
+        "time_msc_max": null,
+        "span_ms": null,
+        "time_range_if_utc": {
+          "start": null,
+          "end": null,
+          "basis": "PROVISIONAL_IF_UTC",
+          "timestamp_interpretation_confirmed": false
+        },
+        "tick_frequency": {
+          "rows_per_second_over_span": null,
+          "note": "span average, not a session rate; gaps are included in the denominator"
+        },
+        "non_monotonic_time_msc_count": 0,
+        "same_time_msc_excess_rows_adjacent": 0,
+        "consecutive_identical_quote_rows": 0,
+        "duplicate_scope": "ADJACENT_ONLY \u2014 rows were not globally deduplicated and were not rewritten",
+        "invalid_bid_count": 0,
+        "invalid_ask_count": 0,
+        "ask_below_bid_count": 0,
+        "zero_spread_count": 0,
+        "negative_spread_count": 0,
+        "spread_bps": {
+          "count": 0,
+          "min": null,
+          "mean": null,
+          "max": null,
+          "exact_median": "UNAVAILABLE",
+          "histogram_bins_bps": [
+            "0.0",
+            "0.5",
+            "1.0",
+            "2.0",
+            "5.0",
+            "10.0",
+            "25.0",
+            "50.0",
+            "100.0",
+            "250.0",
+            "1000.0",
+            "inf"
+          ],
+          "histogram_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "abnormal_above_100_bps": 0,
+          "abnormal_definition": "diagnostic count of valid non-negative spreads above 100 bps; rows were not removed"
+        },
+        "gap_counts_at_least_seconds": {
+          "1": 0,
+          "60": 0,
+          "3600": 0,
+          "86400": 0
+        },
+        "largest_gaps": [],
+        "session_calendar": "UNAVAILABLE \u2014 timestamp basis is not confirmed, so session labels were not assigned",
+        "timezone": "UNAVAILABLE \u2014 raw time_msc stored as returned; no offset was inferred or applied"
+      },
+      "defects": [
+        {
+          "code": "INTEGRITY_FAIL",
+          "detail": "acquisition manifest did not match recomputed files",
+          "repaired": false
+        },
+        {
+          "code": "TIMESTAMP_BASIS_UNVERIFIED",
+          "detail": "no UTC conversion was applied; session labels stay unavailable",
+          "repaired": false
+        }
+      ],
+      "repairs_applied": []
+    }
+  ],
+  "edge_claim": "NOT ESTABLISHED",
+  "decision_supported": false,
+  "code_identity": {
+    "git_sha": "2a862c4fca1f768a1a744b7b79996372f53aaf1d",
+    "execution_host": "github-actions-runner",
+    "module": "qts.data.canonical_zip_inventory"
+  },
+  "provenance": "zip SHA-256 matched the expected canonical digest; inventory was measured from extracted files; no row was repaired; timestamp basis was not inferred",
+  "extract_dir": "/home/runner/work/_temp/qts_canonical_zip"
+}

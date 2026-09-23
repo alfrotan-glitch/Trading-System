@@ -1,0 +1,13 @@
+{
+  "schema": "qts.runner_disk.v1",
+  "zip_bytes": 1019727380,
+  "disk_path": "/home/runner/work/_temp",
+  "disk_total": 154894188544,
+  "disk_free": 90764603392,
+  "reserve_bytes": 1000000000,
+  "zip_open": "CENTRAL_DIRECTORY_ONLY",
+  "sufficient": true,
+  "member_count": 735,
+  "uncompressed_bytes": 1085915311,
+  "largest_member_bytes": 4080753
+}
