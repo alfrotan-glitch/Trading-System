@@ -1,0 +1,15 @@
+{
+  "decision": "INCONCLUSIVE",
+  "strategy_promoted": false,
+  "held_out_span_opened": false,
+  "hypotheses": {
+    "H-ST-01": "REJECTED",
+    "H-ST-02": "TESTED",
+    "H-ST-03": "REJECTED",
+    "H-ST-04": "REJECTED"
+  },
+  "hypothesis_generators": 33,
+  "timestamp_basis": "BLOCKED",
+  "rows": 139930971,
+  "cutoff_time_msc": 1764563969254
+}
