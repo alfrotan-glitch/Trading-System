@@ -1,9 +1,9 @@
 {
-  "status": "UNAVAILABLE",
+  "status": "CHECKSUM_VERIFIED_ROWS_NOT_READ",
   "canonical_release": "dataset-xauusd-730d-20260919",
   "canonical_asset": "XAUUSD_730d_20260919T114013Z.zip",
   "expected_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
-  "verified_sha256": null,
+  "verified_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
   "checked_locations": [
     "data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip",
     "data/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip",
@@ -19,7 +19,7 @@
   "bid_ask": null,
   "spread": null,
   "session_calendar": null,
-  "provenance": "NOT ESTABLISHED. This runtime has not downloaded or hashed the archive. A GitHub-hosted runner job is installed to read the already-listed release asset, verify SHA-256 before extraction, and commit the inventory report. That measurement has not returned.",
+  "provenance": "The GitHub-hosted runner verified the zip SHA-256. It did not read tick rows: zip members use Windows backslash paths, and the extractor looked for POSIX paths. That zero row count is a reader failure, not a measured empty dataset. The reader now maps backslash names to POSIX paths without changing member bytes. A corrected inventory has not returned.",
   "repairs_applied": [],
   "decision_supported": false,
   "probed_at": "2026-09-23T07:27:37Z",
@@ -36,7 +36,11 @@
     "source": "gh release view dataset-xauusd-730d-20260919"
   },
   "transfer": {
-    "status": "RUNNER_DISPATCHED",
+    "status": "RUNNER_RERUN_AFTER_PATH_SEPARATOR_BUG",
+    "first_runner_report": "reports/canonical_zip_inventory.json at 0afb19b",
+    "first_runner_checksum_match": true,
+    "first_runner_row_count": 0,
+    "first_runner_row_count_meaning": "READER_FAILURE_BACKSLASH_MEMBER_NAMES",
     "release_asset_id": 582342011,
     "release_asset_bytes_declared": 1019727380,
     "sandbox_release_cdn_download": "NOT PERFORMED",

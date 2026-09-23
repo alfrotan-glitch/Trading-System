@@ -83,11 +83,22 @@ def _defect(code: str, detail: str, *, repaired: bool = False) -> dict[str, Any]
     return {"code": code, "detail": detail, "repaired": repaired}
 
 
+def _normalized_member(name: str) -> str:
+    """Map a zip member name to a relative POSIX path.
+
+    Windows-created archives store ``parts\\part-000000.parquet``. On Linux,
+    ``Path`` does not treat a backslash as a separator, so extracting the raw
+    name hides every part from the ledger. The mapping does not change member
+    bytes. Callers must still reject the normalized path when it is unsafe.
+    """
+    return name.replace("\\", "/")
+
+
 def _unsafe_member(name: str) -> bool:
-    if name.startswith(("/", "\\")) or ":" in name[:3]:
+    normalized = _normalized_member(name)
+    if normalized.startswith("/") or ":" in normalized[:3]:
         return True
-    parts = Path(name).parts
-    return any(part == ".." for part in parts)
+    return any(part == ".." for part in Path(normalized).parts)
 
 
 def _member_summary(zf: zipfile.ZipFile) -> dict[str, Any]:
@@ -114,10 +125,11 @@ def _member_summary(zf: zipfile.ZipFile) -> dict[str, Any]:
 def _extract(zf: zipfile.ZipFile, dest: Path) -> None:
     dest.mkdir(parents=True, exist_ok=True)
     for info in zf.infolist():
-        if info.is_dir():
-            (dest / info.filename).mkdir(parents=True, exist_ok=True)
+        relative = _normalized_member(info.filename)
+        if info.is_dir() or relative.endswith("/"):
+            (dest / relative).mkdir(parents=True, exist_ok=True)
             continue
-        target = dest / info.filename
+        target = dest / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         with zf.open(info, "r") as src, target.open("wb") as out:
             while True:
@@ -241,7 +253,8 @@ def _stream_dataset(dataset_dir: Path, manifest: dict[str, Any]) -> dict[str, An
     return {
         "row_count": rows,
         "fields_present": sorted(fields_present),
-        "incomplete_parts": missing_columns,
+        "incomplete_parts": missing_columns[:20],
+        "incomplete_part_count": len(missing_columns),
         "time_msc_min": time_msc_min,
         "time_msc_max": time_msc_max,
         "span_ms": span_ms,
@@ -298,7 +311,8 @@ def _dataset_record(dataset_dir: Path) -> dict[str, Any]:
     content = _stream_dataset(dataset_dir, manifest)
     defects: list[dict[str, Any]] = []
     if integrity["overall"] != "PASS":
-        defects.append(_defect("INTEGRITY_FAIL", "acquisition manifest did not match recomputed files"))
+        failed = [item["check"] for item in integrity.get("checks") or [] if item.get("status") != "PASS"]
+        defects.append(_defect("INTEGRITY_FAIL", f"failed checks: {failed}"))
     if manifest.get("status") != "COMPLETE":
         defects.append(_defect("ACQUISITION_NOT_COMPLETE", f"status={manifest.get('status')!r}"))
     if manifest.get("timestamp_interpretation_confirmed") is not True:
@@ -370,6 +384,17 @@ def inventory_zip(
         unsafe = [item["name"] for item in summary["members"] if _unsafe_member(item["name"])]
         # members may be truncated; scan the full infolist for unsafe paths
         unsafe = [info.filename for info in zf.infolist() if _unsafe_member(info.filename)]
+        backslash_members = [info.filename for info in zf.infolist() if "\\" in info.filename]
+        if backslash_members:
+            report["defects"].append(
+                _defect(
+                    "ZIP_PATH_SEPARATOR",
+                    (
+                        f"{len(backslash_members)} members use backslash separators; "
+                        "they are read at the POSIX path and member bytes are not changed"
+                    ),
+                )
+            )
         if unsafe:
             report["status"] = "ARCHIVE_UNSAFE"
             report["defects"].append(_defect("ARCHIVE_PATH", f"refused to extract unsafe members: {unsafe[:10]}"))
@@ -420,6 +445,10 @@ def exit_code(report: dict[str, Any]) -> int:
     """Non-zero when the archive cannot support an identity claim."""
     status = report.get("status")
     if status == "INVENTORIED":
+        for dataset in report.get("datasets") or []:
+            content = dataset.get("content") or {}
+            if content.get("row_count") == 0 and content.get("incomplete_part_count"):
+                return 4
         return 0
     if status == "CHECKSUM_MISMATCH":
         return 3

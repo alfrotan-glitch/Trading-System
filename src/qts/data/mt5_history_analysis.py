@@ -617,33 +617,39 @@ def validate_dataset_integrity(dataset_dir: Path, *, recompute_hashes: bool = Tr
     check("no_unrecorded_part_files", not unrecorded, f"unrecorded={unrecorded}" if unrecorded else "none")
     check("all_ledgered_parts_present", not missing_files, f"missing={missing_files}" if missing_files else "all present")
 
-    recomputed: dict[str, str] = {}
     hash_failures: list[str] = []
+    missing_for_hash: list[str] = []
+    file_hashes: dict[str, str] = {}
     if recompute_hashes:
         for part in parts:
             path = dataset_dir / "parts" / part["part"]
             if not path.exists():
+                missing_for_hash.append(part["part"])
                 continue
             digest = sha256_file(path)
-            recomputed[part["part"]] = digest
+            file_hashes[part["part"]] = digest
             if digest != part.get("sha256"):
                 hash_failures.append(part["part"])
+        hash_ok = not hash_failures and not missing_for_hash
         check(
             "part_sha256_match",
-            not hash_failures,
-            "all part file hashes match the ledger" if not hash_failures else f"mismatch={hash_failures}",
+            hash_ok,
+            "all part file hashes match the ledger"
+            if hash_ok
+            else f"mismatch={hash_failures[:10]} missing_count={len(missing_for_hash)}",
         )
-        manifest_digest = dataset_digest({p["part"]: p["sha256"] for p in parts})
+        file_digest = dataset_digest(file_hashes) if file_hashes and not missing_for_hash else None
         check(
             "dataset_digest_match",
-            manifest_digest == manifest.get("dataset_sha256"),
-            f"recomputed={manifest_digest}",
+            file_digest is not None and file_digest == manifest.get("dataset_sha256"),
+            f"file_digest={file_digest}",
         )
     row_sum = sum(int(p.get("rows", 0)) for p in parts)
+    parquet_rows = _parquet_row_total(dataset_dir, parts)
     check(
         "row_count_matches_parts",
-        row_sum == int(manifest.get("row_count", -1)) and row_sum == _parquet_row_total(dataset_dir, parts),
-        f"ledger_rows={row_sum} manifest_row_count={manifest.get('row_count')}",
+        row_sum == int(manifest.get("row_count", -1)) and row_sum == parquet_rows,
+        f"ledger_rows={row_sum} manifest_row_count={manifest.get('row_count')} parquet_rows={parquet_rows}",
     )
     overall = "PASS" if all(c["status"] == "PASS" for c in checks) else "FAIL"
     return {

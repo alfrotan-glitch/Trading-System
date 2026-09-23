@@ -6,7 +6,7 @@
     "note": "HEAD at report generation is the parent of the runner-workflow commit. The runner report, when it returns, identifies its own GITHUB_SHA."
   },
   "decision": "INCONCLUSIVE",
-  "decision_reason": "The canonical tick archive has not been verified in this runtime. A GitHub-hosted runner was dispatched to verify it. No discovery, validation, or execution result exists.",
+  "decision_reason": "The runner verified the zip SHA-256, but the first inventory did not read tick rows because member names use backslashes. That zero count is a reader failure. Discovery has not started.",
   "safety": {
     "confirm_live": false,
     "execution_mode": "backtest",
@@ -20,11 +20,14 @@
     "canonical_release": "dataset-xauusd-730d-20260919",
     "canonical_asset": "XAUUSD_730d_20260919T114013Z.zip",
     "expected_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
-    "verified_sha256": null,
+    "verified_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+    "verified_by": "github-actions-runner at git_sha 2a862c4fca1f768a1a744b7b79996372f53aaf1d; report commit 0afb19b",
     "bytes_in_this_runtime": 0,
-    "status": "UNAVAILABLE",
+    "status": "CHECKSUM_VERIFIED_ROWS_NOT_READ",
     "runner_workflow": ".github/workflows/canonical-xauusd-zip-inventory.yml",
-    "runner_result": "NOT RETURNED",
+    "runner_result": "CHECKSUM_MATCHED_READER_MISSED_BACKSLASH_PATHS",
+    "row_count_in_first_report": 0,
+    "row_count_meaning": "READER_FAILURE_NOT_A_DATASET_MEASUREMENT",
     "inventory": "UNAVAILABLE",
     "time_range": "UNAVAILABLE",
     "timezone": "UNAVAILABLE",
@@ -61,7 +64,7 @@
       "tests/test_canonical_zip_inventory.py",
       "tests/test_github_runner_inventory_support.py"
     ],
-    "tests_passed": 7,
+    "tests_passed": "8 inventory tests plus 2 runner-support tests plus 5 acquisition integrity tests; full suite not run",
     "full_suite_claim": false
   }
 }
