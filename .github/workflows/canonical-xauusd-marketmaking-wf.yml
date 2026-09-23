@@ -65,6 +65,8 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin arena/01a0cdf1-trading-system
+          git rebase origin/arena/01a0cdf1-trading-system || (git rebase --abort; git pull --rebase origin arena/01a0cdf1-trading-system)
           git add reports/xauusd_marketmaking_wf_state.json reports/xauusd_marketmaking_wf_state.md
           if git diff --cached --quiet; then echo "no change"; exit 0; fi
           git commit -m "H-MM-02 risk-adjusted market-making walk-forward 5-fold on verifiable 70.78M view — next milestone to execution [skip ci]"
