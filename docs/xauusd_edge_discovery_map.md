@@ -22,8 +22,15 @@ remain usable.
 
 | Family | Question | Status |
 | --- | --- | --- |
-| Microstructure | Does a spread-exceeding move reverse on the next quote after one spread? | H-MS-01 REJECTED. See the 2026-09-23 research-state report. |
+| Microstructure | Does a spread-exceeding move reverse on the next quote after one spread? | H-MS-01 REJECTED. |
 | Microstructure | Is the next absolute move larger, in spread units, when the spread is wide? | H-MS-02 REJECTED. The reversed comparison was not preregistered. |
+| Quote process | Do one-sided and two-sided updates differ in next-quote continuation? | H-QD-01 REJECTED. |
+| Quote process | Does the next mid-change sign depend on the current sign beyond independence? | H-QD-02 REJECTED. Tilt was below the floor and lost one spread. |
+| Quote process | Do short gaps cluster? | H-INT-01 REJECTED. At 100 ms the lift was negative. |
+| Quote process | Does the spread stay put more than an independent draw? | H-SP-01 TESTED. Process structure, not a return predictor. |
+| Quote process | Does a one-sided bid update predict the next 1-cent move? | H-MV-01 REJECTED. |
+| Quote process | Do short gaps precede larger 16-quote absolute moves? | H-VOL-01 REJECTED. Ratio below the floor. |
+| Quote process | Does a widen precede a larger 16-quote move than a tighten? | H-SPR-01 REJECTED. |
 | Trade prints | Size, aggressor, or last-price behavior | BLOCKED. `volume` and `last` are zero on every row. |
 | Statistical structure | Dependence, clustering, and variance beyond those two tests | NOT TESTED |
 | Regimes | Behavior conditional on a causal state label | NOT TESTED |
