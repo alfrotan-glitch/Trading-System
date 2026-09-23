@@ -70,7 +70,11 @@ Demo readiness is `NOT ESTABLISHED`. Execution assumptions for a live or demo or
 
 ## Engineering
 
-Trustworthiness edits already in the working tree were not expanded this cycle except where the UUID correction itself made research identity untrustworthy.
+The hardened tree at `cf2e944` is the parent of this cycle's commit. It was not rewritten. `uuid7()` on that tree is documented as random `uuid4().hex`, not time-ordered UUIDv7. That format was left unchanged. Slicing it does not collide inside a timestamp window, and changing the persisted id format is an owner decision the tree already records.
+
+`src/qts/data/canonical_zip_inventory.py` inventories the canonical zip only after the expected SHA-256 matches. A mismatch does not extract. Unsafe member paths are not extracted. Inverted quotes, non-monotonic timestamps, and gaps are counted and not repaired. Session labels stay `UNAVAILABLE` while the timestamp basis is unconfirmed. The report's edge claim is `NOT ESTABLISHED`. `tests/test_canonical_zip_inventory.py` passed, 5 tests.
+
+The runner definition was not installed. See Data.
 
 `uuid7()` is a real UUIDv7: 48-bit Unix millisecond timestamp, version nibble 7, variant bits `10`, unhyphenated 32 hex characters. Callers that labeled records with `uuid7()[:6]`, `[:8]`, or `[:12]` were slicing the timestamp. Those prefixes collide for hours, about a minute, or one millisecond respectively. That collision broke observation-session inserts, regime-observation counts, and hypothesis identity (`ImmutableRecordError` when two campaigns in the same window reused `H-<timestamp prefix>` with different content).
 
