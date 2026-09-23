@@ -22,11 +22,12 @@ remain usable.
 
 | Family | Question | Status |
 | --- | --- | --- |
-| Microstructure | Does a spread-exceeding move reverse on the next quote after one spread? | H-MS-01, preregistered |
-| Microstructure | Is the next absolute move larger, in spread units, when the spread is wide? | H-MS-02, preregistered |
+| Microstructure | Does a spread-exceeding move reverse on the next quote after one spread? | H-MS-01 REJECTED. See the 2026-09-23 research-state report. |
+| Microstructure | Is the next absolute move larger, in spread units, when the spread is wide? | H-MS-02 REJECTED. The reversed comparison was not preregistered. |
+| Trade prints | Size, aggressor, or last-price behavior | BLOCKED. `volume` and `last` are zero on every row. |
 | Statistical structure | Dependence, clustering, and variance beyond those two tests | NOT TESTED |
 | Regimes | Behavior conditional on a causal state label | NOT TESTED |
-| Temporal structure | Hour, session, weekday | BLOCKED |
+| Temporal structure | Hour, session, weekday | BLOCKED. Timestamp basis is not confirmed. |
 | Event/state behavior | Sequences other than the two preregistered quote events | NOT TESTED |
 | Cross-feature conditionals | Interactions beyond spread and the next quote | NOT TESTED |
 

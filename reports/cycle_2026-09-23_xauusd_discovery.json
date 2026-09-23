@@ -1,0 +1,26 @@
+{
+  "schema": "qts.research_cycle.v1",
+  "generated_from": "reports/xauusd_discovery_state.json",
+  "actions_run": "35834431066",
+  "code_identity": "97188642d87fec225d92d31a67128902561f455c",
+  "dataset": {
+    "release": "dataset-xauusd-730d-20260919",
+    "asset": "XAUUSD_730d_20260919T114013Z.zip",
+    "zip_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+    "manifest_dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789"
+  },
+  "hypotheses": {
+    "H-MS-01": "REJECTED",
+    "H-MS-02": "REJECTED",
+    "H-TOD-01": "NOT TESTED"
+  },
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "demo_readiness": "NOT ESTABLISHED",
+  "decision": "INCONCLUSIVE",
+  "safety": {
+    "confirm_live": false,
+    "orders_submitted": 0,
+    "DEMO_EXECUTION": "DISABLED"
+  }
+}
