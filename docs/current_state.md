@@ -11,6 +11,14 @@ baselines, generated evidence snapshots, and point-in-time verification reports
 remain useful, but they do not override this page or the machine evidence they
 identify.
 
+**Dated records are not rewritten.** Documents and evidence artifacts produced
+before 2026-09-23 state `DEMO_EXECUTION = DISABLED BY POLICY`; that was the true
+policy when they were written and they are left unmodified on purpose. The
+authorization recorded on 2026-09-23
+(`data/evidence/demo_execution_authorization_2026-09-23.json`) changes the
+resolved policy from that date forward — see
+`docs/demo_execution_authorization_and_safety_2026-09-23.md`.
+
 ## 1. Verified current state
 
 | Area | Current state | Evidence / authority |
@@ -131,10 +139,10 @@ is not created merely because an event-study row has positive expectancy.
 Any future product decision about execution requires a separate human-governed
 review of all applicable evidence and safety controls. Until then:
 
-- `DEMO_EXECUTION` remains disabled by policy;
+- `DEMO_EXECUTION` is authorized for the DEMO account only (recorded, revocable owner authorization; the default of a checkout without one remains `DISABLED BY POLICY`), and stays `NO_TRADE` until a registered strategy and the staged gates pass — see `docs/demo_execution_authorization_and_safety_2026-09-23.md`;
 - `LIVE` remains locked;
 - `NO_TRADE` remains the safe default;
-- no order path is added by this roadmap.
+- the DEMO order path is reachable only behind those gates; no LIVE order path is added by this roadmap.
 
 ## 4. Current blockers and non-claims
 

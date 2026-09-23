@@ -81,7 +81,7 @@ export async function renderDemo(root) {
   const head = page({
     crumb: "Trading", group: "Demo forward",
     title: "Demo Forward Control",
-    answer: h("b", null, `Readiness and execution permission are separate. A passing check only permits DEMO_FORWARD observation; DEMO_EXECUTION = DISABLED BY POLICY today, so no demo order path is reachable. The authority boundary remains retained for future explicit authorization. Context ${ctx.symbol} syncs, LIVE remains LOCKED and unmistakable.`),
+    answer: h("b", null, `Readiness and execution permission are separate. A passing check only permits DEMO_FORWARD observation. DEMO_EXECUTION requires a recorded owner authorization (shipped default: DISABLED BY POLICY) and then, per order, staged arming, a pinned+confirmed DEMO broker identity, an eligible registered strategy and 22 pre-trade checks. Context ${ctx.symbol} syncs, LIVE remains LOCKED and unmistakable.`),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources")],
     body: null,
   });
@@ -130,7 +130,11 @@ export async function renderDemo(root) {
     }
     activity.textContent = `${s.observation} · DEMO ${s.permission} · LIVE ${s.liveLabel} · ${getContext().symbol}`;
     if (s.permission === "DISABLED") {
-      next.textContent = "Review observation readiness"; next.href = "#/trading/demo"; nextWhy.textContent = "DEMO execution is disabled by policy. Observation does not require enabling execution; review only the blockers that prevent DEMO_FORWARD observation.";
+      next.textContent = "Review observation readiness"; next.href = "#/trading/demo"; nextWhy.textContent = "DEMO execution is authorized only by a recorded owner authorization and is still gated per order — never from this page. Observation does not require enabling execution; review only the blockers that prevent DEMO_FORWARD observation.";
+    } else if (s.permission === "PERMITTED · DEMO ONLY") {
+      next.textContent = "Review the pre-trade gate"; next.href = "#/trading/demo"; nextWhy.textContent = "Execution permission is held for the DEMO account. Each order still requires the staged progression, a pinned identity, an eligible registered strategy and 22 pre-trade checks.";
+    } else if (s.permission === "AUTHORIZED · NOT PERMITTED") {
+      next.textContent = "Review DEMO arming"; next.href = "#/trading/demo"; nextWhy.textContent = "An owner authorization is recorded, but the durable authority has not granted execution permission — it needs explicit confirmation, risk acknowledgement and fresh passing readiness.";
     } else if (s.permission === "CONFLICT · INSPECT") {
       next.textContent = "Inspect permission conflict"; next.href = "#/system/diagnostics"; nextWhy.textContent = "Mode and authority disagree. Current permission cannot be established.";
     } else if (s.sources.health.current && String(s.health?.mt5).toLowerCase() !== "connected") {
@@ -191,7 +195,7 @@ export async function renderDemo(root) {
       actions: [h("button", { class: "btn sm", onclick: () => refresh(true) }, icon("refresh", 13), "Run readiness now")],
       body: h("div", { class: "stack" },
         allPass
-          ? banner("ok", "OBSERVATION READINESS PASSED", "Passing readiness permits DEMO_FORWARD observation only. DEMO_EXECUTION remains disabled by product policy; no order permission is created.", "check")
+          ? banner("ok", "OBSERVATION READINESS PASSED", "Passing readiness permits DEMO_FORWARD observation only. It creates no order permission: DEMO_EXECUTION needs a recorded owner authorization, staged arming, a pinned+confirmed identity, an eligible registered strategy and 22 pre-trade checks.", "check")
           : banner("warn", "READINESS NOT PASSED — what blocked, why, what missing", (lastReadiness.blocked_reasons ?? []).join(" · ") || "Failed checks listed below. Fix what is missing and re-run readiness before starting DEMO_FORWARD observation. Observation remains order-free.", "alert"),
         checkGrid(checks, lastReadiness.details ?? {}),
         h("details", null, h("summary", null, "Raw readiness report / technical evidence"), tech(lastReadiness, "Raw readiness")),
@@ -213,11 +217,11 @@ export async function renderDemo(root) {
           h("div", { class: "meta" }, "A DEMO terminal must be configured; without one this honestly reports failure instead of pretending. Context syncs, permission does not."),
         ),
       }),
-      card({ title: "Demo execution — disabled, DEMO vs LIVE unmistakable", sub: "DEMO_EXECUTION = DISABLED BY POLICY today; readiness permits OBSERVE_ONLY only — authority boundary retained for future explicit authorization; LIVE remains locked", icon: "lock", body:
+      card({ title: "Demo execution — authorized ≠ permitted, DEMO vs LIVE unmistakable", sub: "DEMO_EXECUTION = ENABLED_AUTHORIZED only with a recorded owner authorization (default: DISABLED BY POLICY); readiness permits OBSERVE_ONLY only — an order additionally requires staged arming and 22 pre-trade checks; LIVE remains locked", icon: "lock", body:
         h("div", { class: "stack" },
           h("p", { class: "text-dim small" }, `Authority reports ${s.permission}. Mode ${s.mode.mode} — ${s.mode.blurb} — context ${getContext().symbol}. DEMO is DEMO, LIVE is LOCKED.`),
-          h("div", { class: "banner info" }, "DEMO_EXECUTION is disabled by product policy. No readiness result, request payload, or UI action can create demo order permission. DEMO_FORWARD observation remains the only broker path; LIVE remains LOCKED."),
-          h("div", { class: "meta" }, "The authority and execution boundary both refuse DEMO_EXECUTION. Readiness evidence is retained for observation diagnostics only."),
+          h("div", { class: "banner info" }, "DEMO_EXECUTION is available on the DEMO account only with a recorded owner authorization; the shipped default is DISABLED BY POLICY. No readiness result, request payload, or UI action can create order permission — orders require the staged progression and the 22-check pre-trade gate. LIVE remains LOCKED."),
+          h("div", { class: "meta" }, "The authority, the stage machine and the pre-trade gate each refuse independently. Readiness evidence is retained for observation diagnostics only."),
           h("details", null, h("summary", null, "Why DEMO is not an ordinary switch / evidence — summary → detail"),
             h("ul", { class: "reason-list" },
               [`Authority state: ${lastState.state}`, `Execution permitted: ${String(lastState.execution_permitted)}`, `Mode: ${s.mode.mode}`, `LIVE: ${s.liveLabel} — unmistakable`, `Context: ${getContext().symbol} — presentation only`, ...(lastState.reasons || []).map((r) => `Permission: ${r}`), ...(lastReadiness.blocked_reasons || []).map((r) => `Readiness: ${r}`)].map((x) => h("li", null, x))
@@ -333,7 +337,7 @@ export async function renderExecution(root) {
         })
       : emptyState({
           icon: "zap", title: "No real executions recorded yet",
-          desc: "DEMO_EXECUTION is disabled by product policy. This view reports only recorded order evidence; DEMO_FORWARD observation has zero orders and LIVE remains locked.",
+          desc: "DEMO_EXECUTION submits DEMO-account orders only after staged arming and the 22-check pre-trade gate. This view reports only recorded order evidence; with no order recorded it stays empty rather than estimated. LIVE remains locked.",
           actions: [h("button", { class: "btn", onclick: () => navigate("#/trading/demo") }, icon("shield", 14), "Open Demo Control")],
         }),
   }));
@@ -346,7 +350,7 @@ export async function renderComparison(root) {
   root.appendChild(page({
     crumb: "Trading", group: "Comparison",
     title: "Paper · Shadow · Demo Comparison",
-    answer: h("b", null, "Paper and shadow signals can be compared with DEMO_FORWARD observations. DEMO_EXECUTION is disabled by policy, so fill, slippage, latency, and realized-PnL comparisons are UNAVAILABLE — never fabricated as zero."),
+    answer: h("b", null, "Paper and shadow signals can be compared with DEMO_FORWARD observations. Fill, slippage, latency, and realized-PnL comparisons are UNAVAILABLE until DEMO orders are actually recorded — never fabricated as zero."),
     actions: [h("button", { class: "btn", onclick: async () => {
       try { await api.post("/api/demo/comparison/refresh"); toast("ok", "Comparison refreshed"); renderComparison(root); }
       catch (e) { toast("err", "Refresh failed", explain(e)); }
@@ -370,7 +374,7 @@ export async function renderComparison(root) {
     host.appendChild(card({ title: "Measured comparison", icon: "scale", body:
       emptyState({
         icon: "scale", title: "No DEMO_FORWARD observations to compare yet",
-        desc: "Signal alignment can be measured only when paper/shadow events share a decision event with recorded observations. Fill, slippage, latency, and realized execution metrics remain UNAVAILABLE because DEMO_EXECUTION is disabled by policy.",
+        desc: "Signal alignment can be measured only when paper/shadow events share a decision event with recorded observations. Fill, slippage, latency, and realized execution metrics remain UNAVAILABLE until DEMO orders are recorded — never fabricated as zero.",
         actions: [h("button", { class: "btn", onclick: () => navigate("#/trading/demo") }, icon("shield", 14), "Demo control")],
       }),
     }));

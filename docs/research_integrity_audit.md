@@ -236,6 +236,14 @@ trial ledger reset = NO
 locked partition modified = NO
 new strategy search = NO
 real MT5 observation session = NOT RUN
+```
+
+> Recorded state at the time of that audit run. Effective 2026-09-23 an owner
+> authorization is recorded (`data/evidence/demo_execution_authorization_2026-09-23.json`),
+> so `DEMO_EXECUTION` resolves to `ENABLED_AUTHORIZED` for the DEMO account only. The
+> other lines are unchanged: `LIVE = LOCKED`, real capital exposure `0`, and the trading
+> state remains `NO_TRADE` because no strategy has passed the research gates. See
+> `docs/demo_execution_authorization_and_safety_2026-09-23.md`.
 research rerun = NOT RUN
 ```
 

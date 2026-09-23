@@ -28,7 +28,7 @@ observations, enable DEMO execution, or unlock LIVE.
 | Question | Canonical authority | Current contract |
 |---|---|---|
 | Effective mode | `src/qts/domain/modes.py` | Unknown modes fail closed; capability metadata is not product permission. |
-| DEMO execution permission | `src/qts/lifecycle/demo_authority.py` | `DEMO_EXECUTION = DISABLED BY POLICY` today; durable refusal with `enabled=false`, `execution_permitted=false`; authority boundary retained. |
+| DEMO execution permission | `src/qts/lifecycle/demo_authority.py` | `DEMO_EXECUTION = DISABLED BY POLICY` is the shipped default (durable refusal, `execution_permitted=false`); with a recorded owner authorization it resolves to `ENABLED_AUTHORIZED` for the DEMO account, while per-order permission still requires staged arming, a pinned identity, an eligible registered strategy and 22 pre-trade checks. |
 | DEMO_FORWARD readiness | `src/qts/lifecycle/demo_gate.py` | Fresh 14-check diagnostic gate for observation only. |
 | Observation persistence | `src/qts/observability/forward_observatory.py` | One append-only SQLite store; derived manifest is regenerable. |
 | Risk boundary | `src/qts/risk/authority.py` and `demo_limits.py` | Mode restrictions can only tighten; safety metadata does not authorize execution. |
@@ -37,8 +37,11 @@ observations, enable DEMO execution, or unlock LIVE.
 The API boundary is intentionally diagnostic-only:
 
 - `POST /api/demo/enable` returns HTTP `409` with policy and readiness
-  reasons, does not persist an enabled state, and returns no permission.
-- `GET /api/demo/config` reports `demo_execution_disabled=true`.
+  reasons unless every gate passes (explicit confirmation, risk acknowledgement,
+  fresh passing readiness); on success it returns `200` with
+  `execution_permitted=true` and persists an audited enabled state. It never
+  bypasses the authority.
+- `GET /api/demo/config` reports `demo_execution_disabled` from the resolved policy.
 - `/api/demo/state` is the single state consumed by API/UI/execution checks.
 - A readiness pass is not a fill, account-state measurement, slippage,
   latency, reconciliation, profitability, or execution result.
@@ -208,5 +211,6 @@ canonical sequence is maintained in [`docs/current_state.md`](current_state.md):
 
 **What remains blocked:** R5 is `FAIL`/non-blocking; no real MT5 observation
 session is present in repository evidence; no validated profitable edge exists;
-the REAL result remains `REGIME_DEPENDENT / BLOCK`; `DEMO_EXECUTION` remains
-disabled by policy; and `LIVE` remains locked.
+the REAL result remains `REGIME_DEPENDENT / BLOCK`; `DEMO_EXECUTION` is authorized for the
+DEMO account but not trading (`NO_TRADE` — no registered strategy has passed the research
+gates); and `LIVE` remains locked.

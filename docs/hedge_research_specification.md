@@ -11,7 +11,7 @@ Observation evidence and execution evidence are separate datasets:
 - **Observation:** raw source timestamp, normalized UTC event time, server offset and basis, receipt time, bid, ask, accepted/rejected acquisition outcome, source/provenance, and quality diagnostics.
 - **Execution:** decision timestamp, quote age at decision, quote age at submission, submission timestamp, acknowledgement timestamp, order/deal identifiers, requested price, fill timestamp, fill price, partial-fill state, slippage, fee/financing, and broker response or reject code.
 
-The current repository has no canonical MT5 SQLite store and no broker execution history. A future observation export cannot be treated as fill, slippage, or submission evidence. `DEMO_EXECUTION = DISABLED BY POLICY`, `LIVE = LOCKED`, and `NO_TRADE` remain unchanged.
+The current repository has no canonical MT5 SQLite store and no broker execution history. A future observation export cannot be treated as fill, slippage, or submission evidence. `DEMO_EXECUTION` is authorized for the DEMO account but not trading (`NO_TRADE` until a registered strategy passes the staged gates), `LIVE = LOCKED`, and `NO_TRADE` remains the default.
 
 ## Required point-in-time dataset contract
 

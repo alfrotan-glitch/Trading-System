@@ -38,7 +38,7 @@ export async function renderSetup(root) {
     ["paper", "Paper", "Simulated fills on recorded data, next-bar-open. No real orders."],
     ["shadow", "Shadow", "Real market data; would-be intents with risk/spread checks. Nothing submitted."],
     ["demo_forward", "Demo Forward", "DEMO observation only — real MT5 demo terminal, real market data, zero orders structurally."],
-    ["demo_execution", "Demo Execution", "DEMO_EXECUTION = DISABLED BY POLICY — no demo order path is reachable today; authority boundary retained. DEMO vs LIVE unmistakable."],
+    ["demo_execution", "Demo Execution", "DEMO_EXECUTION = ENABLED_AUTHORIZED only with a recorded owner authorization (default: DISABLED BY POLICY); orders additionally require staged arming, a pinned identity, an eligible registered strategy and 22 pre-trade checks. DEMO vs LIVE unmistakable."],
   ];
   const currentEnv = env?.resolution?.effective_mode ?? "development";
   host.appendChild(card({
@@ -79,7 +79,7 @@ export async function renderSetup(root) {
         stat({ label: "Daily loss cap", value: `$${lim.max_daily_loss_usd ?? "—"}` }),
         stat({ label: "Kill switch", value: lim.kill_switch_enabled ? "ARMED" : "—", tone: "ok" }),
       ),
-      banner("info", "Safety metadata is informational and non-authorizing — what blocked, why, what next", "DEMO_EXECUTION is disabled by product policy. No acknowledgement or setup-page action creates order permission. Nothing is enabled from this page. DEMO_FORWARD observation remains order-free. DEMO vs LIVE unmistakable.", "alert"),
+      banner("info", "Safety metadata is informational and non-authorizing — what blocked, why, what next", "DEMO_EXECUTION is authorized for the DEMO account only by a recorded owner authorization; the shipped default is DISABLED BY POLICY. No acknowledgement or setup-page action creates order permission. Nothing is enabled from this page. DEMO_FORWARD observation remains order-free. DEMO vs LIVE unmistakable.", "alert"),
     ),
   }));
 

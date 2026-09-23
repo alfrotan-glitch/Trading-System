@@ -4,7 +4,7 @@
 
 QTS is a desktop research and trading platform for XAUUSD (gold) on MetaTrader 5 — built so a non-technical user can **clone, install, double-click, connect a DEMO account, and observe markets** without accidentally risking real money. It never claims a profitable edge and never hides failed experiments.
 
-> **Current state:** The canonical current-state and roadmap summary is [`docs/current_state.md`](docs/current_state.md). The registered REAL XAUUSD 15m study is `REGIME_DEPENDENT` with `go_block = BLOCK`; R5 execution-cost history and a real MT5 observation session remain pending. DEMO execution is disabled by policy and LIVE is locked.
+> **Current state:** The canonical current-state and roadmap summary is [`docs/current_state.md`](docs/current_state.md). The registered REAL XAUUSD 15m study is `REGIME_DEPENDENT` with `go_block = BLOCK`; R5 execution-cost history and a real MT5 observation session remain pending. DEMO execution is authorized for the DEMO account but not trading (`NO_TRADE`, staged and gated); LIVE is locked.
 
 ---
 

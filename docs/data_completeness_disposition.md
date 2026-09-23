@@ -154,7 +154,7 @@ Evidence roles remain separate:
 - **Historical execution target/venue:** `null`;
 - **MT5:** legacy dataset/storage namespace only for this history;
 - **DEMO_FORWARD:** separate broker observation evidence, never relabelled REAL;
-- **DEMO_EXECUTION:** `DISABLED BY POLICY`;
+- **DEMO_EXECUTION:** `DISABLED BY POLICY` by default, `ENABLED_AUTHORIZED` with a recorded owner authorization (DEMO account only); orders gated per order, currently `NO_TRADE`;
 - **LIVE:** `LOCKED`;
 - **NO_TRADE:** unchanged.
 

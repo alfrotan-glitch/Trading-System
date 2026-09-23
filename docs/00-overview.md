@@ -39,7 +39,7 @@ has been acquired; the preregistered REAL impulse research has run and returned
 FO-R1 observation infrastructure is engineered and hardened. A real Windows/MT5
 observation session has not yet run, R5 continuous execution-cost history is
 still FAIL/non-blocking, broad research is incomplete, no profitable edge is
-validated, DEMO execution is disabled by policy, and LIVE is locked.
+validated, DEMO execution is authorized for the DEMO account but not trading (`NO_TRADE`), and LIVE is locked.
 
 ## Invariant
 

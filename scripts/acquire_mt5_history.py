@@ -77,7 +77,7 @@ DEFAULT_WINDOWS_DAYS = "7,30,45,60,90,120,180,270,365"
 NO_ORDER_APIS_STATEMENT = (
     "The only MT5 functions invoked by this workflow are: initialize, shutdown, last_error, "
     "account_info, terminal_info, symbol_info, symbol_select, copy_ticks_range. No order_send or any "
-    "order/deal/history-order API is reachable; DEMO_EXECUTION remains DISABLED BY POLICY and LIVE LOCKED."
+    "order/deal/history-order API is reachable from this workflow; it performs acquisition only and submits nothing (LIVE remains LOCKED)."
 )
 
 
@@ -117,7 +117,7 @@ def _base_report(args: argparse.Namespace, status: str) -> dict[str, Any]:
         "environment": {
             "environment": "DEMO_FORWARD",
             "observation_mode": "OBSERVE_ONLY",
-            "execution_policy": "DEMO_EXECUTION = DISABLED BY POLICY; LIVE = LOCKED",
+            "execution_policy": "acquisition workflow only — no order path is invoked; LIVE = LOCKED",
         },
         "windows": [],
         "analyses": {},

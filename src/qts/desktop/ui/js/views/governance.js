@@ -133,8 +133,8 @@ export async function renderGovernance(root) {
       title: "Why it is locked — calm, explicit — what blocked, why, what missing, what next", icon: "info",
       body: h("div", { class: "stack" },
         h("ul", { class: "reason-list" }, (live.blocked_reasons ?? []).map((r) => h("li", null, r))),
-        banner("info", "What live eligibility would require — what missing", "A strategy surviving every scientific gate on claim-eligible real-data evidence, forward observation with honest divergence evidence, approved risk configuration, verified connectivity — and an explicit human approval recorded in the audit log. DEMO_EXECUTION is disabled and is not a prerequisite or evidence source.", "info"),
-        banner("info", "What DEMO_FORWARD observation can establish — DEMO vs LIVE unmistakable", "Observation establishes provenance and hypothetical divergence only. It does not prove execution correctness, profitability, or live eligibility; DEMO_EXECUTION is disabled by policy and LIVE remains LOCKED.", "info"),
+        banner("info", "What live eligibility would require — what missing", "A strategy surviving every scientific gate on claim-eligible real-data evidence, forward observation with honest divergence evidence, approved risk configuration, verified connectivity — and an explicit human approval recorded in the audit log. DEMO execution (when authorized) is forward validation on the DEMO account, not a prerequisite or evidence source for LIVE.", "info"),
+        banner("info", "What DEMO_FORWARD observation can establish — DEMO vs LIVE unmistakable", "Observation establishes provenance and hypothetical divergence only. It does not prove execution correctness, profitability, or live eligibility; DEMO execution, where authorized, is DEMO-account forward validation and LIVE remains LOCKED.", "info"),
       ),
     }));
 
@@ -171,7 +171,7 @@ export async function renderGovernance(root) {
       danger: true,
       body: h("div", { class: "stack" },
         h("p", null, "This records a formal, audited request. The governance gate still decides; human approval is verified server-side. DEMO vs LIVE unmistakable: DEMO proves ops, never profitability."),
-        h("div", { class: "card live-boundary" }, h("div", { class: "card-body" }, h("div", { class: "eyebrow" }, "DEMO vs LIVE"), h("p", { class: "small" }, "DEMO_FORWARD = real demo-account observation with zero orders. DEMO_EXECUTION is disabled by product policy. LIVE = real capital and remains locked."))),
+        h("div", { class: "card live-boundary" }, h("div", { class: "card-body" }, h("div", { class: "eyebrow" }, "DEMO vs LIVE"), h("p", { class: "small" }, "DEMO_FORWARD = real demo-account observation with zero orders. DEMO_EXECUTION is DEMO-account order execution, available only with a recorded owner authorization and per-order gates (default: DISABLED BY POLICY). LIVE = real capital and remains locked."))),
       ),
       acks: [
         "I understand live trading risks real capital — LIVE LOCKED is a safety feature.",

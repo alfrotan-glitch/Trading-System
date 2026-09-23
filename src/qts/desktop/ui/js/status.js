@@ -45,7 +45,7 @@ const MODES = {
   PAPER: { tone: "info", canSubmit: false, realData: false, blurb: "Simulated fills on recorded data — no broker contact." },
   SHADOW: { tone: "research", canSubmit: false, realData: false, blurb: "Would-be intents only — no broker submission. Data provenance is reported separately." },
   DEMO_FORWARD: { tone: "info", canSubmit: false, realData: true, blurb: "MT5 demo-account observation only — structurally no broker orders." },
-  DEMO_EXECUTION: { tone: "locked", canSubmit: false, realData: true, blurb: "DEMO_EXECUTION = DISABLED BY POLICY — DEMO_FORWARD observation has zero orders; the authority boundary is retained for future explicit authorization." },
+  DEMO_EXECUTION: { tone: "locked", canSubmit: false, realData: true, blurb: "DEMO_EXECUTION = ENABLED_AUTHORIZED only with a recorded owner authorization (DEMO account); the shipped default is DISABLED BY POLICY. Either way an order additionally requires staged arming, a pinned+confirmed DEMO broker identity, an eligible registered strategy and 22 pre-trade checks. LIVE stays LOCKED." },
   LIVE: { tone: "locked", canSubmit: "gated", realData: true, blurb: "Live capital. Structurally locked until every gate and human approval pass." },
 };
 
@@ -89,9 +89,14 @@ export function lifecycleStages(src = {}) {
     {
       id: "demo_exec",
       label: "Demo Execution",
-      sub: "disabled by policy; zero orders",
-      state: "blocked",
-      blockedWhy: "DEMO_EXECUTION is disabled by product policy; DEMO_FORWARD observation is the only broker path",
+      sub: "authorized ≠ permitted; zero orders until gated",
+      // Only the backend authority may call this current: an authorized policy
+      // AND execution_permitted, both reported canonically — never inferred.
+      state: src.demoPermitted === true && src.policyAuthorized === true ? "current" : "blocked",
+      blockedWhy:
+        src.policyAuthorized === true && src.demoPermitted !== true
+          ? "authorized but not permitted — staged arming, pinned identity, eligible strategy and 22 pre-trade checks still required"
+          : "requires a recorded owner authorization (shipped default: DEMO_EXECUTION = DISABLED BY POLICY), then staged arming and the pre-trade gate",
     },
     {
       id: "live",

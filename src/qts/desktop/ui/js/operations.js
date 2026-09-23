@@ -21,10 +21,24 @@ export function operationalState(data, now = Date.now()) {
   if (obs?.state === "OBSERVING" && obs?.thread_alive !== true) observation = "DEGRADED";
   const demoKnown = demo && typeof demo.execution_permitted === "boolean";
   // A boolean from the authority is not inferred from readiness or risk status.
-  const permission = mode.mode === "DEMO_EXECUTION" || demo?.demo_execution_disabled === true
-    ? "DISABLED BY POLICY"
-    : !demoKnown ? "UNAVAILABLE" : demo.execution_permitted === true
-      ? "CONFLICT · INSPECT" : demo.state === "DISABLED" ? "DISABLED" : "BLOCKED";
+  // The policy comes from the backend (recorded owner authorization); when the
+  // source does not report it, fall back to the conservative reading instead of
+  // inferring permission from readiness or mode alone.
+  const policyDisabled = demo?.demo_execution_disabled;
+  const permission =
+    policyDisabled === false
+      ? demo.execution_permitted === true
+        ? "PERMITTED · DEMO ONLY"
+        : demo.state === "DISABLED"
+          ? "AUTHORIZED · NOT PERMITTED"
+          : "BLOCKED"
+      : policyDisabled === true || mode.mode === "DEMO_EXECUTION"
+        ? "DISABLED BY POLICY"
+        : !demoKnown
+          ? "UNAVAILABLE"
+          : demo.execution_permitted === true
+            ? "CONFLICT · INSPECT"
+            : demo.state === "DISABLED" ? "DISABLED" : "BLOCKED";
   const reasons = Array.isArray(demo?.reasons) ? demo.reasons : [];
   const readinessReasons = Array.isArray(demo?.current_readiness?.blocked_reasons) ? demo.current_readiness.blocked_reasons : [];
   const liveReasons = Array.isArray(live?.blocked_reasons) ? live.blocked_reasons : [];

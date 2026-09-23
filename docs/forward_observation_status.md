@@ -12,8 +12,9 @@ rewrite the historical design/baseline documents:
 recorded here rather than edited into history.
 
 Nothing here claims research results. No edge, no profitability, no LIVE
-qualification. `DEMO_EXECUTION` remains disabled by policy and `LIVE` remains
-locked; the observation runtime has no order path at all.
+qualification. `DEMO_EXECUTION` is authorized for the DEMO account but gated per
+order (currently `NO_TRADE`) and `LIVE` remains locked; the observation runtime
+has no order path at all.
 
 ## 1. Blockers closed (with the commit that closed them)
 
