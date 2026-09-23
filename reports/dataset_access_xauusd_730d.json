@@ -1,0 +1,51 @@
+{
+  "status": "UNAVAILABLE",
+  "canonical_release": "dataset-xauusd-730d-20260919",
+  "canonical_asset": "XAUUSD_730d_20260919T114013Z.zip",
+  "expected_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+  "verified_sha256": null,
+  "checked_locations": [
+    "data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip",
+    "data/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip",
+    "/tmp/qts_dataset/XAUUSD_730d_20260919T114013Z.zip"
+  ],
+  "bytes_present": 0,
+  "inventory": null,
+  "time_range": null,
+  "timezone": null,
+  "duplicates": null,
+  "gaps": null,
+  "tick_frequency": null,
+  "bid_ask": null,
+  "spread": null,
+  "session_calendar": null,
+  "provenance": "NOT ESTABLISHED \u2014 release metadata lists the 1,019,727,380-byte asset, but neither this sandbox nor an Actions runner retrieved the bytes. Expected SHA-256 was not verified.",
+  "repairs_applied": [],
+  "decision_supported": false,
+  "probed_at": "2026-09-23T06:39:00Z",
+  "release_metadata": {
+    "status": "LISTED",
+    "tag": "dataset-xauusd-730d-20260919",
+    "asset_name": "XAUUSD_730d_20260919T114013Z.zip",
+    "asset_id": 582342011,
+    "asset_state": "uploaded",
+    "declared_bytes": 1019727380,
+    "download_count": 5,
+    "created_at": "2026-09-22T22:01:03Z",
+    "updated_at": "2026-09-22T22:05:56Z",
+    "source": "gh release view dataset-xauusd-730d-20260919"
+  },
+  "transfer": {
+    "status": "UNAVAILABLE",
+    "bytes_retrieved": 0,
+    "checksum_verified": false,
+    "github_com_tls": "OK",
+    "api_github_com_tls": "OK",
+    "codeload_github_com_tls": "OK",
+    "release_assets_tls": "EOF during handshake; 0 certificate bytes",
+    "objects_githubusercontent_tls": "EOF during handshake; 0 certificate bytes",
+    "azure_blob_tls": "EOF during handshake to releaseassetproduction.blob.core.windows.net",
+    "actions_workflow": "NOT INSTALLED \u2014 GitHub App token refused to create .github/workflows without workflows permission",
+    "codespaces": "NOT ACCESSIBLE \u2014 integration token HTTP 403"
+  }
+}

@@ -1,3 +1,6 @@
+# Not installed. This token cannot push `.github/workflows/*` (missing
+# workflows permission). Copy this file there from an account that can,
+# then dispatch it. Until then it does not run.
 name: Canonical XAUUSD zip inventory
 
 on:
