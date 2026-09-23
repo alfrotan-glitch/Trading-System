@@ -324,6 +324,21 @@ class MT5Adapter(BrokerAdapter):
     def _map_symbol(self, symbol: str) -> str:
         return self.symbol_map.get(symbol, symbol)
 
+    def _canonical_symbol(self, mt5_symbol: str) -> str:
+        """Broker symbol → canonical symbol (inverse of :meth:`_map_symbol`).
+
+        The terminal reports broker aliases (``XAUUSD@``) while the portfolio,
+        risk engine and reconciliation key positions by the canonical symbol
+        (``XAUUSD``). Reporting the broker name as if it were canonical makes
+        every venue position look like a local position that does not exist
+        (``MISSING_POSITION`` → suspend after the very first order) and hides
+        broker-only exposure — so translate back, never assume identity.
+        """
+        for canonical, broker in self.symbol_map.items():
+            if broker == mt5_symbol:
+                return canonical
+        return mt5_symbol
+
     # ---------- Symbol metadata (authoritative) ----------
 
     def get_symbol_spec(self, symbol: str) -> SymbolSpec:
@@ -599,19 +614,9 @@ class MT5Adapter(BrokerAdapter):
         }
         if price:
             request["price"] = price
-        # Protective levels ride along with the order: exposure must never
-        # exist without its stop, not even for the milliseconds between a fill
-        # and a follow-up modify request.
-        sl = self.validate_price_precision(intent.stop_loss, spec) if intent.stop_loss else None
-        tp = self.validate_price_precision(intent.take_profit, spec) if intent.take_profit else None
-        if sl is not None or tp is not None:
-            reference = limit_price or stop_price
-            if reference is None:
-                # Market order: the executable side price is the only honest
-                # reference for a stops_level distance check.
-                reference = self._executable_reference(mt5, mt5_symbol, intent.side)
-            if reference and reference > 0:
-                self.validate_sl_tp(reference, sl, tp, spec, intent.side)
+        sl, tp = self._protective_levels(
+            mt5, mt5_symbol, spec, intent, limit_price=limit_price, stop_price=stop_price
+        )
         if sl is not None:
             request["sl"] = float(sl)
         if tp is not None:
@@ -752,6 +757,40 @@ class MT5Adapter(BrokerAdapter):
         self._store_comment_map(client_order_id, comment)
         return comment
 
+    def _protective_levels(
+        self,
+        mt5: Any,
+        mt5_symbol: str,
+        spec: Any,
+        intent: OrderIntent,
+        *,
+        limit_price: Decimal | None,
+        stop_price: Decimal | None,
+    ) -> tuple[Decimal | None, Decimal | None]:
+        """Validate and return ``(stop_loss, take_profit)`` for an order.
+
+        Protective levels ride along with the order itself: exposure must never
+        exist without its stop, not even for the milliseconds between a fill and
+        a follow-up modify request. A stop that cannot be validated against
+        ``stops_level`` is refused here rather than sent unprotected.
+        """
+        sl = self.validate_price_precision(intent.stop_loss, spec) if intent.stop_loss else None
+        tp = self.validate_price_precision(intent.take_profit, spec) if intent.take_profit else None
+        if sl is None and tp is None:
+            return None, None
+        reference = limit_price or stop_price
+        if reference is None:
+            # Market order: the executable side price is the only honest
+            # reference for a stops_level distance check.
+            reference = self._executable_reference(mt5, mt5_symbol, intent.side)
+        if not reference or reference <= 0:
+            raise ValueError(
+                f"no executable reference price for {mt5_symbol} — refusing to send an order whose "
+                "protective levels cannot be validated"
+            )
+        self.validate_sl_tp(reference, sl, tp, spec, intent.side)
+        return sl, tp
+
     def submit(self, intent: OrderIntent) -> Order:
         mt5 = self._require_mt5()
         spec = self.get_symbol_spec(intent.instrument.symbol)
@@ -808,6 +847,16 @@ class MT5Adapter(BrokerAdapter):
         }
         if price:
             request["price"] = price
+
+        # Protective levels on the order actually sent — the gate requires a
+        # stop, so the request must carry one (not only the dry-run preview).
+        sl, tp = self._protective_levels(
+            mt5, mt5_symbol, spec, intent, limit_price=limit_price, stop_price=stop_price
+        )
+        if sl is not None:
+            request["sl"] = float(sl)
+        if tp is not None:
+            request["tp"] = float(tp)
 
         # Dev guard: if config says dry_run, don't actually send
         if self.config.get("dry_run", False):
@@ -934,9 +983,8 @@ class MT5Adapter(BrokerAdapter):
             sym = getattr(p, "symbol", "UNKNOWN")
             vol = Decimal(str(getattr(p, "volume", 0)))
             price_open = Decimal(str(getattr(p, "price_open", 0)))
-            # Determine instrument — try to map back from broker symbol
-            # For now, use raw symbol as instrument symbol
-            instr = Instrument(symbol=sym, venue="MT5")
+            # Broker alias → canonical, so reconciliation compares like with like.
+            instr = Instrument(symbol=self._canonical_symbol(sym), venue="MT5")
             # Quantity signed: BUY positive, SELL negative
             # MT5 position type 0 = BUY, 1 = SELL
             pos_type = getattr(p, "type", 0)
@@ -1044,6 +1092,13 @@ class MT5Adapter(BrokerAdapter):
             "type_time": getattr(mt5, "ORDER_TIME_GTC", 0),
             "type_filling": filling,
         }
+        # Attribute the closing deal before it can come back: without a comment
+        # → order mapping the broker's close deal is unattributable, and the
+        # engine is required to discard unattributed fills — which would leave
+        # the local portfolio holding a position the venue has already closed.
+        with contextlib.suppress(Exception):
+            self._store_comment_map(f"close-{int(ticket)}", str(request["comment"]))
+
         result = mt5.order_send(request)
         if result is None:
             raise TimeoutError(f"MT5 close returned None for position {ticket}: {mt5.last_error()}")
@@ -1075,7 +1130,7 @@ class MT5Adapter(BrokerAdapter):
             comment = getattr(o, "comment", "")
             client_id = self._reverse_comment_map(comment) or comment
             sym = getattr(o, "symbol", "UNKNOWN")
-            instr = Instrument(symbol=sym, venue="MT5")
+            instr = Instrument(symbol=self._canonical_symbol(sym), venue="MT5")
             vol = Decimal(str(getattr(o, "volume_current", getattr(o, "volume_initial", 0))))
             # MT5 order type to side
             o_type = getattr(o, "type", 0)
@@ -1354,7 +1409,10 @@ class MT5Adapter(BrokerAdapter):
         for d in deals:
             # Deal fields: ticket, order, symbol, volume, price, profit, type, time
             try:
-                sym = getattr(d, "symbol", "UNKNOWN")
+                # Broker alias → canonical: the portfolio is keyed by canonical
+                # symbol, so a fill reported as ``XAUUSD@`` would create a
+                # phantom position that reconciliation can never match.
+                sym = self._canonical_symbol(getattr(d, "symbol", "UNKNOWN"))
                 vol = Decimal(str(getattr(d, "volume", 0)))
                 price = Decimal(str(getattr(d, "price", 0)))
                 # type 0 BUY, 1 SELL

@@ -394,6 +394,18 @@ class DemoSession:
         record = self.stage.halt(reason=reason, actor=self.config.actor)
         return {"killed": True, "reason": reason, "stage": record.as_dict()}
 
+    def sync_fills(self) -> int:
+        """Fold broker deals into local state (best effort, idempotent).
+
+        An MT5 fill is a *deal*: the portfolio only learns about it when the
+        deals are polled. Closing a position through :meth:`MT5Adapter.
+        close_position` therefore leaves local state stale until this runs.
+        """
+        try:
+            return len(self.engine.poll_live_fills() or [])
+        except Exception:
+            return 0
+
     def reconcile(self) -> dict[str, Any]:
         engine = self.engine
         report = engine.reconcile()
@@ -799,6 +811,13 @@ class DemoSession:
                 market_state_entry=quote,
                 broker_position_id=broker_position_id or None,
             )
+
+        # Bring local state up to date with the broker BEFORE reconciling: an
+        # MT5 fill is a deal, and the portfolio only learns about it when the
+        # deals are polled. Reconciling first would compare a stale empty
+        # portfolio against a real venue position and suspend on phantom drift.
+        with contextlib.suppress(Exception):
+            self.engine.poll_live_fills()
 
         # Reconciliation after EVERY submitted order (safeguard #13).
         reconciliation = self.reconcile()

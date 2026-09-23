@@ -33,6 +33,7 @@ Every cycle writes a signal record — including the ``NO_TRADE`` decisions — 
 
 from __future__ import annotations
 
+import contextlib
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -145,6 +146,7 @@ def _resolve_provider(entry: StrategyRegistration) -> tuple[Any | None, list[str
 def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
     """Run the controlled loop until a stop condition fires (never on LIVE)."""
     report = AutopilotReport(started_at=datetime.now(UTC).isoformat())
+    providers: dict[str, Any] = {}
     journal: DemoOrderJournal = session.journal
     stage_machine: DemoStageMachine = session.stage
     started = time.monotonic()
@@ -175,6 +177,12 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
             kill_state = session.kill_switch_state()
             if not kill_state.get("readable") or kill_state.get("killed"):
                 halt(f"kill switch {'unreadable' if not kill_state.get('readable') else 'ACTIVE'}: {kill_state.get('reason')}")
+            reconciliation = session.reconcile()
+            if reconciliation.get("requires_suspend"):
+                halt(
+                    f"reconciliation requires suspension: {reconciliation.get('drift')} "
+                    f"{reconciliation.get('details')}"
+                )
 
             # ---- 2. registry entry (re-resolved every cycle: drift halts) --
             registry = load_registry()
@@ -191,9 +199,18 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
                 report.no_trade += 1
                 halt("no eligible strategy in the forward-validation registry — NO_TRADE")
 
-            provider, provider_problems = _resolve_provider(entry)
-            if provider is None:
-                halt("; ".join(provider_problems))
+            # The provider is instantiated once per run and reused: a strategy
+            # that tracks its own state (position already open, signals already
+            # emitted) must see that state on the next cycle instead of being
+            # reset to a fresh object that would emit the same signal again.
+            cached = providers.get(entry.strategy_id)
+            if cached is not None:
+                provider = cached
+            else:
+                provider, provider_problems = _resolve_provider(entry)
+                if provider is None:
+                    halt("; ".join(provider_problems))
+                providers[entry.strategy_id] = provider
             runtime_hash = str(provider.config_hash())
             if runtime_hash != entry.params_hash:
                 halt(
@@ -362,6 +379,18 @@ def _manage_open_positions(
                         market_state_exit={"price_current": pos.get("price_current"), "close_receipt": receipt},
                     )
                 note("close", {"ticket": ticket, "reason": reason, "profit": str(profit), "receipt": receipt})
+                # A close is an order too: fold the closing deal into local
+                # state, then reconcile — never leave the loop running on a
+                # portfolio that no longer matches the venue.
+                with contextlib.suppress(Exception):
+                    session.sync_fills()
+                after_close = session.reconcile()
+                note("reconcile_after_close", after_close)
+                if after_close.get("requires_suspend"):
+                    raise AutopilotHalt(
+                        f"reconciliation drift after closing ticket {ticket}: {after_close.get('drift')} "
+                        f"{after_close.get('details')}"
+                    )
         except Exception as exc:
             note("manage_error", f"position {ticket}: {type(exc).__name__}: {exc}")
 

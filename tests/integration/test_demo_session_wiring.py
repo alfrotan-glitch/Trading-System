@@ -24,6 +24,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from qts.db import connect
 from qts.execution.demo_session import DemoSession, DemoSessionConfig
 from qts.lifecycle.demo_authorization import document_fingerprint
 from qts.lifecycle.demo_stage import DemoStage
@@ -232,7 +233,7 @@ def test_submit_refuses_and_records_a_no_trade_signal(tmp_path: Path, authorizat
     assert result.allowed is False
     assert result.state == "NO_TRADE"
 
-    with __import__("qts.db", fromlist=["connect"]).connect(session.db_path) as con:
+    with connect(session.db_path) as con:
         rows = con.execute("SELECT decision, reason FROM demo_signal_journal").fetchall()
     assert rows and rows[0][0] == "NO_TRADE"
     assert "registry" in (rows[0][1] or "").lower() or "strategy" in (rows[0][1] or "").lower()

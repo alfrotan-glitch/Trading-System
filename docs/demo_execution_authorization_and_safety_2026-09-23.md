@@ -375,7 +375,45 @@ reports the honest residual blockers instead of a green light:
 | `reconciliation_ready` | UNKNOWN→PASS | resolved by the pre-trade reconciliation probe |
 | `strategy_registered_frozen` | FAIL | **research**: register a preregistered, eligible strategy |
 
-### 16.2 Unit / adversarial coverage
+### 16.2 Autonomous loop (simulated terminal + registered test strategy)
+
+`tests/integration/test_demo_autopilot_loop.py` (8 tests, `--run-integration`) registers an eligible,
+parameter-frozen test provider (`tests/fakes_demo_provider.py`) and drives the real loop against a
+stateful fake terminal. Verified end to end:
+
+* one `RESEARCH_DEMO_ORDER` is submitted at **minimum size with its stop and target on the order**
+  (`volume 0.01`, `sl 1995.00`, `tp 2010.20`), and the journal carries the full record — broker order
+  and position id, requested/executed price, spread, slippage, latency, strategy config hash;
+* the open position is managed: unrealized P&L is updated, and on `max_hold_seconds` it is **closed**,
+  the exit reason and realized P&L are journalled, and the loop reconciles clean afterwards
+  (`drift NONE`, engine not suspended);
+* an **eligible strategy may decline to trade** — a provider returning no signal yields recorded
+  `NO_TRADE` cycles with zero orders, not an error;
+* the daily order cap stops new orders without halting the loop;
+* a provider exposing an `optimize` hook is **refused** ("optimization hooks") with zero orders;
+* **parameter drift** (runtime `config_hash` != registered hash) halts the loop with zero orders;
+* once the DEMO daily-loss limit is consumed, `max_daily_loss` fails and no order is sent.
+
+None of that traded real capital: the terminal is a fake, and the same code path is refused
+outright in any non-DEMO mode.
+
+### 16.3 Defects the integration tests exposed (and the fixes)
+
+Building the loop found four real bugs in the pre-existing execution path — all of them would have
+made the *first* DEMO order misbehave. They are fixed here and covered by tests:
+
+| # | Defect | Effect | Fix |
+|---|---|---|---|
+| 1 | `MT5Adapter.submit()` built the broker request **without SL/TP** (only the dry-run `build_broker_request` carried them) | the gate requires a stop, but the order actually sent had none — exposure could exist unprotected | `_protective_levels()` now validates and attaches `sl`/`tp` on the request that is really sent |
+| 2 | `positions()`, `orders()` and `poll_fills()` reported the **broker** symbol (`XAUUSD@`) as if it were canonical | reconciliation compared `local XAUUSD` against `venue XAUUSD@`; the first order produced phantom drift (`UNKNOWN_POSITION` / `MISSING_POSITION`) and suspended trading | `_canonical_symbol()` translates broker aliases back before the portfolio, reconciliation or fills ever see them |
+| 3 | reconciliation ran **before** broker deals were polled | local portfolio still empty vs a real venue position ⇒ immediate suspend on a phantom mismatch | `DemoSession.submit()` polls live fills before reconciling; `DemoSession.sync_fills()` added for the close path |
+| 4 | a position close produced an **unattributable deal** (its comment was not in the comment map) | the engine must discard unattributed fills, so the local portfolio kept a position the venue had already closed | `close_position()` registers the close comment (`close-<ticket>`) so the closing deal is attributable |
+
+Two loop-level gaps were fixed alongside: the signal provider is instantiated **once per run**
+(a fresh object every cycle would re-emit the same signal), and every cycle now re-checks
+reconciliation health and halts if a suspension is required.
+
+### 16.4 Unit / adversarial coverage
 
 New/updated tests (all passing in this checkout):
 
@@ -391,6 +429,8 @@ New/updated tests (all passing in this checkout):
   slippage/P&L accounting, export.
 * `tests/integration/test_demo_session_wiring.py` — 9 tests (`--run-integration`): the full session
   against a simulated DEMO terminal (see §16.1).
+* `tests/integration/test_demo_autopilot_loop.py` — 8 tests (`--run-integration`): autonomous loop,
+  position lifecycle and research-integrity refusals (see §16.2/§16.3).
 
 Invariants stated by this document and pinned by tests:
 
