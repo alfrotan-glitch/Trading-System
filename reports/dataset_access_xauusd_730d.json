@@ -1,56 +1,68 @@
 {
-  "status": "CHECKSUM_VERIFIED_ROWS_NOT_READ",
+  "status": "INVENTORIED",
   "canonical_release": "dataset-xauusd-730d-20260919",
   "canonical_asset": "XAUUSD_730d_20260919T114013Z.zip",
   "expected_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
   "verified_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
-  "checked_locations": [
-    "data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip",
-    "data/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip",
-    "/tmp/qts_dataset/XAUUSD_730d_20260919T114013Z.zip"
+  "checksum_match": true,
+  "verified_by": "github-actions-runner",
+  "inventory_code_sha": "4901224655040cbb6cf0f61bd61c2daa969358a4",
+  "inventory_report_commit": "dc7d36c",
+  "bytes_in_this_runtime": 0,
+  "bytes_measured_on_runner": 1019727380,
+  "inventory": "reports/canonical_zip_inventory.json",
+  "row_count": 139930971,
+  "time_msc_min": 1726746013452,
+  "time_msc_max": 1789775939790,
+  "time_range_if_utc": {
+    "start": "2024-09-19T11:40:13.452000+00:00",
+    "end": "2026-09-18T23:58:59.790000+00:00",
+    "basis": "PROVISIONAL_IF_UTC"
+  },
+  "timezone": "UNAVAILABLE",
+  "timestamp_interpretation_confirmed": false,
+  "duplicates": {
+    "scope": "ADJACENT_ONLY",
+    "non_monotonic_time_msc_count": 0,
+    "same_time_msc_excess_rows_adjacent": 6071793,
+    "consecutive_identical_quote_rows": 74
+  },
+  "gaps": {
+    "at_least_1s": 7697251,
+    "at_least_60s": 784,
+    "at_least_3600s": 515,
+    "at_least_86400s": 108,
+    "classification": "UNCLASSIFIED_SPACING"
+  },
+  "tick_frequency": {
+    "rows_per_second_over_span": 2.220071942486743,
+    "note": "span average, not a session rate"
+  },
+  "bid_ask": {
+    "fields_present": ["ask", "bid", "flags", "last", "time", "time_msc", "volume", "volume_real"],
+    "invalid_bid_count": 0,
+    "invalid_ask_count": 0,
+    "ask_below_bid_count": 0
+  },
+  "spread": {
+    "count": 139930971,
+    "min_bps": 0.37368199247298806,
+    "mean_bps": 0.719616288819412,
+    "max_bps": 7.787630128304202,
+    "exact_median": "UNAVAILABLE",
+    "abnormal_above_100_bps": 0
+  },
+  "session_calendar": "UNAVAILABLE",
+  "dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789",
+  "matches_published_gap_report_digest": true,
+  "defects": [
+    "ZIP_PATH_SEPARATOR",
+    "TIMESTAMP_BASIS_UNVERIFIED"
   ],
-  "bytes_present": 0,
-  "inventory": null,
-  "time_range": null,
-  "timezone": null,
-  "duplicates": null,
-  "gaps": null,
-  "tick_frequency": null,
-  "bid_ask": null,
-  "spread": null,
-  "session_calendar": null,
-  "provenance": "The GitHub-hosted runner verified the zip SHA-256. It did not read tick rows: zip members use Windows backslash paths, and the extractor looked for POSIX paths. That zero row count is a reader failure, not a measured empty dataset. The reader now maps backslash names to POSIX paths without changing member bytes. A corrected inventory has not returned.",
+  "provenance": "Zip SHA-256 matched on a GitHub-hosted runner. Rows were streamed from extracted parquet after backslash member names were mapped to POSIX paths. Member bytes were not changed. No row was repaired. This runtime does not hold the zip.",
   "repairs_applied": [],
   "decision_supported": false,
-  "probed_at": "2026-09-23T07:27:37Z",
-  "release_metadata": {
-    "status": "LISTED",
-    "tag": "dataset-xauusd-730d-20260919",
-    "asset_name": "XAUUSD_730d_20260919T114013Z.zip",
-    "asset_id": 582342011,
-    "asset_state": "uploaded",
-    "declared_bytes": 1019727380,
-    "download_count": 5,
-    "created_at": "2026-09-22T22:01:03Z",
-    "updated_at": "2026-09-22T22:05:56Z",
-    "source": "gh release view dataset-xauusd-730d-20260919"
-  },
-  "transfer": {
-    "status": "RUNNER_RERUN_AFTER_PATH_SEPARATOR_BUG",
-    "first_runner_report": "reports/canonical_zip_inventory.json at 0afb19b",
-    "first_runner_checksum_match": true,
-    "first_runner_row_count": 0,
-    "first_runner_row_count_meaning": "READER_FAILURE_BACKSLASH_MEMBER_NAMES",
-    "release_asset_id": 582342011,
-    "release_asset_bytes_declared": 1019727380,
-    "sandbox_release_cdn_download": "NOT PERFORMED",
-    "workflow": ".github/workflows/canonical-xauusd-zip-inventory.yml",
-    "workflow_runs_on": "ubuntu-latest",
-    "permission": "GitHub App repository permission Workflows: Read and write is present. A contents API create of .github/workflows/* returned 201.",
-    "permission_probe_workflow": "REMOVED. .github/workflows/qts-permission-probe.yml was an invalid probe and is not a data path.",
-    "return_path": "The runner commits reports/canonical_zip_inventory.json to arena/01a0c9cc-trading-system. This runtime does not read Actions artifact storage.",
-    "checksum_verified": false,
-    "extracted": false,
-    "research_started": false
-  }
+  "edge_claim": "NOT ESTABLISHED",
+  "probed_at": "2026-09-23T07:40:00Z",
+  "sandbox_release_cdn_download": "NOT PERFORMED"
 }

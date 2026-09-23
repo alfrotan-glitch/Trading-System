@@ -1,43 +1,34 @@
 {
   "report_id": "cycle-2026-09-23-xauusd-edge",
-  "generated_at": "2026-09-23T07:27:37Z",
-  "code_identity": {
-    "branch": "arena/01a0c9cc-trading-system",
-    "note": "HEAD at report generation is the parent of the runner-workflow commit. The runner report, when it returns, identifies its own GITHUB_SHA."
-  },
+  "generated_at": "2026-09-23T07:40:00Z",
   "decision": "INCONCLUSIVE",
-  "decision_reason": "The runner verified the zip SHA-256, but the first inventory did not read tick rows because member names use backslashes. That zero count is a reader failure. Discovery has not started.",
+  "decision_reason": "The canonical zip checksum matched and 139930971 rows were inventoried. No hypothesis was tested. No edge is claimed.",
   "safety": {
     "confirm_live": false,
     "execution_mode": "backtest",
     "demo_forward_enabled": false,
     "DEMO_EXECUTION": "DISABLED BY POLICY",
     "LIVE": "LOCKED",
-    "real_money": false,
-    "source": "load_settings() at 2026-09-23T07:27:37Z"
+    "real_money": false
   },
   "data": {
     "canonical_release": "dataset-xauusd-730d-20260919",
     "canonical_asset": "XAUUSD_730d_20260919T114013Z.zip",
     "expected_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
     "verified_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
-    "verified_by": "github-actions-runner at git_sha 2a862c4fca1f768a1a744b7b79996372f53aaf1d; report commit 0afb19b",
+    "checksum_match": true,
     "bytes_in_this_runtime": 0,
-    "status": "CHECKSUM_VERIFIED_ROWS_NOT_READ",
-    "runner_workflow": ".github/workflows/canonical-xauusd-zip-inventory.yml",
-    "runner_result": "CHECKSUM_MATCHED_READER_MISSED_BACKSLASH_PATHS",
-    "row_count_in_first_report": 0,
-    "row_count_meaning": "READER_FAILURE_NOT_A_DATASET_MEASUREMENT",
-    "inventory": "UNAVAILABLE",
-    "time_range": "UNAVAILABLE",
+    "bytes_measured_on_runner": 1019727380,
+    "row_count": 139930971,
+    "dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789",
+    "inventory_report": "reports/canonical_zip_inventory.json",
+    "inventory_commit": "dc7d36c",
     "timezone": "UNAVAILABLE",
-    "duplicates": "UNAVAILABLE",
-    "gaps": "UNAVAILABLE",
-    "tick_frequency": "UNAVAILABLE",
-    "bid_ask": "UNAVAILABLE",
-    "spread": "UNAVAILABLE",
     "session_calendar": "UNAVAILABLE",
+    "exact_spread_median": "UNAVAILABLE",
+    "defects": ["ZIP_PATH_SEPARATOR", "TIMESTAMP_BASIS_UNVERIFIED"],
     "repairs_applied": [],
+    "edge_claim": "NOT ESTABLISHED",
     "access_record": "reports/dataset_access_xauusd_730d.json"
   },
   "discovery": {
@@ -45,7 +36,8 @@
     "hypotheses_tested": [],
     "rejections": [],
     "survivors": [],
-    "preregistered_not_tested": ["H-MS-01", "H-MS-02", "H-TOD-01"]
+    "preregistered_not_tested": ["H-MS-01", "H-MS-02", "H-TOD-01"],
+    "H-TOD-01": "BLOCKED — timestamp basis is not confirmed"
   },
   "validation": {
     "status": "NOT RUN",
@@ -59,12 +51,6 @@
   },
   "engineering": {
     "uuid7": "unchanged; uuid.uuid4().hex; not RFC 9562",
-    "prior_101_test_claim": "NOT THIS HEAD. Not re-executed. Not cited as a pass.",
-    "tests_executed_for_this_commit": [
-      "tests/test_canonical_zip_inventory.py",
-      "tests/test_github_runner_inventory_support.py"
-    ],
-    "tests_passed": "8 inventory tests plus 2 runner-support tests plus 5 acquisition integrity tests; full suite not run",
     "full_suite_claim": false
   }
 }
