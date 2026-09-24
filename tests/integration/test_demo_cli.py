@@ -98,6 +98,11 @@ def operator_env(tmp_path: Path, monkeypatch):
     }
 
 
+def _out(result) -> str:
+    """Combined stdout+stderr: blockers are echoed on stderr by design."""
+    return (result.output or "") + (getattr(result, "stderr", "") or "")
+
+
 @pytest.fixture()
 def run_cli(operator_env):
     from click.testing import CliRunner
@@ -292,3 +297,94 @@ def test_revoke_disables_execution_and_never_edits_the_artifact(run_cli, operato
     ordered = run_cli("order", "--side", "BUY", "--stop-loss", "1995.00", "--db", operator_env["db"])
     assert ordered.exit_code == 2
     assert operator_env["terminal"].requests == []
+
+
+# ------------------------------------------------------------------- triage
+
+
+def test_verify_names_the_single_next_action(run_cli, operator_env):
+    """One read-only command must tell the operator where they are and what's next."""
+    result = run_cli("verify", "--db", operator_env["db"])
+    # Not ready yet: the identity is not pinned.
+    assert result.exit_code == 2
+    assert "READY: False" in result.output
+    assert "NEXT: qts demo connectivity --pin" in result.output
+    assert "broker identity is not pinned" in _out(result)
+    assert operator_env["terminal"].requests == []
+
+    run_cli("connectivity", "--db", operator_env["db"], "--pin")
+    after_pin = run_cli("verify", "--db", operator_env["db"])
+    assert "NEXT: qts demo connectivity --confirm-pin" in after_pin.output
+
+    run_cli("connectivity", "--db", operator_env["db"], "--confirm-pin")
+    run_cli("arm", "--stage", "1", "--db", operator_env["db"], "--confirm", "--risk-ack")
+    armed = run_cli("verify", "--db", operator_env["db"])
+    assert "NEXT: qts demo arm --stage 2" in armed.output
+
+    run_cli("arm", "--stage", "2", "--db", operator_env["db"], "--confirm", "--risk-ack")
+    no_strategy = run_cli("verify", "--db", operator_env["db"])
+    assert "no eligible strategy" in _out(no_strategy)
+    assert "registry.json" in _out(no_strategy)
+
+
+def test_verify_reports_ready_and_the_order_command(run_cli, operator_env):
+    _register_strategy(operator_env["registry"])
+    run_cli("connectivity", "--db", operator_env["db"], "--pin")
+    run_cli("connectivity", "--db", operator_env["db"], "--confirm-pin")
+    run_cli("arm", "--stage", "1", "--db", operator_env["db"], "--confirm", "--risk-ack")
+    run_cli("arm", "--stage", "2", "--db", operator_env["db"], "--confirm", "--risk-ack")
+
+    result = run_cli("verify", "--db", operator_env["db"])
+    assert result.exit_code == 0, result.output
+    assert "READY: True" in result.output
+    assert "NEXT: qts demo order --side BUY" in result.output
+    assert "preflight: passed=True" in result.output
+    assert operator_env["terminal"].requests == [], "verify must never trade"
+
+    # A kill switch turns READY back into a named recovery step.
+    run_cli("kill", "--db", operator_env["db"], "--reason", "triage test")
+    killed = run_cli("verify", "--db", operator_env["db"])
+    assert "READY: False" in killed.output
+    assert "kill switch ACTIVE" in _out(killed)
+    assert "clear-kill" in _out(killed)
+
+
+def test_verify_writes_a_json_report(run_cli, operator_env):
+    out = operator_env["tmp"] / "verify.json"
+    result = run_cli("verify", "--db", operator_env["db"], "--json", str(out))
+    assert result.exit_code == 2
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert report["ready_to_trade"] is False
+    assert report["live_locked"] is True
+    assert report["real_capital_exposure_usd"] == 0
+    assert "authorization_valid" in report["checks"]
+    assert report["next_action"]
+
+
+def test_clear_kill_requires_confirmation_and_a_reason(run_cli, operator_env):
+    assert run_cli("clear-kill", "--db", operator_env["db"], "--reason", "x").exit_code == 2
+    assert run_cli("clear-kill", "--db", operator_env["db"], "--confirm").exit_code == 2
+
+
+def test_clear_kill_lifts_the_flag_but_leaves_the_stage_halted(run_cli, operator_env):
+    run_cli("arm", "--stage", "1", "--db", operator_env["db"], "--confirm", "--risk-ack")
+    run_cli("kill", "--db", operator_env["db"], "--reason", "triage test")
+
+    cleared = run_cli(
+        "clear-kill", "--db", operator_env["db"], "--reason", "halt investigated, nothing wrong", "--confirm"
+    )
+    assert cleared.exit_code == 0, cleared.output
+    body = json.loads(cleared.output.split("\nkill switch cleared")[0])
+    assert body["was_killed"] is True
+    assert body["killed"] is False
+    assert body["stage"]["stage"] == "HALTED"
+    assert "stage remains HALTED" in cleared.output
+
+    # Trading does not resume on its own: re-arming is required and refused
+    # until the stage progression is proved again.
+    refused = run_cli("arm", "--stage", "2", "--db", operator_env["db"], "--confirm", "--risk-ack")
+    assert refused.exit_code == 2
+    assert "REFUSED" in refused.output
+
+    healthy = run_cli("verify", "--db", operator_env["db"])
+    assert "kill_switch=clear" in healthy.output

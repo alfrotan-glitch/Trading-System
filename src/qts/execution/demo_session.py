@@ -416,6 +416,15 @@ class DemoSession:
 
     def reconcile(self) -> dict[str, Any]:
         engine = self.engine
+        # Cold-start recovery: a fresh process has an empty in-memory portfolio,
+        # so a legitimate broker position would look like drift
+        # (UNKNOWN_POSITION) and block everything. Rebuild local state from the
+        # broker's deal history FIRST, then compare like with like.
+        try:
+            if not engine.portfolio.positions and list(engine.broker.positions() or []):
+                self.sync_fills()
+        except Exception:
+            pass
         report = engine.reconcile()
         self._last_reconcile = report
         self._last_reconcile_at = datetime.now(UTC)

@@ -325,6 +325,7 @@ This work was implemented and tested in a **Linux sandbox without a MetaTrader5 
 ## 15. Operating procedure (Windows terminal, DEMO account)
 
 ```bash
+qts demo verify                              # START HERE: what's blocking, and the one next command
 qts demo authorization                       # artifact + resolved policy
 qts demo connectivity                        # Stage 1 (no orders)
 qts demo connectivity --pin                  # record observed identity (PENDING_REVIEW)
@@ -335,9 +336,23 @@ qts demo arm --stage 2 --confirm --risk-ack  # open the order path
 qts demo order --side BUY --stop-loss 1995   # ONE RESEARCH_DEMO_ORDER (registry-gated)
 qts demo run --strategy <id>                 # controlled autonomous DEMO trading
 qts demo journal --export data/evidence/demo_forward_observations.jsonl
-qts demo kill --reason "..."                 # halt immediately
+qts demo kill --reason "..."                 # halt immediately (durable; halts the stage)
+qts demo clear-kill --reason "..." --confirm # lift the halt (stage stays HALTED — re-arm)
 qts demo revoke --reason "..."               # withdraw authorization
 ```
+
+`qts demo verify` is the operator's entry point: a read-only triage that touches nothing (no order, no
+stage change, no enablement) and answers one question — *where am I, and which single command comes next?*
+It prints authorization, account/identity/pin state, symbol mapping, the fresh 14-check readiness result,
+registry state, stage, a minimum-size pre-trade dry run, kill-switch and reconciliation health, then
+`READY: True/False` and `NEXT: <the one command>`. Exit code **0** = every checkable gate passes, **2** =
+something is blocking (each blocker is printed). `--json <path>` writes the full triage report. The next
+action follows the order the gates actually require — for example a raised kill switch is reported before
+arming, because arming cannot succeed until the halt is lifted.
+
+`qts demo clear-kill` is the recovery half of the kill switch: it requires `--confirm` and a non-empty
+`--reason`, records an audit event, and **deliberately leaves the stage HALTED**, so trading cannot resume
+by accident — the operator must re-arm and prove the staged progression again.
 
 API equivalents: `GET /api/demo/authorization`, `/api/demo/stage`, `/api/demo/preflight`,
 `POST /api/demo/enable`, `POST /api/demo/order`, `POST /api/demo/kill`, `GET /api/demo/journal`.
@@ -471,6 +486,7 @@ A trading system is judged by what it does when things break. `tests/integration
 | definitive rejection (10006) | record `REJECTED` + `broker_retcode`, no retry | 1 request, 1 record, no position |
 | broker disconnect mid-loop | stop the loop | halted with the reconciliation reason; no crash |
 | restart with a broker-only position (crash left a position we never journaled) | refuse to trade | `UNKNOWN_POSITION` → suspend → 0 orders |
+| cold start after a legitimate fill (new process, empty in-memory portfolio) | rebuild from broker deals, **don't** call it drift | `drift NONE`, position restored, trading allowed |
 | stale in-flight row (process died mid-submission) | fail the abandoned row, keep trading | row → `REJECTED` ("outcome unknown — verify with the broker"), next order allowed |
 | two concurrent submissions | exactly one order | 1 broker request, 1 journal row, other refused "in flight"/"duplicate" |
 | second order inside the minimum interval | refuse | 1 request |
@@ -487,6 +503,10 @@ Two implementation properties make the concurrency rows true:
   single `BEGIN IMMEDIATE` transaction (`qts.db.immediate`), so a concurrent caller either waits for the row
   or sees it and refuses. A locked database is an unknown state: the claim refuses instead of assuming the
   slot is free.
+* **Reconciliation heals a cold start before it compares.** A fresh process has an empty portfolio, so a
+  legitimate broker position would otherwise read as `UNKNOWN_POSITION` and suspend trading. `reconcile()`
+  polls the broker's deal history first when local state is empty and the venue reports positions, so it
+  compares like with like — while a position that genuinely cannot be attributed still suspends.
 * **An abandoned submission is failed, not assumed.** Rows in `NEW`/`SUBMITTED` older than the in-flight
   budget are expired to `REJECTED` at session start, so a crash can never wedge the system — and the record
   says the outcome is unknown rather than implying the order never happened.

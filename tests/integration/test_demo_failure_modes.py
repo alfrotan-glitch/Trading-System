@@ -313,3 +313,36 @@ def _now_iso() -> str:
     from datetime import UTC, datetime
 
     return datetime.now(UTC).isoformat()
+
+
+def test_cold_start_rebuilds_local_state_from_broker_deals(demo_env):
+    """A fresh process starts with an empty portfolio — that is not drift.
+
+    Without this, restarting after a fill makes the broker's legitimate
+    position look like ``UNKNOWN_POSITION``, which suspends trading and blocks
+    the operator until a manual reconcile.
+    """
+    write_registry(demo_env["registry"], provider_fixture.registry_entry())
+    terminal = FakeTerminal()
+    session = armed_session(demo_env["tmp"], terminal)
+
+    first = session.submit(side="BUY", stop_loss=Decimal("1995.00"), rationale="before restart")
+    assert first.allowed is True, first.reasons
+    assert len(terminal.positions) == 1
+
+    # A brand-new process: same database and terminal, empty in-memory state.
+    restarted = DemoSession(
+        DemoSessionConfig(
+            symbol="XAUUSD",
+            symbol_map={"XAUUSD": "XAUUSD@"},
+            db_path=Path(demo_env["db"]),
+            actor="restarted-process",
+            mt5_module=terminal,
+        )
+    )
+    assert restarted.engine.portfolio.positions == {}, "a cold process must start empty"
+
+    reconciliation = restarted.reconcile()
+    assert reconciliation["requires_suspend"] is False, reconciliation
+    assert reconciliation["drift"] == "NONE"
+    assert len(restarted.engine.portfolio.positions) == 1, "state is rebuilt from broker deals"

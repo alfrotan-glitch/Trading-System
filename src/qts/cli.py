@@ -1824,6 +1824,249 @@ def demo_status(symbol: str | None, db: str) -> None:
     click.echo(json.dumps(out, indent=2, default=str))
 
 
+@demo.command("verify")
+@click.option("--symbol", default=None)
+@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--terminal-path", default=None)
+@click.option("--json", "json_out", default=None, help="write the full triage report to this path")
+def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out: str | None) -> None:
+    """Read-only triage: what is blocking DEMO execution, and what to do next.
+
+    Touches nothing — no order, no stage change, no enablement. It answers one
+    question an operator actually has: "where am I, and which single command
+    comes next?" Exit code 0 means every gate that can be checked now passes;
+    exit code 2 means something is blocking (the report says what).
+    """
+    from qts.lifecycle.demo_registry import registry_status
+    from qts.lifecycle.demo_stage import ORDER_STAGES
+
+    session = _demo_session(symbol or "", db, terminal_path)
+    policy = session.policy
+    connectivity = session.connectivity_report()
+    registry = registry_status()
+    stage_record = session.stage.current()
+    kill = session.kill_switch_state()
+    reconciliation = session.reconcile()
+
+    entry = registry.get("resolved_strategy")
+    readiness = connectivity.get("readiness") or {}
+    identity = connectivity.get("identity") or {}
+    pin = connectivity.get("identity_pin") or {}
+    mapping = connectivity.get("symbol_mapping") or {}
+    pin_present = bool(pin.get("pinned"))
+    pin_confirmed = str(pin.get("status") or "") == "CONFIRMED"
+    pin_verified = pin.get("verified") is True
+
+    preflight: dict[str, Any] | None = None
+    if entry is not None:
+        from decimal import Decimal
+
+        # Probe the gate with the smallest possible order — it submits nothing.
+        outcome = session.preflight(side="BUY", stop_loss=Decimal("0"))
+        preflight = {
+            "passed": bool(outcome["verdict"]["passed"]),
+            "failed": list(outcome["verdict"]["failed"]),
+            "unknown": list(outcome["verdict"]["unknown"]),
+        }
+
+    checks = {
+        "authorization_valid": bool(policy.enabled),
+        "terminal_reachable": bool(identity.get("ok")),
+        "account_is_demo": identity.get("is_demo") is True,
+        "identity_pinned": pin_present,
+        "identity_confirmed": pin_confirmed,
+        "identity_verified": pin_verified,
+        "readiness_passed": bool(readiness.get("passed")),
+        "authority_permitted": bool(session.authority.current().execution_permitted),
+        "stage_allows_orders": stage_record.stage in ORDER_STAGES,
+        "strategy_registered": entry is not None,
+        "kill_switch_clear": (not kill.get("killed")) and bool(kill.get("readable")),
+        "reconciliation_clean": not reconciliation.get("requires_suspend"),
+        "preflight_passed": None if preflight is None else bool(preflight["passed"]),
+    }
+
+    # Blockers and the next action are listed in the order an operator must
+    # resolve them: the FIRST blocker is the one the NEXT command addresses.
+    blockers: list[str] = []
+
+    def block(reason: str) -> None:
+        blockers.append(reason)
+
+    if not checks["authorization_valid"]:
+        block(f"no valid owner authorization ({policy.state}) — DEMO_EXECUTION stays DISABLED BY POLICY")
+    if not checks["terminal_reachable"]:
+        block(f"terminal unreachable: {identity.get('error')}")
+    if checks["terminal_reachable"] and not checks["account_is_demo"]:
+        block(f"connected account is not DEMO (is_demo={identity.get('is_demo')})")
+    if not checks["identity_pinned"]:
+        block("broker identity is not pinned")
+    elif not checks["identity_confirmed"]:
+        block("identity pin is recorded but not owner-confirmed")
+    elif not checks["identity_verified"]:
+        block(f"identity does not match the confirmed pin: {'; '.join(pin.get('detail') or ['mismatch'])}")
+    if not checks["readiness_passed"]:
+        block(f"readiness failed: {'; '.join(readiness.get('blocked_reasons') or ['unknown'])}")
+    if not checks["kill_switch_clear"]:
+        block(f"kill switch {'ACTIVE' if kill.get('killed') else 'unreadable'}: {kill.get('reason')}")
+    if not checks["reconciliation_clean"]:
+        block(f"reconciliation: {reconciliation.get('drift')} {reconciliation.get('details')}".strip())
+    if not checks["stage_allows_orders"]:
+        block(f"stage {stage_record.stage} does not permit orders")
+    elif not checks["authority_permitted"]:
+        block("durable authority has not granted execution permission")
+    if not checks["strategy_registered"]:
+        block(
+            "no eligible strategy in the forward-validation registry — NO_TRADE "
+            f"(registry: {registry['registry']['path']})"
+        )
+    if preflight is not None and not preflight["passed"]:
+        block(f"pre-trade gate: failed={preflight['failed']} unknown={preflight['unknown']}")
+
+    # One next action, in the order an operator must do things.
+    if not checks["authorization_valid"]:
+        action = (
+            "record an owner authorization artifact (DEMO only, LIVE locked) at "
+            "QTS_DEMO_AUTHORIZATION — see docs/demo_execution_authorization_and_safety_2026-09-23.md §2"
+        )
+    elif not checks["terminal_reachable"] or not checks["account_is_demo"]:
+        action = f"qts demo connectivity --db {db}"
+    elif not checks["identity_pinned"]:
+        action = f"qts demo connectivity --pin --db {db}"
+    elif not checks["identity_confirmed"]:
+        action = f"qts demo connectivity --confirm-pin --db {db}"
+    elif not checks["identity_verified"]:
+        action = f"qts demo connectivity --db {db}   # the account no longer matches the pin — re-review"
+    elif not checks["readiness_passed"]:
+        action = f"qts demo connectivity --db {db}   # fix the failing readiness checks above"
+    elif not checks["kill_switch_clear"]:
+        # Arming cannot succeed while the kill switch is raised, so clearing it
+        # comes first — and the stage stays HALTED until re-armed afterwards.
+        action = f"qts demo clear-kill --reason '<why>' --confirm --db {db}"
+    elif not checks["reconciliation_clean"]:
+        action = f"qts demo connectivity --db {db}   # reconcile broker vs internal state first"
+    elif not checks["stage_allows_orders"] or not checks["authority_permitted"]:
+        action = f"qts demo arm --stage 2 --confirm --risk-ack --db {db}"
+    elif not checks["strategy_registered"]:
+        action = f"register a preregistered strategy in {registry['registry']['path']} (status ELIGIBLE)"
+    elif preflight is not None and not preflight["passed"]:
+        action = f"qts demo preflight --side BUY --db {db}   # inspect the failing checks above"
+    else:
+        action = (
+            f"qts demo run --strategy {entry['strategy_id']} --db {db}"
+            if stage_record.stage == "STAGE_3_FORWARD_OBSERVATION"
+            else f"qts demo order --side BUY --stop-loss <price> --db {db}"
+        )
+
+    report: dict[str, Any] = {
+        "checked_at": connectivity.get("checked_at"),
+        "ready_to_trade": not blockers,
+        "next_action": action,
+        "blockers": blockers,
+        "checks": checks,
+        "policy": policy.as_dict(),
+        "identity": {"is_demo": identity.get("is_demo"), "login": identity.get("login"), "server": identity.get("server")},
+        "identity_pin": {
+            "pinned": pin_present,
+            "status": pin.get("status"),
+            "confirmed": pin_confirmed,
+            "verified": pin.get("verified"),
+            "detail": pin.get("detail") or [],
+        },
+        "symbol": {"canonical": mapping.get("canonical"), "broker": mapping.get("broker_symbol"), "tradable": mapping.get("tradable")},
+        "readiness": {"passed": readiness.get("passed"), "blocked_reasons": readiness.get("blocked_reasons", [])},
+        "registry": {"path": registry["registry"]["path"], "trading_state": registry["trading_state"], "entries": registry["registry"]["entry_count"]},
+        "stage": {"stage": stage_record.stage, "orders_permitted": stage_record.stage in ORDER_STAGES},
+        "controls": {"kill_switch": kill, "reconciliation": reconciliation},
+        "preflight": preflight,
+        "live_locked": True,
+        "real_capital_exposure_usd": 0,
+    }
+
+    click.echo(f"authorization: {policy.state} ({'valid' if policy.enabled else 'NOT valid'}) — LIVE locked, real capital 0")
+    click.echo(f"account: demo={identity.get('is_demo')} login={identity.get('login')} server={identity.get('server')}")
+    click.echo(
+        f"identity pin: pinned={pin_present} status={pin.get('status')} verified={pin.get('verified')}"
+    )
+    click.echo(f"symbol: {mapping.get('canonical')} -> {mapping.get('broker_symbol')} tradable={mapping.get('tradable')}")
+    click.echo(f"readiness: passed={bool(readiness.get('passed'))} blockers={readiness.get('blocked_reasons', [])}")
+    click.echo(f"registry: entries={registry['registry']['entry_count']} trading_state={registry['trading_state']}")
+    click.echo(f"stage: {stage_record.stage} orders_permitted={stage_record.stage in ORDER_STAGES}")
+    if preflight is not None:
+        click.echo(f"preflight: passed={preflight['passed']} failed={preflight['failed']} unknown={preflight['unknown']}")
+    click.echo(f"controls: kill_switch={'ACTIVE' if kill.get('killed') else 'clear'} reconciliation={reconciliation.get('drift')}")
+    click.echo(f"READY: {not blockers}")
+    for reason in blockers:
+        click.echo(f"  BLOCKED: {reason}", err=True)
+    click.echo(f"NEXT: {action}")
+
+    if json_out:
+        Path(json_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(json_out).write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+        click.echo(f"report written to {json_out}")
+
+    if blockers:
+        raise SystemExit(2)
+
+
+@demo.command("clear-kill")
+@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--reason", required=True, help="why the halt is being lifted (recorded)")
+@click.option("--confirm", is_flag=True, help="explicit operator confirmation (required)")
+def demo_clear_kill(db: str, reason: str, confirm: bool) -> None:
+    """Clear the durable kill switch — recorded; the stage stays HALTED.
+
+    Clearing the flag does NOT resume trading: the stage machine remains
+    HALTED, so orders stay refused until an operator re-arms explicitly and
+    the whole staged progression is proved again.
+    """
+    if not confirm or not reason.strip():
+        click.echo("REFUSED: clearing a kill switch requires --confirm and a non-empty --reason", err=True)
+        raise SystemExit(2)
+
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    engine = RiskEngine(RiskLimits(), db_path=Path(db), persist_kill=True)
+    was_killed = bool(engine.is_killed())
+    engine.reset_kill()
+
+    session = _demo_session("", db)
+    stage_record = session.stage.current()
+
+    # Audit the recovery: a lifted halt must be as traceable as the halt itself.
+    audit_note = None
+    try:
+        from qts.domain.events import DomainEvent, EventType
+        from qts.observability.audit import SqliteAuditLog
+
+        audit = SqliteAuditLog()
+        audit.emit(
+            DomainEvent(
+                event_type=EventType.KILL_SWITCH,
+                payload={
+                    "action": "cleared",
+                    "was_killed": was_killed,
+                    "reason": reason,
+                    "stage": stage_record.stage,
+                    "actor": "cli:demo-clear-kill",
+                },
+            )
+        )
+        audit_note = "audit event recorded"
+    except Exception as exc:  # pragma: no cover - audit best effort
+        audit_note = f"audit event NOT recorded: {type(exc).__name__}: {exc}"
+
+    out = {
+        "was_killed": was_killed,
+        "killed": bool(engine.is_killed()),
+        "reason": reason,
+        "stage": stage_record.as_dict(),
+        "audit": audit_note,
+        "next": f"qts demo arm --stage 1 --confirm --risk-ack --db {db}",
+    }
+    click.echo(json.dumps(out, indent=2, default=str))
+    click.echo("kill switch cleared — the stage remains HALTED; re-arm explicitly before any order.")
+
+
 @demo.command("connectivity")
 @click.option("--symbol", default=None)
 @click.option("--db", default="data/sqlite/qts.db")
