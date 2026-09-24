@@ -43,6 +43,7 @@ assertion of edge without an artifact behind it is refused.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -95,6 +96,7 @@ REQUIRED_POLICY_FIELDS: tuple[str, ...] = (
     # provenance
     "code_hash",
     "config_hash",
+    "policy_hash",
     "data_hash",
     # research integrity
     "validated_edge",
@@ -167,6 +169,18 @@ def _freeze(value: Any) -> Any:
     if isinstance(value, list):
         return tuple(_freeze(v) for v in value)
     return value
+
+
+def policy_fingerprint(doc: dict[str, Any]) -> str:
+    """SHA-256 of a policy document, excluding its own ``policy_hash`` field.
+
+    ``config_hash`` pins the *parameters*; this pins the *policy* — the limits,
+    hours, kill conditions and symbol binding themselves. Without it, a policy
+    document could be edited after registration (``max_daily_loss`` 5 → 500)
+    while every existing hash still matched, and nothing would notice.
+    """
+    body = {k: v for k, v in (doc or {}).items() if k != "policy_hash"}
+    return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")).hexdigest()
 
 
 def _is_blank(value: Any) -> bool:
@@ -246,6 +260,10 @@ class ResearchPolicy:
     @property
     def config_hash(self) -> str:
         return str(self.raw.get("config_hash") or "")
+
+    @property
+    def policy_hash(self) -> str:
+        return str(self.raw.get("policy_hash") or "")
 
     @property
     def data_hash(self) -> str | None:
@@ -396,6 +414,7 @@ class ResearchPolicy:
             "validation_artifact": self.validation_artifact,
             "code_hash": self.code_hash,
             "config_hash": self.config_hash,
+            "policy_hash": self.policy_hash,
             "data_hash": self.data_hash,
             "limits": {
                 "max_simultaneous_exposure_lots": self.max_simultaneous_exposure_lots,
@@ -574,6 +593,17 @@ def validate_policy(doc: Any, params: dict[str, Any] | None = None) -> tuple[Res
     data_hash = str(doc.get("data_hash") or "").strip()
     if data_hash and not _HEX64_RE.match(data_hash):
         reasons.append(f"policy {label}: data_hash is not a sha256 hex digest")
+
+    declared_policy_hash = str(doc.get("policy_hash") or "").strip()
+    if not declared_policy_hash:
+        reasons.append(f"policy {label}: policy_hash missing — the policy document itself must be pinned")
+    elif not _HEX64_RE.match(declared_policy_hash):
+        reasons.append(f"policy {label}: policy_hash is not a sha256 hex digest")
+    elif declared_policy_hash != policy_fingerprint(doc):
+        reasons.append(
+            f"policy {label}: policy_hash mismatch (declared {declared_policy_hash[:12]}…, computed "
+            f"{policy_fingerprint(doc)[:12]}…) — the policy was edited after registration"
+        )
 
     for hash_field in ("code_hash", "config_hash"):
         value = str(doc.get(hash_field) or "").strip()

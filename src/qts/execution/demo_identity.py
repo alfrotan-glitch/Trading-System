@@ -244,6 +244,7 @@ def write_pin(
     actor: str = "cli",
     path: str | Path | None = None,
     status: str = "PENDING_REVIEW",
+    symbol: dict[str, Any] | None = None,
 ) -> Path:
     """Record the observed identity as a pin (default: pending owner review).
 
@@ -262,6 +263,18 @@ def write_pin(
         "identity": identity.as_dict(),
         "fingerprint": identity_fingerprint(identity),
     }
+    if symbol:
+        # Symbol provenance: which canonical/venue pair was verified on THIS
+        # account. A registered policy is bound to the canonical symbol, so the
+        # pin — the one artefact the owner reviews and confirms — is the right
+        # place to record what the venue actually calls it.
+        doc["symbol"] = {
+            "canonical": str(symbol.get("canonical") or ""),
+            "broker": str(symbol.get("broker") or symbol.get("broker_symbol") or ""),
+            "digits": symbol.get("digits"),
+            "contract_size": (str(symbol.get("contract_size")) if symbol.get("contract_size") is not None else None),
+            "recorded_at": datetime.now(UTC).isoformat(),
+        }
     target.write_text(json.dumps(doc, indent=2, sort_keys=True, default=str), encoding="utf-8")
     return target
 

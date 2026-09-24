@@ -129,6 +129,29 @@ class DemoSession:
 
     # ------------------------------------------------------------- properties
     @property
+    def canonical_symbol(self) -> str:
+        """The ONE symbol spelling used for policy, journal and portfolio.
+
+        Operators configure either the canonical symbol or the venue alias
+        (``XAUUSD@``) in the machine-local setup (``data/setup/mt5_setup.json``,
+        override ``QTS_SETUP_FILE``), and the two have been mixed there.
+        Everything that compares a symbol — the registered policy, the journal,
+        reconciliation — must therefore read this property, never
+        ``config.symbol``, or a policy allowing ``XAUUSD`` silently stops
+        matching an ``XAUUSD@`` session (the defect seen on the Windows host).
+        """
+        from qts.adapters.mt5_adapter import canonical_symbol
+
+        return canonical_symbol(self.config.symbol, self.config.symbol_map or {})
+
+    @property
+    def broker_symbol(self) -> str:
+        """The alias the venue actually trades (``XAUUSD@``)."""
+        from qts.adapters.mt5_adapter import broker_symbol
+
+        return broker_symbol(self.config.symbol, self.config.symbol_map or {})
+
+    @property
     def mode(self) -> ExecutionMode:
         """The canonical mode this process is running in (fail closed).
 
@@ -212,14 +235,14 @@ class DemoSession:
             "checked_at": datetime.now(UTC).isoformat(),
             "stage": self.stage.current().stage,
             "policy": self.policy.as_dict(),
-            "symbol": self.config.symbol,
+            "symbol": self.canonical_symbol,
         }
 
         try:
             readiness = demo_forward_readiness_report(
                 mt5_module=self._mt5,
                 terminal_path=self.config.terminal_path,
-                symbol=self.config.symbol,
+                symbol=self.canonical_symbol,
                 symbol_map=dict(self.config.symbol_map or {}) or None,
             )
         except Exception as exc:
@@ -269,8 +292,8 @@ class DemoSession:
 
     def _symbol_probe(self) -> dict[str, Any]:
         try:
-            canonical = self.config.symbol
-            broker_symbol = self.adapter._map_symbol(canonical)
+            canonical = self.canonical_symbol
+            broker_symbol = self.broker_symbol
             spec = self.adapter.get_symbol_spec(canonical)
             visible = bool(self.adapter.ensure_symbol_visible(broker_symbol))
             return {
@@ -292,7 +315,7 @@ class DemoSession:
     def _quote_probe(self) -> dict[str, Any]:
         from qts.domain.value_objects import Instrument
 
-        instrument = Instrument(symbol=self.config.symbol, venue="MT5")
+        instrument = Instrument(symbol=self.canonical_symbol, venue="MT5")
         try:
             provider = self.market_data
             tick = provider.get_tick(instrument)
@@ -331,14 +354,14 @@ class DemoSession:
             from qts.adapters.order_check import mt5_order_check
             from qts.domain.value_objects import Instrument, OrderIntent, OrderType, Side
 
-            spec = self.adapter.get_symbol_spec(self.config.symbol)
+            spec = self.adapter.get_symbol_spec(self.canonical_symbol)
             size = lots if lots is not None else Decimal(str(spec.volume_min))
             quote = self._quote_probe()
             if not quote.get("ok"):
                 return {"ok": False, "error": quote.get("error", "quote unavailable")}
             price = Decimal(quote["ask"])
             intent = OrderIntent(
-                instrument=Instrument(symbol=self.config.symbol, venue="MT5"),
+                instrument=Instrument(symbol=self.canonical_symbol, venue="MT5"),
                 side=Side.BUY,
                 quantity=size,
                 order_type=OrderType.MARKET,
@@ -622,11 +645,12 @@ class DemoSession:
             identity=identity,
             pin=pin,
             pin_reasons=list(pin_reasons),
-            symbol=self.config.symbol,
-            broker_symbol=symbol_probe.get("broker_symbol"),
+            symbol=self.canonical_symbol,
+            broker_symbol=(symbol_probe.get("broker_symbol") or self.broker_symbol),
+            symbol_map=dict(self.config.symbol_map or {}),
             symbol_visible=symbol_probe.get("visible"),
             symbol_tradable=symbol_probe.get("tradable"),
-            spec=(self.adapter.get_symbol_spec(self.config.symbol) if symbol_probe.get("ok") else None),
+            spec=(self.adapter.get_symbol_spec(self.canonical_symbol) if symbol_probe.get("ok") else None),
             order_check_ok=order_check_ok,
             order_check_detail=order_check_detail,
             tick=quote,
@@ -643,7 +667,15 @@ class DemoSession:
             intended_lots=Decimal(str(lots)),
             stop_loss=stop_loss,
             take_profit=take_profit,
-            stop_required=bool((entry.stop_policy or {}).get("required", True)) if entry else True,
+            # A required stop is a property of the registered policy: the
+            # frozen experiment spec decides, not a per-call default.
+            stop_required=(
+                bool(entry.policy.stop_required())
+                if (entry is not None and getattr(entry, "policy", None) is not None)
+                else bool((entry.stop_policy or {}).get("required", True))
+                if entry
+                else True
+            ),
             client_order_id=client_order_id,
             idempotency_status=(
                 self._idempotency.get_status(client_order_id)
@@ -668,12 +700,88 @@ class DemoSession:
             entry=entry,
             strategy_config_hash=(entry.params_hash if entry else None),
             research_policy=(entry.policy if entry is not None else None),
+            registered_broker_symbol=(
+                str(entry.raw.get("broker_symbol") or "") if entry is not None and entry.raw.get("broker_symbol") else None
+            ),
+            pin_symbol=((pin or {}).get("symbol") if isinstance(pin, dict) else None),
             orders_today=self.journal.orders_today(),
             cumulative_pnl=drawdown.get("current"),
             peak_cumulative_pnl=drawdown.get("peak"),
             now=datetime.now(UTC),
             limits=limits,
         )
+
+    def resolve_order_parameters(
+        self,
+        *,
+        side: str,
+        lots: Decimal | None = None,
+        stop_loss: Decimal | None = None,
+        entry: Any | None = None,
+    ) -> dict[str, Any]:
+        """Size and protective stop for one order, derived deterministically.
+
+        A registered policy that requires a stop must never depend on the
+        caller remembering to pass one: the stop is derived from the frozen
+        policy (``stop_loss_logic.distance_price``) against the executable side
+        of the quote, and rounded AWAY from the entry so the derived distance is
+        never smaller than the registered one. An operator-supplied stop is
+        used as given and then validated by the gate like any other.
+        """
+        if entry is None:
+            # Same resolution the gate performs: whatever is registered and
+            # eligible, so a caller that omits the entry still gets the
+            # registered policy's stop rather than an unprotected order.
+            from qts.lifecycle.demo_registry import load_registry, resolve_entry
+
+            entry, _reasons = resolve_entry(load_registry())
+        size = self._resolve_size(lots, entry)
+        quote = self._quote_probe()
+        bid = Decimal(str(quote["bid"])) if quote.get("bid") else None
+        ask = Decimal(str(quote["ask"])) if quote.get("ask") else None
+        reference = ask if side.upper() == "BUY" else bid
+
+        derived = False
+        stop = stop_loss
+        policy = getattr(entry, "policy", None)
+        if stop is None and policy is not None and policy.stop_required():
+            distance = policy.stop_distance_price()
+            if distance is not None and reference is not None:
+                offset = Decimal(str(distance))
+                raw = (reference - offset) if side.upper() == "BUY" else (reference + offset)
+                stop = self._round_stop(side, raw)
+                derived = stop is not None
+        return {
+            "lots": size,
+            "stop_loss": stop,
+            "take_profit": None,
+            "reference_price": reference,
+            "bid": bid,
+            "ask": ask,
+            "quote": quote,
+            "stop_derived_from_policy": derived,
+        }
+
+    def _round_stop(self, side: str, price: Decimal) -> Decimal:
+        """Snap a price to the symbol's tick size, away from the entry.
+
+        Rounding a protective stop towards the entry would silently shrink the
+        registered protection (and can breach the broker's minimum stop
+        distance), so a BUY stop rounds DOWN and a SELL stop rounds UP.
+        """
+        from decimal import ROUND_CEILING, ROUND_FLOOR
+
+        try:
+            spec = self.adapter.get_symbol_spec(self.canonical_symbol)
+            tick = Decimal(str(spec.tick_size))
+            digits = int(spec.digits)
+        except Exception:
+            return price
+        if tick is None or tick <= 0:
+            return price.quantize(Decimal(1).scaleb(-max(digits, 0)))
+        rounding = ROUND_FLOOR if side.upper() == "BUY" else ROUND_CEILING
+        steps = (price / tick).quantize(Decimal("1"), rounding=rounding)
+        return (steps * tick).quantize(Decimal(1).scaleb(-max(digits, 0)))
 
     def preflight(
         self,
@@ -685,11 +793,13 @@ class DemoSession:
         autonomous: bool = False,
     ) -> dict[str, Any]:
         """Evaluate the full gate for a would-be order — submits nothing."""
-        size = self._resolve_size(lots, entry)
+        params = self.resolve_order_parameters(side=side, lots=lots, stop_loss=stop_loss, entry=entry)
+        size = params["lots"]
+        stop = params["stop_loss"]
         ctx = self.build_context(
             side=side,
             lots=size,
-            stop_loss=stop_loss,
+            stop_loss=stop,
             client_order_id=new_client_order_id("preflight"),
             entry=entry,
             autonomous=autonomous,
@@ -698,14 +808,65 @@ class DemoSession:
         return {
             "verdict": verdict.as_dict(),
             "intended_order": {
-                "symbol": self.config.symbol,
+                "symbol": self.canonical_symbol,
                 "broker_symbol": ctx.broker_symbol,
                 "side": side,
                 "lots": str(size),
-                "stop_loss": None if stop_loss is None else str(stop_loss),
+                "stop_loss": None if stop is None else str(stop),
+                "stop_derived_from_policy": params["stop_derived_from_policy"],
+                "reference_price": None if params["reference_price"] is None else str(params["reference_price"]),
             },
             "order_check": self._order_check_probe(lots=size),
             "stage": self.stage.current().as_dict(),
+        }
+
+    def reverify_authority(
+        self,
+        *,
+        confirmed: bool,
+        risk_ack: bool,
+        actor: str | None = None,
+    ) -> dict[str, Any]:
+        """Re-prove readiness and refresh permission at the CURRENT stage.
+
+        Permission decays after ``REVERIFY_TTL_S`` by design: it must be proven
+        against the live terminal, never inherited from an old pass. Refreshing
+        it is therefore a normal part of a long session — and it is *not* a
+        stage transition, so it must never require an illegal
+        ``STAGE_2 → STAGE_2`` move. Every gate of a first enablement applies
+        here (fresh readiness, explicit confirmation, risk acknowledgement,
+        DEMO scope, broker-capable mode); only the recorded reason differs.
+        """
+        from qts.lifecycle.demo_authority import readiness_age_seconds
+        from qts.lifecycle.demo_gate import demo_forward_readiness_report
+
+        rpt = demo_forward_readiness_report(
+            # The session's terminal when one is injected (tests, embedded
+            # runs); otherwise the gate resolves the installed terminal from
+            # ``terminal_path`` — the same probe ``arm`` has always used.
+            mt5_module=self.config.mt5_module,
+            terminal_path=self.config.terminal_path,
+            symbol=self.canonical_symbol,
+            symbol_map=dict(self.config.symbol_map or {}) or None,
+        )
+        decision = self.authority.refresh(
+            readiness=rpt,
+            confirmed=confirmed,
+            risk_ack=risk_ack,
+            readiness_age_s=readiness_age_seconds(rpt),
+            actor=actor or f"{self.config.actor}:reverify",
+        )
+        stage = self.stage.current()
+        return {
+            "authority": decision.as_dict(),
+            "stage": stage.as_dict(),
+            "reverified": bool(decision.execution_permitted),
+            "readiness": {
+                "passed": bool(rpt.get("passed")),
+                "blocked_reasons": list(rpt.get("blocked_reasons") or []),
+            },
+            "mode": self.mode.value,
+            "symbol": {"canonical": self.canonical_symbol, "broker": self.broker_symbol},
         }
 
     def _enforce_policy_kill_conditions(self, verdict: Any, entry: Any | None) -> tuple[str, ...]:
@@ -740,7 +901,7 @@ class DemoSession:
         policy = (entry.size_policy or {}) if entry else {}
         mode = str(policy.get("mode") or "broker_minimum").lower()
         try:
-            spec = self.adapter.get_symbol_spec(self.config.symbol)
+            spec = self.adapter.get_symbol_spec(self.canonical_symbol)
             broker_min = Decimal(str(spec.volume_min))
         except Exception:
             broker_min = Decimal("0.01")
@@ -764,7 +925,22 @@ class DemoSession:
         """Gate → submit → reconcile → journal. Refuses on any failed check."""
         from qts.domain.value_objects import Instrument, OrderIntent, OrderType, Side
 
-        size = self._resolve_size(lots, entry)
+        if entry is None:
+            # Policy enforcement must not depend on the caller passing the
+            # entry: the kill conditions and the journal's strategy identity
+            # come from the REGISTERED entry, so resolve it here exactly as the
+            # gate does. A caller that omitted it used to bypass the policy's
+            # kill conditions entirely.
+            from qts.lifecycle.demo_registry import load_registry, resolve_entry
+
+            entry, _entry_reasons = resolve_entry(load_registry())
+
+        params = self.resolve_order_parameters(side=side, lots=lots, stop_loss=stop_loss, entry=entry)
+        size = params["lots"]
+        if stop_loss is None and params["stop_loss"] is not None:
+            # Derived from the registered policy — recorded with the order so
+            # the audit trail shows what was sent and why that price.
+            stop_loss = params["stop_loss"]
         client_order_id = new_client_order_id("demo")
         strategy_id = entry.strategy_id if entry else "unregistered"
         config_hash = entry.params_hash if entry else ""
@@ -787,7 +963,7 @@ class DemoSession:
             self.journal.record_signal(
                 strategy_id=strategy_id,
                 strategy_config_hash=config_hash,
-                symbol=self.config.symbol,
+                symbol=self.canonical_symbol,
                 decision="NO_TRADE",
                 side=side,
                 signal_id=signal_id,
@@ -822,7 +998,7 @@ class DemoSession:
         quote = self._quote_probe()
         requested_price = Decimal(quote["ask"] if side.upper() == "BUY" else quote["bid"]) if quote.get("ok") else None
         intent = OrderIntent(
-            instrument=Instrument(symbol=self.config.symbol, venue="MT5"),
+            instrument=Instrument(symbol=self.canonical_symbol, venue="MT5"),
             side=Side.BUY if side.upper() == "BUY" else Side.SELL,
             quantity=size,
             order_type=OrderType.MARKET,
@@ -847,7 +1023,7 @@ class DemoSession:
             strategy_config_hash=config_hash,
             hypothesis_id=(entry.hypothesis_id if entry else None),
             registry_entry_hash=(entry.params_hash if entry else None),
-            symbol=self.config.symbol,
+            symbol=self.canonical_symbol,
             broker_symbol=ctx.broker_symbol,
             side=side,
             requested_lots=size,
@@ -866,7 +1042,7 @@ class DemoSession:
             self.journal.record_signal(
                 strategy_id=strategy_id,
                 strategy_config_hash=config_hash,
-                symbol=self.config.symbol,
+                symbol=self.canonical_symbol,
                 decision="NO_TRADE",
                 side=side,
                 signal_id=signal_id,
@@ -879,6 +1055,20 @@ class DemoSession:
                 client_order_id=client_order_id,
                 state="NO_TRADE",
                 reasons=[claim_reason],
+                verdict=verdict.as_dict(),
+            )
+
+        # Defence in depth: a policy that requires a protective stop must never
+        # reach the broker without one, whatever the caller passed or omitted.
+        policy = getattr(entry, "policy", None)
+        if policy is not None and policy.stop_required() and intent.stop_loss is None:
+            self.journal.mark_outcome(journal_id, state="REJECTED", exit_reason="required stop-loss missing")
+            return SubmissionResult(
+                allowed=False,
+                client_order_id=client_order_id,
+                journal_id=journal_id,
+                state="NO_TRADE",
+                reasons=["registered policy requires a stop-loss and none could be derived — refused"],
                 verdict=verdict.as_dict(),
             )
 

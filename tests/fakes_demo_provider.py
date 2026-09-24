@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from qts.execution.demo_autopilot import Signal
-from qts.lifecycle.demo_policy import POLICY_CLASS, POLICY_SCHEMA
+from qts.lifecycle.demo_policy import POLICY_CLASS, POLICY_SCHEMA, policy_fingerprint
 from qts.lifecycle.demo_registry import params_fingerprint
 
 STRATEGY_ID = "TEST-PREREG-01"
@@ -202,6 +202,9 @@ def policy_block(
         "data_hash_note": "fixture uses live venue quotes only; no historical dataset to pin",
     }
     block.update(overrides)
+    # Pin the policy document as the registry does: an unsealed policy is
+    # refused, so every fixture must carry a consistent hash.
+    block["policy_hash"] = policy_fingerprint(block)
     return block
 
 
@@ -230,6 +233,10 @@ def registry_entry(
         "stop_policy": {"required": True, "type": "fixed_points", "points": body.get("stop_points", 5.0)},
         "exit_policy": {"max_hold_seconds": 3600.0 if max_hold_seconds is None else max_hold_seconds},
         "allowed_symbols": allowed_symbols if allowed_symbols is not None else ["XAUUSD"],
+        # The venue alias this entry was verified against — the gate proves the
+        # session's symbol mapping resolves to it, so a policy cannot silently
+        # authorise a different instrument.
+        "broker_symbol": "XAUUSD@",
         "max_orders_per_day": max_orders_per_day,
         "notes": "TEST FIXTURE — mechanical provider used to exercise the DEMO loop, not a hypothesis",
         "policy": policy

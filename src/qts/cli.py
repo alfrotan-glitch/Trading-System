@@ -1859,10 +1859,11 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
 
     preflight: dict[str, Any] | None = None
     if entry is not None:
-        from decimal import Decimal
-
         # Probe the gate with the smallest possible order — it submits nothing.
-        outcome = session.preflight(side="BUY", stop_loss=Decimal("0"))
+        # No stop is supplied on purpose: the registered policy requires one, so
+        # this also proves the deterministic derivation from the frozen policy
+        # produces a stop the gate accepts.
+        outcome = session.preflight(side="BUY")
         preflight = {
             "passed": bool(outcome["verdict"]["passed"]),
             "failed": list(outcome["verdict"]["failed"]),
@@ -1919,7 +1920,16 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
     if not checks["stage_allows_orders"]:
         block(f"stage {stage_record.stage} does not permit orders")
     elif not checks["authority_permitted"]:
-        block("durable authority has not granted execution permission")
+        authority = session.authority.current()
+        expired = bool(getattr(authority, "readiness_expired", False))
+        block(
+            "durable execution permission is not in force — "
+            + (
+                "its readiness evidence expired (re-prove it against the live terminal)"
+                if expired
+                else "; ".join(authority.reasons) or "not granted"
+            )
+        )
     if not checks["strategy_registered"]:
         block(
             "no eligible strategy in the forward-validation registry — NO_TRADE "
@@ -1953,8 +1963,13 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
         action = f"qts demo clear-kill --reason '<why>' --confirm --db {db}"
     elif not checks["reconciliation_clean"]:
         action = f"qts demo connectivity --db {db}   # reconcile broker vs internal state first"
-    elif not checks["stage_allows_orders"] or not checks["authority_permitted"]:
+    elif not checks["stage_allows_orders"]:
         action = f"qts demo arm --stage 2 --confirm --risk-ack --db {db}"
+    elif not checks["authority_permitted"]:
+        # The stage already permits orders: refreshing permission is a
+        # re-verification, NOT a transition — suggesting `arm --stage 2` here
+        # used to point at an illegal STAGE_2 → STAGE_2 self-edge.
+        action = f"qts demo reverify --confirm --risk-ack --db {db}"
     elif not checks["strategy_registered"]:
         action = (
             f"register a preregistered experiment in {registry['registry']['path']} "
@@ -2130,7 +2145,10 @@ def demo_connectivity(
 
         with contextlib.suppress(Exception):
             identity = session.adapter.broker_identity()
-            path = write_pin(identity, actor="cli")
+            # Record the symbol provenance alongside the account: the pin is
+            # the artefact the owner confirms, so it should state which
+            # canonical/venue symbol pair was verified on this account.
+            path = write_pin(identity, actor="cli", symbol=report.get("symbol_mapping"))
             report["pin_written"] = str(path)
             click.echo(f"identity pin written (PENDING_REVIEW): {path}")
     if confirm_pin:
@@ -2197,7 +2215,7 @@ def demo_arm(stage: str, symbol: str | None, db: str, confirm: bool, risk_ack: b
             rpt = demo_forward_readiness_report(
                 mt5_module=None,
                 terminal_path=session.config.terminal_path,
-                symbol=session.config.symbol,
+                symbol=session.canonical_symbol,
                 symbol_map=session.config.symbol_map or None,
             )
             decision = session.authority.enable(
@@ -2218,6 +2236,30 @@ def demo_arm(stage: str, symbol: str | None, db: str, confirm: bool, risk_ack: b
         prereq["stage2_order_recorded"] = summary.orders > 0
         prereq["strategy_selected"] = bool(strategy)
 
+    current_stage = session.stage.current().stage
+    if current_stage == target.value:
+        # Re-arming the stage we are already in is NOT a transition (the state
+        # machine has no self-edge, by design). What the operator actually wants
+        # here is to re-prove the prerequisites — most often the readiness
+        # evidence, which decays every REVERIFY_TTL_S — so refresh the durable
+        # permission and report it as a re-verification. Suggesting an illegal
+        # transition would leave the operator stuck with a command that can
+        # never succeed.
+        if not (confirm and risk_ack):
+            click.echo(
+                f"already at {current_stage} — re-verifying requires explicit confirmation: "
+                f"qts demo arm --stage {stage} --confirm --risk-ack --db {db}",
+                err=True,
+            )
+            click.echo(json.dumps(prereq, indent=2, default=str), err=True)
+            raise SystemExit(2)
+        outcome = session.reverify_authority(confirmed=True, risk_ack=True, actor="cli:demo-arm")
+        click.echo(f"already at {current_stage} — re-verified (no stage change)")
+        click.echo(json.dumps(outcome, indent=2, default=str))
+        if not outcome["reverified"]:
+            raise SystemExit(2)
+        return
+
     try:
         record = session.stage.advance(
             target, actor="cli", reason=f"operator arm to stage {stage}", prerequisites=prereq
@@ -2227,6 +2269,56 @@ def demo_arm(stage: str, symbol: str | None, db: str, confirm: bool, risk_ack: b
         click.echo(json.dumps(prereq, indent=2, default=str), err=True)
         raise SystemExit(2) from exc
     click.echo(json.dumps(record.as_dict(), indent=2, default=str))
+
+
+@demo.command("reverify")
+@click.option("--symbol", default=None)
+@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--confirm", is_flag=True, help="explicit operator confirmation (required)")
+@click.option("--risk-ack", is_flag=True, help="explicit risk acknowledgement (required)")
+def demo_reverify(symbol: str | None, db: str, confirm: bool, risk_ack: bool) -> None:
+    """Re-prove readiness and refresh DEMO execution permission at the current stage.
+
+    Permission is proven against the live terminal and decays after
+    ``REVERIFY_TTL_S`` (120 s) by design — an expired window is a normal event
+    during a long session, not a failure. This is the explicit refresh path:
+    it re-runs the readiness probe and re-enables the durable authority while
+    leaving the stage unchanged, so no illegal stage self-transition is ever
+    required. Every gate of ``qts demo arm`` still applies (fresh readiness,
+    explicit confirmation, risk acknowledgement, DEMO scope, broker-capable
+    mode), and each refresh is audited as ``demo_execution_reverified``.
+    """
+    from qts.lifecycle.demo_stage import ORDER_STAGES
+
+    session = _demo_session(symbol or "", db)
+    stage = session.stage.current()
+    if stage.stage not in ORDER_STAGES:
+        click.echo(
+            f"stage {stage.stage} does not hold execution permission — advance first: "
+            f"qts demo arm --stage 2 --confirm --risk-ack --db {db}",
+            err=True,
+        )
+        raise SystemExit(2)
+    if not (confirm and risk_ack):
+        click.echo(
+            "re-verification requires explicit confirmation and risk acknowledgement: "
+            f"qts demo reverify --confirm --risk-ack --db {db}",
+            err=True,
+        )
+        raise SystemExit(2)
+
+    outcome = session.reverify_authority(confirmed=True, risk_ack=True, actor="cli:demo-reverify")
+    click.echo(f"mode: {outcome['mode']}")
+    click.echo(f"symbol: {outcome['symbol']['canonical']} -> {outcome['symbol']['broker']}")
+    click.echo(f"stage: {outcome['stage']['stage']} (unchanged — this is not a transition)")
+    click.echo(f"readiness: passed={outcome['readiness']['passed']} blockers={outcome['readiness']['blocked_reasons']}")
+    click.echo(
+        f"authority: {outcome['authority']['state']} permitted={outcome['authority']['execution_permitted']} "
+        f"{outcome['authority']['reasons']}"
+    )
+    click.echo(f"REVERIFIED: {outcome['reverified']}")
+    if not outcome["reverified"]:
+        raise SystemExit(2)
 
 
 @demo.command("preflight")
@@ -2251,7 +2343,13 @@ def demo_preflight(symbol: str | None, db: str, side: str, lots: str | None, sto
         entry=entry,
     )
     verdict = out["verdict"]
+    intended = out.get("intended_order") or {}
     click.echo(f"PREFLIGHT {'PASS' if verdict['passed'] else 'REFUSE'}")
+    click.echo(
+        f"  order: {intended.get('symbol')} -> {intended.get('broker_symbol')} {intended.get('side')} "
+        f"{intended.get('lots')} lots stop={intended.get('stop_loss')}"
+        f"{' (derived from the registered policy)' if intended.get('stop_derived_from_policy') else ''}"
+    )
     for name, check in verdict["checks"].items():
         click.echo(f"  [{check['status']:7}] {name}: {check['detail']}")
     if not verdict["passed"]:
@@ -2320,6 +2418,8 @@ def demo_order(
 @click.option("--max-iterations", default=0, type=int)
 @click.option("--max-runtime", default=0.0, type=float)
 @click.option("--dry-run", is_flag=True, help="evaluate the gate every cycle, submit nothing")
+@click.option("--confirm", is_flag=True, help="explicit operator confirmation (required unless --dry-run)")
+@click.option("--risk-ack", is_flag=True, help="explicit risk acknowledgement (required unless --dry-run)")
 def demo_run(
     symbol: str | None,
     db: str,
@@ -2328,19 +2428,40 @@ def demo_run(
     max_iterations: int,
     max_runtime: float,
     dry_run: bool,
+    confirm: bool,
+    risk_ack: bool,
 ) -> None:
-    """Autonomous DEMO trading under the registered policy (never LIVE)."""
+    """Autonomous DEMO trading under the registered policy (never LIVE).
+
+    DEMO execution permission is proven against the live terminal and decays
+    after 120 s, so a run longer than that must re-prove it. That requires the
+    operator's explicit confirmation and risk acknowledgement — captured once
+    here (``--confirm --risk-ack``) rather than per refresh — and every refresh
+    re-runs the full readiness probe and is audited. Without the flags the loop
+    still runs, but it stops as soon as the permission window closes instead of
+    refreshing it.
+    """
     from qts.execution.demo_autopilot import AutopilotConfig, run_autopilot
 
     session = _demo_session(symbol or "", db)
+    if not dry_run and not (confirm and risk_ack):
+        click.echo(
+            "autonomous DEMO trading requires explicit confirmation and risk acknowledgement: "
+            f"qts demo run --strategy <id> --confirm --risk-ack --db {db}",
+            err=True,
+        )
+        raise SystemExit(2)
     config = AutopilotConfig(
-        symbol=session.config.symbol,
+        symbol=session.canonical_symbol,
         poll_interval_s=poll_interval,
         max_iterations=max_iterations,
         max_runtime_s=max_runtime,
         strategy_id=strategy,
         dry_run=dry_run,
         actor="cli:demo-run",
+        refresh_authority=bool(confirm and risk_ack),
+        confirmed=bool(confirm),
+        risk_ack=bool(risk_ack),
     )
     report = run_autopilot(session, config)
     click.echo(json.dumps(report.as_dict(), indent=2, default=str))

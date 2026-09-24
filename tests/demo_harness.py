@@ -13,7 +13,6 @@ authority and stage machine, and fails the test if any gate refuses.
 from __future__ import annotations
 
 import json
-import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -68,8 +67,15 @@ def registry_doc(entry: dict[str, Any] | None = None) -> dict[str, Any]:
 
 
 def write_registry(path: Path, entry: dict[str, Any] | None = None) -> Path:
+    """Write a registry file. The caller owns the ``QTS_DEMO_REGISTRY`` env var.
+
+    Setting ``os.environ`` here leaked the path into every later test in the
+    session (it is never undone), making registry-dependent results depend on
+    test ORDER: a test that expects an empty registry could silently see
+    another module's registered policy. Tests must point the env var at this
+    file with ``monkeypatch`` (or ``demo_env``, which does).
+    """
     path.write_text(json.dumps(registry_doc(entry), indent=2), encoding="utf-8")
-    os.environ["QTS_DEMO_REGISTRY"] = str(path)
     return path
 
 

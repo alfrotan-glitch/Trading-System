@@ -145,11 +145,12 @@ digits, point, stops_level, filling mode) — `get_symbol_spec` fails closed on 
 
 ## 6. Pre-trade gate — all 17 required safeguards
 
-`qts/execution/demo_pretrade.py::run_pretrade_gate` runs **29 checks** per order as of 2026-09-24: the
+`qts/execution/demo_pretrade.py::run_pretrade_gate` runs **31 checks** per order as of 2026-09-24: the
 17 required safeguards, contract-level checks (authorization, permission, mode, stage, autonomy, risk
-limit provenance) and the registered-policy checks added in §12a (`policy_complete`,
+limit provenance), the registered-policy checks added in §12a (`policy_complete`,
 `symbol_allowed_by_policy`, `trading_hours_allowed`, `order_frequency_within_policy`,
-`max_drawdown_within_policy`, `policy_execution_assumptions`). It passes only when **every** check is
+`max_drawdown_within_policy`, `policy_execution_assumptions`) and the two symbol-binding checks added
+by the §16.10 lifecycle audit (`broker_symbol_matches_registry`, `symbol_provenance`). It passes only when **every** check is
 `PASS`; any unresolved fact is `UNKNOWN` and blocks. The exact count moves as safeguards are added —
 the invariant is the completeness rule, not the number.
 
@@ -157,11 +158,11 @@ the invariant is the completeness rule, not the number.
 |---|---|---|---|
 | 1 | account is actually DEMO | `account_is_demo` | unknown `trade_mode` blocks |
 | 2 | broker/server identity | `broker_identity_verified` | unpinned / pending / mismatched blocks |
-| 3 | canonical symbol mapping | `symbol_mapping_canonical` | no mapping or untradable blocks |
+| 3 | canonical symbol mapping | `symbol_mapping_canonical` + `broker_symbol_matches_registry` + `symbol_provenance` | no mapping, untradable, a venue alias the registry never pinned, or a pin whose symbol provenance disagrees all block |
 | 4 | market data freshness | `market_data_fresh` | age > 60 s or unmeasurable blocks |
 | 5 | spread available | `spread_available` | invalid quote or spread > 30 bps blocks |
 | 6 | order size within hard maximum | `order_size_within_hard_max` + `broker_order_check` | > min(demo cap, broker max), off-step, or failing broker `order_check` blocks |
-| 7 | stop-loss present | `stop_loss_present` | missing / wrong side / inside `stops_level` blocks |
+| 7 | stop-loss present | `stop_loss_present` | missing / wrong side / inside `stops_level` / off-tick / risking more than the policy's daily budget blocks |
 | 8 | maximum simultaneous positions | `max_simultaneous_positions` | > 3 positions blocks |
 | 9 | maximum daily loss | `max_daily_loss` | ≥ $50 realized loss, or unknown P&L, blocks |
 | 10 | maximum total demo exposure | `max_total_exposure` | > 0.3 lots (and notional cap) blocks |
@@ -404,19 +405,36 @@ set QTS_MODE=demo_execution                  # the DEMO order path exists ONLY i
 qts demo verify                              # START HERE: what's blocking, and the one next command
 qts demo authorization                       # artifact + resolved policy
 qts demo connectivity                        # Stage 1 (no orders)
-qts demo connectivity --pin                  # record observed identity (PENDING_REVIEW)
+qts demo connectivity --pin                  # record observed identity + symbol provenance (PENDING_REVIEW)
 qts demo connectivity --confirm-pin          # owner confirms the pin
 qts demo arm --stage 1                       # prove Stage 1 prerequisites
-qts demo preflight --side BUY                # full-gate dry run (no order)
+qts demo preflight --side BUY                # full-gate dry run (derives the policy stop; no order)
 qts demo arm --stage 2 --confirm --risk-ack  # open the order path
-qts demo order --side BUY --stop-loss 1995   # ONE RESEARCH_DEMO_ORDER (registry-gated)
-qts demo run --strategy <id>                 # controlled autonomous DEMO trading
+qts demo reverify --confirm --risk-ack       # refresh permission when its 120 s evidence expires
+qts demo order --side BUY                    # ONE RESEARCH_DEMO_ORDER (SL derived unless given)
+qts demo run --strategy <id> --confirm --risk-ack   # autonomous DEMO trading (refreshes permission)
 qts demo journal --export data/evidence/demo_forward_observations.jsonl
 qts demo kill --reason "..."                 # halt immediately (durable; halts the stage)
 qts demo clear-kill --reason "..." --confirm # lift the halt (stage stays HALTED — re-arm)
 qts demo revoke --reason "..."               # withdraw authorization
 python scripts/demo_static_validation.py     # offline check: LIVE lock, scope, policy, hashes
 ```
+
+**Readiness evidence expires every 120 s — that is normal, not a failure.**
+Permission is proven against the live terminal rather than inherited from an old
+pass, so a long session must refresh it:
+
+* `qts demo reverify --confirm --risk-ack` re-proves readiness and re-enables the
+  durable authority **at the current stage**; it is recorded as
+  `demo_execution_reverified` and never touches the stage machine.
+* `qts demo arm --stage 2 --confirm --risk-ack` while already at Stage 2 does the
+  same thing (it is a re-verification, not a transition — the state machine has
+  no `STAGE_2 → STAGE_2` edge, by design).
+* `qts demo verify` names whichever of the two applies, so the suggested command
+  always runs. Neither changes `REVERIFY_TTL_S`.
+* `qts demo run --confirm --risk-ack` refreshes automatically inside the loop
+  (once per cycle, only when permission has decayed); without those flags the
+  loop stops when the window closes instead of refreshing it.
 
 **`QTS_MODE` is not decoration.** A `DemoSession` resolves its mode from the process (or from an explicit
 `DemoSessionConfig.mode`), so the DEMO order path cannot be reached by merely constructing a DEMO session
@@ -458,7 +476,7 @@ failed = ["strategy_registered_frozen"]
 ```
 
 (Recorded on 2026-09-23, when the registry was empty. With a registered policy the same wiring
-evaluates 29 checks and the residual blocker is the one the policy or the venue actually raises —
+evaluates 31 checks and the residual blocker is the one the policy or the venue actually raises —
 e.g. `trading_hours_allowed` outside Mon–Fri 08:00–16:00 UTC.)
 
 i.e. **every operational safeguard passes and the order is still refused**, because the binding
@@ -472,8 +490,11 @@ reports the honest residual blockers instead of a green light:
 | Check | Status | Operator action |
 |---|---|---|
 | `broker_identity_verified` | FAIL | `qts demo connectivity --pin` then `--confirm-pin` |
-| `execution_permission` | FAIL | `qts demo arm --stage 2 --confirm --risk-ack` (fresh readiness) |
+| `execution_permission` | FAIL | not yet armed: `qts demo arm --stage 2 --confirm --risk-ack`. Already at Stage 2/3 and the 120 s evidence expired: `qts demo reverify --confirm --risk-ack` (a refresh, **not** a transition — §16.10) |
 | `stage_allows_order` | FAIL | advance the stage machine (Stage 1 → 2) |
+| `symbol_allowed_by_policy` | FAIL | the canonical symbol the policy binds to does not match the session: declare the venue alias in `data/setup/mt5_setup.json` `symbol_map` (e.g. `{"XAUUSD": "XAUUSD@"}`) — the refusal message names the exact entry (§16.10 #1) |
+| `broker_symbol_matches_registry` | FAIL | the venue symbol this session trades is not the one the registered experiment was verified against — re-register against the verified alias; never edit the entry in place |
+| `symbol_provenance` | FAIL | the confirmed identity pin was taken against a different canonical/venue pair — re-pin and re-confirm (`qts demo connectivity --pin` then `--confirm-pin`) |
 | `reconciliation_ready` | UNKNOWN→PASS | resolved by the pre-trade reconciliation probe |
 | `strategy_registered_frozen` | FAIL | **research**: register a preregistered, eligible experiment (§12a) |
 
@@ -691,3 +712,38 @@ refused rather than ignored, `validated_edge=true` requires an existing artifact
 that does not disclaim an edge is refused, hours/days/timezone are validated, `config_hash` must match
 the registered params, and the runtime helpers (symbol authorisation, session window, kill-condition
 mapping, code-hash verification) behave as specified.
+
+### 16.10 Lifecycle audit after the first real-terminal run (2026-09-24)
+
+Running the operator procedure against the **real MT5 DEMO terminal on Windows**
+exposed defects that no simulated terminal could have shown, because they live in
+the seams between configuration, stage, authority and policy. All are fixed here
+and regression-tested in `tests/integration/test_demo_lifecycle_audit.py`
+(17 tests) — reproduced first, then fixed.
+
+| # | Defect (as observed on the host) | Root cause | Fix |
+|---|---|---|---|
+| 1 | `preflight` failed `symbol_allowed_by_policy`: broker/canonical symbol was `XAUUSD@`, the policy allows `XAUUSD` | `DemoSession` used `config.symbol` verbatim. The host's `configs/setup.json` stores the **venue alias**, so the session's "canonical" symbol was `XAUUSD@` while the registered policy (and the journal, portfolio and reconciliation) are keyed on `XAUUSD`. Nothing normalised either spelling. | One canonical spelling per instrument: `DemoSession.canonical_symbol` / `.broker_symbol` resolve any spelling through the map (`mt5_adapter.canonical_symbol`), and **every** comparison — policy, journal, gate, reconciliation — reads them. The registry entry also pins the alias it was verified against, and the new gate check `broker_symbol_matches_registry` proves the session's mapping resolves to it. |
+| 2 | `execution_permission` failed once the readiness evidence passed 120 s — correctly — but there was **no way to refresh it** | Permission decay and stage progression were conflated: the only path back was `arm --stage 2`, which the state machine refuses (`STAGE_2 → STAGE_2` is not an edge). | Explicit refresh path: `DemoExecutionAuthority.refresh()` (same gates as `enable`, distinct audit action `demo_execution_reverified`), `DemoSession.reverify_authority()`, the `qts demo reverify` command, and `arm --stage N` at the current stage performing a re-verification instead of an illegal transition. `REVERIFY_TTL_S` is untouched. |
+| 3 | `stop_loss_present` failed because no SL was supplied | The gate required a stop (correctly) but nothing derived one; the operator had to remember a price that the frozen policy already specifies. | `DemoSession.resolve_order_parameters()` derives the stop from the registered policy (`stop_loss_logic.distance_price`) against the executable side of the quote, rounded **away** from the entry so the derived distance is never smaller than the registered one. An operator-supplied stop is used as given. A required stop that cannot be derived is refused before the broker call (defence in depth in `submit`). |
+| 4 | (found by audit, not yet observed) continuous autonomous DEMO trading stops after 120 s | The autopilot never refreshed the authority, and `execution_permission` is a control failure → the loop halts. | `AutopilotConfig.refresh_authority` (enabled only by `qts demo run --confirm --risk-ack`) re-proves readiness when permission has decayed, at most once per cycle, audited per refresh; a failed refresh halts. |
+| 5 | (found by audit) the policy document itself was not pinned | `config_hash` covers the parameters and `code_hash` the provider, so a registered policy's limits, hours or kill conditions could be edited with every hash still matching. | `policy_hash` (sha256 of the policy document) is required and verified at load; `scripts/register_demo_research_policy.py` re-seals it. Editing a limit now invalidates the entry until it is re-sealed as a deliberate, preregistered change. |
+| 6 | (found by audit) policy kill conditions depended on the caller passing the entry | `submit(entry=None)` skipped `_enforce_policy_kill_conditions`, so a control failure could leave the loop retrying instead of halting. | `submit()` resolves the registered entry itself, exactly as the gate does, before enforcing kill conditions. |
+| 7 | (found by audit) `/api/demo/order` read a private `session._entry` stash | The entry was resolved once when the session object was built, not per request. | The endpoint resolves the registry entry per request, so a policy revoked or drifted since the last call cannot still authorise an order. |
+| 8 | (test hygiene) `QTS_DEMO_REGISTRY` leaked between test modules via `os.environ` | Registry-dependent results depended on test order — a "shipped registry" assertion was inspecting another module's temporary fixture entry. | An autouse fixture in `tests/conftest.py` saves and restores the DEMO env vars around every test; helpers take `monkeypatch`. |
+
+Additional hardening found while auditing the same surfaces:
+
+* the stop-loss check now validates **tick alignment** (an off-tick stop is
+  rejected rather than silently rounded towards the entry) and **policy maximum
+  risk** (one order may not risk more than the policy's whole daily budget);
+* the identity pin records **symbol provenance** (which canonical/venue pair was
+  verified on that account) and the new `symbol_provenance` gate check refuses a
+  session whose symbols disagree with it;
+* the stop requirement is now taken from the **registered policy**, not only the
+  legacy `stop_policy` field.
+
+Re-verified after the fixes: `qts demo reverify --confirm --risk-ack` at Stage 2
+restores permission with the stage unchanged; a subsequent `qts demo verify`
+reports `READY: True`; a fresh process never inherits stale authority; and no
+path in the test suite can reach a real MetaTrader5 module.

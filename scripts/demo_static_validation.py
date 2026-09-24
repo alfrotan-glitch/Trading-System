@@ -40,6 +40,39 @@ def row(item: str, status: str, detail: str) -> None:
     ROWS.append((item, status, detail))
 
 
+def _setup_symbol_map() -> tuple[dict[str, str], str | None]:
+    """The operator's canonical -> venue alias table, and where it came from.
+
+    The table lives in the machine-local setup (``data/setup/mt5_setup.json``,
+    override ``QTS_SETUP_FILE``) — it is gitignored on purpose, because it is a
+    fact about THIS broker account, not about the repository. ``None`` as the
+    second element means no setup file exists on this machine, so the binding
+    can only be proven where the terminal is.
+    """
+    import os
+
+    from qts.config.wizard import setup_file
+
+    path = setup_file()
+    if not path.exists():
+        env = os.getenv("QTS_MT5_SYMBOL_MAP") or ""
+        out: dict[str, str] = {}
+        for pair in env.replace(";", ",").split(","):
+            if ":" in pair:
+                key, _, value = pair.partition(":")
+                out[key.strip()] = value.strip()
+        return (out, f"QTS_MT5_SYMBOL_MAP={env or '<unset>'}" if out else None)
+    try:
+        from qts.config.wizard import load_setup
+
+        saved = load_setup()
+    except Exception as exc:  # noqa: BLE001 - report, never guess
+        return {}, f"{path}: unreadable ({type(exc).__name__}: {exc})"
+    raw = saved.get("symbol_map")
+    table = {str(k): str(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
+    return table, f"{path} symbol={saved.get('symbol')!r} symbol_map={table or '<none declared>'}"
+
+
 def main() -> int:
     failures = 0
 
@@ -174,6 +207,109 @@ def main() -> int:
             f"size_policy={json.dumps(raw_entry.get('size_policy') or {})}",
         )
 
+        # The policy document itself must be sealed: config_hash pins the
+        # parameters and code_hash the provider, so without policy_hash the
+        # limits, hours and kill conditions could be rewritten after
+        # registration while every other hash still matched.
+        from qts.lifecycle.demo_policy import policy_fingerprint
+
+        policy_doc = raw_entry.get("policy") or {}
+        declared_hash = str(policy_doc.get("policy_hash") or "")
+        computed_hash = policy_fingerprint(policy_doc)
+        sealed = bool(declared_hash) and declared_hash == computed_hash
+        if not declared_hash:
+            seal_detail = "policy_hash missing — the policy document is not pinned"
+        elif sealed:
+            seal_detail = f"{declared_hash[:16]}… matches the document"
+        else:
+            seal_detail = f"DRIFT: declared {declared_hash[:16]}…, computed {computed_hash[:16]}…"
+        row(
+            "policy document is sealed (policy_hash)",
+            PASS if sealed else FAIL,
+            seal_detail,
+        )
+        failures += 0 if sealed else 1
+
+        # Symbol binding: the venue alias the entry was verified against must
+        # resolve back to the canonical symbol the policy allows. A policy that
+        # allows XAUUSD must not be satisfiable by a session configured as
+        # XAUUSD@ that never normalises (the defect the real terminal exposed).
+        from qts.adapters.mt5_adapter import canonical_symbol
+
+        registered_alias = str(raw_entry.get("broker_symbol") or "")
+        allowed = [str(x) for x in (policy_doc.get("allowed_symbols") or [])]
+        pinned_ok = bool(registered_alias) and bool(allowed)
+        row(
+            "registry pins the venue alias and the policy its canonical symbol",
+            PASS if pinned_ok else FAIL,
+            f"broker_symbol={registered_alias or '<MISSING>'} allowed_symbols={allowed or '<MISSING>'}",
+        )
+        failures += 0 if pinned_ok else 1
+
+        # Resolving the alias to the canonical symbol needs THIS machine's
+        # alias table, which is machine-local by design — so it is a terminal-
+        # side fact unless a setup file exists here to check.
+        setup_symbol_map, setup_source = _setup_symbol_map()
+        if pinned_ok:
+            resolved = canonical_symbol(registered_alias, setup_symbol_map)
+            if setup_source is None:
+                row(
+                    "venue alias resolves to the policy's canonical symbol",
+                    INFO,
+                    "no machine-local setup on this host — prove it with: "
+                    "qts demo connectivity   (or declare symbol_map in data/setup/mt5_setup.json)",
+                )
+            else:
+                resolved_ok = resolved in allowed
+                remedy = (
+                    ""
+                    if resolved_ok
+                    else f'; remedy: add "symbol_map": {{"{allowed[0]}": "{registered_alias}"}} '
+                    "to data/setup/mt5_setup.json"
+                )
+                row(
+                    "venue alias resolves to the policy's canonical symbol",
+                    PASS if resolved_ok else FAIL,
+                    f"{registered_alias} -> {resolved} (policy allows {allowed}); {setup_source}{remedy}",
+                )
+                failures += 0 if resolved_ok else 1
+
+        # Stop-loss contract: a policy requiring a stop must declare the
+        # distance used to derive it, or no order can ever carry one.
+        stop_logic = policy_doc.get("stop_loss_logic") or {}
+        stop_ok = (not stop_logic.get("required")) or (stop_logic.get("distance_price") is not None)
+        row(
+            "required stop-loss is derivable from the policy",
+            PASS if stop_ok else FAIL,
+            f"required={stop_logic.get('required')} distance_price={stop_logic.get('distance_price')} "
+            f"source={stop_logic.get('source')}",
+        )
+        failures += 0 if stop_ok else 1
+
+    # ------------------------------------------------- authority refresh path
+    # Permission decays after REVERIFY_TTL_S by design, so a refresh path must
+    # exist that does NOT require an illegal stage self-transition.
+    from qts.lifecycle.demo_authority import REVERIFY_TTL_S, DemoExecutionAuthority
+    from qts.lifecycle.demo_stage import _TRANSITIONS
+
+    refresh_ok = callable(getattr(DemoExecutionAuthority, "refresh", None))
+    row(
+        "explicit authority re-verification path (qts demo reverify)",
+        PASS if refresh_ok else FAIL,
+        f"DemoExecutionAuthority.refresh present={refresh_ok}; REVERIFY_TTL_S={REVERIFY_TTL_S}s (unchanged)",
+    )
+    failures += 0 if refresh_ok else 1
+
+    self_edges = [
+        f"{src.value} -> {dst.value}" for src, targets in _TRANSITIONS.items() for dst in targets if src == dst
+    ]
+    row(
+        "stage machine has no self-transitions",
+        PASS if not self_edges else FAIL,
+        f"self-edges: {self_edges or 'none'} — a refresh never needs STAGE_2 -> STAGE_2",
+    )
+    failures += 0 if not self_edges else 1
+
     # ------------------------------------------------------------ journal state
     journal = DemoOrderJournal()
     summary = summarize(journal)
@@ -209,6 +345,8 @@ def main() -> int:
         ("14-check readiness (fresh)", "qts demo connectivity"),
         ("reconciliation vs the venue", "qts demo verify"),
         ("pre-trade gate on a live quote", "qts demo preflight --side BUY"),
+        ("identity pin symbol provenance (canonical <-> alias)", "qts demo connectivity --pin"),
+        ("authority refresh after the 120 s readiness window", "qts demo reverify --confirm --risk-ack"),
     ):
         row(item, INFO, command)
 
@@ -221,13 +359,14 @@ def main() -> int:
     print(f"offline checks failed: {failures}")
     print("covered by tests (run: pytest --run-integration):")
     for name, what in (
-        ("tests/integration/test_demo_session_wiring.py", "identity, symbol, quote, order-check, 29-check gate"),
+        ("tests/integration/test_demo_session_wiring.py", "identity, symbol, quote, order-check, 31-check gate"),
         ("tests/integration/test_demo_autopilot_loop.py", "autonomous loop: submit, manage, close, reconcile"),
         ("tests/integration/test_demo_research_policy_loop.py", "registered policy enforcement, code drift, hours, budget"),
         ("tests/integration/test_demo_failure_modes.py", "idempotency, cold start, concurrency, kill switch, failure-closed"),
         ("tests/integration/test_demo_cli.py", "the documented operator procedure"),
         ("tests/adversarial/", "authorization scope, LIVE lock, per-safeguard refusals"),
-        ("tests/unit/test_demo_research_policy.py", "policy schema completeness"),
+        ("tests/unit/test_demo_research_policy.py", "policy schema completeness, policy_hash sealing"),
+        ("tests/integration/test_demo_lifecycle_audit.py", "real-terminal defects: symbol binding, TTL refresh, SL derivation"),
     ):
         print(f"  {name.ljust(52)} {what}")
     return 1 if failures else 0

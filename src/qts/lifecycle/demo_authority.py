@@ -448,6 +448,7 @@ class DemoExecutionAuthority:
         risk_ack: bool,
         readiness_age_s: float | None = None,
         actor: str = "api",
+        reverify: bool = False,
     ) -> DemoPermissionDecision:
         """Apply the policy gate, then the durable authority gates.
 
@@ -460,6 +461,7 @@ class DemoExecutionAuthority:
         required checks, DEMO-only account and a broker-capable mode.
         """
         policy = self.policy()
+        label = "re-verification" if reverify else "enablement"
         if not policy.enabled:
             reason = f"DEMO_EXECUTION = {policy.state}; use DEMO_FORWARD OBSERVE_ONLY"
             reasons = [reason, *policy.reasons]
@@ -479,12 +481,14 @@ class DemoExecutionAuthority:
                 reasons.append("mode DEMO_FORWARD is observation-only and cannot submit broker orders")
             if self._audit is not None:
                 try:
-                    self._emit_audit("demo_execution_refused", {"reason": reason, "actor": actor})
+                    self._emit_audit(
+                        "demo_execution_refused", {"reason": reason, "actor": actor, "reverify": bool(reverify)}
+                    )
                 except Exception as exc:
                     reasons.append(f"audit failed while recording refusal: {exc}")
             self._record(
                 enabled=False,
-                reason=f"refused: {reason}",
+                reason=f"refused {label}: {reason}",
                 confirmed=confirmed,
                 risk_ack=risk_ack,
                 readiness=readiness,
@@ -620,9 +624,14 @@ class DemoExecutionAuthority:
         if self._audit is not None:
             try:
                 self._emit_audit(
-                    "demo_execution_enabled",
+                    "demo_execution_reverified" if reverify else "demo_execution_enabled",
                     {
-                        "reason": "enabled: fresh readiness passed all required checks",
+                        "reason": (
+                            "re-verified: fresh readiness re-proven at the current stage"
+                            if reverify
+                            else "enabled: fresh readiness passed all required checks"
+                        ),
+                        "reverify": bool(reverify),
                         "confirmed": confirmed,
                         "risk_ack": risk_ack,
                         "readiness_passed": True,
@@ -642,7 +651,11 @@ class DemoExecutionAuthority:
                 return self._refused(f"enablement audit failed — state NOT changed: {e}")
         self._record(
             enabled=True,
-            reason="enabled: fresh readiness passed all required checks",
+            reason=(
+                "re-verified: fresh readiness re-proven at the current stage"
+                if reverify
+                else "enabled: fresh readiness passed all required checks"
+            ),
             confirmed=confirmed,
             risk_ack=risk_ack,
             readiness=readiness,
@@ -660,6 +673,38 @@ class DemoExecutionAuthority:
             readiness_age_s=readiness_age_s or 0.0,
             readiness_expired=False,
             mode=self._mode,
+        )
+
+    def refresh(
+        self,
+        *,
+        readiness: dict[str, Any],
+        confirmed: bool,
+        risk_ack: bool,
+        readiness_age_s: float | None = None,
+        actor: str = "api",
+    ) -> DemoPermissionDecision:
+        """Re-prove permission with FRESH evidence, without changing the stage.
+
+        The readiness TTL (``REVERIFY_TTL_S``) exists so that permission is
+        proven against the live terminal rather than inherited from an old pass.
+        Reaching the end of that window is a normal, expected event during a
+        long session — not a failure and not a reason to re-walk the staged
+        progression. ``refresh`` is the explicit path for it: every gate of
+        :meth:`enable` applies unchanged (explicit confirmation, risk
+        acknowledgement, fresh passing readiness, required checks, DEMO scope
+        and a broker-capable mode); only the recorded reason differs, so a
+        re-verification is distinguishable from a first enablement in the audit
+        trail. It never touches the stage machine, so there is no illegal
+        ``STAGE_2 → STAGE_2`` transition.
+        """
+        return self.enable(
+            readiness=readiness,
+            confirmed=confirmed,
+            risk_ack=risk_ack,
+            readiness_age_s=readiness_age_s,
+            actor=actor,
+            reverify=True,
         )
 
     def disable(self, *, reason: str = "operator requested", actor: str = "api") -> DemoPermissionDecision:

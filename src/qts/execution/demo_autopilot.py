@@ -82,6 +82,17 @@ class AutopilotConfig:
     strategy_id: str | None = None
     dry_run: bool = False  # evaluate the gate every cycle, never submit
     actor: str = "autopilot"
+    #: Re-prove the durable authority when its readiness evidence has decayed.
+    #: Permission expires every REVERIFY_TTL_S by design, so a run longer than
+    #: two minutes needs an explicit refresh path — otherwise the loop halts on
+    #: `execution_permission` and continuous DEMO forward observation is
+    #: impossible. Off by default: enabling it requires the operator's explicit
+    #: confirmation and risk acknowledgement (captured once, on the command
+    #: line) and every refresh re-proves the full readiness probe against the
+    #: live terminal and is audited.
+    refresh_authority: bool = False
+    confirmed: bool = False
+    risk_ack: bool = False
 
 
 @dataclass
@@ -188,6 +199,29 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
                     f"reconciliation requires suspension: {reconciliation.get('drift')} "
                     f"{reconciliation.get('details')}"
                 )
+
+            # ---- 1b. authority freshness (re-prove, never extend blindly) --
+            if config.refresh_authority and not session.authority.current().execution_permitted:
+                try:
+                    outcome = session.reverify_authority(
+                        confirmed=config.confirmed, risk_ack=config.risk_ack, actor=config.actor
+                    )
+                except Exception as exc:
+                    halt(f"authority re-verification failed: {type(exc).__name__}: {exc}")
+                note(
+                    "reverify",
+                    {
+                        "permitted": outcome["reverified"],
+                        "state": outcome["authority"]["state"],
+                        "readiness_passed": outcome["readiness"]["passed"],
+                        "stage": outcome["stage"]["stage"],
+                    },
+                )
+                if not outcome["reverified"]:
+                    halt(
+                        "authority re-verification refused: "
+                        f"{outcome['authority']['reasons'] or outcome['readiness']['blocked_reasons']}"
+                    )
 
             # ---- 2. registry entry (re-resolved every cycle: drift halts) --
             registry = load_registry()

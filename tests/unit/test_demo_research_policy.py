@@ -18,6 +18,7 @@ from qts.lifecycle.demo_policy import (
     KILL_CONDITION_VOCABULARY,
     POLICY_CLASS,
     ResearchPolicy,
+    policy_fingerprint,
     validate_policy,
 )
 from qts.lifecycle.demo_registry import params_fingerprint
@@ -28,6 +29,10 @@ PARAMS = {"lookback": 16}
 def _policy(**overrides) -> tuple[ResearchPolicy | None, list[str]]:
     block = policy_block(params=PARAMS)
     block.update(overrides)
+    # A policy edited after sealing is refused unless it is re-sealed — that is
+    # the whole point of policy_hash, so the helper must re-seal like the
+    # registration script does.
+    block["policy_hash"] = policy_fingerprint(block)
     return validate_policy(block, PARAMS)
 
 
@@ -286,3 +291,62 @@ def test_policy_contents_cannot_be_retuned_after_registration():
         pol.raw["stop_loss_logic"]["distance_price"] = 0.01  # type: ignore[index]
     assert dict(pol.raw) == snapshot
     assert pol.config_hash == params_fingerprint(PARAMS)
+
+
+# ------------------------------------------------------------ policy integrity
+
+
+def test_policy_hash_is_required():
+    block = policy_block(params=PARAMS)
+    block.pop("policy_hash")
+    pol, problems = validate_policy(block, PARAMS)
+    assert pol is None
+    assert any("policy_hash missing" in p for p in problems)
+
+
+def test_editing_a_registered_limit_invalidates_the_policy():
+    """max_daily_loss 5 → 500 must not be accepted on the strength of old hashes.
+
+    config_hash pins the parameters and code_hash pins the provider; without a
+    hash over the policy document itself, the limits, hours and kill conditions
+    could be rewritten after registration and nothing would notice.
+    """
+    block = policy_block(params=PARAMS)
+    assert block["policy_hash"] == policy_fingerprint(block)
+    pol, problems = validate_policy(block, PARAMS)
+    assert pol is not None, problems
+
+    edited = dict(block)
+    edited["max_daily_loss"] = 5000.0
+    pol2, problems2 = validate_policy(edited, PARAMS)
+    assert pol2 is None
+    assert any("policy_hash mismatch" in p for p in problems2)
+
+
+def test_editing_trading_hours_invalidates_the_policy():
+    block = policy_block(params=PARAMS)
+    block["allowed_trading_hours"] = {
+        "timezone": "UTC",
+        "sessions": [{"days": ["SAT", "SUN"], "start": "00:00", "end": "23:59"}],
+    }
+    pol, problems = validate_policy(block, PARAMS)
+    assert pol is None
+    assert any("policy_hash mismatch" in p for p in problems)
+
+
+def test_re_sealing_a_deliberate_change_is_accepted():
+    """A change is legitimate only when re-sealed — as the registration does."""
+    block = policy_block(params=PARAMS)
+    block["max_daily_loss"] = 2.50
+    block["policy_hash"] = policy_fingerprint(block)
+    pol, problems = validate_policy(block, PARAMS)
+    assert pol is not None, problems
+    assert pol.max_daily_loss == 2.50
+
+
+def test_policy_hash_is_not_a_hex_digest_of_nonsense():
+    block = policy_block(params=PARAMS)
+    block["policy_hash"] = "not-a-digest"
+    pol, problems = validate_policy(block, PARAMS)
+    assert pol is None
+    assert any("policy_hash is not a sha256" in p for p in problems)

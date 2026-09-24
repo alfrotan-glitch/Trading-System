@@ -13,6 +13,7 @@ from __future__ import annotations
 import contextlib
 import gc
 import hashlib
+import os
 import pathlib
 import subprocess
 import tempfile
@@ -293,6 +294,34 @@ def pytest_runtest_teardown(item):
         except Exception:
             pass
     gc.collect()
+
+
+DEMO_ENV_VARS = (
+    "QTS_MODE",
+    "QTS_DEMO_AUTHORIZATION",
+    "QTS_DEMO_REGISTRY",
+    "QTS_DEMO_IDENTITY_PIN",
+    "QTS_SETUP_FILE",
+)
+
+
+@pytest.fixture(autouse=True)
+def restore_demo_environment():
+    """Keep DEMO env vars test-local.
+
+    Several DEMO helpers set ``QTS_DEMO_REGISTRY`` (and friends) through
+    ``os.environ``, which is never undone. The leak made results depend on test
+    ORDER: a test asserting an empty registry could silently see another
+    module's registered policy (and vice versa), which is how a "shipped
+    registry" assertion came to inspect a temporary fixture entry.
+    """
+    saved = {name: os.environ.get(name) for name in DEMO_ENV_VARS}
+    yield
+    for name, value in saved.items():
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
 
 
 def pytest_addoption(parser):

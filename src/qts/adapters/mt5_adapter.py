@@ -167,6 +167,41 @@ def _resolve_contract_size(info: Any, symbol: str) -> Decimal:
     return _required_numeric(info, "contract_size", symbol, positive=True)
 
 
+def canonical_symbol(symbol: str, symbol_map: dict[str, str] | None) -> str:
+    """Resolve ANY spelling of a symbol to its canonical form.
+
+    The canonical symbol is the one key used by the portfolio, the risk engine,
+    the journal and — crucially — the registered research policy. The venue
+    spells the same instrument ``XAUUSD@``. Operators configure either spelling
+    (``configs/setup.json`` has been seen holding the venue alias), so both
+    directions must be resolved before anything compares symbols:
+
+    * ``XAUUSD``  (a map key)          → canonical ``XAUUSD``
+    * ``XAUUSD@`` (a mapped alias)     → canonical ``XAUUSD``
+    * anything unmapped                → returned unchanged (already canonical)
+
+    There is deliberately no "accept both" comparison anywhere else: one
+    canonical form per instrument means a policy that allows ``XAUUSD`` can
+    never be satisfied by a different instrument, which is what makes the
+    symbol binding auditable.
+    """
+    if not symbol:
+        return symbol
+    for canonical, broker in (symbol_map or {}).items():
+        if str(broker) == str(symbol):
+            return str(canonical)
+    return str(symbol)
+
+
+def broker_symbol(symbol: str, symbol_map: dict[str, str] | None) -> str:
+    """Canonical symbol → the alias the venue actually trades."""
+    if not symbol:
+        return symbol
+    mapping = symbol_map or {}
+    canonical = canonical_symbol(symbol, mapping)
+    return str(mapping.get(canonical, canonical))
+
+
 def _optional_mt5_module() -> Any | None:
     """The real MetaTrader5 module when importable — never a stand-in."""
     import importlib
@@ -322,7 +357,13 @@ class MT5Adapter(BrokerAdapter):
                 self._mt5.shutdown()
 
     def _map_symbol(self, symbol: str) -> str:
-        return self.symbol_map.get(symbol, symbol)
+        """Canonical symbol → broker alias (identity when already an alias)."""
+        symbol_map = self.symbol_map or {}
+        if symbol in symbol_map:
+            return symbol_map[symbol]
+        # Already a broker alias (an operator may configure `XAUUSD@` directly):
+        # mapping it again would produce nothing, so return it unchanged.
+        return symbol
 
     def _canonical_symbol(self, mt5_symbol: str) -> str:
         """Broker symbol → canonical symbol (inverse of :meth:`_map_symbol`).
@@ -334,10 +375,7 @@ class MT5Adapter(BrokerAdapter):
         (``MISSING_POSITION`` → suspend after the very first order) and hides
         broker-only exposure — so translate back, never assume identity.
         """
-        for canonical, broker in self.symbol_map.items():
-            if broker == mt5_symbol:
-                return canonical
-        return mt5_symbol
+        return canonical_symbol(mt5_symbol, self.symbol_map or {})
 
     # ---------- Symbol metadata (authoritative) ----------
 

@@ -32,7 +32,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
-from qts.lifecycle.demo_policy import POLICY_CLASS, POLICY_SCHEMA, validate_policy  # noqa: E402
+from qts.lifecycle.demo_policy import (  # noqa: E402
+    POLICY_CLASS,
+    POLICY_SCHEMA,
+    policy_fingerprint,
+    validate_policy,
+)
 from qts.lifecycle.demo_registry import (  # noqa: E402
     DEFAULT_REGISTRY_PATH,
     REGISTRY_SCHEMA_V2,
@@ -247,6 +252,10 @@ def main() -> int:
         return 0
 
     entry = build_entry(params, code_hash, config_hash)
+    # Pin the policy document itself: config_hash covers the parameters, this
+    # covers the limits, hours, kill conditions and symbol binding — an edit to
+    # any of them after registration must be detectable.
+    entry["policy"]["policy_hash"] = policy_fingerprint(entry["policy"])
     pol, problems = validate_policy(entry["policy"], params)
     if pol is None:
         print("policy refused:")

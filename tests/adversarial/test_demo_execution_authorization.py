@@ -243,6 +243,7 @@ def _entry_doc(strategy_id: str, status: str = "ELIGIBLE", **overrides) -> dict:
         "stop_policy": {"required": True},
         "exit_policy": {"max_hold_seconds": 0},
         "allowed_symbols": ["XAUUSD"],
+        "broker_symbol": "XAUUSD@",
         "max_orders_per_day": 2,
     }
     doc.update(overrides)
@@ -382,9 +383,8 @@ def test_shipped_registry_ships_no_invented_strategy():
     for entry in registry.entries:
         assert entry.hypothesis_id, f"{entry.strategy_id}: no hypothesis — unpreregistered"
         assert entry.preregistration_artifact, f"{entry.strategy_id}: no preregistration artifact"
-        assert Path(entry.preregistration_artifact).exists(), (
-            f"{entry.strategy_id}: preregistration artifact {entry.preregistration_artifact} missing"
-        )
+        artifact = str(entry.preregistration_artifact).split("#", 1)[0]
+        assert Path(artifact).exists(), f"{entry.strategy_id}: preregistration artifact {artifact} missing"
         assert entry.policy is not None, f"{entry.strategy_id}: no complete research/execution policy"
         assert entry.policy.policy_class == POLICY_CLASS
         if entry.status == "ELIGIBLE":

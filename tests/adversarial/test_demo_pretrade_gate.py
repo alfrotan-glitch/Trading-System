@@ -211,6 +211,7 @@ def healthy_ctx(tmp_path: Path, **overrides) -> DemoPretradeContext:
         "entry":entry,
         "strategy_config_hash":(entry.params_hash if entry is not None else None),
         "research_policy":(entry.policy if entry is not None else None),
+        "registered_broker_symbol": "XAUUSD@",
         "orders_today":0,
         "cumulative_pnl":Decimal("0"),
         "peak_cumulative_pnl":Decimal("0"),
@@ -687,3 +688,106 @@ def test_entry_without_a_policy_is_refused_by_the_gate(tmp_path: Path):
     verdict = run_pretrade_gate(healthy_ctx(tmp_path, entry=entry))
     assert not verdict.passed
     assert "policy_complete" in verdict.failed
+
+# ------------------------------------------------- symbol binding (XAUUSD@ fix)
+
+
+def test_venue_alias_must_match_the_registered_symbol(tmp_path: Path):
+    """A policy verified against XAUUSD@ must not authorise another alias."""
+    verdict = run_pretrade_gate(healthy_ctx(tmp_path, registered_broker_symbol="EURUSD@"))
+    assert not verdict.passed
+    assert "broker_symbol_matches_registry" in verdict.failed
+
+
+def test_entry_without_a_registered_alias_cannot_prove_the_binding(tmp_path: Path):
+    verdict = run_pretrade_gate(healthy_ctx(tmp_path, registered_broker_symbol=None))
+    assert not verdict.passed
+    assert "broker_symbol_matches_registry" in verdict.failed
+
+
+def test_registered_alias_that_matches_the_session_passes(tmp_path: Path):
+    verdict = run_pretrade_gate(healthy_ctx(tmp_path, registered_broker_symbol="XAUUSD@"))
+    assert verdict.passed, verdict.reasons
+    assert verdict.checks["broker_symbol_matches_registry"].passed
+
+
+def test_pin_symbol_provenance_mismatch_blocks(tmp_path: Path):
+    verdict = run_pretrade_gate(
+        healthy_ctx(tmp_path, pin_symbol={"canonical": "XAUUSD", "broker": "XAUUSD#"})
+    )
+    assert not verdict.passed
+    assert "symbol_provenance" in verdict.failed
+
+
+def test_pin_symbol_provenance_agreement_passes(tmp_path: Path):
+    verdict = run_pretrade_gate(
+        healthy_ctx(tmp_path, pin_symbol={"canonical": "XAUUSD", "broker": "XAUUSD@"})
+    )
+    assert verdict.passed, verdict.reasons
+
+
+def test_a_different_canonical_symbol_is_refused_by_the_policy(tmp_path: Path):
+    """The policy binds to ONE canonical symbol — no 'accept both' fallback."""
+    entry = _entry(policy=_research_policy({"lookback": 16}, allowed_symbols=["EURUSD"]))
+    verdict = run_pretrade_gate(healthy_ctx(tmp_path, entry=entry))
+    assert not verdict.passed
+    assert "symbol_allowed_by_policy" in verdict.failed
+
+
+# ------------------------------------------------------- stop-loss contract ----
+
+
+def test_required_stop_missing_is_refused_before_the_broker(tmp_path: Path):
+    verdict = run_pretrade_gate(healthy_ctx(tmp_path, stop_loss=None, stop_required=True))
+    assert not verdict.passed
+    assert "stop_loss_present" in verdict.failed
+    assert "requires a stop-loss" in verdict.checks["stop_loss_present"].detail
+
+
+def test_buy_stop_above_the_entry_is_refused(tmp_path: Path):
+    verdict = run_pretrade_gate(healthy_ctx(tmp_path, side="BUY", stop_loss=Decimal("2005.00")))
+    assert not verdict.passed
+    assert "stop_loss_present" in verdict.failed
+    assert "must be below" in verdict.checks["stop_loss_present"].detail
+
+
+def test_sell_stop_below_the_entry_is_refused(tmp_path: Path):
+    verdict = run_pretrade_gate(healthy_ctx(tmp_path, side="SELL", stop_loss=Decimal("1995.00")))
+    assert not verdict.passed
+    assert "stop_loss_present" in verdict.failed
+    assert "must be above" in verdict.checks["stop_loss_present"].detail
+
+
+def test_valid_stop_is_accepted_for_buy_and_sell(tmp_path: Path):
+    buy = run_pretrade_gate(healthy_ctx(tmp_path, side="BUY", stop_loss=Decimal("1998.20")))
+    assert buy.passed, buy.reasons
+    assert buy.checks["stop_loss_present"].passed
+
+    sell = run_pretrade_gate(healthy_ctx(tmp_path, side="SELL", stop_loss=Decimal("2002.20")))
+    assert sell.passed, sell.reasons
+    assert sell.checks["stop_loss_present"].passed
+
+
+def test_stop_inside_the_broker_minimum_distance_is_refused(tmp_path: Path):
+    spec = _spec(stops_level=50, point=Decimal("0.01"))  # 0.50 minimum distance
+    verdict = run_pretrade_gate(healthy_ctx(tmp_path, spec=spec, stop_loss=Decimal("1999.90")))
+    assert not verdict.passed
+    assert "stop_loss_present" in verdict.failed
+    assert "stops_level" in verdict.checks["stop_loss_present"].detail
+
+
+def test_off_tick_stop_is_refused(tmp_path: Path):
+    spec = _spec(tick_size=Decimal("0.01"))
+    verdict = run_pretrade_gate(healthy_ctx(tmp_path, spec=spec, stop_loss=Decimal("1998.205")))
+    assert not verdict.passed
+    assert "stop_loss_present" in verdict.failed
+    assert "tick size" in verdict.checks["stop_loss_present"].detail
+
+
+def test_stop_risking_more_than_the_policy_budget_is_refused(tmp_path: Path):
+    entry = _entry(policy=_research_policy({"lookback": 16}, max_daily_loss=1.00))
+    # 0.01 lots × 100 oz × $5.00 stop = $5.00 risk > $1.00 budget
+    verdict = run_pretrade_gate(healthy_ctx(tmp_path, entry=entry, stop_loss=Decimal("1995.20")))
+    assert not verdict.passed
+    assert "stop_loss_present" in verdict.failed
+    assert "max_daily_loss budget" in verdict.checks["stop_loss_present"].detail

@@ -193,7 +193,8 @@
         "config_hash": "e15333b925020a7e1d0a5b7e70e480bea74a84ffb2d76a1ad12dcf367cd817c0",
         "data_hash": null,
         "data_hash_note": "No historical dataset is consumed: requires_historical_dataset=false. The only data input is the pinned DEMO venue's live quote stream, whose provenance is the identity pin at data/evidence/demo_broker_identity_pin.json \u2014 there is no static dataset to hash.",
-        "code_source": "src/qts/research/demo_execution_probe.py"
+        "code_source": "src/qts/research/demo_execution_probe.py",
+        "policy_hash": "c157931e92af4792654a28654550787427584309c40198515118e4102d922fd1"
       }
     }
   ],

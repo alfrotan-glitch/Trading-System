@@ -28,6 +28,7 @@ from qts.execution.demo_session import DemoSession, DemoSessionConfig
 from qts.lifecycle.demo_authority import readiness_age_seconds
 from qts.lifecycle.demo_authorization import document_fingerprint
 from qts.lifecycle.demo_gate import demo_forward_readiness_report
+from qts.lifecycle.demo_policy import policy_fingerprint
 from qts.lifecycle.demo_registry import load_registry, resolve_entry
 from qts.lifecycle.demo_stage import DemoStage
 from qts.research.demo_execution_probe import STRATEGY_ID, ExecutionCostProbe
@@ -79,6 +80,10 @@ def _policy_block(**overrides) -> dict:
     policy = dict(entry["policy"])
     policy["code_hash"] = hashlib.sha256(PROVIDER_SOURCE.read_bytes()).hexdigest()
     policy.update(overrides)
+    # Re-seal: changing a policy invalidates its hash, and an unsealed policy is
+    # (correctly) refused. Registering a change means re-sealing it, exactly as
+    # scripts/register_demo_research_policy.py does.
+    policy["policy_hash"] = policy_fingerprint(policy)
     return policy
 
 
@@ -174,11 +179,20 @@ def _armed_session(tmp_path: Path, terminal: FakeTerminal) -> DemoSession:
     return session
 
 
-def _write_registry(tmp_path: Path, doc: dict) -> None:
-    (tmp_path / "registry.json").write_text(json.dumps(doc, indent=2), encoding="utf-8")
-    import os
+def _write_registry(tmp_path: Path, doc: dict, monkeypatch=None) -> None:
+    """Write the registry; ``monkeypatch`` owns the env var when provided.
 
-    os.environ["QTS_DEMO_REGISTRY"] = str(tmp_path / "registry.json")
+    Only the ad-hoc entry point (no monkeypatch — a scratch session) touches
+    ``os.environ``; tests must use monkeypatch so the path cannot leak into
+    other modules and change their registry-dependent results.
+    """
+    (tmp_path / "registry.json").write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    if monkeypatch is not None:
+        monkeypatch.setenv("QTS_DEMO_REGISTRY", str(tmp_path / "registry.json"))
+    else:
+        import os
+
+        os.environ["QTS_DEMO_REGISTRY"] = str(tmp_path / "registry.json")
 
 
 # ---------------------------------------------------------------------- tests
@@ -202,9 +216,9 @@ def test_shipped_policy_declares_a_liquid_session_and_a_complete_spec():
     assert policy["exit_conditions"]["max_hold_seconds"] == 900
 
 
-def test_registered_policy_drives_a_minimum_size_order_with_its_stop(tmp_path: Path, authorized):
+def test_registered_policy_drives_a_minimum_size_order_with_its_stop(tmp_path: Path, authorized, monkeypatch):
     """One scheduled round turn: broker minimum, protective stop, full record."""
-    _write_registry(tmp_path, _registry_doc())
+    _write_registry(tmp_path, _registry_doc(), monkeypatch)
     terminal = FakeTerminal()
     session = _armed_session(tmp_path, terminal)
 
@@ -238,7 +252,7 @@ def test_registered_policy_drives_a_minimum_size_order_with_its_stop(tmp_path: P
     assert row["spread_bps"] is not None and row["latency_ms"] is not None
 
 
-def test_registered_policy_order_budget_is_enforced_by_the_gate(tmp_path: Path, authorized):
+def test_registered_policy_order_budget_is_enforced_by_the_gate(tmp_path: Path, authorized, monkeypatch):
     """The daily order budget is a gate check, not a loop convention.
 
     Exposure and interval limits are relaxed in the override so the budget is
@@ -259,6 +273,7 @@ def test_registered_policy_order_budget_is_enforced_by_the_gate(tmp_path: Path, 
                 "position_sizing": {"mode": "fixed", "lots": 0.01},
             }
         ),
+        monkeypatch,
     )
     terminal = FakeTerminal()
     session = _armed_session(tmp_path, terminal)
@@ -277,8 +292,8 @@ def test_registered_policy_order_budget_is_enforced_by_the_gate(tmp_path: Path, 
     assert len(terminal.requests) == 1
 
 
-def test_policy_outside_its_declared_hours_does_not_trade(tmp_path: Path, authorized):
-    _write_registry(tmp_path, _registry_doc(policy_overrides={"allowed_trading_hours": _outside_hours()}))
+def test_policy_outside_its_declared_hours_does_not_trade(tmp_path: Path, authorized, monkeypatch):
+    _write_registry(tmp_path, _registry_doc(policy_overrides={"allowed_trading_hours": _outside_hours()}), monkeypatch)
     terminal = FakeTerminal()
     session = _armed_session(tmp_path, terminal)
 
@@ -291,11 +306,12 @@ def test_policy_outside_its_declared_hours_does_not_trade(tmp_path: Path, author
     assert any("trading_hours" in str(e.get("detail")) for e in report.events)
 
 
-def test_code_drift_halts_the_loop(tmp_path: Path, authorized):
+def test_code_drift_halts_the_loop(tmp_path: Path, authorized, monkeypatch):
     """A provider whose source no longer matches ``code_hash`` must not trade."""
     _write_registry(
         tmp_path,
         _registry_doc(policy_overrides={"code_hash": hashlib.sha256(b"edited-after-registration").hexdigest()}),
+        monkeypatch,
     )
     terminal = FakeTerminal()
     session = _armed_session(tmp_path, terminal)
@@ -309,13 +325,13 @@ def test_code_drift_halts_the_loop(tmp_path: Path, authorized):
     assert terminal.requests == []
 
 
-def test_policy_exposure_cap_blocks_a_second_position(tmp_path: Path, authorized):
+def test_policy_exposure_cap_blocks_a_second_position(tmp_path: Path, authorized, monkeypatch):
     """One position at a time: ``max_simultaneous_exposure_lots`` is enforceable.
 
     With the shipped policy (0.01 lots cap, 900 s between orders) a second
     position can never be opened — the cap, not the schedule, is what stops it.
     """
-    _write_registry(tmp_path, _registry_doc())
+    _write_registry(tmp_path, _registry_doc(), monkeypatch)
     terminal = FakeTerminal()
     session = _armed_session(tmp_path, terminal)
 
@@ -334,11 +350,11 @@ def test_policy_exposure_cap_blocks_a_second_position(tmp_path: Path, authorized
     assert len(terminal.requests) == 1
 
 
-def test_an_entry_without_a_complete_policy_cannot_trade(tmp_path: Path, authorized):
+def test_an_entry_without_a_complete_policy_cannot_trade(tmp_path: Path, authorized, monkeypatch):
     """Registration without a specification is not a registered experiment."""
     doc = _registry_doc()
     doc["entries"][0].pop("policy")
-    _write_registry(tmp_path, doc)
+    _write_registry(tmp_path, doc, monkeypatch)
     terminal = FakeTerminal()
     session = _armed_session(tmp_path, terminal)
 

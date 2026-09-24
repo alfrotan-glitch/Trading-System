@@ -1713,15 +1713,23 @@ def demo_order(payload: dict[str, Any]) -> Any:
         raise HTTPException(400, "DEMO order requires explicit confirmed=true and risk_ack=true")
 
     session = _demo_session(payload.get("symbol"))
-    entry = getattr(session, "_entry", None)
+    # Resolve the registered experiment HERE, per request: the registry is
+    # re-checked on every order so a policy that was revoked, drifted or
+    # de-registered since the last call cannot still authorise one.
+    from qts.lifecycle.demo_registry import load_registry, resolve_entry
+
+    entry, entry_reasons = resolve_entry(load_registry(), payload.get("strategy"))
     if entry is None:
         return JSONResponse(
             status_code=409,
             content={
                 "allowed": False,
                 "state": "NO_TRADE",
-                "reasons": ["no eligible strategy in the forward-validation registry — DEMO_EXECUTION may be "
-                            "ENABLED while no strategy has passed the research gates"],
+                "reasons": list(entry_reasons)
+                + [
+                    "no eligible strategy in the forward-validation registry — DEMO_EXECUTION may be "
+                    "ENABLED while no strategy has passed the research gates"
+                ],
             },
         )
     if payload.get("dry_run"):

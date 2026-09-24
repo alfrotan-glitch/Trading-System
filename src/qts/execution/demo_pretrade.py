@@ -164,6 +164,8 @@ class DemoPretradeContext:
 
     symbol: str | None = None
     broker_symbol: str | None = None
+    #: The operator's canonical -> venue alias table (machine-local setup).
+    symbol_map: dict[str, str] = field(default_factory=dict)
     symbol_visible: bool | None = None
     symbol_tradable: bool | None = None
     spec: Any | None = None  # MT5Adapter.SymbolSpec
@@ -215,6 +217,10 @@ class DemoPretradeContext:
     strategy_config_hash: str | None = None
     #: The registered research/execution policy (:class:`ResearchPolicy`).
     research_policy: Any | None = None
+    #: The venue alias the registry entry was verified against (``XAUUSD@``).
+    registered_broker_symbol: str | None = None
+    #: Symbol provenance recorded in the identity pin (when the pin carries it).
+    pin_symbol: dict[str, Any] | None = None
     #: Orders already submitted today (policy ``max_orders_per_day``).
     orders_today: int | None = None
     #: Cumulative realized P&L + open unrealized, and its running peak.
@@ -541,13 +547,65 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
     elif pol is None:
         record("symbol_allowed_by_policy", CHECK_FAIL, "no policy — no symbol can be authorized")
     elif not pol.allows_symbol(ctx.symbol):
-        record(
-            "symbol_allowed_by_policy",
-            CHECK_FAIL,
-            f"symbol {ctx.symbol} is not in the policy's allowed symbols ({', '.join(pol.allowed_symbols)})",
-        )
+        record("symbol_allowed_by_policy", CHECK_FAIL, _symbol_policy_detail(ctx, pol))
     else:
         record("symbol_allowed_by_policy", CHECK_PASS, f"symbol {ctx.symbol} allowed by the policy")
+
+    # The venue alias is part of the registration: a policy verified against
+    # XAUUSD@ must not authorise a session whose mapping resolves elsewhere.
+    if ctx.entry is None:
+        pass
+    elif not ctx.registered_broker_symbol:
+        record(
+            "broker_symbol_matches_registry",
+            CHECK_FAIL,
+            "the registry entry does not pin the venue symbol it was verified against — "
+            "the symbol binding is not provable",
+        )
+    elif not ctx.broker_symbol:
+        record("broker_symbol_matches_registry", CHECK_UNKNOWN, "broker symbol unresolved — cannot compare")
+    elif str(ctx.broker_symbol) != str(ctx.registered_broker_symbol):
+        record(
+            "broker_symbol_matches_registry",
+            CHECK_FAIL,
+            f"venue symbol {ctx.broker_symbol} != registered {ctx.registered_broker_symbol} — "
+            "the registered experiment does not cover this instrument",
+        )
+    else:
+        record(
+            "broker_symbol_matches_registry",
+            CHECK_PASS,
+            f"venue symbol {ctx.broker_symbol} matches the registered alias",
+        )
+
+    # Symbol provenance from the identity pin (defence in depth): when the pin
+    # records which canonical/venue pair was verified at Stage 1, the session
+    # must agree with it. A pin written before provenance was recorded is
+    # reported as such rather than silently accepted.
+    if ctx.entry is None:
+        pass
+    elif not ctx.pin_symbol:
+        record(
+            "symbol_provenance",
+            CHECK_PASS,
+            "identity pin records no symbol provenance — re-pin to bind it "
+            "(binding is enforced by broker_symbol_matches_registry meanwhile)",
+        )
+    elif str(ctx.pin_symbol.get("canonical") or "").upper() != str(ctx.symbol or "").upper() or str(
+        ctx.pin_symbol.get("broker") or ""
+    ) != str(ctx.broker_symbol or ""):
+        record(
+            "symbol_provenance",
+            CHECK_FAIL,
+            f"identity pin was verified against {ctx.pin_symbol.get('canonical')} -> "
+            f"{ctx.pin_symbol.get('broker')}, this session resolved {ctx.symbol} -> {ctx.broker_symbol}",
+        )
+    else:
+        record(
+            "symbol_provenance",
+            CHECK_PASS,
+            f"identity pin provenance agrees ({ctx.pin_symbol.get('canonical')} -> {ctx.pin_symbol.get('broker')})",
+        )
 
     if ctx.entry is None:
         pass
@@ -692,6 +750,44 @@ def _identity_pin_check(
     return ok, detail
 
 
+def _symbol_policy_detail(ctx: DemoPretradeContext, pol: Any) -> str:
+    """Why the symbol is refused — including the remedy when the alias table
+    simply does not bind the venue symbol being traded.
+
+    A policy binds to ONE canonical spelling. When the session trades a venue
+    alias (``XAUUSD@``) that the machine-local alias table
+    (``data/setup/mt5_setup.json`` ``symbol_map``) does not bind to any allowed
+    canonical symbol, the canonical form cannot be resolved: the order is
+    refused, and the message says exactly what to declare. Nothing is inferred
+    from a suffix — guessing that ``XAUUSD@`` means ``XAUUSD`` would let one
+    policy authorise whatever instrument the broker happens to spell that way.
+    """
+    allowed = [str(name) for name in pol.allowed_symbols]
+    base = f"symbol {ctx.symbol} is not in the policy's allowed symbols ({', '.join(allowed) or 'none'})"
+    if not allowed:
+        return base
+    traded = str(ctx.broker_symbol or ctx.symbol or "")
+    table = {str(k): str(v) for k, v in (ctx.symbol_map or {}).items()}
+    bound = [name for name in allowed if table.get(name) == traded]
+    if bound:
+        # The table binds it, yet canonical resolution disagrees — a real
+        # inconsistency worth naming rather than papering over.
+        return (
+            f"{base}; the alias table maps {bound[0]} -> {traded} but the session resolved the "
+            f"canonical symbol as {ctx.symbol}"
+        )
+    if not table:
+        return (
+            f"{base}; the venue symbol being traded is {traded} but no alias table is declared — "
+            f'add "symbol_map": {{"{allowed[0]}": "{traded}"}} to data/setup/mt5_setup.json '
+            "(or set QTS_MT5_SYMBOL_MAP) so the canonical symbol resolves"
+        )
+    return (
+        f"{base}; the declared alias table binds none of the allowed symbols to the venue symbol "
+        f"{traded} — declared map: {table}"
+    )
+
+
 def _policy(ctx: DemoPretradeContext) -> Any | None:
     return ctx.research_policy
 
@@ -832,17 +928,50 @@ def _stop_loss_check(ctx: DemoPretradeContext) -> tuple[str, str, str]:
     if (ctx.side or "").upper() == "SELL" and stop <= ref:
         return ("stop_loss_present", CHECK_FAIL, f"SELL stop {stop} must be above the entry reference {ref}")
     spec = ctx.spec
+    distance = abs(ref - stop)
     if spec is not None:
         try:
             min_distance = Decimal(str(spec.stops_level)) * Decimal(str(spec.point))
-            if min_distance > 0 and abs(ref - stop) < min_distance:
+            if min_distance > 0 and distance < min_distance:
                 return (
                     "stop_loss_present",
                     CHECK_FAIL,
-                    f"stop distance {abs(ref - stop)} < broker stops_level distance {min_distance}",
+                    f"stop distance {distance} < broker stops_level distance {min_distance}",
                 )
         except Exception:
             return ("stop_loss_present", CHECK_UNKNOWN, "broker stops_level unreadable — stop not verifiable")
+        # Tick alignment: an off-tick stop is either rejected by the broker or,
+        # worse, silently rounded towards the entry (shrinking the protection).
+        try:
+            tick = Decimal(str(spec.tick_size))
+            if tick > 0:
+                remainder = (stop / tick) % 1
+                if remainder != 0 and abs(remainder - 1) > Decimal("0.0000001") and abs(remainder) > Decimal(
+                    "0.0000001"
+                ):
+                    return (
+                        "stop_loss_present",
+                        CHECK_FAIL,
+                        f"stop {stop} is not a multiple of the symbol tick size {tick}",
+                    )
+        except Exception:
+            return ("stop_loss_present", CHECK_UNKNOWN, "symbol tick size unreadable — stop not verifiable")
+        # Policy maximum risk: one order may not risk more than the policy's
+        # whole daily loss budget on a single stop.
+        policy = _policy(ctx)
+        lots = _dec(ctx.intended_lots)
+        if policy is not None and lots is not None and policy.max_daily_loss > 0:
+            try:
+                risk = distance * abs(lots) * Decimal(str(spec.contract_size))
+            except Exception:
+                return ("stop_loss_present", CHECK_UNKNOWN, "stop risk not computable — fail closed")
+            budget = Decimal(str(policy.max_daily_loss))
+            if risk > budget:
+                return (
+                    "stop_loss_present",
+                    CHECK_FAIL,
+                    f"stop risk {risk} exceeds the policy's max_daily_loss budget {budget}",
+                )
     return ("stop_loss_present", CHECK_PASS, f"stop-loss {stop} present and valid for {ctx.side}")
 
 
