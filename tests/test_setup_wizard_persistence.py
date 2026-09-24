@@ -187,6 +187,14 @@ def test_demo_enable_evaluates_the_same_saved_connection(client: TestClient, cap
     assert st.json()["execution_permitted"] is False
 
 
+def test_save_setup_normalizes_directory_path_to_executable(tmp_path: Path):
+    f = tmp_path / "mt5_setup.json"
+    out = save_setup({"terminal_path": "C:\\Program Files\\MetaTrader 5"}, path=f)
+    assert out["saved"]["terminal_path"] == "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
+    loaded = load_setup(f)
+    assert loaded["terminal_path"] == "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
+
+
 def test_ui_wires_save_to_the_endpoint():
     js = Path("src/qts/desktop/ui/js/views/system.js").read_text(encoding="utf-8")
     api_js = Path("src/qts/desktop/ui/js/api.js").read_text(encoding="utf-8")

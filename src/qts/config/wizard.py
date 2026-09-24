@@ -95,7 +95,9 @@ def save_setup(payload: dict[str, Any], path: Path | str | None = None) -> dict[
         tp = payload["terminal_path"]
         if not isinstance(tp, str) or not tp.strip() or len(tp) > _MAX_PATH_LEN:
             raise ValueError(f"terminal_path must be a non-empty string (<= {_MAX_PATH_LEN} chars)")
-        saved["terminal_path"] = tp.strip()
+        from qts.adapters.mt5_adapter import normalize_terminal_path
+
+        saved["terminal_path"] = normalize_terminal_path(tp.strip())
 
     if payload.get("symbol") is not None:
         sym = payload["symbol"]

@@ -1276,12 +1276,14 @@ def _wizard_setup_kwargs(terminal_path: str | None, symbol: str | None) -> dict[
     The same resolution is used by readiness AND demo-enablement so the two
     can never evaluate different connections.
     """
+    from qts.adapters.mt5_adapter import normalize_terminal_path
     from qts.config.wizard import load_setup
 
     saved = load_setup()
     sm = saved.get("symbol_map")
+    resolved_path = terminal_path or saved.get("terminal_path") or None
     return {
-        "terminal_path": terminal_path or saved.get("terminal_path") or None,
+        "terminal_path": normalize_terminal_path(resolved_path),
         "symbol": symbol or saved.get("symbol") or None,
         "symbol_map": sm if isinstance(sm, dict) else None,
     }
