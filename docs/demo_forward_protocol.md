@@ -7,7 +7,7 @@ DEVELOPMENT   — backtest only, mock, no broker
 PAPER         — simulated fills, next-bar-open, no broker orders
 SHADOW        — would-be intents, checks risk/spread, no submission
 DEMO_FORWARD  — REAL MT5 + REAL market data + REAL DEMO account, OBSERVATION ONLY — no order path exists in this mode
-DEMO_EXECUTION — DISABLED BY POLICY is the shipped default; a recorded owner authorization resolves it to ENABLED_AUTHORIZED (DEMO account only), and each order still requires the staged progression + 22-check pre-trade gate
+DEMO_EXECUTION — DISABLED BY POLICY is the shipped default; a recorded owner authorization resolves it to ENABLED_AUTHORIZED (DEMO account only), and each order still requires the staged progression + the full pre-trade gate (every required safeguard, contract check and registered-policy limit)
 LIVE          — real money, separately gated, LOCKED
 ```
 No env can silently become another (mode resolution: `qts.domain.modes` — unknown

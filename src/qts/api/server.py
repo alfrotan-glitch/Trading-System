@@ -1488,7 +1488,7 @@ def demo_config() -> dict[str, Any]:
         "demo_execution_policy": (
             f"DEMO_EXECUTION = {_demo_policy().state} — resolved from the recorded owner authorization "
             "(DEMO only, LIVE locked); per-order permission additionally requires the staged progression "
-            "and the 22-check pre-trade gate"
+            "and the full pre-trade gate (every required safeguard, contract check and registered-policy limit)"
         ),
     }
 

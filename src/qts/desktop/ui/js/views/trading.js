@@ -220,7 +220,7 @@ export async function renderDemo(root) {
       card({ title: "Demo execution — authorized ≠ permitted, DEMO vs LIVE unmistakable", sub: "DEMO_EXECUTION = ENABLED_AUTHORIZED only with a recorded owner authorization (default: DISABLED BY POLICY); readiness permits OBSERVE_ONLY only — an order additionally requires staged arming and 22 pre-trade checks; LIVE remains locked", icon: "lock", body:
         h("div", { class: "stack" },
           h("p", { class: "text-dim small" }, `Authority reports ${s.permission}. Mode ${s.mode.mode} — ${s.mode.blurb} — context ${getContext().symbol}. DEMO is DEMO, LIVE is LOCKED.`),
-          h("div", { class: "banner info" }, "DEMO_EXECUTION is available on the DEMO account only with a recorded owner authorization; the shipped default is DISABLED BY POLICY. No readiness result, request payload, or UI action can create order permission — orders require the staged progression and the 22-check pre-trade gate. LIVE remains LOCKED."),
+          h("div", { class: "banner info" }, "DEMO_EXECUTION is available on the DEMO account only with a recorded owner authorization; the shipped default is DISABLED BY POLICY. No readiness result, request payload, or UI action can create order permission — orders require the staged progression and the full pre-trade gate (every required safeguard, contract check and registered-policy limit). LIVE remains LOCKED."),
           h("div", { class: "meta" }, "The authority, the stage machine and the pre-trade gate each refuse independently. Readiness evidence is retained for observation diagnostics only."),
           h("details", null, h("summary", null, "Why DEMO is not an ordinary switch / evidence — summary → detail"),
             h("ul", { class: "reason-list" },
@@ -337,7 +337,7 @@ export async function renderExecution(root) {
         })
       : emptyState({
           icon: "zap", title: "No real executions recorded yet",
-          desc: "DEMO_EXECUTION submits DEMO-account orders only after staged arming and the 22-check pre-trade gate. This view reports only recorded order evidence; with no order recorded it stays empty rather than estimated. LIVE remains locked.",
+          desc: "DEMO_EXECUTION submits DEMO-account orders only after staged arming and the full pre-trade gate (every required safeguard, contract check and registered-policy limit). This view reports only recorded order evidence; with no order recorded it stays empty rather than estimated. LIVE remains locked.",
           actions: [h("button", { class: "btn", onclick: () => navigate("#/trading/demo") }, icon("shield", 14), "Open Demo Control")],
         }),
   }));

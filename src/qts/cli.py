@@ -1870,6 +1870,7 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
         }
 
     checks = {
+        "mode_is_demo_execution": str(getattr(session, "mode", "DEMO_EXECUTION")) == "DEMO_EXECUTION",
         "authorization_valid": bool(policy.enabled),
         "terminal_reachable": bool(identity.get("ok")),
         "account_is_demo": identity.get("is_demo") is True,
@@ -1892,6 +1893,11 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
     def block(reason: str) -> None:
         blockers.append(reason)
 
+    if not checks["mode_is_demo_execution"]:
+        block(
+            f"process mode is {getattr(session, 'mode', 'unknown')} — the DEMO order path exists only in "
+            "DEMO_EXECUTION (set QTS_MODE=demo_execution); LIVE stays locked in every mode"
+        )
     if not checks["authorization_valid"]:
         block(f"no valid owner authorization ({policy.state}) — DEMO_EXECUTION stays DISABLED BY POLICY")
     if not checks["terminal_reachable"]:
@@ -1918,12 +1924,15 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
         block(
             "no eligible strategy in the forward-validation registry — NO_TRADE "
             f"(registry: {registry['registry']['path']})"
+            + (f"; reasons: {'; '.join(registry['reasons'])}" if registry.get("reasons") else "")
         )
     if preflight is not None and not preflight["passed"]:
         block(f"pre-trade gate: failed={preflight['failed']} unknown={preflight['unknown']}")
 
     # One next action, in the order an operator must do things.
-    if not checks["authorization_valid"]:
+    if not checks["mode_is_demo_execution"]:
+        action = "set QTS_MODE=demo_execution (LIVE and the observation modes have no DEMO order path)"
+    elif not checks["authorization_valid"]:
         action = (
             "record an owner authorization artifact (DEMO only, LIVE locked) at "
             "QTS_DEMO_AUTHORIZATION — see docs/demo_execution_authorization_and_safety_2026-09-23.md §2"
@@ -1947,7 +1956,11 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
     elif not checks["stage_allows_orders"] or not checks["authority_permitted"]:
         action = f"qts demo arm --stage 2 --confirm --risk-ack --db {db}"
     elif not checks["strategy_registered"]:
-        action = f"register a preregistered strategy in {registry['registry']['path']} (status ELIGIBLE)"
+        action = (
+            f"register a preregistered experiment in {registry['registry']['path']} "
+            "(status ELIGIBLE with a validation artifact, or ELIGIBLE_DIAGNOSTIC with a complete "
+            "DEMO_FORWARD_RESEARCH_POLICY) — see scripts/register_demo_research_policy.py"
+        )
     elif preflight is not None and not preflight["passed"]:
         action = f"qts demo preflight --side BUY --db {db}   # inspect the failing checks above"
     else:
@@ -1963,6 +1976,7 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
         "next_action": action,
         "blockers": blockers,
         "checks": checks,
+        "mode": str(getattr(session, "mode", "unknown")),
         "policy": policy.as_dict(),
         "identity": {"is_demo": identity.get("is_demo"), "login": identity.get("login"), "server": identity.get("server")},
         "identity_pin": {
@@ -1974,7 +1988,25 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
         },
         "symbol": {"canonical": mapping.get("canonical"), "broker": mapping.get("broker_symbol"), "tradable": mapping.get("tradable")},
         "readiness": {"passed": readiness.get("passed"), "blocked_reasons": readiness.get("blocked_reasons", [])},
-        "registry": {"path": registry["registry"]["path"], "trading_state": registry["trading_state"], "entries": registry["registry"]["entry_count"]},
+        "registry": {
+            "path": registry["registry"]["path"],
+            "trading_state": registry["trading_state"],
+            "entries": registry["registry"]["entry_count"],
+            "reasons": list(registry.get("reasons") or []),
+        },
+        "resolved_policy": (
+            None
+            if entry is None
+            else {
+                "strategy_id": entry["strategy_id"],
+                "status": entry["status"],
+                "policy_id": entry.get("policy_id"),
+                "policy_class": entry.get("policy_class"),
+                "validated_edge": entry.get("validated_edge"),
+                "hypothesis_id": entry.get("hypothesis_id"),
+                "preregistration_artifact": entry.get("preregistration_artifact"),
+            }
+        ),
         "stage": {"stage": stage_record.stage, "orders_permitted": stage_record.stage in ORDER_STAGES},
         "controls": {"kill_switch": kill, "reconciliation": reconciliation},
         "preflight": preflight,
@@ -1982,6 +2014,7 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
         "real_capital_exposure_usd": 0,
     }
 
+    click.echo(f"mode: {getattr(session, 'mode', 'unknown')}")
     click.echo(f"authorization: {policy.state} ({'valid' if policy.enabled else 'NOT valid'}) — LIVE locked, real capital 0")
     click.echo(f"account: demo={identity.get('is_demo')} login={identity.get('login')} server={identity.get('server')}")
     click.echo(
@@ -1990,6 +2023,12 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
     click.echo(f"symbol: {mapping.get('canonical')} -> {mapping.get('broker_symbol')} tradable={mapping.get('tradable')}")
     click.echo(f"readiness: passed={bool(readiness.get('passed'))} blockers={readiness.get('blocked_reasons', [])}")
     click.echo(f"registry: entries={registry['registry']['entry_count']} trading_state={registry['trading_state']}")
+    if entry is not None:
+        click.echo(
+            f"policy: {entry['strategy_id']} status={entry['status']} "
+            f"class={entry.get('policy_class')} validated_edge={entry.get('validated_edge')} "
+            f"hypothesis={entry.get('hypothesis_id')}"
+        )
     click.echo(f"stage: {stage_record.stage} orders_permitted={stage_record.stage in ORDER_STAGES}")
     if preflight is not None:
         click.echo(f"preflight: passed={preflight['passed']} failed={preflight['failed']} unknown={preflight['unknown']}")

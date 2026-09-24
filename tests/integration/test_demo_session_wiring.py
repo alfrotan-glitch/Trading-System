@@ -3,7 +3,7 @@
 No broker is contacted and no order is sent. A deterministic fake
 ``MetaTrader5`` module stands in for the Windows terminal so the whole wiring
 can be exercised in CI: authorization → identity → symbol → quote → order-check
-→ 22-check pre-trade gate → refusal.
+→ full pre-trade gate (every required safeguard, contract check and registered-policy limit) → refusal.
 
 The point of this file is the *shape of the refusal*: with a healthy DEMO
 terminal and a valid authorization, every market/identity/control safeguard
@@ -136,6 +136,9 @@ def authorization(tmp_path: Path, monkeypatch):
     path = tmp_path / "authorization.json"
     path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
     monkeypatch.setenv("QTS_DEMO_AUTHORIZATION", str(path))
+    # The DEMO session resolves its mode from the process: the DEMO order path
+    # exists only in DEMO_EXECUTION, never by virtue of a DEMO session object.
+    monkeypatch.setenv("QTS_MODE", "demo_execution")
 
     # Registry: explicitly empty — no strategy has passed the research gates.
     registry = tmp_path / "registry.json"

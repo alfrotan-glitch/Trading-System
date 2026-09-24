@@ -114,8 +114,14 @@ def armed_session(
     *,
     stage: DemoStage = DemoStage.STAGE_2_MIN_SIZE_ORDER,
     register_strategy: bool = True,
+    mode: str | None = None,
 ) -> Any:
-    """Build a session wired to ``terminal`` and armed through the real gates."""
+    """Build a session wired to ``terminal`` and armed through the real gates.
+
+    ``mode=None`` leaves the session to resolve the process mode (``QTS_MODE``),
+    which is how the operator meets it: the DEMO order path exists only when
+    that resolves to ``DEMO_EXECUTION``.
+    """
     from qts.execution.demo_identity import confirm_pin, write_pin
     from qts.execution.demo_session import DemoSession, DemoSessionConfig
     from qts.lifecycle.demo_authority import readiness_age_seconds
@@ -133,6 +139,7 @@ def armed_session(
             db_path=Path(tmp_path) / "qts.db",
             actor="integration-test",
             mt5_module=terminal,
+            mode=mode,
         )
     )
     write_pin(session.adapter.broker_identity(), actor="integration-test")

@@ -1,15 +1,20 @@
 # DEMO Execution — Authorization and Safety Contract (2026-09-23)
 
-**Status:** `DEMO_EXECUTION = ENABLED_AUTHORIZED` · `LIVE = LOCKED` · `REAL_CAPITAL_EXPOSURE = 0` · **Trading state: `NO_TRADE`**
+**Status:** `DEMO_EXECUTION = ENABLED_AUTHORIZED` · `LIVE = LOCKED` · `REAL_CAPITAL_EXPOSURE = 0` ·
+**Trading state: `TRADING_ELIGIBLE_DIAGNOSTIC`** (2026-09-24) — a registered, **non-validated** DEMO
+forward research policy may trade to *measure*; no strategy has a validated edge.
 **Branch:** `arena/01a0ce9f-trading-system`
 **Authorization artifact:** `data/evidence/demo_execution_authorization_2026-09-23.json` (`DEMO-AUTH-2026-09-23-01`)
-**Strategy registry:** `data/evidence/demo_forward_validation_registry_2026-09-23.json` (empty → `NO_TRADE`)
+**Strategy registry:** `data/evidence/demo_forward_validation_registry_2026-09-23.json` (1 entry, see §12a)
+**Registered policy:** `DEMOPOL-EXEC-COST-XAUUSD-2026-09-24-V1` · preregistration
+`docs/preregistration_demo_execution_probe_2026-09-24.md`
 
 > **One-line summary.** The owner has authorized real order submission on the configured **MT5 DEMO**
 > account for forward-validation research. The authorization is a recorded, hashed, revocable artifact —
 > not a source-code switch — and it opens a path in which **every pre-existing gate still applies**.
-> No strategy has passed the research gates, so the system currently stays flat (`NO_TRADE`) even though
-> DEMO execution is enabled.
+> No strategy has passed the research gates, so instead of inventing one, a `DEMO_FORWARD_RESEARCH_POLICY`
+> was preregistered to **measure the execution path** (§12a). It claims no edge, and its observation
+> records may never be used to re-fit it or to select a strategy.
 
 ---
 
@@ -140,9 +145,13 @@ digits, point, stops_level, filling mode) — `get_symbol_spec` fails closed on 
 
 ## 6. Pre-trade gate — all 17 required safeguards
 
-`qts/execution/demo_pretrade.py::run_pretrade_gate` runs **22 checks** per order (17 required safeguards
-plus contract-level checks). It passes only when **every** check is `PASS`; any unresolved fact is
-`UNKNOWN` and blocks.
+`qts/execution/demo_pretrade.py::run_pretrade_gate` runs **29 checks** per order as of 2026-09-24: the
+17 required safeguards, contract-level checks (authorization, permission, mode, stage, autonomy, risk
+limit provenance) and the registered-policy checks added in §12a (`policy_complete`,
+`symbol_allowed_by_policy`, `trading_hours_allowed`, `order_frequency_within_policy`,
+`max_drawdown_within_policy`, `policy_execution_assumptions`). It passes only when **every** check is
+`PASS`; any unresolved fact is `UNKNOWN` and blocks. The exact count moves as safeguards are added —
+the invariant is the completeness rule, not the number.
 
 | # | Required safeguard | Check | Fail-closed behaviour |
 |---|---|---|---|
@@ -267,7 +276,7 @@ through the existing audit sink; every authority transition emits
 **Current verdict: conditions 3–5 are unmet → `NO_TRADE`. No DEMO order has been submitted
 (`orders_submitted = 0`).**
 
-## 12. Current strategy status — `NO_TRADE` (deliberate)
+## 12. Strategy status — no validated strategy (deliberate)
 
 On 2026-09-23 every preregistered XAUUSD family is REJECTED or INCONCLUSIVE after realistic costs
 (`spread+2c`, 1-quote delay, Holm α0.01, block-bootstrap): H-DIR-02, H-DIR-03a/b, H-TEMP-01, H-ST-02WF,
@@ -298,6 +307,72 @@ Research-integrity enforcement while trading:
 * forward DEMO results are recorded as observation evidence only and are never fed back into research,
   parameter selection, or promotion decisions.
 
+**Update 2026-09-24.** The registry is no longer empty: one *diagnostic* forward research policy is
+registered so the DEMO path can be measured without inventing an edge. It uses status
+`ELIGIBLE_DIAGNOSTIC`, not `ELIGIBLE`. See **§12a**.
+
+## 12a. The registered DEMO research/execution policy (2026-09-24)
+
+The registry is no longer empty. One **diagnostic** research policy is registered, under a status that
+cannot be confused with a validated strategy:
+
+| Field | Value |
+|---|---|
+| `strategy_id` | `DEMO-EXECPROBE-XAUUSD-V1` |
+| `status` | `ELIGIBLE_DIAGNOSTIC` (not `ELIGIBLE` — that status is reserved for a strategy with a validation artifact) |
+| `policy_class` | `DEMO_FORWARD_RESEARCH_POLICY` |
+| `policy_id` / `version` | `DEMOPOL-EXEC-COST-XAUUSD-2026-09-24-V1` / `1.0.0` |
+| `hypothesis_id` | `H-EXEC-01` (execution-cost probe — a *measurement* hypothesis, not a directional one) |
+| Preregistration | `docs/preregistration_demo_execution_probe_2026-09-24.md` |
+| Provider | `qts.research.demo_execution_probe:ExecutionCostProbe` |
+| `validated_edge` | `false` |
+| Session | Mon–Fri 08:00–16:00 UTC (London–New York overlap) |
+| Size / exposure | 0.01 lots (broker minimum) · `max_simultaneous_exposure_lots` 0.01 · one position |
+| Loss limits | `max_daily_loss` 5.00 USD · `max_drawdown` 10.00 USD |
+| Frequency | 2 orders/day · 900 s minimum interval · 900 s maximum hold |
+| Costs | `max_spread_bps` 3.0 · `max_slippage_bps` 2.0 · `execution_delay_assumption_ms` 1500 |
+| Pinned hashes | `code_hash` (provider source) · `config_hash` (= `params_hash`) · `data_hash` null (no historical dataset is consumed) |
+
+**Why a probe and not a strategy.** The ledger is closed with `NO_VALIDATED_EDGE`
+(`reports/research_cycle_closure_2026-09-23.json`); every magnitude survivor is *process structure, not a
+directional trade* ("mean signed move ~0.8 cent, P(up)~0.506 at 256q; not executable — no volatility
+instrument, no side"). Inventing a signal to make the DEMO account trade would be the exact
+research-integrity failure this project forbids. What *can* be measured honestly — and what every future
+hypothesis needs first — is the cost and behaviour of the execution path itself: spread at entry,
+slippage, submission latency, protective-stop behaviour, time-exit behaviour, round-turn cost, and
+reconciliation agreement.
+
+**The rules are deterministic and frozen.** At most one round turn per UTC hour; direction alternates
+by parity of the UTC hour (`BUY` on even hours, `SELL` on odd) so the sample set carries **no net
+directional exposure**; entry is gated only on data quality and cost (quote age ≤ 5 s, spread within the
+policy cap); the protective stop (± 2.00 USD) is attached to the order itself; exit at 900 s or on the
+stop, with the reason and the venue's realized P&L recorded either way. There is no indicator, no
+prediction, and no parameter search.
+
+**How the policy is enforced, not just stored.** Registration alone proves nothing, so every declared
+limit is a live constraint:
+
+* `policy_complete`, `symbol_allowed_by_policy`, `trading_hours_allowed`,
+  `order_frequency_within_policy`, `max_drawdown_within_policy` and `policy_execution_assumptions` are
+  pre-trade gate checks; a policy check that cannot be evaluated is `UNKNOWN` and fails the order;
+* the policy can only **tighten** the canonical DEMO limits — spread, tick age, order interval,
+  reconcile age, per-order size, exposure and daily loss are combined with `min`/`max`, never replaced
+  (`src/qts/execution/demo_pretrade.py::_cap`);
+* `code_hash` is verified against the provider's source file on every autopilot cycle — a provider that
+  no longer matches its registration halts the loop (`code drift`);
+* kill conditions named by the policy (daily loss, drawdown, reconciliation drift, parameter drift, code
+  drift, identity mismatch, revoked authorization, stale data, stage) **raise the kill switch and halt
+  the stage** on the refusal, rather than letting the loop retry (`DemoSession._enforce_policy_kill_conditions`).
+
+**Change control.** Any change is a new policy version with a new preregistration and a new
+`config_hash`, never an edit in response to a result. `scripts/register_demo_research_policy.py`
+recomputes the hashes from disk and re-seals the entry (the procedure is in git either way, which is
+exactly why the preregistration rule is a rule and not a convention).
+
+**What success looks like.** Measurement completeness — complete spread/slippage/latency/stop/reconciliation
+records with the controls clean — **not** profit. A run that loses money and produces complete
+measurements succeeded; a run that makes money without an explanation did not.
+
 ## 13. What this authorization does not permit
 
 * **LIVE trading** — `LIVE = LOCKED`; the live gate is untouched and the authorization refuses any
@@ -325,13 +400,14 @@ This work was implemented and tested in a **Linux sandbox without a MetaTrader5 
 ## 15. Operating procedure (Windows terminal, DEMO account)
 
 ```bash
+set QTS_MODE=demo_execution                  # the DEMO order path exists ONLY in this mode
 qts demo verify                              # START HERE: what's blocking, and the one next command
 qts demo authorization                       # artifact + resolved policy
 qts demo connectivity                        # Stage 1 (no orders)
 qts demo connectivity --pin                  # record observed identity (PENDING_REVIEW)
 qts demo connectivity --confirm-pin          # owner confirms the pin
 qts demo arm --stage 1                       # prove Stage 1 prerequisites
-qts demo preflight --side BUY                # 22-check dry run (no order)
+qts demo preflight --side BUY                # full-gate dry run (no order)
 qts demo arm --stage 2 --confirm --risk-ack  # open the order path
 qts demo order --side BUY --stop-loss 1995   # ONE RESEARCH_DEMO_ORDER (registry-gated)
 qts demo run --strategy <id>                 # controlled autonomous DEMO trading
@@ -339,7 +415,14 @@ qts demo journal --export data/evidence/demo_forward_observations.jsonl
 qts demo kill --reason "..."                 # halt immediately (durable; halts the stage)
 qts demo clear-kill --reason "..." --confirm # lift the halt (stage stays HALTED — re-arm)
 qts demo revoke --reason "..."               # withdraw authorization
+python scripts/demo_static_validation.py     # offline check: LIVE lock, scope, policy, hashes
 ```
+
+**`QTS_MODE` is not decoration.** A `DemoSession` resolves its mode from the process (or from an explicit
+`DemoSessionConfig.mode`), so the DEMO order path cannot be reached by merely constructing a DEMO session
+in a process that is running in another mode — `mode_is_demo_execution` fails, the authority refuses
+permission, and `qts demo verify` says so first. Every other mode, **including LIVE**, has no DEMO order
+path at all.
 
 `qts demo verify` is the operator's entry point: a read-only triage that touches nothing (no order, no
 stage change, no enablement) and answers one question — *where am I, and which single command comes next?*
@@ -374,6 +457,10 @@ failed = ["strategy_registered_frozen"]
        → "no registered forward-validation strategy — NO_TRADE"
 ```
 
+(Recorded on 2026-09-23, when the registry was empty. With a registered policy the same wiring
+evaluates 29 checks and the residual blocker is the one the policy or the venue actually raises —
+e.g. `trading_hours_allowed` outside Mon–Fri 08:00–16:00 UTC.)
+
 i.e. **every operational safeguard passes and the order is still refused**, because the binding
 constraint is the research gate. The same test asserts that `submit()` returns `NO_TRADE`, records a
 `NO_TRADE` signal, sends no broker order, and that the autopilot halts (0 orders) on `NO_TRADE` and on
@@ -388,7 +475,7 @@ reports the honest residual blockers instead of a green light:
 | `execution_permission` | FAIL | `qts demo arm --stage 2 --confirm --risk-ack` (fresh readiness) |
 | `stage_allows_order` | FAIL | advance the stage machine (Stage 1 → 2) |
 | `reconciliation_ready` | UNKNOWN→PASS | resolved by the pre-trade reconciliation probe |
-| `strategy_registered_frozen` | FAIL | **research**: register a preregistered, eligible strategy |
+| `strategy_registered_frozen` | FAIL | **research**: register a preregistered, eligible experiment (§12a) |
 
 ### 16.2 Autonomous loop (simulated terminal + registered test strategy)
 
@@ -552,3 +639,55 @@ LIVE = LOCKED                         (no artifact, mode, or request can change 
 REAL_CAPITAL_EXPOSURE = 0
 orders_submitted = 0                  (as of 2026-09-23, NO_TRADE)
 ```
+
+### 16.8 PR #4 review (2026-09-24) — findings and fixes
+
+The branch was re-reviewed end to end against the two questions that matter most for this contract:
+*can any path submit a LIVE order?* and *can DEMO authorization become LIVE authorization?*
+
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | `submit_with_order_check()` in `src/qts/adapters/order_check.py` calls the broker adapter **directly**, bypassing `DemoSession` and therefore the DEMO gate. It has no callers today, so nothing could be submitted — but it is a latent hole: the first caller would inherit a broker path with no mode check, no authorization check and no DEMO-account proof. | **Fixed.** It now asserts, before anything is sent, that the process resolves to `DEMO_EXECUTION`, that a valid owner authorization is in force, and that the connected account is provably DEMO; any unresolvable fact raises `PermissionError`. Covered by `tests/unit/test_direct_broker_submit_guard.py` (7 tests, including LIVE/DEMO_FORWARD/PAPER/DEVELOPMENT, missing authorization, non-DEMO account and unreadable identity). |
+| 2 | A policy could be *carried* by the registry without being *enforced* by the gate: nothing checked the registered symbol, trading hours, daily order budget or drawdown. | **Fixed** — six new gate checks plus policy-tightened canonical caps (§12a). |
+| 3 | `ResearchPolicy` wrapped its document in a mutable `dict`, so a caller could retune a limit in memory while the registered hash still matched. | **Fixed** — the parsed document is deep-frozen (read-only mappings); the test that exposed it is `test_policy_contents_cannot_be_retuned_after_registration`. |
+| 4 | `DemoSession` **asserted** its own mode: `policy` resolved with `mode="DEMO_EXECUTION"` and the gate context reported `DEMO_EXECUTION` no matter what mode the process was actually in. A LIVE-mode (or merely misconfigured) process could therefore walk the DEMO path behind a gate check that claimed the right thing. | **Fixed** — the session resolves its mode from `QTS_MODE` (or an explicit, audited `DemoSessionConfig.mode`), uses it for the policy, the authority and the gate context, and rebuilds the authority when the mode changes. `qts demo verify` now reports the mode first and blocks on it. Covered by `test_a_process_in_any_other_mode_cannot_use_the_demo_order_path` (DEVELOPMENT/PAPER/SHADOW/DEMO_FORWARD/LIVE: 0 broker requests) and `test_demo_session_reports_the_mode_it_is_actually_running_in`. |
+
+Checked and found correct (no change needed):
+
+* **No LIVE order path.** The only production submission routes are `DemoSession.submit()` (29 gate
+  checks including `mode_is_demo_execution`, `account_is_demo`, `broker_identity_verified`,
+  `authorization_valid`) and the autopilot's close path, both reached only under a broker-capable DEMO
+  mode with a valid authorization. `resolve_demo_execution_policy()` refuses mode `LIVE` outright — an
+  authorization artifact cannot unlock it — and `DemoExecutionAuthority.current()` re-checks the
+  *requesting* process's mode, not only the stored row, so a tampered `enabled=1` row cannot grant
+  permission to an observation-mode process.
+* **DEMO authorization cannot become LIVE authorization.** The artifact validator refuses
+  `account_type != demo`, `live_locked != true`, `LIVE` in `modes_allowed`, non-zero
+  `real_capital_exposure_usd`, funds transfer and broker switching; the risk ceiling may only tighten
+  the canonical DEMO limits; tampering (hash mismatch), expiry and revocation all fail closed.
+* **`NO_TRADE` still holds when nothing is registered.** With an empty (or policy-less) registry the
+  gate fails `strategy_registered_frozen` and the autopilot records `NO_TRADE` and halts — asserted by
+  `test_entry_without_a_policy_is_refused_by_the_gate` and
+  `test_an_entry_without_a_complete_policy_cannot_trade`.
+
+### 16.9 Registered-policy validation (2026-09-24)
+
+`tests/integration/test_demo_research_policy_loop.py` (7 tests, `--run-integration`) drives the
+**real registered provider and the real frozen parameters** against the stateful fake terminal:
+
+| Property | Result |
+|---|---|
+| The registered policy drives a minimum-size order with its protective stop on the order | 1 request, `volume 0.01`, `sl` = reference ∓ 2.00, side by UTC-hour parity, full journal record incl. `hypothesis_id` `H-EXEC-01` |
+| `max_orders_per_day` is enforced by the gate (not by the loop) | 2nd order of a 1/day policy refused with `order_frequency_within_policy`; 1 broker request |
+| `max_simultaneous_exposure_lots` is a real cap | a second position is refused with `max_total_exposure`; 1 broker request |
+| Trading hours are enforced | outside the declared window: 0 orders, 0 requests, loop halts naming `trading_hours` |
+| **Code drift** halts the loop | a policy whose `code_hash` no longer matches the provider source: 0 orders, halted `code drift` |
+| An entry without a complete policy cannot trade | registry refuses (`NO_TRADE`), loop halts, 0 requests |
+| The shipped policy declares what the operator approved | Mon–Fri 08:00–16:00 UTC, 2/day, 5 USD daily loss, 10 USD drawdown, 0.01 lots, stop 2.00, hold 900 s |
+
+Policy-schema validation is covered by `tests/unit/test_demo_research_policy.py` (45 tests): every
+mandated field is required (one test per field, none defaulted), unknown kill-condition names are
+refused rather than ignored, `validated_edge=true` requires an existing artifact, an `edge_statement`
+that does not disclaim an edge is refused, hours/days/timezone are validated, `config_hash` must match
+the registered params, and the runtime helpers (symbol authorisation, session window, kill-condition
+mapping, code-hash verification) behave as specified.

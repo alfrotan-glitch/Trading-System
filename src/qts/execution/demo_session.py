@@ -61,6 +61,11 @@ class DemoSessionConfig:
     max_spread_bps: float = 30.0
     #: Minimum seconds between two orders of the same strategy/symbol/side.
     min_order_interval_s: float = DEFAULT_MIN_ORDER_INTERVAL_S
+    #: Canonical execution mode of the REQUESTING process. ``None`` → resolve
+    #: from the environment (``QTS_MODE``). The DEMO path is only reachable
+    #: when that resolves to ``DEMO_EXECUTION``; a process running in any other
+    #: mode (including LIVE) is refused here rather than at the broker.
+    mode: str | None = None
 
 
 @dataclass
@@ -120,11 +125,35 @@ class DemoSession:
         self._last_reconcile: Any = None
         self._reconcile_attempted: bool = False
         self._authority: Any = None
+        self._authority_mode: Any = None
 
     # ------------------------------------------------------------- properties
     @property
+    def mode(self) -> ExecutionMode:
+        """The canonical mode this process is running in (fail closed).
+
+        The DEMO session must never assert a mode: reporting ``DEMO_EXECUTION``
+        because a DEMO session exists would let a LIVE-mode process walk the
+        DEMO path with a gate that claims the right thing. The mode is either
+        explicitly requested (audited call site) or resolved from the
+        environment, and anything other than ``DEMO_EXECUTION`` is refused by
+        the policy resolver and by the ``mode_is_demo_execution`` gate check.
+        """
+        if self.config.mode:
+            try:
+                return ExecutionMode(str(self.config.mode).upper())
+            except ValueError:
+                return ExecutionMode.DEVELOPMENT  # unresolvable → least capable
+        try:
+            from qts.domain.modes import resolve_mode
+
+            return resolve_mode()
+        except Exception:
+            return ExecutionMode.DEVELOPMENT
+
+    @property
     def policy(self):
-        return resolve_demo_execution_policy(mode=ExecutionMode.DEMO_EXECUTION.value)
+        return resolve_demo_execution_policy(mode=self.mode.value)
 
     @property
     def authorization(self):
@@ -148,7 +177,10 @@ class DemoSession:
 
     @property
     def authority(self) -> Any:
-        if self._authority is None:
+        # The mode is resolved per access, not cached: a process whose mode
+        # changes (or was resolved differently) must not keep an authority that
+        # was built for the previous mode.
+        if self._authority is None or self._authority_mode != self.mode:
             from qts.lifecycle.demo_authority import DemoExecutionAuthority
             from qts.observability.audit import SqliteAuditLog
 
@@ -161,8 +193,9 @@ class DemoSession:
             self._authority = DemoExecutionAuthority(
                 db_path=self.db_path,
                 audit=audit,
-                mode=ExecutionMode.DEMO_EXECUTION.value,
+                mode=self.mode.value,
             )
+            self._authority_mode = self.mode
         return self._authority
 
     # ------------------------------------------------------------ Stage 1
@@ -556,6 +589,17 @@ class DemoSession:
         registry = load_registry()
         entry, _entry_reasons = resolve_entry(registry, entry.strategy_id if entry else None)
 
+        # Cumulative P&L curve for the policy's drawdown limit. Best effort:
+        # an unreadable journal leaves the drawdown UNKNOWN, and UNKNOWN fails
+        # the gate — it never reads as "no drawdown".
+        try:
+            drawdown = self.journal.drawdown()
+        except Exception:
+            drawdown = {"peak": None, "current": None, "drawdown": None}
+
+        # Caps are always the canonical DEMO_EXECUTION limits: even a
+        # process that will be refused for its mode is evaluated against the
+        # strictest applicable boundary, never a looser one.
         limits = resolve_risk_limits(ExecutionMode.DEMO_EXECUTION)
 
         order_check_ok: bool | None = None
@@ -573,7 +617,7 @@ class DemoSession:
             authorization=policy.authorization,
             authority_permitted=permitted,
             authority_reasons=list(authority_reasons or []),
-            mode=ExecutionMode.DEMO_EXECUTION.value,
+            mode=self.mode.value,
             stage=self.stage.current().stage,
             identity=identity,
             pin=pin,
@@ -623,6 +667,11 @@ class DemoSession:
             record_fields_available=DemoOrderJournal.record_fields_available(),
             entry=entry,
             strategy_config_hash=(entry.params_hash if entry else None),
+            research_policy=(entry.policy if entry is not None else None),
+            orders_today=self.journal.orders_today(),
+            cumulative_pnl=drawdown.get("current"),
+            peak_cumulative_pnl=drawdown.get("peak"),
+            now=datetime.now(UTC),
             limits=limits,
         )
 
@@ -658,6 +707,32 @@ class DemoSession:
             "order_check": self._order_check_probe(lots=size),
             "stage": self.stage.current().as_dict(),
         }
+
+    def _enforce_policy_kill_conditions(self, verdict: Any, entry: Any | None) -> tuple[str, ...]:
+        """Raise the kill switch when the failed checks are policy kill conditions.
+
+        Returns the conditions that fired (empty tuple when the refusal was a
+        routine limit, e.g. a wide spread). Raising here rather than only in the
+        autopilot means a refusal is a *state change* the operator must clear
+        with ``qts demo clear-kill``, so the loop cannot quietly retry past a
+        broken control.
+        """
+        policy = getattr(entry, "policy", None)
+        if policy is None:
+            return ()
+        failed = list(getattr(verdict, "failed", ()) or ()) + list(getattr(verdict, "unknown", ()) or ())
+        triggered = policy.must_kill_on(failed)
+        if not triggered:
+            return ()
+        reason = (
+            f"policy {policy.policy_id} kill condition(s) triggered: {', '.join(triggered)} "
+            f"(failed checks: {', '.join(str(f) for f in failed) or 'none'})"
+        )
+        with contextlib.suppress(Exception):
+            self.raise_kill_switch(reason)
+        with contextlib.suppress(Exception):
+            self.stage.halt(reason=reason, actor=self.config.actor)
+        return triggered
 
     def _resolve_size(self, lots: Decimal | None, entry: Any | None) -> Decimal:
         if lots is not None:
@@ -705,6 +780,10 @@ class DemoSession:
         )
         verdict = run_pretrade_gate(ctx)
         if not verdict.passed:
+            # A policy's kill conditions are a control, not a comment: when the
+            # gate fails on one of them the system must stop, not merely decline
+            # this order and try again on the next cycle.
+            triggered = self._enforce_policy_kill_conditions(verdict, entry)
             self.journal.record_signal(
                 strategy_id=strategy_id,
                 strategy_config_hash=config_hash,
@@ -716,11 +795,16 @@ class DemoSession:
                 reason="; ".join(verdict.reasons),
                 authorization_id=(self.authorization.authorization_id if self.authorization else None),
             )
+            reasons = list(verdict.reasons)
+            if triggered:
+                reasons.append(
+                    "kill switch RAISED by policy kill condition(s): " + ", ".join(triggered)
+                )
             return SubmissionResult(
                 allowed=False,
                 client_order_id=client_order_id,
                 state="NO_TRADE",
-                reasons=list(verdict.reasons),
+                reasons=reasons,
                 verdict=verdict.as_dict(),
             )
 

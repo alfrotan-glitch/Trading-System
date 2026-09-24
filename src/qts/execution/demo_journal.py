@@ -560,6 +560,62 @@ class DemoOrderJournal:
             if str(r.get("requested_at") or "").startswith(target) and r.get("state") != "REJECTED"
         )
 
+    def realized_curve(self, limit: int = 5000) -> list[Decimal]:
+        """Cumulative realized P&L after each journal row, oldest first.
+
+        The drawdown a policy limits has to be measured against something
+        observable and reproducible. This is it: the running cumulative
+        realized P&L of the DEMO journal, starting from zero. It is not an
+        equity curve (the DEMO account equity is not ours to reconstruct), but
+        it is exact, and a peak-to-trough limit on it is enforceable.
+        """
+        with db_connect(self.db_path) as con:
+            con.row_factory = _row_factory
+            rows = con.execute(
+                "SELECT realized_pnl FROM demo_order_journal WHERE realized_pnl IS NOT NULL"
+                " ORDER BY journal_id ASC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        curve: list[Decimal] = []
+        running = Decimal("0")
+        for row in rows:
+            try:
+                running += Decimal(str(row_dict(row).get("realized_pnl")))
+            except Exception:
+                continue
+            curve.append(running)
+        return curve
+
+    def drawdown(self) -> dict[str, Any]:
+        """Peak-to-trough of the cumulative realized curve plus open unrealized.
+
+        ``current`` folds in the unrealized P&L of still-open journal rows, so
+        a losing open position counts towards the drawdown limit instead of
+        waiting to be realized.
+        """
+        curve = self.realized_curve()
+        peak = Decimal("0")
+        for value in curve:
+            if value > peak:
+                peak = value
+        current = curve[-1] if curve else Decimal("0")
+        unrealized = Decimal("0")
+        for row in self.open_orders():
+            value = row.get("unrealized_pnl")
+            if value is None:
+                continue
+            try:
+                unrealized += Decimal(str(value))
+            except Exception:
+                continue
+        current = current + unrealized
+        return {
+            "peak": peak,
+            "current": current,
+            "drawdown": peak - current if current < peak else Decimal("0"),
+            "samples": len(curve),
+        }
+
     def recent_order_epochs(self, within_s: float) -> list[float]:
         now = datetime.now(UTC).timestamp()
         out: list[float] = []

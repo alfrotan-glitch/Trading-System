@@ -60,6 +60,7 @@ def authorized(tmp_path: Path, monkeypatch):
     (tmp_path / "authorization.json").write_text(json.dumps(doc, indent=2), encoding="utf-8")
     monkeypatch.setenv("QTS_DEMO_AUTHORIZATION", str(tmp_path / "authorization.json"))
     monkeypatch.setenv("QTS_DEMO_IDENTITY_PIN", str(tmp_path / "pin.json"))
+    monkeypatch.setenv("QTS_MODE", "demo_execution")
     return doc
 
 

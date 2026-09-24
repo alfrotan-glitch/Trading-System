@@ -138,7 +138,7 @@ ticks/signals, and zero real-market ticks.
 
 `DEMO_FORWARD/OBSERVE_ONLY` may record real MT5 demo-account market data after
 fresh readiness checks. The collector has no order path. `DEMO_EXECUTION` submits
-DEMO-account orders only after staged arming and the 22-check pre-trade gate, so
+DEMO-account orders only after staged arming and the full pre-trade gate (every required safeguard, contract check and registered-policy limit), so
 no fill, slippage, latency, account, reconciliation, P&L, or execution-comparison
 value is inferred from observation readiness — unmeasured values stay UNAVAILABLE.
 

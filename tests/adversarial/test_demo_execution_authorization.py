@@ -14,9 +14,11 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from fakes_demo_provider import policy_block
 
 from qts.execution.demo_identity import (
     BrokerIdentity,
@@ -29,6 +31,7 @@ from qts.execution.demo_identity import (
     verify_pin,
     write_pin,
 )
+from qts.lifecycle.demo_policy import POLICY_CLASS
 from qts.lifecycle.demo_registry import (
     load_registry,
     params_fingerprint,
@@ -243,6 +246,15 @@ def _entry_doc(strategy_id: str, status: str = "ELIGIBLE", **overrides) -> dict:
         "max_orders_per_day": 2,
     }
     doc.update(overrides)
+    # Every tradeable entry must carry a complete research/execution policy:
+    # registration without a specification is not a registered experiment.
+    if doc.get("policy") is None:
+        doc["policy"] = policy_block(
+            strategy_id=strategy_id,
+            params=dict(doc.get("params") or params),
+            max_orders_per_day=int(doc.get("max_orders_per_day") or 1),
+            allowed_symbols=list(doc.get("allowed_symbols") or ["XAUUSD"]),
+        )
     return doc
 
 
@@ -354,14 +366,65 @@ def test_registry_status_reports_demo_execution_without_a_strategy(tmp_path, mon
     assert status["registry"]["statuses"] == {"S1": "RESEARCH"}
 
 
-def test_shipped_registry_is_empty_and_no_trade():
-    """The repository's own registry must not ship an invented strategy."""
+def test_shipped_registry_ships_no_invented_strategy():
+    """The repository's own registry must not ship an unpreregistered edge claim.
+
+    A registered DEMO_FORWARD_RESEARCH_POLICY is allowed (that is how an
+    explicitly specified forward experiment is authorised), but only as
+    ``ELIGIBLE_DIAGNOSTIC``: fully specified, preregistered, and carrying no
+    validated-edge claim. Anything else — an ``ELIGIBLE`` entry without a
+    validation artifact, a policy-less entry, a partial policy — is an invented
+    strategy and must not ship.
+    """
     registry = load_registry()
     assert registry.path.exists()
-    assert registry.entries == ()
+    assert registry.valid, registry.reasons
+    for entry in registry.entries:
+        assert entry.hypothesis_id, f"{entry.strategy_id}: no hypothesis — unpreregistered"
+        assert entry.preregistration_artifact, f"{entry.strategy_id}: no preregistration artifact"
+        assert Path(entry.preregistration_artifact).exists(), (
+            f"{entry.strategy_id}: preregistration artifact {entry.preregistration_artifact} missing"
+        )
+        assert entry.policy is not None, f"{entry.strategy_id}: no complete research/execution policy"
+        assert entry.policy.policy_class == POLICY_CLASS
+        if entry.status == "ELIGIBLE":
+            pytest.fail(f"{entry.strategy_id}: registered as ELIGIBLE without a validated edge")
+        assert entry.status == "ELIGIBLE_DIAGNOSTIC"
+        assert entry.policy.validated_edge is False
+
     entry, reasons = resolve_entry(registry)
-    assert entry is None
-    assert any("NO_TRADE" in r for r in reasons)
+    status = registry_status()
+    if registry.entries:
+        assert entry is not None, reasons
+        assert status["trading_state"] == "TRADING_ELIGIBLE_DIAGNOSTIC"
+        assert status["validated_edge"] is False
+    else:
+        assert entry is None
+        assert status["trading_state"] == "NO_TRADE"
+        assert any("NO_TRADE" in r for r in reasons)
+
+
+def test_registered_policy_pins_the_provider_source():
+    """The shipped policy's ``code_hash`` must match the provider file on disk.
+
+    The policy is only as immutable as the hash that pins it: if the registered
+    hash does not match the source, ``code drift`` detection is decorative.
+    """
+    import importlib
+
+    registry = load_registry()
+    for entry in registry.entries:
+        if entry.policy is None or not entry.signal_provider:
+            continue
+        module_path, _, attr = entry.signal_provider.partition(":")
+        module = importlib.import_module(module_path)
+        provider_cls = getattr(module, attr)
+        import inspect
+
+        source = inspect.getsourcefile(provider_cls)
+        assert source is not None
+        ok, detail = entry.policy.verify_code_hash(source)
+        assert ok, f"{entry.strategy_id}: {detail}"
 
 
 def test_params_fingerprint_is_deterministic():

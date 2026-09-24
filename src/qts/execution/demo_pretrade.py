@@ -44,6 +44,15 @@ Check → requirement mapping (owner's 17 required safeguards):
 Contract-level checks (``authorization_valid``, ``execution_permission``,
 ``mode_is_demo_execution``, ``stage_allows_order``, ``autonomous_allowed``)
 guard *whether this process may trade at all* and run alongside the above.
+
+Registered-policy checks (``policy_complete``, ``symbol_allowed_by_policy``,
+``trading_hours_allowed``, ``order_frequency_within_policy``,
+``max_drawdown_within_policy``, ``policy_execution_assumptions``) enforce the
+research/execution policy attached to the registry entry
+(:mod:`qts.lifecycle.demo_policy`). They can only TIGHTEN the canonical DEMO
+limits: a policy spread cap, tick-age cap, reconcile age or minimum order
+interval is applied as ``min``/``max`` against the canonical value, never as a
+replacement, so registering a policy is not a route to a looser gate.
 """
 
 from __future__ import annotations
@@ -201,9 +210,18 @@ class DemoPretradeContext:
     journal_ready: bool = False
     record_fields_available: dict[str, bool] = field(default_factory=dict)
 
-    # ---- strategy ---------------------------------------------------------
+    # ---- strategy / registered research policy ----------------------------
     entry: StrategyRegistration | None = None
     strategy_config_hash: str | None = None
+    #: The registered research/execution policy (:class:`ResearchPolicy`).
+    research_policy: Any | None = None
+    #: Orders already submitted today (policy ``max_orders_per_day``).
+    orders_today: int | None = None
+    #: Cumulative realized P&L + open unrealized, and its running peak.
+    cumulative_pnl: Decimal | None = None
+    peak_cumulative_pnl: Decimal | None = None
+    #: Evaluation moment for the policy's trading-hours window (UTC).
+    now: datetime | None = None
 
     # ---- limits -----------------------------------------------------------
     limits: Any | None = None  # ResolvedRiskSnapshot
@@ -325,6 +343,9 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
         record("market_data_fresh", CHECK_UNKNOWN, "tick age could not be computed (no usable timestamp)")
     else:
         limit = ctx.max_tick_age_s if ctx.max_tick_age_s is not None else 60.0
+        policy_age = _policy_tick_age_cap(ctx)
+        if policy_age is not None:
+            limit = min(limit, policy_age)
         if ctx.tick_age_s > limit:
             record("market_data_fresh", CHECK_FAIL, f"tick age {ctx.tick_age_s:.1f}s > {limit:.0f}s (stale)")
         else:
@@ -340,7 +361,7 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
     elif spread is None:
         record("spread_available", CHECK_UNKNOWN, "spread could not be computed from the quote")
     else:
-        max_spread = _limit_value(ctx, "max_spread_bps", 100.0)
+        max_spread = _cap(ctx, "max_spread_bps", 100.0)
         if spread > float(max_spread):
             record("spread_available", CHECK_FAIL, f"spread {spread:.1f}bps > demo limit {float(max_spread):.1f}bps")
         else:
@@ -382,7 +403,7 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
     if ctx.daily_realized_pnl is None:
         record("max_daily_loss", CHECK_UNKNOWN, "daily realized P&L unknown (broker day-start not established)")
     else:
-        limit = Decimal(str(_limit_value(ctx, "daily_loss_limit", 50)))
+        limit = Decimal(str(_cap(ctx, "daily_loss_limit", 50)))
         loss = -Decimal(ctx.daily_realized_pnl)
         if loss >= limit:
             record("max_daily_loss", CHECK_FAIL, f"daily loss {loss} ≥ demo limit {limit}")
@@ -397,11 +418,13 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
     if ctx.idempotency_status:
         problems.append(f"client_order_id already recorded with status {ctx.idempotency_status}")
     now_epoch = datetime.now(UTC).timestamp()
-    recent = [t for t in (ctx.recent_order_epochs or []) if (now_epoch - float(t)) < float(ctx.min_order_interval_s)]
+    min_interval = float(ctx.min_order_interval_s)
+    policy_interval = _policy_min_interval(ctx)
+    if policy_interval is not None:
+        min_interval = max(min_interval, policy_interval)
+    recent = [t for t in (ctx.recent_order_epochs or []) if (now_epoch - float(t)) < min_interval]
     if recent:
-        problems.append(
-            f"{len(recent)} order(s) submitted within {ctx.min_order_interval_s:.0f}s — rate/duplicate guard"
-        )
+        problems.append(f"{len(recent)} order(s) submitted within {min_interval:.0f}s — rate/duplicate guard")
     if not ctx.client_order_id:
         problems.append("client_order_id missing — duplicate protection cannot be evaluated")
     record(
@@ -437,11 +460,11 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
         record("reconciliation_ready", CHECK_FAIL, f"reconciliation drift: {ctx.reconcile_drift}")
     elif ctx.last_reconcile_age_s is None:
         record("reconciliation_ready", CHECK_UNKNOWN, "no reconciliation has run — cannot verify broker vs internal state")
-    elif ctx.last_reconcile_age_s > float(ctx.max_reconcile_age_s):
+    elif ctx.last_reconcile_age_s > float(_reconcile_max_age(ctx)):
         record(
             "reconciliation_ready",
             CHECK_FAIL,
-            f"last reconciliation {ctx.last_reconcile_age_s:.0f}s ago > {ctx.max_reconcile_age_s:.0f}s",
+            f"last reconciliation {ctx.last_reconcile_age_s:.0f}s ago > {_reconcile_max_age(ctx):.0f}s",
         )
     else:
         record("reconciliation_ready", CHECK_PASS, f"reconciled {ctx.last_reconcile_age_s:.0f}s ago, no drift")
@@ -486,6 +509,131 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
             "strategy_registered_frozen",
             CHECK_PASS,
             f"strategy {ctx.entry.strategy_id} registered and frozen (hash {ctx.entry.params_hash[:12]}…)",
+        )
+
+    # ------------------------------------------------ registered policy ----
+    # The policy is the experiment's specification. Every limit it declares is
+    # enforceable here; a policy that cannot be evaluated is UNKNOWN, and
+    # UNKNOWN fails the gate.
+    pol = ctx.research_policy
+    # With no registered entry there is no experiment to evaluate: the
+    # strategy check has already failed, and reporting six speculative policy
+    # checks would bury the one actionable fact ("nothing is registered").
+    if ctx.entry is None:
+        pol = None
+    elif pol is None:
+        record(
+            "policy_complete",
+            CHECK_FAIL,
+            "the registered entry carries no complete research/execution policy — "
+            "an unspecified experiment may not trade",
+        )
+    else:
+        record(
+            "policy_complete",
+            CHECK_PASS,
+            f"policy {pol.policy_id} v{pol.version} "
+            f"({pol.policy_class}, validated_edge={pol.validated_edge}) bound to this order",
+        )
+
+    if ctx.entry is None:
+        pass
+    elif pol is None:
+        record("symbol_allowed_by_policy", CHECK_FAIL, "no policy — no symbol can be authorized")
+    elif not pol.allows_symbol(ctx.symbol):
+        record(
+            "symbol_allowed_by_policy",
+            CHECK_FAIL,
+            f"symbol {ctx.symbol} is not in the policy's allowed symbols ({', '.join(pol.allowed_symbols)})",
+        )
+    else:
+        record("symbol_allowed_by_policy", CHECK_PASS, f"symbol {ctx.symbol} allowed by the policy")
+
+    if ctx.entry is None:
+        pass
+    elif pol is None:
+        record("trading_hours_allowed", CHECK_FAIL, "no policy — no trading window is authorized")
+    else:
+        moment = ctx.now or datetime.now(UTC)
+        if pol.within_trading_hours(moment):
+            sessions = (pol.raw.get("allowed_trading_hours") or {}).get("sessions") or []
+            record(
+                "trading_hours_allowed",
+                CHECK_PASS,
+                f"{moment:%Y-%m-%d %H:%M} UTC inside a declared session ({len(sessions)} session(s))",
+            )
+        else:
+            record(
+                "trading_hours_allowed",
+                CHECK_FAIL,
+                f"{moment:%Y-%m-%d %H:%M} UTC is outside every session declared by the policy",
+            )
+
+    if ctx.entry is None:
+        pass
+    elif pol is None:
+        record("order_frequency_within_policy", CHECK_FAIL, "no policy — no order budget is authorized")
+    elif ctx.orders_today is None:
+        record("order_frequency_within_policy", CHECK_UNKNOWN, "orders submitted today could not be counted")
+    elif ctx.orders_today >= pol.max_orders_per_day:
+        record(
+            "order_frequency_within_policy",
+            CHECK_FAIL,
+            f"{ctx.orders_today} order(s) submitted today — policy budget is {pol.max_orders_per_day}/day",
+        )
+    else:
+        record(
+            "order_frequency_within_policy",
+            CHECK_PASS,
+            f"{ctx.orders_today}/{pol.max_orders_per_day} orders used today",
+        )
+
+    if ctx.entry is None:
+        pass
+    elif pol is None:
+        record("max_drawdown_within_policy", CHECK_FAIL, "no policy — no drawdown limit is authorized")
+    elif ctx.cumulative_pnl is None or ctx.peak_cumulative_pnl is None:
+        record("max_drawdown_within_policy", CHECK_UNKNOWN, "drawdown not measurable from the order journal")
+    else:
+        drawdown = Decimal(str(ctx.peak_cumulative_pnl)) - Decimal(str(ctx.cumulative_pnl))
+        limit = Decimal(str(pol.max_drawdown))
+        if drawdown >= limit:
+            record(
+                "max_drawdown_within_policy",
+                CHECK_FAIL,
+                f"drawdown {drawdown} ≥ policy limit {limit} (peak {ctx.peak_cumulative_pnl}, "
+                f"current {ctx.cumulative_pnl})",
+            )
+        else:
+            record("max_drawdown_within_policy", CHECK_PASS, f"drawdown {drawdown} < policy limit {limit}")
+
+    # The policy declares which gate checks are mandatory for it and how much
+    # execution delay it assumes. Both are verified, not merely carried: a
+    # required check that is not PASS, or an undeclared delay assumption, means
+    # the measurement this policy exists to make would be invalid anyway.
+    if ctx.entry is None:
+        pass
+    elif pol is None:
+        record("policy_execution_assumptions", CHECK_FAIL, "no policy — no execution assumptions declared")
+    else:
+        problems = []
+        for name in pol.required_gate_checks():
+            outcome = checks.get(name)
+            if outcome is None:
+                problems.append(f"policy requires unknown check {name!r}")
+            elif not outcome.passed:
+                problems.append(f"policy requires check {name} which is {outcome.status}")
+        if pol.execution_delay_assumption_ms <= 0:
+            problems.append("policy declares no execution_delay_assumption_ms")
+        record(
+            "policy_execution_assumptions",
+            CHECK_FAIL if problems else CHECK_PASS,
+            "; ".join(problems)
+            if problems
+            else (
+                f"{len(pol.required_gate_checks())} mandatory check(s) pass; "
+                f"delay assumption {pol.execution_delay_assumption_ms:.0f}ms"
+            ),
         )
 
     # ------------------------------------------------------------------ #17
@@ -544,6 +692,60 @@ def _identity_pin_check(
     return ok, detail
 
 
+def _policy(ctx: DemoPretradeContext) -> Any | None:
+    return ctx.research_policy
+
+
+def _cap(ctx: DemoPretradeContext, name: str, default: Any) -> Any:
+    """Canonical limit, tightened by the policy when the policy is stricter.
+
+    Registration may never loosen a DEMO limit, so the effective cap is the
+    stricter of the two.
+    """
+    canonical = _limit_value(ctx, name, default)
+    pol = _policy(ctx)
+    if pol is None:
+        return canonical
+    declared = {
+        "max_spread_bps": pol.max_spread_bps,
+        "max_slippage_bps": pol.max_slippage_bps,
+        # "maximum simultaneous exposure" is the policy's single tightest
+        # statement about size: it caps the position, the exposure total and
+        # the per-order maximum alike.
+        "max_quantity": pol.max_simultaneous_exposure_lots,
+        "max_exposure_lots": pol.max_simultaneous_exposure_lots,
+        "daily_loss_limit": pol.max_daily_loss,
+    }.get(name)
+    if declared is None:
+        return canonical
+    try:
+        return min(float(canonical), float(declared))
+    except (TypeError, ValueError):
+        return canonical  # uncomparable policy value: keep the canonical cap
+
+
+def _policy_tick_age_cap(ctx: DemoPretradeContext) -> float | None:
+    pol = _policy(ctx)
+    return pol.tick_age_cap_s() if pol is not None else None
+
+
+def _policy_min_interval(ctx: DemoPretradeContext) -> float | None:
+    pol = _policy(ctx)
+    if pol is None:
+        return None
+    value = float(pol.min_order_interval_s)
+    return value if value > 0 else None
+
+
+def _reconcile_max_age(ctx: DemoPretradeContext) -> float:
+    base = float(ctx.max_reconcile_age_s)
+    pol = _policy(ctx)
+    if pol is None:
+        return base
+    declared = pol.reconcile_max_age_s()
+    return min(base, declared) if declared else base
+
+
 def _limit_value(ctx: DemoPretradeContext, name: str, default: Any) -> Any:
     limits = ctx.limits
     if limits is None:
@@ -589,7 +791,7 @@ def _size_check(ctx: DemoPretradeContext) -> tuple[str, str, str]:
     spec = ctx.spec
     if spec is None:
         return ("order_size_within_hard_max", CHECK_UNKNOWN, "broker symbol spec unknown — size not verifiable")
-    hard_max = Decimal(str(_limit_value(ctx, "max_quantity", Decimal("0.1"))))
+    hard_max = Decimal(str(_cap(ctx, "max_quantity", Decimal("0.1"))))
     try:
         broker_max = Decimal(str(spec.volume_max))
         broker_min = Decimal(str(spec.volume_min))
@@ -655,7 +857,7 @@ def _exposure_check(ctx: DemoPretradeContext, positions: list[Any]) -> tuple[str
             return ("max_total_exposure", CHECK_UNKNOWN, "a position has an unreadable quantity — exposure unknown")
         current += abs(qty)
     total = current + abs(lots)
-    max_lots = Decimal(str(_limit_value(ctx, "max_exposure_lots", Decimal("0.3"))))
+    max_lots = Decimal(str(_cap(ctx, "max_exposure_lots", Decimal("0.3"))))
     if total > max_lots:
         return ("max_total_exposure", CHECK_FAIL, f"exposure {total} lots > demo limit {max_lots} lots")
     spec = ctx.spec

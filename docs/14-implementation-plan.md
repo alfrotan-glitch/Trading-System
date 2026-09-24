@@ -48,7 +48,7 @@ measured spread, fill, latency and slippage evidence is unavailable in the
 canonical dataset. The supplementary event-selected spread study is not an R5
 replacement. The locked research partition remains untouched.
 
-`DEMO_EXECUTION = DISABLED BY POLICY` is the shipped default; with a recorded owner authorization it resolves to `ENABLED_AUTHORIZED` for the DEMO account only, and every order still requires the staged progression and the 22-check pre-trade gate. `DEMO_FORWARD` is observation-only and structurally order-free. `LIVE = LOCKED`. No roadmap item changes these states.
+`DEMO_EXECUTION = DISABLED BY POLICY` is the shipped default; with a recorded owner authorization it resolves to `ENABLED_AUTHORIZED` for the DEMO account only, and every order still requires the staged progression and the full pre-trade gate (every required safeguard, contract check and registered-policy limit). `DEMO_FORWARD` is observation-only and structurally order-free. `LIVE = LOCKED`. No roadmap item changes these states.
 
 ## 3. Staged roadmap
 

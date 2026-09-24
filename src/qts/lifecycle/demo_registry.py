@@ -23,6 +23,15 @@ The registry exists to keep the research covenant executable:
 
 Every load is fail-closed: malformed, tampered, or unregistered input resolves
 to "no eligible strategy", never to a permissive default.
+
+Schema v2 adds the mandatory research/execution policy
+(:mod:`qts.lifecycle.demo_policy`) — the full specification of the forward
+experiment: signal/exit/stop logic, sizing, exposure, loss, drawdown, order
+frequency, symbols, hours, cost limits, data requirements, kill conditions,
+reconciliation requirements, and the code/config/data hashes that let the
+runtime prove the experiment was not respecified mid-flight. A v2 entry
+without a complete, valid policy is refused, so "registered" always means
+"fully specified before the first order".
 """
 
 from __future__ import annotations
@@ -36,11 +45,19 @@ from pathlib import Path
 from typing import Any
 
 REGISTRY_SCHEMA = "qts.demo_forward_registry.v1"
+#: v2 entries carry a complete, validated research/execution policy.
+REGISTRY_SCHEMA_V2 = "qts.demo_forward_registry.v2"
+REGISTRY_SCHEMAS = (REGISTRY_SCHEMA, REGISTRY_SCHEMA_V2)
 ENV_REGISTRY_PATH = "QTS_DEMO_REGISTRY"
 DEFAULT_REGISTRY_PATH = Path("data/evidence/demo_forward_validation_registry_2026-09-23.json")
 
-#: Statuses that allow DEMO order generation.
+#: Statuses that allow DEMO order generation. ``ELIGIBLE`` means a strategy
+#: with a recorded validation artifact; ``ELIGIBLE_DIAGNOSTIC`` means an
+#: explicitly registered, non-validated forward *measurement* policy. Both may
+#: trade; they must never be confused with one another, because only the first
+#: implies an edge claim.
 ELIGIBLE_STATUSES = frozenset({"ELIGIBLE"})
+DIAGNOSTIC_STATUSES = frozenset({"ELIGIBLE_DIAGNOSTIC"})
 #: Statuses that explicitly mean "do not trade".
 BLOCKED_STATUSES = frozenset({"NO_TRADE", "HALTED", "REJECTED", "SUSPENDED", "RESEARCH"})
 
@@ -76,10 +93,37 @@ class StrategyRegistration:
     max_orders_per_day: int = 0
     notes: str = ""
     raw: dict[str, Any] = field(default_factory=dict)
+    #: The complete research/execution policy (v2 entries; None for v1).
+    policy: Any | None = None  # qts.lifecycle.demo_policy.ResearchPolicy
 
     @property
     def eligible(self) -> bool:
-        return self.status in ELIGIBLE_STATUSES
+        if self.status in ELIGIBLE_STATUSES:
+            return True
+        # A diagnostic policy may trade, but ONLY as a non-validated DEMO
+        # forward research policy: no other status is allowed to trade without
+        # a recorded validation artifact.
+        if self.status in DIAGNOSTIC_STATUSES:
+            from qts.lifecycle.demo_policy import POLICY_CLASS
+
+            return (
+                self.policy is not None
+                and self.policy.policy_class == POLICY_CLASS
+                and self.policy.validated_edge is False
+            )
+        return False
+
+    @property
+    def policy_class(self) -> str | None:
+        return self.policy.policy_class if self.policy is not None else None
+
+    @property
+    def validated_edge(self) -> bool:
+        return bool(self.policy.validated_edge) if self.policy is not None else False
+
+    @property
+    def policy_id(self) -> str | None:
+        return self.policy.policy_id if self.policy is not None else None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -96,6 +140,9 @@ class StrategyRegistration:
             "allowed_symbols": list(self.allowed_symbols),
             "max_orders_per_day": self.max_orders_per_day,
             "notes": self.notes,
+            "policy_class": self.policy_class,
+            "policy_id": self.policy_id,
+            "validated_edge": self.validated_edge,
         }
 
 
@@ -146,6 +193,39 @@ def _entry_from(doc: dict[str, Any]) -> tuple[StrategyRegistration | None, list[
         max_orders = 0
     status = str(doc.get("status") or "NO_TRADE").upper()
 
+    # ---- research/execution policy (v2: mandatory) -------------------------
+    policy = None
+    policy_doc = doc.get("policy")
+    if policy_doc is not None:
+        from qts.lifecycle.demo_policy import validate_policy
+
+        policy, policy_problems = validate_policy(policy_doc, params)
+        problems.extend(f"policy {strategy_id}: {r}" for r in policy_problems)
+    elif status in ELIGIBLE_STATUSES | DIAGNOSTIC_STATUSES:
+        problems.append(
+            f"entry {strategy_id}: status {status} requires a complete research/execution policy block "
+            "(qts.lifecycle.demo_policy) — an un-specified experiment may not trade"
+        )
+    if policy is not None:
+        # The policy and the entry must describe the same strategy, and the
+        # policy's own allowed symbols must include the entry's.
+        if policy.strategy_id and policy.strategy_id != strategy_id:
+            problems.append(
+                f"entry {strategy_id}: policy.strategy_id {policy.strategy_id!r} does not match the entry"
+            )
+        if policy.allowed_symbols and [str(x) for x in (doc.get("allowed_symbols") or [])]:
+            extra = [s for s in (doc.get("allowed_symbols") or []) if not policy.allows_symbol(s)]
+            if extra:
+                problems.append(
+                    f"entry {strategy_id}: allowed_symbols {extra} are not permitted by the policy "
+                    f"({list(policy.allowed_symbols)})"
+                )
+        if policy.max_orders_per_day and int(doc.get("max_orders_per_day") or 0) not in (0, policy.max_orders_per_day):
+            problems.append(
+                f"entry {strategy_id}: max_orders_per_day {doc.get('max_orders_per_day')} disagrees with the "
+                f"policy ({policy.max_orders_per_day})"
+            )
+
     entry = StrategyRegistration(
         strategy_id=strategy_id,
         status=status,
@@ -163,6 +243,7 @@ def _entry_from(doc: dict[str, Any]) -> tuple[StrategyRegistration | None, list[
         max_orders_per_day=max_orders,
         notes=str(doc.get("notes") or ""),
         raw=doc,
+        policy=policy,
     )
     return entry, problems
 
@@ -184,7 +265,7 @@ def load_registry(path: str | Path | None = None) -> RegistrySnapshot:
             valid=False,
             reasons=[f"forward-validation registry unreadable — fail closed ({type(exc).__name__}: {exc})"],
         )
-    if not isinstance(doc, dict) or doc.get("schema") != REGISTRY_SCHEMA:
+    if not isinstance(doc, dict) or doc.get("schema") not in REGISTRY_SCHEMAS:
         return RegistrySnapshot(
             path=target,
             valid=False,
@@ -241,14 +322,21 @@ def resolve_entry(
         if not entry.eligible:
             reasons.append(
                 f"strategy {strategy_id!r} status is {entry.status} — not eligible for DEMO execution (NO_TRADE)"
+                + (
+                    ""
+                    if entry.policy is not None
+                    else " (no complete research/execution policy attached to the entry)"
+                )
             )
             return None, reasons
     else:
         eligible = registry.eligible_entries
         if not eligible:
             reasons.append(
-                "no strategy has status ELIGIBLE in the forward-validation registry — NO_TRADE "
-                "(DEMO_EXECUTION may be ENABLED while no strategy is validated)"
+                "no strategy is eligible in the forward-validation registry — NO_TRADE "
+                "(DEMO_EXECUTION may be ENABLED while no strategy is validated; an eligible entry needs "
+                "status ELIGIBLE with a validation artifact, or ELIGIBLE_DIAGNOSTIC with a complete, "
+                "non-validated DEMO_FORWARD_RESEARCH_POLICY)"
             )
             return None, reasons
         if len(eligible) > 1:
@@ -273,6 +361,16 @@ def resolve_entry(
         )
     if entry.max_orders_per_day <= 0:
         reasons.append(f"strategy {entry.strategy_id}: max_orders_per_day must be > 0 — fail closed")
+    if entry.policy is None:
+        reasons.append(
+            f"strategy {entry.strategy_id}: no complete research/execution policy — un-specified experiments "
+            "may not generate orders (NO_TRADE)"
+        )
+    elif entry.status in DIAGNOSTIC_STATUSES and entry.policy.validated_edge:
+        reasons.append(
+            f"strategy {entry.strategy_id}: status ELIGIBLE_DIAGNOSTIC with validated_edge=true is contradictory "
+            "— a validated strategy must be registered as ELIGIBLE"
+        )
 
     if reasons:
         return None, reasons
@@ -286,7 +384,24 @@ def registry_status(path: str | Path | None = None) -> dict[str, Any]:
     return {
         "registry": registry.as_dict(),
         "resolved_strategy": entry.as_dict() if entry else None,
-        "trading_state": "TRADING_ELIGIBLE" if entry else "NO_TRADE",
+        "trading_state": _trading_state(entry),
+        "validated_edge": bool(entry.validated_edge) if entry else False,
+        "policy_class": entry.policy_class if entry else None,
         "reasons": reasons,
         "checked_at": datetime.now(UTC).isoformat(),
     }
+
+
+def _trading_state(entry: StrategyRegistration | None) -> str:
+    """Operator-facing trading state, distinguishing validated from diagnostic.
+
+    ``TRADING_ELIGIBLE``        — a strategy with a validated edge may trade.
+    ``TRADING_ELIGIBLE_DIAGNOSTIC`` — a registered, non-validated DEMO forward
+    research policy may trade to *measure*; no edge is claimed.
+    ``NO_TRADE``                — nothing eligible.
+    """
+    if entry is None:
+        return "NO_TRADE"
+    if entry.status in ELIGIBLE_STATUSES:
+        return "TRADING_ELIGIBLE"
+    return "TRADING_ELIGIBLE_DIAGNOSTIC"

@@ -346,3 +346,70 @@ def test_cold_start_rebuilds_local_state_from_broker_deals(demo_env):
     assert reconciliation["requires_suspend"] is False, reconciliation
     assert reconciliation["drift"] == "NONE"
     assert len(restarted.engine.portfolio.positions) == 1, "state is rebuilt from broker deals"
+
+
+def test_a_process_in_any_other_mode_cannot_use_the_demo_order_path(demo_env, monkeypatch):
+    """The DEMO path exists only in DEMO_EXECUTION — and never in LIVE.
+
+    A ``DemoSession`` object must not be enough: its mode is resolved from the
+    process, so if the mode changes (or was never set) everything is refused
+    with a legible reason even though the session is fully armed. This is the
+    end-to-end version of ``LIVE = LOCKED``: with authorization, pin, stage and
+    registry all in place, the mode alone decides.
+    """
+    monkeypatch.setenv("QTS_MODE", "demo_execution")
+    terminal = FakeTerminal()
+    session = armed_session(demo_env["tmp"], terminal)
+    assert session.authority.current().execution_permitted is True
+
+    for mode in ("DEVELOPMENT", "PAPER", "SHADOW", "DEMO_FORWARD", "LIVE"):
+        monkeypatch.setenv("QTS_MODE", mode)
+        assert str(session.mode) == mode
+        assert session.policy.enabled is False, f"{mode}: the DEMO policy must be disabled"
+        # The authority is re-resolved for the current mode, so a permission
+        # granted under DEMO_EXECUTION does not survive the change.
+        assert session.authority.current().execution_permitted is False
+
+        result = session.submit(side="BUY", stop_loss=Decimal("1995.00"), rationale="mode test")
+        assert result.allowed is False, f"{mode}: submission must be refused"
+        assert "mode_is_demo_execution" in (result.verdict or {}).get("failed", [])
+        assert terminal.requests == [], f"{mode}: no broker request may be sent"
+
+        # The autopilot stops rather than looping on a refusal it cannot fix.
+        report = run_autopilot(
+            session, AutopilotConfig(symbol="XAUUSD", max_iterations=1, poll_interval_s=0, actor="test")
+        )
+        assert report.orders_submitted == 0
+        assert terminal.requests == []
+
+
+def test_demo_session_reports_the_mode_it_is_actually_running_in(demo_env, monkeypatch):
+    """An explicitly requested mode is honoured — including a refused one.
+
+    Constructing a DEMO session with ``mode="LIVE"`` must not quietly fall back
+    to the DEMO path: the session reports LIVE, the policy is disabled and no
+    arming or submission can succeed.
+    """
+    monkeypatch.setenv("QTS_MODE", "demo_execution")  # the process would allow DEMO
+    terminal = FakeTerminal()
+    session = DemoSession(
+        DemoSessionConfig(
+            symbol="XAUUSD",
+            symbol_map={"XAUUSD": "XAUUSD@"},
+            db_path=demo_env["tmp"] / "qts.db",
+            actor="test",
+            mt5_module=terminal,
+            mode="LIVE",  # an explicit request overrides the environment
+        )
+    )
+    assert str(session.mode) == "LIVE"
+    assert session.policy.enabled is False  # LIVE = LOCKED, no artifact can permit it
+
+    decision = session.authority.enable(readiness={}, confirmed=True, risk_ack=True)
+    assert decision.execution_permitted is False
+    assert any("LIVE" in r for r in decision.reasons)
+
+    result = session.submit(side="BUY", stop_loss=Decimal("1995.00"))
+    assert result.allowed is False
+    assert "mode_is_demo_execution" in (result.verdict or {}).get("failed", [])
+    assert terminal.requests == []

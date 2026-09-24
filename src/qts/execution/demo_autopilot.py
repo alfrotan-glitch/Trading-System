@@ -223,6 +223,15 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
                     f"{entry.params_hash[:12]}… (frozen parameters may not change mid-window)"
                 )
 
+            # Code drift: the registered policy pins the sha256 of the provider
+            # source. A provider that no longer matches it is a different
+            # experiment wearing the same strategy_id — halt instead of trading
+            # something that was never registered.
+            if getattr(entry, "policy", None) is not None:
+                code_ok, code_detail = _verify_code_hash(entry.policy, provider)
+                if not code_ok:
+                    halt(f"code drift: {code_detail}")
+
             # ---- 3. market state -------------------------------------------
             quote = session._quote_probe()
             if not quote.get("ok"):
@@ -305,6 +314,16 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
     finally:
         report.finished_at = datetime.now(UTC).isoformat()
     return report
+
+
+def _verify_code_hash(policy: Any, provider: Any) -> tuple[bool, str]:
+    """Compare the policy's registered ``code_hash`` with the provider's source."""
+    import inspect
+
+    source = inspect.getsourcefile(type(provider)) or inspect.getsourcefile(provider)
+    if not source:
+        return False, "provider source file not resolvable — code hash unverifiable"
+    return policy.verify_code_hash(source)
 
 
 def _auth_id(session: Any) -> str | None:

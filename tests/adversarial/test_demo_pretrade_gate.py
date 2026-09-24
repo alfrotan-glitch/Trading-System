@@ -15,6 +15,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from fakes_demo_provider import policy_block
 
 from qts.execution.demo_identity import BrokerIdentity, identity_fingerprint
 from qts.execution.demo_pretrade import (
@@ -23,6 +24,7 @@ from qts.execution.demo_pretrade import (
     run_pretrade_gate,
 )
 from qts.lifecycle.demo_authorization import document_fingerprint, load_authorization
+from qts.lifecycle.demo_policy import validate_policy
 from qts.lifecycle.demo_registry import StrategyRegistration, params_fingerprint
 from qts.lifecycle.demo_stage import DemoStage
 
@@ -81,6 +83,16 @@ def _pin(identity: BrokerIdentity, status: str = "CONFIRMED") -> dict:
     }
 
 
+def _research_policy(params: dict | None = None, **overrides):
+    """A complete, valid research/execution policy for the fixture entry."""
+    body = dict(params or {"lookback": 16, "threshold": 0.5})
+    pol, problems = validate_policy(
+        policy_block(strategy_id="TEST-STRATEGY", params=body, **overrides), body
+    )
+    assert not problems, problems
+    return pol
+
+
 def _entry(**overrides) -> StrategyRegistration:
     params = {"lookback": 16, "threshold": 0.5}
     base = {
@@ -96,6 +108,7 @@ def _entry(**overrides) -> StrategyRegistration:
         "exit_policy":{"max_hold_seconds": 0},
         "allowed_symbols":["XAUUSD"],
         "max_orders_per_day":2,
+        "policy": _research_policy(params),
     }
     base.update(overrides)
     return StrategyRegistration(**base)
@@ -197,6 +210,11 @@ def healthy_ctx(tmp_path: Path, **overrides) -> DemoPretradeContext:
         "record_fields_available":dict.fromkeys(_required_fields(), True),
         "entry":entry,
         "strategy_config_hash":(entry.params_hash if entry is not None else None),
+        "research_policy":(entry.policy if entry is not None else None),
+        "orders_today":0,
+        "cumulative_pnl":Decimal("0"),
+        "peak_cumulative_pnl":Decimal("0"),
+        "now":datetime.now(UTC),
         "limits":_limits(),
     }
     base.update(overrides)
@@ -497,3 +515,175 @@ def test_no_silent_defaults_for_critical_facts(tmp_path: Path, field: str):
     verdict = run_pretrade_gate(healthy_ctx(tmp_path, **{field: None}))
     assert not verdict.passed
     assert verdict.unknown or verdict.failed
+
+
+# ------------------------------------------------- registered-policy enforcement
+
+
+def _policy_ctx(tmp_path: Path, **policy_overrides) -> DemoPretradeContext:
+    """Healthy context whose entry carries a policy built with ``**overrides``."""
+    entry = _entry(policy=_research_policy({"lookback": 16, "threshold": 0.5}, **policy_overrides))
+    return healthy_ctx(tmp_path, entry=entry)
+
+
+def test_policy_tightens_the_canonical_spread_cap(tmp_path: Path):
+    # The canonical DEMO cap is 30 bps; the policy declares 2 bps. A 1 bps
+    # spread passes a 4 bps spread must fail against the POLICY cap, not the
+    # canonical one. Registration may only tighten, never loosen.
+    verdict = run_pretrade_gate(_policy_ctx(tmp_path, max_spread_bps=2.0))
+    assert verdict.passed, verdict.reasons
+
+    wider = healthy_ctx(
+        tmp_path,
+        entry=_entry(policy=_research_policy({"lookback": 16}, max_spread_bps=2.0)),
+        bid=Decimal("2000.00"),
+        ask=Decimal("2000.80"),
+        spread_bps=4.0,
+    )
+    verdict = run_pretrade_gate(wider)
+    assert not verdict.passed
+    assert "spread_available" in verdict.failed
+    assert "2.0bps" in verdict.checks["spread_available"].detail
+
+
+def test_policy_symbol_restriction_blocks(tmp_path: Path):
+    verdict = run_pretrade_gate(_policy_ctx(tmp_path, allowed_symbols=["EURUSD"]))
+    assert not verdict.passed
+    assert "symbol_allowed_by_policy" in verdict.failed
+
+
+def test_policy_trading_hours_block_outside_the_declared_window(tmp_path: Path):
+    # Exclude today AND the next two days: a midnight crossing during the run
+    # still lands on an excluded day, so the test never depends on the clock.
+    now = datetime.now(UTC)
+    excluded = {now.strftime("%a").upper()}
+    for offset in (1, 2):
+        excluded.add(datetime.fromtimestamp(now.timestamp() + offset * 86400, UTC).strftime("%a").upper())
+    days = [d for d in ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN") if d not in excluded]
+    verdict = run_pretrade_gate(
+        _policy_ctx(
+            tmp_path,
+            allowed_trading_hours={
+                "timezone": "UTC",
+                "sessions": [{"days": days, "start": "00:00", "end": "23:59"}],
+            },
+        )
+    )
+    assert not verdict.passed
+    assert "trading_hours_allowed" in verdict.failed
+
+
+def test_policy_trading_hours_pass_inside_the_declared_window(tmp_path: Path):
+    # 2026-09-24 is a Thursday; the fixture entry's policy is all-week, so this
+    # asserts the positive path with an explicit moment inside a narrow window.
+    verdict = run_pretrade_gate(
+        healthy_ctx(
+            tmp_path,
+            entry=_entry(
+                policy=_research_policy(
+                    {"lookback": 16},
+                    allowed_trading_hours={
+                        "timezone": "UTC",
+                        "sessions": [{"days": ["THU"], "start": "08:00", "end": "16:00"}],
+                    },
+                )
+            ),
+            now=datetime(2026, 9, 24, 12, 0, tzinfo=UTC),
+        )
+    )
+    assert verdict.passed, verdict.reasons
+
+
+def test_policy_daily_order_budget_blocks(tmp_path: Path):
+    verdict = run_pretrade_gate(_policy_ctx(tmp_path, max_orders_per_day=1))
+    assert verdict.passed  # 0 of 1 used
+    used = healthy_ctx(
+        tmp_path,
+        entry=_entry(policy=_research_policy({"lookback": 16}, max_orders_per_day=1)),
+        orders_today=1,
+    )
+    verdict = run_pretrade_gate(used)
+    assert not verdict.passed
+    assert "order_frequency_within_policy" in verdict.failed
+
+
+def test_policy_drawdown_blocks(tmp_path: Path):
+    verdict = run_pretrade_gate(
+        healthy_ctx(
+            tmp_path,
+            entry=_entry(policy=_research_policy({"lookback": 16}, max_drawdown=10.0)),
+            peak_cumulative_pnl=Decimal("5"),
+            cumulative_pnl=Decimal("-6"),
+        )
+    )
+    assert not verdict.passed
+    assert "max_drawdown_within_policy" in verdict.failed
+
+
+def test_policy_drawdown_passes_within_the_limit(tmp_path: Path):
+    verdict = run_pretrade_gate(
+        healthy_ctx(
+            tmp_path,
+            entry=_entry(policy=_research_policy({"lookback": 16}, max_drawdown=10.0)),
+            peak_cumulative_pnl=Decimal("5"),
+            cumulative_pnl=Decimal("-1"),
+        )
+    )
+    assert verdict.passed, verdict.reasons
+
+
+def test_policy_stale_data_cap_tightens_the_tick_age(tmp_path: Path):
+    verdict = run_pretrade_gate(
+        healthy_ctx(
+            tmp_path,
+            entry=_entry(policy=_research_policy({"lookback": 16}, stale_data_protection={"max_tick_age_s": 2.0, "on_stale": "NO_TRADE"})),
+            tick_age_s=3.0,
+            max_tick_age_s=60.0,
+        )
+    )
+    assert not verdict.passed
+    assert "market_data_fresh" in verdict.failed
+
+
+def test_policy_min_order_interval_tightens_the_duplicate_guard(tmp_path: Path):
+    from datetime import timedelta
+
+    recent = (datetime.now(UTC) - timedelta(seconds=30)).timestamp()
+    verdict = run_pretrade_gate(
+        healthy_ctx(
+            tmp_path,
+            entry=_entry(policy=_research_policy({"lookback": 16}, min_order_interval_s=900)),
+            recent_order_epochs=[recent],
+        )
+    )
+    assert not verdict.passed
+    assert "duplicate_order_protection" in verdict.failed
+
+
+def test_policy_required_checks_must_actually_pass(tmp_path: Path):
+    """A policy may declare extra mandatory checks; they must resolve to PASS."""
+    verdict = run_pretrade_gate(
+        healthy_ctx(
+            tmp_path,
+            entry=_entry(
+                policy=_research_policy(
+                    {"lookback": 16},
+                    min_data_requirements={
+                        "requires_historical_dataset": False,
+                        "required_checks": ["broker_reference_capture"],
+                    },
+                )
+            ),
+            journal_ready=False,
+        )
+    )
+    assert not verdict.passed
+    assert "policy_execution_assumptions" in verdict.failed
+
+
+def test_entry_without_a_policy_is_refused_by_the_gate(tmp_path: Path):
+    entry = _entry(policy=None)
+    assert entry.policy is None
+    verdict = run_pretrade_gate(healthy_ctx(tmp_path, entry=entry))
+    assert not verdict.passed
+    assert "policy_complete" in verdict.failed
