@@ -105,7 +105,6 @@ def evaluate_walkforward(scan: WalkForwardScan, *, complete_rows: int = DISCOVER
     # Concatenate
     if not scan._events:
         return {"error": "no events"}
-    anchor = np.concatenate([e["anchor"] for e in scan._events])
     time_msc = np.concatenate([e["time_msc"] for e in scan._events])
     trail_abs = np.concatenate([e["trail_abs"] for e in scan._events])
     abs256 = np.concatenate([e["abs256"] for e in scan._events])
@@ -115,7 +114,6 @@ def evaluate_walkforward(scan: WalkForwardScan, *, complete_rows: int = DISCOVER
     fold_width = (scan.cutoff - scan.time_min) // FOLDS
     folds = []
     reasons = []
-    underpowered = False
     for f in range(FOLDS):
         lo = scan.time_min + f * fold_width
         hi = scan.time_min + (f + 1) * fold_width if f < FOLDS - 1 else scan.cutoff
@@ -123,7 +121,6 @@ def evaluate_walkforward(scan: WalkForwardScan, *, complete_rows: int = DISCOVER
         n_fold = int(np.count_nonzero(mask))
         if n_fold == 0:
             folds.append({"fold": f, "n": 0, "status": "INCONCLUSIVE"})
-            underpowered = True
             reasons.append(f"fold {f} empty")
             continue
         ta = trail_abs[mask]
@@ -178,8 +175,7 @@ def evaluate_walkforward(scan: WalkForwardScan, *, complete_rows: int = DISCOVER
             }
         )
         if not floor_pass:
-            underpowered = False  # not underpowered, just failed floor
-            # will be counted as REJECTED below, not INCONCLUSIVE
+            pass  # will be counted as REJECTED below, not INCONCLUSIVE
 
     # Gates
     all_floors = all(f.get("floor_pass") for f in folds)

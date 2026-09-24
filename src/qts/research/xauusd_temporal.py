@@ -13,8 +13,6 @@ from typing import Any
 
 import numpy as np
 
-from qts.research.impulse.statistics import holm_bonferroni
-
 SCHEMA = "qts.xauusd_temporal.v1"
 PREREGISTRATION = "docs/xauusd_temporal_next_step_H-TEMP-01_2026-09-23.md"
 HYPOTHESIS = "H-TEMP-01"
@@ -363,7 +361,6 @@ def evaluate_temporal(scan: TemporalScan, *, complete_rows: int = DISCOVERY_ROWS
     # Floors and artifact gates (if not underpowered)
     floor_pass = False
     artifact_pass = False
-    bootstrap_ok = False  # placeholder, will be computed if not underpowered
     if not underpowered and primary_stats and stability_stats and gap_stats:
         floor_pass = (
             primary_stats["ratio"] is not None
@@ -385,7 +382,6 @@ def evaluate_temporal(scan: TemporalScan, *, complete_rows: int = DISCOVERY_ROWS
             and gap_stats["lift"] > 0
         )
         # For now, skip bootstrap, just require floors and artifacts
-        bootstrap_ok = True  # would need block bootstrap
 
     output["measured"]["gates"] = {
         "identity_and_minimums": not underpowered,

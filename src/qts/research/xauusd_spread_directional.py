@@ -16,8 +16,6 @@ from typing import Any
 
 import numpy as np
 
-from qts.research.impulse.statistics import holm_bonferroni
-
 SCHEMA = "qts.xauusd_spread_directional.v1"
 PREREGISTRATION = "docs/xauusd_directional_next_step_H-DIR-03_2026-09-23.md"
 HYPOTHESES = ("H-DIR-03a", "H-DIR-03b")
@@ -91,7 +89,7 @@ class EventTable:
     def __len__(self) -> int:
         return len(self.anchor)
 
-    def take(self, mask: np.ndarray) -> "EventTable":
+    def take(self, mask: np.ndarray) -> EventTable:
         return EventTable(*(getattr(self, name)[mask] for name in self.__dataclass_fields__))
 
 

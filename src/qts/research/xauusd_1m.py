@@ -70,7 +70,7 @@ class OneMScan:
         mids = (bids + asks) / 2
         # Update rows count
         self.rows += len(stamps)
-        for t, m in zip(stamps, mids):
+        for t, m in zip(stamps, mids, strict=False):
             minute = (t // 60000) * 60000  # floor to minute
             if self.cur_min is None:
                 self.cur_min = int(minute)
@@ -158,9 +158,7 @@ def evaluate_1m(scan: OneMScan) -> dict[str, Any]:
             return False
         if times[i + h] - times[i] != h * 60000:
             return False
-        if np.any(time_gaps[i : i + h] != 60000):
-            return False
-        return True
+        return not np.any(time_gaps[i : i + h] != 60000)
 
     # Collect events for primary 12
     events = []
@@ -262,8 +260,8 @@ def evaluate_1m(scan: OneMScan) -> dict[str, Any]:
         t1 = TIME_MIN + 2 * (CUTOFF - TIME_MIN) // 3
         for t_idx, (lo, hi) in enumerate([(TIME_MIN, t0), (t0, t1), (t1, CUTOFF)]):
             mask = (times_ev >= lo) & (times_ev < hi)
-            long_t = np.array([e["net12"] for e, m in zip(events, mask) if m and e["is_long"]])
-            short_t = np.array([e["net12"] for e, m in zip(events, mask) if m and e["is_short"]])
+            long_t = np.array([e["net12"] for e, m in zip(events, mask, strict=False) if m and e["is_long"]])
+            short_t = np.array([e["net12"] for e, m in zip(events, mask, strict=False) if m and e["is_short"]])
             tercile_stats.append({
                 "tercile": t_idx,
                 "n_long": int(len(long_t)),

@@ -10,7 +10,10 @@ from typing import Any
 
 import numpy as np
 
-from qts.research.xauusd_marketmaking import MarketMakingScan, TIME_MIN, CUTOFF, DISCOVERY_ROWS, H_FILL, H_EXCURSION, TRAIL, LOW_TRAIL, HIGH_TRAIL, TIGHT_SPREAD, WIDE_SPREAD
+from qts.research.xauusd_marketmaking import (
+    DISCOVERY_ROWS,
+    MarketMakingScan,
+)
 
 SCHEMA = "qts.xauusd_marketmaking_wf.v1"
 PREREGISTRATION = "docs/xauusd_marketmaking_next_step_H-MM-02_2026-09-23.md"
@@ -68,7 +71,7 @@ def evaluate_marketmaking_wf(scan: MarketMakingScan, *, complete_rows: int = DIS
         n_F = int(np.count_nonzero(is_F))
         n_U = int(np.count_nonzero(is_U))
         # blocks per fold: count distinct blocks in slice
-        blocks = len(set(e["block"] for e in ev_slice))
+        blocks = len({e["block"] for e in ev_slice})
         if n_F < MIN_N_FOLD or n_U < MIN_N_FOLD:
             folds.append({"fold": f, "n_F": n_F, "n_U": n_U, "blocks": blocks, "status": "INCONCLUSIVE", "reason": f"n < {MIN_N_FOLD}"})
             continue

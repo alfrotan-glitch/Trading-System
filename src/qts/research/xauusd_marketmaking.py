@@ -148,7 +148,7 @@ class MarketMakingScan:
         self.blocks.update((int(t), int(b)) for t, b in zip(tercile, block, strict=True))
 
         # Prepare arrays for events
-        for idx, (anc, loc, tf, blk, f_flag, u_flag) in enumerate(zip(anchors, local, tercile, block, is_F, is_U)):
+        for _idx, (anc, loc, tf, blk, f_flag, u_flag) in enumerate(zip(anchors, local, tercile, block, is_F, is_U, strict=False)):
             if not (f_flag or u_flag):
                 continue
             bid_at = all_bid[loc]
@@ -221,7 +221,6 @@ def evaluate_marketmaking(scan: MarketMakingScan, *, complete_rows: int = DISCOV
     abs_exc = np.array([e["abs_exc"] for e in scan._events], dtype=float)
     max_exc = np.array([e["max_exc"] for e in scan._events], dtype=float)
     gap_clear = np.array([e["gap_clear"] for e in scan._events], dtype=bool)
-    spread = np.array([e["spread"] for e in scan._events], dtype=float)
     net = np.array([e["net"] for e in scan._events], dtype=float)
     tercile = np.array([e["tercile"] for e in scan._events], dtype=int)
     block = np.array([e["block"] for e in scan._events], dtype=int)
@@ -268,13 +267,7 @@ def evaluate_marketmaking(scan: MarketMakingScan, *, complete_rows: int = DISCOV
         if not np.any(mask_t):
             tercile_stats.append({"tercile": t, "n_F": 0, "n_U": 0, "p_F": None, "p_U": None, "lift": None, "mean_exc_F": None, "mean_exc_U": None, "ratio": None, "gap_dollars": None, "blocks": 0})
             continue
-        # need to filter is_F/is_U within tercile
-        # Create masks for F and U within this tercile
-        idx_t = np.where(mask_t)[0]
-        # For stats, we need to consider only events in this tercile
-        mask_F_t = is_F[mask_t]
-        mask_U_t = is_U[mask_t]
-        # But stats_for expects masks over the tercile-subset arrays, we can compute directly:
+        # For stats over the tercile-subset arrays, we compute directly:
         n_F = int(np.count_nonzero(is_F[mask_t]))
         n_U = int(np.count_nonzero(is_U[mask_t]))
         # Use subset arrays
