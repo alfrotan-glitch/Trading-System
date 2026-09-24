@@ -171,9 +171,14 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
             report.iterations += 1
 
             # ---- 1. stage / kill / reconcile health ------------------------
-            stage = stage_machine.current().stage
+            stage_record = stage_machine.current()
+            stage = stage_record.stage
             if stage not in ORDER_STAGES:
-                halt(f"stage {stage} does not permit orders")
+                # Report WHY it was halted: a control that halted the machine
+                # (reconciliation drift, an operator kill) is the actionable
+                # fact; "stage HALTED" alone sends the operator nowhere.
+                why = getattr(stage_record, "reason", None) or "no reason recorded"
+                halt(f"stage {stage} does not permit orders (halted because: {why})")
             kill_state = session.kill_switch_state()
             if not kill_state.get("readable") or kill_state.get("killed"):
                 halt(f"kill switch {'unreadable' if not kill_state.get('readable') else 'ACTIVE'}: {kill_state.get('reason')}")

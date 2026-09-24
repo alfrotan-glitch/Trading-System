@@ -23,6 +23,10 @@ class FakeTerminal:
         self.open_age_s = open_age_s
         self._next_order = 990_001
         self._next_deal = 770_001
+        #: When set, ``order_send`` records the request and returns this retcode
+        #: as a broker failure (no position, no deal) — used to inject rejections
+        #: and ambiguous timeouts in failure-mode tests.
+        self.order_send_retcode: int | None = None
         self.account = SimpleNamespace(
             login=123456,
             server="Broker-Demo",
@@ -70,6 +74,17 @@ class FakeTerminal:
     # -- orders / positions --------------------------------------------------
     def order_send(self, request):
         self.requests.append(dict(request))
+        if self.order_send_retcode is not None:
+            # A broker can reject or time out AFTER receiving the request; the
+            # request still happened, which is exactly why it must be recorded.
+            return SimpleNamespace(
+                retcode=self.order_send_retcode,
+                order=0,
+                deal=0,
+                price=0.0,
+                volume=request["volume"],
+                comment="simulated broker failure",
+            )
         self._next_order += 1
         self._next_deal += 1
         if "position" in request:  # a close

@@ -20,13 +20,15 @@ back into parameter selection (see ``docs/demo_execution_authorization_and_safet
 from __future__ import annotations
 
 import json
+import sqlite3
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 from qts.db import connect as db_connect
+from qts.db import immediate as db_immediate
 from qts.execution.demo_pretrade import REQUIRED_RECORD_FIELDS, RESEARCH_DEMO_ORDER
 
 ORDER_JOURNAL_SCHEMA = """
@@ -245,6 +247,142 @@ class DemoOrderJournal:
             con.commit()
             return int(cur.lastrowid or 0)
 
+    # ------------------------------------------------------------ claiming
+
+    def expire_inflight_rows(self, *, max_age_s: float = 120.0) -> int:
+        """Fail a submission that never completed (process died mid-order).
+
+        A row in ``NEW``/``SUBMITTED`` means "the broker call is in progress or
+        its outcome was never recorded". If it is older than ``max_age_s`` the
+        process that started it is gone, and the only honest state is
+        ``REJECTED`` with an unknown-fill caveat — never "it probably worked".
+        """
+        cutoff = (datetime.now(UTC) - timedelta(seconds=max_age_s)).isoformat()
+        with db_connect(self.db_path) as con:
+            cur = con.execute(
+                "UPDATE demo_order_journal SET state='REJECTED', "
+                "exit_reason='in-flight submission abandoned (outcome unknown — verify with the broker)', "
+                "updated_at=? WHERE state IN ('NEW','SUBMITTED') AND requested_at < ?",
+                (_now(), cutoff),
+            )
+            con.commit()
+            return int(cur.rowcount or 0)
+
+    def claim_order_slot(
+        self,
+        *,
+        client_order_id: str,
+        strategy_id: str,
+        strategy_config_hash: str,
+        symbol: str,
+        side: str,
+        order_request: dict[str, Any],
+        min_interval_s: float = 30.0,
+        stale_inflight_s: float = 120.0,
+        timeout_s: float = 30.0,
+        authorization_id: str | None = None,
+        hypothesis_id: str | None = None,
+        registry_entry_hash: str | None = None,
+        broker_symbol: str | None = None,
+        requested_lots: Decimal | str = "0",
+        requested_price: Decimal | str | None = None,
+        stop_loss: Decimal | str | None = None,
+        take_profit: Decimal | str | None = None,
+        signal_snapshot: dict[str, Any] | None = None,
+        signal_at: str | None = None,
+        market_state_entry: dict[str, Any] | None = None,
+        notes: str = "",
+    ) -> tuple[int | None, str]:
+        """Atomically reserve the right to send ONE order.
+
+        The gate's duplicate/rate check reads the journal and the insert happens
+        afterwards — fine for one process, racy for two (or for a CLI call while
+        the autopilot is mid-cycle). This method performs the whole
+        check-then-insert inside a single ``BEGIN IMMEDIATE`` transaction, so a
+        concurrent caller either waits for this row or sees it and refuses:
+
+        1. abandon stale in-flight rows (crash recovery);
+        2. refuse if this strategy already ordered this symbol/side within
+           ``min_interval_s`` (duplicate / rate guard);
+        3. refuse if any submission is still in flight (one order at a time);
+        4. insert the ``NEW`` row and return its id.
+
+        Returns ``(journal_id, "claimed")`` or ``(None, reason)``.
+        """
+        now = _now()
+        cutoff = (datetime.now(UTC) - timedelta(seconds=min_interval_s)).isoformat()
+        stale_cutoff = (datetime.now(UTC) - timedelta(seconds=stale_inflight_s)).isoformat()
+        try:
+            with db_immediate(self.db_path, timeout=timeout_s) as con:
+                # 1. crash recovery: unfinished submissions older than the
+                #    in-flight budget cannot still be running.
+                con.execute(
+                    "UPDATE demo_order_journal SET state='REJECTED', "
+                    "exit_reason='in-flight submission abandoned (outcome unknown — verify with the broker)', "
+                    "updated_at=? WHERE state IN ('NEW','SUBMITTED') AND requested_at < ?",
+                    (now, stale_cutoff),
+                )
+                # 2. duplicate / rate guard on committed rows.
+                recent = con.execute(
+                    "SELECT client_order_id, requested_at FROM demo_order_journal "
+                    "WHERE strategy_id IS ? AND symbol IS ? AND side IS ? AND state NOT IN ('REJECTED') "
+                    "AND requested_at >= ? ORDER BY journal_id DESC LIMIT 1",
+                    (strategy_id, symbol, side, cutoff),
+                ).fetchone()
+                if recent is not None:
+                    return None, (
+                        f"duplicate/rate guard: order {recent[0]} was already requested this cycle "
+                        f"(min interval {min_interval_s:.0f}s)"
+                    )
+                # 3. one submission in flight at a time (exposure is capped, and
+                #    two concurrent market orders would double it).
+                inflight = con.execute(
+                    "SELECT client_order_id FROM demo_order_journal "
+                    "WHERE state IN ('NEW','SUBMITTED') ORDER BY journal_id DESC LIMIT 1"
+                ).fetchone()
+                if inflight is not None:
+                    return None, (
+                        f"another submission is in flight ({inflight[0]}) — refusing to send a concurrent order"
+                    )
+                # 4. claim it.
+                cur = con.execute(
+                    "INSERT INTO demo_order_journal (label, authorization_id, client_order_id, strategy_id,"
+                    " strategy_config_hash, hypothesis_id, registry_entry_hash, symbol, broker_symbol, side,"
+                    " order_type, requested_lots, requested_price, stop_loss, take_profit, order_request,"
+                    " signal_snapshot, signal_at, requested_at, state, market_state_entry, notes, created_at,"
+                    " updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        RESEARCH_DEMO_ORDER,
+                        authorization_id,
+                        client_order_id,
+                        strategy_id,
+                        strategy_config_hash,
+                        hypothesis_id,
+                        registry_entry_hash,
+                        symbol,
+                        broker_symbol,
+                        side,
+                        "MARKET",
+                        str(requested_lots),
+                        None if requested_price is None else str(requested_price),
+                        None if stop_loss is None else str(stop_loss),
+                        None if take_profit is None else str(take_profit),
+                        json.dumps(order_request, default=str),
+                        json.dumps(signal_snapshot or {}, default=str),
+                        signal_at,
+                        now,
+                        "NEW",
+                        json.dumps(market_state_entry or {}, default=str),
+                        notes,
+                        now,
+                        now,
+                    ),
+                )
+                return int(cur.lastrowid or 0), "claimed"
+        except sqlite3.OperationalError as exc:
+            # A locked database is an unknown state: never assume the slot is free.
+            return None, f"order slot could not be claimed atomically ({exc}) — refusing to submit"
+
     def _update(self, journal_id: int, **fields: Any) -> None:
         if not fields:
             return
@@ -329,10 +467,15 @@ class DemoOrderJournal:
         fees: Decimal | str | None = None,
         market_state_exit: dict[str, Any] | None = None,
         closed_at: str | None = None,
+        broker_retcode: str | None = None,
     ) -> None:
         fields: dict[str, Any] = {"state": state}
         if exit_reason is not None:
             fields["exit_reason"] = exit_reason
+        if broker_retcode is not None:
+            # Broker response codes belong on the record even when the order
+            # never filled: "why the broker said no" is part of the audit trail.
+            fields["broker_retcode"] = str(broker_retcode)
         if realized_pnl is not None:
             fields["realized_pnl"] = str(realized_pnl)
         if fees is not None:

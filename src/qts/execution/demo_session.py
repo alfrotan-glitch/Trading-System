@@ -35,7 +35,7 @@ from typing import Any
 
 from qts.domain.modes import ExecutionMode
 from qts.execution.demo_journal import DemoOrderJournal
-from qts.execution.demo_pretrade import DemoPretradeContext, run_pretrade_gate
+from qts.execution.demo_pretrade import DEFAULT_MIN_ORDER_INTERVAL_S, DemoPretradeContext, run_pretrade_gate
 from qts.lifecycle.demo_authorization import resolve_demo_execution_policy
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStageMachine
 
@@ -59,6 +59,8 @@ class DemoSessionConfig:
     mt5_module: Any | None = None
     max_tick_age_s: float = 60.0
     max_spread_bps: float = 30.0
+    #: Minimum seconds between two orders of the same strategy/symbol/side.
+    min_order_interval_s: float = DEFAULT_MIN_ORDER_INTERVAL_S
 
 
 @dataclass
@@ -101,6 +103,12 @@ class DemoSession:
         self.db_path = Path(config.db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.journal = DemoOrderJournal(db_path=self.db_path)
+        # Recovery: a submission that never recorded an outcome (this process
+        # or another died between the broker call and the journal update) is an
+        # unknown state, not a completed one. Fail it instead of letting the
+        # in-flight guard block every future order.
+        with contextlib.suppress(Exception):
+            self.journal.expire_inflight_rows()
         self.stage = DemoStageMachine(db_path=self.db_path)
         self._mt5: Any = config.mt5_module
         self._adapter: Any = None
@@ -590,6 +598,7 @@ class DemoSession:
                 else None
             ),
             recent_order_epochs=self.journal.recent_order_epochs(60.0),
+            min_order_interval_s=self.config.min_order_interval_s,
             autonomous=autonomous,
             kill_switch_active=kill_active,
             kill_switch_readable=bool(kill_state.get("readable")),
@@ -735,7 +744,11 @@ class DemoSession:
         except Exception as exc:
             order_request = {"error": f"{type(exc).__name__}: {exc}"}
 
-        journal_id = self.journal.open_order(
+        # Reserve the slot ATOMICALLY (check + insert in one transaction):
+        # the gate's duplicate/rate check and this insert are otherwise a
+        # check-then-act pair that two callers — an operator CLI command during
+        # an autopilot cycle, or two processes — could both pass.
+        journal_id, claim_reason = self.journal.claim_order_slot(
             client_order_id=client_order_id,
             strategy_id=strategy_id,
             strategy_config_hash=config_hash,
@@ -754,7 +767,27 @@ class DemoSession:
             market_state_entry=quote,
             authorization_id=(self.authorization.authorization_id if self.authorization else None),
             notes="RESEARCH_DEMO_ORDER — DEMO account, no real capital",
+            min_interval_s=self.config.min_order_interval_s,
         )
+        if journal_id is None:
+            self.journal.record_signal(
+                strategy_id=strategy_id,
+                strategy_config_hash=config_hash,
+                symbol=self.config.symbol,
+                decision="NO_TRADE",
+                side=side,
+                signal_id=signal_id,
+                rationale=rationale,
+                reason=claim_reason,
+                authorization_id=(self.authorization.authorization_id if self.authorization else None),
+            )
+            return SubmissionResult(
+                allowed=False,
+                client_order_id=client_order_id,
+                state="NO_TRADE",
+                reasons=[claim_reason],
+                verdict=verdict.as_dict(),
+            )
 
         try:
             order, _fills = self.engine.submit_intent(intent, tick=None)
@@ -777,10 +810,15 @@ class DemoSession:
         broker_position_id = str(receipt.get("broker_position_id") or "")
 
         if order is None:
+            # The engine refused or lost the intent; its own reason (broker
+            # retcode, ambiguous transport, risk veto) is far more useful than a
+            # generic "veto", and safeguard #15 asks for the broker response.
+            refusal = _engine_refusal_detail(self.engine, client_order_id)
             self.journal.mark_outcome(
                 journal_id,
                 state="REJECTED",
-                exit_reason="; ".join(verdict.reasons) or "risk/engine veto (see audit log)",
+                exit_reason=refusal["reason"] or "; ".join(verdict.reasons) or "risk/engine veto (see audit log)",
+                broker_retcode=refusal["retcode"],
             )
             self.reconcile()
             return SubmissionResult(
@@ -845,5 +883,32 @@ class DemoSession:
             latency_ms=latency_ms,
         )
 
+def _engine_refusal_detail(engine: Any, client_order_id: str) -> dict[str, Any]:
+    """Why the engine returned no order — the broker's answer, verbatim.
 
+    A refusal that only says "risk/engine veto" is not auditable: the operator
+    cannot tell a legitimate risk limit from a broker rejection or an ambiguous
+    transport timeout, and those have completely different next actions.
+    """
+    state = None
+    reason = None
+    try:
+        known = engine.om.get(client_order_id)
+        if known is not None:
+            state = getattr(known, "state", None)
+            state = getattr(state, "value", state)
+            reason = getattr(known, "reject_reason", None)
+    except Exception:
+        known = None
+    if not reason:
+        reason = getattr(engine, "_suspend_reason", None)
+    detail = str(reason or "").strip()
+    retcode = None
+    if "retcode" in detail:
+        import re as _re
 
+        match = _re.search(r"retcode\s+(\d+)", detail)
+        if match:
+            retcode = match.group(1)
+    prefix = f"engine state {state}: " if state else ""
+    return {"state": state, "retcode": retcode, "reason": (prefix + detail) if detail else None}

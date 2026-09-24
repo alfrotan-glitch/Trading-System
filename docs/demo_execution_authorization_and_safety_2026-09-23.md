@@ -460,7 +460,43 @@ gate, authority, stage machine and pre-trade gate all execute:
 * `revoke` writes an **additive** sidecar (`…json.revocation.json`), leaves the artifact byte-identical,
   and execution is disabled again — `status` reports `DISABLED BY POLICY` and `order` refuses.
 
-### 16.6 Unit / adversarial coverage
+### 16.6 Failure modes and concurrency
+
+A trading system is judged by what it does when things break. `tests/integration/test_demo_failure_modes.py`
+(10 tests, `--run-integration`) injects failures and asserts the system fails closed:
+
+| Injected failure | Required behaviour | Result |
+|---|---|---|
+| ambiguous retcode (10012, timeout) | record `REJECTED` with the retcode, suspend, **never resend** | 1 broker request, engine suspended, second attempt refused |
+| definitive rejection (10006) | record `REJECTED` + `broker_retcode`, no retry | 1 request, 1 record, no position |
+| broker disconnect mid-loop | stop the loop | halted with the reconciliation reason; no crash |
+| restart with a broker-only position (crash left a position we never journaled) | refuse to trade | `UNKNOWN_POSITION` → suspend → 0 orders |
+| stale in-flight row (process died mid-submission) | fail the abandoned row, keep trading | row → `REJECTED` ("outcome unknown — verify with the broker"), next order allowed |
+| two concurrent submissions | exactly one order | 1 broker request, 1 journal row, other refused "in flight"/"duplicate" |
+| second order inside the minimum interval | refuse | 1 request |
+| another process holds the DB write lock | refuse, do not guess | claim returns "could not be claimed atomically", no row inserted |
+| kill switch raised by another process | obey it | a brand-new session with empty in-memory state refuses |
+| kill switch vs. a stage that allows orders | stop immediately | loop halts, 0 orders |
+
+Two implementation properties make the concurrency rows true:
+
+* **The order slot is claimed atomically.** The gate's duplicate/rate check reads the journal and the
+  insert happened afterwards — a check-then-act pair that two callers (an operator CLI command during an
+  autopilot cycle, or two processes) could both pass. `DemoOrderJournal.claim_order_slot()` performs the
+  whole sequence — expire stale in-flight rows → duplicate/rate check → in-flight check → insert — inside a
+  single `BEGIN IMMEDIATE` transaction (`qts.db.immediate`), so a concurrent caller either waits for the row
+  or sees it and refuses. A locked database is an unknown state: the claim refuses instead of assuming the
+  slot is free.
+* **An abandoned submission is failed, not assumed.** Rows in `NEW`/`SUBMITTED` older than the in-flight
+  budget are expired to `REJECTED` at session start, so a crash can never wedge the system — and the record
+  says the outcome is unknown rather than implying the order never happened.
+
+Two smaller corrections came out of this work: a refusal now records the **engine's own reason and broker
+retcode** (safeguard #15) instead of the generic "risk/engine veto", which hid the difference between a
+risk limit, a broker rejection and an ambiguous timeout; and when the loop stops because the stage is
+`HALTED` it reports **why it was halted** ("halted because: reconciliation drift after …").
+
+### 16.7 Unit / adversarial coverage
 
 New/updated tests (all passing in this checkout):
 
@@ -478,6 +514,11 @@ New/updated tests (all passing in this checkout):
   against a simulated DEMO terminal (see §16.1).
 * `tests/integration/test_demo_autopilot_loop.py` — 8 tests (`--run-integration`): autonomous loop,
   position lifecycle and research-integrity refusals (see §16.2/§16.3).
+* `tests/integration/test_demo_cli.py` — 9 tests (`--run-integration`): the operator CLI procedure (§16.5).
+* `tests/integration/test_demo_failure_modes.py` — 10 tests (`--run-integration`): broker faults,
+  restart/concurrency and kill-switch propagation (see §16.7).
+* Shared: `tests/demo_harness.py` (hermetic environment + one `armed_session` helper),
+  `tests/integration/conftest.py`, `tests/fakes_mt5_demo.py`, `tests/fakes_demo_provider.py`.
 * `tests/test_demo_api.py` — 13 tests: the HTTP contract above (see §16.4).
 * `tests/integration/test_demo_cli.py` — 9 tests (`--run-integration`): the operator CLI procedure (§16.5).
 * Shared fixtures: `tests/fakes_mt5_demo.py` (stateful fake terminal), `tests/fakes_demo_provider.py`
