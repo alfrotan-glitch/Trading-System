@@ -606,8 +606,8 @@ def validate_policy(doc: Any, params: dict[str, Any] | None = None) -> tuple[Res
         )
 
     for hash_field in ("code_hash", "config_hash"):
-        value = str(doc.get(hash_field) or "").strip()
-        if value and not _HEX64_RE.match(value):
+        hash_val = str(doc.get(hash_field) or "").strip()
+        if hash_val and not _HEX64_RE.match(hash_val):
             reasons.append(f"policy {label}: {hash_field} is not a sha256 hex digest")
 
     declared_config = str(doc.get("config_hash") or "").strip()

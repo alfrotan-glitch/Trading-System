@@ -71,7 +71,9 @@ class RealisticPaperBroker(BrokerAdapter):
         self._positions: dict[str, Position] = {}
         self._orders: dict[str, Order] = {}
         self._ticks: dict[str, Tick] = {}
-        self._db_path = Path(db_path) if db_path else Path("data/sqlite/qts.db")
+        from qts.config.paths import artifact_path, resolve_state_path
+
+        self._db_path = resolve_state_path(db_path) if db_path else artifact_path("db")
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_comment_db()
         self.symbol_specs: dict[str, SymbolSpec] = symbol_specs or {"XAUUSD": DEFAULT_XAUUSD_SPEC}

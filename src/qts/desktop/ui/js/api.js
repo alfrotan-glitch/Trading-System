@@ -27,7 +27,12 @@ async function request(path, opts) {
   const start = performance.now();
   let outcome = "ok";
   try {
-    const resp = await fetch(path, { headers: { "Content-Type": "application/json" }, signal: ctrl.signal, ...opts });
+    const headers = {
+      "Content-Type": "application/json",
+      "X-QTS-Operator": "local-ui",
+      ...(opts?.headers || {}),
+    };
+    const resp = await fetch(path, { ...opts, headers, signal: ctrl.signal });
     const text = await resp.text();
     let data;
     try { data = text ? JSON.parse(text) : null; } catch { data = text; }

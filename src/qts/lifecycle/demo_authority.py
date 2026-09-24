@@ -341,15 +341,15 @@ class DemoExecutionAuthority:
             )
 
         if not policy.enabled:
-            reasons = [f"DEMO_EXECUTION = {policy.state}", *policy.reasons]
+            reasons_list: list[str] = [f"DEMO_EXECUTION = {policy.state}", *policy.reasons]
             if state_is_demo_forward:
-                reasons.append("DEMO_FORWARD observation-only is the only broker mode")
+                reasons_list.append("DEMO_FORWARD observation-only is the only broker mode")
             return DemoPermissionDecision(
                 enabled=False,
                 execution_permitted=False,
                 state="DISABLED",
                 decided_at=row["decided_at"],
-                reasons=reasons,
+                reasons=reasons_list,
                 readiness=row["readiness"],
                 readiness_age_s=row["readiness_age_s"],
                 readiness_expired=False,

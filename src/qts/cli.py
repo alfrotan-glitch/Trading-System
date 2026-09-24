@@ -2061,8 +2061,9 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
     elif preflight is not None and not preflight["passed"]:
         action = f"qts demo preflight --side BUY --db {db}   # inspect the failing checks above"
     else:
+        strat = entry["strategy_id"] if entry else "<strategy_id>"
         action = (
-            f"qts demo run --strategy {entry['strategy_id']} --db {db}"
+            f"qts demo run --strategy {strat} --db {db}"
             if stage_record.stage == "STAGE_3_FORWARD_OBSERVATION"
             else f"qts demo order --side BUY --stop-loss <price> --db {db}"
         )
@@ -2237,9 +2238,9 @@ def demo_connectivity(
             report["pin_written"] = str(path)
             click.echo(f"identity pin written (PENDING_REVIEW): {path}")
     if confirm_pin:
-        from qts.execution.demo_identity import confirm_pin
+        from qts.execution.demo_identity import confirm_pin as do_confirm_pin
 
-        ok, detail = confirm_pin(actor="owner")
+        ok, detail = do_confirm_pin(actor="owner")
         report["pin_confirmation"] = {"ok": ok, "detail": detail}
         click.echo(f"pin confirmation: {detail}")
 

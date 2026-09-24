@@ -410,12 +410,12 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
     if ctx.daily_realized_pnl is None:
         record("max_daily_loss", CHECK_UNKNOWN, "daily realized P&L unknown (broker day-start not established)")
     else:
-        limit = Decimal(str(_cap(ctx, "daily_loss_limit", 50)))
+        daily_limit = Decimal(str(_cap(ctx, "daily_loss_limit", 50)))
         loss = -Decimal(ctx.daily_realized_pnl)
-        if loss >= limit:
-            record("max_daily_loss", CHECK_FAIL, f"daily loss {loss} ≥ demo limit {limit}")
+        if loss >= daily_limit:
+            record("max_daily_loss", CHECK_FAIL, f"daily loss {loss} ≥ demo limit {daily_limit}")
         else:
-            record("max_daily_loss", CHECK_PASS, f"daily loss {loss} < demo limit {limit}")
+            record("max_daily_loss", CHECK_PASS, f"daily loss {loss} < demo limit {daily_limit}")
 
     # ------------------------------------------------------------------ #10
     record(*_exposure_check(ctx, positions))
@@ -655,16 +655,16 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
         record("max_drawdown_within_policy", CHECK_UNKNOWN, "drawdown not measurable from the order journal")
     else:
         drawdown = Decimal(str(ctx.peak_cumulative_pnl)) - Decimal(str(ctx.cumulative_pnl))
-        limit = Decimal(str(pol.max_drawdown))
-        if drawdown >= limit:
+        drawdown_limit = Decimal(str(pol.max_drawdown))
+        if drawdown >= drawdown_limit:
             record(
                 "max_drawdown_within_policy",
                 CHECK_FAIL,
-                f"drawdown {drawdown} ≥ policy limit {limit} (peak {ctx.peak_cumulative_pnl}, "
+                f"drawdown {drawdown} ≥ policy limit {drawdown_limit} (peak {ctx.peak_cumulative_pnl}, "
                 f"current {ctx.cumulative_pnl})",
             )
         else:
-            record("max_drawdown_within_policy", CHECK_PASS, f"drawdown {drawdown} < policy limit {limit}")
+            record("max_drawdown_within_policy", CHECK_PASS, f"drawdown {drawdown} < policy limit {drawdown_limit}")
 
     # The policy declares which gate checks are mandatory for it and how much
     # execution delay it assumes. Both are verified, not merely carried: a

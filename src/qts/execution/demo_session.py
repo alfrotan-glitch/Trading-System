@@ -671,7 +671,7 @@ class DemoSession:
             # frozen experiment spec decides, not a per-call default.
             stop_required=(
                 bool(entry.policy.stop_required())
-                if (entry is not None and getattr(entry, "policy", None) is not None)
+                if (entry is not None and entry.policy is not None)
                 else bool((entry.stop_policy or {}).get("required", True))
                 if entry
                 else True

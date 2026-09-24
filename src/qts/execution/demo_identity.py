@@ -151,6 +151,8 @@ def probe_broker_identity(mt5_module: Any | None = None, *, initialize: bool = T
             raise BrokerIdentityError(
                 "MetaTrader5 package not installed — DEMO identity cannot be verified (fail closed)"
             ) from exc
+    if mt5_module is None:
+        raise BrokerIdentityError("MetaTrader5 module is unavailable")
 
     if initialize and hasattr(mt5_module, "initialize"):
         import os

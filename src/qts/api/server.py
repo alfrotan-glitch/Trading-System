@@ -4,17 +4,20 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import sqlite3
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from qts.config.paths import artifact_path
 from qts.config.settings import load_settings
 from qts.domain.modes import effective_mode_report
 
@@ -24,17 +27,79 @@ from qts.domain.modes import effective_mode_report
 
 app = FastAPI(title="QTS Desktop API", version="0.1.0")
 
-# The desktop UI uses same-origin requests and sends no cookies or bearer
-# credentials. Keep CORS permissive for an embedded/webview origin without
-# enabling credentialed wildcard CORS (which browsers reject and which would
-# make future credential-bearing endpoints unsafe by default).
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type"],
-)
+# Security Boundary: Restrict CORS and state mutations to trusted local and operator origins.
+# Wildcard CORS is unsafe on local ports because it allows external browser pages
+# to execute state-mutating requests (CSRF) against the operator's trading workstation.
+DEFAULT_TRUSTED_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "testserver"})
+
+
+def _is_trusted_origin(origin_or_url: str | None) -> bool:
+    if not origin_or_url:
+        return False
+    val = origin_or_url.strip().lower()
+    if val in ("null", "tauri://localhost", "vscode-webview://"):
+        return True
+    try:
+        parsed = urlparse(val)
+        host = (parsed.hostname or "").lower()
+        if host in DEFAULT_TRUSTED_HOSTS:
+            return True
+        if host.endswith(".e2b.app"):  # Sandbox live preview proxy host
+            return True
+        extra = os.getenv("QTS_ALLOWED_ORIGINS", "")
+        if extra:
+            allowed = {x.strip().lower() for x in extra.split(",") if x.strip()}
+            if val in allowed or host in allowed:
+                return True
+    except Exception:
+        return False
+    return False
+
+
+@app.middleware("http")
+async def local_operator_boundary_middleware(request: Request, call_next):
+    # Enforce origin security on state-changing methods (POST, PUT, PATCH, DELETE)
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        origin = request.headers.get("origin")
+        referer = request.headers.get("referer")
+        if origin and not _is_trusted_origin(origin):
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "error": "FORBIDDEN_MUTATION",
+                    "detail": f"Cross-origin state mutation rejected from untrusted origin {origin!r}. Only local operator origins and verified proxies are permitted.",
+                },
+            )
+        if referer and not _is_trusted_origin(referer):
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "error": "FORBIDDEN_MUTATION",
+                    "detail": f"Cross-origin state mutation rejected from untrusted referer {referer!r}.",
+                },
+            )
+    return await call_next(request)
+
+
+# Allow regex matching local hosts, ports, preview proxy domains, and webviews.
+# Wildcard can still be explicitly enabled if QTS_CORS_WILDCARD=1 is set.
+_use_wildcard_cors = os.getenv("QTS_CORS_WILDCARD") == "1"
+if _use_wildcard_cors:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "X-QTS-Operator"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$|^https://.*\.e2b\.app$|^tauri://localhost$|^vscode-webview://.*$",
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "X-QTS-Operator"],
+    )
 
 
 def _env() -> str:
@@ -395,7 +460,7 @@ def list_strategies() -> list[dict[str, Any]]:
             d = r.model_dump()
             # add DSR/PBO etc from latest evidence if matches strategy_id
             try:
-                ev_path = Path("data/evidence/edge_validation.json")
+                ev_path = artifact_path("edge_validation")
                 if ev_path.exists():
                     ev = json.loads(ev_path.read_text(encoding="utf-8"))
                     # Symbol match is not strategy identity. Metrics are copied
@@ -435,7 +500,7 @@ def get_strategy(strategy_id: str) -> dict[str, Any]:
 
 @app.get("/api/strategies/{strategy_id}/scorecard")
 def strategy_scorecard(strategy_id: str) -> dict[str, Any]:
-    ev_path = Path("data/evidence/edge_validation.json")
+    ev_path = artifact_path("edge_validation")
     if not ev_path.exists():
         raise HTTPException(404, "no evidence")
     ev = json.loads(ev_path.read_text(encoding="utf-8"))
@@ -495,7 +560,7 @@ def get_campaign(campaign_id: str) -> dict[str, Any]:
 
 @app.get("/api/validation/{strategy_id}")
 def validation_detail(strategy_id: str) -> dict[str, Any]:
-    ev_path = Path("data/evidence/edge_validation.json")
+    ev_path = artifact_path("edge_validation")
     if not ev_path.exists():
         raise HTTPException(404, "no evidence file")
     ev = json.loads(ev_path.read_text(encoding="utf-8"))
@@ -527,7 +592,7 @@ def validation_detail(strategy_id: str) -> dict[str, Any]:
 
 @app.get("/api/paper")
 def paper_center() -> dict[str, Any]:
-    ev_path = Path("data/evidence/paper_trades.json")
+    ev_path = artifact_path("paper_trades")
     paper: dict[str, Any] = (
         json.loads(ev_path.read_text(encoding="utf-8"))
         if ev_path.exists()
@@ -554,8 +619,8 @@ def paper_center() -> dict[str, Any]:
 
 @app.get("/api/shadow")
 def shadow_center() -> dict[str, Any]:
-    shadow_path = Path("data/evidence/shadow_intents.json")
-    paper_path = Path("data/evidence/paper_trades.json")
+    shadow_path = artifact_path("shadow_intents")
+    paper_path = artifact_path("paper_trades")
     shadow = (
         json.loads(shadow_path.read_text(encoding="utf-8"))
         if shadow_path.exists()
@@ -679,7 +744,7 @@ def risk_center() -> dict[str, Any]:
         blocked_reasons.append(f"LIVE_GATE_UNEVALUABLE:{type(e).__name__}")
     if not blocked_reasons:
         try:
-            ev = json.loads(Path("data/evidence/edge_validation.json").read_text(encoding="utf-8"))
+            ev = json.loads(artifact_path("edge_validation").read_text(encoding="utf-8"))
             # A passing file that does not name a strategy is not a validated edge.
             if not (_evidence_strategy_id(ev) and ev.get("edge_survival", {}).get("passed")):
                 blocked_reasons.append("NO_VALIDATED_EDGE")
@@ -888,7 +953,7 @@ def live_status() -> dict[str, Any]:
             return True, "; ".join(f"{n}: {rpt[n].get('detail')}" for n in names)
 
         try:
-            ev = json.loads(Path("data/evidence/edge_validation.json").read_text(encoding="utf-8"))
+            ev = json.loads(artifact_path("edge_validation").read_text(encoding="utf-8"))
             sid = _evidence_strategy_id(ev)
             if sid and ev.get("edge_survival", {}).get("passed"):
                 checklist["validated_edge"] = True
@@ -1031,7 +1096,7 @@ def notifications() -> list[dict[str, Any]]:
         )
     # Validation failure
     with contextlib.suppress(Exception):
-        ev = json.loads(Path("data/evidence/edge_validation.json").read_text(encoding="utf-8"))
+        ev = json.loads(artifact_path("edge_validation").read_text(encoding="utf-8"))
         if not ev.get("edge_survival", {}).get("passed"):
             sid = _evidence_strategy_id(ev)
             alerts.append(
@@ -1125,7 +1190,7 @@ def research_adversarial(strategy_id: str) -> dict[str, Any]:
 
     from qts.research.adversary import adversarial_attack
 
-    ev_path = Path("data/evidence/edge_validation.json")
+    ev_path = artifact_path("edge_validation")
     ev = js.loads(ev_path.read_text(encoding="utf-8")) if ev_path.exists() else {}
     return adversarial_attack(strategy_id, ev)
 
@@ -1149,32 +1214,52 @@ def research_autonomous(payload: dict[str, Any]) -> dict[str, Any]:
 
 @app.get("/api/research/data-inventory")
 def research_data_inventory() -> list[dict[str, Any]]:
-    p = Path("data/evidence/data_inventory.json")
+    p = artifact_path("data_inventory")
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else []
 
 
 @app.get("/api/research/data-source-catalog")
 def research_data_source_catalog() -> list[dict[str, Any]]:
-    p = Path("data/evidence/data_source_catalog.json")
+    p = artifact_path("data_source_catalog")
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else []
 
 
 @app.get("/api/research/data-quality-summary")
 def research_data_quality_summary() -> dict[str, Any]:
-    p = Path("data/evidence/data_quality_summary.json")
+    p = artifact_path("data_quality_summary")
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
 
 
 @app.get("/api/research/forward-manifest")
 def research_forward_manifest() -> dict[str, Any]:
-    p = Path("data/evidence/forward_observation_manifest.json")
+    p = artifact_path("forward_manifest")
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
 
 
 @app.get("/api/research/regime-observations")
 def research_regime_observations() -> dict[str, Any]:
-    p = Path("data/evidence/market_regime_observations.json")
+    p = artifact_path("regime_observations")
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+
+
+@app.get("/api/research/data-completeness")
+def research_data_completeness() -> dict[str, Any]:
+    """Authoritative completeness disposition for the historical dataset.
+
+    Reports exact expected vs observed rows, missing counts/percentages,
+    recognized closures, quality gate result, and required action.
+    """
+    p = artifact_path("completeness_disposition")
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception as e:
+            return {"status": "ERROR", "reason": str(e)}
+    return {
+        "status": "UNAVAILABLE",
+        "reason": "completeness disposition artifact not found",
+        "recovery_outcome": "RECOVERABLE ONLY BY NEW ACQUISITION",
+    }
 
 
 @app.get("/api/research/execution-reality")
@@ -1623,7 +1708,7 @@ def _demo_session(symbol: str | None = None) -> Any:
     )
     registry = load_registry()
     entry, _reasons = resolve_entry(registry)
-    session._entry = entry
+    setattr(session, "_entry", entry)
     return session
 
 
@@ -1783,7 +1868,7 @@ def demo_stage() -> dict[str, Any]:
 
 @app.get("/api/demo/preflight")
 @app.post("/api/demo/preflight")
-def demo_preflight(side: str = "BUY", lots: str | None = None, stop_loss: str | None = None) -> dict[str, Any]:
+def demo_preflight(side: str = "BUY", lots: str | None = None, stop_loss: str | None = None) -> Any:
     """Run the DEMO pre-trade gate for a would-be order — submits nothing."""
     from decimal import Decimal
 

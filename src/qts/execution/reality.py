@@ -52,8 +52,13 @@ class ExecutionObservation(BaseModel):
 
 
 class ExecutionRealityStore:
-    def __init__(self, db_path: Path | str = "data/sqlite/execution_reality.db"):
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: Path | str | None = None):
+        from qts.config.paths import resolve_state_path
+
+        if db_path is None or str(db_path) == "data/sqlite/execution_reality.db":
+            self.db_path = resolve_state_path("data/sqlite/execution_reality.db")
+        else:
+            self.db_path = resolve_state_path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init()
 
@@ -101,10 +106,13 @@ class ExecutionRealityStore:
             "never_claim_real_without_observations": True,
         }
 
-    def to_json(self, path: Path = Path("data/evidence/execution_reality.json")) -> dict[str, Any]:
+    def to_json(self, path: Path | str | None = None) -> dict[str, Any]:
+        from qts.config.paths import artifact_path, resolve_state_path
+
+        out_path = artifact_path("reality") if path is None else resolve_state_path(path)
         s = self.summary()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(s, indent=2, default=str), encoding="utf-8")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(s, indent=2, default=str), encoding="utf-8")
         return s
 
     def close(self) -> None:

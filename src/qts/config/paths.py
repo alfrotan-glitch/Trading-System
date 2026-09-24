@@ -49,6 +49,17 @@ RELATIVE_DEFAULTS: dict[str, str] = {
     "journal_db": "data/sqlite/qts.db",
     "stage_db": "data/sqlite/qts.db",
     "observatory_db": "data/sqlite/forward_observatory.db",
+    "edge_validation": "data/evidence/edge_validation.json",
+    "paper_trades": "data/evidence/paper_trades.json",
+    "shadow_intents": "data/evidence/shadow_intents.json",
+    "data_inventory": "data/evidence/data_inventory.json",
+    "data_source_catalog": "data/evidence/data_source_catalog.json",
+    "data_quality_summary": "data/evidence/data_quality_summary.json",
+    "forward_manifest": "data/evidence/forward_observation_manifest.json",
+    "regime_observations": "data/evidence/market_regime_observations.json",
+    "completeness_disposition": "data/evidence/xauusd_completeness_disposition.json",
+    "comparison": "data/evidence/paper_shadow_demo_comparison.json",
+    "reality": "data/evidence/execution_reality.json",
 }
 
 #: Environment override per artefact (highest precedence, used verbatim).
@@ -61,6 +72,17 @@ ENV_OVERRIDES: dict[str, str] = {
     "journal_db": "QTS_DEMO_JOURNAL_DB",
     "stage_db": "QTS_DEMO_STAGE_DB",
     "observatory_db": "QTS_OBSERVATORY_DB",
+    "edge_validation": "QTS_EDGE_VALIDATION_PATH",
+    "paper_trades": "QTS_PAPER_TRADES_PATH",
+    "shadow_intents": "QTS_SHADOW_INTENTS_PATH",
+    "data_inventory": "QTS_DATA_INVENTORY_PATH",
+    "data_source_catalog": "QTS_DATA_CATALOG_PATH",
+    "data_quality_summary": "QTS_DATA_QUALITY_PATH",
+    "forward_manifest": "QTS_FORWARD_MANIFEST_PATH",
+    "regime_observations": "QTS_REGIME_OBSERVATIONS_PATH",
+    "completeness_disposition": "QTS_COMPLETENESS_DISPOSITION_PATH",
+    "comparison": "QTS_COMPARISON_PATH",
+    "reality": "QTS_REALITY_PATH",
 }
 
 STATE_ROOT_ENV = "QTS_STATE_ROOT"
@@ -88,7 +110,12 @@ def state_root() -> Path:
     env = (os.getenv(STATE_ROOT_ENV) or "").strip()
     if env:
         return Path(env).expanduser()
+    cwd = Path.cwd()
     detected = _detect_repo_root()
+    # If the process explicitly changed directory into an isolated test/fixture
+    # directory containing its own data/ tree, honour that isolated root:
+    if detected is not None and cwd != detected and (cwd / "data").is_dir():
+        return cwd
     if detected is not None:
         return detected
     return _USER_ROOT
@@ -124,6 +151,21 @@ def artifact_path(name: str, explicit: str | Path | None = None) -> Path:
 def default_db_path() -> str:
     """Callable default for CLI ``--db`` options — anchored, never cwd-relative."""
     return str(artifact_path("db"))
+
+
+def resolve_state_path(path: str | Path | None) -> Path:
+    """Resolve a path against state_root() if relative, or return verbatim if absolute.
+
+    If path is None, returns state_root().
+    Ensures that any durable path accessed across the CLI, backend API, UI, or tests
+    remains completely invariant to the process's working directory.
+    """
+    if path is None:
+        return state_root()
+    p = Path(path)
+    if p.is_absolute():
+        return p
+    return state_root() / p
 
 
 def paths_report() -> dict[str, Any]:

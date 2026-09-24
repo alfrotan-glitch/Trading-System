@@ -387,11 +387,38 @@ export async function renderQuality(root) {
   const activity = h("h2", null, `Loading quality… — context ${ctx.symbol}`);
   root.appendChild(h("section", { class: "operator-summary" }, h("div", null, h("div", { class: "eyebrow" }, "NOW / QUALITY"), activity)));
   const host = h("div", { class: "section" }); root.appendChild(host);
-  let audit = null, adv = null;
-  try { [audit, adv] = await Promise.all([api.get("/api/research/data-audit"), api.get("/api/research/data-quality-adversarial")]); }
+  let audit = null, adv = null, completeness = null;
+  try { [audit, adv, completeness] = await Promise.all([
+    api.get("/api/research/data-audit"),
+    api.get("/api/research/data-quality-adversarial"),
+    api.get("/api/research/data-completeness"),
+  ]); }
   catch (e) { host.appendChild(errorBox({ what: "data quality could not be loaded", next: "Retry.", raw: e.message })); return; }
 
   activity.textContent = `${audit?.count ?? 0} source(s) — fail-closed, 12 checks — context ${getContext().symbol}`;
+
+  if (completeness && completeness.independent_recomputation) {
+    const ir = completeness.independent_recomputation;
+    host.appendChild(card({
+      title: "XAUUSD 15m Dataset Completeness Disposition — honest gate, zero interpolation",
+      sub: `Quality: ${ir.quality_gate} · Threshold: ≤2.00% · Status: ${completeness.recovery_outcome || "RECOVERABLE ONLY BY NEW ACQUISITION"}`,
+      icon: "shield",
+      body: h("div", { class: "stack" },
+        h("div", { class: "stat-grid" },
+          stat({ label: "Expected active span", value: fmtInt(ir.active_span_expected_intervals), hint: "Nominal intervals minus recognized weekend closures" }),
+          stat({ label: "Observed rows", value: fmtInt(ir.source_rows), hint: "Actual historical bars present in dataset" }),
+          stat({ label: "Unexpected missing", value: `${fmtInt(ir.unexpected_missing_intervals)} (${ir.active_span_missing_pct}%)`, tone: ir.quality_gate === "PASS" ? "ok" : "err", hint: `Exceeds 2.00% threshold — ${ir.unexpected_gap_events} gap events` }),
+          stat({ label: "Recognized closures", value: `${ir.recognized_closure_events} (${fmtInt(ir.recognized_closure_intervals)})`, hint: "Weekend closures excluded from missing fraction" }),
+        ),
+        banner(
+          ir.quality_gate === "PASS" ? "ok" : "warn",
+          `Status: ${completeness.recovery_outcome} — Research Blocked`,
+          `This dataset has ${ir.active_span_missing_pct}% unexpected missing bars (threshold is 2.00%). Missing data is never silently interpolated, synthesized, or forward-filled. Required action: Authoritative MT5 tick acquisition required before this history can feed fresh research.`,
+          "alert"
+        ),
+      ),
+    }));
+  }
 
   host.appendChild(h("div", { class: "grid-2" },
     card({ title: `Source audit — dense, provenance explicit — context ${ctx.symbol}`, sub: `${audit?.count ?? 0} source(s) — fail-closed, 12 checks`, icon: "database", body:

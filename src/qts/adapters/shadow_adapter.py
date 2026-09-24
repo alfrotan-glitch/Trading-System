@@ -20,7 +20,9 @@ class ShadowBroker(BrokerAdapter):
     """Shadow: validates like live, but does not submit. Records intents."""
 
     def __init__(self, db_path: Path | str | None = None):
-        self._db_path = Path(db_path) if db_path else Path("data/sqlite/qts_shadow.db")
+        from qts.config.paths import resolve_state_path
+
+        self._db_path = resolve_state_path(db_path) if db_path else resolve_state_path("data/sqlite/qts_shadow.db")
         self._intents: list[OrderIntent] = []
         self._would_be_orders: dict[str, Order] = {}
         self._would_be_fills: list[dict[str, Any]] = []

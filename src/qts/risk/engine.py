@@ -109,11 +109,16 @@ class RiskEngine:
     def __init__(
         self,
         limits: RiskLimits,
-        db_path: Path | str = "data/sqlite/qts.db",
+        db_path: Path | str | None = None,
         persist_kill: bool = True,
     ):
+        from qts.config.paths import artifact_path, resolve_state_path
+
         self.limits = limits
-        self.db_path = Path(db_path)
+        if db_path is None or str(db_path) == "data/sqlite/qts.db":
+            self.db_path = artifact_path("db")
+        else:
+            self.db_path = resolve_state_path(db_path)
         self.persist_kill = persist_kill
         #: Set when the durable kill flag could not be read (fail closed to True).
         self._kill_read_error: str | None = None

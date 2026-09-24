@@ -38,7 +38,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Protocol
+from typing import Any, NoReturn, Protocol
 
 from qts.execution.demo_journal import DemoOrderJournal
 from qts.execution.demo_pretrade import RESEARCH_DEMO_ORDER
@@ -162,7 +162,7 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
     stage_machine: DemoStageMachine = session.stage
     started = time.monotonic()
 
-    def halt(reason: str) -> None:
+    def halt(reason: str) -> NoReturn:
         report.halted = True
         report.halt_reason = reason
         raise AutopilotHalt(reason)
@@ -237,6 +237,7 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
                 )
                 report.no_trade += 1
                 halt("no eligible strategy in the forward-validation registry — NO_TRADE")
+            assert entry is not None
 
             # The provider is instantiated once per run and reused: a strategy
             # that tracks its own state (position already open, signals already

@@ -608,11 +608,11 @@ class DemoOrderJournal:
         current = curve[-1] if curve else Decimal("0")
         unrealized = Decimal("0")
         for row in self.open_orders():
-            value = row.get("unrealized_pnl")
-            if value is None:
+            unrealized_val = row.get("unrealized_pnl")
+            if unrealized_val is None:
                 continue
             try:
-                unrealized += Decimal(str(value))
+                unrealized += Decimal(str(unrealized_val))
             except Exception:
                 continue
         current = current + unrealized

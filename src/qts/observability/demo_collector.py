@@ -92,16 +92,21 @@ class ObservationCollector:
         broker_symbol: str,
         interval_s: float = 1.0,
         max_consecutive_failures: int = 30,
-        manifest_path: Path | str = Path("data/evidence/forward_observation_manifest.json"),
+        manifest_path: Path | str | None = None,
         manifest_every_ticks: int = 60,
     ) -> None:
+        from qts.config.paths import artifact_path, resolve_state_path
+
         self.provider = provider
         self.observatory = observatory
         self.instrument = instrument
         self.broker_symbol = broker_symbol
         self.interval_s = min(max(float(interval_s), MIN_INTERVAL_S), MAX_INTERVAL_S)
         self.max_consecutive_failures = max(1, int(max_consecutive_failures))
-        self.manifest_path = Path(manifest_path)
+        if manifest_path is None or str(manifest_path) == "data/evidence/forward_observation_manifest.json":
+            self.manifest_path = artifact_path("forward_manifest")
+        else:
+            self.manifest_path = resolve_state_path(manifest_path)
         self.manifest_every_ticks = max(1, int(manifest_every_ticks))
 
         self._lock = threading.RLock()

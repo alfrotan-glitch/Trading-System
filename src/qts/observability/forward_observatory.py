@@ -116,8 +116,15 @@ class ObservationSignal(BaseModel):
 class ForwardObservatory:
     """Canonical SQLite observation store (WAL-safe via qts.db.connect)."""
 
-    def __init__(self, db_path: Path | str = "data/sqlite/forward_observatory.db"):
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: Path | str | None = None):
+        if db_path is None or str(db_path) == "data/sqlite/forward_observatory.db":
+            from qts.config.paths import artifact_path
+
+            self.db_path = artifact_path("observatory_db")
+        else:
+            from qts.config.paths import resolve_state_path
+
+            self.db_path = resolve_state_path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init()
 
@@ -778,8 +785,11 @@ class ForwardObservatory:
         }
 
     # ------------------------------------------------------ derived exports
-    def to_manifest(self, path: Path = Path("data/evidence/forward_observation_manifest.json")) -> dict[str, Any]:
+    def to_manifest(self, path: Path | str | None = None) -> dict[str, Any]:
         """DERIVED export (regenerable). The SQLite store remains authoritative."""
+        from qts.config.paths import artifact_path, resolve_state_path
+
+        out_path = artifact_path("forward_manifest") if path is None else resolve_state_path(path)
         s = self.summary()
         with db_connect(self.db_path) as con:
             tick_rows = con.execute("SELECT payload FROM observation_ticks ORDER BY created_at DESC LIMIT 5").fetchall()
@@ -791,8 +801,8 @@ class ForwardObservatory:
         s["generated_at"] = datetime.now(UTC).isoformat()
         s["derived_from"] = str(self.db_path)
         s["forward_observation_protocol"] = "docs/forward_observation_protocol.md"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(s, indent=2, default=str), encoding="utf-8")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(s, indent=2, default=str), encoding="utf-8")
         return s
 
     def simulate_observation(self, symbol: str = "XAUUSD", n_ticks: int = 10):
