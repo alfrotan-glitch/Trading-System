@@ -39,7 +39,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -185,8 +184,9 @@ class DemoExecutionPolicy:
 def _authorization_path(path: str | Path | None = None) -> Path:
     if path is not None:
         return Path(path)
-    env = os.getenv(ENV_AUTHORIZATION_PATH)
-    return Path(env) if env else DEFAULT_AUTHORIZATION_PATH
+    from qts.config.paths import artifact_path
+
+    return artifact_path("authorization")
 
 
 def _revocation_path(auth_path: Path) -> Path:

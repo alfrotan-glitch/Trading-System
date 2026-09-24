@@ -43,8 +43,34 @@ def _env() -> str:
     return os.getenv("QTS_ENV", "development")
 
 
+def _connection_adapter(symbol: str | None = None) -> tuple[Any, dict[str, Any]]:
+    """The one MT5 connection for API probes (module-level = test injection seam).
+
+    Every broker-facing API probe must use the SAME resolved connection — terminal
+    path plus the canonical→venue alias table. Building adapters inline is how two
+    endpoints came to ask the broker for ``XAUUSD`` while the DEMO session traded
+    ``XAUUSD@``.
+    """
+    from qts.adapters.mt5_factory import adapter_from_setup
+
+    return adapter_from_setup(symbol)
+
+
 def _db_path() -> Path:
-    return Path("data/sqlite/qts.db")
+    """The DEMO state database — the SAME file the CLI reads.
+
+    This used to be the relative literal ``data/sqlite/qts.db``, i.e. resolved
+    against the backend process's working directory. The CLI resolves its own
+    default the same way, so a backend launched from the repository root and a
+    ``qts`` invocation from anywhere else read *different* stage, authority and
+    journal state — one half of the reported "UI says DISABLED while CLI says
+    AUTHORIZED" contradiction. Both now anchor at the machine-local state root
+    (:mod:`qts.config.paths`), and the resolved location is published by
+    ``/api/demo/state`` so agreement is checkable.
+    """
+    from qts.config.paths import artifact_path
+
+    return artifact_path("db")
 
 
 def _evidence_strategy_id(ev: dict[str, Any]) -> str | None:
@@ -289,11 +315,10 @@ def dashboard() -> dict[str, Any]:
     equity: dict[str, Any]
     balance: dict[str, Any]
     try:
-        from qts.adapters.mt5_adapter import MT5Adapter
-        from qts.config.wizard import load_setup
-
-        setup = load_setup()
-        adapter = MT5Adapter(config={"path": setup.get("terminal_path") or ""})
+        # Through the one connection factory: an adapter built here without the
+        # alias table asks the broker for a symbol that does not exist on this
+        # venue (XAUUSD instead of XAUUSD@) and reports UNAVAILABLE.
+        adapter, _connection = _connection_adapter()
         acct = adapter.account()
         equity = {"status": "MEASURED", "value": float(acct.equity), "source": acct.source}
         balance = {"status": "MEASURED", "value": float(acct.balance), "source": acct.source}
@@ -716,13 +741,10 @@ def mt5_center() -> dict[str, Any]:
     fabricated mock spec (contract_size=100, balance=10000, "12 points
     (mock)") is gone: a UI must never display invented broker metadata.
     """
-    from qts.adapters.mt5_adapter import MT5Adapter
-
-    setup = _wizard_setup_kwargs(None, None)
-    terminal_path = setup.get("terminal_path") or ""
-    requested_symbol = setup.get("symbol") or "XAUUSD"
-    broker_symbol = (setup.get("symbol_map") or {}).get(requested_symbol, requested_symbol)
-    adapter = MT5Adapter(config={"path": terminal_path})
+    adapter, connection = _connection_adapter()
+    terminal_path = connection["terminal_path"] or ""
+    requested_symbol = connection["canonical_symbol"]
+    broker_symbol = connection["broker_symbol"]
     connected = False
     health: dict[str, Any] = {}
     spec: dict[str, Any] = {}
@@ -738,6 +760,9 @@ def mt5_center() -> dict[str, Any]:
             spec = {
                 "symbol": requested_symbol,
                 "broker_symbol": broker_symbol,
+                "probed_symbol": broker_symbol,
+                "alias_declared": connection["alias_declared"],
+                "symbol_map": connection["symbol_map"],
                 "contract_size": str(s.contract_size),
                 "min_volume": str(s.volume_min),
                 "max_volume": str(s.volume_max),
@@ -770,10 +795,27 @@ def mt5_center() -> dict[str, Any]:
     return {
         "mode": "REAL_TERMINAL" if connected else "DISCONNECTED",
         "connected": connected,
-        "terminal_status": health.get("terminal_error") or ("connected" if connected else "not connected"),
+        "terminal_status": (
+            health.get("session_error")
+            or health.get("terminal_error")
+            or ("connected" if connected else "not connected")
+        ),
         "health": health,
         "account": account,
         "spec": spec,
+        # Which connection was actually probed, and whether this process holds
+        # the IPC link. Without this the panel could say "terminal connected"
+        # while asking the broker for a symbol this venue does not have.
+        "connection": {
+            "terminal_path": terminal_path or None,
+            "canonical_symbol": requested_symbol,
+            "broker_symbol": broker_symbol,
+            "symbol_map": connection["symbol_map"],
+            "alias_declared": connection["alias_declared"],
+            "setup_file": connection["setup_file"],
+            "setup_exists": connection["setup_exists"],
+            "session": adapter.session_state(),
+        },
         "warning": "" if connected else "Values are UNAVAILABLE, not zero — connect the MT5 terminal for real data",
     }
 
@@ -1266,6 +1308,35 @@ def setup_mt5_save(payload: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(400, str(e)) from e
 
 
+@app.get("/api/runtime/state")
+def runtime_state() -> dict[str, Any]:
+    """The authoritative runtime facts both surfaces must agree on.
+
+    Mode (with provenance), the machine-local state root and every resolved
+    artefact path, and the DEMO policy/stage. The UI shows this verbatim: if the
+    backend and a CLI on the same machine disagree, this response names the file
+    each one read, so the disagreement is diagnosable instead of mysterious.
+    """
+    from qts.config.paths import paths_report
+    from qts.domain.modes import effective_mode_report
+    from qts.lifecycle.demo_authorization import authorization_status
+
+    mode_report = effective_mode_report()
+    return {
+        "mode": mode_report,
+        "state": paths_report(),
+        "demo_execution_policy": _demo_policy().as_dict() if hasattr(_demo_policy(), "as_dict") else str(_demo_policy().state),
+        "authorization": {
+            "valid": authorization_status().valid,
+            "reasons": authorization_status().reasons,
+        },
+        "note": (
+            "QTS_MODE/QTS_ENV override the persisted declaration; a real-capital mode can never be "
+            "declared in the setup file, and no API/UI call can write it. LIVE stays locked."
+        ),
+    }
+
+
 @app.get("/api/demo/readiness")
 def demo_readiness(terminal_path: str | None = None, symbol: str | None = None) -> dict[str, Any]:
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
@@ -1338,13 +1409,23 @@ _DEMO_AUTHORITY_LOCK = threading.Lock()
 
 
 def _resolve_observe_symbol(setup_kwargs: dict[str, Any]) -> tuple[str, str]:
-    """(requested, broker) symbol from saved wizard config/env (XAUUSD -> XAUUSD@)."""
+    """(canonical, broker) symbol from saved wizard config/env (XAUUSD -> XAUUSD@).
+
+    Returns the CANONICAL name first, whichever spelling the operator saved: an
+    observer configured with the venue alias used to return ``XAUUSD@`` as the
+    "requested" symbol, from which an empty alias table was then derived — so
+    observation recorded a venue spelling as if it were canonical.
+    """
     import os
 
+    from qts.adapters.mt5_adapter import broker_symbol as _broker_of
+    from qts.adapters.mt5_adapter import canonical_symbol as _canonical_of
+
     requested = setup_kwargs.get("symbol") or os.getenv("QTS_MT5_SYMBOL", "XAUUSD")
-    symbol_map = setup_kwargs.get("symbol_map")
-    broker = symbol_map.get(requested, requested) if isinstance(symbol_map, dict) else requested
-    return str(requested), str(broker)
+    raw_map = setup_kwargs.get("symbol_map")
+    symbol_map = {str(k): str(v) for k, v in raw_map.items()} if isinstance(raw_map, dict) else {}
+    canonical = _canonical_of(str(requested), symbol_map)
+    return canonical, _broker_of(canonical, symbol_map)
 
 
 def _build_observe_collector(terminal_path: str | None, requested: str, broker: str, interval_s: float) -> Any:
@@ -1356,7 +1437,9 @@ def _build_observe_collector(terminal_path: str | None, requested: str, broker: 
     from qts.observability.forward_observatory import ForwardObservatory
 
     symbol_map = {requested: broker} if broker != requested else {}
-    adapter = MT5Adapter(config={"path": terminal_path or "", "symbol_map": symbol_map})
+    adapter = MT5Adapter(
+        config={"path": terminal_path or "", "symbol_map": symbol_map, "symbol": requested}
+    )
     provider = MarketDataProvider(broker=adapter)
     observatory = ForwardObservatory()
     return ObservationCollector(
@@ -1469,9 +1552,18 @@ def demo_config() -> dict[str, Any]:
     snapshot = resolve_risk_limits_from_settings(mode)
     limits = demo_forward_limits_from(snapshot)
     decision = _demo_authority().current()
+    from qts.config.paths import paths_report
+    from qts.domain.modes import mode_source, persisted_mode_declaration, refused_mode_declarations
+
     return {
         "env": load_settings().env,
         "mode": mode.value,
+        # Provenance, so the UI can show WHY it reports this mode instead of
+        # silently disagreeing with a CLI that resolved a different one.
+        "mode_source": mode_source(),
+        "mode_declaration": persisted_mode_declaration()[0],
+        "mode_refused_declarations": refused_mode_declarations(),
+        "state": paths_report(),
         "mode_can_submit_orders": (mode.can_submit_broker_orders and _demo_policy().enabled),
         "demo_execution_disabled": not _demo_policy().enabled,
         "demo_execution": decision.as_dict(),

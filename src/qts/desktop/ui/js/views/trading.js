@@ -81,7 +81,7 @@ export async function renderDemo(root) {
   const head = page({
     crumb: "Trading", group: "Demo forward",
     title: "Demo Forward Control",
-    answer: h("b", null, `Readiness and execution permission are separate. A passing check only permits DEMO_FORWARD observation. DEMO_EXECUTION requires a recorded owner authorization (shipped default: DISABLED BY POLICY) and then, per order, staged arming, a pinned+confirmed DEMO broker identity, an eligible registered strategy and 22 pre-trade checks. Context ${ctx.symbol} syncs, LIVE remains LOCKED and unmistakable.`),
+    answer: h("b", null, `Readiness and execution permission are separate. A passing check only permits DEMO_FORWARD observation. DEMO_EXECUTION requires a recorded owner authorization (shipped default: DISABLED BY POLICY) and then, per order, staged arming, a pinned+confirmed DEMO broker identity, an eligible registered strategy and the full pre-trade gate (every required safeguard, contract check and registered-policy limit). Context ${ctx.symbol} syncs, LIVE remains LOCKED and unmistakable.`),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources")],
     body: null,
   });
@@ -132,7 +132,7 @@ export async function renderDemo(root) {
     if (s.permission === "DISABLED") {
       next.textContent = "Review observation readiness"; next.href = "#/trading/demo"; nextWhy.textContent = "DEMO execution is authorized only by a recorded owner authorization and is still gated per order — never from this page. Observation does not require enabling execution; review only the blockers that prevent DEMO_FORWARD observation.";
     } else if (s.permission === "PERMITTED · DEMO ONLY") {
-      next.textContent = "Review the pre-trade gate"; next.href = "#/trading/demo"; nextWhy.textContent = "Execution permission is held for the DEMO account. Each order still requires the staged progression, a pinned identity, an eligible registered strategy and 22 pre-trade checks.";
+      next.textContent = "Review the pre-trade gate"; next.href = "#/trading/demo"; nextWhy.textContent = "Execution permission is held for the DEMO account. Each order still requires the staged progression, a pinned identity, an eligible registered strategy and the full pre-trade gate (every required safeguard, contract check and registered-policy limit).";
     } else if (s.permission === "AUTHORIZED · NOT PERMITTED") {
       next.textContent = "Review DEMO arming"; next.href = "#/trading/demo"; nextWhy.textContent = "An owner authorization is recorded, but the durable authority has not granted execution permission — it needs explicit confirmation, risk acknowledgement and fresh passing readiness.";
     } else if (s.permission === "CONFLICT · INSPECT") {
@@ -178,13 +178,41 @@ export async function renderDemo(root) {
           h("thead", null, h("tr", null, ["Source","Reported state","Meaning / constraint","API freshness"].map((t) => h("th", { scope: "col" }, t)))),
           factsBody))));
 
-    // unmistakable DEMO vs LIVE banner
+    // unmistakable DEMO vs LIVE banner — derived from the resolved backend
+    // state, never hard-coded. A fixed "DISABLED BY PRODUCT POLICY" string is how
+    // the UI came to contradict a CLI that reported DEMO_EXECUTION/AUTHORIZED on
+    // the same machine: the label was a literal, not a fact.
+    const cfg = lastConfig ?? {};
+    const demoEnabled = cfg.demo_execution_disabled === false;
     host.appendChild(banner(
-      "info",
-      "DEMO EXECUTION: DISABLED BY PRODUCT POLICY — LIVE LOCKED",
-      "No readiness result or UI action creates demo order permission. DEMO_FORWARD observation is the only broker path; LIVE remains separately locked.",
+      demoEnabled ? "info" : "warn",
+      demoEnabled
+        ? `DEMO EXECUTION: ${String(cfg.demo_execution?.state ?? "ENABLED_AUTHORIZED")} — LIVE LOCKED`
+        : "DEMO EXECUTION: DISABLED BY POLICY — LIVE LOCKED",
+      `${demoEnabled
+        ? "This backend process resolved a DEMO-capable mode and a recorded owner authorization. Order permission is still per-order: staged arming, a confirmed identity pin, fresh readiness, a registered policy and the full pre-trade gate."
+        : "No readiness result or UI action creates demo order permission. DEMO_FORWARD observation is the only broker path in this mode; LIVE remains separately locked."} Mode ${String(cfg.mode ?? "UNAVAILABLE").toUpperCase()} — decided by: ${String(cfg.mode_source ?? "unresolved")}.`,
       "lock",
     ));
+
+    // Runtime agreement panel: the UI shows the same resolved mode, the same
+    // state root and the same artefact paths the CLI resolves, so a disagreement
+    // is a comparison of two outputs instead of a mystery.
+    host.appendChild(card({
+      title: "Runtime state — what this backend process resolved", icon: "shield",
+      sub: "mode provenance, machine-local state root, canonical → venue symbol",
+      body: h("div", { class: "stack" },
+        kv([
+          ["Effective mode", String(cfg.mode ?? "UNAVAILABLE").toUpperCase()],
+          ["Decided by", String(cfg.mode_source ?? "unresolved")],
+          ["Persisted declaration", String(cfg.mode_declaration ?? "none")],
+          ["State root", String(cfg.state?.state_root ?? "UNAVAILABLE")],
+          ["Setup file", String(cfg.state?.artifacts?.setup?.path ?? "UNAVAILABLE") + (cfg.state?.artifacts?.setup?.exists ? "" : " (absent)")],
+          ["Orders possible from this page", "no — nothing here grants permission"],
+        ]),
+        h("details", null, h("summary", null, "Raw runtime state / technical evidence"), tech(cfg, "Raw /api/demo/config")),
+      ),
+    }));
 
     const checks = lastReadiness.checks ?? {};
     const allPass = Boolean(lastReadiness.passed);
@@ -195,7 +223,7 @@ export async function renderDemo(root) {
       actions: [h("button", { class: "btn sm", onclick: () => refresh(true) }, icon("refresh", 13), "Run readiness now")],
       body: h("div", { class: "stack" },
         allPass
-          ? banner("ok", "OBSERVATION READINESS PASSED", "Passing readiness permits DEMO_FORWARD observation only. It creates no order permission: DEMO_EXECUTION needs a recorded owner authorization, staged arming, a pinned+confirmed identity, an eligible registered strategy and 22 pre-trade checks.", "check")
+          ? banner("ok", "OBSERVATION READINESS PASSED", "Passing readiness permits DEMO_FORWARD observation only. It creates no order permission: DEMO_EXECUTION needs a recorded owner authorization, staged arming, a pinned+confirmed identity, an eligible registered strategy and the full pre-trade gate (every required safeguard, contract check and registered-policy limit).", "check")
           : banner("warn", "READINESS NOT PASSED — what blocked, why, what missing", (lastReadiness.blocked_reasons ?? []).join(" · ") || "Failed checks listed below. Fix what is missing and re-run readiness before starting DEMO_FORWARD observation. Observation remains order-free.", "alert"),
         checkGrid(checks, lastReadiness.details ?? {}),
         h("details", null, h("summary", null, "Raw readiness report / technical evidence"), tech(lastReadiness, "Raw readiness")),

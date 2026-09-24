@@ -392,6 +392,7 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
 
     # ------------------------------------------------------------------ #7
     record(*_stop_loss_check(ctx))
+    record(*_stop_policy_distance_check(ctx))
 
     # ------------------------------------------------------------------ #8
     max_orders = int(float(_limit_value(ctx, "max_open_orders", 3)))
@@ -973,6 +974,94 @@ def _stop_loss_check(ctx: DemoPretradeContext) -> tuple[str, str, str]:
                     f"stop risk {risk} exceeds the policy's max_daily_loss budget {budget}",
                 )
     return ("stop_loss_present", CHECK_PASS, f"stop-loss {stop} present and valid for {ctx.side}")
+
+
+def _stop_policy_distance_check(ctx: DemoPretradeContext) -> tuple[str, str, str]:
+    """The registered policy is authoritative over per-order stop distance.
+
+    A stop is derived from the policy when the caller supplies none, but a caller
+    *can* supply one — and an order carrying a wider stop than the registered
+    experiment declares is an order whose risk was never preregistered. The
+    policy distance is therefore a cap: equal or tighter passes (tighter is
+    strictly safer), wider is refused. This does not weaken anything — it makes
+    the immutable registration the single source of truth for stop risk, which
+    is what "resolved from the registered policy before submission" requires.
+    """
+    if ctx.entry is None:
+        # No registered experiment: `strategy_registered_frozen` already refuses.
+        return ("stop_within_policy_distance", CHECK_PASS, "no registered entry — nothing to compare against")
+    pol = ctx.research_policy
+    if pol is None:
+        return (
+            "stop_within_policy_distance",
+            CHECK_FAIL,
+            "the registered entry carries no complete policy — its stop distance is unknown",
+        )
+    declared = pol.stop_distance_price()
+    if declared is None:
+        return (
+            "stop_within_policy_distance",
+            CHECK_PASS,
+            "policy declares no fixed stop distance (stop_loss_logic.distance_price absent)",
+        )
+    if ctx.stop_loss is None:
+        # `stop_loss_present` owns the missing-stop refusal; do not double-report.
+        return (
+            "stop_within_policy_distance",
+            CHECK_PASS,
+            f"no stop supplied — derivation/refusal is handled by stop_loss_present (policy distance {declared})",
+        )
+    stop = _dec(ctx.stop_loss)
+    if stop is None:
+        return (
+            "stop_within_policy_distance",
+            CHECK_UNKNOWN,
+            "stop distance not computable without stop price",
+        )
+    # The stop distance may be evaluated relative to entry fill (ask for BUY,
+    # bid for SELL) OR relative to the market quote / trigger price (bid for
+    # BUY, ask for SELL) depending on how the provider calculates its stop.
+    # We evaluate against the closer reference price so neither convention is
+    # falsely penalised for the spread, but a genuinely wider stop is still
+    # strictly refused.
+    if ctx.ask is not None and ctx.bid is not None:
+        distance = min(abs(ctx.ask - stop), abs(ctx.bid - stop))
+    else:
+        ref = ctx.ask if (ctx.side or "").upper() == "BUY" else ctx.bid
+        if ref is None:
+            return (
+                "stop_within_policy_distance",
+                CHECK_UNKNOWN,
+                "stop distance not computable without an executable reference price",
+            )
+        distance = abs(ref - stop)
+
+    tolerance = Decimal("0")
+    spec = ctx.spec
+    if spec is not None:
+        try:
+            tolerance = Decimal(str(spec.tick_size))
+        except Exception:  # noqa: BLE001 - unreadable tick geometry is already refused elsewhere
+            tolerance = Decimal("0")
+    limit = Decimal(str(declared)) + tolerance
+    if distance > limit:
+        return (
+            "stop_within_policy_distance",
+            CHECK_FAIL,
+            f"stop distance {distance} exceeds the registered policy distance {declared} "
+            f"(+1 tick tolerance {tolerance}) — per-order risk was never preregistered",
+        )
+    if distance < Decimal(str(declared)):
+        return (
+            "stop_within_policy_distance",
+            CHECK_PASS,
+            f"stop distance {distance} is tighter than the registered policy distance {declared} (safer)",
+        )
+    return (
+        "stop_within_policy_distance",
+        CHECK_PASS,
+        f"stop distance {distance} equals the registered policy distance {declared}",
+    )
 
 
 def _exposure_check(ctx: DemoPretradeContext, positions: list[Any]) -> tuple[str, str, str]:

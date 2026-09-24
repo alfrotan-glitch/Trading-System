@@ -195,7 +195,10 @@ def healthy_ctx(tmp_path: Path, **overrides) -> DemoPretradeContext:
         "daily_realized_pnl":Decimal("0"),
         "side":"BUY",
         "intended_lots":Decimal("0.01"),
-        "stop_loss":Decimal("1995.00"),
+        # Exactly the distance this fixture's own policy registers (5.00 below
+        # the 2000.20 ask). A wider stop than the registered policy is refused by
+        # `stop_within_policy_distance` — the fixture must be self-consistent.
+        "stop_loss":Decimal("1995.20"),
         "stop_required":True,
         "client_order_id":"demo-test-1",
         "idempotency_status":None,

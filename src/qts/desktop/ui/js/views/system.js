@@ -143,7 +143,12 @@ export async function renderMT5(root) {
     stat({ label: "Module mode", value: String(m.mode ?? "UNAVAILABLE").toUpperCase(), tone: String(m.mode).toUpperCase().includes("REAL") ? "ok" : "warn", hint: "REAL = real terminal; MOCK = simulated", icon: "bank" }),
     stat({ label: "Connection", value: connected ? "CONNECTED" : String(m.terminal_status ?? "DISCONNECTED").toUpperCase(), tone: connected ? "ok" : "neutral", icon: "activity" }),
     stat({ label: "Context", value: `${getContext().symbol} · ${getContext().timeframe}`, hint: "presentation only, never permission" }),
+    stat({ label: "Canonical → venue", value: `${m.connection?.canonical_symbol ?? getContext().symbol} → ${m.connection?.broker_symbol ?? "?"}`, tone: m.connection?.alias_declared ? "ok" : "warn", hint: m.connection?.alias_declared ? "alias table declared — broker calls use the venue symbol" : "NO alias table declared — the broker is being asked for the canonical name", icon: "link" }),
+    stat({ label: "IPC session", value: m.connection?.session?.established ? "ESTABLISHED" : "NOT ESTABLISHED", tone: m.connection?.session?.established ? "ok" : "warn", hint: m.connection?.session?.detail ?? `per-process link (${m.connection?.session?.kind ?? "unknown"})`, icon: "activity" }),
   ));
+
+  if (m.connection && !m.connection.alias_declared) host.appendChild(banner("warn", "Symbol alias table not declared — what blocked, why, what next", `This backend resolved ${m.connection.canonical_symbol} → ${m.connection.broker_symbol} with no alias table, so broker lookups use the canonical name and will not find a venue symbol such as XAUUSD@. Declare it in ${m.connection.setup_file ?? "data/setup/mt5_setup.json"} as "symbol_map": {"XAUUSD": "XAUUSD@"} — the canonical symbol stays XAUUSD everywhere in QTS.`, "alert"));
+  if (m.connection?.session && !m.connection.session.established) host.appendChild(banner("warn", "MT5 IPC link not established in the backend process — what blocked, why", String(m.connection.session.detail ?? m.terminal_status ?? "unknown"), "alert"));
 
   if (m.warning) host.appendChild(banner("warn", "Connection advisory — what blocked, why", m.warning, "alert"));
 

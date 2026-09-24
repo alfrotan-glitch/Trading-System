@@ -111,7 +111,7 @@ def test_setup_file_env_override(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     monkeypatch.setenv("QTS_SETUP_FILE", str(tmp_path / "custom.json"))
     assert setup_file() == tmp_path / "custom.json"
     monkeypatch.delenv("QTS_SETUP_FILE")
-    assert setup_file() == Path("data/setup/mt5_setup.json")
+    assert setup_file().resolve() == Path("data/setup/mt5_setup.json").resolve()
 
 
 def test_api_save_and_get(client: TestClient):

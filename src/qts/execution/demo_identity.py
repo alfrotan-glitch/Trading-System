@@ -225,10 +225,16 @@ def identity_fingerprint(identity: BrokerIdentity) -> str:
 
 
 def pin_path(path: str | Path | None = None) -> Path:
-    if path is not None:
-        return Path(path)
-    env = _env(ENV_PIN_PATH)
-    return Path(env) if env else DEFAULT_PIN_PATH
+    """The identity pin location — anchored, never cwd-relative.
+
+    The pin is confirmed evidence about ONE broker account. If its path
+    depended on the working directory, a CLI invocation from another directory
+    would read (or write) a *different* pin than the backend, and the two could
+    disagree about which account is confirmed.
+    """
+    from qts.config.paths import artifact_path
+
+    return artifact_path("identity_pin", path)
 
 
 def _env(name: str) -> str | None:

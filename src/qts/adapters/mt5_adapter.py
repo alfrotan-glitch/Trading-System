@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import contextlib
 import math
+import os
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -167,6 +168,36 @@ def _resolve_contract_size(info: Any, symbol: str) -> Decimal:
     return _required_numeric(info, "contract_size", symbol, positive=True)
 
 
+def _session_diagnosis(last_error: Any, path: str | None) -> str:
+    """A precise, actionable diagnosis for a failed IPC establishment."""
+    code = last_error[0] if isinstance(last_error, (tuple, list)) and last_error else None
+    text = last_error[1] if isinstance(last_error, (tuple, list)) and len(last_error) > 1 else None
+    where = f"terminal_path={path!r}" if path else "terminal_path=<auto-detect>"
+    if code == -10004 or (text and "IPC" in str(text)):
+        return (
+            "MT5 initialize failed: IPC link not established in this process "
+            f"(last_error={last_error}, {where}). MetaTrader5 IPC is per process: the terminal must be "
+            "running and reachable from THIS process. QTS establishes the link once before any broker "
+            "call; this failure means the terminal is not running, the path is wrong, or another "
+            "process owns the terminal session. This is a connection-lifecycle failure, NOT a "
+            "reconciliation drift — no order was sent and none may be."
+        )
+    return (
+        f"MT5 initialize failed: terminal link not established (last_error={last_error}, {where}) — "
+        "the IPC link to the terminal could not be established or verified in this process"
+    )
+
+
+class MT5SessionError(RuntimeError, ConnectionError):
+    """The IPC link to the MT5 terminal is not established in THIS process.
+
+    Raised with a precise diagnosis instead of letting a downstream call return
+    ``None``/``(-10004, 'No IPC connection')`` and be misread as a broker or
+    reconciliation failure. It is never retried blindly: establishing the link
+    once, verified, is the precondition; if that fails the caller fails closed.
+    """
+
+
 def canonical_symbol(symbol: str, symbol_map: dict[str, str] | None) -> str:
     """Resolve ANY spelling of a symbol to its canonical form.
 
@@ -255,13 +286,24 @@ class MT5Adapter(BrokerAdapter):
         self.symbol_map: dict[str, str] = self.config.get("symbol_map", {})
         self._spec_cache: dict[str, SymbolSpec] = {}
         # client_order_id <-> MT5 comment mapping persisted for restart recovery
-        self._db_path = Path(db_path) if db_path else Path(self.config.get("db_path", "data/sqlite/qts.db"))
+        if db_path is None:
+            db_path = self.config.get("db_path")
+        if db_path is None:
+            # Anchored at the machine-local state root, never at cwd — the
+            # comment↔client_order_id map is restart-recovery evidence and must
+            # be the same file for the CLI and the backend.
+            from qts.config.paths import artifact_path
+
+            db_path = artifact_path("db")
+        self._db_path = Path(db_path)
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         # symbol -> (offset_seconds, basis, measured_at_epoch); see server_utc_offset
         self._server_offset_cache: dict[str, tuple[float, str, float]] = {}
         #: Raw receipt of the most recent successful ``order_send`` (broker order
         #: id, position/deal id, executed price) — consumed by the DEMO journal.
         self.last_submission: dict[str, Any] | None = None
+        #: IPC session facts for this process (see :meth:`ensure_session`).
+        self._session: dict[str, Any] | None = None
         self._init_comment_db()
 
     def broker_identity(self) -> Any:
@@ -319,7 +361,8 @@ class MT5Adapter(BrokerAdapter):
             row = con.execute("SELECT client_order_id FROM mt5_comment_map WHERE mt5_comment=?", (comment,)).fetchone()
             return row[0] if row else None
 
-    def _require_mt5(self) -> Any:
+    def _module(self) -> Any:
+        """The MT5 module (injected or imported) — no session side effects."""
         if self._mt5 is not None:
             return self._mt5
         try:
@@ -332,9 +375,102 @@ class MT5Adapter(BrokerAdapter):
                 "MetaTrader5 package not installed — install MetaTrader5 or use injected mock for tests"
             ) from e
 
+    def ensure_session(self) -> dict[str, Any]:
+        """Establish — once per process — and verify the IPC link to the terminal.
+
+        MetaTrader5's Python API is **per process**: ``terminal_info``,
+        ``account_info``, ``symbol_info``, ``symbol_info_tick``, ``positions_get``
+        and ``order_send`` all fail with ``(-10004, 'No IPC connection')`` until
+        ``initialize()`` has succeeded *in the calling process*. Importing the
+        module is not enough, and a link established by another process (an
+        earlier ``qts demo verify``, or the web backend) does not carry over.
+
+        QTS used to establish the link only as a side effect of the readiness
+        probe. Any process that went straight to execution therefore hit
+        ``-10004`` on its first broker call — which is precisely the reported
+        ``qts demo run`` halt: step 1 is reconciliation, and nothing in that
+        process had called ``initialize()``. The link is now an explicit
+        precondition of every broker-facing call (all of which go through
+        :meth:`_require_mt5`).
+
+        This is not a retry loop and not a workaround: one deterministic
+        establishment, verified with ``terminal_info()``. If it cannot be
+        established, the diagnosis says so precisely and the caller fails closed
+        — reconciliation still suspends, the kill switch still halts.
+        """
+        mt5 = self._module()
+        if self._session is not None:
+            return self._session
+        if not hasattr(mt5, "initialize"):
+            # An injected test/double module: there is no IPC to establish.
+            self._session = {
+                "established": True,
+                "kind": "injected",
+                "detail": "injected MT5 module — no IPC link to establish",
+                "established_at": datetime.now(UTC).isoformat(),
+            }
+            return self._session
+
+        path = self.config.get("path") or os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH") or None
+        kwargs: dict[str, Any] = {"path": path} if path else {}
+        hint = (
+            f" (terminal_path={path!r})" if path else " (no terminal_path configured — MT5 auto-detect)"
+        )
+        try:
+            initialized = bool(mt5.initialize(**kwargs))
+        except Exception as exc:
+            raise MT5SessionError(
+                f"MT5 initialize{hint} raised {type(exc).__name__}: {exc} — the IPC link to the terminal "
+                "could not be established in this process"
+            ) from exc
+        if not initialized:
+            last_error = None
+            with contextlib.suppress(Exception):
+                last_error = mt5.last_error()
+            raise MT5SessionError(_session_diagnosis(last_error, path))
+
+        info = None
+        if hasattr(mt5, "terminal_info"):
+            with contextlib.suppress(Exception):
+                info = mt5.terminal_info()
+            if info is None:
+                last_error = None
+                with contextlib.suppress(Exception):
+                    last_error = mt5.last_error()
+                raise MT5SessionError(_session_diagnosis(last_error, path))
+
+        self._session = {
+            "established": True,
+            "kind": "initialized",
+            "terminal_path": path,
+            "terminal_build": getattr(info, "build", None),
+            "terminal_company": getattr(info, "company", None),
+            "terminal_connected": bool(getattr(info, "connected", True)) if info is not None else None,
+            "process": os.getpid(),
+            "established_at": datetime.now(UTC).isoformat(),
+        }
+        return self._session
+
+    def session_state(self) -> dict[str, Any]:
+        """The IPC session facts for this process (diagnostics; never a permission)."""
+        return dict(self._session or {"established": False, "kind": "not-established"})
+
+    def _require_mt5(self) -> Any:
+        """The MT5 module with the IPC link established — the single choke point.
+
+        Every broker-facing method in this adapter starts here, so making the
+        session an explicit precondition of this call is what guarantees no
+        terminal call is ever attempted over a link this process never opened.
+        """
+        self.ensure_session()
+        return self._module()
+
     def connect(
         self, login: int | None = None, password: str | None = None, server: str | None = None, path: str | None = None
     ) -> None:
+        if path:
+            self.config["path"] = path
+            self._session = None  # a different terminal invalidates the link
         mt5 = self._require_mt5()
         # Use config or params
         login = login or self.config.get("login")
@@ -350,9 +486,11 @@ class MT5Adapter(BrokerAdapter):
             raise RuntimeError(f"MT5 login failed: {mt5.last_error()}")
 
     def disconnect(self) -> None:
+        # The link is per process: after an explicit shutdown this process has
+        # no IPC session, so the cached facts must be dropped — otherwise the
+        # next call would believe a dead link was established.
+        self._session = None
         if self._mt5:
-            import contextlib
-
             with contextlib.suppress(Exception):
                 self._mt5.shutdown()
 
@@ -473,7 +611,10 @@ class MT5Adapter(BrokerAdapter):
     def validate_prerequisites(self, symbol: str | None = None) -> dict[str, Any]:
         """Verify all prerequisites before any order submission — fail-closed."""
         errors: list[str] = []
-        mt5 = self._require_mt5()
+        try:
+            mt5 = self._require_mt5()
+        except MT5SessionError as e:
+            return {"ok": False, "errors": [f"terminal not connected: {e}"]}
         try:
             term = mt5.terminal_info()
             if term is None:
@@ -494,8 +635,13 @@ class MT5Adapter(BrokerAdapter):
         return {"ok": len(errors) == 0, "errors": errors}
 
     def health_check(self) -> dict[str, Any]:
-        """Connection health — terminal, account, last_error, ping."""
-        mt5 = self._require_mt5()
+        """Connection health — IPC session, terminal, account, last_error.
+
+        A status probe must never raise: when the IPC link cannot be established
+        it reports ``connected=False`` with the precise lifecycle diagnosis, so
+        the UI and the CLI show the same real reason instead of an empty panel
+        or a misleading "terminal connected".
+        """
         now = datetime.now(UTC)
         result: dict[str, Any] = {
             "timestamp": now.isoformat(),
@@ -504,6 +650,13 @@ class MT5Adapter(BrokerAdapter):
             "account_ok": False,
             "last_error": None,
         }
+        try:
+            result["session"] = self.ensure_session()
+        except MT5SessionError as exc:
+            result["session"] = {"established": False, "kind": "failed", "detail": str(exc)}
+            result["session_error"] = str(exc)
+            return result
+        mt5 = self._module()
         try:
             ti = mt5.terminal_info()
             result["terminal_ok"] = ti is not None
@@ -577,13 +730,15 @@ class MT5Adapter(BrokerAdapter):
 
     def reconnect(self, max_attempts: int = 3) -> bool:
         """Clean shutdown then reconnect — recovery behavior."""
-        mt5 = self._require_mt5()
+        self._session = None  # the shutdown below invalidates any cached link
+        mt5 = self._module()
         for _attempt in range(max_attempts):
             try:
                 import contextlib
 
                 with contextlib.suppress(Exception):
                     mt5.shutdown()
+                self._session = None
                 kwargs: dict[str, Any] = {}
                 path = self.config.get("path")
                 if path:
@@ -596,6 +751,7 @@ class MT5Adapter(BrokerAdapter):
                 if login and password and server and not mt5.login(login, password, server):
                     continue
                 if self.is_connected():
+                    self._session = None  # re-verify through the normal path
                     return True
             # B112: reconnect retry loop: failed attempt retries until max_attempts
             except Exception:  # nosec B112

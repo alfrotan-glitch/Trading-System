@@ -38,7 +38,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -71,8 +70,9 @@ def params_fingerprint(params: dict[str, Any]) -> str:
 def _registry_path(path: str | Path | None = None) -> Path:
     if path is not None:
         return Path(path)
-    env = os.getenv(ENV_REGISTRY_PATH)
-    return Path(env) if env else DEFAULT_REGISTRY_PATH
+    from qts.config.paths import artifact_path
+
+    return artifact_path("registry")
 
 
 @dataclass(frozen=True)
@@ -224,6 +224,45 @@ def _entry_from(doc: dict[str, Any]) -> tuple[StrategyRegistration | None, list[
             problems.append(
                 f"entry {strategy_id}: max_orders_per_day {doc.get('max_orders_per_day')} disagrees with the "
                 f"policy ({policy.max_orders_per_day})"
+            )
+        # The stop distance and the order size are registered TWICE — once in the
+        # provider params (which generate the signal) and once in the immutable
+        # policy (which the gate enforces). Two declarations of the same
+        # quantity that are never compared is how an order comes to carry a stop
+        # nobody registered, so they must agree exactly.
+        policy_distance = policy.stop_distance_price()
+        params_distance = _as_float((params or {}).get("stop_distance_price"))
+        if policy_distance is not None and params_distance is not None and abs(policy_distance - params_distance) > 1e-9:
+            problems.append(
+                f"entry {strategy_id}: params stop_distance_price {params_distance} disagrees with the "
+                f"policy stop_loss_logic.distance_price {policy_distance} — one registered quantity, "
+                "one value"
+            )
+        stop_policy_distance = _as_float((doc.get("stop_policy") or {}).get("distance_price"))
+        if policy_distance is not None and stop_policy_distance is not None and abs(policy_distance - stop_policy_distance) > 1e-9:
+            problems.append(
+                f"entry {strategy_id}: stop_policy.distance_price {stop_policy_distance} disagrees with the "
+                f"policy stop_loss_logic.distance_price {policy_distance}"
+            )
+        if policy.stop_required() and not bool((doc.get("stop_policy") or {}).get("required", True)):
+            justification = str((doc.get("stop_policy") or {}).get("justification") or "").strip()
+            if not justification:
+                problems.append(
+                    f"entry {strategy_id}: stop_policy.required=false without justification contradicts the policy, "
+                    "which requires a stop-loss on every order"
+                )
+            else:
+                problems.append(
+                    f"entry {strategy_id}: stop_policy.required=false contradicts the policy, which requires a "
+                    "stop-loss on every order"
+                )
+        sizing = (policy.raw.get("position_sizing") or {})
+        policy_lots = _as_float(sizing.get("lots"))
+        entry_lots = _as_float((doc.get("size_policy") or {}).get("lots"))
+        if policy_lots is not None and entry_lots is not None and abs(policy_lots - entry_lots) > 1e-12:
+            problems.append(
+                f"entry {strategy_id}: size_policy.lots {entry_lots} disagrees with the policy "
+                f"position_sizing.lots {policy_lots}"
             )
 
     entry = StrategyRegistration(
@@ -390,6 +429,15 @@ def registry_status(path: str | Path | None = None) -> dict[str, Any]:
         "reasons": reasons,
         "checked_at": datetime.now(UTC).isoformat(),
     }
+
+
+def _as_float(value: Any) -> float | None:
+    try:
+        if value is None or isinstance(value, bool):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _trading_state(entry: StrategyRegistration | None) -> str:

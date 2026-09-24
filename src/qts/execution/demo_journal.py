@@ -116,7 +116,14 @@ def _epoch(iso_value: str | None) -> float | None:
 class DemoOrderJournal:
     """Durable DEMO order/signal journal (SQLite, exported to JSONL)."""
 
-    def __init__(self, db_path: Path | str = "data/sqlite/qts.db") -> None:
+    def __init__(self, db_path: Path | str | None = None) -> None:
+        if db_path is None:
+            # Anchored at the machine-local state root, never at cwd: the
+            # journal is DEMO evidence and both the CLI and the backend must
+            # append to the SAME file.
+            from qts.config.paths import artifact_path
+
+            db_path = artifact_path("journal_db")
         self.db_path = Path(db_path)
         if str(db_path) != ":memory:":
             self.db_path.parent.mkdir(parents=True, exist_ok=True)

@@ -13,6 +13,7 @@ import click
 import numpy as np
 
 from qts.backtest.engine import BacktestEngine
+from qts.config.paths import artifact_path, default_db_path, paths_report
 from qts.config.settings import load_settings
 from qts.data.ingest import ingest_csv
 from qts.data.quality import validate_bars
@@ -23,6 +24,11 @@ from qts.observability.audit import SqliteAuditLog
 from qts.research.agent import AdversarialAgent, NullAgent
 from qts.research.experiment import ExperimentStore
 from qts.validation.pipeline import ValidatorPipeline
+
+
+def observatory_db_path() -> str:
+    """Callable Click default — anchored at the state root, never at cwd."""
+    return str(artifact_path("observatory_db"))
 
 
 @click.group()
@@ -586,7 +592,7 @@ def evidence() -> None:
 
 @evidence.command("export-session")
 @click.argument("session_id")
-@click.option("--db", default="data/sqlite/forward_observatory.db", help="canonical observation store")
+@click.option("--db", default=observatory_db_path, help="canonical observation store")
 @click.option("--out", default=None, help="output path (default data/evidence/exports/<id>.session_evidence.json)")
 def evidence_export_session(session_id: str, db: str, out: str | None) -> None:
     """Recompute ONE session's evidence from the canonical store and write a
@@ -623,7 +629,7 @@ def evidence_verify(artifact_path: str) -> None:
 
 @evidence.command("export-research")
 @click.argument("session_id")
-@click.option("--db", default="data/sqlite/forward_observatory.db", help="canonical observation store")
+@click.option("--db", default=observatory_db_path, help="canonical observation store")
 @click.option("--out", default=None, help="output path (default data/evidence/exports/<id>.research_snapshot.json)")
 def evidence_export_research(session_id: str, db: str, out: str | None) -> None:
     """Export the COMPLETE research snapshot (full accepted payloads + acquisition
@@ -1784,8 +1790,73 @@ def _demo_session(symbol: str, db: str, terminal_path: str | None = None) -> Any
 
 
 @main.group()
+def mode() -> None:
+    """Show or declare the process mode (DEMO-capable modes only; LIVE never)."""
+
+
+@mode.command("show")
+def mode_show() -> None:
+    """The effective mode, and exactly which source decided it."""
+    from qts.domain.modes import effective_mode_report, resolve_mode
+
+    report = effective_mode_report()
+    click.echo(f"effective mode: {resolve_mode().value}")
+    click.echo(f"decided by:     {report['mode_source']}")
+    click.echo(f"declaration:    {report['persisted_mode_declaration'] or '<none>'}")
+    click.echo(f"env:            QTS_MODE={report['mode_source_env'].get('QTS_MODE')} QTS_ENV={report['mode_source_env'].get('QTS_ENV')}")
+    if report["refused_real_capital_declarations"]:
+        click.echo(f"REFUSED:        {report['refused_real_capital_declarations']}", err=True)
+    if report.get("resolution_error"):
+        click.echo(f"error:          {report['resolution_error']}", err=True)
+    click.echo(json.dumps(report, indent=2, default=str))
+
+
+@mode.command("declare")
+@click.argument("value")
+def mode_declare(value: str) -> None:
+    """Persist the mode declaration that BOTH the CLI and the web backend read.
+
+    ``QTS_MODE`` is per-process environment: a backend launched by the desktop
+    app never sees what an operator exported in one shell, which is how the UI
+    came to report DEVELOPMENT while the CLI reported DEMO_EXECUTION. This writes
+    the declaration into the machine-local setup file that both surfaces resolve
+    from (below the environment in precedence). LIVE and its aliases are refused
+    — LIVE stays locked behind its own gate and can never be declared here.
+    """
+    from qts.config.wizard import declare_mode
+    from qts.domain.modes import mode_source, resolve_mode
+
+    try:
+        result = declare_mode(value)
+    except ValueError as exc:
+        click.echo(f"REFUSED: {exc}", err=True)
+        raise SystemExit(2) from exc
+    click.echo(f"declared: {result['declared']} -> {result['stored_at']}")
+    click.echo(f"precedence: {result['precedence']}")
+    click.echo(f"effective mode now: {resolve_mode().value} (decided by {mode_source()})")
+
+
+@main.group()
 def demo() -> None:
     """Controlled DEMO execution (authorization-gated; LIVE stays locked)."""
+
+
+@demo.command("paths")
+def demo_paths() -> None:
+    """Show the machine-local state root and every resolved artefact path.
+
+    The UI and the CLI must read the SAME setup, pin, authorization, registry and
+    database. This prints what this process resolved (and from where), so a
+    disagreement is a comparison of two outputs rather than a guess.
+    """
+    report = paths_report()
+    click.echo(f"state root: {report['state_root']}")
+    click.echo(f"  why:      {report['state_root_source']}")
+    click.echo(f"  cwd:      {report['working_directory']} (not used for defaults)")
+    for name, item in report["artifacts"].items():
+        click.echo(f"  {name.ljust(15)} {'EXISTS ' if item['exists'] else 'absent '} {item['path']}")
+        click.echo(f"  {''.ljust(15)} source: {item['source']}")
+    click.echo(json.dumps(report, indent=2, default=str))
 
 
 @demo.command("authorization")
@@ -1803,16 +1874,22 @@ def demo_authorization() -> None:
 
 @demo.command("status")
 @click.option("--symbol", default=None)
-@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--db", default=default_db_path)
 def demo_status(symbol: str | None, db: str) -> None:
     """One honest snapshot: policy, stage, registry, journal, kill switch."""
+    from qts.domain.modes import mode_source
     from qts.execution.demo_journal import summarize
     from qts.lifecycle.demo_registry import registry_status
 
     session = _demo_session(symbol or "", db)
     policy = session.policy
     out = {
-        "mode": "DEMO_EXECUTION",
+        # The RESOLVED mode with its provenance. This field used to be the
+        # literal "DEMO_EXECUTION" regardless of what the process had actually
+        # resolved — a label that contradicted the policy block printed right
+        # below it ("mode DEVELOPMENT cannot submit broker orders").
+        "mode": session.mode.value,
+        "mode_source": mode_source(),
         "policy": policy.as_dict(),
         "stage": session.stage.as_dict(),
         "registry": registry_status(),
@@ -1826,7 +1903,7 @@ def demo_status(symbol: str | None, db: str) -> None:
 
 @demo.command("verify")
 @click.option("--symbol", default=None)
-@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--db", default=default_db_path)
 @click.option("--terminal-path", default=None)
 @click.option("--json", "json_out", default=None, help="write the full triage report to this path")
 def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out: str | None) -> None:
@@ -1837,6 +1914,7 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
     comes next?" Exit code 0 means every gate that can be checked now passes;
     exit code 2 means something is blocking (the report says what).
     """
+    from qts.domain.modes import mode_source
     from qts.lifecycle.demo_registry import registry_status
     from qts.lifecycle.demo_stage import ORDER_STAGES
 
@@ -1897,7 +1975,8 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
     if not checks["mode_is_demo_execution"]:
         block(
             f"process mode is {getattr(session, 'mode', 'unknown')} — the DEMO order path exists only in "
-            "DEMO_EXECUTION (set QTS_MODE=demo_execution); LIVE stays locked in every mode"
+            "DEMO_EXECUTION (set QTS_MODE=demo_execution for this shell, or `qts mode declare demo_execution` "
+            "so the CLI and the web backend resolve the same mode); LIVE stays locked in every mode"
         )
     if not checks["authorization_valid"]:
         block(f"no valid owner authorization ({policy.state}) — DEMO_EXECUTION stays DISABLED BY POLICY")
@@ -1941,7 +2020,10 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
 
     # One next action, in the order an operator must do things.
     if not checks["mode_is_demo_execution"]:
-        action = "set QTS_MODE=demo_execution (LIVE and the observation modes have no DEMO order path)"
+        action = (
+            "qts mode declare demo_execution   (or set QTS_MODE=demo_execution for this shell only — "
+            "LIVE and the observation modes have no DEMO order path)"
+        )
     elif not checks["authorization_valid"]:
         action = (
             "record an owner authorization artifact (DEMO only, LIVE locked) at "
@@ -1992,6 +2074,8 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
         "blockers": blockers,
         "checks": checks,
         "mode": str(getattr(session, "mode", "unknown")),
+        "mode_source": mode_source(),
+        "state": paths_report(),
         "policy": policy.as_dict(),
         "identity": {"is_demo": identity.get("is_demo"), "login": identity.get("login"), "server": identity.get("server")},
         "identity_pin": {
@@ -2029,7 +2113,8 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
         "real_capital_exposure_usd": 0,
     }
 
-    click.echo(f"mode: {getattr(session, 'mode', 'unknown')}")
+    click.echo(f"mode: {getattr(session, 'mode', 'unknown')}   (decided by: {mode_source()})")
+    click.echo(f"state root: {paths_report()['state_root']}   setup: {paths_report()['artifacts']['setup']['path']}")
     click.echo(f"authorization: {policy.state} ({'valid' if policy.enabled else 'NOT valid'}) — LIVE locked, real capital 0")
     click.echo(f"account: demo={identity.get('is_demo')} login={identity.get('login')} server={identity.get('server')}")
     click.echo(
@@ -2063,7 +2148,7 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
 
 
 @demo.command("clear-kill")
-@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--db", default=default_db_path)
 @click.option("--reason", required=True, help="why the halt is being lifted (recorded)")
 @click.option("--confirm", is_flag=True, help="explicit operator confirmation (required)")
 def demo_clear_kill(db: str, reason: str, confirm: bool) -> None:
@@ -2123,7 +2208,7 @@ def demo_clear_kill(db: str, reason: str, confirm: bool) -> None:
 
 @demo.command("connectivity")
 @click.option("--symbol", default=None)
-@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--db", default=default_db_path)
 @click.option("--terminal-path", default=None)
 @click.option("--pin", is_flag=True, help="record the observed identity as a pin (PENDING_REVIEW)")
 @click.option("--confirm-pin", is_flag=True, help="owner confirmation of the recorded pin")
@@ -2184,7 +2269,7 @@ def demo_connectivity(
 @demo.command("arm")
 @click.option("--stage", required=True, type=click.Choice(["1", "2", "3"]))
 @click.option("--symbol", default=None)
-@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--db", default=default_db_path)
 @click.option("--confirm", is_flag=True, help="explicit operator confirmation (required)")
 @click.option("--risk-ack", is_flag=True, help="explicit risk acknowledgement (required)")
 @click.option("--strategy", default=None, help="registry strategy_id (required for stage 3)")
@@ -2273,7 +2358,7 @@ def demo_arm(stage: str, symbol: str | None, db: str, confirm: bool, risk_ack: b
 
 @demo.command("reverify")
 @click.option("--symbol", default=None)
-@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--db", default=default_db_path)
 @click.option("--confirm", is_flag=True, help="explicit operator confirmation (required)")
 @click.option("--risk-ack", is_flag=True, help="explicit risk acknowledgement (required)")
 def demo_reverify(symbol: str | None, db: str, confirm: bool, risk_ack: bool) -> None:
@@ -2323,7 +2408,7 @@ def demo_reverify(symbol: str | None, db: str, confirm: bool, risk_ack: bool) ->
 
 @demo.command("preflight")
 @click.option("--symbol", default=None)
-@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--db", default=default_db_path)
 @click.option("--side", default="BUY", type=click.Choice(["BUY", "SELL"]))
 @click.option("--lots", default=None)
 @click.option("--stop-loss", default=None)
@@ -2358,7 +2443,7 @@ def demo_preflight(symbol: str | None, db: str, side: str, lots: str | None, sto
 
 @demo.command("order")
 @click.option("--symbol", default=None)
-@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--db", default=default_db_path)
 @click.option("--side", required=True, type=click.Choice(["BUY", "SELL"]))
 @click.option("--lots", default=None)
 @click.option("--stop-loss", default=None)
@@ -2412,7 +2497,7 @@ def demo_order(
 
 @demo.command("run")
 @click.option("--symbol", default=None)
-@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--db", default=default_db_path)
 @click.option("--strategy", default=None)
 @click.option("--poll-interval", default=5.0, type=float)
 @click.option("--max-iterations", default=0, type=int)
@@ -2470,7 +2555,7 @@ def demo_run(
 
 
 @demo.command("kill")
-@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--db", default=default_db_path)
 @click.option("--reason", default="operator kill via CLI")
 def demo_kill(db: str, reason: str) -> None:
     """Raise the durable kill switch and halt the DEMO stage machine."""
@@ -2480,7 +2565,7 @@ def demo_kill(db: str, reason: str) -> None:
 
 
 @demo.command("journal")
-@click.option("--db", default="data/sqlite/qts.db")
+@click.option("--db", default=default_db_path)
 @click.option("--limit", default=20, type=int)
 @click.option("--export", "export_path", default=None)
 def demo_journal(db: str, limit: int, export_path: str | None) -> None:

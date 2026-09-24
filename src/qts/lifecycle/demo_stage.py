@@ -98,7 +98,14 @@ class StageTransitionError(RuntimeError):
 class DemoStageMachine:
     """Durable staged-progression controller for DEMO execution."""
 
-    def __init__(self, db_path: Path | str = "data/sqlite/qts.db") -> None:
+    def __init__(self, db_path: Path | str | None = None) -> None:
+        if db_path is None:
+            # Anchored at the machine-local state root, never at cwd: a stage
+            # machine read from a different directory would report DISABLED
+            # while another process reports STAGE_2.
+            from qts.config.paths import artifact_path
+
+            db_path = artifact_path("stage_db")
         self.db_path = Path(db_path)
         if str(db_path) != ":memory:":
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
