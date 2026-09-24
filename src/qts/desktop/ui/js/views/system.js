@@ -55,12 +55,16 @@ export async function renderSetup(root) {
 
   const path = h("input", { class: "input", value: setup.terminal_path ?? "", placeholder: "C:\\Program Files\\MetaTrader 5\\terminal64.exe" });
   const symbol = h("input", { class: "input", value: setup.symbol ?? getContext().symbol });
+  const rawMap = setup.symbol_map || {};
+  const currentBroker = rawMap[setup.symbol || "XAUUSD"] || (setup.symbol ? (setup.symbol.endsWith("@") ? setup.symbol : `${setup.symbol}@`) : "XAUUSD@");
+  const brokerSymbol = h("input", { class: "input", value: currentBroker, placeholder: "XAUUSD@" });
   host.appendChild(card({
     title: `Step 2 · MT5 terminal & instrument — context ${ctx.symbol} syncs`, icon: "bank",
     sub: "credentials stay out of QTS — set QTS_MT5_LOGIN / PASSWORD / SERVER in OS store",
     body: h("div", { class: "stack" },
-      h("div", { class: "field" }, h("label", null, "Terminal path"), path, h("div", { class: "hint" }, "Full path to terminal64.exe. Broker symbol may differ (e.g. XAUUSD@) — use exact broker name.")),
-      h("div", { class: "field" }, h("label", null, "Symbol — canonical QTS name, context synced"), symbol, h("div", { class: "hint" }, `Uses current context ${getContext().symbol}, presentation only.`)),
+      h("div", { class: "field" }, h("label", null, "Terminal path"), path, h("div", { class: "hint" }, "Full path to terminal64.exe or terminal.exe.")),
+      h("div", { class: "field" }, h("label", null, "Canonical symbol (QTS internal)"), symbol, h("div", { class: "hint" }, "The immutable strategy symbol used for policies, risk and journals (XAUUSD).")),
+      h("div", { class: "field" }, h("label", null, "Broker venue symbol (MT5 Market Watch name)"), brokerSymbol, h("div", { class: "hint" }, "Exact symbol in your MT5 terminal (e.g. XAUUSD@, XAUUSD.m, GOLD). QTS automatically maps between canonical and venue symbols.")),
       h("div", { class: "row" },
         h("button", { class: "btn primary", onclick: saveSetup }, "Save setup"),
         h("button", { class: "btn", onclick: testConnection }, "Test connection (14 checks) — what blocked, why"),
@@ -97,8 +101,20 @@ export async function renderSetup(root) {
 
   async function saveSetup() {
     try {
-      await api.post("/api/setup/mt5", { terminal_path: path.value, symbol: symbol.value });
-      toast("ok", "Setup saved", "Credential-free metadata persisted.");
+      const selectedEnv = document.querySelector('input[name="setup-env"]:checked')?.value || "demo_execution";
+      const cs = symbol.value.trim() || "XAUUSD";
+      const bs = brokerSymbol.value.trim() || cs;
+      const sm = {};
+      if (bs !== cs) {
+        sm[cs] = bs;
+      }
+      await api.post("/api/setup/mt5", {
+        terminal_path: path.value.trim(),
+        symbol: cs,
+        symbol_map: sm,
+        mode: selectedEnv,
+      });
+      toast("ok", "Setup saved", `Configured ${cs} → ${bs} in ${selectedEnv}.`);
       renderSetup(root);
     } catch (e) { toast("err", "Could not save setup", String(e.message).slice(0,140)); }
   }
@@ -106,7 +122,8 @@ export async function renderSetup(root) {
     const out = document.getElementById("setup-test-result");
     out.replaceChildren(banner("info", "Running readiness checks… — what blocked, why", "Probing terminal, account, symbol, spec, data freshness.", "info"));
     try {
-      const r = await api.get(`/api/demo/readiness?terminal_path=${encodeURIComponent(path.value)}&symbol=${encodeURIComponent(symbol.value)}`);
+      const cs = symbol.value.trim() || "XAUUSD";
+      const r = await api.get(`/api/demo/readiness?terminal_path=${encodeURIComponent(path.value.trim())}&symbol=${encodeURIComponent(cs)}`);
       out.replaceChildren(
         banner(r.passed ? "ok" : "warn", r.passed ? "OBSERVATION READINESS PASSED — DEMO execution disabled" : "READINESS NOT PASSED — what blocked, why, what missing, what next", (r.blocked_reasons ?? []).join(" · ") || "Review failing checks.", r.passed ? "check" : "alert"),
         checkGrid(r.checks ?? {}, r.details ?? {}),

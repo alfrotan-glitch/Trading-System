@@ -163,13 +163,25 @@ def test_live_can_never_be_declared(state):
     assert not resolve_mode().can_submit_broker_orders
 
 
-def test_the_api_cannot_write_the_mode_declaration(state):
-    """`save_setup` is what POST /api/setup/mt5 calls: mode must be rejected."""
+def test_the_api_can_declare_demo_modes_but_never_live(state):
+    """POST /api/setup/mt5 can declare demo modes, but real-capital modes are rejected."""
     result = save_setup({"symbol": "XAUUSD", "symbol_map": {"XAUUSD": "XAUUSD@"}, "mode": "demo_execution"})
-    assert "mode" in result["rejected_fields"]
-    assert result["mode_note"]
-    assert load_setup().get("mode") is None
-    assert resolve_mode() is ExecutionMode.DEVELOPMENT
+    assert "mode" in result["saved"]
+    assert load_setup().get("mode") == "demo_execution"
+    assert resolve_mode() is ExecutionMode.DEMO_EXECUTION
+
+    with pytest.raises(ValueError, match="never declarable"):
+        save_setup({"mode": "live"})
+    with pytest.raises(ValueError, match="never declarable"):
+        save_setup({"mode": "micro"})
+
+
+def test_persisted_declaration_overrides_background_qts_env(state, monkeypatch):
+    """A background QTS_ENV=development must not override the operator's declaration."""
+    monkeypatch.setenv("QTS_ENV", "development")
+    _write_setup(state, mode="demo_execution")
+    assert resolve_mode() is ExecutionMode.DEMO_EXECUTION
+    assert "mode declaration" in mode_source()
 
 
 def test_demo_status_reports_the_resolved_mode_not_a_literal(state, monkeypatch):

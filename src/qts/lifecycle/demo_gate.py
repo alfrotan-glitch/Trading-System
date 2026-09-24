@@ -177,12 +177,20 @@ def _evaluate_tick_freshness(tick: Any, mt5_module: Any, symbol: str, now: float
 
 
 def _resolve_symbol_map(symbol_map: dict[str, str] | None) -> dict[str, str]:
-    """Broker symbol map (e.g. XAUUSD -> XAUUSD@): explicit param or QTS_MT5_SYMBOL_MAP env.
+    """Broker symbol map (e.g. XAUUSD -> XAUUSD@): explicit param, load_setup(), or env.
 
     Env form: ``QTS_MT5_SYMBOL_MAP="XAUUSD=XAUUSD@,EURUSD=EURUSD.m"``.
     """
     if symbol_map is not None:
         return symbol_map
+    try:
+        from qts.config.wizard import load_setup
+
+        saved = load_setup().get("symbol_map")
+        if isinstance(saved, dict) and saved:
+            return {str(k): str(v) for k, v in saved.items()}
+    except Exception:
+        pass
     env_map = os.getenv("QTS_MT5_SYMBOL_MAP", "")
     out: dict[str, str] = {}
     for kv in env_map.split(","):
@@ -337,13 +345,31 @@ def demo_forward_readiness_report(
     # 6 Symbol available?
     # 7 Symbol tradable?
     # 8 Symbol specification valid?
-    # Symbol resolution: explicit param > QTS_MT5_SYMBOL env > default XAUUSD.
-    # Broker symbol mapping (e.g. XAUUSD -> XAUUSD@) via symbol_map param or
-    # QTS_MT5_SYMBOL_MAP env — the raw requested name is often NOT the broker's
-    # actual symbol, which made symbol_info return None even on a working link.
-    # ternary form: mypy 2.x mis-infers `x or os.getenv(k, default)` as str | None
+    # Symbol resolution: explicit param > saved setup > QTS_MT5_SYMBOL env > default XAUUSD.
+    # Broker symbol mapping (e.g. XAUUSD -> XAUUSD@) via symbol_map param, saved
+    # setup, or QTS_MT5_SYMBOL_MAP env.
+    if symbol is None:
+        try:
+            from qts.config.wizard import load_setup
+
+            symbol = load_setup().get("symbol")
+        except Exception:
+            symbol = None
+    if terminal_path is None:
+        try:
+            from qts.config.wizard import load_setup
+
+            terminal_path = load_setup().get("terminal_path")
+        except Exception:
+            terminal_path = None
+
+    from qts.adapters.mt5_adapter import broker_symbol as _resolve_broker_symbol
+    from qts.adapters.mt5_adapter import canonical_symbol as _resolve_canonical_symbol
+
     requested_symbol = os.getenv("QTS_MT5_SYMBOL", "XAUUSD") if symbol is None else symbol
-    broker_symbol = _resolve_symbol_map(symbol_map).get(requested_symbol, requested_symbol)
+    resolved_map = _resolve_symbol_map(symbol_map)
+    canonical = _resolve_canonical_symbol(requested_symbol, resolved_map)
+    broker_symbol = _resolve_broker_symbol(requested_symbol, resolved_map)
     # Make the symbol visible in Market Watch before querying (mirrors
     # MT5Adapter.get_symbol_spec); suppress: unsupported by some mocks/brokers.
     if mt5_module is not None and hasattr(mt5_module, "symbol_select"):
@@ -356,7 +382,7 @@ def demo_forward_readiness_report(
             check(
                 "symbol_available",
                 available,
-                f"symbol_info for {requested_symbol} (broker {broker_symbol}) exists={available}",
+                f"symbol_info for {canonical} (broker {broker_symbol}) exists={available}",
                 None if available else f"Symbol {broker_symbol} not available",
             )
             if si:

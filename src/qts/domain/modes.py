@@ -137,7 +137,7 @@ def _coerce_mode(raw: str) -> ExecutionMode | None:
 def resolve_mode(explicit: str | None = None, config_env: str | None = None) -> ExecutionMode:
     """Resolve the canonical effective mode from the documented precedence.
 
-    explicit > ``QTS_MODE`` > ``QTS_ENV`` > persisted declaration >
+    explicit > ``QTS_MODE`` > persisted declaration > ``QTS_ENV`` >
     ``config_env`` > ``DEVELOPMENT``.
 
     Raises :class:`ModeResolutionError` (fail closed) on unknown values —
@@ -149,12 +149,12 @@ def resolve_mode(explicit: str | None = None, config_env: str | None = None) -> 
     raw_mode = os.getenv(MODE_ENV_VAR)
     if raw_mode:
         candidates.append((f"{MODE_ENV_VAR}={raw_mode}", raw_mode))
-    raw_env = os.getenv(ENV_ENV_VAR)
-    if raw_env:
-        candidates.append((f"{ENV_ENV_VAR}={raw_env}", raw_env))
     declared, declared_source = persisted_mode_declaration()
     if declared:
         candidates.append((declared_source or "persisted declaration", declared))
+    raw_env = os.getenv(ENV_ENV_VAR)
+    if raw_env:
+        candidates.append((f"{ENV_ENV_VAR}={raw_env}", raw_env))
     if config_env:
         candidates.append((f"config:{config_env}", config_env))
 
@@ -211,14 +211,14 @@ def mode_source(explicit: str | None = None, config_env: str | None = None) -> s
     raw_mode = os.getenv(MODE_ENV_VAR)
     if raw_mode and _coerce_mode(raw_mode) is not None:
         return f"{MODE_ENV_VAR}={raw_mode}"
-    raw_env = os.getenv(ENV_ENV_VAR)
-    if raw_env and _coerce_mode(raw_env) is not None:
-        return f"{ENV_ENV_VAR}={raw_env}"
     declared, source = persisted_mode_declaration()
     if declared and _coerce_mode(declared) is not None:
         mode = _coerce_mode(declared)
         if mode is not None and not mode.is_money_at_risk:
             return f"{source}: mode={declared}"
+    raw_env = os.getenv(ENV_ENV_VAR)
+    if raw_env and _coerce_mode(raw_env) is not None:
+        return f"{ENV_ENV_VAR}={raw_env}"
     if config_env and _coerce_mode(config_env) is not None:
         return f"config:{config_env}"
     return "no mode declared — DEVELOPMENT (least capable, fail closed)"

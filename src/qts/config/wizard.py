@@ -31,15 +31,14 @@ from typing import Any
 #: Repository-relative default; resolved via :mod:`qts.config.paths`.
 DEFAULT_SETUP_FILE = Path("data/setup/mt5_setup.json")
 
-# allowlist: the ONLY fields this store reads back (credential-free by design).
-# ``mode`` is readable but NOT writable through save_setup()/the API — see
-# _WRITEABLE_KEYS and declare_mode().
-_ALLOWED_KEYS = ("terminal_path", "symbol", "symbol_map", "mode")
+#: Modes an operator or setup wizard may declare in the machine-local setup file.
+#: Real-capital modes are absent on purpose: LIVE stays locked behind its own gate
+#: and can never be selected from a config file, the API or the UI.
+DECLARABLE_MODES = ("development", "paper", "shadow", "demo_forward", "demo_execution")
 
-# What an API/UI call may persist. The mode declaration is deliberately absent:
-# no UI action may change the execution mode (that would be a permission grant
-# from a web page). It is operator-declared, in this file, via `qts mode declare`.
-_WRITEABLE_KEYS = ("terminal_path", "symbol", "symbol_map")
+# allowlist: fields this store persists (credential-free by design).
+_ALLOWED_KEYS = ("terminal_path", "symbol", "symbol_map", "mode")
+_WRITEABLE_KEYS = ("terminal_path", "symbol", "symbol_map", "mode")
 
 # broker symbols: XAUUSD, XAUUSD@, XAUUSD.m, XAUUSDm, GOLD#... keep conservative
 _SYMBOL_RE = re.compile(r"^[A-Za-z0-9._@#+-]{1,64}$")
@@ -115,6 +114,16 @@ def save_setup(payload: dict[str, Any], path: Path | str | None = None) -> dict[
             clean[str(k).strip()] = str(v).strip()
         saved["symbol_map"] = clean
 
+    if payload.get("mode") is not None:
+        m = str(payload["mode"]).strip().lower()
+        if m not in DECLARABLE_MODES:
+            raise ValueError(
+                f"mode {payload['mode']!r} cannot be declared; declarable modes: {list(DECLARABLE_MODES)} "
+                "(LIVE is never declarable — LIVE stays locked)"
+            )
+        saved["mode"] = m
+        saved["mode_declared_at"] = datetime.now(UTC).isoformat()
+
     rejected = sorted(k for k in payload if k not in _WRITEABLE_KEYS)
 
     p = Path(path) if path is not None else setup_file()
@@ -136,12 +145,6 @@ def save_setup(payload: dict[str, Any], path: Path | str | None = None) -> dict[
             "store or .env (QTS_MT5_LOGIN / QTS_MT5_PASSWORD / QTS_MT5_SERVER)"
         ),
     }
-
-
-#: Modes an operator may declare in the machine-local setup file. Real-capital
-#: modes are absent on purpose: LIVE stays locked behind its own gate and can
-#: never be selected from a config file, the API or the UI.
-DECLARABLE_MODES = ("development", "paper", "shadow", "demo_forward", "demo_execution")
 
 
 def declare_mode(value: str, path: Path | str | None = None) -> dict[str, Any]:
