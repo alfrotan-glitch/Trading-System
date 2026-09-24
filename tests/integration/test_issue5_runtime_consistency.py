@@ -494,3 +494,14 @@ def test_the_shipped_registry_is_internally_consistent():
     assert snapshot.valid is True, snapshot.reasons
     assert entry is not None, reasons
     assert entry.policy.stop_distance_price() == float(entry.params["stop_distance_price"])
+
+def test_normalize_terminal_path_resolves_directories_to_executable():
+    """Windows process create fails (-10003) if given a directory instead of an exe."""
+    from qts.adapters.mt5_adapter import normalize_terminal_path
+
+    assert normalize_terminal_path(None) is None
+    assert normalize_terminal_path("") is None
+    assert normalize_terminal_path("C:\\Program Files\\MetaTrader 5\\terminal64.exe") == "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
+    assert normalize_terminal_path("C:\\Program Files\\MetaTrader 5") == "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
+    assert normalize_terminal_path("C:\\Program Files\\MetaTrader 5\\") == "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
+    assert normalize_terminal_path("/opt/mt5") == "/opt/mt5/terminal64.exe"

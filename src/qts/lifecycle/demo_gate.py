@@ -267,7 +267,10 @@ def demo_forward_readiness_report(
     # lack initialize entirely — skip then (backward compatible).
     init_detail = ""
     if mt5_module is not None and hasattr(mt5_module, "initialize"):
-        path = terminal_path or os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH")
+        from qts.adapters.mt5_adapter import normalize_terminal_path
+
+        raw_path = terminal_path or os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH")
+        path = normalize_terminal_path(raw_path)
         kwargs: dict[str, Any] = {"path": path} if path else {}
         try:
             initialized = bool(mt5_module.initialize(**kwargs))

@@ -224,6 +224,27 @@ def canonical_symbol(symbol: str, symbol_map: dict[str, str] | None) -> str:
     return str(symbol)
 
 
+def normalize_terminal_path(path: str | Path | None) -> str | None:
+    """Normalize terminal path to the actual executable.
+
+    If given a directory (e.g. ``C:\\Program Files\\MetaTrader 5``), appends
+    ``terminal64.exe`` so Windows process creation does not fail with
+    ``Process create failed (-10003)``.
+    """
+    if not path:
+        return None
+    cleaned = str(path).strip().strip('"').strip("'")
+    if not cleaned:
+        return None
+    lower = cleaned.lower().replace("/", "\\")
+    if lower.endswith(".exe"):
+        return cleaned
+    if lower.endswith("\\terminal64") or lower.endswith("\\terminal"):
+        return f"{cleaned}.exe"
+    sep = "\\" if "\\" in cleaned else "/"
+    return f"{cleaned.rstrip(sep)}{sep}terminal64.exe"
+
+
 def broker_symbol(symbol: str, symbol_map: dict[str, str] | None) -> str:
     """Canonical symbol → the alias the venue actually trades."""
     if not symbol:
@@ -411,7 +432,7 @@ class MT5Adapter(BrokerAdapter):
             }
             return self._session
 
-        path = self.config.get("path") or os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH") or None
+        path = normalize_terminal_path(self.config.get("path") or os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH") or None)
         kwargs: dict[str, Any] = {"path": path} if path else {}
         hint = (
             f" (terminal_path={path!r})" if path else " (no terminal_path configured — MT5 auto-detect)"
@@ -740,7 +761,7 @@ class MT5Adapter(BrokerAdapter):
                     mt5.shutdown()
                 self._session = None
                 kwargs: dict[str, Any] = {}
-                path = self.config.get("path")
+                path = normalize_terminal_path(self.config.get("path"))
                 if path:
                     kwargs["path"] = path
                 if not mt5.initialize(**kwargs):

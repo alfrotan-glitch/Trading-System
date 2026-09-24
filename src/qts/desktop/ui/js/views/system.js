@@ -16,6 +16,7 @@ import { getContext, onContext } from "../context.js";
 
 /* Setup wizard */
 export async function renderSetup(root) {
+  root.replaceChildren();
   const ctx = getContext();
   const head = page({
     crumb: "System", group: "Setup",
@@ -62,7 +63,7 @@ export async function renderSetup(root) {
     title: `Step 2 · MT5 terminal & instrument — context ${ctx.symbol} syncs`, icon: "bank",
     sub: "credentials stay out of QTS — set QTS_MT5_LOGIN / PASSWORD / SERVER in OS store",
     body: h("div", { class: "stack" },
-      h("div", { class: "field" }, h("label", null, "Terminal path"), path, h("div", { class: "hint" }, "Full path to terminal64.exe or terminal.exe.")),
+      h("div", { class: "field" }, h("label", null, "Terminal path"), path, h("div", { class: "hint" }, "Full path to terminal64.exe (e.g. C:\\Program Files\\MetaTrader 5\\terminal64.exe). Leave blank to auto-detect.")),
       h("div", { class: "field" }, h("label", null, "Canonical symbol (QTS internal)"), symbol, h("div", { class: "hint" }, "The immutable strategy symbol used for policies, risk and journals (XAUUSD).")),
       h("div", { class: "field" }, h("label", null, "Broker venue symbol (MT5 Market Watch name)"), brokerSymbol, h("div", { class: "hint" }, "Exact symbol in your MT5 terminal (e.g. XAUUSD@, XAUUSD.m, GOLD). QTS automatically maps between canonical and venue symbols.")),
       h("div", { class: "row" },
