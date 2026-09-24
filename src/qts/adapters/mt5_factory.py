@@ -39,6 +39,10 @@ def resolve_connection(symbol: str | None = None) -> dict[str, Any]:
     raw_map = saved.get("symbol_map")
     symbol_map = {str(k): str(v) for k, v in raw_map.items()} if isinstance(raw_map, dict) else {}
     requested = str(symbol or saved.get("symbol") or DEFAULT_CANONICAL_SYMBOL)
+    if not symbol_map and requested.endswith("@"):
+        canonical_fallback = requested[:-1]
+        symbol_map = {canonical_fallback: requested}
+        requested = canonical_fallback
     canonical = canonical_symbol(requested, symbol_map)
     broker = broker_symbol(requested, symbol_map)
     return {

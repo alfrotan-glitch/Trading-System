@@ -758,6 +758,8 @@ def mt5_center() -> dict[str, Any]:
         try:
             s = adapter.get_symbol_spec(requested_symbol)
             spec = {
+                "status": "MEASURED",
+                "value": f"{broker_symbol} (contract={s.contract_size}, min={s.volume_min})",
                 "symbol": requested_symbol,
                 "broker_symbol": broker_symbol,
                 "probed_symbol": broker_symbol,
@@ -779,7 +781,10 @@ def mt5_center() -> dict[str, Any]:
             spec = {"status": "UNAVAILABLE", "value": None, "reason": f"symbol spec unavailable: {e}"}
         try:
             a = adapter.account()
+            bal_str = f"{a.balance} {a.currency}" if a.currency else str(a.balance)
             account = {
+                "status": "MEASURED",
+                "value": bal_str,
                 "login": health.get("account", {}).get("login"),
                 "balance": str(a.balance),
                 "currency": a.currency,  # may be None = UNAVAILABLE

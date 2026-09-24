@@ -55,9 +55,11 @@ export async function renderSetup(root) {
   }));
 
   const path = h("input", { class: "input", value: setup.terminal_path ?? "", placeholder: "C:\\Program Files\\MetaTrader 5\\terminal64.exe" });
-  const symbol = h("input", { class: "input", value: setup.symbol ?? getContext().symbol });
+  const rawSymbol = setup.symbol || getContext().symbol;
+  const canonicalVal = rawSymbol.endsWith("@") ? rawSymbol.slice(0, -1) : rawSymbol;
+  const symbol = h("input", { class: "input", value: canonicalVal });
   const rawMap = setup.symbol_map || {};
-  const currentBroker = rawMap[setup.symbol || "XAUUSD"] || (setup.symbol ? (setup.symbol.endsWith("@") ? setup.symbol : `${setup.symbol}@`) : "XAUUSD@");
+  const currentBroker = rawMap[canonicalVal] || (rawSymbol.endsWith("@") ? rawSymbol : (rawMap["XAUUSD"] || `${canonicalVal}@`));
   const brokerSymbol = h("input", { class: "input", value: currentBroker, placeholder: "XAUUSD@" });
   host.appendChild(card({
     title: `Step 2 · MT5 terminal & instrument — context ${ctx.symbol} syncs`, icon: "bank",
@@ -103,8 +105,12 @@ export async function renderSetup(root) {
   async function saveSetup() {
     try {
       const selectedEnv = document.querySelector('input[name="setup-env"]:checked')?.value || "demo_execution";
-      const cs = symbol.value.trim() || "XAUUSD";
-      const bs = brokerSymbol.value.trim() || cs;
+      let cs = symbol.value.trim() || "XAUUSD";
+      let bs = brokerSymbol.value.trim() || cs;
+      if (cs.endsWith("@")) {
+        bs = cs;
+        cs = cs.slice(0, -1);
+      }
       const sm = {};
       if (bs !== cs) {
         sm[cs] = bs;
@@ -123,7 +129,8 @@ export async function renderSetup(root) {
     const out = document.getElementById("setup-test-result");
     out.replaceChildren(banner("info", "Running readiness checks… — what blocked, why", "Probing terminal, account, symbol, spec, data freshness.", "info"));
     try {
-      const cs = symbol.value.trim() || "XAUUSD";
+      let cs = symbol.value.trim() || "XAUUSD";
+      if (cs.endsWith("@")) cs = cs.slice(0, -1);
       const r = await api.get(`/api/demo/readiness?terminal_path=${encodeURIComponent(path.value.trim())}&symbol=${encodeURIComponent(cs)}`);
       out.replaceChildren(
         banner(r.passed ? "ok" : "warn", r.passed ? "OBSERVATION READINESS PASSED — DEMO execution disabled" : "READINESS NOT PASSED — what blocked, why, what missing, what next", (r.blocked_reasons ?? []).join(" · ") || "Review failing checks.", r.passed ? "check" : "alert"),
@@ -171,13 +178,35 @@ export async function renderMT5(root) {
   if (m.warning) host.appendChild(banner("warn", "Connection advisory — what blocked, why", m.warning, "alert"));
 
   host.appendChild(h("div", { class: "grid-2" },
-    card({ title: `Account — context ${getContext().symbol}`, icon: "bank", body: m.account
-      ? h("div", { class: "stack" }, h("div", { class: "stat-grid" }, stat({ label: "Account state", value: m.account?.status === "MEASURED" ? String(m.account.value) : String(m.account?.status ?? "UNAVAILABLE").toUpperCase(), tone: m.account?.status === "MEASURED" ? "ok" : "neutral", hint: m.account?.reason ?? null })), tech(m.account, "Raw account metric — summary → detail → raw"))
-      : emptyState({ icon: "bank", title: "Account state unavailable — INSUFFICIENT, not 0", desc: "No terminal context. Attach terminal in Setup and verify with readiness." }),
+    card({ title: `Account — context ${getContext().symbol}`, icon: "bank", body: (m.account && (m.account.status === "MEASURED" || m.account.balance != null))
+      ? h("div", { class: "stack" },
+          h("div", { class: "stat-grid" },
+            stat({ label: "Account balance", value: m.account.balance != null ? `${m.account.balance} ${m.account.currency || ""}`.trim() : (m.account.value || "MEASURED"), tone: "ok", hint: `Login: ${m.account.login ?? "?"} · Leverage: ${m.account.leverage ? `1:${m.account.leverage}` : "N/A"}` }),
+            stat({ label: "State", value: "CONNECTED", tone: "ok", hint: m.account.source || "MT5 AccountInfo" }),
+          ),
+          tech(m.account, "Raw account metric — summary → detail → raw")
+        )
+      : h("div", { class: "stack" },
+          h("div", { class: "stat-grid" },
+            stat({ label: "Account state", value: String(m.account?.status ?? "UNAVAILABLE").toUpperCase(), tone: "neutral", hint: m.account?.reason ?? "No account connected" }),
+          ),
+          tech(m.account, "Raw account metric — summary → detail → raw")
+        )
     }),
-    card({ title: `Symbol spec — context ${getContext().symbol}`, icon: "fileCheck", body: m.spec
-      ? h("div", { class: "stack" }, h("div", { class: "stat-grid" }, stat({ label: "Symbol spec", value: m.spec?.status === "MEASURED" ? String(m.spec.value) : String(m.spec?.status ?? "UNAVAILABLE").toUpperCase(), tone: m.spec?.status === "MEASURED" ? "ok" : "neutral", hint: m.spec?.reason ?? null })), tech(m.spec, "Raw spec — summary → detail → raw"))
-      : emptyState({ icon: "fileCheck", title: "Symbol spec unavailable — INSUFFICIENT, not 0", desc: "Authoritative contract requires connected terminal. Missing metadata never guessed in safety-critical paths." }),
+    card({ title: `Symbol spec — context ${getContext().symbol}`, icon: "fileCheck", body: (m.spec && (m.spec.status === "MEASURED" || m.spec.contract_size != null))
+      ? h("div", { class: "stack" },
+          h("div", { class: "stat-grid" },
+            stat({ label: "Contract size", value: String(m.spec.contract_size ?? "?"), tone: "ok", hint: `Venue: ${m.spec.broker_symbol ?? "?"} · Digits: ${m.spec.digits ?? "?"}` }),
+            stat({ label: "Volume bounds", value: `${m.spec.min_volume ?? "?"} – ${m.spec.max_volume ?? "?"}`, tone: "ok", hint: `Step: ${m.spec.volume_step ?? "?"}` }),
+          ),
+          tech(m.spec, "Raw spec — summary → detail → raw")
+        )
+      : h("div", { class: "stack" },
+          h("div", { class: "stat-grid" },
+            stat({ label: "Symbol spec", value: String(m.spec?.status ?? "UNAVAILABLE").toUpperCase(), tone: "neutral", hint: m.spec?.reason ?? "Symbol spec unavailable" }),
+          ),
+          tech(m.spec, "Raw spec — summary → detail → raw")
+        )
     }),
   ));
 

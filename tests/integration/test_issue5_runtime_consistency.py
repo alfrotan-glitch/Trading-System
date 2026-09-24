@@ -222,6 +222,16 @@ def test_a_setup_storing_the_venue_alias_still_resolves_canonically(state):
     assert connection["broker_symbol"] == "XAUUSD@"
 
 
+def test_setup_with_venue_symbol_without_map_auto_heals_canonical_and_alias(state):
+    """If an operator previously saved XAUUSD@ with no symbol_map, resolve_connection heals it."""
+    _write_setup(state, symbol="XAUUSD@")
+    connection = resolve_connection()
+    assert connection["canonical_symbol"] == "XAUUSD"
+    assert connection["broker_symbol"] == "XAUUSD@"
+    assert connection["alias_declared"] is True
+    assert connection["symbol_map"] == {"XAUUSD": "XAUUSD@"}
+
+
 def test_mt5_panel_probes_the_venue_symbol_and_says_so(state, monkeypatch):
     """/api/mt5 must not imply one symbol while testing another."""
     from fastapi.testclient import TestClient
@@ -247,6 +257,9 @@ def test_mt5_panel_probes_the_venue_symbol_and_says_so(state, monkeypatch):
     assert body["connection"]["broker_symbol"] == "XAUUSD@"
     assert body["connection"]["alias_declared"] is True
     assert body["spec"]["probed_symbol"] == "XAUUSD@"
+    assert body["spec"]["status"] == "MEASURED"
+    assert body["account"]["status"] == "MEASURED"
+    assert body["account"]["balance"] is not None
     assert seen and set(seen) == {"XAUUSD@"}, f"the broker was asked for {seen}"
 
 
