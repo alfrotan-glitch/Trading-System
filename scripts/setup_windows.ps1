@@ -50,6 +50,12 @@ Write-Host "Installing QTS (editable) ..."
 & $venvPython -m pip install -e ".[dev]"
 if ($LASTEXITCODE -ne 0) { Fail "pip install failed" }
 
+Write-Host "Installing optional desktop window (pywebview) ..."
+& $venvPython -m pip install pywebview
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "WARNING: pywebview not installed. scripts\run_qts.bat will open the browser instead." -ForegroundColor Yellow
+}
+
 # 6. Create required directories
 foreach ($d in @("data\raw","data\curated","data\sqlite","data\evidence","logs")) {
   if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d | Out-Null; Write-Host "Created $d" }

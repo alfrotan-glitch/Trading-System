@@ -62,6 +62,12 @@ if errorlevel 1 (
   exit /b 1
 )
 
+echo Installing optional desktop window (pywebview) ...
+.venv\Scripts\python.exe -m pip install pywebview
+if errorlevel 1 (
+  echo WARNING: pywebview not installed. scripts\run_qts.bat will open the browser instead.
+)
+
 if not exist data\raw mkdir data\raw
 if not exist data\curated mkdir data\curated
 if not exist data\sqlite mkdir data\sqlite

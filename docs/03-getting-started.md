@@ -13,9 +13,11 @@
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/alfrotan-glitch/Trading-System.git
+git clone --branch arena/01a0ce9f-trading-system https://github.com/alfrotan-glitch/Trading-System.git
 cd Trading-System
 ```
+
+Do not clone `main`. That branch does not contain this desktop build.
 
 ### 2. Set Up Virtual Environment
 ```bash
@@ -67,11 +69,21 @@ export QTS_MT5_SERVER="WMMarkets-Demo"
 
 ## Running QTS
 
-### 1. Start the API & Web Workstation
-```bash
-python -m qts.api.server
+### 1. Launch the desktop
+Windows, from the cloned folder:
+
+```bat
+scripts\setup_windows.bat
+scripts\run_qts.bat
 ```
-Navigate to `http://localhost:8901` in your browser.
+
+The console must print `UI source: src\qts\desktop\ui`. It serves `src/qts/desktop/ui` at `http://127.0.0.1:8000/`. There is no port 8901. `python -m qts.api.server` is not a launch command.
+
+Manual:
+
+```bash
+python -m qts.desktop.launcher
+```
 
 ### 2. Verify System Readiness via CLI
 ```bash

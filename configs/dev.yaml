@@ -16,4 +16,4 @@ risk:
   approved: false
 validation:
   min_wfe: 0.3
-  min_oos_sharpe: 0.0
+  min_oos_sharpe: 0.30

@@ -64,7 +64,10 @@ async def local_operator_boundary_middleware(request: Request, call_next):
                     "detail": f"Cross-origin state mutation rejected from untrusted referer {referer!r}.",
                 },
             )
-    return await call_next(request)
+    response = await call_next(request)
+    if request.method == "GET" and not request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 _use_wildcard_cors = os.getenv("QTS_CORS_WILDCARD") == "1"

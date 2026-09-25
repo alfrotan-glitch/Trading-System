@@ -1,4 +1,5 @@
-# Copy to live.yaml and fill — never commit live.yaml (gitignored)
+# Example only. The loader reads configs/live.yaml, which is gitignored.
+# Copying this file does not unlock LIVE. risk.approved stays false here.
 env: live
 data:
   root: data
@@ -12,6 +13,6 @@ risk:
   max_exposure: 0.5
   daily_loss_limit: 50
   max_drawdown: 150
-  approved: true  # must be true AND validation_passed for LIVE
+  approved: false
   kill_switch_enabled: true
   flatten_on_kill: false

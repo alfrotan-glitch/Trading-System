@@ -15,9 +15,11 @@ git --version
 
 ## Clone
 ```powershell
-git clone https://github.com/alfrotan-glitch/Trading-System.git
+git clone --branch arena/01a0ce9f-trading-system https://github.com/alfrotan-glitch/Trading-System.git
 cd Trading-System
 ```
+
+Do not omit `--branch`. A plain clone checks out `main`, which is not this desktop build.
 
 ## Setup (One Click)
 PowerShell (recommended):
@@ -54,7 +56,7 @@ Or manual:
 .\.venv\Scripts\python.exe -m qts.desktop.launcher
 ```
 
-Double-click exe: after building `scripts\build_windows.bat`, double-click `dist\QTS.exe` (no repo path needed, no console). First launch shows **Setup Wizard**.
+Double-click exe: after building `scripts\build_windows.bat`, double-click `dist\QTS.exe` (no repo path needed, no console). The launcher does not open a setup wizard by itself. The exe is not what `scripts\run_qts.bat` launches.
 
 ## Test
 ```bat

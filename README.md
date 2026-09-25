@@ -56,7 +56,7 @@ Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating
 
 ### 2. Installation
 ```bash
-git clone https://github.com/alfrotan-glitch/Trading-System.git
+git clone --branch arena/01a0ce9f-trading-system https://github.com/alfrotan-glitch/Trading-System.git
 cd Trading-System
 
 python -m venv .venv
@@ -64,11 +64,22 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 ```
 
-### 3. Launch Web Workstation
-```bash
-python -m qts.api.server
+Do not clone `main`. That branch is the initial commit and does not contain this desktop build.
+
+Windows, from the cloned folder:
+
+```bat
+scripts\setup_windows.bat
+scripts\run_qts.bat
 ```
-Navigate to `http://localhost:8901` in your browser.
+
+The console must print `UI source: src\qts\desktop\ui`. The desk opens at `http://127.0.0.1:8000/`. There is no port 8901. `python -m qts.api.server` is not a launch command.
+
+Manual launch, after the install above:
+
+```bash
+python -m qts.desktop.launcher
+```
 
 ### 4. Verify System Status via CLI
 ```bash

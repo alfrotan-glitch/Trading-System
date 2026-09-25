@@ -24,6 +24,7 @@ if "%QTS_MT5_MODE%"=="" set QTS_MT5_MODE=MOCK
 echo === QTS Trading System -- Desktop ===
 echo Environment: %QTS_ENV%   MT5: %QTS_MT5_MODE%
 echo Starting FastAPI + webview...
+echo UI source: src\qts\desktop\ui
 
 .venv\Scripts\python.exe -m qts.desktop.launcher
 if errorlevel 1 (

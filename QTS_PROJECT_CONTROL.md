@@ -227,3 +227,18 @@ Committed Evidence Manifest (data/evidence/*.json)
 3. Adapters completely decoupled from execution engine.
 4. Monolithic CLI and API files decomposed into cohesive packages.
 5. Desktop UI presents clear, human-intelligible product views with progressive disclosure.
+
+---
+
+## 16. DESKTOP CLONE
+
+Reviewed 2026-09-25. A plain `git clone` checks out `main`. `main` is the initial commit and is not this desktop build. The desktop clone is:
+
+```bat
+git clone --branch arena/01a0ce9f-trading-system https://github.com/alfrotan-glitch/Trading-System.git
+cd Trading-System
+scripts\setup_windows.bat
+scripts\run_qts.bat
+```
+
+Launch is `scripts\run_qts.bat`. It must print `UI source: src\qts\desktop\ui` and open `http://127.0.0.1:8000/`. There is no port 8901. `python -m qts.api.server` is not a launch command. Live trading stays locked. The bootstrap dataset is synthetic and is not a quote.

@@ -47,7 +47,8 @@ def start_api_server(host: str = "127.0.0.1", port: int = 8000):
 
 
 def open_desktop_window(host: str, port: int):
-    url = f"http://{host}:{port}/"
+    # A fresh query stops a native window from reopening a cached page.
+    url = f"http://{host}:{port}/?desk=1"
     # Prefer pywebview native window
     try:
         import webview  # type: ignore
