@@ -195,6 +195,7 @@ Committed Evidence Manifest (data/evidence/*.json)
 | **ARCH-010** | 2026-09-25 | Phase 11 | Deleted `submit_with_order_check`. Deleted the matching re-export shim. Restored the zip-inventory script the workflow calls. Removed unused `pydantic-settings` and `python-dateutil`. | One submit path: `DemoSession`. One matching engine: `qts.adapters.matching`. | direct-submit search; ruff | APPROVED |
 | **ARCH-011** | 2026-09-25 | Phase 11 | Home and trading copy no longer lead with telemetry codes or a fake broker name. | Safety facts stay visible. Codes stay under details. | UI tests | APPROVED |
 | **ARCH-012** | 2026-09-25 | Phase 11 | Risk card no longer invents `$500` or a 22-check count. A research file pass is not labeled ready for demo. Live docs no longer describe a multi-signature unlock that is not in the code. | Missing limits stay unreported. Live stays locked. | UI source tests | APPROVED |
+| **ARCH-013** | 2026-09-25 | Phase 11 | Governance screen no longer claims it recorded a live request. `/api/risk` clear state says `RISK CLEAR — NOT AN ORDER`. | A button cannot invent an audit record. | `test_risk_veto_visibility`, UI shell | APPROVED |
 
 ---
 

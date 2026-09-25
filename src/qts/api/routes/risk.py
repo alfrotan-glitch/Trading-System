@@ -106,7 +106,7 @@ def risk_center() -> dict[str, Any]:
         "warnings": snap.warnings,
         "blocked": len(blocked_reasons) > 0,
         "blocked_reasons": sorted(set(blocked_reasons)),
-        "status_text": "TRADING BLOCKED" if blocked_reasons else "TRADING ALLOWED (demo-family only)",
+        "status_text": "TRADING BLOCKED" if blocked_reasons else "RISK CLEAR — NOT AN ORDER",
         "explanations": {
             "MISSING_MARKET_PRICE": "Market data stale or unavailable — no authoritative price for risk check",
             "ACCOUNT_STATE_UNAVAILABLE": "Authoritative account equity unavailable — order vetoed, never computed against guessed capital",

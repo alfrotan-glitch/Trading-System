@@ -139,9 +139,9 @@ export async function renderGovernance(root) {
     }));
 
     content.appendChild(card({
-      title: "Request live enablement — intentionally quiet — safety understandable", icon: "lock",
+      title: "Live enablement is not available from this screen", icon: "lock",
       body: h("div", { class: "stack" },
-        h("p", { class: "gate-note" }, "The request surface exists for completeness and auditability. When the gate is locked, a request is recorded and refused — no override, no dark pattern. DEMO vs LIVE unmistakable."),
+        h("p", { class: "gate-note" }, "This button does not write a request and does not unlock live trading. Locked means locked."),
         h("button", {
           class: "btn", disabled: !eligible,
           onclick: eligible ? requestLive : () => toast("info", "LIVE is locked", live.message ?? "Requirements are listed above. What blocked, why, what missing, what next explicit."),
@@ -167,21 +167,21 @@ export async function renderGovernance(root) {
 
   async function requestLive() {
     const ok = await confirmModal({
-      title: "Request LIVE enablement — LIVE real capital, DEMO simulation",
+      title: "Live trading stays locked",
       danger: true,
       body: h("div", { class: "stack" },
-        h("p", null, "This records a formal, audited request. The governance gate still decides; human approval is verified server-side. DEMO vs LIVE unmistakable: DEMO proves ops, never profitability."),
-        h("div", { class: "card live-boundary" }, h("div", { class: "card-body" }, h("div", { class: "eyebrow" }, "DEMO vs LIVE"), h("p", { class: "small" }, "DEMO_FORWARD = real demo-account observation with zero orders. DEMO_EXECUTION is DEMO-account order execution, available only with a recorded owner authorization and per-order gates (default: DISABLED BY POLICY). LIVE = real capital and remains locked."))),
+        h("p", null, "This screen cannot record a live request and cannot unlock live trading. There is no approval endpoint behind this button."),
+        h("div", { class: "card live-boundary" }, h("div", { class: "card-body" }, h("div", { class: "eyebrow" }, "DEMO vs LIVE"), h("p", { class: "small" }, "Watching a demo account does not use real money. A demo order, if one is ever allowed, is still not live trading. Live trading stays locked."))),
       ),
       acks: [
-        "I understand live trading risks real capital — LIVE LOCKED is a safety feature.",
-        "I understand demo results are not evidence of profitability and never unlock LIVE — DEMO vs LIVE unmistakable.",
-        "I am the account owner and this request is deliberate, informed, and recorded.",
+        "I understand this screen cannot unlock live trading.",
+        "I understand demo results are not evidence of profitability and never unlock live trading.",
+        "I understand nothing I confirm here is written as an approval.",
       ],
-      confirmLabel: "Submit audited request — LIVE still LOCKED until approved",
+      confirmLabel: "Close — nothing is recorded",
     });
     if (!ok) return;
-    toast("info", "Request recorded — LIVE still LOCKED", "The governance gate evaluates requests server-side — the UI never grants permission. DEMO vs LIVE unmistakable.");
+    toast("info", "Nothing was recorded", "This screen cannot unlock live trading and it does not write an approval.");
     renderGovernance(root);
   }
 

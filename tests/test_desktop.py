@@ -297,7 +297,7 @@ def test_risk_veto_visibility(tmp_path, monkeypatch):
     # `blocked` and `blocked_reasons` must never disagree with each other or
     # with the operator-facing status text
     assert j["blocked"] == (len(j["blocked_reasons"]) > 0)
-    assert j["status_text"] == ("TRADING BLOCKED" if j["blocked"] else "TRADING ALLOWED (demo-family only)")
+    assert j["status_text"] == ("TRADING BLOCKED" if j["blocked"] else "RISK CLEAR — NOT AN ORDER")
     # an empty workspace has no validated edge and no evidence, so trading MUST
     # be blocked and the endpoint MUST say why
     assert j["blocked"] is True, "an empty workspace must not report trading allowed"
