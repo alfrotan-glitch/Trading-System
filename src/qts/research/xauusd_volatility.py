@@ -715,7 +715,7 @@ class VolatilityScan:
         censored_n[pos] += missed
 
     def finish(self) -> dict[str, Any]:
-        panel = {}
+        panel: dict[str, dict[str, Any]] = {}
         rows = []
         for h_index, horizon in enumerate(self.horizons):
             panel[str(horizon)] = {}

@@ -261,7 +261,7 @@ def evaluate_marketmaking(scan: MarketMakingScan, *, complete_rows: int = DISCOV
 
     primary = stats_for(is_F, is_U)
     # terciles
-    tercile_stats = []
+    tercile_stats: list[dict[str, Any]] = []
     for t in range(3):
         mask_t = tercile == t
         if not np.any(mask_t):

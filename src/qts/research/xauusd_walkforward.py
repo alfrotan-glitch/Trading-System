@@ -7,8 +7,8 @@ are recomputed from that fold's trailing-16 distribution to avoid leakage.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, cast
 
 import numpy as np
 
@@ -43,10 +43,7 @@ class WalkForwardScan:
     rows: int = 0
     last_stamp: int | None = None
     # Store per-fold aggregates after full pass? Instead, accumulate raw events and split by time at eval.
-    _events: list = None  # list of dicts per batch
-
-    def __post_init__(self):
-        self._events = []
+    _events: list[dict[str, Any]] = field(default_factory=list)
 
     def add_batch(self, bid: np.ndarray, ask: np.ndarray, time_msc: np.ndarray) -> None:
         stamps = np.asarray(time_msc, dtype=np.int64)
@@ -179,8 +176,12 @@ def evaluate_walkforward(scan: WalkForwardScan, *, complete_rows: int = DISCOVER
 
     # Gates
     all_floors = all(f.get("floor_pass") for f in folds)
-    all_sign = all(f.get("ratio") is not None and f["ratio"] > 1.0 and f.get("lift") is not None and f["lift"] > 0 for f in folds if f.get("ratio") is not None)
-    ratios = [f["ratio"] for f in folds if f.get("ratio") is not None]
+    all_sign = all(
+        cast(float, f["ratio"]) > 1.0 and f.get("lift") is not None and cast(float, f["lift"]) > 0
+        for f in folds
+        if f.get("ratio") is not None
+    )
+    ratios = cast(list[float], [f["ratio"] for f in folds if f.get("ratio") is not None])
     cv = float(np.std(ratios) / np.mean(ratios)) if len(ratios) == FOLDS and np.mean(ratios) != 0 else None
     ratio_range = (max(ratios) / min(ratios)) if len(ratios) == FOLDS and min(ratios) != 0 else None
     stability = cv is not None and cv < 0.20 and ratio_range is not None and ratio_range < 1.5

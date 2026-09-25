@@ -45,23 +45,23 @@ Shutdown:
 
 ## Security
 - No broker passwords/API in source. Uses local `QTS_MT5_MODE` + env vars + OS credential store (future). `configs/` has placeholder not real secrets.
-- Separate envs: development, paper, shadow, micro, live. UI displays active env badge topbar, MT5 mode, trading_mode. Live remains LOCKED until all gates.
+- Separate envs: development, paper, shadow, and demo. Live trading stays locked. This workstation cannot open it.
 - Backend CORS limited to localhost; no remote exposure.
 
 ## Packaging
 Requirements:
-- One-click launch: PyInstaller spec `build/qts.spec` (single file, includes `src/qts`, `src/qts/desktop/ui`, hidden imports fastapi/uvicorn/pydantic). Build: `pip install pyinstaller && pyinstaller build/qts.spec --clean --noconfirm`. Output `dist/QTS.exe`.
-- Configuration: `configs/settings.yaml` and env vars; `README` documents Windows shortcut creation (`scripts/create_shortcut.ps1`).
+- One-click launch: PyInstaller spec `packaging/qts.spec`. Build: `pip install pyinstaller && pyinstaller packaging/qts.spec --clean --noconfirm`. Output `dist/QTS.exe`.
+- Configuration: `configs/*.yaml` and env vars. There is no `configs/settings.yaml` in this tree. Windows shortcut creation is `scripts/create_shortcut.ps1`.
 - Data: `data/` directory documented, upgrade safe (manifest version hash).
 - Logs: `logs/` rotated, not committed.
 - No secret committed: `.gitignore` covers `.env`, credentials.
-- Dev vs prod: `QTS_ENV=development` default, `QTS_ENV=live` + `confirm_live=true` + `risk.approved` needed for live gate.
-- Installer: `build/installer.nsi` NSIS script for Windows installer (optional), or portable zip.
+- Dev vs prod: `QTS_ENV=development` is the default. Setting a live environment does not open live trading. There is no `confirm_live` unlock in this repository.
+- Installer: there is no NSIS script in this tree. The Windows build script is `scripts/build_windows.bat`.
 
 Build instructions (Windows):
 1. `python -m venv venv; venv\Scripts\activate`
 2. `pip install -e .` (includes fastapi uvicorn)
-3. `pyinstaller build/qts.spec`
+3. `pyinstaller packaging/qts.spec`
 4. `dist\QTS.exe` double-click → health → dashboard. Shortcut: right-click → Create shortcut → copy to Desktop, icon `assets/qts.ico`.
 5. For webview: `pip install pywebview` optionally, else browser fallback.
 6. Logs/config/data paths as above.

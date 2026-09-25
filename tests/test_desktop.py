@@ -584,7 +584,7 @@ def test_desktop_ui_static_files():
 
 
 def test_packaging_docs():
-    assert Path("build/qts.spec").exists()
+    assert Path("packaging/qts.spec").exists()
     assert Path("scripts/create_shortcut.ps1").exists()
     assert Path("docs/desktop_application_report.md").exists()
     assert Path("docs/user_operation_guide.md").exists()

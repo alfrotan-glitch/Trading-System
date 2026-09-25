@@ -185,7 +185,7 @@ def evaluate_cross_activity(scan: CrossActivityScan, *, complete_rows: int = DIS
     primary_stats = _compute_stats(agg256["is_A"], agg256["is_B"], agg256["abs_move"], agg256["exceed"]) if agg256 else None
     stability_stats = _compute_stats(agg1024["is_A"], agg1024["is_B"], agg1024["abs_move"], agg1024["exceed"]) if agg1024 else None
 
-    tercile_stats = []
+    tercile_stats: list[dict[str, Any] | None] = []
     for t in range(3):
         if agg256 is None:
             tercile_stats.append(None)
@@ -253,11 +253,15 @@ def evaluate_cross_activity(scan: CrossActivityScan, *, complete_rows: int = DIS
             and primary_stats["lift"] is not None and primary_stats["lift"] >= MIN_LIFT
         )
         artifact_pass = (
-            all(ts["ratio"] is not None and ts["ratio"] > 1.0 and ts["lift"] is not None and ts["lift"] > 0 for ts in tercile_stats)
+            all(
+                ts is not None and ts["ratio"] is not None and ts["ratio"] > 1.0 and ts["lift"] is not None and ts["lift"] > 0
+                for ts in tercile_stats
+            )
             and stability_stats["ratio"] is not None and stability_stats["ratio"] > 1.0
             and stability_stats["lift"] is not None and stability_stats["lift"] > 0
             and gap_stats["ratio"] is not None and gap_stats["ratio"] > 1.0
             and gap_stats["lift"] is not None and gap_stats["lift"] > 0
+            and delay_stats is not None
             and delay_stats["ratio"] is not None and delay_stats["ratio"] > 1.0
         )
 

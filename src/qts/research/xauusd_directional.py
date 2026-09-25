@@ -447,7 +447,7 @@ def evaluate(
         reasons.append("discovery prefix row count does not match registered identity")
     if underpowered:
         reasons.append("registered per-sign/tercile/gap count or block minimum not met")
-    inference = None
+    inference: dict[str, Any] | None = None
     if not underpowered:
         bootstrap = block_bootstrap(primary, scan.blocks, draws=bootstrap_draws)
         shuffle = sign_shuffle(primary, draws=shuffle_draws)

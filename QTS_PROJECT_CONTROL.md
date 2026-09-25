@@ -176,6 +176,7 @@ Committed Evidence Manifest (data/evidence/*.json)
 2. **Kill Switches**: Only `qts.risk.engine.RiskEngine` maintains kill switch state. No in-memory secondary flags.
 3. **Path Resolution**: Only `qts.config.paths` resolves machine-local state paths. No hardcoded string paths.
 4. **Order State Stores**: Only `qts.execution.demo_journal.DemoOrderJournal` persists execution history.
+5. **Single current version**: This working tree is one unreleased product version. Git history stores previous versions. Do not add `v2`, `new`, `old`, `legacy`, `final`, `backup`, `copy`, or `archive` copies of an existing file. Update the canonical file. A new file is allowed only for a genuinely new responsibility. Dead files and dead code are deleted, not archived. Duplicate responsibility is consolidated. Every future change must preserve this hygiene. `QTS_PROJECT_CONTROL.md` remains the only project-control document.
 
 ---
 
@@ -199,15 +200,16 @@ Committed Evidence Manifest (data/evidence/*.json)
 | **ARCH-014** | 2026-09-25 | Phase 11 | Header **Stop trading** calls `POST /api/demo/kill` and does not claim success if the request fails. Data-quality copy no longer invents a 12-check count. Troubleshooting uses the 60s freshness limit. | The documented emergency control exists. A failed stop stays visible. | UI source test | APPROVED |
 | **ARCH-015** | 2026-09-25 | Phase 11 | Home and Trading read the durable kill switch from `/api/health` and `/api/risk`. A limit flag is no longer labeled armed. The journal path in the demo guide matches `journal_db`. | A stop stays visible after it is raised. | operations test | APPROVED |
 | **ARCH-016** | 2026-09-25 | Phase 11 | Product pages lead with plain sentences: what is connected, whether an order is allowed, and that live trading cannot be opened here. | A clearer label does not hide Demo vs Live, the kill switch, or a missing reading. | UI shell tour | APPROVED |
+| **ARCH-017** | 2026-09-25 | Phase 11 | Mypy errors in the research runners were annotation and name-shadow fixes. The duplicate `build/qts.spec` was removed. The single-current-version rule is now section 11. | Formulas and gates were not loosened. Live stays locked. | `mypy src`, full pytest | APPROVED |
 
 ---
 
 ## 13. TEST STATUS
 
-* **Python default suite** (`pytest`): 1,318 passed, 2 skipped, 1,320 collected (2026-09-25). The two skips are `tests/adversarial/test_impulse_lookahead.py` for family `IMP-VE-V`, when the fixed seed window produces no events. They are not integration tests. Playwright browser tests are a separate collection-time skip (`playwright not installed`) and are not inside the 1,320.
-* **Python integration suite** (`pytest tests/integration --run-integration`): 119 passed. The same 119 now also run in the default suite. The directory-name skip is gone.
-* **JavaScript UI tests** (`npm test`): 48 passed. The UI shell tour passed. `node --check` passed for the edited UI files.
-* **Linters**: `ruff check src tests` clean. `mypy src` is not clean: 38 errors in 12 research and observability files. Those formulas were not changed to silence the type checker.
+* **Python default suite** (`pytest`): exit 0 on 2026-09-25. Collection is 1,321. The run showed 2 skips, both in `tests/adversarial/test_impulse_lookahead.py` for family `IMP-VE-V` when the fixed seed window produces no events. They are not integration tests. Playwright browser tests remain a collection-time skip (`playwright not installed`) and are not inside the 1,321.
+* **Python integration suite** (`pytest tests/integration --run-integration`): 119 passed. The same 119 are also in the default collection. The directory-name skip is gone.
+* **JavaScript UI tests** (`npm test`): 48 passed. `node --check` passed for the desktop UI scripts. The UI shell tour is inside `tests/ui/test_ui_logic.py` and passed with the default suite.
+* **Linters**: `ruff check src tests` clean. `mypy src` clean: 0 errors in 166 source files. The previous 38 errors were annotation and name-shadow fixes. No formula was changed to satisfy the type checker.
 
 ---
 

@@ -1,3 +1,5 @@
+# Not installed. The workflows under .github/workflows are the research runners.
+# This file records the intended local check list. It does not run on push.
 name: ci
 on: [push, pull_request]
 jobs:

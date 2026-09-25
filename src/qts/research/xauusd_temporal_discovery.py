@@ -53,7 +53,7 @@ def discover_temporal(time_msc: np.ndarray, bid: np.ndarray, ask: np.ndarray) ->
 
     # Spread by raw hour
     spread = ask - bid
-    spread_by_hour = []
+    spread_by_hour: list[dict[str, int | float | None]] = []
     for h in range(24):
         mask = raw_hour == h
         if np.any(mask):

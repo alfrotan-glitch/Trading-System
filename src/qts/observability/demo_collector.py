@@ -782,7 +782,8 @@ class ObservationCollector:
                     # timestamp read back from the canonical session row; do
                     # not turn ``None`` into a fabricated string.
                     persisted = self.observatory.session(session_id) or {}
-                    committed_end = persisted.get("end")
+                    read_back = persisted.get("end")
+                    committed_end = str(read_back) if read_back else ""
                 if not committed_end:
                     raise RuntimeError("canonical end_session returned no committed timestamp")
             except Exception as e:  # noqa: BLE001 — persistence must never escape the worker

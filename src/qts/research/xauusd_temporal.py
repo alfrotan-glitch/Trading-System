@@ -254,7 +254,7 @@ def evaluate_temporal(scan: TemporalScan, *, complete_rows: int = DISCOVERY_ROWS
     stability_stats = compute_stats(agg64) if agg64 else None
 
     # Terciles for primary
-    tercile_stats = []
+    tercile_stats: list[dict[str, Any] | None] = []
     for t in range(3):
         if agg16 is None:
             tercile_stats.append(None)
@@ -371,7 +371,10 @@ def evaluate_temporal(scan: TemporalScan, *, complete_rows: int = DISCOVERY_ROWS
             and primary_stats["lift"] >= MIN_LIFT
         )
         artifact_pass = (
-            all(ts["ratio"] is not None and ts["ratio"] > 1.0 and ts["lift"] is not None and ts["lift"] > 0 for ts in tercile_stats)
+            all(
+                ts is not None and ts["ratio"] is not None and ts["ratio"] > 1.0 and ts["lift"] is not None and ts["lift"] > 0
+                for ts in tercile_stats
+            )
             and stability_stats["ratio"] is not None
             and stability_stats["ratio"] > 1.0
             and stability_stats["lift"] is not None
@@ -394,6 +397,7 @@ def evaluate_temporal(scan: TemporalScan, *, complete_rows: int = DISCOVERY_ROWS
         status = "INCONCLUSIVE"
     elif not floor_pass:
         status = "REJECTED"
+        assert primary_stats is not None
         reasons.append(f"floor miss: ratio {primary_stats['ratio']:.3f} < {MIN_RATIO} or gap ${primary_stats['gap_dollars']:.3f} < ${MIN_GAP_DOLLARS} or lift {primary_stats['lift']:.3f} < {MIN_LIFT}")
     elif not artifact_pass:
         status = "REJECTED"

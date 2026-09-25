@@ -201,7 +201,7 @@ def evaluate_1m(scan: OneMScan) -> dict[str, Any]:
         })
 
     # Baseline: all bars that are not signals but have forward 12 available
-    baseline_nets = []
+    baseline_samples: list[float] = []
     for i in range(n_bars):
         if valid_signal[i]:
             continue
@@ -217,9 +217,9 @@ def evaluate_1m(scan: OneMScan) -> dict[str, Any]:
         cost_bps = COST_BPS / 10000
         cost_slip = SLIPPAGE_DOLLARS / enter_price
         net = gross - cost_bps - cost_slip
-        baseline_nets.append(net)
+        baseline_samples.append(net)
 
-    baseline_nets = np.array(baseline_nets, dtype=np.float64) if baseline_nets else np.array([], dtype=np.float64)
+    baseline_nets = np.asarray(baseline_samples, dtype=np.float64)
     # Separate long and short events
     long_nets = np.array([e["net12"] for e in events if e["is_long"]], dtype=np.float64)
     short_nets = np.array([e["net12"] for e in events if e["is_short"]], dtype=np.float64)
@@ -252,7 +252,7 @@ def evaluate_1m(scan: OneMScan) -> dict[str, Any]:
     baseline_stats = stats(baseline_nets)
 
     # Terciles: split by time (events time)
-    tercile_stats = []
+    tercile_stats: list[dict[str, Any]] = []
     if events:
         times_ev = np.array([e["time"] for e in events])
         # tercile cutoffs based on scan time_min/cutoff
@@ -321,16 +321,20 @@ def evaluate_1m(scan: OneMScan) -> dict[str, Any]:
         # For simplicity, check that all terciles with n>=100 have mean >0 for long if long_pass
         tercile_ok = True
         for ts in tercile_stats:
-            if ts["n_long"] >= MIN_N_TERCILE and ts["mean_long"] is not None and ts["mean_long"] <= 0:
+            mean_long = ts.get("mean_long")
+            if ts["n_long"] >= MIN_N_TERCILE and isinstance(mean_long, float) and mean_long <= 0:
                 tercile_ok = False
-            if ts["n_short"] >= MIN_N_TERCILE and ts["mean_short"] is not None and ts["mean_short"] <= 0:
+            mean_short = ts.get("mean_short")
+            if ts["n_short"] >= MIN_N_TERCILE and isinstance(mean_short, float) and mean_short <= 0:
                 tercile_ok = False
+        h48_long = output["measured"]["h48_long_mean"]
+        h48_short = output["measured"]["h48_short_mean"]
         h48_ok = True
-        if output["measured"]["h48_long_mean"] is not None and output["measured"]["h48_short_mean"] is not None:
+        if h48_long is not None and h48_short is not None:
             # For momentum, both 12 and 48 should be >0 if signal is true
-            if long_pass and output["measured"]["h48_long_mean"] <= 0:
+            if long_pass and h48_long <= 0:
                 h48_ok = False
-            if short_pass and output["measured"]["h48_short_mean"] <= 0:
+            if short_pass and h48_short <= 0:
                 h48_ok = False
         if (long_pass or short_pass) and long_vs_base and short_vs_base and tercile_ok and h48_ok:
             status = "TESTED"

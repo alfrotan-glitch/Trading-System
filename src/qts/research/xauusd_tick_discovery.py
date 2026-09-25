@@ -553,8 +553,8 @@ def scan_dataset(dataset_dir: Path) -> dict[str, Any]:
         for batch in parquet.iter_batches(batch_size=500_000, columns=present):
             bid = _column(batch, "bid")
             ask = _column(batch, "ask")
-            stamp = _column(batch, "time_msc")
-            if bid is None or ask is None or stamp is None:
+            quote_stamp = _column(batch, "time_msc")
+            if bid is None or ask is None or quote_stamp is None:
                 raise ValueError("bid, ask, and time_msc are required")
             volume = _column(batch, "volume_real")
             if volume is None:
@@ -565,7 +565,7 @@ def scan_dataset(dataset_dir: Path) -> dict[str, Any]:
                 carry,
                 bid=bid,
                 ask=ask,
-                stamp=stamp,
+                stamp=quote_stamp,
                 cutoff=cutoff,
                 time_min=stamps_min,
                 span=span,
@@ -575,7 +575,7 @@ def scan_dataset(dataset_dir: Path) -> dict[str, Any]:
                 flags=_column(batch, "flags"),
             )
             spread = _finite(ask) - _finite(bid)
-            keep = (stamp < cutoff) & (_finite(bid) > 0) & (_finite(ask) > 0) & (spread > 0)
+            keep = (quote_stamp < cutoff) & (_finite(bid) > 0) & (_finite(ask) > 0) & (spread > 0)
             if keep.any() and not store_truncated:
                 chunk = spread[keep]
                 room = SPREAD_STORE_CAP - stored

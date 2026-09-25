@@ -48,8 +48,8 @@ def evaluate_marketmaking_wf(scan: MarketMakingScan, *, complete_rows: int = DIS
     # Events are appended in time order, so index order is time order.
     n_events = len(scan._events)
     fold_size = n_events // FOLDS
-    folds = []
-    reasons = []
+    folds: list[dict[str, Any]] = []
+    reasons: list[str] = []
     # For each fold, compute stats
     for f in range(FOLDS):
         lo = f * fold_size
@@ -133,14 +133,14 @@ def evaluate_marketmaking_wf(scan: MarketMakingScan, *, complete_rows: int = DIS
     # check folds
     if any(f.get("status") == "INCONCLUSIVE" for f in folds):
         underpowered = True
-        reasons.extend([f["reason"] for f in folds if "reason" in f])
+        reasons.extend([str(fold["reason"]) for fold in folds if "reason" in fold])
     # All folds must be floor_pass?
     all_pass = all(f.get("floor_pass") for f in folds)
     if not underpowered and not all_pass:
         # Check which folds failed
-        for f in folds:
-            if not f.get("floor_pass"):
-                reasons.append(f"fold {f['fold']} floor miss: lift {f.get('lift',0):.3f} ratio {f.get('ratio',0):.2f} net_F {f.get('net_F',0):.3f} risk {f.get('risk_adj_F',0):.3f}>{f.get('risk_adj_U',0):.3f} delay {(f.get('p_delay_F',0)-f.get('p_delay_U',0)):.3f}")
+        for fold in folds:
+            if not fold.get("floor_pass"):
+                reasons.append(f"fold {fold['fold']} floor miss: lift {fold.get('lift',0):.3f} ratio {fold.get('ratio',0):.2f} net_F {fold.get('net_F',0):.3f} risk {fold.get('risk_adj_F',0):.3f}>{fold.get('risk_adj_U',0):.3f} delay {(fold.get('p_delay_F',0)-fold.get('p_delay_U',0)):.3f}")
     # Also need overall primary floors (risk-adjusted)
     if primary:
         risk_F = primary["net_F"]/primary["mean_max_F"] if primary["mean_max_F"] else 0
