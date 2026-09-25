@@ -162,8 +162,11 @@ def test_blocked_risk_state_display(page):
     page.wait_for_selector(".banner", timeout=20_000)
     page.wait_for_timeout(1500)
     body = page.locator("#main").inner_text()
-    assert "TRADING IS" in body
-    assert ("BLOCKED" in body) or ("PERMITTED" in body)
+    banner = page.locator(".banner").first.inner_text()
+    assert "TRADING IS" in banner
+    assert ("BLOCKED" in banner) or ("NOT AUTHORIZED" in banner)
+    assert "PERMITTED" not in banner
+    assert "22 GATES" not in body
 
 
 def test_governance_locked_calm_ui(page):

@@ -82,6 +82,10 @@ export async function renderRisk(root) {
     if (!lastRisk) return;
     renderFacts();
     const risk = lastRisk;
+    const loss = risk.limits?.daily_loss_limit_usd;
+    const lossLabel = loss == null || loss === "" ? "Not reported" : `$${loss}`;
+    const kill = String(risk.limits?.kill_switch ?? "").toUpperCase();
+    const killStopped = kill === "ACTIVE";
     const hostContent = h("div", { class: "stack" });
 
     hostContent.appendChild(card({
@@ -92,21 +96,23 @@ export async function renderRisk(root) {
       body: h("div", { class: "stack" },
         h("div", { class: "stat-grid" },
           stat({ label: "Live Trading Gate", value: "PERMANENTLY LOCKED", tone: "err", hint: "Zero real capital exposure", icon: "lock" }),
-          stat({ label: "Emergency Kill Switch", value: "ARMED (NORMAL)", tone: "ok", hint: "Instant order veto", icon: "shield" }),
-          stat({ label: "Pre-Trade Safeguards", value: "22 GATES ACTIVE", tone: "ok", hint: "Pre-trade risk verification", icon: "shield" }),
-          stat({ label: "Max Daily Loss", value: `$${fmtInt(risk.limits?.daily_loss_limit ?? 500)}`, hint: "Durable drawdown cap", icon: "alert" }),
+          stat({ label: "Kill switch", value: killStopped ? "On — orders stopped" : kill === "ARMED" ? "Ready" : "Not reported", tone: killStopped ? "err" : kill === "ARMED" ? "ok" : "neutral", hint: killStopped ? "The durable kill switch is stopping orders." : "Ready is not the same as an order being allowed.", icon: "shield" }),
+          stat({ label: "Pre-trade checks", value: "Safety checks are on", tone: "ok", hint: "Every order is refused unless the full pre-trade gate passes. This card does not count the checks.", icon: "shield" }),
+          stat({ label: "Max daily loss", value: lossLabel, hint: "From the risk authority. A missing limit is not a default dollar amount.", icon: "alert" }),
         ),
         h("p", { class: "text-dim small", style: { marginTop: "6px" } },
-          "This trading workstation is structurally hard-coded for demonstration, forward observation, and research validation only. Real-money orders are impossible to submit through this interface or API.",
+          "This page cannot place an order. Live trading stays locked. A clear risk reading is not permission to trade, and it is not a validated opportunity.",
         ),
       ),
     }));
 
     hostContent.appendChild(banner(
-      risk.blocked ? "err" : "ok",
-      risk.blocked ? `TRADING IS CURRENTLY BLOCKED — ${risk.blocked_reasons.length} reason(s) — what blocked, why` : "TRADING IS PERMITTED — WITHIN THE LIMITS BELOW — what allowed, why",
-      risk.blocked ? `${risk.blocked_reasons.join(" · ")} — context ${getContext().symbol} — fix what missing, then re-verify.` : `Every check evaluated continuously; any violation blocks instantly and is audited. Context ${getContext().symbol} syncs, never relaxes limits. DEMO vs LIVE unmistakable.`,
-      risk.blocked ? "shield" : "check",
+      risk.blocked ? "err" : "warn",
+      risk.blocked ? `TRADING IS CURRENTLY BLOCKED — ${risk.blocked_reasons.length} reason(s)` : "TRADING IS NOT AUTHORIZED",
+      risk.blocked
+        ? `${risk.blocked_reasons.join(" · ")} — ${getContext().symbol}. Fix the listed reason, then check again. Live trading stays locked.`
+        : `Risk limits are not blocking. That is not permission to trade. Live trading stays locked. There is no validated opportunity. Context ${getContext().symbol}.`,
+      "shield",
     ));
 
     hostContent.appendChild(h("div", { class: "stat-grid" },
@@ -137,7 +143,7 @@ export async function renderRisk(root) {
       card({ title: "Active vetoes — what blocked, why, what missing", sub: "why submission would be refused now", icon: "alert", body:
         risk.blocked_reasons.length
           ? h("ul", { class: "reason-list" }, risk.blocked_reasons.map((r) => h("li", null, r)))
-          : emptyState({ icon: "check", title: "No active vetoes", desc: "No blocking condition currently triggered. Trading permitted within limits, but DEMO permission and mode still apply. LIVE remains LOCKED." }),
+          : emptyState({ icon: "check", title: "No active vetoes", desc: "No risk veto is active. That does not permit an order. Demo permission and the pre-trade gate still apply. Live trading stays locked." }),
       }),
       card({ title: "Known conditions — informational, not violations", sub: "scope and limitations", icon: "info", body:
         Object.keys(risk.explanations ?? {}).length

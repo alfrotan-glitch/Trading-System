@@ -206,11 +206,11 @@ export async function renderDemo(root) {
     host.appendChild(banner(
       demoEnabled ? "info" : "warn",
       demoEnabled
-        ? `DEMO EXECUTION: ${String(cfg.demo_execution?.state ?? "ENABLED_AUTHORIZED")} — LIVE LOCKED`
-        : "DEMO EXECUTION: DISABLED BY POLICY — LIVE LOCKED",
+        ? "Demo may be considered. Live trading is locked."
+        : "Trading is off. Live trading is locked.",
       `${demoEnabled
-        ? "This backend process resolved a DEMO-capable mode and a recorded owner authorization. Order permission is still per-order: staged arming, a confirmed identity pin, fresh readiness, a registered policy and the full pre-trade gate."
-        : "No readiness result or UI action creates demo order permission. DEMO_FORWARD observation is the only broker path in this mode; LIVE remains separately locked."} Mode ${String(cfg.mode ?? "UNAVAILABLE").toUpperCase()} — decided by: ${String(cfg.mode_source ?? "unresolved")}.`,
+        ? `DEMO EXECUTION: ${String(cfg.demo_execution?.state ?? "ENABLED_AUTHORIZED")} — LIVE LOCKED. This backend process resolved a DEMO-capable mode and a recorded owner authorization. Order permission is still per-order: staged arming, a confirmed identity pin, fresh readiness, a registered policy and the full pre-trade gate.`
+        : "DEMO EXECUTION: DISABLED BY POLICY — LIVE LOCKED. No readiness result or UI action creates demo order permission. Watching the market does not turn trading on."} Mode ${String(cfg.mode ?? "UNAVAILABLE").toUpperCase()} — decided by: ${String(cfg.mode_source ?? "unresolved")}.`,
       "lock",
     ));
 

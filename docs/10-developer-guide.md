@@ -79,9 +79,11 @@ find src/qts/desktop/ui/js -name '*.js' -print0 | xargs -0 -n1 node --check
 npm test
 
 # 5. Python tests
-# Default pytest includes tests/integration.
-# Two skips are environmental: Playwright is optional, and one fsync test is Windows-only.
-# `--run-integration` opts in to an explicit @pytest.mark.integration marker. None are marked today.
+# Default pytest includes tests/integration. The 119 integration tests do not need a flag.
+# The two default skips are tests/adversarial/test_impulse_lookahead.py for family IMP-VE-V
+# when the fixed seed window has no events.
+# Playwright browser tests skip at import when playwright is not installed. They are outside that count.
+# `--run-integration` still runs tests/integration explicitly.
 pytest
 pytest tests/integration --run-integration
 ```

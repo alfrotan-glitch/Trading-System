@@ -188,10 +188,10 @@ def test_research_validation_translates_opportunity_disposition():
     """Validation view must classify opportunities in human terms rather than raw math."""
     research_src = (JS_DIR / "views" / "research.js").read_text(encoding="utf-8")
     assert "Opportunity Evaluation — Plain Language Disposition" in research_src
-    assert "VALIDATED CANDIDATE" in research_src
     assert "NO VALIDATED EDGE" in research_src
-    assert "SURVIVED GATES" in research_src
-    assert "CONTAINED IN RESEARCH" in research_src
+    assert "A file pass does not permit an order" in research_src
+    assert "VALIDATED CANDIDATE" not in research_src
+    assert "READY FOR DEMO" not in research_src
 
 
 # ---------------------------------------------------------------------------

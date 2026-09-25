@@ -164,16 +164,17 @@ export async function renderMonitor(root) {
     const bases = manifest.timestamp_bases ?? {};
     const offsets = manifest.server_utc_offsets_s ?? [];
     content.appendChild(card({
-      title: `Timestamp normalization — authoritative UTC — context ${currentCtx.symbol} — FS-c42bbd fix retained`, sub: `bases: ${Object.keys(bases).join(", ") || "UNAVAILABLE"} — offsets ${offsets.length ? offsets.map((o)=>`${o/3600}h`).join(", ") : "UNAVAILABLE"}`,
+      title: `Quote clock — ${currentCtx.symbol}`, sub: "Broker time is converted to UTC. A failed clock check keeps the last measured offset.",
       icon: "clock",
       body: h("div", { class: "stack" },
         h("div", { class: "stat-grid" },
           stat({ label: "Timestamp bases", value: Object.keys(bases).length ? Object.entries(bases).map(([k,v])=>`${k}·${v}`).join(", ") : "UNAVAILABLE", hint: "broker-normalized(measured-m1-bar) vs assumed-utc-fallback — truth visible, never 0" }),
-          stat({ label: "Server UTC offsets", value: offsets.length ? offsets.join(", ") : "UNAVAILABLE", hint: "seconds east positive — +3h=10800 retained on probe failure (FS-c42bbd fix), not lost" }),
-          stat({ label: "Ticks recorded", value: fmtInt(manifest.ticks_recorded), hint: "FS-c42bbd had 2396 then 30 future failures, now retained offset prevents storm" }),
+          stat({ label: "Server UTC offsets", value: offsets.length ? offsets.map((o) => `${o / 3600}h`).join(", ") : "Not reported", hint: "Hours east of UTC. A missing offset is not zero." }),
+          stat({ label: "Quotes recorded", value: fmtInt(manifest.ticks_recorded), hint: "Count in this observation record. Not a price and not a trade." }),
           stat({ label: "Last event", value: manifest.last_event_time ? fmtUtc(manifest.last_event_time) : "UNAVAILABLE", hint: "broker-normalized true UTC, not server-local" }),
         ),
-        banner("info", "Canonical contract — no double-apply, no loss", "True UTC = time.time(). Broker stamps server-local. Offset = server - UTC via forming-M1-bar probe. Normalization = broker_stamp - offset -> UTC single application. On probe failure retain last offset (FS-c42bbd fix) — prevents +3h future. Future-tick protection unchanged: age < -1s still fails.", "clock"),
+        banner("info", "How the quote clock works", "Broker time is local to the terminal. QTS measures the offset and converts each stamp to UTC once. If that measurement fails, the last offset is kept. It is not reset to zero. A quote that is more than one second in the future is still rejected.", "clock"),
+        h("details", null, h("summary", null, "Why this rule exists"), h("p", { class: "small text-dim" }, "An earlier observation session kept a three-hour offset wrong, then rejected future quotes. The incident id is FS-c42bbd. That history is not the current quote count.")),
       ),
     }));
 

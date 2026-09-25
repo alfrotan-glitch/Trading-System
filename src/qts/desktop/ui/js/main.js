@@ -318,7 +318,7 @@ function main() {
   palette = initPalette(IA, [
     { label: "Inspect observation (no orders)", group: "Actions", icon: "eye", run: () => navigate("#/market/observations") },
     { label: "Inspect readiness and permission", group: "Actions", icon: "shield", run: () => navigate("#/trading/demo") },
-    { label: "Inspect timestamp normalization — FS-c42bbd fix", group: "Diagnostics", icon: "clock", run: () => navigate("#/system/diagnostics") },
+    { label: "Inspect the quote clock", group: "Diagnostics", icon: "clock", run: () => navigate("#/system/diagnostics") },
     { label: "Market monitor — timestamp bases & offsets", group: "Market", icon: "activity", run: () => navigate("#/market/monitor") },
     { label: "Workspace preferences", group: "Workspace", icon: "layers", run: openWorkspace },
     { label: "Refresh operating sources", group: "Actions", icon: "refresh", run: () => syncOperations(true) },

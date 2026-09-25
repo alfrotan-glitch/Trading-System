@@ -42,7 +42,7 @@ Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating
 |:---|:---:|:---:|:---|:---|
 | **DEVELOPMENT** | No / Mock | No | Code compilation, unit tests, mock sessions | Safe default |
 | **PAPER** | No | No | Next-tick fill simulation with modeled slippage | Zero venue access |
-| **SHADOW** | Yes (MT5) | No | Evaluates would-be intents against live venue data | Zero orders submitted |
+| **SHADOW** | No | No | Records would-be intents. It does not submit, and it is not a live broker link. | Zero orders submitted |
 | **DEMO_FORWARD** | Yes (MT5) | No | Real demo quote observation and logging | Zero orders submitted |
 | **DEMO_EXECUTION**| Yes (MT5) | No | Controlled order submission on MT5 DEMO account | Fail-closed pre-trade gate |
 | **LIVE** | Yes (MT5) | **Yes** | Real-money execution | **STRUCTURALLY LOCKED** |
@@ -90,7 +90,7 @@ qts demo verify
 ├── scripts/            # History acquisition, discovery audit, and setup tools
 ├── src/qts/
 │   ├── adapters/       # MT5 broker adapter and IPC bridges
-│   ├── api/            # FastAPI REST backend (34 unified endpoints)
+│   ├── api/            # FastAPI app and route modules under api/routes/
 │   ├── backtest/       # Backtesting and simulation engine
 │   ├── config/         # Machine-local path resolver and setup wizard
 │   ├── data/           # Tick parsers and dataset loaders

@@ -96,7 +96,7 @@ export async function renderSetup(root) {
       ["Audit log", h("span", { class: "mono small" }, "logs/audit.jsonl (redacted) + SQLite audit_events")],
       ["Evidence", h("span", { class: "mono small" }, "data/evidence/*.json — Evidence Explorer")],
       ["Canonical observations", h("span", { class: "mono small" }, "data/sqlite/forward_observatory.db")],
-      ["Timestamp contract", h("span", { class: "mono small" }, "broker stamp - measured offset -> UTC, retained on probe failure (FS-c42bbd fix)")],
+      ["Quote clock", h("span", { class: "mono small" }, "Broker time is converted to UTC. If the clock check fails, the last measured offset is kept.")],
       ["Context", `${getContext().symbol} — presentation only, never permission`],
       ["Rule", "Never edit by hand — UI and CLI read them for you."],
     ]),
@@ -210,7 +210,7 @@ export async function renderMT5(root) {
     }),
   ));
 
-  host.appendChild(banner("info", "Mock ≠ real, always labeled — truth visible — timestamp contract retained", "When no terminal attached QTS uses explicitly labeled mock module. Mock data is SYNTHETIC everywhere and never eligible as broker behavior evidence. Timestamp normalization: broker stamp - measured offset -> UTC, retained on probe failure (FS-c42bbd fix). Context syncs, never permission.", "info"));
+  host.appendChild(banner("info", "A mock terminal is not a real one", "When no terminal is attached, QTS labels the data as mock. Mock data is not broker evidence. Quote times are converted to UTC. If that clock check fails, the last measured offset is kept. This page cannot permit a trade.", "info"));
 }
 
 /* Diagnostics — per-resource freshness + performance + timestamp normalization */
@@ -221,7 +221,7 @@ export async function renderDiagnostics(root) {
   const head = page({
     crumb: "System", group: "Diagnostics",
     title: "System Diagnostics",
-    answer: h("b", null, `Per-source freshness, environment boundary, mode resolution — honest plumbing. One failed source does not erase other current facts. Context ${ctx.symbol} syncs. Performance is UX: load/transition/refresh/rendering/memory/dup/recovery measured. Timestamp normalization: broker - measured offset -> UTC, retained on failure (FS-c42bbd).`),
+    answer: h("b", null, `What is connected, what is stale, and whether live trading is locked. One failed source does not erase the others. Quote times are converted to UTC. Context ${ctx.symbol} does not grant permission.`),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, "Refresh sources")],
     body: null,
   });
@@ -239,7 +239,7 @@ export async function renderDiagnostics(root) {
     const s = operationalState(store.data);
     const rows = [
       ["health", "Health API", s.sources.health.label, "Backend health endpoint freshness, not quote freshness."],
-      ["observe", "Observation collector", s.observation, s.obs?.last_error || s.obs?.note || "Collector state from /api/observe/status — FS-c42bbd: 2396 ticks then 30 future failures, offset retained fix"],
+      ["observe", "Observation collector", s.observation, s.obs?.last_error || s.obs?.note || "Collector state from the observation status. A connection is not a quote and not an order."],
       ["demoState", "DEMO authority", s.permission, "Current execution permission from authority. DEMO vs LIVE unmistakable."],
       ["live", "LIVE governance", s.liveLabel, "Governance eligibility from /api/live/status — LOCKED is safety."],
       ["notifications", "Notifications", s.sources.notifications.label, "Attention list freshness."],
@@ -324,28 +324,29 @@ export async function renderDiagnostics(root) {
     const manifest = lastManifest;
     const obs = lastObserve;
     if (!manifest && !obs) {
-      return card({ title: "Timestamp normalization — FS-c42bbd fix — authoritative clock basis", sub: "broker stamp - measured offset -> UTC, retained on probe failure", icon: "clock", body: emptyState({ icon: "clock", title: "No observation manifest yet — INSUFFICIENT", desc: "Manifest appears after observation records ticks. Shows timestamp bases, server_utc_offsets, last error. Truth visible." }) });
+      return card({ title: "Quote clock", sub: "Broker time is converted to UTC. A failed clock check keeps the last measured offset.", icon: "clock", body: emptyState({ icon: "clock", title: "No observation record yet", desc: "The clock reading appears after observation records quotes. Missing is not zero." }) });
     }
     const bases = manifest?.timestamp_bases ?? {};
     const offsets = manifest?.server_utc_offsets_s ?? obs?.server_utc_offsets_s ?? [];
     const lastError = obs?.last_error ?? manifest?.last_error ?? null;
-    const ticksRecorded = manifest?.ticks_recorded ?? obs?.ticks_recorded ?? 0;
-    const dupSkipped = manifest?.duplicates_skipped ?? obs?.duplicates_skipped ?? 0;
+    const ticksRecorded = manifest?.ticks_recorded ?? obs?.ticks_recorded;
+    const dupSkipped = manifest?.duplicates_skipped ?? obs?.duplicates_skipped;
     const state = obs?.state ?? manifest?.state ?? "UNAVAILABLE";
 
     return card({
-      title: `Timestamp normalization — FS-c42bbd fix — ${state} — authoritative clock basis UTC`, sub: `bases: ${Object.keys(bases).join(", ") || "UNAVAILABLE"} — offsets retained on probe failure, not lost`, icon: "clock",
+      title: `Quote clock — ${state}`, sub: "Broker time is converted to UTC. A failed clock check keeps the last measured offset.", icon: "clock",
       body: h("div", { class: "stack" },
         h("div", { class: "stat-grid" },
-          stat({ label: "Ticks recorded", value: fmtInt(ticksRecorded), hint: "canonical store count — FS-c42bbd had 2396 then 30 future failures" }),
-          stat({ label: "Duplicates skipped", value: fmtInt(dupSkipped), hint: "identical raw broker stamps skipped — FS-c42bbd had 233" }),
+          stat({ label: "Quotes recorded", value: ticksRecorded == null ? "Not reported" : fmtInt(ticksRecorded), hint: "Count in the observation store. Missing is not zero. Not a price and not a trade." }),
+          stat({ label: "Duplicates skipped", value: dupSkipped == null ? "Not reported" : fmtInt(dupSkipped), hint: "Identical broker stamps that were not stored twice. Missing is not zero." }),
           stat({ label: "Offsets observed", value: offsets.length ? offsets.map((o) => `${o/3600}h`).join(", ") : "UNAVAILABLE", hint: "server_utc_offset_s — +3h = 10800, retained on failure not lost" }),
           stat({ label: "Bases", value: Object.keys(bases).length ? Object.entries(bases).map(([k,v])=>`${k}·${v}`).join(", ") : "UNAVAILABLE", hint: "broker-normalized(measured-m1-bar) vs assumed-utc-fallback" }),
           stat({ label: "Last tick time", value: manifest?.last_event_time ?? obs?.last_tick_time ?? "UNAVAILABLE", hint: "broker-normalized true UTC, not server-local" }),
-          stat({ label: "Collector state", value: state, hint: "OBSERVING vs STOPPED_ON_ERRORS — FS-c42bbd stopped after 30 future" }),
+          stat({ label: "Collector state", value: state, hint: "Watching, stopped, or not reported. Stopped is not a hidden quote." }),
         ),
         lastError ? banner("warn", "Last collector error — what blocked, why", String(lastError).slice(0, 300), "alert") : null,
-        banner("info", "Canonical contract — authoritative clock basis", "True UTC = time.time(). Broker stamps are server-local (e.g. UTC+3). Offset = server - UTC measured via forming-M1-bar probe (bar_time ∈ [server_now-60, server_now]). Normalization = broker_stamp - offset -> UTC, single application, never double-applied. On probe failure (copy_rates None/stale), retain last measured offset instead of falling back to 0.0 — fix for FS-c42bbd +3h future storm. Future-tick protection unchanged: age < -1s still fails.", "clock"),
+        banner("info", "How the quote clock works", "Broker time is local to the terminal. QTS measures the offset and converts each stamp to UTC once. If that measurement fails, the last offset is kept. It is not reset to zero. A quote that is more than one second in the future is still rejected.", "clock"),
+        h("details", null, h("summary", null, "Why this rule exists"), h("p", { class: "small text-dim" }, "An earlier observation session kept a three-hour offset wrong, then rejected future quotes. The incident id is FS-c42bbd. That history is not the current quote count.")),
         h("details", null, h("summary", null, "Raw timestamp normalization evidence / technical — summary → detail → raw"), tech({ manifest: { timestamp_bases: bases, server_utc_offsets_s: offsets, ticks_recorded: ticksRecorded, last_event_time: manifest?.last_event_time, state }, observe: obs }, "Raw timestamp evidence")),
       ),
     });

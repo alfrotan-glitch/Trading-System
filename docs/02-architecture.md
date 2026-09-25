@@ -25,7 +25,7 @@ UI / CLI
 ### 1. Domain Layer (`src/qts/domain/`)
 - Pure value objects: `Instrument`, `OrderIntent`, `Order`, `Fill`, `Position`, `SymbolSpec`.
 - Execution modes: `DEVELOPMENT`, `PAPER`, `SHADOW`, `DEMO_FORWARD`, `DEMO_EXECUTION`, `LIVE`.
-- Invariant: Real-capital modes (`LIVE`) cannot be declared via config files or UI; only verified multi-signature governance artifacts can enable live execution.
+- Invariant: `LIVE` cannot be selected from a config file, the UI, or a DEMO authorization artifact. There is no multi-signature unlock in this repository. The live readiness report is fail-closed and is not an order.
 
 ### 2. Broker Adapters (`src/qts/adapters/`)
 - `MT5Adapter`: High-performance IPC bridge to the MetaTrader 5 terminal. Manages connection sessions, symbol subscription, market depth, tick queries, order submission, deal polling, and position management.

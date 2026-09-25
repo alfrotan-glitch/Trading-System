@@ -30,7 +30,7 @@ Files that remain beside these guides are cited by code or by an operator setup 
    Fail-closed pre-trade gate, exposure limits, and reconciliation. Not a validated edge.
 
 8. [**08. Live Trading Governance**](08-live-trading-governance.md)  
-   Structural live boundary, multi-signature approval prerequisites, and immutable revocation sidecars.
+   Live trading stays locked. `qts demo revoke` withdraws DEMO authorization. It does not unlock live trading.
 
 9. [**09. Troubleshooting & Diagnostics**](09-troubleshooting.md)  
    Terminal connectivity, symbol mapping, stale data, readiness TTL, and reconciliation drift resolution.

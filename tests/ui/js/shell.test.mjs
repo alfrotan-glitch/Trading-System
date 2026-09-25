@@ -125,7 +125,9 @@ test("navigation to Governance shows LIVE — LOCKED hero with disabled request 
 test("navigation to Risk shows blocked-or-permitted banner with reasons from authority", async () => {
   location.hash = "#/risk";
   await waitUntil(() => document.body.textContent.includes("Risk Center"), 15000, "risk view");
-  await waitUntil(() => document.body.textContent.match(/TRADING IS (CURRENTLY BLOCKED|PERMITTED)/), 15000, "risk banner");
+  await waitUntil(() => document.body.textContent.match(/TRADING IS (CURRENTLY BLOCKED|NOT AUTHORIZED)/), 15000, "risk banner");
+  assert.ok(!document.body.textContent.includes("TRADING IS PERMITTED"), "a clear risk limit is not permission");
+  assert.ok(!document.body.textContent.includes("22 GATES"), "the risk card does not invent a gate count");
   assert.ok(document.body.textContent.includes("Config hash") || document.body.textContent.includes("config"), "config hash displayed");
 });
 

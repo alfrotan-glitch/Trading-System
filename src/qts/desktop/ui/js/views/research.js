@@ -301,27 +301,24 @@ function scorecard(strategyId, v) {
 
   // Executive Opportunity Classification (Section 10)
   const isPass = verdict === "PASS";
-  const oppClassification = isPass ? "CANDIDATE_READY" : "BLOCKED_OR_REJECTED";
-  const oppBadge = isPass
-    ? h("span", { class: "badge ok lg" }, "VALIDATED CANDIDATE")
-    : h("span", { class: "badge err lg" }, "BLOCKED / REJECTED");
+  const oppBadge = h("span", { class: "badge warn lg" }, "NOT A TRADE");
 
   const oppSummary = card({
     title: "Opportunity Evaluation — Plain Language Disposition",
-    sub: `Strategy: ${strategyId} · Scientific status: ${isPass ? "SURVIVED GATES" : "CONTAINED IN RESEARCH"}`,
+    sub: `Strategy: ${strategyId} · A file result is not permission to trade`,
     icon: "shield",
     actions: [oppBadge],
     body: h("div", { class: "stack" },
       h("div", { class: "stat-grid" },
-        stat({ label: "Opportunity Status", value: isPass ? "VALIDATED CANDIDATE" : "NO VALIDATED EDGE", tone: isPass ? "ok" : "err", hint: isPass ? "Passed research gates" : "Contained in research", icon: "flask" }),
-        stat({ label: "Evaluation Phase", value: isPass ? "READY FOR DEMO" : "RESEARCH BLOCKED", tone: isPass ? "ok" : "warn", hint: "Fail-closed threshold enforced", icon: "branch" }),
-        stat({ label: "Evidence Survival", value: edge.passed ? "PASSED" : "FAILED", tone: edge.passed ? "ok" : "err", hint: "Multi-testing corrected", icon: "activity" }),
+        stat({ label: "Opportunity Status", value: "NO VALIDATED EDGE", tone: "err", hint: "The product conclusion does not change because one file says pass.", icon: "flask" }),
+        stat({ label: "This file", value: isPass ? "Recorded a pass" : "Did not pass", tone: "warn", hint: "A file pass does not permit an order.", icon: "branch" }),
+        stat({ label: "Evidence Survival", value: edge.passed ? "PASSED" : "FAILED", tone: edge.passed ? "ok" : "err", hint: "A pass here is still not a validated edge.", icon: "activity" }),
         stat({ label: "Data Quality Gate", value: ds.quality_passed ? "PASSED" : "NOT READY", tone: ds.quality_passed ? "ok" : "warn", hint: "Requires complete data", icon: "database" }),
       ),
       h("p", { class: "text-dim small", style: { marginTop: "6px" } },
         isPass
-          ? "This candidate strategy survived out-of-sample stress testing, Deflated Sharpe Ratio (DSR), and Probability of Backtest Overfitting (PBO). It is scientifically eligible to be registered for forward demo observation. Real-money live trading remains structurally locked."
-          : "This strategy does not have certified edge survival. In trading research, rejecting weak or overfitted candidates is success — it prevents real capital risk. The strategy is safely contained in research.",
+          ? "This file recorded a pass on its own checks. That is not a validated edge, not a demo order, and not live permission. Real money stays locked."
+          : "This file did not pass. That is not a hidden opportunity. Real money stays locked.",
       ),
     ),
   });
