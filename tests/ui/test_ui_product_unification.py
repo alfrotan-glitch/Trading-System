@@ -2,7 +2,7 @@
 
 Asserts:
 1. Product Information Architecture:
-   - Exactly 8 primary navigation groups with 23 destinations.
+   - Product navigation first, engineering pages under Advanced.
    - All legacy endpoints accounted for.
 2. Decision-First Executive Dashboard:
    - Telemetry cards addressing the 6 core product questions:
@@ -35,7 +35,7 @@ from fastapi.testclient import TestClient
 
 from qts.api.server import app
 
-UI_DIR = Path(__file__).resolve().parents[1] / "src" / "qts" / "desktop" / "ui"
+UI_DIR = Path(__file__).resolve().parents[2] / "src" / "qts" / "desktop" / "ui"
 JS_DIR = UI_DIR / "js"
 CSS_DIR = UI_DIR / "css"
 
@@ -51,15 +51,27 @@ def client():
 # ---------------------------------------------------------------------------
 
 
-def test_ia_has_8_groups_and_23_subdestinations():
-    """Information architecture must maintain the 8 core groups and 23 destinations."""
+def test_ia_has_product_navigation_and_advanced_disclosure():
+    """Product tasks come first. Engineering pages stay available under Advanced."""
     main_src = (JS_DIR / "main.js").read_text(encoding="utf-8")
     top_level_groups = re.findall(r"^  \{", main_src, re.M)
-    assert len(top_level_groups) == 8, f"Expected 8 primary groups, found {len(top_level_groups)}"
+    assert len(top_level_groups) == 9, f"Expected 9 primary groups, found {len(top_level_groups)}"
 
-    expected_groups = ["Overview", "Research", "Market", "Trading", "Risk", "Evidence", "System", "Governance"]
+    expected_groups = [
+        "Home",
+        "Market",
+        "Opportunities",
+        "Trading",
+        "Risk",
+        "Reports",
+        "Research",
+        "System",
+        "Governance",
+    ]
     for grp in expected_groups:
         assert f'label: "{grp}"' in main_src, f"Primary group {grp} missing in IA"
+    assert 'section: "Advanced"' in main_src
+    assert "restricted: true" in main_src
 
 
 def test_all_legacy_endpoints_have_ui_representation():
@@ -118,16 +130,17 @@ def test_all_legacy_endpoints_have_ui_representation():
 def test_executive_dashboard_features_6_telemetry_pillars():
     """Dashboard must structure telemetry answering the 6 core product questions."""
     overview_src = (JS_DIR / "views" / "overview.js").read_text(encoding="utf-8")
-    assert "Executive Dashboard" in overview_src
-    assert "Core System Telemetry" in overview_src
+    assert "No validated opportunity" in overview_src
+    assert "Live trading locked" in overview_src
+    assert "Not at risk" in overview_src
 
-    # The 6 pillars answering the core product questions:
-    assert "Market Status" in overview_src
-    assert "Opportunity Status" in overview_src
-    assert "Execution Permission" in overview_src
-    assert "Capital Exposure" in overview_src
-    assert "Safety Controls" in overview_src
-    assert "Attention Required" in overview_src
+    # The home cards answer the operator questions in plain language:
+    assert 'label: "Gold"' in overview_src
+    assert 'label: "Opportunity"' in overview_src
+    assert 'label: "Trading"' in overview_src
+    assert 'label: "Your money"' in overview_src
+    assert 'label: "Safety"' in overview_src
+    assert 'label: "Next"' in overview_src
 
     # Operating facts table with mandatory data-fact attributes
     for fact in ["mode", "broker", "market", "quoteAge", "observation", "permission", "liveLabel"]:

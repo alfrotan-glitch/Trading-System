@@ -12,11 +12,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from qts.adapters.base import BrokerAdapter
 from qts.adapters.market_data import MarketDataError, MarketDataProvider
 from qts.adapters.mt5_adapter import MT5Adapter, SymbolSpec
 from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.domain.value_objects import Bar, Instrument, OrderIntent, OrderState, OrderType, Position, Side, Tick
-from qts.execution.engine import BrokerAdapter, ExecutionEngine, OrderManager, PaperBrokerAdapter
+from qts.execution.engine import ExecutionEngine, OrderManager
 from qts.execution.idempotency import IdempotencyStore
 from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.observability.audit import InMemoryAuditLog
@@ -87,7 +88,7 @@ def _make_engine(broker=None, tmpdir=None):
     risk = RiskEngine(RiskLimits(), db_path=db)
     audit = InMemoryAuditLog()
     om = OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db))
-    broker = broker or PaperBrokerAdapter()
+    broker = broker or RealisticPaperBroker()
     matching = MatchingEngine(MatchingConfig())
     portfolio = Portfolio(initial_balance=Decimal("10000"))
     eng = ExecutionEngine(om, risk, broker, matching, portfolio, audit=audit, db_path=db)
@@ -719,7 +720,7 @@ def test_process_crash_after_submit_recovery():
         risk = RiskEngine(RiskLimits(), db_path=db)
         audit = InMemoryAuditLog()
         om = OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db))
-        broker = PaperBrokerAdapter()
+        broker = RealisticPaperBroker()
         matching = MatchingEngine()
         portfolio = Portfolio(initial_balance=Decimal("10000"))
         eng = ExecutionEngine(om, risk, broker, matching, portfolio, audit=audit, db_path=db)
@@ -751,7 +752,7 @@ def test_duplicate_after_restart():
         risk = RiskEngine(RiskLimits(), db_path=db)
         audit = InMemoryAuditLog()
         om = OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db))
-        broker = PaperBrokerAdapter()
+        broker = RealisticPaperBroker()
         eng = ExecutionEngine(
             om, risk, broker, MatchingEngine(), Portfolio(initial_balance=Decimal("10000")), audit=audit, db_path=db
         )
@@ -970,7 +971,7 @@ def test_no_mocks_in_live_path():
     ctx = eng._risk_ctx()
     assert ctx.account.balance == Decimal("5000")
     assert ctx.account.equity == Decimal("5000")
-    # Paper broker should also use broker account, but legacy PaperBrokerAdapter uses portfolio? Check is_live vs realistic
+    # Paper broker should also use broker account, but legacy RealisticPaperBroker uses portfolio? Check is_live vs realistic
     paper = RealisticPaperBroker()
     eng2, _, portfolio2, _ = _make_engine(broker=paper)
     # RealisticPaperBroker account is 10000 initially, but after position it changes
@@ -1059,7 +1060,7 @@ def test_reconciliation_price_mismatch():
 
 
 def test_reconciliation_status_mismatch():
-    broker = PaperBrokerAdapter()
+    broker = RealisticPaperBroker()
     eng, _, _, _ = _make_engine(broker=broker)
     instr = Instrument(symbol="XAUUSD")
     from qts.domain.value_objects import Order, uuid7
@@ -1150,7 +1151,7 @@ def test_reconciliation_suspended_persists_across_restart():
 
 def test_reconciliation_pending_and_filled_orders():
     # Pending order not on venue after 10s should suspend, filled should match
-    broker = PaperBrokerAdapter()
+    broker = RealisticPaperBroker()
     eng, _, _, _ = _make_engine(broker=broker)
     instr = Instrument(symbol="XAUUSD")
     # Create pending order
@@ -1512,13 +1513,13 @@ def test_micro_rehearsal_evidence_is_labeled_simulated_and_not_fabricated(cli_wo
 def test_restart_normal_state():
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "normal.db"
-        eng, _, _, _ = _make_engine(broker=PaperBrokerAdapter())
+        eng, _, _, _ = _make_engine(broker=RealisticPaperBroker())
         # Need to ensure eng uses db path same as tmp for test
         # Instead create new with tmp
         risk = RiskEngine(RiskLimits(), db_path=db)
         audit = InMemoryAuditLog()
         om = OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db))
-        broker = PaperBrokerAdapter()
+        broker = RealisticPaperBroker()
         portfolio = Portfolio(initial_balance=Decimal("10000"))
         eng = ExecutionEngine(om, risk, broker, MatchingEngine(), portfolio, audit=audit, db_path=db)
         bar = _bar()
@@ -1672,7 +1673,7 @@ def test_restart_filled():
         risk = RiskEngine(RiskLimits(), db_path=db)
         audit = InMemoryAuditLog()
         om = OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db))
-        broker = PaperBrokerAdapter()
+        broker = RealisticPaperBroker()
         eng = ExecutionEngine(
             om, risk, broker, MatchingEngine(), Portfolio(initial_balance=Decimal("10000")), audit=audit, db_path=db
         )

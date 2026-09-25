@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 JS_DIR = REPO / "tests" / "ui" / "js"
 LOGIC = [JS_DIR / "format.test.mjs", JS_DIR / "status.test.mjs"]
 SHELL = JS_DIR / "shell.test.mjs"

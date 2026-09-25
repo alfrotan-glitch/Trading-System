@@ -81,7 +81,7 @@ export async function renderDemo(root) {
   const head = page({
     crumb: "Trading", group: "Demo forward",
     title: "Demo Forward Control",
-    answer: h("b", null, `Readiness and execution permission are separate. A passing check only permits DEMO_FORWARD observation. DEMO_EXECUTION requires a recorded owner authorization (shipped default: DISABLED BY POLICY) and then, per order, staged arming, a pinned+confirmed DEMO broker identity, an eligible registered strategy and the full pre-trade gate (every required safeguard, contract check and registered-policy limit). Context ${ctx.symbol} syncs, LIVE remains LOCKED and unmistakable.`),
+    answer: h("b", null, `Are we connected, is demo trading on, is live trading locked, and can you close a position? Live trading is locked. Demo trading stays off until every safety check passes. Context ${ctx.symbol} is display only.`),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources")],
     body: null,
   });

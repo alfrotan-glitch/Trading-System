@@ -13,6 +13,8 @@ $$\text{Market Data} \longrightarrow \text{Research} \longrightarrow \text{Evide
 
 Every phase requires verifiable mathematical, statistical, or broker-attested evidence. Real-capital trading remains permanently locked behind code-enforced invariants (`REAL_CAPITAL_EXPOSURE = 0`), requiring multi-party governance authorization before any real funds can be exposed.
 
+Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating guides](docs/README.md). Research records in `docs/` are evidence, not operating instructions.
+
 ---
 
 ## Key Capabilities

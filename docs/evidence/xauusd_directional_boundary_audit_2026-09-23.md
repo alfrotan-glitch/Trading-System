@@ -1,7 +1,7 @@
 # H-DIR-01 discovery access: metadata-only boundary audit — 2026-09-23
 
 **Decision checkpoint (before accessing the release):** The H-DIR-01 test is already
-preregistered in [the next-step decision](xauusd_directional_next_step_2026-09-23.md)
+preregistered in [the next-step decision](../xauusd_directional_next_step_2026-09-23.md)
 and remains **NOT RUN**. The approved next action is **access-boundary evidence,
 not a quote measurement**. The prior aggregate inventory does not contain
 individual part row counts or an independently approved discovery view. No raw
@@ -63,9 +63,9 @@ ZIP, view or view authority is available in this checkout.
    change the split.
 
 The preparation code is
-[`scripts/audit_xauusd_discovery_boundary.py`](../scripts/audit_xauusd_discovery_boundary.py)
+[`scripts/audit_xauusd_discovery_boundary.py`](../../scripts/audit_xauusd_discovery_boundary.py)
 and its manifest-only workflow is
-[`.github/workflows/canonical-xauusd-discovery-boundary-audit.yml`](../.github/workflows/canonical-xauusd-discovery-boundary-audit.yml).
+[`.github/workflows/canonical-xauusd-discovery-boundary-audit.yml`](../../.github/workflows/canonical-xauusd-discovery-boundary-audit.yml).
 Synthetic tests instrument `ZipFile.open` to reject opening every member other
 than `manifest.json`. The expected report is a **boundary audit**, not a
 trading or H-DIR-01 result. No promotion, Demo execution, order submission,
@@ -81,7 +81,7 @@ against the previous verified gap disposition, reconciled its 734-part ledger
 and dataset digest, and inspected the ZIP central directory. It did **not**
 open, extract or decode a Parquet/quote member. A separate publisher job with
 **only the small audit JSON** committed
-[`reports/xauusd_discovery_boundary_audit.json`](../reports/xauusd_discovery_boundary_audit.json)
+[`reports/xauusd_discovery_boundary_audit.json`](../../reports/xauusd_discovery_boundary_audit.json)
 to this branch (`de95a87ece1a7ad9847c8aee67bcb79acc21b3a4`);
 report file SHA-256:
 `f2864545873f98adac4f6b0bd37a806810bca580f006641e3e854efaf3df1153`.
@@ -112,7 +112,7 @@ The source release contains only the ZIP; the ZIP has only 734 Parquet parts
 plus the acquisition manifest. There is no separate part/row-group/page index
 or immutable discovery partition in its inventory or repository tooling.
 The manifest lists part row counts but no per-part raw timestamp or internal
-row-group/page bounds. The [prior ZIP central-directory inventory](../reports/canonical_zip_inventory.json)
+row-group/page bounds. The [prior ZIP central-directory inventory](../../reports/canonical_zip_inventory.json)
 lists the mixed member as 1,112,372 compressed versus 1,185,224
 uncompressed bytes: it is **ZIP-compressed**. Reading its inner footer or
 selecting 50,716 rows would require opening/decompressing a member that also

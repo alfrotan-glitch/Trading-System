@@ -1,3 +1,5 @@
+This file is a dated status record. It does not override `QTS_PROJECT_CONTROL.md`.
+
 # QTS Current State and Research Roadmap
 
 **Status:** canonical current-state summary

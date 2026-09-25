@@ -18,7 +18,7 @@ export async function renderRisk(root) {
   const head = page({
     crumb: "Risk",
     title: "Risk Center",
-    answer: h("b", null, `Primary question: what can QTS do right now — and why? Risk authority is independent from mode and execution permission. Context ${ctx.symbol} syncs, never relaxes limits. DEMO vs LIVE unmistakable.`),
+    answer: h("b", null, `Risk is Safe, needs attention, or halted. Open exposure, daily loss, the position limit, the kill switch, and broker reconciliation are below. Technical evidence opens on demand. Context ${ctx.symbol} never relaxes a limit.`),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, "Refresh")],
     body: null,
   });

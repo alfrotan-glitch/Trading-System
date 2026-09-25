@@ -3,8 +3,9 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.domain.value_objects import Bar, Instrument, OrderIntent, Side
-from qts.execution.engine import ExecutionEngine, OrderManager, PaperBrokerAdapter
+from qts.execution.engine import ExecutionEngine, OrderManager
 from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.observability.audit import InMemoryAuditLog
 from qts.portfolio.portfolio import Portfolio
@@ -32,7 +33,7 @@ def test_execution_full_flow():
         om = OrderManager(audit=audit)
         matching = MatchingEngine(MatchingConfig(spread_bps=3, slippage_bps=2))
         risk = RiskEngine(RiskLimits(), db_path=Path(tmp) / "db.sqlite")
-        broker = PaperBrokerAdapter(matching=matching)
+        broker = RealisticPaperBroker(matching=matching)
         portfolio = Portfolio(initial_balance=Decimal("10000"))
         eng = ExecutionEngine(om, risk, broker, matching, portfolio, audit=audit)
         bar = _bar()

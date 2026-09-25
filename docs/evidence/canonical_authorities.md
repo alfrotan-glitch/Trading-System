@@ -1,3 +1,5 @@
+This file is a dated architecture note. Current component ownership is in `QTS_PROJECT_CONTROL.md`.
+
 # Canonical Authorities — Architecture Notes (2026-09)
 
 This document describes the SINGLE-authority architecture introduced to close

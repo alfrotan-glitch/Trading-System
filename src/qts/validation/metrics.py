@@ -127,6 +127,14 @@ def profit_factor(returns: np.ndarray) -> float:
     return float(gains / losses)
 
 
+def calmar_ratio(returns: np.ndarray, max_dd: float, periods_per_year: int = 252 * 24) -> float:
+    """Annualized return divided by maximum drawdown."""
+    if max_dd <= 0 or len(returns) < 2:
+        return 0.0
+    ann_return = float(np.mean(returns) * periods_per_year)
+    return ann_return / max_dd
+
+
 def probabilistic_sharpe_ratio(
     observed_sr: float,
     n: int,

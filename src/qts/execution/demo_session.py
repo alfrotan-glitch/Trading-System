@@ -36,6 +36,7 @@ from typing import Any
 from qts.domain.modes import ExecutionMode
 from qts.execution.demo_journal import DemoOrderJournal
 from qts.execution.demo_pretrade import DEFAULT_MIN_ORDER_INTERVAL_S, DemoPretradeContext, run_pretrade_gate
+from qts.execution.order_truth import open_demo_journal
 from qts.lifecycle.demo_authorization import resolve_demo_execution_policy
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStageMachine
 
@@ -107,7 +108,7 @@ class DemoSession:
         self.config = config
         self.db_path = Path(config.db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.journal = DemoOrderJournal(db_path=self.db_path)
+        self.journal = open_demo_journal(self.db_path)
         # Recovery: a submission that never recorded an outcome (this process
         # or another died between the broker call and the journal update) is an
         # unknown state, not a completed one. Fail it instead of letting the

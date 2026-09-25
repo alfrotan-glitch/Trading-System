@@ -3,7 +3,7 @@
 **Registered:** 2026-09-23T13:10:00Z — **before** any measurement on the verifiable view
 **Parent:** H-DIR-02 REJECTED (T1 −$0.30, T2 −$0.0016 on 70,783,710-row verifiable prefix); H-DIR-01 BLOCKED. This is a **distinct mechanistic family** — spread-state, not volatility-conditioned displacement.
 **Status:** `PREREGISTERED, NOT TESTED`
-**View:** Same maximal verifiable Discovery prefix as H-DIR-02 — `global_row < 70,783,710`, `time_msc < 1764563969254`, 70,783,710 rows, authority `docs/xauusd_directional_view_authority_H-DIR-02.json`, manifest `reports/xauusd_directional_H-DIR-02_view_manifest.json`. No held-out opened.
+**View:** Same maximal verifiable Discovery prefix as H-DIR-02 — `global_row < 70,783,710`, `time_msc < 1764563969254`, 70,783,710 rows, authority `docs/evidence/xauusd_directional_view_authority_H-DIR-02.json`, manifest `reports/xauusd_directional_H-DIR-02_view_manifest.json`. No held-out opened.
 **Policy:** No cherry-picked horizon, no winning side, no post-hoc threshold. A `REJECTED` stays rejected; a `SURVIVED` is still `DISCOVERY_ONLY` until separate out-of-sample.
 
 ---

@@ -60,11 +60,13 @@ QTS is architected with strict boundary separation between domain logic, infrast
 - `RiskEngine`: Enforces daily loss limits, drawdown caps, max lots per order, and max simultaneous exposure.
 - Persistent Kill Switch: Durable flag stored in SQLite ensuring immediate cessation of trading upon operator command or gate breach.
 
-### 5. API Layer (`src/qts/api/server.py`)
-- Modern ASGI service built on FastAPI. Exposes 34 clean REST endpoints across telemetry, system status, setup, market data, research results, risk limits, and demo execution.
-- Protected by strict origin boundary validation (mitigating DNS rebinding, CSRF, and iframe hijacking).
+### 5. API Layer (`src/qts/api/`)
+- `server.py` composes the FastAPI app, origin boundary, and process-local seams.
+- Route modules under `src/qts/api/routes/` cover demo, market, research, trading, risk, and system.
+- Shared helpers live in `src/qts/api/deps.py`. Routes do not own risk or order policy.
 
 ### 6. Desktop UI (`src/qts/desktop/ui/`)
-- High-efficiency vanilla JavaScript architecture using modern ES modules.
-- Zero build tools or transpilation required; instant hot-reloading and predictable client execution.
-- 8 primary navigation domains: Overview, Research, Market, Trading, Risk, Evidence, System, Governance.
+- Vanilla JavaScript. No build step.
+- Product navigation: Home, Market, Opportunities, Trading, Risk, Reports.
+- Engineering detail lives under Advanced: Research, System, Governance.
+- The command line is the package `src/qts/cli/`. Entry point remains `qts`.

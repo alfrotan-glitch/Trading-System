@@ -4,9 +4,9 @@
 **Baseline HEAD:** `a0ff165` (`audit: reconcile research integrity and gap semantics`)
 **Branch:** `arena/01a0b574-trading-system`
 **Current posture:** research-first / fail-closed / `NO_TRADE`
-**Machine result:** [`data/evidence/research_integrity_audit.json`](../data/evidence/research_integrity_audit.json)
+**Machine result:** [`data/evidence/research_integrity_audit.json`](../../data/evidence/research_integrity_audit.json)
 **Completeness disposition:** [`docs/data_completeness_disposition.md`](data_completeness_disposition.md)
-**Disposition evidence:** [`data/evidence/xauusd_completeness_disposition.json`](../data/evidence/xauusd_completeness_disposition.json)
+**Disposition evidence:** [`data/evidence/xauusd_completeness_disposition.json`](../../data/evidence/xauusd_completeness_disposition.json)
 
 This audit checks the data-quality, provenance, derived-evidence and research
 boundary semantics. It does not acquire data, rerun the impulse study, start

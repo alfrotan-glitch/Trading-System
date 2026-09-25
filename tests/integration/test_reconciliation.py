@@ -3,8 +3,10 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+from qts.adapters.base import BrokerAdapter
+from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.domain.value_objects import Account, Bar, Instrument, OrderIntent, Position, Side
-from qts.execution.engine import BrokerAdapter, ExecutionEngine, OrderManager, PaperBrokerAdapter
+from qts.execution.engine import ExecutionEngine, OrderManager
 from qts.execution.matching import MatchingEngine
 from qts.portfolio.portfolio import Portfolio
 from qts.risk.engine import RiskEngine, RiskLimits
@@ -58,7 +60,7 @@ def test_reconcile_none():
         om = OrderManager()
         matching = MatchingEngine()
         risk = RiskEngine(RiskLimits(), db_path=Path(tmp) / "db.sqlite")
-        broker = PaperBrokerAdapter(matching=matching)
+        broker = RealisticPaperBroker(matching=matching)
         portfolio = Portfolio(initial_balance=Decimal("10000"))
         eng = ExecutionEngine(om, risk, broker, matching, portfolio)
         bar = _bar()

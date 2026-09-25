@@ -1,3 +1,5 @@
+This index is a historical contents list. Operating documentation is `docs/01` through `docs/10`.
+
 # Autonomous Quant Research & Trading System — Documentation Index
 
 > **Principle:** *Preserve capital. Do less when uncertain. Every decision must be explainable through an audit trail.*

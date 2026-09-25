@@ -33,6 +33,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+from qts.adapters.base import BrokerAdapter
 from qts.db import connect as db_connect
 from qts.domain.value_objects import (
     Account,
@@ -45,7 +46,6 @@ from qts.domain.value_objects import (
     Side,
     Tick,
 )
-from qts.execution.engine import BrokerAdapter
 
 
 @dataclass(frozen=True)
@@ -334,7 +334,7 @@ class MT5Adapter(BrokerAdapter):
         the broker/server matches the pinned identity. Raises
         ``BrokerIdentityError`` when the terminal cannot prove identity.
         """
-        from qts.execution.demo_identity import probe_broker_identity
+        from qts.adapters.identity import probe_broker_identity
 
         return probe_broker_identity(self._mt5)
 

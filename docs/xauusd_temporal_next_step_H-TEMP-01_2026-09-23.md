@@ -2,7 +2,7 @@
 
 **Registered:** 2026-09-23T13:30:00Z — **before** any confirmatory measurement of this hypothesis on the verifiable view
 **Status:** `PREREGISTERED, NOT TESTED`
-**View:** Same maximal verifiable Discovery prefix as H-DIR-02/03 — `global_row < 70,783,710`, `time_msc < 1764563969254`, 70,783,710 rows, authority `docs/xauusd_directional_view_authority_H-DIR-02.json`, manifest `reports/xauusd_directional_H-DIR-02_view_manifest.json`. No held-out opened. Descriptive temporal (`reports/xauusd_temporal_discovery_state.json`) is **descriptive only** and not a hypothesis test; its raw-hour means are not used to set thresholds.
+**View:** Same maximal verifiable Discovery prefix as H-DIR-02/03 — `global_row < 70,783,710`, `time_msc < 1764563969254`, 70,783,710 rows, authority `docs/evidence/xauusd_directional_view_authority_H-DIR-02.json`, manifest `reports/xauusd_directional_H-DIR-02_view_manifest.json`. No held-out opened. Descriptive temporal (`reports/xauusd_temporal_discovery_state.json`) is **descriptive only** and not a hypothesis test; its raw-hour means are not used to set thresholds.
 **Policy:** Thresholds are *a priori* session-based, not data-derived. A `REJECTED` stays rejected.
 
 ---

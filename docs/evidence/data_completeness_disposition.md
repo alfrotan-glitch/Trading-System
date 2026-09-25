@@ -3,8 +3,8 @@
 **Audit date:** 2026-09-18
 **Status:** `AUDIT_COMPLETE_NO_RESEARCH_RERUN`
 **Recovery outcome:** **`RECOVERABLE ONLY BY NEW ACQUISITION`**
-**Machine evidence:** [`data/evidence/xauusd_completeness_disposition.json`](../data/evidence/xauusd_completeness_disposition.json)
-**Recovery-candidate manifest:** [`data/evidence/xauusd_recovery_candidate_manifest.json`](../data/evidence/xauusd_recovery_candidate_manifest.json)
+**Machine evidence:** [`data/evidence/xauusd_completeness_disposition.json`](../../data/evidence/xauusd_completeness_disposition.json)
+**Recovery-candidate manifest:** [`data/evidence/xauusd_recovery_candidate_manifest.json`](../../data/evidence/xauusd_recovery_candidate_manifest.json)
 
 This is a P0 data-integrity disposition. It does not weaken the 2% gate,
 rewrite the frozen REAL snapshot, change the locked research partition, reset

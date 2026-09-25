@@ -6,12 +6,12 @@ Updated 2026-09-18. **Observation only; DEMO execution disabled, LIVE locked.**
 
 The next phase is **FO-R1: research-grade market observation**, not strategy execution or simulated fills. Its design, launch scope, quality criteria and research handoff are specified in:
 
-- [Current state and research roadmap](current_state.md)
-- [FO-R1 research observation plan](forward_observation_research_plan.md)
-- [Current FO-R1 boundary status](forward_observation_status.md)
-- [Hardened evidence-verification boundary](session_evidence_verification_boundary.md)
-- [Raw-evidence history hygiene](session_evidence_history_hygiene.md)
-- [Canonical authorities](canonical_authorities.md)
+- [Current state and research roadmap](evidence/current_state.md)
+- [FO-R1 research observation plan](evidence/forward_observation_research_plan.md)
+- [Current FO-R1 boundary status](evidence/forward_observation_status.md)
+- [Hardened evidence-verification boundary](evidence/session_evidence_verification_boundary.md)
+- [Raw-evidence history hygiene](evidence/session_evidence_history_hygiene.md)
+- [Canonical authorities](evidence/canonical_authorities.md)
 
 The FO-R1 **engineering boundary is hardened**: collision-safe append-only storage,
 durable acquisition accounting, research snapshot support, integrity checks and
@@ -19,7 +19,7 @@ bounded publication are implemented. FO-R1 is not yet a completed real-market
 observation campaign: no real Windows/MT5 session is present in repository
 evidence, and the operator must still run the readiness-gated order-free
 protocol. The research-plan document retains its historical design checklist;
-this page and `forward_observation_status.md` state what is closed today.
+this page and `evidence/forward_observation_status.md` state what is closed today.
 
 ## Existing real-source observation path
 

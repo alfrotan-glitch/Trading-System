@@ -1,6 +1,8 @@
 # QTS Documentation
 
-Welcome to the Quantitative Trading System (QTS) technical and product documentation. This documentation describes the current system architecture, operational procedures, risk controls, and engineering standards.
+These ten guides are the operating documentation. Read [`QTS_PROJECT_CONTROL.md`](../QTS_PROJECT_CONTROL.md) before changing architecture.
+
+Files that remain beside these guides are cited by code or by an operator setup path. Dated research records live in [evidence/](evidence/README.md). They are not operating manuals, and they do not authorize a trade.
 
 ---
 
@@ -42,5 +44,5 @@ Welcome to the Quantitative Trading System (QTS) technical and product documenta
 
 - [Desktop Installation (Windows)](desktop_installation_windows.md)
 - [MT5 Demo Setup](mt5_demo_setup.md)
-- [UI Design System Specification](ui_design_system.md)
+- [UI Design System Specification](evidence/ui_design_system.md)
 - [Troubleshooting on Windows](troubleshooting_windows.md)

@@ -2,7 +2,7 @@
 
 **Registered:** 2026-09-23T14:20:00Z — **before** any confirmatory measurement of this hypothesis on the verifiable view
 **Status:** `PREREGISTERED, NOT TESTED`
-**View:** Same maximal verifiable Discovery prefix as H-DIR-02/03, H-TEMP-01, H-ST-02WF — `global_row < 70,783,710`, `time_msc < 1764563969254`, 70,783,710 rows, authority `docs/xauusd_directional_view_authority_H-DIR-02.json`, manifest `reports/xauusd_directional_H-DIR-02_view_manifest.json`. No held-out opened. Descriptive temporal and walk-forward are not used to set thresholds.
+**View:** Same maximal verifiable Discovery prefix as H-DIR-02/03, H-TEMP-01, H-ST-02WF — `global_row < 70,783,710`, `time_msc < 1764563969254`, 70,783,710 rows, authority `docs/evidence/xauusd_directional_view_authority_H-DIR-02.json`, manifest `reports/xauusd_directional_H-DIR-02_view_manifest.json`. No held-out opened. Descriptive temporal and walk-forward are not used to set thresholds.
 **Policy:** Thresholds are *locked* from `docs/xauusd_state_preregistration.md` (occupancy distribution, not refit), not data-derived. A `REJECTED` stays rejected.
 
 ---

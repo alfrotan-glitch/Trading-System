@@ -8,10 +8,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.data.store import SqliteParquetDataStore
 from qts.data.synthetic import generate_gbm_bars, generate_trending_bars
 from qts.domain.value_objects import Account, Bar, Instrument, OrderIntent, Position, Side
-from qts.execution.engine import ExecutionEngine, OrderManager, PaperBrokerAdapter
+from qts.execution.engine import ExecutionEngine, OrderManager
 from qts.execution.idempotency import IdempotencyStore
 from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.portfolio.portfolio import Portfolio
@@ -643,7 +644,7 @@ def test_idempotency_no_double_fill():
         om = OrderManager(idempotency=IdempotencyStore(db_path=db))
         matching = MatchingEngine()
         risk = RiskEngine(RiskLimits(), db_path=db)
-        broker = PaperBrokerAdapter()
+        broker = RealisticPaperBroker()
         portfolio = Portfolio(initial_balance=Decimal("10000"))
         eng = ExecutionEngine(om, risk, broker, matching, portfolio)
         bar = Bar(
@@ -689,7 +690,7 @@ def test_reconciliation_suspends_on_drift():
     with tempfile.TemporaryDirectory() as tmp:
         om = OrderManager()
         risk = RiskEngine(RiskLimits(), db_path=Path(tmp) / "db.sqlite")
-        broker = PaperBrokerAdapter()
+        broker = RealisticPaperBroker()
         portfolio = Portfolio(initial_balance=Decimal("10000"))
         eng = ExecutionEngine(om, risk, broker, MatchingEngine(), portfolio)
         # create drift: local 0.1, venue 0.5
@@ -815,7 +816,7 @@ def test_no_trade_on_uncertainty():
     with tempfile.TemporaryDirectory() as tmp:
         om = OrderManager()
         risk = RiskEngine(RiskLimits(max_quantity=Decimal("0.01")), db_path=Path(tmp) / "db.sqlite")
-        broker = PaperBrokerAdapter()
+        broker = RealisticPaperBroker()
         portfolio = Portfolio(initial_balance=Decimal("10000"))
         eng = ExecutionEngine(om, risk, broker, MatchingEngine(), portfolio)
         bar = Bar(

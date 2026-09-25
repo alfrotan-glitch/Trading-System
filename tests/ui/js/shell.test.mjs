@@ -67,10 +67,11 @@ after(() => {
   if (dom) dom.window.close();
 });
 
-test("IA: exactly 8 primary groups, 23 total destinations (was 28 equally-weighted tabs)", () => {
+test("IA: product navigation first, engineering under Advanced", () => {
   const groups = [...document.querySelectorAll(".sidebar-group-label")].map((e) => e.textContent.trim());
-  assert.deepEqual(groups, ["Overview", "Research", "Market", "Trading", "Risk", "Evidence", "System", "Governance"]);
-  assert.equal(document.querySelectorAll(".nav-item").length, 23);
+  assert.deepEqual(groups, ["Home", "Market", "Opportunities", "Trading", "Risk", "Reports", "Research", "System", "Governance"]);
+  assert.equal(document.querySelectorAll(".nav-item").length, 24);
+  assert.deepEqual([...document.querySelectorAll(".nav-section")].map((e) => e.textContent.trim()), ["Product", "Advanced"]);
   assert.ok(document.querySelector(".nav-item.restricted"), "Governance is marked restricted");
 });
 

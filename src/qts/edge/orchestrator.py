@@ -17,7 +17,6 @@ import numpy as np
 
 from qts.data.locked_test import LockedTestPartitioner
 from qts.data.store import SqliteParquetDataStore
-from qts.edge.emergency import EmergencyControls
 from qts.edge.promotion import PromotionLedger
 from qts.research.experiment import ConclusionCode, Experiment, ExperimentStore, Hypothesis
 from qts.research.readiness import ResearchDataRequirements, assess_dataset
@@ -252,7 +251,8 @@ depth/span, quality, costs, controls, and forward evidence.
         forward_obs = _unavailable("canonical forward observation store does not exist")
 
     promo_state = PromotionLedger().get_state(strategy_id).value
-    emergency = EmergencyControls()
+    # Kill state is owned by RiskEngine. Research validation does not arm,
+    # and must not snapshot, an independent in-memory kill flag.
     evidence = {
         # Record the strategy this run actually executed. Omitting it made every
         # later reader free to stamp a caller-supplied id onto the file.
@@ -303,7 +303,11 @@ depth/span, quality, costs, controls, and forward evidence.
         "expectancy": _unavailable("realized trade PnL attribution is unavailable from BacktestResult fills"),
         "economic_edge": _unavailable("gross/net cost decomposition is unavailable"),
         "promotion": {"state": promo_state, "advanced": False},
-        "emergency": {"kill_switch": emergency.is_killed(), "execution_enabled": False},
+        "emergency": {
+            "kill_switch_authority": "qts.risk.engine.RiskEngine",
+            "kill_switch": False,
+            "execution_enabled": False,
+        },
         "order_check": {"status": "NOT_RUN", "ok": False, "reason": "research orchestrator has no order path"},
         "code_version": code_version(),
         "generated_at": datetime.now(UTC).isoformat(),

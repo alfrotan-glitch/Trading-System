@@ -25,9 +25,10 @@ from typing import Any
 
 import numpy as np
 
+from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
-from qts.execution.engine import ExecutionEngine, OrderManager, PaperBrokerAdapter
+from qts.execution.engine import ExecutionEngine, OrderManager
 from qts.execution.idempotency import IdempotencyStore
 from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.observability.audit import AuditLog, InMemoryAuditLog
@@ -197,7 +198,7 @@ class BacktestEngine:
         risk = RiskEngine(self.risk_limits, db_path=self.data_store.db_path, persist_kill=False)
         idemp = IdempotencyStore(db_path=":memory:")
         om = OrderManager(audit=self.audit, idempotency=idemp)
-        broker = PaperBrokerAdapter(matching=matching)
+        broker = RealisticPaperBroker(matching=matching)
         portfolio = Portfolio(initial_balance=Decimal(str(self.initial_balance)), currency="USD")
         exec_engine = ExecutionEngine(
             om,

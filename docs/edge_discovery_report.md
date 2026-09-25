@@ -2,7 +2,7 @@
 
 **Updated:** 2026-09-18
 **Branch:** `arena/01a0b574-trading-system`
-**Current-state authority:** [`docs/current_state.md`](current_state.md)
+**Current-state authority:** [`docs/evidence/current_state.md`](evidence/current_state.md)
 **Scope:** research plane only; no DEMO execution and no LIVE.
 
 This report supersedes older snapshots that described duplicate datasets,
@@ -46,8 +46,8 @@ The current research population includes:
 The REAL impulse study returned `REGIME_DEPENDENT` / `go_block = BLOCK`.
 Continuous historical bid/ask/tick execution-cost evidence is absent, so R5
 remains FAIL/non-blocking. Duplicate raw/curated representations are not
-independent samples. See `docs/current_state.md` and
-`docs/data_provenance_xauusd_dukascopy.md`.
+independent samples. See `docs/evidence/current_state.md` and
+`docs/evidence/data_provenance_xauusd_dukascopy.md`.
 
 ## C. Current campaign evidence
 

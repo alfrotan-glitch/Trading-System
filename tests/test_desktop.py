@@ -173,8 +173,9 @@ def test_reconciliation():
     """
     from decimal import Decimal
 
+    from qts.adapters.paper_adapter import RealisticPaperBroker
     from qts.domain.value_objects import Instrument, Position
-    from qts.execution.engine import ExecutionEngine, OrderManager, PaperBrokerAdapter
+    from qts.execution.engine import ExecutionEngine, OrderManager
     from qts.execution.idempotency import IdempotencyStore
     from qts.execution.matching import MatchingConfig, MatchingEngine
     from qts.observability.audit import InMemoryAuditLog
@@ -188,7 +189,7 @@ def test_reconciliation():
         return ExecutionEngine(
             OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db)),
             RiskEngine(RiskLimits(), db_path=db),
-            PaperBrokerAdapter(),
+            RealisticPaperBroker(),
             MatchingEngine(MatchingConfig()),
             Portfolio(initial_balance=Decimal("10000")),
             audit=audit,
@@ -568,14 +569,16 @@ def test_desktop_ui_static_files():
     # Must cover the primary IA areas (defined in js/main.js)
     main_js = (ui_dir / "js" / "main.js").read_text(encoding="utf-8")
     for view in [
-        "Overview",
-        "Research",
+        "Home",
         "Market",
+        "Opportunities",
         "Trading",
         "Risk",
-        "Evidence",
+        "Reports",
+        "Research",
         "System",
         "Governance",
+        "Advanced",
     ]:
         assert view in main_js, f"missing IA area {view}"
 

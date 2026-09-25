@@ -31,9 +31,9 @@ export async function renderOverview(root) {
   const refresh = h("button", { class: "btn", onclick: () => syncOperations(true) }, icon("refresh", 14), "Refresh sources");
 
   root.appendChild(page({
-    crumb: "Overview",
-    title: "Executive Dashboard",
-    answer: "Continuous status across market connectivity, research validation, execution readiness, and risk controls. Context syncs across windows, never permission.",
+    crumb: "Home",
+    title: "QTS",
+    answer: "Is the system running, what is gold doing, is there a validated opportunity, can QTS trade, and what should you do next. Technical detail stays behind View details.",
     actions: [refresh],
   }));
 
@@ -45,12 +45,12 @@ export async function renderOverview(root) {
   // ---------------- 6-Pillar Decision Cards ----------------
   const pillarGrid = h("div", { class: "stat-grid", style: { gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", marginBottom: "16px" } });
   
-  const pMarket = stat({ label: "Market Status", value: "CONNECTING", hint: "XAUUSD live feed & spread", icon: "activity" });
-  const pOpp = stat({ label: "Opportunity Status", value: "NO VALIDATED EDGE", tone: "warn", hint: "Candidate evaluation paused", icon: "flask" });
-  const pExec = stat({ label: "Execution Permission", value: "DISABLED", tone: "neutral", hint: "Connection test mode only", icon: "lock" });
-  const pPerf = stat({ label: "Capital Exposure", value: "$0.00", tone: "ok", hint: "Real-money exposure: ZERO", icon: "shield" });
-  const pSafety = stat({ label: "Safety Controls", value: "ACTIVE & ARMED", tone: "ok", hint: "Live locked · 22 gates active", icon: "shield" });
-  const pAction = stat({ label: "Attention Required", value: "ACQUIRE DATA", tone: "warn", hint: "6.42% missing intervals", icon: "alert" });
+  const pMarket = stat({ label: "Gold", value: "Checking", hint: "XAUUSD bid, ask, and spread", icon: "activity" });
+  const pOpp = stat({ label: "Opportunity", value: "No validated opportunity", tone: "warn", hint: "Research has not authorized a trade", icon: "scale" });
+  const pExec = stat({ label: "Trading", value: "Not allowed", tone: "neutral", hint: "Demo safety is on. Live trading is locked.", icon: "lock" });
+  const pPerf = stat({ label: "Your money", value: "Not at risk", tone: "ok", hint: "Real-money exposure is zero", icon: "shield" });
+  const pSafety = stat({ label: "Safety", value: "Live trading locked", tone: "ok", hint: "Demo controls and the kill switch are active", icon: "shield" });
+  const pAction = stat({ label: "Next", value: "See the action on the right", tone: "warn", hint: "One recommended step, not a trade", icon: "alert" });
 
   pillarGrid.append(pMarket, pOpp, pExec, pPerf, pSafety, pAction);
   root.appendChild(card({
@@ -229,10 +229,10 @@ export async function renderOverview(root) {
     setText(explanation, `Environment: ${s.mode.mode} · Live Trading: ${s.liveLabel} · Symbol: ${getContext().symbol}`);
 
     // Update 6 Telemetry Cards
-    pMarket.querySelector(".stat-value").textContent = s.broker === "CONNECTED" ? "CONNECTED" : (s.broker || "DISCONNECTED");
-    pExec.querySelector(".stat-value").textContent = s.permission === "ENABLED" ? "ENABLED" : "DISABLED";
+    pMarket.querySelector(".stat-value").textContent = s.broker === "CONNECTED" ? "Connected" : "Not connected";
+    pExec.querySelector(".stat-value").textContent = s.permission === "ENABLED" ? "Demo trading allowed" : "Not allowed";
     if (s.sources.demoState.current && s.demo?.state === "DISABLED") {
-      pExec.querySelector(".stat-value").textContent = "DISABLED";
+      pExec.querySelector(".stat-value").textContent = "Not allowed";
     }
     if (s.liveLabel.includes("LOCKED")) {
       pPerf.querySelector(".stat-value").textContent = "$0.00";

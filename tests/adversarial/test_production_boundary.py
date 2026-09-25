@@ -12,12 +12,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from qts.adapters.base import BrokerAdapter
 from qts.adapters.market_data import MarketDataError, MarketDataProvider
 from qts.adapters.mt5_adapter import MT5Adapter
 from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.adapters.shadow_adapter import ShadowBroker
 from qts.domain.value_objects import Bar, Instrument, OrderIntent, OrderState, OrderType, Side, Tick
-from qts.execution.engine import BrokerAdapter, ExecutionEngine, OrderManager, PaperBrokerAdapter
+from qts.execution.engine import ExecutionEngine, OrderManager
 from qts.execution.idempotency import IdempotencyStore
 from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.observability.audit import InMemoryAuditLog
@@ -58,7 +59,7 @@ def _make_engine(broker=None, tmp=None):
     risk = RiskEngine(RiskLimits(), db_path=db)
     audit = InMemoryAuditLog()
     om = OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db))
-    broker = broker or PaperBrokerAdapter()
+    broker = broker or RealisticPaperBroker()
     matching = MatchingEngine(MatchingConfig())
     portfolio = Portfolio(initial_balance=Decimal("10000"))
     eng = ExecutionEngine(om, risk, broker, matching, portfolio, audit=audit, db_path=db)
@@ -200,14 +201,14 @@ def test_broker_rejection():
         instrument=bar.instrument, side=Side.BUY, quantity=Decimal("0.1"), client_order_id="rej2", strategy_id="s"
     )
     # Need a good broker for second
-    eng.broker = PaperBrokerAdapter()
+    eng.broker = RealisticPaperBroker()
     order2, fills2 = eng.submit_intent(intent2, bar=bar)
     assert order2 is not None
 
 
 # ---------- 6. Cancel race ----------
 def test_cancel_race():
-    broker = PaperBrokerAdapter()
+    broker = RealisticPaperBroker()
     eng, _, _, _ = _make_engine(broker=broker)
     bar = _bar()
     intent = OrderIntent(
@@ -461,7 +462,7 @@ def test_insufficient_free_margin():
 
 # ---------- 12. Broker restart/disconnect ----------
 def test_broker_restart_disconnect():
-    broker = PaperBrokerAdapter()
+    broker = RealisticPaperBroker()
     eng, _, _, _ = _make_engine(broker=broker)
     bar = _bar()
     intent = OrderIntent(
@@ -484,7 +485,7 @@ def test_broker_restart_disconnect():
 def test_local_restart_after_fill():
     tmp = tempfile.TemporaryDirectory()
     db = Path(tmp.name) / "restart.db"
-    broker = PaperBrokerAdapter()
+    broker = RealisticPaperBroker()
     # First engine
     risk1 = RiskEngine(RiskLimits(), db_path=db)
     audit1 = InMemoryAuditLog()
@@ -633,7 +634,7 @@ def test_reconciliation_drift():
     report2 = eng2.reconcile()
     assert report2.drift == "PRICE_MISMATCH"
     # Status mismatch
-    broker3 = PaperBrokerAdapter()
+    broker3 = RealisticPaperBroker()
     eng3, _, _, _ = _make_engine(broker=broker3)
     # Create local order FILLED, broker has ACCEPTED
     from qts.domain.value_objects import Order

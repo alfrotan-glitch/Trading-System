@@ -2,7 +2,7 @@
 
 **Experiment: NOT RUN / ACCESS BLOCKED.** The next-step decision and complete
 hypothesis/gates were first recorded in
-[`xauusd_directional_next_step_2026-09-23.md`](xauusd_directional_next_step_2026-09-23.md).
+[`xauusd_directional_next_step_2026-09-23.md`](../xauusd_directional_next_step_2026-09-23.md).
 This page records implementation **after** that decision; it does not change
 any feature, horizon, cost, threshold, statistic or stopping rule in the
 preregistration. The previous volatility result remains `INCONCLUSIVE`.
@@ -39,7 +39,7 @@ The [independent, metadata-only boundary audit](xauusd_directional_boundary_audi
 now proves that the exact Discovery split is **inside** original immutable
 `part-000441.parquet`: global rows `[70,783,710, 70,916,415)` comprise
 50,716 Discovery and 81,989 held-out rows. The [bounded JSON
-evidence](../reports/xauusd_discovery_boundary_audit.json) is from GitHub
+evidence](../../reports/xauusd_discovery_boundary_audit.json) is from GitHub
 Actions [run 35856015114](https://github.com/alfrotan-glitch/Trading-System/actions/runs/35856015114),
 which checked the original ZIP checksum, acquisition manifest checksum and
 ledger/dataset digest **without opening a single Parquet quote member**. The

@@ -12,8 +12,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from qts.adapters.base import BrokerAdapter
 from qts.domain.value_objects import Account, Instrument, Order, OrderIntent, OrderState, Position, Tick
-from qts.execution.engine import BrokerAdapter
 
 
 class ShadowBroker(BrokerAdapter):

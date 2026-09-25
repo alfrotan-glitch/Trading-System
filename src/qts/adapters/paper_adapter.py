@@ -13,6 +13,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
+from qts.adapters.base import BrokerAdapter
+from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.adapters.mt5_adapter import SymbolSpec
 from qts.db import connect as db_connect
 from qts.domain.value_objects import (
@@ -25,8 +27,6 @@ from qts.domain.value_objects import (
     Side,
     Tick,
 )
-from qts.execution.engine import BrokerAdapter
-from qts.execution.matching import MatchingConfig, MatchingEngine
 
 # Realistic XAUUSD spec — matches typical MT5 broker (e.g., ICMarkets, Pepperstone)
 DEFAULT_XAUUSD_SPEC = SymbolSpec(

@@ -1,7 +1,7 @@
 # Research Campaign Protocol
 Version: 0.1.0
 
-> Current status and sequencing are maintained in [`docs/current_state.md`](current_state.md). This protocol describes the campaign machinery; it is not the authority for the latest dataset or research conclusion.
+> Current status and sequencing are maintained in [`docs/evidence/current_state.md`](evidence/current_state.md). This protocol describes the campaign machinery; it is not the authority for the latest dataset or research conclusion.
 
 ## Purpose
 Controlled research engine for discovering genuine edge, not optimising backtest profit. Golden principle: edge survives attempts to disprove it.

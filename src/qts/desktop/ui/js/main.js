@@ -15,6 +15,7 @@ import { toast, badge, drawer } from "./components.js";
 import { getContext, onContext } from "./context.js";
 
 import * as overview from "./views/overview.js";
+import * as opportunities from "./views/opportunities.js";
 import * as research from "./views/research.js";
 import * as market from "./views/market.js";
 import * as trading from "./views/trading.js";
@@ -24,9 +25,36 @@ import * as system from "./views/system.js";
 import * as governance from "./views/governance.js";
 
 const IA = [
-  { id: "overview", label: "Overview", icon: "grid", render: overview.renderOverview },
+  { id: "overview", label: "Home", section: "Product", icon: "grid", render: overview.renderOverview },
   {
-    id: "research", label: "Research", icon: "flask", defaultChild: "campaigns",
+    id: "market", label: "Market", section: "Product", icon: "candle", defaultChild: "monitor",
+    children: [
+      { id: "monitor", label: "Gold", render: market.renderMonitor },
+      { id: "observations", label: "Observations", render: market.renderObservations },
+      { id: "quality", label: "Data quality", render: market.renderQuality },
+      { id: "lineage", label: "Lineage", render: market.renderLineage },
+    ],
+  },
+  { id: "opportunities", label: "Opportunities", section: "Product", icon: "scale", render: opportunities.renderOpportunities },
+  {
+    id: "trading", label: "Trading", section: "Product", icon: "layers", defaultChild: "demo",
+    children: [
+      { id: "demo", label: "Demo account", render: trading.renderDemo },
+      { id: "paper", label: "Practice", render: trading.renderPaper },
+      { id: "execution", label: "Order history", render: trading.renderExecution },
+      { id: "comparison", label: "Comparison", render: trading.renderComparison },
+    ],
+  },
+  { id: "risk", label: "Risk", section: "Product", icon: "shield", render: risk.renderRisk },
+  {
+    id: "evidence", label: "Reports", section: "Product", icon: "fileCheck", defaultChild: "explorer",
+    children: [
+      { id: "explorer", label: "Reports", render: evidence.renderExplorer },
+      { id: "audit", label: "Audit trail", render: evidence.renderAudit },
+    ],
+  },
+  {
+    id: "research", label: "Research", section: "Advanced", icon: "flask", defaultChild: "campaigns",
     children: [
       { id: "campaigns", label: "Campaigns", render: research.renderCampaigns },
       { id: "hypotheses", label: "Hypotheses", render: research.renderHypotheses },
@@ -38,40 +66,14 @@ const IA = [
     ],
   },
   {
-    id: "market", label: "Market", icon: "candle", defaultChild: "monitor",
-    children: [
-      { id: "monitor", label: "Market monitor", render: market.renderMonitor },
-      { id: "observations", label: "Observations", render: market.renderObservations },
-      { id: "quality", label: "Data quality", render: market.renderQuality },
-      { id: "lineage", label: "Lineage", render: market.renderLineage },
-    ],
-  },
-  {
-    id: "trading", label: "Trading", icon: "layers", defaultChild: "demo",
-    children: [
-      { id: "demo", label: "Demo forward", render: trading.renderDemo },
-      { id: "paper", label: "Paper / shadow", render: trading.renderPaper },
-      { id: "execution", label: "Execution", render: trading.renderExecution },
-      { id: "comparison", label: "Comparison", render: trading.renderComparison },
-    ],
-  },
-  { id: "risk", label: "Risk", icon: "shield", render: risk.renderRisk },
-  {
-    id: "evidence", label: "Evidence", icon: "fileCheck", defaultChild: "explorer",
-    children: [
-      { id: "explorer", label: "Evidence explorer", render: evidence.renderExplorer },
-      { id: "audit", label: "Audit trail", render: evidence.renderAudit },
-    ],
-  },
-  {
-    id: "system", label: "System", icon: "gear", defaultChild: "setup",
+    id: "system", label: "System", section: "Advanced", icon: "gear", defaultChild: "setup",
     children: [
       { id: "setup", label: "Setup", render: system.renderSetup },
       { id: "mt5", label: "MT5 connection", render: system.renderMT5 },
       { id: "diagnostics", label: "Diagnostics", render: system.renderDiagnostics },
     ],
   },
-  { id: "governance", label: "Governance", path: "#/governance/live", icon: "lock", render: governance.renderGovernance, restricted: true },
+  { id: "governance", label: "Governance", section: "Advanced", path: "#/governance/live", icon: "lock", render: governance.renderGovernance, restricted: true },
 ];
 
 const LEVEL_TONE = {
@@ -262,7 +264,13 @@ function buildSidebar() {
     }
   });
   aside.appendChild(search);
+  let lastSection = "";
   for (const g of IA) {
+    const section = g.section || "Product";
+    if (section !== lastSection) {
+      aside.appendChild(h("div", { class: "nav-section" }, section));
+      lastSection = section;
+    }
     const grp = h("div", { class: "sidebar-group" });
     grp.appendChild(h("div", { class: "sidebar-group-label" }, icon(g.icon, 14), h("span", null, g.label)));
     const add = (label, href, restricted) => {

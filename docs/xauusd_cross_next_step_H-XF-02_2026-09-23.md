@@ -2,7 +2,7 @@
 
 **Registered:** 2026-09-23T15:00:00Z — **before** any confirmatory measurement of this hypothesis on the verifiable view
 **Status:** `PREREGISTERED, NOT TESTED`
-**View:** Same maximal verifiable Discovery prefix — `70,783,710` rows, `time_msc < 1764563969254`, authority `docs/xauusd_directional_view_authority_H-DIR-02.json`, manifest `reports/xauusd_directional_H-DIR-02_view_manifest.json`. No held-out opened. H-XF-01 `INCONCLUSIVE` (tercile-2 tight `n=481`) and its pooled ratio 2.04 / lift 0.042 are not used to set thresholds.
+**View:** Same maximal verifiable Discovery prefix — `70,783,710` rows, `time_msc < 1764563969254`, authority `docs/evidence/xauusd_directional_view_authority_H-DIR-02.json`, manifest `reports/xauusd_directional_H-DIR-02_view_manifest.json`. No held-out opened. H-XF-01 `INCONCLUSIVE` (tercile-2 tight `n=481`) and its pooled ratio 2.04 / lift 0.042 are not used to set thresholds.
 **Policy:** Thresholds locked from `docs/xauusd_state_preregistration.md`, not refit. `REJECTED` stays rejected; `INCONCLUSIVE` does not become `TESTED` by weakening `MIN_N=1000` or `MIN_BLOCKS=50`.
 
 ---

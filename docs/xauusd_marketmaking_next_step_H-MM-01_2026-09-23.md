@@ -2,7 +2,7 @@
 
 **Registered:** 2026-09-23T16:00:00Z — **before** any confirmatory measurement of this hypothesis on the verifiable view
 **Status:** `PREREGISTERED, NOT TESTED`
-**View:** Same maximal verifiable Discovery prefix — `70,783,710` rows, `cutoff 1764563969254`, authority `docs/xauusd_directional_view_authority_H-DIR-02.json`, manifest `reports/xauusd_directional_H-DIR-02_view_manifest.json`. No held-out opened. All prior directional/magnitude/cross results are not used to set thresholds except locked state definitions.
+**View:** Same maximal verifiable Discovery prefix — `70,783,710` rows, `cutoff 1764563969254`, authority `docs/evidence/xauusd_directional_view_authority_H-DIR-02.json`, manifest `reports/xauusd_directional_H-DIR-02_view_manifest.json`. No held-out opened. All prior directional/magnitude/cross results are not used to set thresholds except locked state definitions.
 **Policy:** Execution-aware but not a live order. Simulated fills are `SYNTHETIC` source, labeled as such, never as `REAL` execution evidence. `DEMO_EXECUTION` stays `DISABLED` until this hypothesis is `TESTED` and then `ROBUST` via walk-forward and cost/latency stress.
 
 ---
@@ -60,5 +60,5 @@ Also required: **F both-filled net capture > $0** lift vs U (F net > U net) and 
 
 ## 6. Failure preservation
 
-If `REJECTED` or `INCONCLUSIVE`, low-vol tight spread does not provide a cost-surviving spread-capture advantage on this 70.78M sample. No post-hoc `trail` or `q` cut, no `H` change, no fill-window change (16/256) will be promoted. Next path diagnosed separately — acquisition of **Binance BTCUSDT 1H** and **licensed XAUUSD tick (FirstRate/Dukascopy)** for cross-market and 2-year regime coverage per `data_requirements.md` (R1–R6), with explicit `SYNTHETIC` labeling for any mid-proxy.
+If `REJECTED` or `INCONCLUSIVE`, low-vol tight spread does not provide a cost-surviving spread-capture advantage on this 70.78M sample. No post-hoc `trail` or `q` cut, no `H` change, no fill-window change (16/256) will be promoted. Next path diagnosed separately — acquisition of **Binance BTCUSDT 1H** and **licensed XAUUSD tick (FirstRate/Dukascopy)** for cross-market and 2-year regime coverage per `evidence/data_requirements.md` (R1–R6), with explicit `SYNTHETIC` labeling for any mid-proxy.
 

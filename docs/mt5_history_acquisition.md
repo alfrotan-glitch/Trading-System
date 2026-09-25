@@ -195,4 +195,4 @@ Extracted quote history is **broker-specific quote evidence**, not execution evi
 
 Historical quotes must never be represented as execution evidence. A COMPLETE window is a fact
 about what the terminal served; it is not "complete history". R5 remains a separate milestone
-(docs/current_state.md §C).
+(docs/evidence/current_state.md §C).

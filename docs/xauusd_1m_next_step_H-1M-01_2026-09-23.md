@@ -2,7 +2,7 @@
 
 **Registered:** 2026-09-23T18:00:00Z — **before** any confirmatory measurement of this 1m hypothesis on the verifiable tick view
 **Status:** `PREREGISTERED, NOT TESTED`
-**View:** Same maximal verifiable Discovery prefix — `70,783,710` rows, `cutoff 1764563969254`, authority `docs/xauusd_directional_view_authority_H-DIR-02.json`. 1m bars are **deterministically derived** from tick mids (`mid=(bid+ask)/2`) on UTC minute boundaries via `mid_1m = last mid in minute`, `high = max mid in minute`, `low = min mid in minute`, `close = last`. No held-out opened, no external data. 1m derivation is `SYNTHETIC_DERIVED` from `REAL` tick, labeled as such, not `REAL` 1m bars.
+**View:** Same maximal verifiable Discovery prefix — `70,783,710` rows, `cutoff 1764563969254`, authority `docs/evidence/xauusd_directional_view_authority_H-DIR-02.json`. 1m bars are **deterministically derived** from tick mids (`mid=(bid+ask)/2`) on UTC minute boundaries via `mid_1m = last mid in minute`, `high = max mid in minute`, `low = min mid in minute`, `close = last`. No held-out opened, no external data. 1m derivation is `SYNTHETIC_DERIVED` from `REAL` tick, labeled as such, not `REAL` 1m bars.
 **Policy:** This is the first 1m timeframe test in this checkout (per `timeframe_research.md`, 1m was `UNAVAILABLE` — this makes it `DERIVED_SYNTHETIC` not `REAL`, so it cannot claim `REAL` 1m execution without `R5` measured spread). A `REJECTED` stays rejected.
 
 ---

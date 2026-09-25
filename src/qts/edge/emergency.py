@@ -6,6 +6,7 @@ import time
 from collections import deque
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any
 
 
 @dataclass
@@ -18,14 +19,26 @@ class EmergencyConfig:
 
 
 class EmergencyControls:
-    def __init__(self, config: EmergencyConfig | None = None):
+    def __init__(self, config: EmergencyConfig | None = None, risk_engine: Any | None = None):
         self.config = config or EmergencyConfig()
+        self.risk_engine = risk_engine
         self._order_times: deque[float] = deque()
         self._killed = False
         self._suspended = False
 
-    def kill_switch(self, reason: str):
-        self._killed = True
+    def kill_switch(self, reason: str) -> None:
+        """Arm the canonical kill switch. There is no independent flag.
+
+        ``RiskEngine`` is the only kill-switch authority. A detached
+        EmergencyControls instance cannot claim a halt that trading will not see.
+        """
+        if self.risk_engine is None or not hasattr(self.risk_engine, "kill_switch"):
+            raise RuntimeError(
+                "kill switch authority is qts.risk.engine.RiskEngine; "
+                "EmergencyControls cannot arm an independent kill"
+            )
+        self.risk_engine.kill_switch(reason=reason)
+        self._killed = bool(getattr(self.risk_engine, "killed", True))
 
     def cancel_all(self, order_manager):
         order_manager.cancel_all_pending()
@@ -92,9 +105,12 @@ class EmergencyControls:
             ok, reason = check()
             if not ok:
                 return False, reason
-        if self._killed or self._suspended:
+        if self.is_killed() or self._suspended:
             return False, "killed_or_suspended"
         return True, "ok"
 
     def is_killed(self) -> bool:
-        return self._killed
+        """True only when the canonical RiskEngine kill switch is armed."""
+        if self.risk_engine is None:
+            return False
+        return bool(getattr(self.risk_engine, "killed", False))

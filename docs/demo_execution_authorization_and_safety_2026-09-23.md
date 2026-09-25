@@ -283,7 +283,7 @@ On 2026-09-23 every preregistered XAUUSD family is REJECTED or INCONCLUSIVE afte
 (`spread+2c`, 1-quote delay, Holm α0.01, block-bootstrap): H-DIR-02, H-DIR-03a/b, H-TEMP-01, H-ST-02WF,
 H-XF-01, H-XF-02, H-MM-01 (fails absolute-net), H-MM-02 WF (fails 4/5 folds), H-1M-01, 15m impulse.
 `strategy_promoted=false` in every `reports/xauusd_*_state.json`; the 69 M-row held-out prefix was never
-opened. See `docs/final_best_strategy_2026-09-23.md` and `docs/best_edge_strategy_2026-09-23.md`.
+opened. See `docs/evidence/final_best_strategy_2026-09-23.md` and `docs/evidence/best_edge_strategy_2026-09-23.md`.
 
 Therefore: **`DEMO_EXECUTION = ENABLED` and `TRADING_STATE = NO_TRADE` coexist**, exactly as the owner's
 instructions require. No strategy was invented to make the new capability look useful.

@@ -9,6 +9,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from qts.adapters.base import BrokerAdapter, ReconcileReport
 from qts.db import connect as db_connect
 from qts.domain.events import DomainEvent, EventType
 from qts.domain.value_objects import (
@@ -19,7 +20,6 @@ from qts.domain.value_objects import (
     Order,
     OrderIntent,
     OrderState,
-    Position,
     Side,
     Tick,
     uuid7,
@@ -165,127 +165,6 @@ class OrderManager:
             if order.state in (OrderState.PENDING, OrderState.ACCEPTED, OrderState.PARTIALLY_FILLED):
                 cancelled.append(self.update_state(cid, OrderState.CANCELLED, reject_reason="kill-switch"))
         return cancelled
-
-
-class ReconcileReport:
-    def __init__(self, drift: str, details: str = "", requires_suspend: bool = False):
-        self.drift = drift
-        self.details = details
-        self.requires_suspend = requires_suspend
-
-    def is_ok(self) -> bool:
-        return self.drift == "NONE"
-
-
-class BrokerAdapter:
-    """Protocol for adapters."""
-
-    # Subclasses should set is_live = True for MT5 live, is_shadow for shadow
-    is_live: bool = False
-    is_shadow: bool = False
-
-    def submit(self, intent: OrderIntent) -> Order:  # type: ignore[no-untyped-def]
-        raise NotImplementedError
-
-    def positions(self) -> list[Position]:
-        return []
-
-    def account(self) -> Account:
-        """NO fabricated account. Adapters that cannot provide authoritative
-        broker state must override and either return a labeled simulation
-        account or raise — a silent ``balance=10000`` default is a fabricated
-        fallback in a safety-critical path (removed, fail-closed)."""
-        raise NotImplementedError(
-            f"{type(self).__name__} does not provide authoritative account state — "
-            "refusing to fabricate one (fail-closed)"
-        )
-
-    def orders(self) -> list[Order]:
-        return []
-
-    def cancel(self, client_order_id: str) -> None:  # noqa: B027
-        pass
-
-    def get_symbol_spec(self, symbol: str):  # type: ignore[no-untyped-def]
-        return None
-
-
-class PaperBrokerAdapter(BrokerAdapter):
-    is_live = False
-    is_shadow = False
-
-    def __init__(self, matching: MatchingEngine | None = None, account: Account | None = None):
-        self.matching = matching or MatchingEngine()
-        # Explicit, LABELED simulation capital (never presented as broker truth).
-        self._account = account or Account(
-            balance=Decimal("10000"),
-            equity=Decimal("10000"),
-            currency="PAPER_SIM",
-            source="PAPER_SIMULATION",
-        )
-        # Paper broker mirrors Portfolio but also tracks its own for reconciliation test
-        self._positions: dict[str, Position] = {}
-        self._orders: dict[str, Order] = {}
-
-    def submit(self, intent: OrderIntent) -> Order:
-        order = Order(
-            order_id=uuid7(),
-            client_order_id=intent.client_order_id,
-            instrument=intent.instrument,
-            side=intent.side,
-            quantity=intent.quantity,
-            order_type=intent.order_type,
-            state=OrderState.ACCEPTED,
-            strategy_id=intent.strategy_id,
-        )
-        self._orders[intent.client_order_id] = order
-        return order
-
-    def apply_fill(self, fill: Fill) -> None:
-        sym = fill.instrument.symbol
-        pos = self._positions.get(sym)
-        qty_delta = fill.quantity if fill.side.value == "BUY" else -fill.quantity
-        if pos is None:
-            self._positions[sym] = Position(instrument=fill.instrument, quantity=qty_delta, avg_price=fill.price)
-        else:
-            new_qty = pos.quantity + qty_delta
-            if new_qty == Decimal("0"):
-                self._positions[sym] = Position(
-                    instrument=fill.instrument, quantity=Decimal("0"), avg_price=Decimal("0")
-                )
-            elif pos.quantity == Decimal("0"):
-                self._positions[sym] = Position(instrument=fill.instrument, quantity=new_qty, avg_price=fill.price)
-            else:
-                if (pos.quantity > 0 and qty_delta > 0) or (pos.quantity < 0 and qty_delta < 0):
-                    total = abs(pos.quantity) + abs(qty_delta)
-                    avg = (abs(pos.quantity) * pos.avg_price + abs(qty_delta) * fill.price) / total
-                    self._positions[sym] = Position(instrument=fill.instrument, quantity=new_qty, avg_price=avg)
-                else:
-                    self._positions[sym] = Position(
-                        instrument=fill.instrument,
-                        quantity=new_qty,
-                        avg_price=pos.avg_price if new_qty != Decimal("0") else Decimal("0"),
-                    )
-        if fill.client_order_id in self._orders:
-            o = self._orders[fill.client_order_id]
-            self._orders[fill.client_order_id] = o.with_state(
-                OrderState.FILLED, filled_quantity=fill.quantity, avg_fill_price=fill.price
-            )
-
-    def positions(self) -> list[Position]:
-        return list(self._positions.values())
-
-    def account(self) -> Account:
-        return self._account
-
-    def orders(self) -> list[Order]:
-        return list(self._orders.values())
-
-    def cancel(self, client_order_id: str) -> None:
-        if client_order_id in self._orders:
-            o = self._orders[client_order_id]
-            if o.state in (OrderState.PENDING, OrderState.ACCEPTED):
-                self._orders[client_order_id] = o.with_state(OrderState.CANCELLED)
 
 
 class ExecutionEngine:
@@ -855,18 +734,12 @@ class ExecutionEngine:
             return None, []
 
         fills: list[Fill] = []
-        # Paper brokers (legacy and realistic) use matching to generate fills synchronously; live fills come via poll
-        # Check for paper types: legacy PaperBrokerAdapter or RealisticPaperBroker (has matching)
+        # Paper brokers use matching to generate fills synchronously; live fills come via poll
         is_paper = (
-            isinstance(self.broker, PaperBrokerAdapter) or self.broker.__class__.__name__ == "RealisticPaperBroker"
+            not bool(getattr(self.broker, "is_live", False))
+            and not bool(getattr(self.broker, "is_shadow", False))
+            and hasattr(self.broker, "apply_fill")
         )
-        # Also check via is_live flag: if not live and not shadow, treat as paper
-        if not is_paper:
-            is_paper = (
-                not bool(getattr(self.broker, "is_live", False))
-                and not bool(getattr(self.broker, "is_shadow", False))
-                and hasattr(self.broker, "apply_fill")
-            )
         if is_paper and bar is not None:
             fills = self.matching.match(intent, bar, tick)
             cumulative_qty = Decimal("0")

@@ -15,7 +15,7 @@ Expert diagnosis: tick-level **directional** is dead on this sample (H-DIR lifts
 
 The best *tradeable* edge in XAUUSD spot without a volatility instrument is **liquidity provision**: capture spread where adverse selection is small. H-MM-01 proved F has 5.4pp higher both-filled rate and 2.6× smaller excursion, but absolute net fails because tight spread is 7c smaller than wide. The *expert* edge is **risk-adjusted** (Sharpe-like): profit per unit adverse excursion, and **time to fill** vs **time to adverse move**.
 
-This matches the next QTS milestone per `09-validation-methodology.md` §9.6–9.8: after discovery, the ladder is **Transaction-Cost Stress (1×/1.5×/2× spread), Slippage/Latency (0/500/2000ms), Walk-Forward (5-fold anchored), Monte Carlo**. H-MM-02 is exactly that: same F vs U, but gates are risk-adjusted and include stress.
+This matches the next QTS milestone per `evidence/09-validation-methodology.md` §9.6–9.8: after discovery, the ladder is **Transaction-Cost Stress (1×/1.5×/2× spread), Slippage/Latency (0/500/2000ms), Walk-Forward (5-fold anchored), Monte Carlo**. H-MM-02 is exactly that: same F vs U, but gates are risk-adjusted and include stress.
 
 If H-MM-02 is `TESTED`, it becomes the first `ROBUST` candidate for **paper/shadow** (Stage 9) with inventory caps and then forward observation.
 

@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-UI = Path(__file__).resolve().parents[1] / "src" / "qts" / "desktop" / "ui"
+UI = Path(__file__).resolve().parents[2] / "src" / "qts" / "desktop" / "ui"
 JS = UI / "js"
 
 
@@ -67,7 +67,7 @@ def test_flat_tab_navigation_is_gone(client):
     assert "data-view=" not in html, "old flat nav markup still present"
     src = (JS / "main.js").read_text(encoding="utf-8")
     top_level_groups = re.findall(r"^  \{", src, re.M)
-    assert len(top_level_groups) == 8, "IA must have exactly 8 primary areas"
+    assert len(top_level_groups) == 9, "IA must have the product groups plus Advanced engineering groups"
 
 
 def test_semantic_state_system_exists():

@@ -43,7 +43,7 @@ Or use PowerShell to set env for session:
 $env:QTS_ENV="demo_forward"; $env:MT5_LOGIN="123..."; .\scripts\run_qts.bat
 ```
 
-**Do NOT** put live passwords in `configs/live.yaml` and commit — it is gitignored. See `docs/10-security-model.md`.
+**Do NOT** put live passwords in `configs/live.yaml` and commit — it is gitignored. See `docs/evidence/10-security-model.md`.
 
 ## Connect Wizard (14 Checks)
 The readiness gate calls `mt5.initialize(path=...)` itself (path: wizard field →

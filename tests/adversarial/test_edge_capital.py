@@ -486,9 +486,13 @@ def test_micro_scaling_protocol():
 
 
 # Phase 17: Emergency controls — 10 safeguards
-def test_emergency_controls():
+def test_emergency_controls(tmp_path):
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    risk = RiskEngine(RiskLimits(), db_path=tmp_path / "risk.db", persist_kill=True)
     ec = EmergencyControls(
-        config=EmergencyConfig(max_order_rate_per_sec=2, max_order_size_lots=1.0, max_spread_bps=100)
+        config=EmergencyConfig(max_order_rate_per_sec=2, max_order_size_lots=1.0, max_spread_bps=100),
+        risk_engine=risk,
     )
     # Order rate
     assert ec.check_order_rate()[0] is True
@@ -504,7 +508,15 @@ def test_emergency_controls():
     assert ec.check_spread(50)[0]
     # Kill switch
     ec.kill_switch("test")
+    assert risk.killed is True
     assert ec.is_killed()
+    detached = EmergencyControls()
+    try:
+        detached.kill_switch("no authority")
+    except RuntimeError as exc:
+        assert "RiskEngine" in str(exc)
+    else:
+        raise AssertionError("detached emergency controls must not arm an independent kill")
     assert not ec.pre_trade_gate(
         Decimal("0.1"), 10, 100, 1, type("A", (), {"equity": Decimal("10000"), "balance": Decimal("10000")})(), False
     )[0]

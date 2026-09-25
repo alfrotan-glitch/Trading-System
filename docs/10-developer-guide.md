@@ -69,7 +69,7 @@ Always run the full suite before submitting changes:
 ruff check src/ tests/
 
 # 2. Type Checking
-mypy src/qts/execution src/qts/lifecycle src/qts/api src/qts/config src/qts/domain src/qts/adapters src/qts/risk src/qts/cli.py
+mypy src/qts/execution src/qts/lifecycle src/qts/api src/qts/config src/qts/domain src/qts/adapters src/qts/risk src/qts/cli
 
 # 3. JavaScript Syntax Verification
 node --check src/qts/desktop/ui/js/**/*.js src/qts/desktop/ui/js/views/*.js

@@ -74,4 +74,4 @@ See `docs/mt5_demo_setup.md` 14 checks. Common:
 - `logs/audit.jsonl` (redacted), `data/evidence/*.json`, `http://127.0.0.1:8000/api/health` for startup reason.
 
 ## Live Still Locked
-Expected: `LIVE = LOCKED` until DSR/PBO/PSR/costs/regime/perturbation/null/placebo/forward/reconciliation/risk/human all pass. See `docs/release_readiness_report.md`.
+Expected: `LIVE = LOCKED` until DSR/PBO/PSR/costs/regime/perturbation/null/placebo/forward/reconciliation/risk/human all pass. See `docs/evidence/release_readiness_report.md`.

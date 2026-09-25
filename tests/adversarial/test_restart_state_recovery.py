@@ -29,9 +29,10 @@ from pathlib import Path
 
 import pytest
 
+from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.domain.events import DomainEvent, EventType
 from qts.domain.value_objects import Instrument, OrderIntent, OrderType, Position, Side
-from qts.execution.engine import ExecutionEngine, OrderManager, OrderState, PaperBrokerAdapter
+from qts.execution.engine import ExecutionEngine, OrderManager, OrderState
 from qts.execution.idempotency import IdempotencyStore
 from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.observability.audit import InMemoryAuditLog
@@ -177,7 +178,7 @@ def _engine(db: Path, portfolio: Portfolio | None = None) -> ExecutionEngine:
     return ExecutionEngine(
         OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db)),
         RiskEngine(RiskLimits(), db_path=db),
-        PaperBrokerAdapter(),
+        RealisticPaperBroker(),
         MatchingEngine(MatchingConfig()),
         portfolio or Portfolio(initial_balance=Decimal("10000")),
         audit=audit,
@@ -312,7 +313,7 @@ def test_persist_reconcile_state_disabled_never_reads_or_writes_the_durable_flag
     isolated = ExecutionEngine(
         OrderManager(audit=audit, idempotency=IdempotencyStore(db_path=db)),
         RiskEngine(RiskLimits(), db_path=db, persist_kill=False),
-        PaperBrokerAdapter(),
+        RealisticPaperBroker(),
         MatchingEngine(MatchingConfig()),
         Portfolio(initial_balance=Decimal("10000")),
         audit=audit,
