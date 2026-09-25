@@ -1934,6 +1934,47 @@ def demo_order(payload: dict[str, Any]) -> Any:
     return JSONResponse(status_code=200 if result.allowed else 409, content=result.as_dict())
 
 
+@app.get("/api/demo/positions")
+def demo_positions() -> dict[str, Any]:
+    """List open DEMO positions on the connected MT5 venue."""
+    session = _demo_session()
+    positions = session.positions()
+    return {
+        "positions": positions,
+        "count": len(positions),
+        "symbol": session.canonical_symbol,
+        "broker_symbol": session.broker_symbol,
+        "checked_at": datetime.now(UTC).isoformat(),
+    }
+
+
+@app.post("/api/demo/close")
+def demo_close(payload: dict[str, Any]) -> dict[str, Any]:
+    """Close an open DEMO position by ticket (requires confirmed=true and risk_ack=true)."""
+    from decimal import Decimal
+
+    ticket = payload.get("ticket")
+    if ticket is None:
+        raise HTTPException(400, "ticket is required to close a position")
+    try:
+        ticket_int = int(ticket)
+    except (TypeError, ValueError) as err:
+        raise HTTPException(400, f"invalid ticket id: {ticket}") from err
+
+    if not payload.get("confirmed") or not payload.get("risk_ack"):
+        raise HTTPException(400, "closing a DEMO position requires explicit confirmed=true and risk_ack=true")
+
+    volume_str = payload.get("volume")
+    volume = Decimal(str(volume_str)) if volume_str is not None else None
+    reason = str(payload.get("reason") or "operator-close via API")
+
+    session = _demo_session(payload.get("symbol"))
+    try:
+        return session.close_position(ticket_int, volume=volume, reason=reason, actor="api:demo-close")
+    except Exception as exc:
+        raise HTTPException(500, f"failed to close position {ticket_int}: {exc}") from exc
+
+
 @app.post("/api/demo/kill")
 def demo_kill(payload: dict[str, Any] | None = None) -> dict[str, Any]:
     """Raise the durable kill switch and halt the DEMO stage machine."""

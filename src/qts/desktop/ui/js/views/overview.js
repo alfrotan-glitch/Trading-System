@@ -216,7 +216,9 @@ export async function renderOverview(root) {
 
     // Humanize executive title
     let humanActivity = s.activity;
-    if (s.activity.includes("STAGE_1_CONNECTIVITY_ONLY")) {
+    if (s.observing || /observing/i.test(s.activity)) {
+      humanActivity = s.activity;
+    } else if (s.activity.includes("STAGE_1_CONNECTIVITY_ONLY")) {
       humanActivity = "Connection Test Mode — Orders Disabled";
     } else if (s.activity.includes("INSUFFICIENT")) {
       humanActivity = "System Ready — Research Blocked (Data Incomplete)";

@@ -388,3 +388,60 @@ def test_clear_kill_lifts_the_flag_but_leaves_the_stage_halted(run_cli, operator
 
     healthy = run_cli("verify", "--db", operator_env["db"])
     assert "kill_switch=clear" in healthy.output
+
+
+def test_positions_and_close_commands_lifecycle(run_cli, operator_env):
+    """Test qts demo positions and qts demo close end to end."""
+    # Setup and arm
+    _register_strategy(operator_env["registry"])
+    run_cli("connectivity", "--db", operator_env["db"], "--pin")
+    run_cli("connectivity", "--db", operator_env["db"], "--confirm-pin")
+    run_cli("arm", "--stage", "1", "--db", operator_env["db"], "--confirm", "--risk-ack")
+    run_cli("arm", "--stage", "2", "--db", operator_env["db"], "--confirm", "--risk-ack")
+
+    # Initially no positions
+    empty_pos = run_cli("positions", "--db", operator_env["db"])
+    assert empty_pos.exit_code == 0
+    assert "no open positions" in empty_pos.output
+
+    # Order
+    order_res = run_cli(
+        "order", "--side", "BUY", "--stop-loss", "1995.00", "--db", operator_env["db"],
+        "--rationale", "cli close test",
+    )
+    assert order_res.exit_code == 0
+    body = json.loads(order_res.output)
+    assert body["allowed"] is True
+
+    # Position is visible
+    pos_res = run_cli("positions", "--db", operator_env["db"])
+    assert pos_res.exit_code == 0
+    assert "ticket=" in pos_res.output
+    # Parse ticket
+    ticket_str = pos_res.output.split("ticket=")[1].split()[0]
+    ticket = int(ticket_str)
+
+    # Close without confirm fails closed
+    fail_close = run_cli("close", "--ticket", str(ticket), "--db", operator_env["db"])
+    assert fail_close.exit_code == 2
+    assert "explicit confirmation and risk acknowledgement" in fail_close.output
+
+    # Close with confirmation succeeds
+    ok_close = run_cli(
+        "close", "--ticket", str(ticket), "--confirm", "--risk-ack", "--db", operator_env["db"],
+        "--reason", "cli-test-close",
+    )
+    assert ok_close.exit_code == 0
+    close_json = json.loads(ok_close.output)
+    assert close_json["success"] is True
+    assert close_json["ticket"] == ticket
+
+    # Positions are now empty
+    pos_after = run_cli("positions", "--db", operator_env["db"])
+    assert "no open positions" in pos_after.output
+
+    # Journal records CLOSED
+    journal = run_cli("journal", "--db", operator_env["db"])
+    assert "state=CLOSED" in journal.output
+    assert "cli-test-close" in journal.output
+

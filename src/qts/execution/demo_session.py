@@ -291,9 +291,9 @@ class DemoSession:
         }
 
     def _symbol_probe(self) -> dict[str, Any]:
+        canonical = self.canonical_symbol
+        broker_symbol = self.broker_symbol
         try:
-            canonical = self.canonical_symbol
-            broker_symbol = self.broker_symbol
             spec = self.adapter.get_symbol_spec(canonical)
             visible = bool(self.adapter.ensure_symbol_visible(broker_symbol))
             return {
@@ -310,7 +310,14 @@ class DemoSession:
                 "stops_level": spec.stops_level,
             }
         except Exception as exc:
-            return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+            return {
+                "ok": False,
+                "canonical": canonical,
+                "broker_symbol": broker_symbol,
+                "visible": False,
+                "tradable": False,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
 
     def _quote_probe(self) -> dict[str, Any]:
         from qts.domain.value_objects import Instrument
@@ -457,6 +464,116 @@ class DemoSession:
         engine.kill_switch(reason)
         record = self.stage.halt(reason=reason, actor=self.config.actor)
         return {"killed": True, "reason": reason, "stage": record.as_dict()}
+
+    def positions(self) -> list[dict[str, Any]]:
+        """List open broker positions enriched with canonical symbol and journal correlation."""
+        try:
+            raw_positions = self.adapter.position_details()
+        except Exception:
+            return []
+
+        open_journal_orders: list[dict[str, Any]] = []
+        with contextlib.suppress(Exception):
+            open_journal_orders = list(self.journal.open_orders())
+
+        from qts.adapters.mt5_adapter import canonical_symbol
+
+        out: list[dict[str, Any]] = []
+        for pos in raw_positions:
+            ticket = pos.get("ticket")
+            raw_sym = str(pos.get("symbol") or pos.get("broker_symbol") or "")
+            canonical = canonical_symbol(raw_sym, self.config.symbol_map or {})
+
+            matched_row = None
+            for row in open_journal_orders:
+                if ticket is not None and row.get("broker_position_id") and str(row["broker_position_id"]) == str(ticket):
+                    matched_row = row
+                    break
+                if row.get("broker_symbol") == raw_sym and row.get("side") == pos.get("side"):
+                    matched_row = row
+                    break
+
+            item = dict(pos)
+            item["canonical_symbol"] = canonical
+            if matched_row is not None:
+                item["journal_id"] = matched_row.get("journal_id")
+                item["client_order_id"] = matched_row.get("client_order_id")
+                item["strategy_id"] = matched_row.get("strategy_id")
+                item["hypothesis_id"] = matched_row.get("hypothesis_id")
+            out.append(item)
+        return out
+
+    def close_position(
+        self,
+        ticket: int,
+        *,
+        volume: Decimal | None = None,
+        reason: str = "operator-close",
+        comment: str | None = None,
+        actor: str | None = None,
+    ) -> dict[str, Any]:
+        """Close an open DEMO position by ticket, journal the outcome, and reconcile."""
+        ticket_int = int(ticket)
+        matching_pos: dict[str, Any] | None = None
+        try:
+            for p in self.adapter.position_details():
+                if p.get("ticket") == ticket_int:
+                    matching_pos = p
+                    break
+        except Exception:
+            pass
+
+        close_comment = comment or f"close-{ticket_int}"[:31]
+        receipt = self.adapter.close_position(
+            ticket_int,
+            volume=volume,
+            comment=close_comment,
+        )
+
+        matched_journal_row: dict[str, Any] | None = None
+        with contextlib.suppress(Exception):
+            for row in self.journal.open_orders():
+                if row.get("broker_position_id") and str(row["broker_position_id"]) == str(ticket_int):
+                    matched_journal_row = row
+                    break
+                if matching_pos and row.get("broker_symbol") == matching_pos.get("symbol") and row.get("side") == matching_pos.get("side"):
+                    matched_journal_row = row
+                    break
+
+        profit = Decimal(str(matching_pos.get("profit") or "0")) if matching_pos else Decimal("0")
+        price_current = matching_pos.get("price_current") if matching_pos else None
+
+        if matched_journal_row is not None:
+            self.journal.mark_outcome(
+                int(matched_journal_row["journal_id"]),
+                state="CLOSED",
+                exit_reason=reason,
+                realized_pnl=profit,
+                market_state_exit={
+                    "price_current": price_current,
+                    "close_receipt": receipt,
+                    "closed_by": actor or self.config.actor,
+                },
+            )
+
+        with contextlib.suppress(Exception):
+            self.sync_fills()
+
+        reconciliation = self.reconcile()
+        if reconciliation.get("requires_suspend"):
+            self.stage.halt(
+                reason=f"reconciliation drift after closing ticket {ticket_int}: {reconciliation.get('drift')} {reconciliation.get('details')}",
+                actor=actor or self.config.actor,
+            )
+
+        return {
+            "success": True,
+            "ticket": ticket_int,
+            "receipt": receipt,
+            "realized_pnl": str(profit),
+            "journal_id": matched_journal_row.get("journal_id") if matched_journal_row else None,
+            "reconciliation": reconciliation,
+        }
 
     def sync_fills(self) -> int:
         """Fold broker deals into local state (best effort, idempotent).

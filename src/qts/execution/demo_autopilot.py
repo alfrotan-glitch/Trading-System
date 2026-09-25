@@ -428,22 +428,30 @@ def _manage_open_positions(
             if policy.get("close_on_registry_expiry") and not reason:
                 reason = None  # registry expiry is checked by the caller loop
             if reason:
-                receipt = session.adapter.close_position(int(ticket), comment=RESEARCH_DEMO_ORDER[:31])
-                if row is not None:
-                    journal.mark_outcome(
-                        int(row["journal_id"]),
-                        state="CLOSED",
-                        exit_reason=reason,
-                        realized_pnl=profit,
-                        market_state_exit={"price_current": pos.get("price_current"), "close_receipt": receipt},
+                if hasattr(session, "close_position"):
+                    res = session.close_position(
+                        int(ticket),
+                        reason=reason,
+                        comment=RESEARCH_DEMO_ORDER[:31],
+                        actor="autopilot",
                     )
+                    receipt = res.get("receipt")
+                    after_close = res.get("reconciliation") or {}
+                else:
+                    receipt = session.adapter.close_position(int(ticket), comment=RESEARCH_DEMO_ORDER[:31])
+                    if row is not None:
+                        journal.mark_outcome(
+                            int(row["journal_id"]),
+                            state="CLOSED",
+                            exit_reason=reason,
+                            realized_pnl=profit,
+                            market_state_exit={"price_current": pos.get("price_current"), "close_receipt": receipt},
+                        )
+                    with contextlib.suppress(Exception):
+                        session.sync_fills()
+                    after_close = session.reconcile()
+
                 note("close", {"ticket": ticket, "reason": reason, "profit": str(profit), "receipt": receipt})
-                # A close is an order too: fold the closing deal into local
-                # state, then reconcile — never leave the loop running on a
-                # portfolio that no longer matches the venue.
-                with contextlib.suppress(Exception):
-                    session.sync_fills()
-                after_close = session.reconcile()
                 note("reconcile_after_close", after_close)
                 if after_close.get("requires_suspend"):
                     raise AutopilotHalt(

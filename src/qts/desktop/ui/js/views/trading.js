@@ -337,6 +337,73 @@ export async function renderExecution(root) {
   try { orders = await api.get("/api/execution/orders?limit=50"); }
   catch (e) { host.appendChild(errorBox({ what: "orders could not be loaded", next: "Retry.", raw: e.message })); return; }
 
+  let demoPositions = [];
+  try {
+    const posRes = await api.get("/api/demo/positions");
+    demoPositions = Array.isArray(posRes?.positions) ? posRes.positions : [];
+  } catch (_) { /* fail-closed / optional when broker offline */ }
+
+  async function handleClosePosition(pos) {
+    const ok = await confirmModal({
+      title: `Close Position #${pos.ticket} — ${pos.side} ${pos.volume} ${pos.symbol || pos.broker_symbol}`,
+      danger: true,
+      body: h("div", { class: "stack" },
+        h("p", null, `Close ticket #${pos.ticket} at current market price. This executes an offsetting MT5 order on the DEMO venue, reconciles local vs broker positions, and logs the outcome in the order journal.`),
+        kv([
+          ["Ticket", String(pos.ticket)],
+          ["Symbol", `${pos.canonical_symbol || "XAUUSD"} (broker: ${pos.broker_symbol || pos.symbol || "XAUUSD@"})`],
+          ["Side / Volume", `${pos.side} · ${pos.volume} lots`],
+          ["Open Price", String(pos.price_open ?? "—")],
+          ["Current Price", String(pos.price_current ?? "—")],
+          ["Current P&L", String(pos.profit ?? "—")],
+        ]),
+      ),
+      acks: [
+        "I confirm submitting a closing order on the configured MT5 DEMO account.",
+        "I acknowledge this executes an offsetting market order and reconciles venue state.",
+      ],
+      confirmLabel: `Close position #${pos.ticket}`,
+    });
+    if (!ok) return;
+    try {
+      const res = await api.post("/api/demo/close", {
+        ticket: pos.ticket,
+        confirmed: true,
+        risk_ack: true,
+        reason: "operator closed position via Execution Center UI",
+      });
+      toast("ok", `Position #${pos.ticket} closed`, `Realized P&L: ${res.realized_pnl || res.profit || "0.00"}. Reconciliation: ${res.reconciliation?.drift || "CLEAN"}`);
+      renderExecution(root);
+    } catch (e) {
+      toast("err", "Failed to close position", explain(e));
+    }
+  }
+
+  if (demoPositions.length > 0) {
+    host.appendChild(card({
+      title: "Open Broker Positions — Authoritative MT5 Venue Truth",
+      sub: `${demoPositions.length} active position(s) on configured DEMO account · Explicit close lifecycle`,
+      icon: "layers",
+      body: table({
+        columns: [
+          { key: "ticket", label: "Ticket", render: (p) => h("span", { class: "mono small" }, String(p.ticket)) },
+          { key: "symbol", label: "Symbol", render: (p) => h("span", null, `${p.canonical_symbol || p.symbol} `, h("span", { class: "text-dim small" }, `(${p.broker_symbol || p.symbol})`)) },
+          { key: "side", label: "Side", render: (p) => badge(p.side, p.side === "BUY" ? "ok" : "err") },
+          { key: "volume", label: "Lots", num: true, render: (p) => fmtNum(p.volume) },
+          { key: "price_open", label: "Open Price", num: true, render: (p) => fmtNum(p.price_open) },
+          { key: "price_current", label: "Current Price", num: true, render: (p) => fmtNum(p.price_current) },
+          { key: "profit", label: "P&L", num: true, render: (p) => fmtNum(p.profit) },
+          {
+            key: "action", label: "Action",
+            render: (p) => h("button", { class: "btn danger sm", onclick: () => handleClosePosition(p) }, "Close"),
+          },
+        ],
+        rows: demoPositions,
+        dense: true,
+      }),
+    }));
+  }
+
   try {
     const account = await api.get("/api/dashboard");
     host.appendChild(card({ title: "Account snapshot", sub: `Canonical dashboard metrics; UNAVAILABLE is not zero. Context ${getContext().symbol}. Refresh to retrieve new snapshot.`, icon: "bank",

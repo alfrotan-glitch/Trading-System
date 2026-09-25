@@ -516,6 +516,45 @@ def test_full_lifecycle_stage1_to_close(env):
     assert session.reconcile()["requires_suspend"] is False
 
 
+def test_explicit_session_position_close_lifecycle(env):
+    """Explicit position inspection, manual close, deal synchronization, and journal evidence."""
+    terminal = FakeTerminal()
+    session = _session(env["tmp"], terminal)
+    _arm_to_stage_2(session, terminal)
+
+    entry = resolve_entry(load_registry())[0]
+    result = session.submit(side="BUY", rationale="manual close audit", entry=entry)
+    assert result.allowed is True
+
+    # 1. Position Inspection
+    open_positions = session.positions()
+    assert len(open_positions) == 1
+    pos = open_positions[0]
+    assert pos["canonical_symbol"] == "XAUUSD"
+    assert pos["broker_symbol"] == "XAUUSD@"
+    assert pos["journal_id"] == result.journal_id
+    ticket = int(pos["ticket"])
+
+    # 2. Explicit Close
+    close_res = session.close_position(ticket, reason="operator audit manual close")
+    assert close_res["success"] is True
+    assert close_res["ticket"] == ticket
+    assert close_res["reconciliation"]["requires_suspend"] is False
+
+    # 3. Post-Close State & Reconciliation
+    assert session.positions() == []
+    after_reconcile = session.reconcile()
+    assert after_reconcile["requires_suspend"] is False
+
+    # 4. Audit Journal Evidence
+    row = session.journal.get(result.journal_id)
+    assert row is not None
+    assert row["state"] == "CLOSED"
+    assert row["exit_reason"] == "operator audit manual close"
+    assert row["symbol"] == "XAUUSD"
+    assert row["broker_symbol"] == "XAUUSD@"
+
+
 def test_no_test_path_can_reach_a_real_broker(env, monkeypatch):
     """Every DEMO path here runs on an injected module — never the real one.
 

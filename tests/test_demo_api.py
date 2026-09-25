@@ -341,3 +341,83 @@ def test_stage_endpoint_starts_disabled(client):
     body = client.get("/api/demo/stage").json()
     assert body["current"]["stage"] == "DISABLED"
     assert body["current"]["orders_permitted"] is False
+
+
+def test_positions_and_close_endpoints_full_lifecycle(client, api_env, monkeypatch):
+    """Prove GET /api/demo/positions and POST /api/demo/close complete the position lifecycle."""
+    import fakes_demo_provider as provider_fixture
+    from fakes_mt5_demo import FakeTerminal
+
+    registry_path = Path(api_env) / "registry.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "schema": "qts.demo_forward_registry.v1",
+                "research_integrity": {"optimization_allowed": False, "no_forward_fitting": True},
+                "entries": [provider_fixture.registry_entry()],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+
+    import qts.api.server as server_module
+
+    monkeypatch.setattr(server_module, "_demo_session", lambda *args, **kwargs: session)
+
+    # Initially no positions
+    res = client.get("/api/demo/positions")
+    assert res.status_code == 200
+    assert res.json()["count"] == 0
+    assert res.json()["positions"] == []
+
+    # Submit an order
+    res_order = client.post(
+        "/api/demo/order",
+        json={"side": "BUY", "stop_loss": "1995.00", "confirmed": True, "risk_ack": True, "rationale": "test-order"},
+    )
+    assert res_order.status_code == 200
+    assert res_order.json()["allowed"] is True
+
+    # Now position exists
+    res_pos = client.get("/api/demo/positions")
+    assert res_pos.status_code == 200
+    data = res_pos.json()
+    assert data["count"] == 1
+    pos = data["positions"][0]
+    ticket = pos["ticket"]
+    assert ticket is not None
+    assert pos["canonical_symbol"] == "XAUUSD"
+
+    # Close without confirmation fails closed
+    res_fail1 = client.post("/api/demo/close", json={"ticket": ticket})
+    assert res_fail1.status_code == 400
+    assert "confirmed=true" in res_fail1.text
+
+    # Close with invalid ticket fails closed
+    res_fail2 = client.post("/api/demo/close", json={"ticket": "not-an-int", "confirmed": True, "risk_ack": True})
+    assert res_fail2.status_code == 400
+
+    # Explicit close with confirmation and risk ack succeeds
+    res_close = client.post(
+        "/api/demo/close",
+        json={"ticket": ticket, "confirmed": True, "risk_ack": True, "reason": "test-close"},
+    )
+    assert res_close.status_code == 200
+    close_data = res_close.json()
+    assert close_data["success"] is True
+    assert close_data["ticket"] == ticket
+    assert close_data["reconciliation"]["requires_suspend"] is False
+
+    # Position is now gone
+    res_empty = client.get("/api/demo/positions")
+    assert res_empty.status_code == 200
+    assert res_empty.json()["count"] == 0
+
+    # Order journal records CLOSED
+    journal_row = session.journal.list_orders()[0]
+    assert journal_row["state"] == "CLOSED"
+    assert "test-close" in (journal_row["exit_reason"] or "")
+

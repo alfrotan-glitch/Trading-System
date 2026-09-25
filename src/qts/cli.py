@@ -2555,6 +2555,63 @@ def demo_run(
         click.echo(f"HALTED: {report.halt_reason}", err=True)
 
 
+@demo.command("positions")
+@click.option("--symbol", default=None)
+@click.option("--db", default=default_db_path)
+def demo_positions(symbol: str | None, db: str) -> None:
+    """Show open DEMO positions on the broker."""
+    session = _demo_session(symbol or "", db)
+    positions = session.positions()
+    if not positions:
+        click.echo("no open positions on DEMO venue")
+        return
+    for pos in positions:
+        click.echo(
+            f"ticket={pos.get('ticket')} {pos.get('side')} {pos.get('volume')} {pos.get('symbol')} "
+            f"open_px={pos.get('price_open')} cur_px={pos.get('price_current')} "
+            f"pnl={pos.get('profit')} sl={pos.get('sl')} tp={pos.get('tp')} "
+            f"journal_id={pos.get('journal_id')}"
+        )
+
+
+@demo.command("close")
+@click.option("--ticket", required=True, type=int, help="broker position ticket to close")
+@click.option("--symbol", default=None)
+@click.option("--db", default=default_db_path)
+@click.option("--volume", default=None, help="volume to close (defaults to full position)")
+@click.option("--reason", default="operator close via CLI")
+@click.option("--confirm", is_flag=True, help="explicit operator confirmation")
+@click.option("--risk-ack", is_flag=True, help="explicit risk acknowledgement")
+def demo_close(
+    ticket: int,
+    symbol: str | None,
+    db: str,
+    volume: str | None,
+    reason: str,
+    confirm: bool,
+    risk_ack: bool,
+) -> None:
+    """Close an open DEMO position by ticket."""
+    from decimal import Decimal
+
+    if not (confirm and risk_ack):
+        click.echo(
+            "closing a DEMO position requires explicit confirmation and risk acknowledgement: "
+            f"qts demo close --ticket {ticket} --confirm --risk-ack --db {db}",
+            err=True,
+        )
+        raise SystemExit(2)
+
+    session = _demo_session(symbol or "", db)
+    vol = Decimal(volume) if volume is not None else None
+    try:
+        out = session.close_position(ticket, volume=vol, reason=reason, actor="cli:demo-close")
+        click.echo(json.dumps(out, indent=2, default=str))
+    except Exception as exc:
+        click.echo(f"failed to close position {ticket}: {exc}", err=True)
+        raise SystemExit(2) from exc
+
+
 @demo.command("kill")
 @click.option("--db", default=default_db_path)
 @click.option("--reason", default="operator kill via CLI")
@@ -2595,3 +2652,8 @@ def demo_revoke(reason: str, actor: str) -> None:
     path = revoke_authorization(reason=reason, actor=actor)
     click.echo(f"revocation written: {path}")
     click.echo("DEMO_EXECUTION is DISABLED BY POLICY again until a new authorization artifact is recorded.")
+
+
+if __name__ == "__main__":
+    main()
+
