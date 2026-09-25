@@ -1,0 +1,176 @@
+{
+  "schema": "qts.xauusd_recovery_candidate.v1",
+  "status": "RECOVERY_CANDIDATE",
+  "canonical_registry": false,
+  "research_eligibility": "BLOCKED",
+  "version": "20260918-recovery-140-e563c57e",
+  "instrument": "XAUUSD",
+  "timeframe": "15m",
+  "namespace": {
+    "legacy_storage_venue": "MT5",
+    "venue_semantics": "dataset/storage namespace only",
+    "execution_target": null,
+    "execution_venue": null
+  },
+  "source": {
+    "provider": "Dukascopy-derived upstream repository history",
+    "feed": "Upstream aggregated 15-minute XAU/USD mid OHLC with tick counts",
+    "venue": "Dukascopy XAU/USD feed",
+    "current_pinned_commit": "4d6f15543e6285fad91fd57fe42f716bc7273075",
+    "recovery_method": "Add only bars present in earlier immutable upstream parquet snapshots; no interpolation, forward-fill, synthesis, or repair",
+    "recovered_slots": 140,
+    "source_history_loss_category_slots": 154,
+    "source_history_slots_not_recovered": 14,
+    "unrecovered_range": {
+      "start": "2026-09-07T18:30:00+00:00",
+      "end": "2026-09-07T21:45:00+00:00",
+      "slots": 14,
+      "reason": "No corresponding row was present in the inspected earlier upstream parquet snapshots; new authoritative acquisition would be required"
+    },
+    "historical_source_commits": {
+      "3ae332705f75bae79f2a7c47048fe6952e50d7a5": 8,
+      "0b765c2f5ac08b1d6bbbe6baa7747ddcf5fa950a": 4,
+      "da8dbdaa7a22b6b5d1b0a97018188b66dfe7d08c": 4,
+      "7cea7cc352baea0061363c6862908b02f7792f48": 16,
+      "b8d41fcf6c756503192769d38a0bcda2b500dd22": 8,
+      "b432c5a501c7b3728a5c74eadf8cd4b70a45c920": 8,
+      "cf63752856557501423a2f31087e607f756864be": 4,
+      "4d0be4119a98a1387ff1ae25e2477daeaed708dd": 8,
+      "123358b8de9143d582bbd9faf6e28594c75c3cec": 8,
+      "9b00b2331162427edf71f1dce0edb85ce672a805": 8,
+      "245ae6fa09f6cf8f151d17928dea6c4ed5c97beb": 12,
+      "170c9b9d08da81f8d02dad17610d930b71bbfc9f": 4,
+      "0d050ed1c571165c36c1928e20e6797ca23fb0ee": 8,
+      "8314715f3c86acc6cef7e0a2fb7a5f5d851af75e": 4,
+      "346ed1437f7ea87b4c0a0532b735c47d15af22c9": 8,
+      "daef97dc2c978bd0e5191e100ab7ada21cff9372": 12,
+      "8f01de6290a389147095f5261b548b77edb199c7": 16
+    },
+    "historical_source_files": [
+      {
+        "commit": "3ae332705f75bae79f2a7c47048fe6952e50d7a5",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 8,
+        "blob_sha256": "fd69991442b9795c2b0502a5fcae663f9fe482e2f8af3c30e50c51484b6b4916"
+      },
+      {
+        "commit": "0b765c2f5ac08b1d6bbbe6baa7747ddcf5fa950a",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 4,
+        "blob_sha256": "52180a4ddea22aa5bb9a749afc7f9d931ea476e35e563197d7f5b5d102c4a4dc"
+      },
+      {
+        "commit": "da8dbdaa7a22b6b5d1b0a97018188b66dfe7d08c",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 4,
+        "blob_sha256": "1582793ad0c7d081b633ff2d98d220556796caf2d16d54f74d6d557050ffebdb"
+      },
+      {
+        "commit": "7cea7cc352baea0061363c6862908b02f7792f48",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 16,
+        "blob_sha256": "70836872a2a23ae1e0fa83c4567396bd37ee943edcfe69a643ddbd50a7c7201e"
+      },
+      {
+        "commit": "b8d41fcf6c756503192769d38a0bcda2b500dd22",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 8,
+        "blob_sha256": "ed758420b1388db10992904301861f93f51973feba52bcfea15324421ab4fffd"
+      },
+      {
+        "commit": "b432c5a501c7b3728a5c74eadf8cd4b70a45c920",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 8,
+        "blob_sha256": "1e33ab2efe23985eabbe549a519415eb3632f03a785dfd3b9d48754fc3357ab7"
+      },
+      {
+        "commit": "cf63752856557501423a2f31087e607f756864be",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 4,
+        "blob_sha256": "4df07a0ef0150d8b5015afcf5a131bddbc15c373f00fa135257a83c6bfaee3c9"
+      },
+      {
+        "commit": "4d0be4119a98a1387ff1ae25e2477daeaed708dd",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 8,
+        "blob_sha256": "c8f282af9e0793610ca2892689c190a52484a048e5c893dbcf38a2f6da7e9303"
+      },
+      {
+        "commit": "123358b8de9143d582bbd9faf6e28594c75c3cec",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 8,
+        "blob_sha256": "0a097f6067904cc79ad19cd8668ee0e0a0f2ba8fbbaf785c7d693f6f374feecc"
+      },
+      {
+        "commit": "9b00b2331162427edf71f1dce0edb85ce672a805",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 8,
+        "blob_sha256": "59e15f5774000e62c095954093d562c141fdfdc8e75c736fd2183c76048d0c85"
+      },
+      {
+        "commit": "245ae6fa09f6cf8f151d17928dea6c4ed5c97beb",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 12,
+        "blob_sha256": "a48fd26bd3a47857559086c538c289d46572e898dd398534f49228fc57ad9965"
+      },
+      {
+        "commit": "170c9b9d08da81f8d02dad17610d930b71bbfc9f",
+        "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+        "rows": 4,
+        "blob_sha256": "23678baa73efc9c12a17db6855040399865801858a5f217b58513f60c7c3b426"
+      },
+      {
+        "commit": "0d050ed1c571165c36c1928e20e6797ca23fb0ee",
+        "path": "data/XAUUSD/XAUUSD_2026-09.parquet",
+        "rows": 8,
+        "blob_sha256": "035907390017c4020285fdc581a26bdc8f58cb2eeb7eaa69089066b52a2fc4f3"
+      },
+      {
+        "commit": "8314715f3c86acc6cef7e0a2fb7a5f5d851af75e",
+        "path": "data/XAUUSD/XAUUSD_2026-09.parquet",
+        "rows": 4,
+        "blob_sha256": "a4bd5e30eba7371c4748f08a5cc76e3e97644d6f05202420a3810815fe62dd4f"
+      },
+      {
+        "commit": "346ed1437f7ea87b4c0a0532b735c47d15af22c9",
+        "path": "data/XAUUSD/XAUUSD_2026-09.parquet",
+        "rows": 8,
+        "blob_sha256": "328b3cc34b85bad3e5c998014986d9526b583f3f043480ecaa96ca545db758ca"
+      },
+      {
+        "commit": "daef97dc2c978bd0e5191e100ab7ada21cff9372",
+        "path": "data/XAUUSD/XAUUSD_2026-09.parquet",
+        "rows": 12,
+        "blob_sha256": "65428dd03f11c28d2ed3516fb8882d809205761bf665cfec9a89186333ead2c2"
+      },
+      {
+        "commit": "8f01de6290a389147095f5261b548b77edb199c7",
+        "path": "data/XAUUSD/XAUUSD_2026-09.parquet",
+        "rows": 16,
+        "blob_sha256": "50e6187469216a195bfd549dac5afcbd76bfcb2ca889b185581e0fe4f5ed1e98"
+      }
+    ]
+  },
+  "materialization": {
+    "rows": 26178,
+    "candidate_csv_sha256": "e563c57e7bdee0b1a311c1f88fc9c45311fb24d364866c0aa98600198131b67d",
+    "qts_checksum": "sha256:7f28bf03bdbb4f90",
+    "start": "2025-08-06T00:00:00+00:00",
+    "end_exclusive": "2026-09-17T00:00:00+00:00",
+    "storage_policy": "candidate material is not committed because the upstream repository declares no license; this manifest and source commit lineage are the immutable audit record"
+  },
+  "quality": {
+    "gate": "active_span_missing_fraction <= 0.02, compared without presentation rounding",
+    "observed_bars": 26178,
+    "active_span_expected_intervals": 27823,
+    "unexpected_missing_intervals": 1645,
+    "unexpected_gap_events": 252,
+    "active_span_missing_pct": 5.91,
+    "active_span_missing_fraction": 0.05912374654063185,
+    "recognized_weekend_closure_events": 57,
+    "recognized_weekend_closure_intervals": 11249,
+    "passed": false,
+    "failure": "no_missing_bars: 1645 unexpected intervals (5.91%) exceeds the unchanged 2.00% limit"
+  },
+  "disposition": "Do not promote, replace the frozen REAL snapshot, unlock research, or rerun the study"
+}

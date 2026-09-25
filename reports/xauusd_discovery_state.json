@@ -1,0 +1,230 @@
+{
+  "schema": "qts.xauusd_tick_discovery.v1",
+  "generated_at_utc": "2026-09-23T07:58:46.702509+00:00",
+  "dataset": {
+    "release": "dataset-xauusd-730d-20260919",
+    "asset": "XAUUSD_730d_20260919T114013Z.zip",
+    "expected_zip_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+    "manifest_dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789",
+    "manifest_symbol": {
+      "actual": "XAUUSD@",
+      "requested": "XAUUSD@"
+    },
+    "manifest_timestamp_basis": "RAW: 'time' and 'time_msc' are stored exactly as MT5 returned them (integer epoch seconds and milliseconds by MT5 convention). No UTC normalization, offset inference, or timezone conversion was applied to any value.",
+    "timestamp_interpretation_confirmed": false
+  },
+  "code_identity": {
+    "git_sha": "97188642d87fec225d92d31a67128902561f455c",
+    "execution_host": "github-actions-runner",
+    "module": "qts.research.xauusd_tick_discovery"
+  },
+  "separation": {
+    "data_facts": "measured counts and ranges; not predictions",
+    "research_assumptions": [
+      "next quote means the next row in ledger order, not the next distinct timestamp",
+      "prevailing spread is the spread of the quote before the move",
+      "one spread cost is the spread at the event quote, subtracted in price",
+      "discovery is time_msc < min + (span * 60) // 100",
+      "a triple touching the validation span is excluded, not repaired",
+      "iid binomial p-values on adjacent events are not inferential"
+    ],
+    "derived_features": [
+      "mid",
+      "spread",
+      "next mid change",
+      "spread-scaled absolute next mid change"
+    ],
+    "hypotheses": [
+      "H-MS-01",
+      "H-MS-02"
+    ],
+    "blocked": [
+      "H-TOD-01",
+      "hour-of-day",
+      "session",
+      "day-of-week"
+    ]
+  },
+  "window": {
+    "time_msc_min": 1726746013452,
+    "time_msc_max": 1789775939790,
+    "cutoff_time_msc": 1764563969254,
+    "rule": "discovery: time_msc < cutoff; validation span is not aggregated by the hypothesis tests",
+    "discovery_rows": 70834426,
+    "validation_rows_counted_as_data_fact_only": 69096545
+  },
+  "data_facts": {
+    "rows": 139930971,
+    "time_msc_min": 1726746013452,
+    "time_msc_max": 1789775939790,
+    "time_equals_time_msc_div_1000": 139930971,
+    "time_compared": 139930971,
+    "time_msc_second_aligned": 137378,
+    "time_msc_mod_100_zero": 1400381,
+    "time_msc_mod_10_zero": 14008189,
+    "bid_on_0_01_grid": 139930971,
+    "bid_on_0_001_grid": 139930971,
+    "bid_checked": 139930971,
+    "volume_zero": 139930971,
+    "volume_positive": 0,
+    "volume_compared": 139930971,
+    "last_zero": 139930971,
+    "last_eq_bid": 0,
+    "last_eq_ask": 0,
+    "last_strictly_inside_spread": 0,
+    "last_outside_spread": 0,
+    "last_compared": 139930971,
+    "adjacent_quote_pairs": 139930970,
+    "bid_only_changes": 8153716,
+    "ask_only_changes": 8005622,
+    "both_bid_and_ask_changed": 123767511,
+    "neither_bid_nor_ask_changed": 4121,
+    "min_positive_bid_change": 0.009999999999308784,
+    "positive_bid_changes": 66359323,
+    "positive_bid_changes_equal_0_01": 17956294,
+    "flag_counts": {
+      "4": 7963568,
+      "130": 8157814,
+      "134": 123809589
+    },
+    "flag_counts_truncated": false,
+    "equal_time_span_bins": [
+      {
+        "bin": 0,
+        "rows": 23682649,
+        "mean_spread_price": 0.24439241995268296,
+        "uses_validation_span": false,
+        "role": "DATA FACT only; not a hypothesis test"
+      },
+      {
+        "bin": 1,
+        "rows": 22345383,
+        "mean_spread_price": 0.2617868644274299,
+        "uses_validation_span": false,
+        "role": "DATA FACT only; not a hypothesis test"
+      },
+      {
+        "bin": 2,
+        "rows": 24806394,
+        "mean_spread_price": 0.2800656084878762,
+        "uses_validation_span": false,
+        "role": "DATA FACT only; not a hypothesis test"
+      },
+      {
+        "bin": 3,
+        "rows": 36299244,
+        "mean_spread_price": 0.30494294233786284,
+        "uses_validation_span": true,
+        "role": "DATA FACT only; not a hypothesis test"
+      },
+      {
+        "bin": 4,
+        "rows": 32797301,
+        "mean_spread_price": 0.2513711884401708,
+        "uses_validation_span": true,
+        "role": "DATA FACT only; not a hypothesis test"
+      }
+    ],
+    "timezone": "UNAVAILABLE",
+    "session_calendar": "UNAVAILABLE",
+    "repairs_applied": []
+  },
+  "hypotheses": {
+    "H-MS-01": {
+      "id": "H-MS-01",
+      "operational_definition": "event when abs(mid_t - mid_t-1) > spread_t-1; reversal when the next row's mid change has the opposite sign; net = -sign(move) * next_mid_change - spread_t",
+      "population": "discovery window only; triples touching the validation span excluded",
+      "statistics": {
+        "events": 921674,
+        "reversals": 458004,
+        "continuations": 458784,
+        "flat_next": 4886,
+        "reversal_frequency_among_directional": 0.4995746017618032,
+        "directional_n": 916788,
+        "mean_net_price": -0.28748055169181186,
+        "mean_net_bps": -0.8025471848879164,
+        "net_positive_frequency": 0.022090240149987957,
+        "dependent_sample_binomial_p_vs_half": 0.41588267874489376,
+        "dependent_p_value_status": "NOT INFERENTIAL \u2014 adjacent events share quotes",
+        "gap_sensitivity_ms": 1000,
+        "gap_events": 911884,
+        "gap_reversal_frequency": 0.4964677524772888,
+        "gap_mean_net_bps": -0.803648748702642,
+        "overlapping_gap_mean_net_bps": -0.803161575847432,
+        "one_quote_delay_events": 921673,
+        "one_quote_delay_mean_net_bps": -0.8007677664285369,
+        "one_quote_delay_status": "EXECUTION STRESS, not a separate hypothesis",
+        "nonoverlap_events": 306526,
+        "nonoverlap_reversals": 152295,
+        "nonoverlap_continuations": 152656,
+        "nonoverlap_reversal_frequency": 0.4994081016294421,
+        "nonoverlap_directional_n": 304951,
+        "nonoverlap_mean_net_bps": -0.8030316442969817,
+        "nonoverlap_net_positive_frequency": 0.022330895258477257,
+        "nonoverlap_binomial_p_vs_half": 0.5144594672233747,
+        "nonoverlap_mean_net_bps_bootstrap": {
+          "mean": -0.8024026261420216,
+          "lo": -0.8055085392015611,
+          "hi": -0.7993209191617149,
+          "note": "seeded subsample of 100000; mean uses the full non-overlapping count"
+        },
+        "excluded_triples_touching_validation_span": 2681599,
+        "inverted_events": 0,
+        "inverted_mean_net_bps": null,
+        "nonoverlap_inverted_events": 0,
+        "nonoverlap_inverted_mean_net_bps": null,
+        "inferential_sample": "discovery events whose global center row is divisible by 3; selected quotes do not overlap"
+      },
+      "verdict": {
+        "result": "REJECTED",
+        "reason": "non-overlapping reversal frequency is not above 0.5; mean residual after one spread is not positive",
+        "promoted": false
+      }
+    },
+    "H-MS-02": {
+      "id": "H-MS-02",
+      "operational_definition": "median of positive discovery-window spreads; compare mean abs(next mid change)/spread above versus below that median; ties excluded",
+      "median_n": 70834426,
+      "median_store_truncated": false,
+      "statistics": {
+        "status": "MEASURED",
+        "median_spread_price": 0.23999999999978172,
+        "tie_rule": "spread equal to the median is in neither half",
+        "wide_n": 34999170,
+        "narrow_n": 31146764,
+        "tie_n": 4688491,
+        "wide_mean_scaled": 0.14923976176157122,
+        "narrow_mean_scaled": 0.1939374404836128,
+        "mean_scaled_difference_wide_minus_narrow": -0.044697678722041584,
+        "dependent_sample_status": "NOT INFERENTIAL",
+        "nonoverlap_wide_n": 11666103,
+        "nonoverlap_narrow_n": 10383923,
+        "nonoverlap_wide_mean_scaled": 0.14917799462726844,
+        "nonoverlap_narrow_mean_scaled": 0.19394502723721566,
+        "nonoverlap_mean_scaled_difference_wide_minus_narrow": -0.044767032609947216,
+        "median_store_truncated": false
+      },
+      "verdict": {
+        "result": "REJECTED",
+        "reason": "wide-spread half does not have a larger spread-scaled next absolute move",
+        "promoted": false
+      }
+    },
+    "H-TOD-01": {
+      "id": "H-TOD-01",
+      "result": "NOT TESTED",
+      "reason": "BLOCKED \u2014 timestamp basis is not confirmed"
+    }
+  },
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "decision": "INCONCLUSIVE",
+  "decision_reason": "Hypothesis-level results are not a validated or executable edge. Clock-dependent families were not tested. No strategy was constructed.",
+  "safety": {
+    "confirm_live": false,
+    "orders_submitted": 0,
+    "DEMO_EXECUTION": "DISABLED"
+  },
+  "verified_zip_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+  "checksum_match": true
+}

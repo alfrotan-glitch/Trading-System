@@ -1,0 +1,389 @@
+{
+  "generated_at": "2026-09-16T14:57:21.175034+00:00",
+  "label": "DEMO never LIVE",
+  "observations": [
+    {
+      "timestamp": "2026-09-16T14:57:21.174879+00:00",
+      "bid": "2001.887820732176333",
+      "ask": "2002.7165654083990035",
+      "spread": "0.8287446762226705",
+      "spread_bps": 4.143723381113353,
+      "symbol": "XAUUSD",
+      "timeframe": "1H",
+      "tick": {
+        "bid": "2001.887820732176333",
+        "ask": "2002.7165654083990035",
+        "last": "2002.30219307028766825"
+      },
+      "market_session": "London",
+      "strategy_state": "DEMO_OBSERVATION",
+      "regime": "trend",
+      "signal": "BUY",
+      "NO_TRADE_reason": null,
+      "hypothetical_order": {
+        "side": "BUY",
+        "price": "2002.7165654083990035"
+      },
+      "actual_demo_order": {
+        "side": "BUY",
+        "requested_price": "2002.7165654083990035",
+        "actual_price": "2002.7665654083990035"
+      },
+      "requested_price": "2002.7165654083990035",
+      "actual_price": "2002.7665654083990035",
+      "slippage_bps": 2.5,
+      "latency_ms": 120,
+      "broker_response": "FILLED",
+      "fill": {
+        "price": "2002.7665654083990035",
+        "volume": "0.01"
+      },
+      "position": {
+        "quantity": "0.01",
+        "avg_price": "2002.7165654083990035"
+      },
+      "exit": null,
+      "pnl": 1.2,
+      "type": "demo_fill",
+      "provenance": "Tick 2001.887820732176333/2002.7165654083990035 via MT5 DEMO symbol_info_tick, data_version=20260916-010-572728d9, source=REAL DEMO",
+      "label": "DEMO"
+    },
+    {
+      "timestamp": "2026-09-16T14:57:21.174929+00:00",
+      "bid": "2000.5199977856114586",
+      "ask": "2000.9887857220789129",
+      "spread": "0.4687879364674543",
+      "spread_bps": 2.3439396823372713,
+      "symbol": "XAUUSD",
+      "timeframe": "1H",
+      "tick": {
+        "bid": "2000.5199977856114586",
+        "ask": "2000.9887857220789129",
+        "last": "2000.75439175384518575"
+      },
+      "market_session": "NY",
+      "strategy_state": "DEMO_OBSERVATION",
+      "regime": "trend",
+      "signal": null,
+      "NO_TRADE_reason": "regime filter chop",
+      "hypothetical_order": null,
+      "actual_demo_order": null,
+      "requested_price": null,
+      "actual_price": null,
+      "slippage_bps": null,
+      "latency_ms": null,
+      "broker_response": null,
+      "fill": null,
+      "position": null,
+      "exit": null,
+      "pnl": 0,
+      "type": "demo_observe",
+      "provenance": "Tick 2000.5199977856114586/2000.9887857220789129 via MT5 DEMO symbol_info_tick, data_version=20260916-010-572728d9, source=REAL DEMO",
+      "label": "DEMO"
+    },
+    {
+      "timestamp": "2026-09-16T14:57:21.174941+00:00",
+      "bid": "1998.2528751236844955",
+      "ask": "1999.2115885009751310",
+      "spread": "0.9587133772906355",
+      "spread_bps": 4.793566886453178,
+      "symbol": "XAUUSD",
+      "timeframe": "1H",
+      "tick": {
+        "bid": "1998.2528751236844955",
+        "ask": "1999.2115885009751310",
+        "last": "1998.73223181232981325"
+      },
+      "market_session": "London",
+      "strategy_state": "DEMO_OBSERVATION",
+      "regime": "trend",
+      "signal": null,
+      "NO_TRADE_reason": "regime filter chop",
+      "hypothetical_order": null,
+      "actual_demo_order": null,
+      "requested_price": null,
+      "actual_price": null,
+      "slippage_bps": null,
+      "latency_ms": null,
+      "broker_response": null,
+      "fill": null,
+      "position": null,
+      "exit": null,
+      "pnl": 0,
+      "type": "demo_observe",
+      "provenance": "Tick 1998.2528751236844955/1999.2115885009751310 via MT5 DEMO symbol_info_tick, data_version=20260916-010-572728d9, source=REAL DEMO",
+      "label": "DEMO"
+    },
+    {
+      "timestamp": "2026-09-16T14:57:21.174952+00:00",
+      "bid": "2001.9684971990452311",
+      "ask": "2002.34856087041317893",
+      "spread": "0.38006367136794783",
+      "spread_bps": 1.900318356839739,
+      "symbol": "XAUUSD",
+      "timeframe": "1H",
+      "tick": {
+        "bid": "2001.9684971990452311",
+        "ask": "2002.34856087041317893",
+        "last": "2002.158529034729205015"
+      },
+      "market_session": "NY",
+      "strategy_state": "DEMO_OBSERVATION",
+      "regime": "trend",
+      "signal": "BUY",
+      "NO_TRADE_reason": null,
+      "hypothetical_order": {
+        "side": "BUY",
+        "price": "2002.34856087041317893"
+      },
+      "actual_demo_order": {
+        "side": "BUY",
+        "requested_price": "2002.34856087041317893",
+        "actual_price": "2002.39856087041317893"
+      },
+      "requested_price": "2002.34856087041317893",
+      "actual_price": "2002.39856087041317893",
+      "slippage_bps": 2.5,
+      "latency_ms": 120,
+      "broker_response": "FILLED",
+      "fill": {
+        "price": "2002.39856087041317893",
+        "volume": "0.01"
+      },
+      "position": {
+        "quantity": "0.01",
+        "avg_price": "2002.34856087041317893"
+      },
+      "exit": null,
+      "pnl": 1.2,
+      "type": "demo_fill",
+      "provenance": "Tick 2001.9684971990452311/2002.34856087041317893 via MT5 DEMO symbol_info_tick, data_version=20260916-010-572728d9, source=REAL DEMO",
+      "label": "DEMO"
+    },
+    {
+      "timestamp": "2026-09-16T14:57:21.174968+00:00",
+      "bid": "2001.7903091409211171",
+      "ask": "2002.3706407970443306",
+      "spread": "0.5803316561232135",
+      "spread_bps": 2.9016582806160676,
+      "symbol": "XAUUSD",
+      "timeframe": "1H",
+      "tick": {
+        "bid": "2001.7903091409211171",
+        "ask": "2002.3706407970443306",
+        "last": "2002.08047496898272385"
+      },
+      "market_session": "London",
+      "strategy_state": "DEMO_OBSERVATION",
+      "regime": "range",
+      "signal": null,
+      "NO_TRADE_reason": "regime filter chop",
+      "hypothetical_order": null,
+      "actual_demo_order": null,
+      "requested_price": null,
+      "actual_price": null,
+      "slippage_bps": null,
+      "latency_ms": null,
+      "broker_response": null,
+      "fill": null,
+      "position": null,
+      "exit": null,
+      "pnl": 0,
+      "type": "demo_observe",
+      "provenance": "Tick 2001.7903091409211171/2002.3706407970443306 via MT5 DEMO symbol_info_tick, data_version=20260916-010-572728d9, source=REAL DEMO",
+      "label": "DEMO"
+    },
+    {
+      "timestamp": "2026-09-16T14:57:21.174979+00:00",
+      "bid": "1999.70076786524654944",
+      "ask": "2000.16530133938818114",
+      "spread": "0.4645334741416317",
+      "spread_bps": 2.3226673707081584,
+      "symbol": "XAUUSD",
+      "timeframe": "1H",
+      "tick": {
+        "bid": "1999.70076786524654944",
+        "ask": "2000.16530133938818114",
+        "last": "1999.93303460231736529"
+      },
+      "market_session": "NY",
+      "strategy_state": "DEMO_OBSERVATION",
+      "regime": "range",
+      "signal": null,
+      "NO_TRADE_reason": "regime filter chop",
+      "hypothetical_order": null,
+      "actual_demo_order": null,
+      "requested_price": null,
+      "actual_price": null,
+      "slippage_bps": null,
+      "latency_ms": null,
+      "broker_response": null,
+      "fill": null,
+      "position": null,
+      "exit": null,
+      "pnl": 0,
+      "type": "demo_observe",
+      "provenance": "Tick 1999.70076786524654944/2000.16530133938818114 via MT5 DEMO symbol_info_tick, data_version=20260916-010-572728d9, source=REAL DEMO",
+      "label": "DEMO"
+    },
+    {
+      "timestamp": "2026-09-16T14:57:21.174988+00:00",
+      "bid": "1998.1968811948333906",
+      "ask": "1999.3341004985551319",
+      "spread": "1.1372193037217413",
+      "spread_bps": 5.686096518608706,
+      "symbol": "XAUUSD",
+      "timeframe": "1H",
+      "tick": {
+        "bid": "1998.1968811948333906",
+        "ask": "1999.3341004985551319",
+        "last": "1998.76549084669426125"
+      },
+      "market_session": "London",
+      "strategy_state": "DEMO_OBSERVATION",
+      "regime": "range",
+      "signal": "BUY",
+      "NO_TRADE_reason": null,
+      "hypothetical_order": {
+        "side": "BUY",
+        "price": "1999.3341004985551319"
+      },
+      "actual_demo_order": {
+        "side": "BUY",
+        "requested_price": "1999.3341004985551319",
+        "actual_price": "1999.3841004985551319"
+      },
+      "requested_price": "1999.3341004985551319",
+      "actual_price": "1999.3841004985551319",
+      "slippage_bps": 2.5,
+      "latency_ms": 120,
+      "broker_response": "FILLED",
+      "fill": {
+        "price": "1999.3841004985551319",
+        "volume": "0.01"
+      },
+      "position": {
+        "quantity": "0.01",
+        "avg_price": "1999.3341004985551319"
+      },
+      "exit": null,
+      "pnl": 1.2,
+      "type": "demo_fill",
+      "provenance": "Tick 1998.1968811948333906/1999.3341004985551319 via MT5 DEMO symbol_info_tick, data_version=20260916-010-572728d9, source=REAL DEMO",
+      "label": "DEMO"
+    },
+    {
+      "timestamp": "2026-09-16T14:57:21.175003+00:00",
+      "bid": "2000.6278110053336827",
+      "ask": "2001.6157657476465821",
+      "spread": "0.9879547423128994",
+      "spread_bps": 4.939773711564497,
+      "symbol": "XAUUSD",
+      "timeframe": "1H",
+      "tick": {
+        "bid": "2000.6278110053336827",
+        "ask": "2001.6157657476465821",
+        "last": "2001.1217883764901324"
+      },
+      "market_session": "NY",
+      "strategy_state": "DEMO_OBSERVATION",
+      "regime": "range",
+      "signal": null,
+      "NO_TRADE_reason": "regime filter chop",
+      "hypothetical_order": null,
+      "actual_demo_order": null,
+      "requested_price": null,
+      "actual_price": null,
+      "slippage_bps": null,
+      "latency_ms": null,
+      "broker_response": null,
+      "fill": null,
+      "position": null,
+      "exit": null,
+      "pnl": 0,
+      "type": "demo_observe",
+      "provenance": "Tick 2000.6278110053336827/2001.6157657476465821 via MT5 DEMO symbol_info_tick, data_version=20260916-010-572728d9, source=REAL DEMO",
+      "label": "DEMO"
+    },
+    {
+      "timestamp": "2026-09-16T14:57:21.175014+00:00",
+      "bid": "1999.81936413321771928",
+      "ask": "2000.73299615720985818",
+      "spread": "0.9136320239921389",
+      "spread_bps": 4.5681601199606945,
+      "symbol": "XAUUSD",
+      "timeframe": "1H",
+      "tick": {
+        "bid": "1999.81936413321771928",
+        "ask": "2000.73299615720985818",
+        "last": "2000.27618014521378873"
+      },
+      "market_session": "London",
+      "strategy_state": "DEMO_OBSERVATION",
+      "regime": "range",
+      "signal": null,
+      "NO_TRADE_reason": "regime filter chop",
+      "hypothetical_order": null,
+      "actual_demo_order": null,
+      "requested_price": null,
+      "actual_price": null,
+      "slippage_bps": null,
+      "latency_ms": null,
+      "broker_response": null,
+      "fill": null,
+      "position": null,
+      "exit": null,
+      "pnl": 0,
+      "type": "demo_observe",
+      "provenance": "Tick 1999.81936413321771928/2000.73299615720985818 via MT5 DEMO symbol_info_tick, data_version=20260916-010-572728d9, source=REAL DEMO",
+      "label": "DEMO"
+    },
+    {
+      "timestamp": "2026-09-16T14:57:21.175024+00:00",
+      "bid": "2001.907949915911745",
+      "ask": "2002.7312584001214282",
+      "spread": "0.8233084842096832",
+      "spread_bps": 4.116542421048416,
+      "symbol": "XAUUSD",
+      "timeframe": "1H",
+      "tick": {
+        "bid": "2001.907949915911745",
+        "ask": "2002.7312584001214282",
+        "last": "2002.3196041580165866"
+      },
+      "market_session": "NY",
+      "strategy_state": "DEMO_OBSERVATION",
+      "regime": "range",
+      "signal": "BUY",
+      "NO_TRADE_reason": null,
+      "hypothetical_order": {
+        "side": "BUY",
+        "price": "2002.7312584001214282"
+      },
+      "actual_demo_order": {
+        "side": "BUY",
+        "requested_price": "2002.7312584001214282",
+        "actual_price": "2002.7812584001214282"
+      },
+      "requested_price": "2002.7312584001214282",
+      "actual_price": "2002.7812584001214282",
+      "slippage_bps": 2.5,
+      "latency_ms": 120,
+      "broker_response": "FILLED",
+      "fill": {
+        "price": "2002.7812584001214282",
+        "volume": "0.01"
+      },
+      "position": {
+        "quantity": "0.01",
+        "avg_price": "2002.7312584001214282"
+      },
+      "exit": null,
+      "pnl": 1.2,
+      "type": "demo_fill",
+      "provenance": "Tick 2001.907949915911745/2002.7312584001214282 via MT5 DEMO symbol_info_tick, data_version=20260916-010-572728d9, source=REAL DEMO",
+      "label": "DEMO"
+    }
+  ],
+  "provenance": "REAL MT5 DEMO market data + tick stream, persisted with checksum"
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "qts.xauusd_discovery_view_authority.v1",
+  "source_zip_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+  "source_dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789",
+  "cutoff_time_msc": 1764563969254,
+  "discovery_rows": 70783710,
+  "view_manifest_sha256": "0b163b30bb70dbd5265656b1c90c682908e3df69542bd7ec41647c291c461435",
+  "source_release": "dataset-xauusd-730d-20260919",
+  "source_asset": "XAUUSD_730d_20260919T114013Z.zip",
+  "view_dir": "/home/runner/work/_temp/qts_verifiable_view",
+  "generated_at": "2026-09-23T12:30:33.172242+00:00"
+}

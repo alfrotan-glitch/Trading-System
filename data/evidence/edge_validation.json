@@ -1,0 +1,254 @@
+{
+  "dataset": {
+    "manifest": {
+      "version": "20260918-010-572728d9",
+      "schema_version": 2,
+      "created_at": "2026-09-18 09:37:53.647105+00:00",
+      "code_version": "0.1.0",
+      "instrument": "XAUUSD",
+      "venue": "MT5",
+      "timeframe": "1H",
+      "start": "2020-01-01 00:00:00+00:00",
+      "end": "2020-01-21 20:00:00+00:00",
+      "rows": 500,
+      "checksum": "sha256:572728d92ebb5c2a",
+      "source_file": "data/fixtures/XAUUSD_1H_500.csv",
+      "source": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+      "provenance_class": "SYNTHETIC",
+      "ingestion_timestamp": "2026-09-18 09:37:53.647112+00:00",
+      "preprocessing_version": "1.0",
+      "timezone": "UTC",
+      "missing_data_stats": {
+        "expected": 501,
+        "actual": 500,
+        "missing": 1,
+        "gap_count": 0,
+        "max_gap_s": 0.0,
+        "missing_pct": 0.2
+      },
+      "session_stats": {
+        "timezone": "UTC",
+        "weekend_gaps": 0
+      }
+    },
+    "readiness": {
+      "data_version": "20260918-010-572728d9",
+      "status": "BLOCKED_INSUFFICIENT_DATA",
+      "data_class": "SYNTHETIC",
+      "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+      "instrument": "XAUUSD",
+      "timeframe": "1H",
+      "rows": 500,
+      "span_days": 20.833333333333332,
+      "quality_passed": true,
+      "ready_for_claims": false,
+      "mechanism_validation_only": true,
+      "reasons": [
+        "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+        "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+        "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+      ],
+      "requirements": {
+        "min_bars": 5000,
+        "min_span_days": 180.0,
+        "allowed_claim_classes": [
+          "REAL",
+          "HISTORICAL",
+          "BROKER-DERIVED"
+        ]
+      }
+    },
+    "quality_passed": true,
+    "quality_checks": [
+      {
+        "name": "monotonic_time",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "tz_aware",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_future",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "ohlc_invariants",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "positive_prices",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "abnormal_spreads",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_duplicates",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "single_symbol",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_missing_bars",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "session_boundaries",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_broker_artifacts",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "volume_non_negative",
+        "passed": true,
+        "details": ""
+      }
+    ],
+    "missing_stats": {
+      "status": "MEASURED",
+      "expected": 501,
+      "actual": 500,
+      "missing": 1,
+      "gap_count": 0,
+      "max_gap_s": 0.0,
+      "missing_pct": 0.2,
+      "timezone": "UTC"
+    },
+    "locked_partition": {
+      "discovery": 300,
+      "validation": 100,
+      "locked": 100,
+      "is_frozen": true,
+      "access_log": []
+    }
+  },
+  "trial_ledger": {
+    "trial_count": 304,
+    "experiment_id": "E-d84a5ccd",
+    "configuration_hash": "b4a0cc38233d77c3",
+    "cumulative": true
+  },
+  "edge_survival": {
+    "passed": false,
+    "checks": {
+      "walk_forward": false,
+      "spread": true,
+      "cost": false,
+      "perturbation": false,
+      "time_window": false,
+      "regime": false,
+      "randomized_control": false,
+      "walk_forward_K": false,
+      "cpcv": false,
+      "pbo": false,
+      "psr": false,
+      "dsr": false,
+      "placebo": false,
+      "expectancy": false,
+      "economic_edge": false
+    },
+    "details": {
+      "walk_forward": "walk_forward_min_folds=True; walk_forward_wfe=False; walk_forward_oos_sharpe=False",
+      "spread": "spread 1.5x pf 1.0320169672876036",
+      "cost": "gross/net cost decomposition NOT_IMPLEMENTED \u2014 blocks",
+      "perturbation": "perturbed Sharpe sign flips 1.02\u2192-1.63 \u2192 fragile",
+      "time_window": "walk_forward_min_folds=True; walk_forward_wfe=False; walk_forward_oos_sharpe=False",
+      "regime": "3 regimes, dependent=True",
+      "randomized_control": "randomized control was not executed \u2014 NOT_IMPLEMENTED",
+      "cpcv": "PBO CPCV not executed (need >=6 combos, got 0) \u2192 BLOCKS",
+      "pbo": "PBO UNAVAILABLE because CPCV was not executed",
+      "psr": "psr 0.46",
+      "dsr": "dsr 0.00 trials 304",
+      "placebo": "placebo control was not executed \u2014 NOT_IMPLEMENTED",
+      "expectancy": "net_exp 0.0000 pf 0.00",
+      "economic_edge": "economic edge blocked: cost decomposition unavailable"
+    },
+    "psr": 0.4551885879179798,
+    "dsr": 0.0013023446509725397,
+    "pbo": null,
+    "wfe": -0.6941970137519072,
+    "cost_be": 0,
+    "conclusion": "BLOCKED_INSUFFICIENT_DATA"
+  },
+  "null_control": {
+    "status": "NOT_IMPLEMENTED",
+    "value": null,
+    "reason": "separate randomized signal model was not executed"
+  },
+  "placebo": {
+    "status": "NOT_IMPLEMENTED",
+    "value": null,
+    "reason": "placebo signal model was not executed"
+  },
+  "cost_robustness": {
+    "status": "MEASURED",
+    "stress": {
+      "1.0": 1.0322221474267004,
+      "1.5": 1.0320169672876036,
+      "2.0": 1.031813412459434
+    }
+  },
+  "regime": {
+    "status": "UNAVAILABLE",
+    "value": null,
+    "reason": "regime result is not separately bound in this evidence object; edge details contain the gate"
+  },
+  "forward": {
+    "status": "INSUFFICIENT_EVIDENCE",
+    "real_observations": 0,
+    "note": "observation count only; divergence/realized PnL requires a bound session export"
+  },
+  "shadow_paper": {
+    "status": "UNAVAILABLE",
+    "value": null,
+    "reason": "shadow/paper artifacts are not bound to this experiment"
+  },
+  "capital_policy": {
+    "status": "UNAVAILABLE",
+    "value": null,
+    "reason": "authoritative account state is unavailable in research mode"
+  },
+  "expectancy": {
+    "status": "UNAVAILABLE",
+    "value": null,
+    "reason": "realized trade PnL attribution is unavailable from BacktestResult fills"
+  },
+  "economic_edge": {
+    "status": "UNAVAILABLE",
+    "value": null,
+    "reason": "gross/net cost decomposition is unavailable"
+  },
+  "promotion": {
+    "state": "RESEARCH",
+    "advanced": false
+  },
+  "emergency": {
+    "kill_switch": false,
+    "execution_enabled": false
+  },
+  "order_check": {
+    "status": "NOT_RUN",
+    "ok": false,
+    "reason": "research orchestrator has no order path"
+  },
+  "code_version": "0.1.0+64fab8dae9dc",
+  "generated_at": "2026-09-18T10:20:51.016708+00:00",
+  "conclusion": "BLOCKED_INSUFFICIENT_DATA"
+}

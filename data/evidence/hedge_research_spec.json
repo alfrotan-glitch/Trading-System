@@ -1,0 +1,31 @@
+{
+  "schema": "qts.hedge_research_spec.v1",
+  "status": "SPECIFICATION_ONLY",
+  "claim_status": "NO_HEDGE_CLAIM",
+  "frozen_study_policy": "Do not rerun the frozen impulse study or modify frozen REAL data, the locked research partition, or trial accounting.",
+  "safety_policy": {
+    "DEMO_EXECUTION": "DISABLED BY POLICY",
+    "LIVE": "LOCKED",
+    "NO_TRADE": true
+  },
+  "evidence_separation": {
+    "observation": ["raw_source_timestamp", "normalized_utc_event_time", "server_utc_offset", "offset_basis", "receipt_time", "bid", "ask", "attempt_outcome", "provenance"],
+    "execution": ["quote_age_at_decision", "quote_age_at_submission", "submission_timestamp", "acknowledgement_timestamp", "order_id", "deal_id", "requested_price", "fill_timestamp", "fill_price", "partial_fill_state", "slippage", "fees", "financing", "broker_response", "reject_code"]
+  },
+  "required_gates": [
+    "immutable_dataset_versions_and_checksums",
+    "point_in_time_chronological_joins",
+    "declared_instrument_mapping_and_roll_rules",
+    "measured_or_explicitly_unavailable_costs",
+    "predeclared_regime_taxonomy_and_coverage",
+    "walk_forward_validation",
+    "untouched_out_of_sample_validation",
+    "multiple_testing_correction",
+    "stability_and_sensitivity_testing",
+    "independent_provenance_and_license_review"
+  ],
+  "analysis_outputs": ["hedge_ratio", "net_cost_adjusted_performance", "turnover", "drawdown_and_tail_metrics", "regime_breakdown", "oos_results", "multiplicity_adjustment", "stability_report", "missingness_report", "evidence_boundary"],
+  "eligibility_rule": "NO_HEDGE_CLAIM unless every required gate passes for the declared scope; correlation alone is insufficient.",
+  "missing_execution_disposition": "UNVERIFIED — reason: no MT5 broker submission, acknowledgement, fill, slippage, quote-age, or broker-response evidence is present in this repository.",
+  "input_inventory": "data/evidence/data_gap_matrix.json"
+}

@@ -1,0 +1,379 @@
+{
+  "schema": "qts.xauusd_directional.v1",
+  "preregistration": "docs/xauusd_directional_next_step_H-DIR-02_2026-09-23.md",
+  "window": {
+    "time_msc_min": 1726746013452,
+    "cutoff_time_msc": 1764563969254,
+    "discovery_rows_read": 70783710,
+    "held_out_rows_read": 0
+  },
+  "measured": {
+    "256": {
+      "cells": {
+        "high": {
+          "up": {
+            "n": 49057,
+            "mean_gross": 0.0018793444360641724,
+            "mean_net": -0.29414538190268463,
+            "entry_spread": 0.27629899912346867,
+            "exit_spread": 0.275750453554029,
+            "sign_match_rate": 0.5037609311617098
+          },
+          "down": {
+            "n": 47687,
+            "mean_gross": -0.011196552519554594,
+            "mean_net": -0.30668253402394785,
+            "entry_spread": 0.2753918258644914,
+            "exit_spread": 0.2755801371442951,
+            "sign_match_rate": 0.48749134984377296
+          }
+        },
+        "low": {
+          "up": {
+            "n": 49677,
+            "mean_gross": 0.0014172554703383855,
+            "mean_net": -0.27138957666525754,
+            "entry_spread": 0.25272379572035353,
+            "exit_spread": 0.25288986855083845,
+            "sign_match_rate": 0.5040964631519617
+          },
+          "down": {
+            "n": 48972,
+            "mean_gross": -0.0075818835252797505,
+            "mean_net": -0.2802438127909826,
+            "entry_spread": 0.2526266029567917,
+            "exit_spread": 0.2526972555746141,
+            "sign_match_rate": 0.491260312015029
+          }
+        }
+      },
+      "T1_high_net": -0.30041395796331627,
+      "T2_high_minus_low_gross": -0.0015762900142745283
+    },
+    "1024": {
+      "cells": {
+        "high": {
+          "up": {
+            "n": 12886,
+            "mean_gross": 0.01939507993170883,
+            "mean_net": -0.276687878317554,
+            "entry_spread": 0.27670650318174767,
+            "exit_spread": 0.2754594133167779,
+            "sign_match_rate": 0.5078379636815148
+          },
+          "down": {
+            "n": 12829,
+            "mean_gross": -0.06178969522176319,
+            "mean_net": -0.35714864759529197,
+            "entry_spread": 0.27564892041468547,
+            "exit_spread": 0.27506898433237204,
+            "sign_match_rate": 0.48094161664977786
+          }
+        },
+        "low": {
+          "up": {
+            "n": 12883,
+            "mean_gross": 0.005071800046573002,
+            "mean_net": -0.26788480943879533,
+            "entry_spread": 0.2528137856089421,
+            "exit_spread": 0.25309943336179463,
+            "sign_match_rate": 0.5053170845300008
+          },
+          "down": {
+            "n": 12713,
+            "mean_gross": -0.013923936128372531,
+            "mean_net": -0.28723904664516636,
+            "entry_spread": 0.25306221977503346,
+            "exit_spread": 0.2535680012585543,
+            "sign_match_rate": 0.48879100133721387
+          }
+        }
+      },
+      "T1_high_net": -0.316918262956423,
+      "T2_high_minus_low_gross": -0.016771239604127415
+    },
+    "terciles": [
+      {
+        "cells": {
+          "high": {
+            "up": {
+              "n": 9490,
+              "mean_gross": -0.007616438356164385,
+              "mean_net": -0.27863856691253946,
+              "entry_spread": 0.2509430979978925,
+              "exit_spread": 0.25110115911485775,
+              "sign_match_rate": 0.49789251844046367
+            },
+            "down": {
+              "n": 9539,
+              "mean_gross": -0.003160708669671874,
+              "mean_net": -0.2730128944333788,
+              "entry_spread": 0.25022224551839817,
+              "exit_spread": 0.24948212600901562,
+              "sign_match_rate": 0.48705315022539053
+            }
+          },
+          "low": {
+            "up": {
+              "n": 22006,
+              "mean_gross": 0.00934745069526493,
+              "mean_net": -0.2525561210578933,
+              "entry_spread": 0.24168772153049167,
+              "exit_spread": 0.24211942197582478,
+              "sign_match_rate": 0.501681359629192
+            },
+            "down": {
+              "n": 21763,
+              "mean_gross": -0.008070348757064742,
+              "mean_net": -0.26970316592381566,
+              "entry_spread": 0.24172540550475577,
+              "exit_spread": 0.24154022882874604,
+              "sign_match_rate": 0.48830584018747414
+            }
+          }
+        },
+        "T1_high_net": -0.2758257306729591,
+        "T2_high_minus_low_gross": -0.006027124482018223
+      },
+      {
+        "cells": {
+          "high": {
+            "up": {
+              "n": 17719,
+              "mean_gross": 0.0053589367345787,
+              "mean_net": -0.2890151814436481,
+              "entry_spread": 0.2747914667870648,
+              "exit_spread": 0.27395676956938886,
+              "sign_match_rate": 0.5080986511654156
+            },
+            "down": {
+              "n": 17293,
+              "mean_gross": -0.02160440640721679,
+              "mean_net": -0.31618342682010064,
+              "entry_spread": 0.2745336263227896,
+              "exit_spread": 0.2746244145029781,
+              "sign_match_rate": 0.4851674087781183
+            }
+          },
+          "low": {
+            "up": {
+              "n": 13770,
+              "mean_gross": -0.0044720406681191,
+              "mean_net": -0.2749825708061002,
+              "entry_spread": 0.2506187363834423,
+              "exit_spread": 0.25040232389252,
+              "sign_match_rate": 0.5052287581699346
+            },
+            "down": {
+              "n": 13545,
+              "mean_gross": -0.012928755998523441,
+              "mean_net": -0.28379549649317093,
+              "entry_spread": 0.25075526024363237,
+              "exit_spread": 0.2509782207456626,
+              "sign_match_rate": 0.48859357696566996
+            }
+          }
+        },
+        "T1_high_net": -0.30259930413187436,
+        "T2_high_minus_low_gross": 0.0005776634970022267
+      },
+      {
+        "cells": {
+          "high": {
+            "up": {
+              "n": 21848,
+              "mean_gross": 0.0031819846210179425,
+              "mean_net": -0.30504165140974004,
+              "entry_spread": 0.2885353350421091,
+              "exit_spread": 0.2879119370194068,
+              "sign_match_rate": 0.5027920175759795
+            },
+            "down": {
+              "n": 20855,
+              "mean_gross": -0.006241908415248142,
+              "mean_net": -0.31420474706305446,
+              "entry_spread": 0.28761591944377846,
+              "exit_spread": 0.2883097578518341,
+              "sign_match_rate": 0.48961879645169026
+            }
+          },
+          "low": {
+            "up": {
+              "n": 13901,
+              "mean_gross": -0.005302855909646788,
+              "mean_net": -0.2976447737572836,
+              "entry_spread": 0.27227969210848146,
+              "exit_spread": 0.2724041435867924,
+              "sign_match_rate": 0.5067980720811452
+            },
+            "down": {
+              "n": 13664,
+              "mean_gross": -0.0015035860655737711,
+              "mean_net": -0.29351141686182675,
+              "entry_spread": 0.271844262295082,
+              "exit_spread": 0.27217139929742395,
+              "sign_match_rate": 0.49860948477751754
+            }
+          }
+        },
+        "T1_high_net": -0.30962319923639725,
+        "T2_high_minus_low_gross": 0.0018732590904951794
+      }
+    ],
+    "gap_under_one_hour": {
+      "cells": {
+        "high": {
+          "up": {
+            "n": 49004,
+            "mean_gross": 0.0019753489511060342,
+            "mean_net": -0.29390784425761163,
+            "entry_spread": 0.27617867929148643,
+            "exit_spread": 0.27558770712594893,
+            "sign_match_rate": 0.503734389029467
+          },
+          "down": {
+            "n": 47627,
+            "mean_gross": -0.010937073508724046,
+            "mean_net": -0.30627480210804797,
+            "entry_spread": 0.27527305939908037,
+            "exit_spread": 0.2754023977995675,
+            "sign_match_rate": 0.48764356352489135
+          }
+        },
+        "low": {
+          "up": {
+            "n": 49632,
+            "mean_gross": 0.000508442134107028,
+            "mean_net": -0.272188305931657,
+            "entry_spread": 0.25263600096711797,
+            "exit_spread": 0.2527574951644101,
+            "sign_match_rate": 0.5040095099935525
+          },
+          "down": {
+            "n": 48911,
+            "mean_gross": -0.007598495226022775,
+            "mean_net": -0.2801283964752305,
+            "entry_spread": 0.2525348081208726,
+            "exit_spread": 0.2525249943775429,
+            "sign_match_rate": 0.4913618613399849
+          }
+        }
+      },
+      "T1_high_net": -0.30009132318282983,
+      "T2_high_minus_low_gross": -0.0009358357328511321
+    },
+    "tercile_counts": [
+      {
+        "tercile": 0,
+        "blocks": 85,
+        "high_up": 9490,
+        "high_down": 9539,
+        "low_up": 22006,
+        "low_down": 21763
+      },
+      {
+        "tercile": 1,
+        "blocks": 81,
+        "high_up": 17719,
+        "high_down": 17293,
+        "low_up": 13770,
+        "low_down": 13545
+      },
+      {
+        "tercile": 2,
+        "blocks": 89,
+        "high_up": 21848,
+        "high_down": 20855,
+        "low_up": 13901,
+        "low_down": 13664
+      }
+    ],
+    "exclusions": {
+      "256": {
+        "zero_sign": 4550,
+        "middle_state": 58390,
+        "anchors": 258333,
+        "boundary_outcomes": 1
+      },
+      "1024": {
+        "zero_sign": 1258,
+        "middle_state": 15360,
+        "anchors": 67929,
+        "boundary_outcomes": 1
+      }
+    },
+    "inference": {
+      "bootstrap": {
+        "T1": {
+          "p": 1.0,
+          "lower_99": -0.31289416599194814
+        },
+        "T2": {
+          "p": 0.5984,
+          "lower_99": -0.015968034620133617
+        }
+      },
+      "shuffle": {
+        "T1_p": 0.844,
+        "T2_p": 0.6065
+      },
+      "p_raw": {
+        "bootstrap_T1": 1.0,
+        "bootstrap_T2": 0.5984,
+        "shuffle_T1": 0.844,
+        "shuffle_T2": 0.6065
+      },
+      "p_holm": {
+        "bootstrap_T1": 1.0,
+        "bootstrap_T2": 1.0,
+        "shuffle_T1": 1.0,
+        "shuffle_T2": 1.0
+      },
+      "holm_family_wise_alpha": 0.01
+    },
+    "gates": {
+      "identity_and_minimums": true,
+      "material_T1_and_T2": false,
+      "mirrors_terciles_1024_and_spacing": false,
+      "four_holm_p_below_0_01": false,
+      "both_one_sided_99_lower_bounds_positive": false
+    }
+  },
+  "hypotheses": {
+    "H-DIR-01": {
+      "status": "REJECTED",
+      "reasons": [
+        "a predeclared five-cent economic/interaction floor was missed",
+        "a prespecified sign, tercile, 1024-quote or gap gate disagrees",
+        "one or more Holm-adjusted uncertainty/control p-values did not clear 0.01",
+        "one or both block-bootstrap lower bounds did not exceed zero"
+      ],
+      "not_a_strategy": true,
+      "validated": false,
+      "held_out_span_opened": false
+    }
+  },
+  "decision": "REJECTED",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "held_out_span_opened": false,
+  "safety": {
+    "DEMO_EXECUTION": "DISABLED",
+    "confirm_live": false,
+    "orders_submitted": 0
+  },
+  "view": {
+    "view_manifest_sha256": "0b163b30bb70dbd5265656b1c90c682908e3df69542bd7ec41647c291c461435",
+    "part_count": 377,
+    "source_zip_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+    "source_dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789",
+    "source_discovery_rows": 70783710,
+    "source_cutoff_time_msc": 1764563969254,
+    "original_row_order_preserved": true
+  },
+  "hypothesis_id": "H-DIR-02",
+  "verifiable_discovery_rows": 70783710,
+  "canonical_discovery_rows": 70834426,
+  "omitted_rows_due_to_straddle": 50716,
+  "note": "H-DIR-01 remains BLOCKED; this is H-DIR-02 on maximal verifiable prefix (99.928%)."
+}

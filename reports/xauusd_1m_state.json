@@ -1,0 +1,96 @@
+{
+  "schema": "qts.xauusd_1m.v1",
+  "preregistration": "docs/xauusd_1m_next_step_H-1M-01_2026-09-23.md",
+  "window": {
+    "time_msc_min": 1726746013452,
+    "cutoff_time_msc": 1764563969254,
+    "discovery_rows_read": 70783710,
+    "held_out_rows_read": 0,
+    "n_bars": 423490,
+    "n_events": 53653,
+    "n_long": 29052,
+    "n_short": 24601,
+    "baseline_n": 365811
+  },
+  "measured": {
+    "long": {
+      "n": 29052,
+      "mean": -0.0004773084866904284,
+      "pf": 0.255229511280977,
+      "win_rate": 0.24370095002065262,
+      "sr": -298.87646072673425
+    },
+    "short": {
+      "n": 24601,
+      "mean": -0.0005303615684232772,
+      "pf": 0.2807341031422628,
+      "win_rate": 0.22413723019389456,
+      "sr": -267.86060390167376
+    },
+    "baseline": {
+      "n": 365811,
+      "mean": -0.0004947769942237757,
+      "pf": 0.23374864964057038,
+      "win_rate": 0.23663859205983417,
+      "sr": -304.3263542773771
+    },
+    "terciles": [
+      {
+        "tercile": 0,
+        "n_long": 9586,
+        "n_short": 8406,
+        "mean_long": -0.0005022015483699739,
+        "mean_short": -0.0005289890311335261,
+        "pf_long": 0.16640440155364372,
+        "pf_short": 0.21582559584340288
+      },
+      {
+        "tercile": 1,
+        "n_long": 9559,
+        "n_short": 8186,
+        "mean_long": -0.00047056099655783064,
+        "mean_short": -0.0005244666806815841,
+        "pf_long": 0.28995287920446866,
+        "pf_short": 0.3203991134921226
+      },
+      {
+        "tercile": 2,
+        "n_long": 9907,
+        "n_short": 8009,
+        "mean_long": -0.0004597324665952812,
+        "mean_short": -0.0005378273069063771,
+        "pf_long": 0.30024610546074426,
+        "pf_short": 0.29983140917069234
+      }
+    ],
+    "n_blocks": 8469,
+    "h48_long_mean": 4.871579051118192e-05,
+    "h48_short_mean": -6.522355652559511e-05
+  },
+  "hypotheses": {
+    "H-1M-01": {
+      "status": "REJECTED",
+      "reasons": [
+        "floor miss: long mean -0.0004773084866904284 pf 0.255229511280977 win 0.24370095002065262 short mean -0.0005303615684232772 pf 0.2807341031422628 win 0.22413723019389456 baseline -0.0004947769942237757 h48 4.871579051118192e-05/-6.522355652559511e-05 tercile_ok False h48_ok True"
+      ],
+      "not_a_strategy": true,
+      "validated": false
+    }
+  },
+  "decision": "REJECTED",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "held_out_span_opened": false,
+  "safety": {
+    "DEMO_EXECUTION": "DISABLED",
+    "confirm_live": false,
+    "orders_submitted": 0
+  },
+  "view": {
+    "view_manifest_sha256": "0b163b30bb70dbd5265656b1c90c682908e3df69542bd7ec41647c291c461435",
+    "discovery_rows": 70783710,
+    "cutoff_time_msc": 1764563969254
+  },
+  "discovery_rows_read": 70783710,
+  "held_out_rows_read": 0
+}

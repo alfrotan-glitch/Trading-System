@@ -1,0 +1,145 @@
+# Runs only on a GitHub-hosted runner. This job is the place that reads the
+# already-listed release asset. The research sandbox must not download it.
+# The job verifies SHA-256 before extraction, does not repair rows, does not
+# upload or replace the release, and does not start discovery or trading.
+name: Canonical XAUUSD zip inventory
+
+on:
+  push:
+    branches:
+      - arena/01a0c9cc-trading-system
+    paths:
+      - .github/workflows/canonical-xauusd-zip-inventory.yml
+      - scripts/inventory_canonical_xauusd_zip.py
+      - scripts/github_runner_inventory_support.py
+      - src/qts/data/canonical_zip_inventory.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: canonical-xauusd-zip-inventory
+  cancel-in-progress: false
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install QTS
+        run: pip install -e .
+
+      - name: Download the listed release asset on this runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p data/raw/mt5_ticks
+          gh release download dataset-xauusd-730d-20260919 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "XAUUSD_730d_20260919T114013Z.zip" \
+            --dir data/raw/mt5_ticks \
+            --clobber
+          test -f data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip
+          wc -c data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip
+
+      - name: Inventory without repair
+        id: inventory
+        if: success()
+        env:
+          QTS_INVENTORY_EXECUTION_HOST: github-actions-runner
+          EXPECTED_SHA256: 975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723
+        run: |
+          set +e
+          set -uo pipefail
+          zip_path="data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip"
+          mkdir -p reports
+          echo "${EXPECTED_SHA256}  ${zip_path}" | sha256sum -c -
+          hash_ok=$?
+          if [ "$hash_ok" -ne 0 ]; then
+            python scripts/inventory_canonical_xauusd_zip.py \
+              --zip "$zip_path" \
+              --output reports/canonical_zip_inventory.json \
+              --work-dir "${RUNNER_TEMP}/qts_canonical_zip"
+            echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python scripts/github_runner_inventory_support.py disk-preflight \
+            --zip "$zip_path" \
+            --work-dir "${RUNNER_TEMP}" \
+            --output reports/canonical_zip_runner_disk.json
+          disk_code=$?
+          if [ "$disk_code" -ne 0 ]; then
+            python scripts/github_runner_inventory_support.py disk-insufficient-report \
+              --disk-json reports/canonical_zip_runner_disk.json \
+              --output reports/canonical_zip_inventory.json
+            echo "exit_code=4" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python scripts/inventory_canonical_xauusd_zip.py \
+            --zip "$zip_path" \
+            --output reports/canonical_zip_inventory.json \
+            --work-dir "${RUNNER_TEMP}/qts_canonical_zip"
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Keep a report when the job stops early
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          if [ ! -f reports/canonical_zip_inventory.json ]; then
+            python scripts/github_runner_inventory_support.py missing-report \
+              --output reports/canonical_zip_inventory.json
+          fi
+          python scripts/github_runner_inventory_support.py summary \
+            --inventory reports/canonical_zip_inventory.json \
+            --output reports/canonical_zip_inventory_summary.json
+
+      - name: Publish the inventory report to this branch
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          files=()
+          for path in reports/canonical_zip_inventory.json reports/canonical_zip_inventory_summary.json reports/canonical_zip_runner_disk.json; do
+            if [ -f "$path" ]; then
+              files+=("$path")
+            fi
+          done
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "no report to publish"
+            exit 0
+          fi
+          git add -- "${files[@]}"
+          if git diff --cached --quiet; then
+            echo "report already committed"
+            exit 0
+          fi
+          git commit -m "Record canonical zip inventory measured on a GitHub-hosted runner [skip ci]"
+          git pull --rebase origin arena/01a0c9cc-trading-system
+          git push origin HEAD:arena/01a0c9cc-trading-system
+
+      - name: Fail closed when identity was not established
+        if: always()
+        run: |
+          set -euo pipefail
+          code="${{ steps.inventory.outputs.exit_code }}"
+          if [ -z "$code" ]; then
+            echo "inventory did not report an exit code"
+            exit 2
+          fi
+          if [ "$code" != "0" ]; then
+            echo "inventory exit $code"
+            exit "$code"
+          fi

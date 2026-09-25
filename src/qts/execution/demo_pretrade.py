@@ -1,0 +1,1098 @@
+"""DEMO pre-trade safety gate — every required safeguard, fail closed.
+
+The gate is the single place that answers "may this specific DEMO order be
+sent right now?". It is deliberately independent of the caller: CLI, API, and
+autopilot all receive the same verdict for the same facts.
+
+Rules that shape every check here:
+
+* **No UNKNOWN ever passes.** A missing fact is recorded as ``UNKNOWN`` and
+  fails the gate. ``None`` is never coerced into a permissive value
+  (unknown account → not DEMO; unknown kill state → killed; unknown reconcile
+  state → suspended).
+* **Refusal is structured.** Every check carries a machine-readable status plus
+  a human detail, so an operator sees *which* safeguard blocked, not a generic
+  "not allowed".
+* **Hard caps come from one authority** (:mod:`qts.risk.authority`) resolved
+  for ``DEMO_EXECUTION``, optionally tightened by the authorization artifact.
+  The gate never invents a limit.
+
+Check → requirement mapping (owner's 17 required safeguards):
+
+===  ================================================  ================================
+#    Required safeguard                                Check name(s)
+===  ================================================  ================================
+1    account is actually DEMO                          ``account_is_demo``
+2    broker/server identity                            ``broker_identity_verified``
+3    canonical symbol mapping                          ``symbol_mapping_canonical``
+4    market data freshness                             ``market_data_fresh``
+5    spread available                                  ``spread_available``
+6    order size within hard maximum                    ``order_size_within_hard_max``
+7    stop-loss present where required                  ``stop_loss_present``
+8    maximum simultaneous positions                    ``max_simultaneous_positions``
+9    maximum daily loss                                ``max_daily_loss``
+10   maximum total demo exposure                       ``max_total_exposure``
+11   duplicate-order protection                        ``duplicate_order_protection``
+12   kill-switch functionality                         ``kill_switch_functional``
+13   reconciliation after every order                  ``reconciliation_ready``
+14   broker order/position id recorded                 ``broker_reference_capture``
+15   price/spread/slippage/timestamps recorded         ``execution_record_fields``
+16   strategy/configuration hash recorded              ``strategy_registered_frozen``
+17   fail closed on any uncertainty                    ``no_unknown_checks``
+===  ================================================  ================================
+
+Contract-level checks (``authorization_valid``, ``execution_permission``,
+``mode_is_demo_execution``, ``stage_allows_order``, ``autonomous_allowed``)
+guard *whether this process may trade at all* and run alongside the above.
+
+Registered-policy checks (``policy_complete``, ``symbol_allowed_by_policy``,
+``trading_hours_allowed``, ``order_frequency_within_policy``,
+``max_drawdown_within_policy``, ``policy_execution_assumptions``) enforce the
+research/execution policy attached to the registry entry
+(:mod:`qts.lifecycle.demo_policy`). They can only TIGHTEN the canonical DEMO
+limits: a policy spread cap, tick-age cap, reconcile age or minimum order
+interval is applied as ``min``/``max`` against the canonical value, never as a
+replacement, so registering a policy is not a route to a looser gate.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from dataclasses import fields as dataclass_fields
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any
+
+from qts.execution.demo_identity import BrokerIdentity
+from qts.lifecycle.demo_authorization import LoadedAuthorization
+from qts.lifecycle.demo_registry import StrategyRegistration
+from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStage
+
+CHECK_PASS = "PASS"
+CHECK_FAIL = "FAIL"
+CHECK_UNKNOWN = "UNKNOWN"
+
+#: Required execution-record fields (safeguard #15). A recorder that cannot
+#: fill all of them must not be used for DEMO orders.
+REQUIRED_RECORD_FIELDS: tuple[str, ...] = (
+    "authorization_id",
+    "client_order_id",
+    "strategy_id",
+    "strategy_config_hash",
+    "requested_price",
+    "executed_price",
+    "spread_bps",
+    "slippage_bps",
+    "requested_at",
+    "submitted_at",
+    "broker_order_id",
+    "label",
+)
+
+#: Label carried by every DEMO order produced through this path.
+RESEARCH_DEMO_ORDER = "RESEARCH_DEMO_ORDER"
+
+DEFAULT_MAX_RECONCILE_AGE_S = 300.0
+DEFAULT_MIN_ORDER_INTERVAL_S = 15.0
+
+
+def _dec(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    try:
+        return Decimal(str(value))
+    except Exception:
+        return None
+
+
+@dataclass(frozen=True)
+class CheckResult:
+    name: str
+    status: str
+    detail: str
+
+    @property
+    def passed(self) -> bool:
+        return self.status == CHECK_PASS
+
+    def as_dict(self) -> dict[str, Any]:
+        return {"name": self.name, "status": self.status, "passed": self.passed, "detail": self.detail}
+
+
+@dataclass(frozen=True)
+class PretradeVerdict:
+    passed: bool
+    checks: dict[str, CheckResult] = field(default_factory=dict)
+    reasons: list[str] = field(default_factory=list)
+    checked_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+
+    @property
+    def failed(self) -> tuple[str, ...]:
+        return tuple(name for name, c in self.checks.items() if c.status == CHECK_FAIL)
+
+    @property
+    def unknown(self) -> tuple[str, ...]:
+        return tuple(name for name, c in self.checks.items() if c.status == CHECK_UNKNOWN)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "passed": self.passed,
+            "reasons": list(self.reasons),
+            "failed": list(self.failed),
+            "unknown": list(self.unknown),
+            "checks": {name: c.as_dict() for name, c in self.checks.items()},
+            "checked_at": self.checked_at,
+        }
+
+
+@dataclass
+class DemoPretradeContext:
+    """Everything the gate needs. ``None`` means UNKNOWN and fails closed."""
+
+    # ---- contract / permission -------------------------------------------
+    policy: Any | None = None  # DemoExecutionPolicy
+    authorization: LoadedAuthorization | None = None
+    authority_permitted: bool | None = None
+    authority_reasons: list[str] = field(default_factory=list)
+    mode: str | None = None
+    stage: str = DemoStage.DISABLED.value
+
+    # ---- identity / market ------------------------------------------------
+    identity: BrokerIdentity | None = None
+    pin: dict[str, Any] | None = None
+    pin_reasons: list[str] = field(default_factory=list)
+
+    symbol: str | None = None
+    broker_symbol: str | None = None
+    #: The operator's canonical -> venue alias table (machine-local setup).
+    symbol_map: dict[str, str] = field(default_factory=dict)
+    symbol_visible: bool | None = None
+    symbol_tradable: bool | None = None
+    spec: Any | None = None  # MT5Adapter.SymbolSpec
+    order_check_ok: bool | None = None  # broker order_check dry-run result
+    order_check_detail: str = ""
+    tick: Any | None = None  # domain Tick
+    tick_age_s: float | None = None
+    max_tick_age_s: float | None = None
+    bid: Decimal | None = None
+    ask: Decimal | None = None
+    spread_bps: float | None = None
+
+    # ---- account / exposure ----------------------------------------------
+    account: Any | None = None  # domain Account
+    open_positions: list[Any] = field(default_factory=list)
+    open_orders: list[Any] = field(default_factory=list)
+    daily_realized_pnl: Decimal | None = None
+    unrealized_pnl: Decimal | None = None
+
+    # ---- the intended order ----------------------------------------------
+    side: str | None = None
+    intended_lots: Decimal | None = None
+    stop_loss: Decimal | None = None
+    take_profit: Decimal | None = None
+    stop_required: bool = True
+    client_order_id: str | None = None
+    idempotency_status: str | None = None
+    recent_order_epochs: list[float] = field(default_factory=list)
+    min_order_interval_s: float = DEFAULT_MIN_ORDER_INTERVAL_S
+    autonomous: bool = False
+
+    # ---- controls ---------------------------------------------------------
+    kill_switch_active: bool | None = None
+    kill_switch_readable: bool = False
+    kill_switch_self_test: bool | None = None
+    kill_switch_detail: str = ""
+    reconcile_suspended: bool | None = None
+    reconcile_drift: str | None = None
+    last_reconcile_age_s: float | None = None
+    max_reconcile_age_s: float = DEFAULT_MAX_RECONCILE_AGE_S
+
+    # ---- recording --------------------------------------------------------
+    adapter_captures_broker_ids: bool | None = None
+    journal_ready: bool = False
+    record_fields_available: dict[str, bool] = field(default_factory=dict)
+
+    # ---- strategy / registered research policy ----------------------------
+    entry: StrategyRegistration | None = None
+    strategy_config_hash: str | None = None
+    #: The registered research/execution policy (:class:`ResearchPolicy`).
+    research_policy: Any | None = None
+    #: The venue alias the registry entry was verified against (``XAUUSD@``).
+    registered_broker_symbol: str | None = None
+    #: Symbol provenance recorded in the identity pin (when the pin carries it).
+    pin_symbol: dict[str, Any] | None = None
+    #: Orders already submitted today (policy ``max_orders_per_day``).
+    orders_today: int | None = None
+    #: Cumulative realized P&L + open unrealized, and its running peak.
+    cumulative_pnl: Decimal | None = None
+    peak_cumulative_pnl: Decimal | None = None
+    #: Evaluation moment for the policy's trading-hours window (UTC).
+    now: datetime | None = None
+
+    # ---- limits -----------------------------------------------------------
+    limits: Any | None = None  # ResolvedRiskSnapshot
+
+
+def _spread_bps(bid: Decimal | None, ask: Decimal | None) -> float | None:
+    if bid is None or ask is None or bid <= 0:
+        return None
+    mid = (bid + ask) / Decimal("2")
+    if mid <= 0:
+        return None
+    return float((ask - bid) / mid * Decimal("10000"))
+
+
+def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
+    """Evaluate every DEMO safeguard for one intended order (fail closed)."""
+    checks: dict[str, CheckResult] = {}
+
+    def record(name: str, status: str, detail: str) -> None:
+        checks[name] = CheckResult(name=name, status=status, detail=detail)
+
+    # ------------------------------------------------------------------ #0
+    # Contract-level: authorization, permission, mode, stage, autonomy.
+    policy = ctx.policy
+    if policy is None:
+        record("authorization_valid", CHECK_UNKNOWN, "no policy supplied to the gate — cannot prove authorization")
+    elif not getattr(policy, "enabled", False):
+        record(
+            "authorization_valid",
+            CHECK_FAIL,
+            f"DEMO execution policy is {getattr(policy, 'state', 'DISABLED BY POLICY')}: "
+            + "; ".join(getattr(policy, "reasons", []))
+            or "no owner authorization recorded",
+        )
+    else:
+        record(
+            "authorization_valid",
+            CHECK_PASS,
+            f"owner authorization {policy.authorization_id} active (DEMO only, LIVE locked)",
+        )
+
+    if ctx.authority_permitted is None:
+        record("execution_permission", CHECK_UNKNOWN, "durable authority permission state unknown — fail closed")
+    elif ctx.authority_permitted is False:
+        record(
+            "execution_permission",
+            CHECK_FAIL,
+            "durable DEMO authority refuses execution: " + "; ".join(ctx.authority_reasons or ["not permitted"]),
+        )
+    else:
+        record("execution_permission", CHECK_PASS, "durable DEMO authority permits execution (fresh evidence)")
+
+    if ctx.mode is None:
+        record("mode_is_demo_execution", CHECK_UNKNOWN, "execution mode unknown — fail closed")
+    elif str(ctx.mode).upper() != "DEMO_EXECUTION":
+        record("mode_is_demo_execution", CHECK_FAIL, f"mode {ctx.mode} cannot submit DEMO orders")
+    else:
+        record("mode_is_demo_execution", CHECK_PASS, "mode DEMO_EXECUTION")
+
+    if ctx.stage in ORDER_STAGES:
+        record("stage_allows_order", CHECK_PASS, f"stage {ctx.stage} permits DEMO order submission")
+    else:
+        record(
+            "stage_allows_order",
+            CHECK_FAIL,
+            f"stage {ctx.stage} does not permit orders — advance to "
+            f"{DemoStage.STAGE_2_MIN_SIZE_ORDER.value} or {DemoStage.STAGE_3_FORWARD_OBSERVATION.value} first",
+        )
+
+    if ctx.autonomous:
+        allowed = bool(getattr(getattr(ctx.authorization, "document", None), "scope", None) and
+                       ctx.authorization.document.scope.autonomous_order_management)  # type: ignore[union-attr]
+        if not allowed:
+            record(
+                "autonomous_allowed",
+                CHECK_FAIL,
+                "autonomous DEMO order management is not granted by the authorization scope",
+            )
+        else:
+            record("autonomous_allowed", CHECK_PASS, "authorization scope permits autonomous DEMO order management")
+
+    # ---- limits provenance: caps must come from the canonical authority,
+    # never from a hard-coded fallback inside a check.
+    if ctx.limits is None:
+        record(
+            "risk_limits_resolved",
+            CHECK_UNKNOWN,
+            "canonical DEMO risk limits not supplied — no cap can be verified (fail closed)",
+        )
+    else:
+        snapshot_hash = str(getattr(ctx.limits, "config_hash", "") or "")
+        record(
+            "risk_limits_resolved",
+            CHECK_PASS,
+            f"canonical DEMO risk limits resolved{' (config_hash=' + snapshot_hash + ')' if snapshot_hash else ''}",
+        )
+
+    # ------------------------------------------------------------------ #1
+    if ctx.identity is None:
+        record("account_is_demo", CHECK_UNKNOWN, "broker identity unavailable — DEMO status unprovable")
+    else:
+        ok, detail, status = _demo_account_check(ctx.identity)
+        record("account_is_demo", CHECK_PASS if ok else status, detail[0] if ok else "; ".join(detail))
+
+    # ------------------------------------------------------------------ #2
+    if ctx.identity is None:
+        record("broker_identity_verified", CHECK_UNKNOWN, "no identity to verify against the pin")
+    else:
+        ok, detail = _identity_pin_check(ctx.identity, ctx.pin, ctx.pin_reasons)
+        record("broker_identity_verified", CHECK_PASS if ok else CHECK_FAIL, "; ".join(detail))
+
+    # ------------------------------------------------------------------ #3
+    record(*_symbol_check(ctx))
+
+    # ------------------------------------------------------------------ #4
+    if ctx.tick is None:
+        record("market_data_fresh", CHECK_UNKNOWN, "no tick available — feed state unknown")
+    elif ctx.tick_age_s is None:
+        record("market_data_fresh", CHECK_UNKNOWN, "tick age could not be computed (no usable timestamp)")
+    else:
+        limit = ctx.max_tick_age_s if ctx.max_tick_age_s is not None else 60.0
+        policy_age = _policy_tick_age_cap(ctx)
+        if policy_age is not None:
+            limit = min(limit, policy_age)
+        if ctx.tick_age_s > limit:
+            record("market_data_fresh", CHECK_FAIL, f"tick age {ctx.tick_age_s:.1f}s > {limit:.0f}s (stale)")
+        else:
+            record("market_data_fresh", CHECK_PASS, f"tick age {ctx.tick_age_s:.1f}s ≤ {limit:.0f}s")
+
+    # ------------------------------------------------------------------ #5
+    bid, ask = ctx.bid, ctx.ask
+    spread = ctx.spread_bps if ctx.spread_bps is not None else _spread_bps(bid, ask)
+    if bid is None or ask is None:
+        record("spread_available", CHECK_UNKNOWN, "bid/ask unavailable — spread not measurable")
+    elif bid <= 0 or ask <= 0 or ask < bid:
+        record("spread_available", CHECK_FAIL, f"invalid quote bid={bid} ask={ask}")
+    elif spread is None:
+        record("spread_available", CHECK_UNKNOWN, "spread could not be computed from the quote")
+    else:
+        max_spread = _cap(ctx, "max_spread_bps", 100.0)
+        if spread > float(max_spread):
+            record("spread_available", CHECK_FAIL, f"spread {spread:.1f}bps > demo limit {float(max_spread):.1f}bps")
+        else:
+            record("spread_available", CHECK_PASS, f"spread {spread:.1f}bps ≤ demo limit {float(max_spread):.1f}bps")
+
+    # ------------------------------------------------------------------ #6
+    record(*_size_check(ctx))
+    if ctx.order_check_ok is None:
+        record(
+            "broker_order_check",
+            CHECK_UNKNOWN,
+            f"broker order_check dry-run unavailable ({ctx.order_check_detail or 'no result'})",
+        )
+    elif not ctx.order_check_ok:
+        record(
+            "broker_order_check",
+            CHECK_FAIL,
+            f"broker order_check refused the request: {ctx.order_check_detail}",
+        )
+    else:
+        record("broker_order_check", CHECK_PASS, f"broker order_check dry-run passed ({ctx.order_check_detail})")
+
+    # ------------------------------------------------------------------ #7
+    record(*_stop_loss_check(ctx))
+    record(*_stop_policy_distance_check(ctx))
+
+    # ------------------------------------------------------------------ #8
+    max_orders = int(float(_limit_value(ctx, "max_open_orders", 3)))
+    positions = list(ctx.open_positions or [])
+    if len(positions) + 1 > max_orders:
+        record(
+            "max_simultaneous_positions",
+            CHECK_FAIL,
+            f"opening one more position exceeds the demo cap ({len(positions)}+1 > {max_orders})",
+        )
+    else:
+        record("max_simultaneous_positions", CHECK_PASS, f"positions {len(positions)}+1 ≤ cap {max_orders}")
+
+    # ------------------------------------------------------------------ #9
+    if ctx.daily_realized_pnl is None:
+        record("max_daily_loss", CHECK_UNKNOWN, "daily realized P&L unknown (broker day-start not established)")
+    else:
+        daily_limit = Decimal(str(_cap(ctx, "daily_loss_limit", 50)))
+        loss = -Decimal(ctx.daily_realized_pnl)
+        if loss >= daily_limit:
+            record("max_daily_loss", CHECK_FAIL, f"daily loss {loss} ≥ demo limit {daily_limit}")
+        else:
+            record("max_daily_loss", CHECK_PASS, f"daily loss {loss} < demo limit {daily_limit}")
+
+    # ------------------------------------------------------------------ #10
+    record(*_exposure_check(ctx, positions))
+
+    # ------------------------------------------------------------------ #11
+    problems: list[str] = []
+    if ctx.idempotency_status:
+        problems.append(f"client_order_id already recorded with status {ctx.idempotency_status}")
+    now_epoch = datetime.now(UTC).timestamp()
+    min_interval = float(ctx.min_order_interval_s)
+    policy_interval = _policy_min_interval(ctx)
+    if policy_interval is not None:
+        min_interval = max(min_interval, policy_interval)
+    recent = [t for t in (ctx.recent_order_epochs or []) if (now_epoch - float(t)) < min_interval]
+    if recent:
+        problems.append(f"{len(recent)} order(s) submitted within {min_interval:.0f}s — rate/duplicate guard")
+    if not ctx.client_order_id:
+        problems.append("client_order_id missing — duplicate protection cannot be evaluated")
+    record(
+        "duplicate_order_protection",
+        CHECK_FAIL if problems else CHECK_PASS,
+        "; ".join(problems) if problems else f"no duplicate for {ctx.client_order_id}",
+    )
+
+    # ------------------------------------------------------------------ #12
+    if not ctx.kill_switch_readable:
+        record("kill_switch_functional", CHECK_UNKNOWN, "kill-switch state not readable — treated as KILLED")
+    elif ctx.kill_switch_active is None:
+        record("kill_switch_functional", CHECK_UNKNOWN, "kill-switch state unknown — treated as KILLED")
+    elif ctx.kill_switch_active:
+        record("kill_switch_functional", CHECK_FAIL, f"kill switch ACTIVE ({ctx.kill_switch_detail or 'no reason'})")
+    elif ctx.kill_switch_self_test is None:
+        record(
+            "kill_switch_functional",
+            CHECK_UNKNOWN,
+            "kill-switch self-test not performed this cycle — cannot prove the switch works",
+        )
+    elif ctx.kill_switch_self_test is False:
+        record("kill_switch_functional", CHECK_FAIL, f"kill-switch self-test failed ({ctx.kill_switch_detail})")
+    else:
+        record("kill_switch_functional", CHECK_PASS, "kill switch idle and self-test passed")
+
+    # ------------------------------------------------------------------ #13
+    if ctx.reconcile_suspended is None:
+        record("reconciliation_ready", CHECK_UNKNOWN, "reconciliation state unknown — treated as suspended")
+    elif ctx.reconcile_suspended:
+        record("reconciliation_ready", CHECK_FAIL, f"reconciliation suspended: {ctx.reconcile_drift or 'unresolved drift'}")
+    elif ctx.reconcile_drift:
+        record("reconciliation_ready", CHECK_FAIL, f"reconciliation drift: {ctx.reconcile_drift}")
+    elif ctx.last_reconcile_age_s is None:
+        record("reconciliation_ready", CHECK_UNKNOWN, "no reconciliation has run — cannot verify broker vs internal state")
+    elif ctx.last_reconcile_age_s > float(_reconcile_max_age(ctx)):
+        record(
+            "reconciliation_ready",
+            CHECK_FAIL,
+            f"last reconciliation {ctx.last_reconcile_age_s:.0f}s ago > {_reconcile_max_age(ctx):.0f}s",
+        )
+    else:
+        record("reconciliation_ready", CHECK_PASS, f"reconciled {ctx.last_reconcile_age_s:.0f}s ago, no drift")
+
+    # ------------------------------------------------------------------ #14
+    if ctx.adapter_captures_broker_ids is None:
+        record("broker_reference_capture", CHECK_UNKNOWN, "adapter broker-id capture not verified")
+    elif not ctx.adapter_captures_broker_ids:
+        record("broker_reference_capture", CHECK_FAIL, "adapter does not capture broker order/position IDs")
+    elif not ctx.journal_ready:
+        record("broker_reference_capture", CHECK_FAIL, "DEMO order journal unavailable — broker IDs would not be recorded")
+    else:
+        record("broker_reference_capture", CHECK_PASS, "broker order/position IDs captured and journaled")
+
+    # ------------------------------------------------------------------ #15
+    missing = [f for f in REQUIRED_RECORD_FIELDS if not (ctx.record_fields_available or {}).get(f)]
+    if not ctx.record_fields_available:
+        record("execution_record_fields", CHECK_UNKNOWN, "no record-field capability reported by the recorder")
+    elif missing:
+        record("execution_record_fields", CHECK_FAIL, f"recorder cannot capture: {', '.join(missing)}")
+    else:
+        record(
+            "execution_record_fields",
+            CHECK_PASS,
+            f"recorder captures all {len(REQUIRED_RECORD_FIELDS)} required execution fields",
+        )
+
+    # ------------------------------------------------------------------ #16
+    if ctx.entry is None:
+        record("strategy_registered_frozen", CHECK_FAIL, "no registered forward-validation strategy — NO_TRADE")
+    elif not ctx.strategy_config_hash:
+        record("strategy_registered_frozen", CHECK_UNKNOWN, "runtime strategy config hash unavailable")
+    elif ctx.strategy_config_hash != ctx.entry.params_hash:
+        record(
+            "strategy_registered_frozen",
+            CHECK_FAIL,
+            f"parameter drift: runtime {ctx.strategy_config_hash[:12]}… != registered "
+            f"{ctx.entry.params_hash[:12]}… (frozen parameters may not change mid-window)",
+        )
+    else:
+        record(
+            "strategy_registered_frozen",
+            CHECK_PASS,
+            f"strategy {ctx.entry.strategy_id} registered and frozen (hash {ctx.entry.params_hash[:12]}…)",
+        )
+
+    # ------------------------------------------------ registered policy ----
+    # The policy is the experiment's specification. Every limit it declares is
+    # enforceable here; a policy that cannot be evaluated is UNKNOWN, and
+    # UNKNOWN fails the gate.
+    pol = ctx.research_policy
+    # With no registered entry there is no experiment to evaluate: the
+    # strategy check has already failed, and reporting six speculative policy
+    # checks would bury the one actionable fact ("nothing is registered").
+    if ctx.entry is None:
+        pol = None
+    elif pol is None:
+        record(
+            "policy_complete",
+            CHECK_FAIL,
+            "the registered entry carries no complete research/execution policy — "
+            "an unspecified experiment may not trade",
+        )
+    else:
+        record(
+            "policy_complete",
+            CHECK_PASS,
+            f"policy {pol.policy_id} v{pol.version} "
+            f"({pol.policy_class}, validated_edge={pol.validated_edge}) bound to this order",
+        )
+
+    if ctx.entry is None:
+        pass
+    elif pol is None:
+        record("symbol_allowed_by_policy", CHECK_FAIL, "no policy — no symbol can be authorized")
+    elif not pol.allows_symbol(ctx.symbol):
+        record("symbol_allowed_by_policy", CHECK_FAIL, _symbol_policy_detail(ctx, pol))
+    else:
+        record("symbol_allowed_by_policy", CHECK_PASS, f"symbol {ctx.symbol} allowed by the policy")
+
+    # The venue alias is part of the registration: a policy verified against
+    # XAUUSD@ must not authorise a session whose mapping resolves elsewhere.
+    if ctx.entry is None:
+        pass
+    elif not ctx.registered_broker_symbol:
+        record(
+            "broker_symbol_matches_registry",
+            CHECK_FAIL,
+            "the registry entry does not pin the venue symbol it was verified against — "
+            "the symbol binding is not provable",
+        )
+    elif not ctx.broker_symbol:
+        record("broker_symbol_matches_registry", CHECK_UNKNOWN, "broker symbol unresolved — cannot compare")
+    elif str(ctx.broker_symbol) != str(ctx.registered_broker_symbol):
+        record(
+            "broker_symbol_matches_registry",
+            CHECK_FAIL,
+            f"venue symbol {ctx.broker_symbol} != registered {ctx.registered_broker_symbol} — "
+            "the registered experiment does not cover this instrument",
+        )
+    else:
+        record(
+            "broker_symbol_matches_registry",
+            CHECK_PASS,
+            f"venue symbol {ctx.broker_symbol} matches the registered alias",
+        )
+
+    # Symbol provenance from the identity pin (defence in depth): when the pin
+    # records which canonical/venue pair was verified at Stage 1, the session
+    # must agree with it. A pin written before provenance was recorded is
+    # reported as such rather than silently accepted.
+    if ctx.entry is None:
+        pass
+    elif not ctx.pin_symbol:
+        record(
+            "symbol_provenance",
+            CHECK_PASS,
+            "identity pin records no symbol provenance — re-pin to bind it "
+            "(binding is enforced by broker_symbol_matches_registry meanwhile)",
+        )
+    elif str(ctx.pin_symbol.get("canonical") or "").upper() != str(ctx.symbol or "").upper() or str(
+        ctx.pin_symbol.get("broker") or ""
+    ) != str(ctx.broker_symbol or ""):
+        record(
+            "symbol_provenance",
+            CHECK_FAIL,
+            f"identity pin was verified against {ctx.pin_symbol.get('canonical')} -> "
+            f"{ctx.pin_symbol.get('broker')}, this session resolved {ctx.symbol} -> {ctx.broker_symbol}",
+        )
+    else:
+        record(
+            "symbol_provenance",
+            CHECK_PASS,
+            f"identity pin provenance agrees ({ctx.pin_symbol.get('canonical')} -> {ctx.pin_symbol.get('broker')})",
+        )
+
+    if ctx.entry is None:
+        pass
+    elif pol is None:
+        record("trading_hours_allowed", CHECK_FAIL, "no policy — no trading window is authorized")
+    else:
+        moment = ctx.now or datetime.now(UTC)
+        if pol.within_trading_hours(moment):
+            sessions = (pol.raw.get("allowed_trading_hours") or {}).get("sessions") or []
+            record(
+                "trading_hours_allowed",
+                CHECK_PASS,
+                f"{moment:%Y-%m-%d %H:%M} UTC inside a declared session ({len(sessions)} session(s))",
+            )
+        else:
+            record(
+                "trading_hours_allowed",
+                CHECK_FAIL,
+                f"{moment:%Y-%m-%d %H:%M} UTC is outside every session declared by the policy",
+            )
+
+    if ctx.entry is None:
+        pass
+    elif pol is None:
+        record("order_frequency_within_policy", CHECK_FAIL, "no policy — no order budget is authorized")
+    elif ctx.orders_today is None:
+        record("order_frequency_within_policy", CHECK_UNKNOWN, "orders submitted today could not be counted")
+    elif ctx.orders_today >= pol.max_orders_per_day:
+        record(
+            "order_frequency_within_policy",
+            CHECK_FAIL,
+            f"{ctx.orders_today} order(s) submitted today — policy budget is {pol.max_orders_per_day}/day",
+        )
+    else:
+        record(
+            "order_frequency_within_policy",
+            CHECK_PASS,
+            f"{ctx.orders_today}/{pol.max_orders_per_day} orders used today",
+        )
+
+    if ctx.entry is None:
+        pass
+    elif pol is None:
+        record("max_drawdown_within_policy", CHECK_FAIL, "no policy — no drawdown limit is authorized")
+    elif ctx.cumulative_pnl is None or ctx.peak_cumulative_pnl is None:
+        record("max_drawdown_within_policy", CHECK_UNKNOWN, "drawdown not measurable from the order journal")
+    else:
+        drawdown = Decimal(str(ctx.peak_cumulative_pnl)) - Decimal(str(ctx.cumulative_pnl))
+        drawdown_limit = Decimal(str(pol.max_drawdown))
+        if drawdown >= drawdown_limit:
+            record(
+                "max_drawdown_within_policy",
+                CHECK_FAIL,
+                f"drawdown {drawdown} ≥ policy limit {drawdown_limit} (peak {ctx.peak_cumulative_pnl}, "
+                f"current {ctx.cumulative_pnl})",
+            )
+        else:
+            record("max_drawdown_within_policy", CHECK_PASS, f"drawdown {drawdown} < policy limit {drawdown_limit}")
+
+    # The policy declares which gate checks are mandatory for it and how much
+    # execution delay it assumes. Both are verified, not merely carried: a
+    # required check that is not PASS, or an undeclared delay assumption, means
+    # the measurement this policy exists to make would be invalid anyway.
+    if ctx.entry is None:
+        pass
+    elif pol is None:
+        record("policy_execution_assumptions", CHECK_FAIL, "no policy — no execution assumptions declared")
+    else:
+        problems = []
+        for name in pol.required_gate_checks():
+            outcome = checks.get(name)
+            if outcome is None:
+                problems.append(f"policy requires unknown check {name!r}")
+            elif not outcome.passed:
+                problems.append(f"policy requires check {name} which is {outcome.status}")
+        if pol.execution_delay_assumption_ms <= 0:
+            problems.append("policy declares no execution_delay_assumption_ms")
+        record(
+            "policy_execution_assumptions",
+            CHECK_FAIL if problems else CHECK_PASS,
+            "; ".join(problems)
+            if problems
+            else (
+                f"{len(pol.required_gate_checks())} mandatory check(s) pass; "
+                f"delay assumption {pol.execution_delay_assumption_ms:.0f}ms"
+            ),
+        )
+
+    # ------------------------------------------------------------------ #17
+    unknown = [name for name, c in checks.items() if c.status == CHECK_UNKNOWN]
+    if unknown:
+        record(
+            "no_unknown_checks",
+            CHECK_FAIL,
+            "fail closed — unresolved checks: " + ", ".join(sorted(unknown)),
+        )
+    else:
+        record("no_unknown_checks", CHECK_PASS, "every safeguard resolved to a definite state")
+
+    failed = [name for name, c in checks.items() if c.status == CHECK_FAIL]
+    passed = not failed
+    reasons = [f"{name}: {checks[name].detail}" for name in failed]
+    return PretradeVerdict(passed=passed, checks=checks, reasons=reasons)
+
+
+# --------------------------------------------------------------------- helpers
+
+
+def _demo_account_check(identity: BrokerIdentity) -> tuple[bool, list[str], str]:
+    """Check #1: DEMO proof, tri-state.
+
+    ``(True, [..], PASS)`` only when the terminal reports DEMO explicitly.
+    An unprovable trade_mode is ``UNKNOWN`` — distinct from ``FAIL`` because
+    "cannot prove" and "proved not-DEMO" are different operator problems — and
+    both block the order.
+    """
+    from qts.execution.demo_identity import assert_demo_account
+
+    if identity.is_demo is None:
+        return (
+            False,
+            [
+                "account trade_mode unavailable from terminal — DEMO status UNPROVABLE, fail closed "
+                "(MT5 must report ACCOUNT_TRADE_MODE_DEMO)"
+            ],
+            CHECK_UNKNOWN,
+        )
+    ok, detail = assert_demo_account(identity)
+    return ok, detail, CHECK_PASS if ok else CHECK_FAIL
+
+
+def _identity_pin_check(
+    identity: BrokerIdentity,
+    pin: dict[str, Any] | None,
+    pin_reasons: list[str],
+) -> tuple[bool, list[str]]:
+    from qts.execution.demo_identity import verify_pin
+
+    ok, detail = verify_pin(identity, pin)
+    if not ok and pin_reasons:
+        detail = list(pin_reasons) + list(detail)
+    return ok, detail
+
+
+def _symbol_policy_detail(ctx: DemoPretradeContext, pol: Any) -> str:
+    """Why the symbol is refused — including the remedy when the alias table
+    simply does not bind the venue symbol being traded.
+
+    A policy binds to ONE canonical spelling. When the session trades a venue
+    alias (``XAUUSD@``) that the machine-local alias table
+    (``data/setup/mt5_setup.json`` ``symbol_map``) does not bind to any allowed
+    canonical symbol, the canonical form cannot be resolved: the order is
+    refused, and the message says exactly what to declare. Nothing is inferred
+    from a suffix — guessing that ``XAUUSD@`` means ``XAUUSD`` would let one
+    policy authorise whatever instrument the broker happens to spell that way.
+    """
+    allowed = [str(name) for name in pol.allowed_symbols]
+    base = f"symbol {ctx.symbol} is not in the policy's allowed symbols ({', '.join(allowed) or 'none'})"
+    if not allowed:
+        return base
+    traded = str(ctx.broker_symbol or ctx.symbol or "")
+    table = {str(k): str(v) for k, v in (ctx.symbol_map or {}).items()}
+    bound = [name for name in allowed if table.get(name) == traded]
+    if bound:
+        # The table binds it, yet canonical resolution disagrees — a real
+        # inconsistency worth naming rather than papering over.
+        return (
+            f"{base}; the alias table maps {bound[0]} -> {traded} but the session resolved the "
+            f"canonical symbol as {ctx.symbol}"
+        )
+    if not table:
+        return (
+            f"{base}; the venue symbol being traded is {traded} but no alias table is declared — "
+            f'add "symbol_map": {{"{allowed[0]}": "{traded}"}} to data/setup/mt5_setup.json '
+            "(or set QTS_MT5_SYMBOL_MAP) so the canonical symbol resolves"
+        )
+    return (
+        f"{base}; the declared alias table binds none of the allowed symbols to the venue symbol "
+        f"{traded} — declared map: {table}"
+    )
+
+
+def _policy(ctx: DemoPretradeContext) -> Any | None:
+    return ctx.research_policy
+
+
+def _cap(ctx: DemoPretradeContext, name: str, default: Any) -> Any:
+    """Canonical limit, tightened by the policy when the policy is stricter.
+
+    Registration may never loosen a DEMO limit, so the effective cap is the
+    stricter of the two.
+    """
+    canonical = _limit_value(ctx, name, default)
+    pol = _policy(ctx)
+    if pol is None:
+        return canonical
+    declared = {
+        "max_spread_bps": pol.max_spread_bps,
+        "max_slippage_bps": pol.max_slippage_bps,
+        # "maximum simultaneous exposure" is the policy's single tightest
+        # statement about size: it caps the position, the exposure total and
+        # the per-order maximum alike.
+        "max_quantity": pol.max_simultaneous_exposure_lots,
+        "max_exposure_lots": pol.max_simultaneous_exposure_lots,
+        "daily_loss_limit": pol.max_daily_loss,
+    }.get(name)
+    if declared is None:
+        return canonical
+    try:
+        return min(float(canonical), float(declared))
+    except (TypeError, ValueError):
+        return canonical  # uncomparable policy value: keep the canonical cap
+
+
+def _policy_tick_age_cap(ctx: DemoPretradeContext) -> float | None:
+    pol = _policy(ctx)
+    return pol.tick_age_cap_s() if pol is not None else None
+
+
+def _policy_min_interval(ctx: DemoPretradeContext) -> float | None:
+    pol = _policy(ctx)
+    if pol is None:
+        return None
+    value = float(pol.min_order_interval_s)
+    return value if value > 0 else None
+
+
+def _reconcile_max_age(ctx: DemoPretradeContext) -> float:
+    base = float(ctx.max_reconcile_age_s)
+    pol = _policy(ctx)
+    if pol is None:
+        return base
+    declared = pol.reconcile_max_age_s()
+    return min(base, declared) if declared else base
+
+
+def _limit_value(ctx: DemoPretradeContext, name: str, default: Any) -> Any:
+    limits = ctx.limits
+    if limits is None:
+        return default
+    value = getattr(getattr(limits, "limits", limits), name, None)
+    return default if value is None else value
+
+
+def _symbol_check(ctx: DemoPretradeContext) -> tuple[str, str, str]:
+    if not ctx.symbol:
+        return ("symbol_mapping_canonical", CHECK_UNKNOWN, "no canonical symbol supplied")
+    if not ctx.broker_symbol:
+        return (
+            "symbol_mapping_canonical",
+            CHECK_FAIL,
+            f"canonical symbol {ctx.symbol} has no broker mapping (e.g. XAUUSD@) — refusing",
+        )
+    if ctx.spec is None:
+        return ("symbol_mapping_canonical", CHECK_UNKNOWN, f"broker spec for {ctx.symbol} unavailable")
+    if ctx.symbol_visible is False:
+        return ("symbol_mapping_canonical", CHECK_FAIL, f"broker symbol {ctx.broker_symbol} is not visible/selected")
+    if ctx.symbol_tradable is False:
+        return ("symbol_mapping_canonical", CHECK_FAIL, f"broker symbol {ctx.broker_symbol} is not tradable")
+    if ctx.symbol_visible is None or ctx.symbol_tradable is None:
+        return (
+            "symbol_mapping_canonical",
+            CHECK_UNKNOWN,
+            f"symbol visibility/tradability for {ctx.broker_symbol} is unknown",
+        )
+    return (
+        "symbol_mapping_canonical",
+        CHECK_PASS,
+        f"{ctx.symbol} → {ctx.broker_symbol} resolved and tradable",
+    )
+
+
+def _size_check(ctx: DemoPretradeContext) -> tuple[str, str, str]:
+    lots = _dec(ctx.intended_lots)
+    if lots is None:
+        return ("order_size_within_hard_max", CHECK_UNKNOWN, "intended size unknown")
+    if lots <= 0:
+        return ("order_size_within_hard_max", CHECK_FAIL, f"intended size {lots} must be > 0")
+    spec = ctx.spec
+    if spec is None:
+        return ("order_size_within_hard_max", CHECK_UNKNOWN, "broker symbol spec unknown — size not verifiable")
+    hard_max = Decimal(str(_cap(ctx, "max_quantity", Decimal("0.1"))))
+    try:
+        broker_max = Decimal(str(spec.volume_max))
+        broker_min = Decimal(str(spec.volume_min))
+        step = Decimal(str(spec.volume_step))
+    except Exception:
+        return ("order_size_within_hard_max", CHECK_UNKNOWN, "broker volume geometry unreadable — fail closed")
+    hard_max = min(hard_max, broker_max)
+    if lots > hard_max:
+        return (
+            "order_size_within_hard_max",
+            CHECK_FAIL,
+            f"size {lots} lots exceeds hard maximum {hard_max} lots (demo cap ∩ broker max)",
+        )
+    if lots < broker_min:
+        return ("order_size_within_hard_max", CHECK_FAIL, f"size {lots} lots below broker minimum {broker_min}")
+    if step > 0:
+        remainder = (lots / step) % 1
+        if remainder != 0 and abs(remainder - 1) > Decimal("0.0000001") and abs(remainder) > Decimal("0.0000001"):
+            return ("order_size_within_hard_max", CHECK_FAIL, f"size {lots} not a multiple of broker step {step}")
+    return ("order_size_within_hard_max", CHECK_PASS, f"size {lots} lots ≤ hard maximum {hard_max} lots")
+
+
+def _stop_loss_check(ctx: DemoPretradeContext) -> tuple[str, str, str]:
+    if not ctx.stop_required:
+        return (
+            "stop_loss_present",
+            CHECK_PASS,
+            "registered policy declares no stop requirement (justification recorded in registry)",
+        )
+    if ctx.stop_loss is None:
+        return ("stop_loss_present", CHECK_FAIL, "registered policy requires a stop-loss and none was supplied")
+    ref = ctx.ask if (ctx.side or "").upper() == "BUY" else ctx.bid
+    stop = _dec(ctx.stop_loss)
+    if ref is None or stop is None:
+        return ("stop_loss_present", CHECK_UNKNOWN, "stop-loss cannot be validated without an executable reference price")
+    if (ctx.side or "").upper() == "BUY" and stop >= ref:
+        return ("stop_loss_present", CHECK_FAIL, f"BUY stop {stop} must be below the entry reference {ref}")
+    if (ctx.side or "").upper() == "SELL" and stop <= ref:
+        return ("stop_loss_present", CHECK_FAIL, f"SELL stop {stop} must be above the entry reference {ref}")
+    spec = ctx.spec
+    distance = abs(ref - stop)
+    if spec is not None:
+        try:
+            min_distance = Decimal(str(spec.stops_level)) * Decimal(str(spec.point))
+            if min_distance > 0 and distance < min_distance:
+                return (
+                    "stop_loss_present",
+                    CHECK_FAIL,
+                    f"stop distance {distance} < broker stops_level distance {min_distance}",
+                )
+        except Exception:
+            return ("stop_loss_present", CHECK_UNKNOWN, "broker stops_level unreadable — stop not verifiable")
+        # Tick alignment: an off-tick stop is either rejected by the broker or,
+        # worse, silently rounded towards the entry (shrinking the protection).
+        try:
+            tick = Decimal(str(spec.tick_size))
+            if tick > 0:
+                remainder = (stop / tick) % 1
+                if remainder != 0 and abs(remainder - 1) > Decimal("0.0000001") and abs(remainder) > Decimal(
+                    "0.0000001"
+                ):
+                    return (
+                        "stop_loss_present",
+                        CHECK_FAIL,
+                        f"stop {stop} is not a multiple of the symbol tick size {tick}",
+                    )
+        except Exception:
+            return ("stop_loss_present", CHECK_UNKNOWN, "symbol tick size unreadable — stop not verifiable")
+        # Policy maximum risk: one order may not risk more than the policy's
+        # whole daily loss budget on a single stop.
+        policy = _policy(ctx)
+        lots = _dec(ctx.intended_lots)
+        if policy is not None and lots is not None and policy.max_daily_loss > 0:
+            try:
+                risk = distance * abs(lots) * Decimal(str(spec.contract_size))
+            except Exception:
+                return ("stop_loss_present", CHECK_UNKNOWN, "stop risk not computable — fail closed")
+            budget = Decimal(str(policy.max_daily_loss))
+            if risk > budget:
+                return (
+                    "stop_loss_present",
+                    CHECK_FAIL,
+                    f"stop risk {risk} exceeds the policy's max_daily_loss budget {budget}",
+                )
+    return ("stop_loss_present", CHECK_PASS, f"stop-loss {stop} present and valid for {ctx.side}")
+
+
+def _stop_policy_distance_check(ctx: DemoPretradeContext) -> tuple[str, str, str]:
+    """The registered policy is authoritative over per-order stop distance.
+
+    A stop is derived from the policy when the caller supplies none, but a caller
+    *can* supply one — and an order carrying a wider stop than the registered
+    experiment declares is an order whose risk was never preregistered. The
+    policy distance is therefore a cap: equal or tighter passes (tighter is
+    strictly safer), wider is refused. This does not weaken anything — it makes
+    the immutable registration the single source of truth for stop risk, which
+    is what "resolved from the registered policy before submission" requires.
+    """
+    if ctx.entry is None:
+        # No registered experiment: `strategy_registered_frozen` already refuses.
+        return ("stop_within_policy_distance", CHECK_PASS, "no registered entry — nothing to compare against")
+    pol = ctx.research_policy
+    if pol is None:
+        return (
+            "stop_within_policy_distance",
+            CHECK_FAIL,
+            "the registered entry carries no complete policy — its stop distance is unknown",
+        )
+    declared = pol.stop_distance_price()
+    if declared is None:
+        return (
+            "stop_within_policy_distance",
+            CHECK_PASS,
+            "policy declares no fixed stop distance (stop_loss_logic.distance_price absent)",
+        )
+    if ctx.stop_loss is None:
+        # `stop_loss_present` owns the missing-stop refusal; do not double-report.
+        return (
+            "stop_within_policy_distance",
+            CHECK_PASS,
+            f"no stop supplied — derivation/refusal is handled by stop_loss_present (policy distance {declared})",
+        )
+    stop = _dec(ctx.stop_loss)
+    if stop is None:
+        return (
+            "stop_within_policy_distance",
+            CHECK_UNKNOWN,
+            "stop distance not computable without stop price",
+        )
+    # The stop distance may be evaluated relative to entry fill (ask for BUY,
+    # bid for SELL) OR relative to the market quote / trigger price (bid for
+    # BUY, ask for SELL) depending on how the provider calculates its stop.
+    # We evaluate against the closer reference price so neither convention is
+    # falsely penalised for the spread, but a genuinely wider stop is still
+    # strictly refused.
+    if ctx.ask is not None and ctx.bid is not None:
+        distance = min(abs(ctx.ask - stop), abs(ctx.bid - stop))
+    else:
+        ref = ctx.ask if (ctx.side or "").upper() == "BUY" else ctx.bid
+        if ref is None:
+            return (
+                "stop_within_policy_distance",
+                CHECK_UNKNOWN,
+                "stop distance not computable without an executable reference price",
+            )
+        distance = abs(ref - stop)
+
+    tolerance = Decimal("0")
+    spec = ctx.spec
+    if spec is not None:
+        try:
+            tolerance = Decimal(str(spec.tick_size))
+        except Exception:  # noqa: BLE001 - unreadable tick geometry is already refused elsewhere
+            tolerance = Decimal("0")
+    limit = Decimal(str(declared)) + tolerance
+    if distance > limit:
+        return (
+            "stop_within_policy_distance",
+            CHECK_FAIL,
+            f"stop distance {distance} exceeds the registered policy distance {declared} "
+            f"(+1 tick tolerance {tolerance}) — per-order risk was never preregistered",
+        )
+    if distance < Decimal(str(declared)):
+        return (
+            "stop_within_policy_distance",
+            CHECK_PASS,
+            f"stop distance {distance} is tighter than the registered policy distance {declared} (safer)",
+        )
+    return (
+        "stop_within_policy_distance",
+        CHECK_PASS,
+        f"stop distance {distance} equals the registered policy distance {declared}",
+    )
+
+
+def _exposure_check(ctx: DemoPretradeContext, positions: list[Any]) -> tuple[str, str, str]:
+    lots = _dec(ctx.intended_lots)
+    if lots is None:
+        return ("max_total_exposure", CHECK_UNKNOWN, "intended size unknown — exposure not computable")
+    current = Decimal("0")
+    for p in positions:
+        qty = _dec(getattr(p, "quantity", None))
+        if qty is None:
+            return ("max_total_exposure", CHECK_UNKNOWN, "a position has an unreadable quantity — exposure unknown")
+        current += abs(qty)
+    total = current + abs(lots)
+    max_lots = Decimal(str(_cap(ctx, "max_exposure_lots", Decimal("0.3"))))
+    if total > max_lots:
+        return ("max_total_exposure", CHECK_FAIL, f"exposure {total} lots > demo limit {max_lots} lots")
+    spec = ctx.spec
+    max_notional = _limit_value(ctx, "max_notional", None)
+    if max_notional is not None and spec is not None:
+        price = ctx.ask if (ctx.side or "").upper() == "BUY" else ctx.bid
+        if price is None:
+            return ("max_total_exposure", CHECK_UNKNOWN, "notional exposure not computable without a price")
+        try:
+            notional = total * Decimal(str(spec.contract_size)) * Decimal(price)
+        except Exception:
+            return ("max_total_exposure", CHECK_UNKNOWN, "notional exposure computation failed — fail closed")
+        if notional > Decimal(str(max_notional)):
+            return ("max_total_exposure", CHECK_FAIL, f"notional {notional} > demo limit {max_notional}")
+    return ("max_total_exposure", CHECK_PASS, f"exposure {total} lots ≤ demo limit {max_lots} lots")
+
+
+def context_field_names() -> tuple[str, ...]:
+    """Introspection helper used by tests/UI to document the gate inputs."""
+    return tuple(f.name for f in dataclass_fields(DemoPretradeContext))

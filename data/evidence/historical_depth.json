@@ -1,0 +1,19 @@
+{
+  "generated_from": "data/evidence/data_inventory.json",
+  "absent_requests": "UNAVAILABLE: no requested absent symbol/timeframe matrix was supplied",
+  "claims": "No dataset passes claim readiness merely because it has bars; see each research_eligibility/readiness record.",
+  "XAUUSD_1H": {
+    "symbol": "XAUUSD",
+    "timeframe": "1H",
+    "version": "20260918-010-572728d9",
+    "data_class": "SYNTHETIC",
+    "available": 500,
+    "effective_sample": 500,
+    "independent_obs": null,
+    "regime_coverage": "UNAVAILABLE: regime taxonomy/coverage not measured",
+    "remaining_uncertainty": "high",
+    "pass": false,
+    "status": "MEASURED_DATASET_BLOCKED",
+    "research_eligibility": "MECHANISM_VALIDATION_ONLY \u2014 synthetic data cannot support real-market claims"
+  }
+}

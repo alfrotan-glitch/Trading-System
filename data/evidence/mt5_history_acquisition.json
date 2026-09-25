@@ -1,0 +1,40 @@
+{
+  "analyses": {},
+  "boundary_assessment": null,
+  "dataset_root": "data/raw/mt5_ticks",
+  "detail": "MetaTrader5 python package unavailable in this environment (Windows + MT5 terminal required). No tick was queried, acquired, or fabricated. Run this script on the operator machine where the already-connected WM Markets DEMO terminal is running; see docs/mt5_history_acquisition.md.",
+  "environment": {
+    "environment": "DEMO_FORWARD",
+    "execution_policy": "DEMO_EXECUTION = DISABLED BY POLICY; LIVE = LOCKED",
+    "observation_mode": "OBSERVE_ONLY"
+  },
+  "no_order_apis_statement": "The only MT5 functions invoked by this workflow are: initialize, shutdown, last_error, account_info, terminal_info, symbol_info, symbol_select, copy_ticks_range. No order_send or any order/deal/history-order API is reachable; DEMO_EXECUTION remains DISABLED BY POLICY and LIVE LOCKED.",
+  "order_send_called": false,
+  "orders_submitted": 0,
+  "read_only": true,
+  "report_generated_at_utc": "2026-09-19T09:42:51.773125+00:00",
+  "requested_symbol": "XAUUSD@",
+  "schema": "qts.mt5_history_acquisition_report.v1",
+  "software": {
+    "git_working_tree_dirty_at_run": true,
+    "numpy_version": "2.4.6",
+    "probe": "qts.data.mt5_history_acquisition",
+    "pyarrow_version": "25.0.1",
+    "python_version": "3.11.2",
+    "qts_version": "0.1.0",
+    "repository_commit": "f4c39a239da766300f6a80431fbdb33d1338f357"
+  },
+  "status": "MT5_PACKAGE_UNAVAILABLE",
+  "windows": [],
+  "windows_days_requested": [
+    7,
+    30,
+    45,
+    60,
+    90,
+    120,
+    180,
+    270,
+    365
+  ]
+}

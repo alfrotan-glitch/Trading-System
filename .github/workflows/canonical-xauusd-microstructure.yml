@@ -1,0 +1,73 @@
+# Reads the already-listed release asset on a GitHub-hosted runner.
+# Does not repair rows, does not replace the archive, and does not trade.
+name: Canonical XAUUSD microstructure
+
+on:
+  push:
+    branches:
+      - arena/01a0c9cc-trading-system
+    paths:
+      - .github/workflows/canonical-xauusd-microstructure.yml
+      - scripts/run_xauusd_microstructure.py
+      - src/qts/research/xauusd_microstructure.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: canonical-xauusd-microstructure
+  cancel-in-progress: false
+
+jobs:
+  microstructure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install QTS
+        run: pip install -e .
+
+      - name: Download the listed release asset on this runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p data/raw/mt5_ticks
+          gh release download dataset-xauusd-730d-20260919 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "XAUUSD_730d_20260919T114013Z.zip" \
+            --dir data/raw/mt5_ticks \
+            --clobber
+          test -f data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip
+
+      - name: Microstructure scan, no repair
+        env:
+          QTS_DISCOVERY_EXECUTION_HOST: github-actions-runner
+        run: |
+          set -euo pipefail
+          python scripts/run_xauusd_microstructure.py \
+            --zip data/raw/mt5_ticks/XAUUSD_730d_20260919T114013Z.zip \
+            --output reports/xauusd_microstructure_state.json \
+            --markdown reports/xauusd_microstructure_state.md \
+            --work-dir "${RUNNER_TEMP}/qts_microstructure"
+
+      - name: Commit the microstructure report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/xauusd_microstructure_state.json reports/xauusd_microstructure_summary.json reports/xauusd_microstructure_state.md
+          if git diff --cached --quiet; then
+            echo "no report change"
+            exit 0
+          fi
+          git commit -m "Record XAUUSD microstructure discovery state [skip ci]"
+          git push origin HEAD:arena/01a0c9cc-trading-system

@@ -1,0 +1,15 @@
+{
+  "decision": "INCONCLUSIVE",
+  "strategy_promoted": false,
+  "held_out_span_opened": false,
+  "hypotheses": {
+    "H-VL-01": "TESTED",
+    "H-VL-02": "TESTED",
+    "H-VL-03": "TESTED",
+    "H-VL-04": "TESTED"
+  },
+  "hypothesis_generators": 18,
+  "timestamp_basis": "BLOCKED",
+  "rows": 139930971,
+  "cutoff_time_msc": 1764563969254
+}

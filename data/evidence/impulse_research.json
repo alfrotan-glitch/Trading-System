@@ -1,0 +1,5065 @@
+{
+  "research": "impulse_continuation",
+  "generated_at": "2026-09-18T10:20:45.242523+00:00",
+  "mode": "MECHANISM_VALIDATION",
+  "mode_note": "Dataset failed the pre-registered data-adequacy gate. All numbers below describe the RESEARCH MECHANISM operating on this dataset, NOT real-market behavior. No real-market claim is permitted and nothing was promoted.",
+  "hypothesis": "When price begins an unusually strong directional movement, the conditional distribution of the next short horizon is sufficiently directional and persistent to create positive net expectancy after spread, commission, slippage, and latency.",
+  "hypothesis_specification": {
+    "question": "Does an unusually strong directional movement predict positive net expectancy at the declared short horizons?",
+    "mechanism": "short-horizon directional persistence after an impulse, rather than unconditional continuation",
+    "measurable_prediction": "impulse events have higher continuation and net-return distributions than the matched non-event baseline after declared costs",
+    "null_hypothesis": "impulse events have no incremental predictive value versus the matched baseline after costs and timing controls",
+    "competing_explanations": [
+      "selection or trial-count bias",
+      "timestamp/look-ahead leakage",
+      "single-regime or single-instrument artifact",
+      "cost assumptions masking unavailable broker execution evidence"
+    ],
+    "falsification_criteria": [
+      "chronological validation does not replicate the effect",
+      "the effect disappears under declared cost or latency sensitivity",
+      "the effect is not separated from baseline/placebo controls",
+      "event counts or regime coverage remain insufficient for the claim"
+    ],
+    "required_data": [
+      "immutable provenance-qualified OHLC history",
+      "measured bid/ask or tick spread and execution-cost fields",
+      "enough events per direction across multiple regimes",
+      "untouched chronological validation and forward observation"
+    ],
+    "horizon": "primary=12 bars; sensitivity=[12, 4]",
+    "population": "XAUUSD 1H bars from the declared venue/source",
+    "regime": "all declared volatility regimes; no unmeasured regime may be silently excluded"
+  },
+  "provenance": {
+    "data_version": "20260918-010-572728d9",
+    "checksum": "sha256:572728d92ebb5c2a",
+    "instrument": "XAUUSD",
+    "venue": "MT5",
+    "timeframe": "1H",
+    "rows": 500,
+    "bars_read": 500,
+    "start": "2020-01-01T00:00:00+00:00",
+    "end": "2020-01-21T20:00:00+00:00",
+    "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+    "source_file": "data/fixtures/XAUUSD_1H_500.csv",
+    "data_class": "SYNTHETIC",
+    "timezone": "UTC",
+    "missing_data_stats": {
+      "expected": 501,
+      "actual": 500,
+      "missing": 1,
+      "gap_count": 0,
+      "max_gap_s": 0.0,
+      "missing_pct": 0.2
+    },
+    "code_version": "0.1.0+64fab8dae9dc"
+  },
+  "data_adequacy": {
+    "data_version": "20260918-010-572728d9",
+    "data_class": "SYNTHETIC",
+    "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+    "adequate_for_real_claims": false,
+    "measured_events_total": 53,
+    "measured_events_long": 27,
+    "measured_events_short": 26,
+    "checks": [
+      {
+        "requirement_id": "R1-REAL-PROVENANCE",
+        "description": "Data must be REAL broker/exchange history \u2014 synthetic or simulated data cannot support claims about real-market behavior",
+        "minimum": "data_class == REAL",
+        "observed": "data_class=SYNTHETIC (source='SYNTHETIC:fixture:XAUUSD_1H_500.csv')",
+        "passed": false,
+        "blocking_for_real_claims": true
+      },
+      {
+        "requirement_id": "R2-DEPTH",
+        "description": "Minimum number of bars for event-count sufficiency",
+        "minimum": ">= 5000 bars (target 17520)",
+        "observed": "500 bars",
+        "passed": false,
+        "blocking_for_real_claims": true
+      },
+      {
+        "requirement_id": "R3-REGIME-COVERAGE",
+        "description": "Series must span enough calendar time to contain multiple volatility regimes",
+        "minimum": ">= 180 days",
+        "observed": "20.8 days",
+        "passed": false,
+        "blocking_for_real_claims": true
+      },
+      {
+        "requirement_id": "R4-FRESHNESS",
+        "description": "Real-time impulse claims require recent data (stale data cannot describe current market microstructure)",
+        "minimum": "last bar within 7 days of assessment time",
+        "observed": "last bar 2431.6 days old",
+        "passed": false,
+        "blocking_for_real_claims": true
+      },
+      {
+        "requirement_id": "R5-EXECUTION-DATA",
+        "description": "Real spread/bid-ask/tick history is required to replace declared cost ASSUMPTIONS with broker-observed costs (bar high-low range is only a proxy)",
+        "minimum": "bid/ask or tick data with real spread history available",
+        "observed": "OHLC bars only \u2014 no bid/ask, no ticks (costs remain ESTIMATED assumptions)",
+        "passed": false,
+        "blocking_for_real_claims": false
+      },
+      {
+        "requirement_id": "R6-EVENT-SUFFICIENCY",
+        "description": "Enough measured events (per side) for statistical inference after multiple-testing correction",
+        "minimum": ">= 100 total, >= 30 per side",
+        "observed": "total=53 long=27 short=26",
+        "passed": false,
+        "blocking_for_real_claims": true
+      }
+    ]
+  },
+  "analysis": {
+    "data_version": "20260918-010-572728d9",
+    "provenance": {
+      "data_version": "20260918-010-572728d9",
+      "checksum": "sha256:572728d92ebb5c2a",
+      "instrument": "XAUUSD",
+      "venue": "MT5",
+      "timeframe": "1H",
+      "rows": 500,
+      "bars_read": 500,
+      "start": "2020-01-01T00:00:00+00:00",
+      "end": "2020-01-21T20:00:00+00:00",
+      "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+      "source_file": "data/fixtures/XAUUSD_1H_500.csv",
+      "data_class": "SYNTHETIC",
+      "timezone": "UTC",
+      "missing_data_stats": {
+        "expected": 501,
+        "actual": 500,
+        "missing": 1,
+        "gap_count": 0,
+        "max_gap_s": 0.0,
+        "missing_pct": 0.2
+      },
+      "code_version": "0.1.0+64fab8dae9dc"
+    },
+    "config_snapshot": {
+      "seed": 42,
+      "horizons": [
+        12,
+        4
+      ],
+      "primary_horizon": 12,
+      "costs": {
+        "spread_bps": 2.0,
+        "commission_bps_round_turn": 0.4,
+        "slippage_bps_per_side": 0.5,
+        "latency_bars": 1,
+        "round_turn_cost_bps": 3.4,
+        "provenance": "ESTIMATED:declared_assumption"
+      },
+      "n_boot": 2000,
+      "discovery_ratio": 0.6,
+      "validation_ratio": 0.2,
+      "warmup_bars": 64,
+      "alpha": 0.05,
+      "pre_registered_families": [
+        {
+          "family_id": "IMP-RE-B",
+          "definition": "range_expansion",
+          "params": {
+            "k": 2.5,
+            "lookback": 20.0
+          },
+          "role": "baseline"
+        },
+        {
+          "family_id": "IMP-RE-V",
+          "definition": "range_expansion",
+          "params": {
+            "k": 3.5,
+            "lookback": 20.0
+          },
+          "role": "variant"
+        },
+        {
+          "family_id": "IMP-PV-B",
+          "definition": "price_velocity",
+          "params": {
+            "k": 2.5,
+            "m": 3.0,
+            "window": 60.0
+          },
+          "role": "baseline"
+        },
+        {
+          "family_id": "IMP-PV-V",
+          "definition": "price_velocity",
+          "params": {
+            "k": 3.5,
+            "m": 3.0,
+            "window": 60.0
+          },
+          "role": "variant"
+        },
+        {
+          "family_id": "IMP-VE-B",
+          "definition": "vol_expansion",
+          "params": {
+            "k": 2.0,
+            "short_win": 6.0,
+            "long_win": 18.0
+          },
+          "role": "baseline"
+        },
+        {
+          "family_id": "IMP-VE-V",
+          "definition": "vol_expansion",
+          "params": {
+            "k": 3.0,
+            "short_win": 6.0,
+            "long_win": 18.0
+          },
+          "role": "variant"
+        },
+        {
+          "family_id": "IMP-RB-B",
+          "definition": "range_breakout",
+          "params": {
+            "lookback": 20.0
+          },
+          "role": "baseline"
+        },
+        {
+          "family_id": "IMP-RB-V",
+          "definition": "range_breakout",
+          "params": {
+            "lookback": 40.0
+          },
+          "role": "variant"
+        },
+        {
+          "family_id": "IMP-BE-B",
+          "definition": "breakout_with_expansion",
+          "params": {
+            "k": 2.0,
+            "lookback": 20.0,
+            "range_lookback": 20.0
+          },
+          "role": "baseline"
+        },
+        {
+          "family_id": "IMP-BE-V",
+          "definition": "breakout_with_expansion",
+          "params": {
+            "k": 2.0,
+            "lookback": 40.0,
+            "range_lookback": 20.0
+          },
+          "role": "variant"
+        }
+      ]
+    },
+    "split_boundaries": {
+      "discovery_end": 300,
+      "validation_end": 400,
+      "total": 500
+    },
+    "locked_untouched": true,
+    "regime_labels_available": 404,
+    "results": [
+      {
+        "family_id": "IMP-RE-B",
+        "horizon": 12,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 2
+        },
+        "n_detected": 4,
+        "n_measured": 4,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 0.25,
+        "reversal_rate": 0.75,
+        "baseline_n": 181,
+        "baseline_continuation_rate": 0.5524861878453039,
+        "p_raw": 0.331341389836317,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.3024861878453039,
+        "diff_ci": [
+          -0.6023480662983426,
+          0.20856353591160226
+        ],
+        "placebo_p_one_sided": 0.925,
+        "gross_mean_bps": -149.5987959304757,
+        "net_mean_bps": -152.9987959304757,
+        "net_ci": [
+          -756.3153093116617,
+          392.341847276297
+        ],
+        "net_sharpe_per_event": -0.23277799131729918,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 246.0722577988965,
+        "mae_mean_bps": 179.8384120886097,
+        "race_counts": {
+          "TARGET": 3,
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.75,
+        "time_to_target_mean_bars": 3.0,
+        "time_to_target_censored_rate": 0.25,
+        "duration_mean_bars": 2.75,
+        "regime_breakdown": {
+          "HIGH": {
+            "n": 3.0,
+            "net_mean_bps": -398.9209578058685,
+            "continuation_rate": 0.0
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": 584.7676896957029,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": -595.8263509437007,
+        "short_net_mean_bps": 289.82875908274934,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RE-B",
+        "horizon": 12,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 3
+        },
+        "n_detected": 3,
+        "n_measured": 3,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 0.3333333333333333,
+        "reversal_rate": 0.6666666666666666,
+        "baseline_n": 58,
+        "baseline_continuation_rate": 0.43103448275862066,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.09770114942528735,
+        "diff_ci": [
+          -0.5172413793103449,
+          0.5344827586206897
+        ],
+        "placebo_p_one_sided": 0.79,
+        "gross_mean_bps": -151.18561803806392,
+        "net_mean_bps": -154.5856180380639,
+        "net_ci": [
+          -1006.8794966981533,
+          974.7719507571975
+        ],
+        "net_sharpe_per_event": -0.151634065061702,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 266.39137572548856,
+        "mae_mean_bps": 196.28104674837186,
+        "race_counts": {
+          "TARGET": 2,
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.6666666666666666,
+        "time_to_target_mean_bars": 4.0,
+        "time_to_target_censored_rate": 0.3333333333333333,
+        "duration_mean_bars": 4.333333333333333,
+        "regime_breakdown": {
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": 974.7719507571975,
+            "continuation_rate": 1.0
+          },
+          "HIGH": {
+            "n": 2.0,
+            "net_mean_bps": -719.2644024356946,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": -154.5856180380639,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RE-B",
+        "horizon": 12,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 5
+        },
+        "n_detected": 7,
+        "n_measured": 7,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 2,
+        "continuation_rate": 0.2857142857142857,
+        "reversal_rate": 0.7142857142857143,
+        "baseline_n": 239,
+        "baseline_continuation_rate": 0.5230125523012552,
+        "p_raw": 0.2696135986767906,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.2372982665869695,
+        "diff_ci": [
+          -0.5398535564853557,
+          0.14953676031081836
+        ],
+        "placebo_p_one_sided": 0.925,
+        "gross_mean_bps": -150.27886254801348,
+        "net_mean_bps": -153.6788625480135,
+        "net_ci": [
+          -664.1048351199415,
+          356.0169589548608
+        ],
+        "net_sharpe_per_event": -0.20491586106128368,
+        "dsr_per_event": 0.0004910527731533558,
+        "mfe_mean_bps": 254.78045119600736,
+        "mae_mean_bps": 186.88525551422205,
+        "race_counts": {
+          "TARGET": 5,
+          "ADVERSE": 2
+        },
+        "target_hit_rate": 0.7142857142857143,
+        "time_to_target_mean_bars": 3.4,
+        "time_to_target_censored_rate": 0.2857142857142857,
+        "duration_mean_bars": 3.4285714285714284,
+        "regime_breakdown": {
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": 974.7719507571975,
+            "continuation_rate": 1.0
+          },
+          "HIGH": {
+            "n": 5.0,
+            "net_mean_bps": -527.0583356577989,
+            "continuation_rate": 0.0
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": 584.7676896957029,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": -595.8263509437007,
+        "short_net_mean_bps": 23.180132810261398,
+        "events": [
+          {
+            "detection_index": 95,
+            "detection_time": "2020-01-05T00:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 588.1676896957028,
+            "net_return_bps": 584.7676896957029,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 119,
+            "detection_time": "2020-01-06T00:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -181.53567998192048,
+            "net_return_bps": -184.9356799819205,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 132,
+            "detection_time": "2020-01-06T13:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -1.7101715302042202,
+            "net_return_bps": -5.11017153020422,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 227,
+            "detection_time": "2020-01-10T12:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -1003.3170219054809,
+            "net_return_bps": -1006.7170219054809,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 302,
+            "detection_time": "2020-01-13T15:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -1003.4794966981533,
+            "net_return_bps": -1006.8794966981533,
+            "split": "validation"
+          },
+          {
+            "detection_index": 346,
+            "detection_time": "2020-01-15T11:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -428.2493081732359,
+            "net_return_bps": -431.64930817323585,
+            "split": "validation"
+          },
+          {
+            "detection_index": 378,
+            "detection_time": "2020-01-16T19:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 978.1719507571975,
+            "net_return_bps": 974.7719507571975,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-RE-B",
+        "horizon": 4,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 2
+        },
+        "n_detected": 4,
+        "n_measured": 4,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 3,
+        "continuation_rate": 0.75,
+        "reversal_rate": 0.25,
+        "baseline_n": 212,
+        "baseline_continuation_rate": 0.5801886792452831,
+        "p_raw": 0.6440425861316312,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.16981132075471694,
+        "diff_ci": [
+          -0.3397405660377359,
+          0.4716981132075472
+        ],
+        "placebo_p_one_sided": 0.085,
+        "gross_mean_bps": 102.66366004613505,
+        "net_mean_bps": 99.26366004613507,
+        "net_ci": [
+          -268.244063847288,
+          384.8656558492521
+        ],
+        "net_sharpe_per_event": 0.24423361585239314,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 214.7851794328873,
+        "mae_mean_bps": 179.8384120886097,
+        "race_counts": {
+          "TARGET": 2,
+          "NEITHER": 1,
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.5,
+        "time_to_target_mean_bars": 2.0,
+        "time_to_target_censored_rate": 0.5,
+        "duration_mean_bars": 2.5,
+        "regime_breakdown": {
+          "HIGH": {
+            "n": 3.0,
+            "net_mean_bps": -6.2739462847492105,
+            "continuation_rate": 0.6666666666666666
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": 415.876479038788,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": -186.3383357569819,
+        "short_net_mean_bps": 384.8656558492521,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RE-B",
+        "horizon": 4,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 3
+        },
+        "n_detected": 3,
+        "n_measured": 3,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 2,
+        "continuation_rate": 0.6666666666666666,
+        "reversal_rate": 0.3333333333333333,
+        "baseline_n": 82,
+        "baseline_continuation_rate": 0.5365853658536586,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.13008130081300806,
+        "diff_ci": [
+          -0.5365853658536586,
+          0.5365853658536586
+        ],
+        "placebo_p_one_sided": 0.245,
+        "gross_mean_bps": 81.18854846333863,
+        "net_mean_bps": 77.78854846333864,
+        "net_ci": [
+          -127.70105567639548,
+          264.0556792982203
+        ],
+        "net_sharpe_per_event": 0.39570033072092586,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 216.24405967103175,
+        "mae_mean_bps": 151.03234973622853,
+        "race_counts": {
+          "TARGET": 1,
+          "NEITHER": 2
+        },
+        "target_hit_rate": 0.3333333333333333,
+        "time_to_target_mean_bars": 3.0,
+        "time_to_target_censored_rate": 0.6666666666666666,
+        "duration_mean_bars": 3.6666666666666665,
+        "regime_breakdown": {
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": 97.0110217681911,
+            "continuation_rate": 1.0
+          },
+          "HIGH": {
+            "n": 2.0,
+            "net_mean_bps": 68.1773118109124,
+            "continuation_rate": 0.5
+          }
+        },
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": 77.78854846333864,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RE-B",
+        "horizon": 4,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 5
+        },
+        "n_detected": 7,
+        "n_measured": 7,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 5,
+        "continuation_rate": 0.7142857142857143,
+        "reversal_rate": 0.2857142857142857,
+        "baseline_n": 294,
+        "baseline_continuation_rate": 0.5680272108843537,
+        "p_raw": 0.7062933505746448,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.1462585034013606,
+        "diff_ci": [
+          -0.2450680272108844,
+          0.45238095238095233
+        ],
+        "placebo_p_one_sided": 0.245,
+        "gross_mean_bps": 93.46004079636513,
+        "net_mean_bps": 90.06004079636516,
+        "net_ci": [
+          -152.11854961569375,
+          286.2090022332017
+        ],
+        "net_sharpe_per_event": 0.29126598182028096,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 215.4104138206635,
+        "mae_mean_bps": 167.49295679473204,
+        "race_counts": {
+          "TARGET": 3,
+          "NEITHER": 3,
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.42857142857142855,
+        "time_to_target_mean_bars": 2.3333333333333335,
+        "time_to_target_censored_rate": 0.5714285714285714,
+        "duration_mean_bars": 3.0,
+        "regime_breakdown": {
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": 97.0110217681911,
+            "continuation_rate": 1.0
+          },
+          "HIGH": {
+            "n": 5.0,
+            "net_mean_bps": 23.506556953515435,
+            "continuation_rate": 0.6
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": 415.876479038788,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": -186.3383357569819,
+        "short_net_mean_bps": 200.61939141770398,
+        "events": [
+          {
+            "detection_index": 95,
+            "detection_time": "2020-01-05T00:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 419.27647903878795,
+            "net_return_bps": 415.876479038788,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 119,
+            "detection_time": "2020-01-06T00:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": 106.33369116899223,
+            "net_return_bps": 102.93369116899223,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 132,
+            "detection_time": "2020-01-06T13:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 357.25483265971616,
+            "net_return_bps": 353.8548326597162,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 227,
+            "detection_time": "2020-01-10T12:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -472.2103626829561,
+            "net_return_bps": -475.61036268295607,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 302,
+            "detection_time": "2020-01-13T15:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 267.4556792982203,
+            "net_return_bps": 264.0556792982203,
+            "split": "validation"
+          },
+          {
+            "detection_index": 346,
+            "detection_time": "2020-01-15T11:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": -124.30105567639549,
+            "net_return_bps": -127.7010556763955,
+            "split": "validation"
+          },
+          {
+            "detection_index": 378,
+            "detection_time": "2020-01-16T19:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": 100.4110217681911,
+            "net_return_bps": 97.0110217681911,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-RE-V",
+        "horizon": 12,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 236,
+        "baseline_continuation_rate": 0.538135593220339,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 0.49,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RE-V",
+        "horizon": 12,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 1
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 86,
+        "baseline_continuation_rate": 0.4883720930232558,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.4883720930232558,
+        "diff_ci": [
+          -0.6046511627906976,
+          -0.37209302325581395
+        ],
+        "placebo_p_one_sided": 0.49,
+        "gross_mean_bps": -1003.4794966981533,
+        "net_mean_bps": -1006.8794966981533,
+        "net_ci": [
+          -1006.8794966981533,
+          -1006.8794966981533
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 302.67945749255756,
+        "mae_mean_bps": 128.6433638401882,
+        "race_counts": {
+          "TARGET": 1
+        },
+        "target_hit_rate": 1.0,
+        "time_to_target_mean_bars": 3.0,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 3.0,
+        "regime_breakdown": {
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -1006.8794966981533,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": -1006.8794966981533,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RE-V",
+        "horizon": 12,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 1
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 322,
+        "baseline_continuation_rate": 0.5248447204968945,
+        "p_raw": 0.47515527950310554,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.5248447204968945,
+        "diff_ci": [
+          -0.5807453416149069,
+          -0.4720496894409938
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": -1003.4794966981533,
+        "net_mean_bps": -1006.8794966981533,
+        "net_ci": [
+          -1006.8794966981533,
+          -1006.8794966981533
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 302.67945749255756,
+        "mae_mean_bps": 128.6433638401882,
+        "race_counts": {
+          "TARGET": 1
+        },
+        "target_hit_rate": 1.0,
+        "time_to_target_mean_bars": 3.0,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 3.0,
+        "regime_breakdown": {
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -1006.8794966981533,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": -1006.8794966981533,
+        "events": [
+          {
+            "detection_index": 302,
+            "detection_time": "2020-01-13T15:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -1003.4794966981533,
+            "net_return_bps": -1006.8794966981533,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-RE-V",
+        "horizon": 4,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 236,
+        "baseline_continuation_rate": 0.4533898305084746,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 0.5,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RE-V",
+        "horizon": 4,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 1
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 1.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 94,
+        "baseline_continuation_rate": 0.5425531914893617,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.45744680851063835,
+        "diff_ci": [
+          0.36170212765957444,
+          0.5531914893617021
+        ],
+        "placebo_p_one_sided": 0.5,
+        "gross_mean_bps": 267.4556792982203,
+        "net_mean_bps": 264.0556792982203,
+        "net_ci": [
+          264.0556792982203,
+          264.0556792982203
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 302.67945749255756,
+        "mae_mean_bps": 128.6433638401882,
+        "race_counts": {
+          "TARGET": 1
+        },
+        "target_hit_rate": 1.0,
+        "time_to_target_mean_bars": 3.0,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 3.0,
+        "regime_breakdown": {
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": 264.0556792982203,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": 264.0556792982203,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RE-V",
+        "horizon": 4,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 1
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 1.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 330,
+        "baseline_continuation_rate": 0.47878787878787876,
+        "p_raw": 0.47878787878787876,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.5212121212121212,
+        "diff_ci": [
+          0.4696969696969697,
+          0.5727272727272728
+        ],
+        "placebo_p_one_sided": 0.5,
+        "gross_mean_bps": 267.4556792982203,
+        "net_mean_bps": 264.0556792982203,
+        "net_ci": [
+          264.0556792982203,
+          264.0556792982203
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 302.67945749255756,
+        "mae_mean_bps": 128.6433638401882,
+        "race_counts": {
+          "TARGET": 1
+        },
+        "target_hit_rate": 1.0,
+        "time_to_target_mean_bars": 3.0,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 3.0,
+        "regime_breakdown": {
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": 264.0556792982203,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": 264.0556792982203,
+        "events": [
+          {
+            "detection_index": 302,
+            "detection_time": "2020-01-13T15:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 267.4556792982203,
+            "net_return_bps": 264.0556792982203,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-PV-B",
+        "horizon": 12,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 2
+        },
+        "n_detected": 4,
+        "n_measured": 4,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 2,
+        "continuation_rate": 0.5,
+        "reversal_rate": 0.5,
+        "baseline_n": 180,
+        "baseline_continuation_rate": 0.4666666666666667,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.033333333333333326,
+        "diff_ci": [
+          -0.4722222222222222,
+          0.5444444444444445
+        ],
+        "placebo_p_one_sided": 0.645,
+        "gross_mean_bps": -357.9930949777057,
+        "net_mean_bps": -361.3930949777057,
+        "net_ci": [
+          -975.9514456854572,
+          253.16525573004583
+        ],
+        "net_sharpe_per_event": -0.5035271179133515,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 127.69876442443348,
+        "mae_mean_bps": 338.2272718196918,
+        "race_counts": {
+          "ADVERSE": 3,
+          "TARGET": 1
+        },
+        "target_hit_rate": 0.25,
+        "time_to_target_mean_bars": 4.0,
+        "time_to_target_censored_rate": 0.75,
+        "duration_mean_bars": 3.75,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": 380.3435145560675,
+            "continuation_rate": 1.0
+          },
+          "HIGH": {
+            "n": 2.0,
+            "net_mean_bps": -975.9514456854572,
+            "continuation_rate": 0.0
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": 125.98699690402421,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": -975.9514456854572,
+        "short_net_mean_bps": 253.16525573004583,
+        "events": []
+      },
+      {
+        "family_id": "IMP-PV-B",
+        "horizon": 12,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 0
+        },
+        "n_detected": 2,
+        "n_measured": 2,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 0.5,
+        "reversal_rate": 0.5,
+        "baseline_n": 72,
+        "baseline_continuation_rate": 0.4027777777777778,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.09722222222222221,
+        "diff_ci": [
+          -0.4722222222222222,
+          0.6805555555555556
+        ],
+        "placebo_p_one_sided": 0.32,
+        "gross_mean_bps": 105.70930587122103,
+        "net_mean_bps": 102.30930587122106,
+        "net_ci": [
+          -520.3413805923905,
+          724.9599923348326
+        ],
+        "net_sharpe_per_event": 0.116186499963422,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 234.79721963461387,
+        "mae_mean_bps": 268.1064961170962,
+        "race_counts": {
+          "TARGET": 1,
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.5,
+        "time_to_target_mean_bars": 10.0,
+        "time_to_target_censored_rate": 0.5,
+        "duration_mean_bars": 5.5,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": -520.3413805923905,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": 724.9599923348326,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": 102.30930587122106,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-PV-B",
+        "horizon": 12,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 4,
+          "SHORT": 2
+        },
+        "n_detected": 6,
+        "n_measured": 6,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 3,
+        "continuation_rate": 0.5,
+        "reversal_rate": 0.5,
+        "baseline_n": 252,
+        "baseline_continuation_rate": 0.44841269841269843,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.05158730158730157,
+        "diff_ci": [
+          -0.3214285714285714,
+          0.43650793650793657
+        ],
+        "placebo_p_one_sided": 0.645,
+        "gross_mean_bps": -203.42562802806347,
+        "net_mean_bps": -206.82562802806342,
+        "net_ci": [
+          -716.3600277383658,
+          320.9466034129329
+        ],
+        "net_sharpe_per_event": -0.2864049128759494,
+        "dsr_per_event": 0.00024477138219588385,
+        "mfe_mean_bps": 163.3982494944936,
+        "mae_mean_bps": 314.85367991882663,
+        "race_counts": {
+          "ADVERSE": 4,
+          "TARGET": 2
+        },
+        "target_hit_rate": 0.3333333333333333,
+        "time_to_target_mean_bars": 7.0,
+        "time_to_target_censored_rate": 0.6666666666666666,
+        "duration_mean_bars": 4.333333333333333,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 2.0,
+            "net_mean_bps": -69.9989330181615,
+            "continuation_rate": 0.5
+          },
+          "HIGH": {
+            "n": 3.0,
+            "net_mean_bps": -408.9809663453606,
+            "continuation_rate": 0.3333333333333333
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": 125.98699690402421,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": -436.82106990711804,
+        "short_net_mean_bps": 253.16525573004583,
+        "events": [
+          {
+            "detection_index": 73,
+            "detection_time": "2020-01-04T02:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": 129.38699690402422,
+            "net_return_bps": 125.98699690402421,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 97,
+            "detection_time": "2020-01-05T02:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 383.74351455606745,
+            "net_return_bps": 380.3435145560675,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 140,
+            "detection_time": "2020-01-06T21:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -938.6155057318794,
+            "net_return_bps": -942.0155057318793,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 228,
+            "detection_time": "2020-01-10T13:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -1006.4873856390351,
+            "net_return_bps": -1009.8873856390351,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 313,
+            "detection_time": "2020-01-14T02:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 728.3599923348326,
+            "net_return_bps": 724.9599923348326,
+            "split": "validation"
+          },
+          {
+            "detection_index": 376,
+            "detection_time": "2020-01-16T17:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -516.9413805923905,
+            "net_return_bps": -520.3413805923905,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-PV-B",
+        "horizon": 4,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 2
+        },
+        "n_detected": 4,
+        "n_measured": 4,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 212,
+        "baseline_continuation_rate": 0.5330188679245284,
+        "p_raw": 0.04755512577829537,
+        "p_holm": 0.4755512577829537,
+        "diff_vs_baseline": -0.5330188679245284,
+        "diff_ci": [
+          -0.5990566037735849,
+          -0.4669811320754717
+        ],
+        "placebo_p_one_sided": 0.975,
+        "gross_mean_bps": -245.37615312348734,
+        "net_mean_bps": -248.77615312348732,
+        "net_ci": [
+          -428.058117051282,
+          -72.61915018053486
+        ],
+        "net_sharpe_per_event": -1.1046548213421157,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 127.69876442443348,
+        "mae_mean_bps": 301.1251046370292,
+        "race_counts": {
+          "NEITHER": 1,
+          "TARGET": 1,
+          "ADVERSE": 2
+        },
+        "target_hit_rate": 0.25,
+        "time_to_target_mean_bars": 4.0,
+        "time_to_target_censored_rate": 0.75,
+        "duration_mean_bars": 3.0,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": -61.34294432391803,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 2.0,
+            "net_mean_bps": -424.9331560664398,
+            "continuation_rate": 0.0
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": -83.8953560371517,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -424.9331560664398,
+        "short_net_mean_bps": -72.61915018053486,
+        "events": []
+      },
+      {
+        "family_id": "IMP-PV-B",
+        "horizon": 4,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 0
+        },
+        "n_detected": 2,
+        "n_measured": 2,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 88,
+        "baseline_continuation_rate": 0.5340909090909091,
+        "p_raw": 0.21707128099173556,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.5340909090909091,
+        "diff_ci": [
+          -0.6363636363636364,
+          -0.42045454545454547
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": -67.76829315775011,
+        "net_mean_bps": -71.16829315775011,
+        "net_ci": [
+          -119.54822158879695,
+          -22.78836472670327
+        ],
+        "net_sharpe_per_event": -1.0401748065634413,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 149.77585861649976,
+        "mae_mean_bps": 229.66793581589994,
+        "race_counts": {
+          "NEITHER": 1,
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 1.0,
+        "duration_mean_bars": 2.5,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": -119.54822158879695,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -22.78836472670327,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -71.16829315775011,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-PV-B",
+        "horizon": 4,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 4,
+          "SHORT": 2
+        },
+        "n_detected": 6,
+        "n_measured": 6,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 300,
+        "baseline_continuation_rate": 0.5333333333333333,
+        "p_raw": 0.010328581618655694,
+        "p_holm": 0.10328581618655694,
+        "diff_vs_baseline": -0.5333333333333333,
+        "diff_ci": [
+          -0.59,
+          -0.48
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": -186.17353313490824,
+        "net_mean_bps": -189.57353313490827,
+        "net_ci": [
+          -346.29349553783845,
+          -65.7097679067375
+        ],
+        "net_sharpe_per_event": -0.9504960820088951,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 135.05779582178891,
+        "mae_mean_bps": 277.30604836331946,
+        "race_counts": {
+          "NEITHER": 2,
+          "TARGET": 1,
+          "ADVERSE": 3
+        },
+        "target_hit_rate": 0.16666666666666666,
+        "time_to_target_mean_bars": 4.0,
+        "time_to_target_censored_rate": 0.8333333333333334,
+        "duration_mean_bars": 2.8333333333333335,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 2.0,
+            "net_mean_bps": -90.4455829563575,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 3.0,
+            "net_mean_bps": -290.88489228652764,
+            "continuation_rate": 0.0
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": -83.8953560371517,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -248.05072461209497,
+        "short_net_mean_bps": -72.61915018053486,
+        "events": [
+          {
+            "detection_index": 73,
+            "detection_time": "2020-01-04T02:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": -80.4953560371517,
+            "net_return_bps": -83.8953560371517,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 97,
+            "detection_time": "2020-01-05T02:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -57.942944323918034,
+            "net_return_bps": -61.34294432391803,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 140,
+            "detection_time": "2020-01-06T21:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -539.3790373893255,
+            "net_return_bps": -542.7790373893255,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 228,
+            "detection_time": "2020-01-10T13:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -303.6872747435541,
+            "net_return_bps": -307.0872747435541,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 313,
+            "detection_time": "2020-01-14T02:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": -19.388364726703273,
+            "net_return_bps": -22.78836472670327,
+            "split": "validation"
+          },
+          {
+            "detection_index": 376,
+            "detection_time": "2020-01-16T17:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -116.14822158879694,
+            "net_return_bps": -119.54822158879695,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-PV-V",
+        "horizon": 12,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 0
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 222,
+        "baseline_continuation_rate": 0.49099099099099097,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.49099099099099097,
+        "diff_ci": [
+          -0.5540540540540541,
+          -0.42342342342342343
+        ],
+        "placebo_p_one_sided": 0.55,
+        "gross_mean_bps": -938.6155057318794,
+        "net_mean_bps": -942.0155057318793,
+        "net_ci": [
+          -942.0155057318793,
+          -942.0155057318793
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 16.39220507511277,
+        "mae_mean_bps": 460.5454721925645,
+        "race_counts": {
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 1.0,
+        "duration_mean_bars": 2.0,
+        "regime_breakdown": {
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -942.0155057318793,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -942.0155057318793,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-PV-V",
+        "horizon": 12,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 100,
+        "baseline_continuation_rate": 0.54,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 0.55,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-PV-V",
+        "horizon": 12,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 0
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 322,
+        "baseline_continuation_rate": 0.5062111801242236,
+        "p_raw": 0.4937888198757764,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.5062111801242236,
+        "diff_ci": [
+          -0.562111801242236,
+          -0.453416149068323
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": -938.6155057318794,
+        "net_mean_bps": -942.0155057318793,
+        "net_ci": [
+          -942.0155057318793,
+          -942.0155057318793
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 16.39220507511277,
+        "mae_mean_bps": 460.5454721925645,
+        "race_counts": {
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 1.0,
+        "duration_mean_bars": 2.0,
+        "regime_breakdown": {
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -942.0155057318793,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -942.0155057318793,
+        "short_net_mean_bps": null,
+        "events": [
+          {
+            "detection_index": 140,
+            "detection_time": "2020-01-06T21:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -938.6155057318794,
+            "net_return_bps": -942.0155057318793,
+            "split": "discovery"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-PV-V",
+        "horizon": 4,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 0
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 230,
+        "baseline_continuation_rate": 0.5304347826086957,
+        "p_raw": 0.4695652173913043,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.5304347826086957,
+        "diff_ci": [
+          -0.5956521739130435,
+          -0.46956521739130436
+        ],
+        "placebo_p_one_sided": 0.5,
+        "gross_mean_bps": -539.3790373893255,
+        "net_mean_bps": -542.7790373893255,
+        "net_ci": [
+          -542.7790373893255,
+          -542.7790373893255
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 16.39220507511277,
+        "mae_mean_bps": 460.5454721925645,
+        "race_counts": {
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 1.0,
+        "duration_mean_bars": 2.0,
+        "regime_breakdown": {
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -542.7790373893255,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -542.7790373893255,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-PV-V",
+        "horizon": 4,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 100,
+        "baseline_continuation_rate": 0.57,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 0.5,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-PV-V",
+        "horizon": 4,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 0
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 330,
+        "baseline_continuation_rate": 0.5424242424242425,
+        "p_raw": 0.4575757575757575,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.5424242424242425,
+        "diff_ci": [
+          -0.5969696969696969,
+          -0.4909090909090909
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": -539.3790373893255,
+        "net_mean_bps": -542.7790373893255,
+        "net_ci": [
+          -542.7790373893255,
+          -542.7790373893255
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 16.39220507511277,
+        "mae_mean_bps": 460.5454721925645,
+        "race_counts": {
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 1.0,
+        "duration_mean_bars": 2.0,
+        "regime_breakdown": {
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -542.7790373893255,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -542.7790373893255,
+        "short_net_mean_bps": null,
+        "events": [
+          {
+            "detection_index": 140,
+            "detection_time": "2020-01-06T21:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -539.3790373893255,
+            "net_return_bps": -542.7790373893255,
+            "split": "discovery"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-VE-B",
+        "horizon": 12,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 0
+        },
+        "n_detected": 2,
+        "n_measured": 2,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 208,
+        "baseline_continuation_rate": 0.5144230769230769,
+        "p_raw": 0.23578494822485213,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.5144230769230769,
+        "diff_ci": [
+          -0.5817307692307693,
+          -0.4519230769230769
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": -566.7239114063872,
+        "net_mean_bps": -570.1239114063872,
+        "net_ci": [
+          -896.3337290490819,
+          -243.91409376369256
+        ],
+        "net_sharpe_per_event": -1.235825723411004,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 303.46587904690443,
+        "mae_mean_bps": 268.00735912810194,
+        "race_counts": {
+          "TARGET": 1,
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.5,
+        "time_to_target_mean_bars": 1.0,
+        "time_to_target_censored_rate": 0.5,
+        "duration_mean_bars": 2.5,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": -243.91409376369256,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -896.3337290490819,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -570.1239114063872,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-VE-B",
+        "horizon": 12,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 100,
+        "baseline_continuation_rate": 0.43,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 0.785,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-VE-B",
+        "horizon": 12,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 0
+        },
+        "n_detected": 2,
+        "n_measured": 2,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 308,
+        "baseline_continuation_rate": 0.487012987012987,
+        "p_raw": 0.5003373250126497,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.487012987012987,
+        "diff_ci": [
+          -0.5422077922077922,
+          -0.43173701298701345
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": -566.7239114063872,
+        "net_mean_bps": -570.1239114063872,
+        "net_ci": [
+          -896.3337290490819,
+          -243.91409376369256
+        ],
+        "net_sharpe_per_event": -1.235825723411004,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 303.46587904690443,
+        "mae_mean_bps": 268.00735912810194,
+        "race_counts": {
+          "TARGET": 1,
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.5,
+        "time_to_target_mean_bars": 1.0,
+        "time_to_target_censored_rate": 0.5,
+        "duration_mean_bars": 2.5,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": -243.91409376369256,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -896.3337290490819,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -570.1239114063872,
+        "short_net_mean_bps": null,
+        "events": [
+          {
+            "detection_index": 232,
+            "detection_time": "2020-01-10T17:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -892.9337290490819,
+            "net_return_bps": -896.3337290490819,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 278,
+            "detection_time": "2020-01-12T15:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -240.51409376369256,
+            "net_return_bps": -243.91409376369256,
+            "split": "discovery"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-VE-B",
+        "horizon": 4,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 0
+        },
+        "n_detected": 2,
+        "n_measured": 2,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 224,
+        "baseline_continuation_rate": 0.5223214285714286,
+        "p_raw": 0.22817681760204078,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.5223214285714286,
+        "diff_ci": [
+          -0.5892857142857143,
+          -0.45982142857142855
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": -181.32496632071522,
+        "net_mean_bps": -184.72496632071523,
+        "net_ci": [
+          -350.45186049304385,
+          -18.99807214838658
+        ],
+        "net_sharpe_per_event": -0.7881658374893021,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 303.46587904690443,
+        "mae_mean_bps": 268.00735912810194,
+        "race_counts": {
+          "TARGET": 1,
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.5,
+        "time_to_target_mean_bars": 1.0,
+        "time_to_target_censored_rate": 0.5,
+        "duration_mean_bars": 2.5,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": -18.99807214838658,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -350.45186049304385,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -184.72496632071523,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-VE-B",
+        "horizon": 4,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 100,
+        "baseline_continuation_rate": 0.46,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 0.245,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-VE-B",
+        "horizon": 4,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 0
+        },
+        "n_detected": 2,
+        "n_measured": 2,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 324,
+        "baseline_continuation_rate": 0.5030864197530864,
+        "p_raw": 0.2469231062338058,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.5030864197530864,
+        "diff_ci": [
+          -0.558641975308642,
+          -0.4506172839506173
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": -181.32496632071522,
+        "net_mean_bps": -184.72496632071523,
+        "net_ci": [
+          -350.45186049304385,
+          -18.99807214838658
+        ],
+        "net_sharpe_per_event": -0.7881658374893021,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 303.46587904690443,
+        "mae_mean_bps": 268.00735912810194,
+        "race_counts": {
+          "TARGET": 1,
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.5,
+        "time_to_target_mean_bars": 1.0,
+        "time_to_target_censored_rate": 0.5,
+        "duration_mean_bars": 2.5,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": -18.99807214838658,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -350.45186049304385,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -184.72496632071523,
+        "short_net_mean_bps": null,
+        "events": [
+          {
+            "detection_index": 232,
+            "detection_time": "2020-01-10T17:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -347.0518604930439,
+            "net_return_bps": -350.45186049304385,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 278,
+            "detection_time": "2020-01-12T15:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -15.59807214838658,
+            "net_return_bps": -18.99807214838658,
+            "split": "discovery"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-VE-V",
+        "horizon": 12,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 236,
+        "baseline_continuation_rate": 0.5084745762711864,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-VE-V",
+        "horizon": 12,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 100,
+        "baseline_continuation_rate": 0.47,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-VE-V",
+        "horizon": 12,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 336,
+        "baseline_continuation_rate": 0.49702380952380953,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-VE-V",
+        "horizon": 4,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 236,
+        "baseline_continuation_rate": 0.4788135593220339,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-VE-V",
+        "horizon": 4,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 100,
+        "baseline_continuation_rate": 0.51,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-VE-V",
+        "horizon": 4,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 0,
+          "SHORT": 0
+        },
+        "n_detected": 0,
+        "n_measured": 0,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 336,
+        "baseline_continuation_rate": 0.4880952380952381,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          0.0,
+          0.0
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": 0.0,
+        "net_mean_bps": 0.0,
+        "net_ci": [
+          0.0,
+          0.0
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 0.0,
+        "mae_mean_bps": 0.0,
+        "race_counts": {},
+        "target_hit_rate": 0.0,
+        "time_to_target_mean_bars": null,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 0.0,
+        "regime_breakdown": {},
+        "long_net_mean_bps": null,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RB-B",
+        "horizon": 12,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 4,
+          "SHORT": 7
+        },
+        "n_detected": 11,
+        "n_measured": 11,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 5,
+        "continuation_rate": 0.45454545454545453,
+        "reversal_rate": 0.5454545454545454,
+        "baseline_n": 96,
+        "baseline_continuation_rate": 0.4583333333333333,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.0037878787878787845,
+        "diff_ci": [
+          -0.3001893939393939,
+          0.31825284090909056
+        ],
+        "placebo_p_one_sided": 0.635,
+        "gross_mean_bps": -167.69853912370388,
+        "net_mean_bps": -171.0985391237039,
+        "net_ci": [
+          -437.36575194318283,
+          46.456732485652985
+        ],
+        "net_sharpe_per_event": -0.38089437079369737,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 182.8687997015549,
+        "mae_mean_bps": 212.81200834811705,
+        "race_counts": {
+          "ADVERSE": 6,
+          "TARGET": 5
+        },
+        "target_hit_rate": 0.45454545454545453,
+        "time_to_target_mean_bars": 4.0,
+        "time_to_target_censored_rate": 0.5454545454545454,
+        "duration_mean_bars": 3.272727272727273,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 2.0,
+            "net_mean_bps": 37.027884189658025,
+            "continuation_rate": 0.5
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -689.0925986760243,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 7.0,
+            "net_mean_bps": -199.00487099543696,
+            "continuation_rate": 0.42857142857142855
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": 125.98699690402421,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": -224.30259072569572,
+        "short_net_mean_bps": -140.69622392256568,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RB-B",
+        "horizon": 12,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 3,
+          "SHORT": 2
+        },
+        "n_detected": 5,
+        "n_measured": 5,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 0.2,
+        "reversal_rate": 0.8,
+        "baseline_n": 23,
+        "baseline_continuation_rate": 0.43478260869565216,
+        "p_raw": 0.3960856343423588,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.23478260869565215,
+        "diff_ci": [
+          -0.5832608695652173,
+          0.22608695652173916
+        ],
+        "placebo_p_one_sided": 0.975,
+        "gross_mean_bps": -55.42347815330653,
+        "net_mean_bps": -58.82347815330652,
+        "net_ci": [
+          -324.48292418449597,
+          346.56471218688534
+        ],
+        "net_sharpe_per_event": -0.1301622068676288,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 178.73817871441628,
+        "mae_mean_bps": 231.800024526584,
+        "race_counts": {
+          "TARGET": 2,
+          "ADVERSE": 3
+        },
+        "target_hit_rate": 0.4,
+        "time_to_target_mean_bars": 5.5,
+        "time_to_target_censored_rate": 0.6,
+        "duration_mean_bars": 4.6,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": -73.08204303153528,
+            "continuation_rate": 0.0
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -269.57605921717993,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 3.0,
+            "net_mean_bps": 16.180237160727547,
+            "continuation_rate": 0.3333333333333333
+          }
+        },
+        "long_net_mean_bps": 127.43396336203914,
+        "short_net_mean_bps": -338.209640426325,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RB-B",
+        "horizon": 12,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 7,
+          "SHORT": 9
+        },
+        "n_detected": 16,
+        "n_measured": 16,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 6,
+        "continuation_rate": 0.375,
+        "reversal_rate": 0.625,
+        "baseline_n": 119,
+        "baseline_continuation_rate": 0.453781512605042,
+        "p_raw": 0.6204702644823593,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.07878151260504201,
+        "diff_ci": [
+          -0.32037815126050423,
+          0.1880252100840336
+        ],
+        "placebo_p_one_sided": 0.9,
+        "gross_mean_bps": -132.61258257045472,
+        "net_mean_bps": -136.0125825704547,
+        "net_ci": [
+          -349.561844211878,
+          70.78985793758542
+        ],
+        "net_sharpe_per_event": -0.31050728805228694,
+        "dsr_per_event": 1.6119490695288055e-05,
+        "mfe_mean_bps": 181.57798064307408,
+        "mae_mean_bps": 218.74576340388796,
+        "race_counts": {
+          "ADVERSE": 9,
+          "TARGET": 7
+        },
+        "target_hit_rate": 0.4375,
+        "time_to_target_mean_bars": 4.428571428571429,
+        "time_to_target_censored_rate": 0.5625,
+        "duration_mean_bars": 3.6875,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 3.0,
+            "net_mean_bps": 0.32457511592692373,
+            "continuation_rate": 0.3333333333333333
+          },
+          "MID": {
+            "n": 2.0,
+            "net_mean_bps": -479.3343289466021,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 10.0,
+            "net_mean_bps": -134.4493385485876,
+            "continuation_rate": 0.4
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": 125.98699690402421,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": -73.55835325952364,
+        "short_net_mean_bps": -184.58809425673442,
+        "events": [
+          {
+            "detection_index": 73,
+            "detection_time": "2020-01-04T02:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": 129.38699690402422,
+            "net_return_bps": 125.98699690402421,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 96,
+            "detection_time": "2020-01-05T01:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 277.8665984523891,
+            "net_return_bps": 274.4665984523891,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 110,
+            "detection_time": "2020-01-05T15:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 201.5249935713245,
+            "net_return_bps": 198.1249935713245,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 127,
+            "detection_time": "2020-01-06T08:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": 85.24468178236852,
+            "net_return_bps": 81.84468178236851,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 175,
+            "detection_time": "2020-01-08T08:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -772.4116837436916,
+            "net_return_bps": -775.8116837436916,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 191,
+            "detection_time": "2020-01-09T00:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 234.6431710269567,
+            "net_return_bps": 231.2431710269567,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 210,
+            "detection_time": "2020-01-09T19:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -3.813992730299178,
+            "net_return_bps": -7.213992730299178,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 228,
+            "detection_time": "2020-01-10T13:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -1006.4873856390351,
+            "net_return_bps": -1009.8873856390351,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 241,
+            "detection_time": "2020-01-11T02:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -107.9338812356825,
+            "net_return_bps": -111.33388123568251,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 274,
+            "detection_time": "2020-01-12T11:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -197.01083007307307,
+            "net_return_bps": -200.41083007307307,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 299,
+            "detection_time": "2020-01-13T12:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -685.6925986760243,
+            "net_return_bps": -689.0925986760243,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 313,
+            "detection_time": "2020-01-14T02:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 728.3599923348326,
+            "net_return_bps": 724.9599923348326,
+            "split": "validation"
+          },
+          {
+            "detection_index": 326,
+            "detection_time": "2020-01-14T15:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -266.17605921717995,
+            "net_return_bps": -269.57605921717993,
+            "split": "validation"
+          },
+          {
+            "detection_index": 349,
+            "detection_time": "2020-01-15T14:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -365.5743730385358,
+            "net_return_bps": -368.97437303853576,
+            "split": "validation"
+          },
+          {
+            "detection_index": 372,
+            "detection_time": "2020-01-16T13:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -69.68204303153527,
+            "net_return_bps": -73.08204303153528,
+            "split": "validation"
+          },
+          {
+            "detection_index": 391,
+            "detection_time": "2020-01-17T08:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -304.0449078141142,
+            "net_return_bps": -307.4449078141142,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-RB-B",
+        "horizon": 4,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 4,
+          "SHORT": 7
+        },
+        "n_detected": 11,
+        "n_measured": 11,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 4,
+        "continuation_rate": 0.36363636363636365,
+        "reversal_rate": 0.6363636363636364,
+        "baseline_n": 175,
+        "baseline_continuation_rate": 0.48,
+        "p_raw": 0.5524259684652206,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.11636363636363634,
+        "diff_ci": [
+          -0.38337662337662337,
+          0.18493506493506495
+        ],
+        "placebo_p_one_sided": 0.88,
+        "gross_mean_bps": -22.161770678647294,
+        "net_mean_bps": -25.56177067864728,
+        "net_ci": [
+          -192.83185486924188,
+          129.38350294240715
+        ],
+        "net_sharpe_per_event": -0.08903831564025445,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 175.96442627846807,
+        "mae_mean_bps": 191.2601838468032,
+        "race_counts": {
+          "NEITHER": 2,
+          "TARGET": 4,
+          "ADVERSE": 5
+        },
+        "target_hit_rate": 0.36363636363636365,
+        "time_to_target_mean_bars": 2.0,
+        "time_to_target_censored_rate": 0.6363636363636364,
+        "duration_mean_bars": 2.272727272727273,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 2.0,
+            "net_mean_bps": 113.31479025249229,
+            "continuation_rate": 0.5
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -108.73323378627288,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 7.0,
+            "net_mean_bps": -45.02578116381143,
+            "continuation_rate": 0.42857142857142855
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": -83.8953560371517,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -250.1011010832788,
+        "short_net_mean_bps": 102.74641812399929,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RB-B",
+        "horizon": 4,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 3,
+          "SHORT": 2
+        },
+        "n_detected": 5,
+        "n_measured": 5,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 0.2,
+        "reversal_rate": 0.8,
+        "baseline_n": 65,
+        "baseline_continuation_rate": 0.46153846153846156,
+        "p_raw": 0.3823745667168516,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.26153846153846155,
+        "diff_ci": [
+          -0.5538461538461539,
+          0.18461538461538457
+        ],
+        "placebo_p_one_sided": 0.995,
+        "gross_mean_bps": 27.926837665532304,
+        "net_mean_bps": 24.526837665532298,
+        "net_ci": [
+          -146.40371783131795,
+          290.95744982450543
+        ],
+        "net_sharpe_per_event": 0.0831412724898943,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 144.72963430717064,
+        "mae_mean_bps": 187.0864492068879,
+        "race_counts": {
+          "NEITHER": 2,
+          "ADVERSE": 2,
+          "TARGET": 1
+        },
+        "target_hit_rate": 0.2,
+        "time_to_target_mean_bars": 1.0,
+        "time_to_target_censored_rate": 0.8,
+        "duration_mean_bars": 2.8,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": 533.7890034005251,
+            "continuation_rate": 1.0
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -44.714311535730765,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 3.0,
+            "net_mean_bps": -122.14683451237761,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": 155.42877571269702,
+        "short_net_mean_bps": -171.82606940521475,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RB-B",
+        "horizon": 4,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 7,
+          "SHORT": 9
+        },
+        "n_detected": 16,
+        "n_measured": 16,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 5,
+        "continuation_rate": 0.3125,
+        "reversal_rate": 0.6875,
+        "baseline_n": 240,
+        "baseline_continuation_rate": 0.475,
+        "p_raw": 0.2192435916336657,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.16249999999999998,
+        "diff_ci": [
+          -0.3751041666666667,
+          0.08770833333333222
+        ],
+        "placebo_p_one_sided": 0.97,
+        "gross_mean_bps": -6.509080571091175,
+        "net_mean_bps": -9.909080571091163,
+        "net_ci": [
+          -135.08639706524195,
+          123.28598395965427
+        ],
+        "net_sharpe_per_event": -0.035315774419173086,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 166.2035537874376,
+        "mae_mean_bps": 189.95589177182967,
+        "race_counts": {
+          "NEITHER": 4,
+          "TARGET": 5,
+          "ADVERSE": 7
+        },
+        "target_hit_rate": 0.3125,
+        "time_to_target_mean_bars": 1.8,
+        "time_to_target_censored_rate": 0.6875,
+        "duration_mean_bars": 2.4375,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 3.0,
+            "net_mean_bps": 253.47286130183656,
+            "continuation_rate": 0.6666666666666666
+          },
+          "MID": {
+            "n": 2.0,
+            "net_mean_bps": -76.72377266100182,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 10.0,
+            "net_mean_bps": -68.16209716838128,
+            "continuation_rate": 0.3
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": -83.8953560371517,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -76.30258245643203,
+        "short_net_mean_bps": 41.730309784173954,
+        "events": [
+          {
+            "detection_index": 73,
+            "detection_time": "2020-01-04T02:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": -80.4953560371517,
+            "net_return_bps": -83.8953560371517,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 96,
+            "detection_time": "2020-01-05T01:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 282.6096224766045,
+            "net_return_bps": 279.2096224766045,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 110,
+            "detection_time": "2020-01-05T15:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 260.61290430777086,
+            "net_return_bps": 257.2129043077709,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 127,
+            "detection_time": "2020-01-06T08:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -491.93513087630265,
+            "net_return_bps": -495.3351308763026,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 175,
+            "detection_time": "2020-01-08T08:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -285.42590610185096,
+            "net_return_bps": -288.82590610185093,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 191,
+            "detection_time": "2020-01-09T00:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": -142.00195674163854,
+            "net_return_bps": -145.40195674163854,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 210,
+            "detection_time": "2020-01-09T19:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 315.5790045478981,
+            "net_return_bps": 312.1790045478981,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 228,
+            "detection_time": "2020-01-10T13:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -303.6872747435541,
+            "net_return_bps": -307.0872747435541,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 241,
+            "detection_time": "2020-01-11T02:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 355.47789146099706,
+            "net_return_bps": 352.0778914609971,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 274,
+            "detection_time": "2020-01-12T11:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -49.18004197161995,
+            "net_return_bps": -52.58004197161995,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 299,
+            "detection_time": "2020-01-13T12:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -105.33323378627287,
+            "net_return_bps": -108.73323378627288,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 313,
+            "detection_time": "2020-01-14T02:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": -19.388364726703273,
+            "net_return_bps": -22.78836472670327,
+            "split": "validation"
+          },
+          {
+            "detection_index": 326,
+            "detection_time": "2020-01-14T15:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -41.314311535730766,
+            "net_return_bps": -44.714311535730765,
+            "split": "validation"
+          },
+          {
+            "detection_index": 349,
+            "detection_time": "2020-01-15T14:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -216.4607424580846,
+            "net_return_bps": -219.86074245808462,
+            "split": "validation"
+          },
+          {
+            "detection_index": 372,
+            "detection_time": "2020-01-16T13:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 537.189003400525,
+            "net_return_bps": 533.7890034005251,
+            "split": "validation"
+          },
+          {
+            "detection_index": 391,
+            "detection_time": "2020-01-17T08:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": -120.39139635234491,
+            "net_return_bps": -123.79139635234492,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-RB-V",
+        "horizon": 12,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 6
+        },
+        "n_detected": 7,
+        "n_measured": 7,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 4,
+        "continuation_rate": 0.5714285714285714,
+        "reversal_rate": 0.42857142857142855,
+        "baseline_n": 139,
+        "baseline_continuation_rate": 0.48201438848920863,
+        "p_raw": 0.717824803337462,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.08941418293936276,
+        "diff_ci": [
+          -0.3105601233299075,
+          0.4326824254881808
+        ],
+        "placebo_p_one_sided": 0.4,
+        "gross_mean_bps": -45.517622221651266,
+        "net_mean_bps": -48.91762222165122,
+        "net_ci": [
+          -450.79678729249673,
+          318.7650928275397
+        ],
+        "net_sharpe_per_event": -0.08662557282216207,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 237.38236365597987,
+        "mae_mean_bps": 241.50883621568306,
+        "race_counts": {
+          "TARGET": 4,
+          "ADVERSE": 3
+        },
+        "target_hit_rate": 0.5714285714285714,
+        "time_to_target_mean_bars": 4.5,
+        "time_to_target_censored_rate": 0.42857142857142855,
+        "duration_mean_bars": 3.5714285714285716,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": 375.3487629620072,
+            "continuation_rate": 1.0
+          },
+          "HIGH": {
+            "n": 5.0,
+            "net_mean_bps": -287.66798798710136,
+            "continuation_rate": 0.4
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": 720.567821421941,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": 231.2431710269567,
+        "short_net_mean_bps": -95.61108776308588,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RB-V",
+        "horizon": 12,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 3,
+          "SHORT": 0
+        },
+        "n_detected": 3,
+        "n_measured": 3,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 0.3333333333333333,
+        "reversal_rate": 0.6666666666666666,
+        "baseline_n": 59,
+        "baseline_continuation_rate": 0.423728813559322,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.0903954802259887,
+        "diff_ci": [
+          -0.5084745762711864,
+          0.5423728813559322
+        ],
+        "placebo_p_one_sided": 0.805,
+        "gross_mean_bps": 50.58030491083082,
+        "net_mean_bps": 47.18030491083084,
+        "net_ci": [
+          -313.8430183851601,
+          724.9599923348327
+        ],
+        "net_sharpe_per_event": 0.08032172478596883,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 305.87363445821376,
+        "mae_mean_bps": 124.30227047086375,
+        "race_counts": {
+          "TARGET": 2,
+          "ADVERSE": 1
+        },
+        "target_hit_rate": 0.6666666666666666,
+        "time_to_target_mean_bars": 6.0,
+        "time_to_target_censored_rate": 0.3333333333333333,
+        "duration_mean_bars": 4.666666666666667,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": -313.8430183851601,
+            "continuation_rate": 0.0
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -269.57605921717993,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": 724.9599923348326,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": 47.18030491083084,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RB-V",
+        "horizon": 12,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 4,
+          "SHORT": 6
+        },
+        "n_detected": 10,
+        "n_measured": 10,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 5,
+        "continuation_rate": 0.5,
+        "reversal_rate": 0.5,
+        "baseline_n": 198,
+        "baseline_continuation_rate": 0.46464646464646464,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.03535353535353536,
+        "diff_ci": [
+          -0.28484848484848485,
+          0.3656565656565657
+        ],
+        "placebo_p_one_sided": 0.615,
+        "gross_mean_bps": -16.688244081906657,
+        "net_mean_bps": -20.088244081906588,
+        "net_ci": [
+          -328.6465649845162,
+          306.48875036288825
+        ],
+        "net_sharpe_per_event": -0.03721193896298656,
+        "dsr_per_event": 0.0013617436870927866,
+        "mfe_mean_bps": 257.92974489665005,
+        "mae_mean_bps": 206.34686649223733,
+        "race_counts": {
+          "TARGET": 6,
+          "ADVERSE": 4
+        },
+        "target_hit_rate": 0.6,
+        "time_to_target_mean_bars": 5.0,
+        "time_to_target_censored_rate": 0.4,
+        "duration_mean_bars": 3.9,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 2.0,
+            "net_mean_bps": 30.752872288423532,
+            "continuation_rate": 0.5
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -269.57605921717993,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 6.0,
+            "net_mean_bps": -118.89665793344568,
+            "continuation_rate": 0.5
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": 720.567821421941,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": 93.1960214398623,
+        "short_net_mean_bps": -95.61108776308588,
+        "events": [
+          {
+            "detection_index": 85,
+            "detection_time": "2020-01-04T14:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 723.9678214219409,
+            "net_return_bps": 720.567821421941,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 98,
+            "detection_time": "2020-01-05T03:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 378.74876296200716,
+            "net_return_bps": 375.3487629620072,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 114,
+            "detection_time": "2020-01-05T19:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -680.3310680503259,
+            "net_return_bps": -683.7310680503259,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 136,
+            "detection_time": "2020-01-06T17:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -351.69135817066115,
+            "net_return_bps": -355.0913581706611,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 175,
+            "detection_time": "2020-01-08T08:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -772.4116837436916,
+            "net_return_bps": -775.8116837436916,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 191,
+            "detection_time": "2020-01-09T00:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 234.6431710269567,
+            "net_return_bps": 231.2431710269567,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 239,
+            "detection_time": "2020-01-11T00:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 148.45099900221516,
+            "net_return_bps": 145.05099900221515,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 313,
+            "detection_time": "2020-01-14T02:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 728.3599923348326,
+            "net_return_bps": 724.9599923348326,
+            "split": "validation"
+          },
+          {
+            "detection_index": 326,
+            "detection_time": "2020-01-14T15:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -266.17605921717995,
+            "net_return_bps": -269.57605921717993,
+            "split": "validation"
+          },
+          {
+            "detection_index": 373,
+            "detection_time": "2020-01-16T14:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -310.44301838516014,
+            "net_return_bps": -313.8430183851601,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-RB-V",
+        "horizon": 4,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 6
+        },
+        "n_detected": 7,
+        "n_measured": 7,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 2,
+        "continuation_rate": 0.2857142857142857,
+        "reversal_rate": 0.7142857142857143,
+        "baseline_n": 194,
+        "baseline_continuation_rate": 0.4587628865979381,
+        "p_raw": 0.46420879312914254,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.17304860088365243,
+        "diff_ci": [
+          -0.4793814432989691,
+          0.20938880706921806
+        ],
+        "placebo_p_one_sided": 0.8,
+        "gross_mean_bps": -140.59645097684327,
+        "net_mean_bps": -143.99645097684325,
+        "net_ci": [
+          -485.2765370437176,
+          161.2233424941234
+        ],
+        "net_sharpe_per_event": -0.3075708659573345,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 226.53263399112913,
+        "mae_mean_bps": 228.8429218179971,
+        "race_counts": {
+          "TARGET": 3,
+          "ADVERSE": 3,
+          "NEITHER": 1
+        },
+        "target_hit_rate": 0.42857142857142855,
+        "time_to_target_mean_bars": 2.0,
+        "time_to_target_censored_rate": 0.5714285714285714,
+        "duration_mean_bars": 2.4285714285714284,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": 52.0515726517789,
+            "continuation_rate": 1.0
+          },
+          "HIGH": {
+            "n": 5.0,
+            "net_mean_bps": -198.06648700290833,
+            "continuation_rate": 0.2
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": -69.69429447513994,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -145.40195674163854,
+        "short_net_mean_bps": -143.76220001604403,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RB-V",
+        "horizon": 4,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 3,
+          "SHORT": 0
+        },
+        "n_detected": 3,
+        "n_measured": 3,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 0.3333333333333333,
+        "reversal_rate": 0.6666666666666666,
+        "baseline_n": 82,
+        "baseline_continuation_rate": 0.6097560975609756,
+        "p_raw": 0.5647190261313677,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.2764227642276423,
+        "diff_ci": [
+          -0.6829268292682927,
+          0.36585365853658536
+        ],
+        "placebo_p_one_sided": 0.94,
+        "gross_mean_bps": 12.07564671531994,
+        "net_mean_bps": 8.675646715319937,
+        "net_ci": [
+          -44.714311535730765,
+          93.52961640839385
+        ],
+        "net_sharpe_per_event": 0.11676674783575941,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 249.1927271128043,
+        "mae_mean_bps": 98.67656360339957,
+        "race_counts": {
+          "NEITHER": 1,
+          "ADVERSE": 1,
+          "TARGET": 1
+        },
+        "target_hit_rate": 0.3333333333333333,
+        "time_to_target_mean_bars": 2.0,
+        "time_to_target_censored_rate": 0.6666666666666666,
+        "duration_mean_bars": 2.6666666666666665,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": 93.52961640839385,
+            "continuation_rate": 1.0
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -44.714311535730765,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -22.78836472670327,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": 8.675646715319937,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-RB-V",
+        "horizon": 4,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 4,
+          "SHORT": 6
+        },
+        "n_detected": 10,
+        "n_measured": 10,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 3,
+        "continuation_rate": 0.3,
+        "reversal_rate": 0.7,
+        "baseline_n": 276,
+        "baseline_continuation_rate": 0.5036231884057971,
+        "p_raw": 0.2232768763037734,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.20362318840579713,
+        "diff_ci": [
+          -0.46018115942028986,
+          0.1073369565217386
+        ],
+        "placebo_p_one_sided": 0.94,
+        "gross_mean_bps": -94.7948216691943,
+        "net_mean_bps": -98.19482166919428,
+        "net_ci": [
+          -338.2377905095751,
+          116.15012677824568
+        ],
+        "net_sharpe_per_event": -0.2512127729883732,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 233.33066192763167,
+        "mae_mean_bps": 189.79301435361782,
+        "race_counts": {
+          "TARGET": 4,
+          "ADVERSE": 4,
+          "NEITHER": 2
+        },
+        "target_hit_rate": 0.4,
+        "time_to_target_mean_bars": 2.0,
+        "time_to_target_censored_rate": 0.6,
+        "duration_mean_bars": 2.5,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 2.0,
+            "net_mean_bps": 72.79059453008637,
+            "continuation_rate": 1.0
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -44.714311535730765,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 6.0,
+            "net_mean_bps": -168.85346662354084,
+            "continuation_rate": 0.16666666666666666
+          },
+          "UNKNOWN": {
+            "n": 1.0,
+            "net_mean_bps": -69.69429447513994,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -29.84375414891968,
+        "short_net_mean_bps": -143.76220001604403,
+        "events": [
+          {
+            "detection_index": 85,
+            "detection_time": "2020-01-04T14:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -66.29429447513994,
+            "net_return_bps": -69.69429447513994,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 98,
+            "detection_time": "2020-01-05T03:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 55.451572651778896,
+            "net_return_bps": 52.0515726517789,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 114,
+            "detection_time": "2020-01-05T19:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -196.4712094774544,
+            "net_return_bps": -199.8712094774544,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 136,
+            "detection_time": "2020-01-06T17:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -963.6189507785804,
+            "net_return_bps": -967.0189507785803,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 175,
+            "detection_time": "2020-01-08T08:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -285.42590610185096,
+            "net_return_bps": -288.82590610185093,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 191,
+            "detection_time": "2020-01-09T00:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": -142.00195674163854,
+            "net_return_bps": -145.40195674163854,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 239,
+            "detection_time": "2020-01-11T00:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 614.1855880849824,
+            "net_return_bps": 610.7855880849825,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 313,
+            "detection_time": "2020-01-14T02:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": -19.388364726703273,
+            "net_return_bps": -22.78836472670327,
+            "split": "validation"
+          },
+          {
+            "detection_index": 326,
+            "detection_time": "2020-01-14T15:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -41.314311535730766,
+            "net_return_bps": -44.714311535730765,
+            "split": "validation"
+          },
+          {
+            "detection_index": 373,
+            "detection_time": "2020-01-16T14:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 96.92961640839385,
+            "net_return_bps": 93.52961640839385,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-BE-B",
+        "horizon": 12,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 4,
+          "SHORT": 2
+        },
+        "n_detected": 6,
+        "n_measured": 6,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 3,
+        "continuation_rate": 0.5,
+        "reversal_rate": 0.5,
+        "baseline_n": 165,
+        "baseline_continuation_rate": 0.503030303030303,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.00303030303030305,
+        "diff_ci": [
+          -0.3848484848484849,
+          0.39090909090909093
+        ],
+        "placebo_p_one_sided": 0.51,
+        "gross_mean_bps": -215.23939385440303,
+        "net_mean_bps": -218.639393854403,
+        "net_ci": [
+          -615.1731672491014,
+          131.11305480813857
+        ],
+        "net_sharpe_per_event": -0.415635644398148,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 168.1055658036296,
+        "mae_mean_bps": 246.05487809057516,
+        "race_counts": {
+          "TARGET": 2,
+          "ADVERSE": 4
+        },
+        "target_hit_rate": 0.3333333333333333,
+        "time_to_target_mean_bars": 7.5,
+        "time_to_target_censored_rate": 0.6666666666666666,
+        "duration_mean_bars": 3.8333333333333335,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 2.0,
+            "net_mean_bps": 37.027884189658025,
+            "continuation_rate": 0.5
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -689.0925986760243,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 3.0,
+            "net_mean_bps": -232.26651094323663,
+            "continuation_rate": 0.6666666666666666
+          }
+        },
+        "long_net_mean_bps": -224.30259072569572,
+        "short_net_mean_bps": -207.3130001118176,
+        "events": []
+      },
+      {
+        "family_id": "IMP-BE-B",
+        "horizon": 12,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 0
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 73,
+        "baseline_continuation_rate": 0.3698630136986301,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.3698630136986301,
+        "diff_ci": [
+          -0.47979452054794514,
+          -0.2602739726027397
+        ],
+        "placebo_p_one_sided": 0.985,
+        "gross_mean_bps": -327.0435102942986,
+        "net_mean_bps": -330.44351029429856,
+        "net_ci": [
+          -330.44351029429856,
+          -330.44351029429856
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 363.3191437108591,
+        "mae_mean_bps": 9.20961074045247,
+        "race_counts": {
+          "TARGET": 1
+        },
+        "target_hit_rate": 1.0,
+        "time_to_target_mean_bars": 1.0,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 1.0,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": -330.44351029429856,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -330.44351029429856,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-BE-B",
+        "horizon": 12,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 5,
+          "SHORT": 2
+        },
+        "n_detected": 7,
+        "n_measured": 7,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 3,
+        "continuation_rate": 0.42857142857142855,
+        "reversal_rate": 0.5714285714285714,
+        "baseline_n": 238,
+        "baseline_continuation_rate": 0.46218487394957986,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.03361344537815131,
+        "diff_ci": [
+          -0.36134453781512604,
+          0.36144957983193216
+        ],
+        "placebo_p_one_sided": 0.75,
+        "gross_mean_bps": -231.21141048867383,
+        "net_mean_bps": -234.6114104886738,
+        "net_ci": [
+          -586.4577926621888,
+          71.4130360692334
+        ],
+        "net_sharpe_per_event": -0.48668616969150275,
+        "dsr_per_event": 3.3523321903814458e-06,
+        "mfe_mean_bps": 195.99321979037668,
+        "mae_mean_bps": 212.2198398977005,
+        "race_counts": {
+          "TARGET": 3,
+          "ADVERSE": 4
+        },
+        "target_hit_rate": 0.42857142857142855,
+        "time_to_target_mean_bars": 5.333333333333333,
+        "time_to_target_censored_rate": 0.5714285714285714,
+        "duration_mean_bars": 3.4285714285714284,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 3.0,
+            "net_mean_bps": -85.4625806383275,
+            "continuation_rate": 0.3333333333333333
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -689.0925986760243,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 3.0,
+            "net_mean_bps": -232.26651094323663,
+            "continuation_rate": 0.6666666666666666
+          }
+        },
+        "long_net_mean_bps": -245.53077463941628,
+        "short_net_mean_bps": -207.3130001118176,
+        "events": [
+          {
+            "detection_index": 96,
+            "detection_time": "2020-01-05T01:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 277.8665984523891,
+            "net_return_bps": 274.4665984523891,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 127,
+            "detection_time": "2020-01-06T08:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": 85.24468178236852,
+            "net_return_bps": 81.84468178236851,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 191,
+            "detection_time": "2020-01-09T00:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 234.6431710269567,
+            "net_return_bps": 231.2431710269567,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 228,
+            "detection_time": "2020-01-10T13:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -1006.4873856390351,
+            "net_return_bps": -1009.8873856390351,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 274,
+            "detection_time": "2020-01-12T11:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -197.01083007307307,
+            "net_return_bps": -200.41083007307307,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 299,
+            "detection_time": "2020-01-13T12:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -685.6925986760243,
+            "net_return_bps": -689.0925986760243,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 374,
+            "detection_time": "2020-01-16T15:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -327.0435102942986,
+            "net_return_bps": -330.44351029429856,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-BE-B",
+        "horizon": 4,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 4,
+          "SHORT": 2
+        },
+        "n_detected": 6,
+        "n_measured": 6,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 0.16666666666666666,
+        "reversal_rate": 0.8333333333333334,
+        "baseline_n": 205,
+        "baseline_continuation_rate": 0.47804878048780486,
+        "p_raw": 0.22145869770604892,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.31138211382113823,
+        "diff_ci": [
+          -0.526829268292683,
+          0.04146341463414632
+        ],
+        "placebo_p_one_sided": 0.95,
+        "gross_mean_bps": -134.92133594046393,
+        "net_mean_bps": -138.3213359404639,
+        "net_ci": [
+          -335.0931891575013,
+          61.538052821394444
+        ],
+        "net_sharpe_per_event": -0.5315727792831952,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 155.44754786130372,
+        "mae_mean_bps": 231.2779779599415,
+        "race_counts": {
+          "TARGET": 1,
+          "ADVERSE": 4,
+          "NEITHER": 1
+        },
+        "target_hit_rate": 0.16666666666666666,
+        "time_to_target_mean_bars": 3.0,
+        "time_to_target_censored_rate": 0.8333333333333334,
+        "duration_mean_bars": 2.5,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 2.0,
+            "net_mean_bps": 113.31479025249229,
+            "continuation_rate": 0.5
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -108.73323378627288,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 3.0,
+            "net_mean_bps": -315.9414541204984,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -250.1011010832788,
+        "short_net_mean_bps": 85.23819434516582,
+        "events": []
+      },
+      {
+        "family_id": "IMP-BE-B",
+        "horizon": 4,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 0
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 1.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 89,
+        "baseline_continuation_rate": 0.4943820224719101,
+        "p_raw": 0.4943820224719101,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.5056179775280899,
+        "diff_ci": [
+          0.4044943820224719,
+          0.6067415730337078
+        ],
+        "placebo_p_one_sided": 0.005,
+        "gross_mean_bps": 257.255126683312,
+        "net_mean_bps": 253.85512668331202,
+        "net_ci": [
+          253.85512668331202,
+          253.85512668331202
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 363.3191437108591,
+        "mae_mean_bps": 9.20961074045247,
+        "race_counts": {
+          "TARGET": 1
+        },
+        "target_hit_rate": 1.0,
+        "time_to_target_mean_bars": 1.0,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 1.0,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": 253.85512668331202,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": 253.85512668331202,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-BE-B",
+        "horizon": 4,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 5,
+          "SHORT": 2
+        },
+        "n_detected": 7,
+        "n_measured": 7,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 2,
+        "continuation_rate": 0.2857142857142857,
+        "reversal_rate": 0.7142857142857143,
+        "baseline_n": 294,
+        "baseline_continuation_rate": 0.48299319727891155,
+        "p_raw": 0.4550208855700384,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.19727891156462585,
+        "diff_ci": [
+          -0.5034013605442177,
+          0.18375850340136007
+        ],
+        "placebo_p_one_sided": 0.95,
+        "gross_mean_bps": -78.89612699421023,
+        "net_mean_bps": -82.29612699421021,
+        "net_ci": [
+          -281.10189079341393,
+          112.8875659773803
+        ],
+        "net_sharpe_per_event": -0.2939207804624608,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 185.14349012552591,
+        "mae_mean_bps": 199.5539255000145,
+        "race_counts": {
+          "TARGET": 2,
+          "ADVERSE": 4,
+          "NEITHER": 1
+        },
+        "target_hit_rate": 0.2857142857142857,
+        "time_to_target_mean_bars": 2.0,
+        "time_to_target_censored_rate": 0.7142857142857143,
+        "duration_mean_bars": 2.2857142857142856,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 3.0,
+            "net_mean_bps": 160.16156906276555,
+            "continuation_rate": 0.6666666666666666
+          },
+          "MID": {
+            "n": 1.0,
+            "net_mean_bps": -108.73323378627288,
+            "continuation_rate": 0.0
+          },
+          "HIGH": {
+            "n": 3.0,
+            "net_mean_bps": -315.9414541204984,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -149.30985552996063,
+        "short_net_mean_bps": 85.23819434516582,
+        "events": [
+          {
+            "detection_index": 96,
+            "detection_time": "2020-01-05T01:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 282.6096224766045,
+            "net_return_bps": 279.2096224766045,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 127,
+            "detection_time": "2020-01-06T08:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -491.93513087630265,
+            "net_return_bps": -495.3351308763026,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 191,
+            "detection_time": "2020-01-09T00:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": -142.00195674163854,
+            "net_return_bps": -145.40195674163854,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 228,
+            "detection_time": "2020-01-10T13:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -303.6872747435541,
+            "net_return_bps": -307.0872747435541,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 274,
+            "detection_time": "2020-01-12T11:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -49.18004197161995,
+            "net_return_bps": -52.58004197161995,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 299,
+            "detection_time": "2020-01-13T12:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "ADVERSE",
+            "horizon_return_bps": -105.33323378627287,
+            "net_return_bps": -108.73323378627288,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 374,
+            "detection_time": "2020-01-16T15:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 257.255126683312,
+            "net_return_bps": 253.85512668331202,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-BE-V",
+        "horizon": 12,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 1
+        },
+        "n_detected": 2,
+        "n_measured": 2,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 2,
+        "continuation_rate": 1.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 208,
+        "baseline_continuation_rate": 0.5,
+        "p_raw": 0.5,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.5,
+        "diff_ci": [
+          0.4326923076923077,
+          0.5673076923076923
+        ],
+        "placebo_p_one_sided": 0.145,
+        "gross_mean_bps": 256.2548847396729,
+        "net_mean_bps": 252.8548847396729,
+        "net_ci": [
+          231.2431710269567,
+          274.4665984523891
+        ],
+        "net_sharpe_per_event": 8.273078481062953,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 335.47390111441075,
+        "mae_mean_bps": 138.60755108481723,
+        "race_counts": {
+          "TARGET": 2
+        },
+        "target_hit_rate": 1.0,
+        "time_to_target_mean_bars": 7.5,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 7.5,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": 274.4665984523891,
+            "continuation_rate": 1.0
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": 231.2431710269567,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": 231.2431710269567,
+        "short_net_mean_bps": 274.4665984523891,
+        "events": []
+      },
+      {
+        "family_id": "IMP-BE-V",
+        "horizon": 12,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 0
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 0,
+        "continuation_rate": 0.0,
+        "reversal_rate": 1.0,
+        "baseline_n": 86,
+        "baseline_continuation_rate": 0.5,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": -0.5,
+        "diff_ci": [
+          -0.6162790697674418,
+          -0.3950581395348853
+        ],
+        "placebo_p_one_sided": 1.0,
+        "gross_mean_bps": -327.0435102942986,
+        "net_mean_bps": -330.44351029429856,
+        "net_ci": [
+          -330.44351029429856,
+          -330.44351029429856
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 363.3191437108591,
+        "mae_mean_bps": 9.20961074045247,
+        "race_counts": {
+          "TARGET": 1
+        },
+        "target_hit_rate": 1.0,
+        "time_to_target_mean_bars": 1.0,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 1.0,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": -330.44351029429856,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -330.44351029429856,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-BE-V",
+        "horizon": 12,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 1
+        },
+        "n_detected": 3,
+        "n_measured": 3,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 2,
+        "continuation_rate": 0.6666666666666666,
+        "reversal_rate": 0.3333333333333333,
+        "baseline_n": 294,
+        "baseline_continuation_rate": 0.5,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.16666666666666663,
+        "diff_ci": [
+          -0.48639455782312924,
+          0.5374149659863945
+        ],
+        "placebo_p_one_sided": 0.465,
+        "gross_mean_bps": 61.82208639501573,
+        "net_mean_bps": 58.422086395015754,
+        "net_ci": [
+          -330.44351029429856,
+          274.4665984523891
+        ],
+        "net_sharpe_per_event": 0.17312287959335948,
+        "dsr_per_event": 0.006292540499278274,
+        "mfe_mean_bps": 344.75564864656025,
+        "mae_mean_bps": 95.47490430336232,
+        "race_counts": {
+          "TARGET": 3
+        },
+        "target_hit_rate": 1.0,
+        "time_to_target_mean_bars": 5.333333333333333,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 5.333333333333333,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 2.0,
+            "net_mean_bps": -27.98845592095472,
+            "continuation_rate": 0.5
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": 231.2431710269567,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": -49.60016963367093,
+        "short_net_mean_bps": 274.4665984523891,
+        "events": [
+          {
+            "detection_index": 96,
+            "detection_time": "2020-01-05T01:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 277.8665984523891,
+            "net_return_bps": 274.4665984523891,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 191,
+            "detection_time": "2020-01-09T00:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 234.6431710269567,
+            "net_return_bps": 231.2431710269567,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 374,
+            "detection_time": "2020-01-16T15:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": -327.0435102942986,
+            "net_return_bps": -330.44351029429856,
+            "split": "validation"
+          }
+        ]
+      },
+      {
+        "family_id": "IMP-BE-V",
+        "horizon": 4,
+        "split": "discovery",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 1
+        },
+        "n_detected": 2,
+        "n_measured": 2,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 0.5,
+        "reversal_rate": 0.5,
+        "baseline_n": 224,
+        "baseline_continuation_rate": 0.5,
+        "p_raw": 1.0,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.0,
+        "diff_ci": [
+          -0.5446428571428571,
+          0.5446428571428572
+        ],
+        "placebo_p_one_sided": 0.55,
+        "gross_mean_bps": 70.30383286748298,
+        "net_mean_bps": 66.90383286748299,
+        "net_ci": [
+          -145.40195674163854,
+          279.2096224766045
+        ],
+        "net_sharpe_per_event": 0.22283025816238075,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 297.4998472874331,
+        "mae_mean_bps": 94.27685069291624,
+        "race_counts": {
+          "TARGET": 1,
+          "NEITHER": 1
+        },
+        "target_hit_rate": 0.5,
+        "time_to_target_mean_bars": 3.0,
+        "time_to_target_censored_rate": 0.5,
+        "duration_mean_bars": 3.5,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": 279.2096224766045,
+            "continuation_rate": 1.0
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -145.40195674163854,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": -145.40195674163854,
+        "short_net_mean_bps": 279.2096224766045,
+        "events": []
+      },
+      {
+        "family_id": "IMP-BE-V",
+        "horizon": 4,
+        "split": "validation",
+        "direction_mix": {
+          "LONG": 1,
+          "SHORT": 0
+        },
+        "n_detected": 1,
+        "n_measured": 1,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 1,
+        "continuation_rate": 1.0,
+        "reversal_rate": 0.0,
+        "baseline_n": 94,
+        "baseline_continuation_rate": 0.4787234042553192,
+        "p_raw": 0.4787234042553192,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.5212765957446808,
+        "diff_ci": [
+          0.42553191489361697,
+          0.6276595744680851
+        ],
+        "placebo_p_one_sided": 0.0,
+        "gross_mean_bps": 257.255126683312,
+        "net_mean_bps": 253.85512668331202,
+        "net_ci": [
+          253.85512668331202,
+          253.85512668331202
+        ],
+        "net_sharpe_per_event": 0.0,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 363.3191437108591,
+        "mae_mean_bps": 9.20961074045247,
+        "race_counts": {
+          "TARGET": 1
+        },
+        "target_hit_rate": 1.0,
+        "time_to_target_mean_bars": 1.0,
+        "time_to_target_censored_rate": 0.0,
+        "duration_mean_bars": 1.0,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 1.0,
+            "net_mean_bps": 253.85512668331202,
+            "continuation_rate": 1.0
+          }
+        },
+        "long_net_mean_bps": 253.85512668331202,
+        "short_net_mean_bps": null,
+        "events": []
+      },
+      {
+        "family_id": "IMP-BE-V",
+        "horizon": 4,
+        "split": "pooled",
+        "direction_mix": {
+          "LONG": 2,
+          "SHORT": 1
+        },
+        "n_detected": 3,
+        "n_measured": 3,
+        "n_excluded_insufficient_forward": 0,
+        "continuation_k": 2,
+        "continuation_rate": 0.6666666666666666,
+        "reversal_rate": 0.3333333333333333,
+        "baseline_n": 318,
+        "baseline_continuation_rate": 0.4937106918238994,
+        "p_raw": 0.6203430982921772,
+        "p_holm": 1.0,
+        "diff_vs_baseline": 0.17295597484276726,
+        "diff_ci": [
+          -0.4875,
+          0.5408805031446541
+        ],
+        "placebo_p_one_sided": 0.55,
+        "gross_mean_bps": 132.62093080609267,
+        "net_mean_bps": 129.22093080609267,
+        "net_ci": [
+          -145.40195674163854,
+          279.2096224766045
+        ],
+        "net_sharpe_per_event": 0.5425620346680292,
+        "dsr_per_event": null,
+        "mfe_mean_bps": 319.43961276190845,
+        "mae_mean_bps": 65.92110404209498,
+        "race_counts": {
+          "TARGET": 2,
+          "NEITHER": 1
+        },
+        "target_hit_rate": 0.6666666666666666,
+        "time_to_target_mean_bars": 2.0,
+        "time_to_target_censored_rate": 0.3333333333333333,
+        "duration_mean_bars": 2.6666666666666665,
+        "regime_breakdown": {
+          "LOW": {
+            "n": 2.0,
+            "net_mean_bps": 266.5323745799583,
+            "continuation_rate": 1.0
+          },
+          "HIGH": {
+            "n": 1.0,
+            "net_mean_bps": -145.40195674163854,
+            "continuation_rate": 0.0
+          }
+        },
+        "long_net_mean_bps": 54.22658497083674,
+        "short_net_mean_bps": 279.2096224766045,
+        "events": [
+          {
+            "detection_index": 96,
+            "detection_time": "2020-01-05T01:00:00+00:00",
+            "direction": "SHORT",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 282.6096224766045,
+            "net_return_bps": 279.2096224766045,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 191,
+            "detection_time": "2020-01-09T00:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "NEITHER",
+            "horizon_return_bps": -142.00195674163854,
+            "net_return_bps": -145.40195674163854,
+            "split": "discovery"
+          },
+          {
+            "detection_index": 374,
+            "detection_time": "2020-01-16T15:00:00+00:00",
+            "direction": "LONG",
+            "decision_state": "DETECTED_MEASURED",
+            "exclusion": "NONE",
+            "race_outcome": "TARGET",
+            "horizon_return_bps": 257.255126683312,
+            "net_return_bps": 253.85512668331202,
+            "split": "validation"
+          }
+        ]
+      }
+    ],
+    "sensitivity": {
+      "cost_multiplier": {
+        "IMP-RE-B": {
+          "0.5x": -151.97886254801352,
+          "1.0x": -153.6788625480135,
+          "1.5x": -155.37886254801353,
+          "2.0x": -157.07886254801352
+        },
+        "IMP-RE-V": {
+          "0.5x": -1005.1794966981533,
+          "1.0x": -1006.8794966981533,
+          "1.5x": -1008.5794966981533,
+          "2.0x": -1010.2794966981533
+        },
+        "IMP-PV-B": {
+          "0.5x": -205.12562802806346,
+          "1.0x": -206.82562802806342,
+          "1.5x": -208.52562802806347,
+          "2.0x": -210.22562802806343
+        },
+        "IMP-PV-V": {
+          "0.5x": -940.3155057318794,
+          "1.0x": -942.0155057318793,
+          "1.5x": -943.7155057318794,
+          "2.0x": -945.4155057318793
+        },
+        "IMP-VE-B": {
+          "0.5x": -568.4239114063872,
+          "1.0x": -570.1239114063872,
+          "1.5x": -571.8239114063872,
+          "2.0x": -573.5239114063872
+        },
+        "IMP-VE-V": {
+          "0.5x": 0.0,
+          "1.0x": 0.0,
+          "1.5x": 0.0,
+          "2.0x": 0.0
+        },
+        "IMP-RB-B": {
+          "0.5x": -134.3125825704547,
+          "1.0x": -136.0125825704547,
+          "1.5x": -137.71258257045474,
+          "2.0x": -139.4125825704547
+        },
+        "IMP-RB-V": {
+          "0.5x": -18.388244081906624,
+          "1.0x": -20.088244081906588,
+          "1.5x": -21.788244081906623,
+          "2.0x": -23.488244081906622
+        },
+        "IMP-BE-B": {
+          "0.5x": -232.91141048867385,
+          "1.0x": -234.6114104886738,
+          "1.5x": -236.31141048867383,
+          "2.0x": -238.01141048867382
+        },
+        "IMP-BE-V": {
+          "0.5x": 60.12208639501574,
+          "1.0x": 58.422086395015754,
+          "1.5x": 56.72208639501573,
+          "2.0x": 55.02208639501572
+        }
+      },
+      "spread_multiplier": {
+        "IMP-RE-B": {
+          "0.5x": -152.67886254801346,
+          "1.0x": -153.6788625480135,
+          "1.5x": -154.6788625480135,
+          "2.0x": -155.6788625480135
+        },
+        "IMP-RE-V": {
+          "0.5x": -1005.8794966981533,
+          "1.0x": -1006.8794966981533,
+          "1.5x": -1007.8794966981533,
+          "2.0x": -1008.8794966981533
+        },
+        "IMP-PV-B": {
+          "0.5x": -205.82562802806342,
+          "1.0x": -206.82562802806342,
+          "1.5x": -207.82562802806342,
+          "2.0x": -208.82562802806342
+        },
+        "IMP-PV-V": {
+          "0.5x": -941.0155057318793,
+          "1.0x": -942.0155057318793,
+          "1.5x": -943.0155057318793,
+          "2.0x": -944.0155057318793
+        },
+        "IMP-VE-B": {
+          "0.5x": -569.1239114063872,
+          "1.0x": -570.1239114063872,
+          "1.5x": -571.1239114063872,
+          "2.0x": -572.1239114063872
+        },
+        "IMP-VE-V": {
+          "0.5x": 0.0,
+          "1.0x": 0.0,
+          "1.5x": 0.0,
+          "2.0x": 0.0
+        },
+        "IMP-RB-B": {
+          "0.5x": -135.0125825704547,
+          "1.0x": -136.0125825704547,
+          "1.5x": -137.0125825704547,
+          "2.0x": -138.0125825704547
+        },
+        "IMP-RB-V": {
+          "0.5x": -19.088244081906588,
+          "1.0x": -20.088244081906588,
+          "1.5x": -21.088244081906588,
+          "2.0x": -22.088244081906588
+        },
+        "IMP-BE-B": {
+          "0.5x": -233.6114104886738,
+          "1.0x": -234.6114104886738,
+          "1.5x": -235.6114104886738,
+          "2.0x": -236.6114104886738
+        },
+        "IMP-BE-V": {
+          "0.5x": 59.422086395015754,
+          "1.0x": 58.422086395015754,
+          "1.5x": 57.422086395015754,
+          "2.0x": 56.422086395015754
+        }
+      },
+      "latency_bars": {
+        "IMP-RE-B": {
+          "0": -176.38710200198213,
+          "1": -153.6788625480135,
+          "2": -153.27622144958983
+        },
+        "IMP-RE-V": {
+          "0": -1012.7758338038835,
+          "1": -1006.8794966981533,
+          "2": -1012.1981233953732
+        },
+        "IMP-PV-B": {
+          "0": -195.318651473198,
+          "1": -206.82562802806342,
+          "2": -226.00045386168736
+        },
+        "IMP-PV-V": {
+          "0": -653.6066990006831,
+          "1": -942.0155057318793,
+          "2": -873.3459773071852
+        },
+        "IMP-VE-B": {
+          "0": -585.587875706981,
+          "1": -570.1239114063872,
+          "2": -745.3891132461351
+        },
+        "IMP-VE-V": {
+          "0": 0.0,
+          "1": 0.0,
+          "2": 0.0
+        },
+        "IMP-RB-B": {
+          "0": -199.49758150574812,
+          "1": -136.0125825704547,
+          "2": -177.54678853238977
+        },
+        "IMP-RB-V": {
+          "0": -49.01666518288867,
+          "1": -20.088244081906588,
+          "2": -75.50602252516211
+        },
+        "IMP-BE-B": {
+          "0": -261.0658734208427,
+          "1": -234.6114104886738,
+          "2": -273.1688753976865
+        },
+        "IMP-BE-V": {
+          "0": 125.51761445078932,
+          "1": 58.422086395015754,
+          "2": -76.59909897524317
+        }
+      }
+    },
+    "ledger": {
+      "recorded": 40,
+      "ledger_trials_total": 295,
+      "hypothesis_id": "H-aef76663"
+    },
+    "totals": {
+      "bars": 500,
+      "families": 10,
+      "horizons": [
+        12,
+        4
+      ],
+      "trials_recorded": 40,
+      "events_detected_total": 53,
+      "events_measured_total": 106,
+      "events_excluded_total": 0,
+      "events_locked_discarded": 11,
+      "num_trials_for_dsr": 295
+    }
+  },
+  "conclusion": {
+    "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+    "go_block": "BLOCK",
+    "real_market_claims_permitted": false,
+    "mechanism_validation_only": true,
+    "reasons": [
+      "R1-REAL-PROVENANCE: Data must be REAL broker/exchange history \u2014 synthetic or simulated data cannot support claims about real-market behavior (minimum: data_class == REAL; observed: data_class=SYNTHETIC (source='SYNTHETIC:fixture:XAUUSD_1H_500.csv'))",
+      "R2-DEPTH: Minimum number of bars for event-count sufficiency (minimum: >= 5000 bars (target 17520); observed: 500 bars)",
+      "R3-REGIME-COVERAGE: Series must span enough calendar time to contain multiple volatility regimes (minimum: >= 180 days; observed: 20.8 days)",
+      "R4-FRESHNESS: Real-time impulse claims require recent data (stale data cannot describe current market microstructure) (minimum: last bar within 7 days of assessment time; observed: last bar 2431.6 days old)",
+      "R5-EXECUTION-DATA: Real spread/bid-ask/tick history is required to replace declared cost ASSUMPTIONS with broker-observed costs (bar high-low range is only a proxy) (minimum: bid/ask or tick data with real spread history available; observed: OHLC bars only \u2014 no bid/ask, no ticks (costs remain ESTIMATED assumptions))",
+      "R6-EVENT-SUFFICIENCY: Enough measured events (per side) for statistical inference after multiple-testing correction (minimum: >= 100 total, >= 30 per side; observed: total=53 long=27 short=26)"
+    ],
+    "supporting_family_ids": [],
+    "promotion": "BLOCKED \u2014 research artifact only. Lifecycle state unchanged. Not connected to order submission. Demo success never implies live eligibility."
+  },
+  "safety": {
+    "live_trading_enabled": false,
+    "live_eligibility_modified": false,
+    "order_submission_connected": false,
+    "promotion_state_modified": false,
+    "locked_test_partition_accessed": false,
+    "trial_ledger_reset": false
+  }
+}

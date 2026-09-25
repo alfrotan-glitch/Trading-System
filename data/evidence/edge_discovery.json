@@ -1,0 +1,8 @@
+{
+  "artifact_type": "DERIVED_ALIAS",
+  "canonical_artifact": "data/evidence/edge_validation.json",
+  "status": "BLOCKED_INSUFFICIENT_DATA",
+  "note": "Historical discovery export retired; use the canonical trial-bound edge validation artifact.",
+  "current_conclusion": "BLOCKED_INSUFFICIENT_DATA",
+  "current_experiment_id": "E-d84a5ccd"
+}

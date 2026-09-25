@@ -1,0 +1,119 @@
+# Metadata-only preparation on an isolated Actions runner. This job does NOT
+# execute H-DIR-01, extract any quote member, or supply an archive to research.
+# It hashes the original release ZIP as opaque compressed bytes, reads only its
+# central directory + manifest.json, uploads a small JSON boundary audit, and
+# discards the ZIP when the runner exits. No canonical asset is changed.
+name: Canonical XAUUSD discovery boundary (manifest only)
+
+on:
+  push:
+    branches:
+      - arena/01a0cdf1-trading-system
+    paths:
+      - .github/workflows/canonical-xauusd-discovery-boundary-audit.yml
+      - scripts/audit_xauusd_discovery_boundary.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canonical-xauusd-discovery-boundary-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Hash archive bytes and open acquisition manifest ONLY
+        id: boundary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          dir="${RUNNER_TEMP}/qts_boundary_audit"
+          mkdir -p "$dir" reports
+          trap 'rm -rf "$dir"' EXIT
+          gh release download dataset-xauusd-730d-20260919 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "XAUUSD_730d_20260919T114013Z.zip" \
+            --dir "$dir"
+          python scripts/audit_xauusd_discovery_boundary.py \
+            --zip "$dir/XAUUSD_730d_20260919T114013Z.zip" \
+            --output reports/xauusd_discovery_boundary_audit.json
+
+      - name: Upload ONLY bounded metadata, never ZIP or quotes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xauusd-discovery-boundary-audit
+          path: reports/xauusd_discovery_boundary_audit.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  # A different runner, without the archive or quote members, publishes only
+  # the bounded JSON. The research sandbox cannot access the artifact CDN;
+  # publishing the small report via GitHub's Contents API makes it auditable.
+  publish-metadata:
+    needs: audit
+    if: always()
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: xauusd-discovery-boundary-audit
+          path: audit-json
+
+      - name: Verify bounded report and publish it to THIS branch only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/arena/01a0cdf1-trading-system'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('audit-json/xauusd_discovery_boundary_audit.json')
+          assert path.is_file() and path.stat().st_size < 8192
+          report = json.loads(path.read_text(encoding='utf-8'))
+          assert report['schema'] == 'qts.xauusd_discovery_boundary_audit.v1'
+          assert report['h_dir_01_ran'] is False
+          assert report['held_out_quote_members_opened'] == report['quote_rows_decoded'] == 0
+          assert report['disposition'] in {
+              'EXACT_PART_BOUNDARY_VIEW_REQUIRES_SEPARATE_VERIFICATION',
+              'NO_SAFE_DISCOVERY_VIEW_FROM_IMMUTABLE_PARTS',
+              'BOUNDARY_NOT_ESTABLISHED',
+          }
+          assert set(report).issubset({
+              'schema', 'source', 'published_boundary', 'manifest_part_count',
+              'exact_immutable_part_boundary', 'discovery_end_part',
+              'straddling_part', 'previous_complete_part', 'disposition',
+              'held_out_quote_members_opened', 'quote_rows_decoded',
+              'inspection_scope', 'h_dir_01_ran', 'reason',
+          })
+          if report['disposition'] != 'BOUNDARY_NOT_ESTABLISHED':
+              assert report['source']['zip_sha256'] == '975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723'
+              assert report['published_boundary']['rows_discovery'] == 70834426
+          print('Publishing bounded audit JSON only:', report['disposition'])
+          PY
+          endpoint="repos/${GITHUB_REPOSITORY}/contents/reports/xauusd_discovery_boundary_audit.json"
+          existing=$(gh api "$endpoint" --jq '.sha' 2>/dev/null || true)
+          args=(--method PUT "$endpoint" -f message='Record metadata-only XAUUSD discovery boundary audit' \
+            -f branch='arena/01a0cdf1-trading-system' \
+            -f content="$(base64 -w0 audit-json/xauusd_discovery_boundary_audit.json)")
+          if [ -n "$existing" ]; then args+=(-f "sha=$existing"); fi
+          gh api "${args[@]}" --jq '.commit.sha'

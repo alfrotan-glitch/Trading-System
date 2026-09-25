@@ -1,0 +1,20 @@
+{
+  "decision": "INCONCLUSIVE",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "H-MS-01": {
+    "result": "REJECTED",
+    "reason": "non-overlapping reversal frequency is not above 0.5; mean residual after one spread is not positive",
+    "promoted": false
+  },
+  "H-MS-02": {
+    "result": "REJECTED",
+    "reason": "wide-spread half does not have a larger spread-scaled next absolute move",
+    "promoted": false
+  },
+  "H-TOD-01": {
+    "id": "H-TOD-01",
+    "result": "NOT TESTED",
+    "reason": "BLOCKED \u2014 timestamp basis is not confirmed"
+  }
+}

@@ -1,0 +1,25 @@
+env: demo_forward
+data:
+  root: data
+execution:
+  mode: demo_forward
+  demo_forward_enabled: false  # must be enabled explicitly via UI wizard + confirmation
+  reconcile_interval_s: 15
+  order_timeout_s: 10
+  spread_bps: 3.0
+  slippage_bps: 2.0
+risk:
+  max_quantity: 0.1
+  max_notional: 1000
+  max_exposure: 0.3
+  max_leverage: 5
+  max_open_orders: 3
+  daily_loss_limit: 50
+  max_drawdown: 100
+  approved: false
+  kill_switch_enabled: true
+  flatten_on_kill: false
+validation:
+  min_wfe: 0.3
+  min_oos_sharpe: 0.3
+  max_pbo: 0.5

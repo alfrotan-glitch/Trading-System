@@ -1,0 +1,139 @@
+{
+  "available_sources": [
+    {
+      "version": "20260918-010+c83567cb-572728d9",
+      "instrument": "XAUUSD",
+      "venue": "MT5",
+      "timeframe": "1H",
+      "rows": 500,
+      "date_range": {
+        "start": "2020-01-01T00:00:00+00:00",
+        "end": "2020-01-21T20:00:00+00:00"
+      },
+      "checksum": "sha256:572728d92ebb5c2a",
+      "source": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+      "data_class": "SYNTHETIC",
+      "bid_ask_available": {
+        "status": "UNAVAILABLE",
+        "value": null,
+        "reason": "no bid field in canonical OHLC schema"
+      },
+      "spread_available": "UNAVAILABLE \u2014 SYNTHETIC dataset has no measured bid/ask; high-low is not spread",
+      "tick_available": {
+        "status": "UNAVAILABLE",
+        "value": null,
+        "reason": "canonical dataset contains OHLC bars, not tick records"
+      },
+      "timestamp_quality": {
+        "timezone": "UTC",
+        "resolution": "3600s bar cadence",
+        "missingness": {
+          "status": "MEASURED",
+          "value": {
+            "gap_count": 0,
+            "closure_gap_count": 0,
+            "max_gap_s": 0,
+            "missing_intervals": 0,
+            "missing_pct": 0.0,
+            "common_delta_s": 3600
+          },
+          "reason": null
+        }
+      },
+      "survivorship": "UNAVAILABLE: survivorship requires a multi-instrument universe and membership history",
+      "corporate_adjustments": "NOT_APPLICABLE for the registered instrument",
+      "broker_differences": "UNAVAILABLE: broker session/fill metadata is not in canonical OHLC bars",
+      "historical_depth": {
+        "status": "MEASURED",
+        "rows": 500,
+        "span": {
+          "start": "2020-01-01T00:00:00+00:00",
+          "end": "2020-01-21T20:00:00+00:00"
+        }
+      },
+      "market_regimes": "UNAVAILABLE: regime coverage needs a declared regime taxonomy and sufficient span",
+      "execution_conditions": {
+        "status": "UNAVAILABLE",
+        "reason": "no measured bid/ask, latency, slippage, or fill history in OHLC dataset"
+      },
+      "licensing": "UNAVAILABLE: licensing metadata is not encoded in the manifest"
+    },
+    {
+      "version": "20260918-010+8f120133-1ba57af7",
+      "instrument": "XAUUSD",
+      "venue": "MT5",
+      "timeframe": "15m",
+      "rows": 26038,
+      "date_range": {
+        "start": "2025-08-06T00:00:00+00:00",
+        "end": "2026-09-17T00:00:00+00:00"
+      },
+      "checksum": "sha256:1ba57af7d9d034d9",
+      "source": "REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks",
+      "data_class": "REAL",
+      "bid_ask_available": {
+        "status": "UNAVAILABLE",
+        "value": null,
+        "reason": "no bid field in canonical OHLC schema"
+      },
+      "spread_available": {
+        "status": "UNAVAILABLE",
+        "value": null,
+        "reason": "bid/ask observations not present in this bar dataset"
+      },
+      "tick_available": {
+        "status": "UNAVAILABLE",
+        "value": null,
+        "reason": "canonical dataset contains OHLC bars, not tick records"
+      },
+      "timestamp_quality": {
+        "timezone": "UTC",
+        "resolution": "900s bar cadence",
+        "missingness": {
+          "status": "MEASURED",
+          "value": {
+            "gap_count": 278,
+            "closure_gap_count": 58,
+            "max_gap_s": 102600,
+            "missing_intervals": 1493,
+            "missing_pct": 5.42,
+            "common_delta_s": 900
+          },
+          "reason": null
+        }
+      },
+      "survivorship": "UNAVAILABLE: survivorship requires a multi-instrument universe and membership history",
+      "corporate_adjustments": "NOT_APPLICABLE for the registered instrument",
+      "broker_differences": "UNAVAILABLE: broker session/fill metadata is not in canonical OHLC bars",
+      "historical_depth": {
+        "status": "MEASURED",
+        "rows": 26038,
+        "span": {
+          "start": "2025-08-06T00:00:00+00:00",
+          "end": "2026-09-17T00:00:00+00:00"
+        }
+      },
+      "market_regimes": "UNAVAILABLE: regime coverage needs a declared regime taxonomy and sufficient span",
+      "execution_conditions": {
+        "status": "UNAVAILABLE",
+        "reason": "no measured bid/ask, latency, slippage, or fill history in OHLC dataset"
+      },
+      "licensing": "UNAVAILABLE: licensing metadata is not encoded in the manifest"
+    }
+  ],
+  "count": 2,
+  "limitation": "2 canonical dataset version(s), classes=['REAL', 'SYNTHETIC'], total_rows=26538, largest_dataset_rows=26038; claim eligibility remains dataset-specific and requires measured provenance, depth, span, quality, and costs",
+  "recommendation": "Acquire provenance-qualified history with licensing, broker/session semantics, bid/ask or measured cost data, UTC timestamp evidence, multiple regimes, and a declared cross-instrument population before generalizing a claim.",
+  "minimum_expansion_needed": {
+    "historical_depth": "UNAVAILABLE until the target claim specifies horizon, population, and power requirement",
+    "symbols": "UNAVAILABLE until the target population is declared",
+    "timeframes": "UNAVAILABLE until the mechanism specifies a timeframe",
+    "regimes": "UNAVAILABLE until a regime taxonomy and sufficient history are measured",
+    "execution": "measured bid/ask/tick/fill evidence required for execution claims"
+  },
+  "never_substitute": "Do not substitute synthetic, paper, shadow, demo, imputed, estimated, or model-derived data for claim-eligible market observations.",
+  "raw_files": [
+    "data/raw/xauusd_dukascopy_15m_mid_20250806_20260916.csv",
+    "data/raw/xauusd_dukascopy_1h_mid_agg_20250806_20260916.csv"
+  ]
+}

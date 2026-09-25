@@ -1,0 +1,126 @@
+{
+  "schema": "qts.xauusd_temporal.v1",
+  "preregistration": "docs/xauusd_temporal_next_step_H-TEMP-01_2026-09-23.md",
+  "window": {
+    "time_msc_min": 1726746013452,
+    "cutoff_time_msc": 1764563969254,
+    "discovery_rows_read": 70783710,
+    "held_out_rows_read": 0
+  },
+  "measured": {
+    "16": {
+      "n_active": 952933,
+      "n_quiet": 127521,
+      "mean_active": 0.23179689967710218,
+      "mean_quiet": 0.30212000376408593,
+      "ratio": 0.7672345319381884,
+      "gap_dollars": -0.07032310408698375,
+      "p_active": 0.30244308886354027,
+      "p_quiet": 0.26601108836975873,
+      "lift": 0.036432000493781536
+    },
+    "64": {
+      "n_active": 249232,
+      "n_quiet": 33356,
+      "mean_active": 0.477753538871413,
+      "mean_quiet": 0.635683235399928,
+      "ratio": 0.7515591292427957,
+      "gap_dollars": -0.15792969652851502,
+      "p_active": 0.5941492264235733,
+      "p_quiet": 0.5493164648039334,
+      "lift": 0.044832761619639894
+    },
+    "terciles": [
+      {
+        "tercile": 0,
+        "n_active": 324988,
+        "n_quiet": 30547,
+        "mean_active": 0.16086706278385665,
+        "mean_quiet": 0.18092824172586508,
+        "ratio": 0.8891207986622437,
+        "gap_dollars": -0.02006117894200843,
+        "p_active": 0.20035509003409357,
+        "p_quiet": 0.1364454774609618,
+        "lift": 0.06390961257313177,
+        "blocks": 1361
+      },
+      {
+        "tercile": 1,
+        "n_active": 307721,
+        "n_quiet": 43289,
+        "mean_active": 0.24679438517358257,
+        "mean_quiet": 0.33665388435861304,
+        "ratio": 0.73308046227885,
+        "gap_dollars": -0.08985949918503047,
+        "p_active": 0.34334023352322396,
+        "p_quiet": 0.2947862043475248,
+        "lift": 0.048554029175699176,
+        "blocks": 1285
+      },
+      {
+        "tercile": 2,
+        "n_active": 320224,
+        "n_quiet": 53685,
+        "mean_active": 0.28937005033976215,
+        "mean_quiet": 0.34323218776194464,
+        "ratio": 0.843073757815687,
+        "gap_dollars": -0.05386213742218249,
+        "p_active": 0.3667495253322674,
+        "p_quiet": 0.3165316196330446,
+        "lift": 0.0502179056992228,
+        "blocks": 1423
+      }
+    ],
+    "gap_under_one_hour": {
+      "n_active": 952933,
+      "n_quiet": 127270,
+      "mean_active": 0.23179689967710218,
+      "mean_quiet": 0.29868138602970057,
+      "ratio": 0.7760674434999861,
+      "gap_dollars": -0.06688448635259839,
+      "p_active": 0.30244308886354027,
+      "p_quiet": 0.26527854168303605,
+      "lift": 0.037164547180504215
+    },
+    "blocks_per_tercile": {
+      "0": 1361,
+      "1": 1285,
+      "2": 1423
+    },
+    "exclusions": {
+      "note": "other raw hours ignored, counted in n other"
+    },
+    "gates": {
+      "identity_and_minimums": true,
+      "material_ratio_gap_lift": false,
+      "mirrors_terciles_64_and_gap": false,
+      "bootstrap_required": "pending"
+    }
+  },
+  "hypotheses": {
+    "H-TEMP-01": {
+      "status": "REJECTED",
+      "reasons": [
+        "floor miss: ratio 0.767 < 1.25 or gap $-0.070 < $0.1 or lift 0.036 < 0.05"
+      ],
+      "not_a_strategy": true,
+      "validated": false
+    }
+  },
+  "decision": "REJECTED",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "held_out_span_opened": false,
+  "safety": {
+    "DEMO_EXECUTION": "DISABLED",
+    "confirm_live": false,
+    "orders_submitted": 0
+  },
+  "view": {
+    "view_manifest_sha256": "0b163b30bb70dbd5265656b1c90c682908e3df69542bd7ec41647c291c461435",
+    "discovery_rows": 70783710,
+    "cutoff_time_msc": 1764563969254
+  },
+  "discovery_rows_read": 70783710,
+  "held_out_rows_read": 0
+}

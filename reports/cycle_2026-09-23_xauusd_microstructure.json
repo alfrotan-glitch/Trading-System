@@ -1,0 +1,31 @@
+{
+  "schema": "qts.research_cycle.v1",
+  "generated_from": "reports/xauusd_microstructure_state.json",
+  "actions_run": "35837520722",
+  "code_identity": "de9cb1f89bb054c89604f2f4d962846218b9a002",
+  "dataset": {
+    "release": "dataset-xauusd-730d-20260919",
+    "asset": "XAUUSD_730d_20260919T114013Z.zip",
+    "zip_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723"
+  },
+  "hypotheses": {
+    "H-QD-01": "REJECTED",
+    "H-QD-02": "REJECTED",
+    "H-INT-01": "REJECTED",
+    "H-SP-01": "TESTED",
+    "H-MV-01": "REJECTED",
+    "H-VOL-01": "REJECTED",
+    "H-SPR-01": "REJECTED",
+    "H-TOD-01": "BLOCKED"
+  },
+  "process_structure": ["spread persistence"],
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "demo_readiness": "NOT ESTABLISHED",
+  "decision": "INCONCLUSIVE",
+  "safety": {
+    "confirm_live": false,
+    "orders_submitted": 0,
+    "DEMO_EXECUTION": "DISABLED"
+  }
+}

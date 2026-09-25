@@ -1,0 +1,138 @@
+{
+  "schema": "qts.xauusd_walkforward.v1",
+  "preregistration": "docs/xauusd_magnitude_walkforward_H-ST-02WF_2026-09-23.md",
+  "window": {
+    "time_msc_min": 1726746013452,
+    "cutoff_time_msc": 1764563969254,
+    "discovery_rows_read": 70783710,
+    "held_out_rows_read": 0
+  },
+  "measured": {
+    "folds": [
+      {
+        "fold": 0,
+        "time_lo": 1726746013452,
+        "time_hi": 1734309604612,
+        "n": 52023,
+        "n_high": 17506,
+        "n_low": 17410,
+        "blocks": 51,
+        "q33": 0.06,
+        "q66": 0.16,
+        "mean_high": 0.6619956015080544,
+        "mean_low": 0.5542745548535325,
+        "ratio": 1.1943460072472336,
+        "gap_dollars": 0.10772104665452187,
+        "p_high": 0.6988461099051754,
+        "p_low": 0.652441125789776,
+        "lift": 0.046404984115399395,
+        "floor_pass": false
+      },
+      {
+        "fold": 1,
+        "time_lo": 1734309604612,
+        "time_hi": 1741873195772,
+        "n": 59214,
+        "n_high": 19879,
+        "n_low": 21688,
+        "blocks": 59,
+        "q33": 0.06,
+        "q66": 0.145,
+        "mean_high": 0.6113604809095026,
+        "mean_low": 0.4968159811877536,
+        "ratio": 1.2305571963444166,
+        "gap_dollars": 0.11454449972174896,
+        "p_high": 0.715780471854721,
+        "p_low": 0.667004795278495,
+        "lift": 0.04877567657622606,
+        "floor_pass": false
+      },
+      {
+        "fold": 2,
+        "time_lo": 1741873195772,
+        "time_hi": 1749436786932,
+        "n": 52059,
+        "n_high": 17549,
+        "n_low": 17752,
+        "blocks": 52,
+        "q33": 0.115,
+        "q66": 0.28500000000000003,
+        "mean_high": 1.247056527437461,
+        "mean_low": 0.993718454258675,
+        "ratio": 1.2549394872290853,
+        "gap_dollars": 0.253338073178786,
+        "p_high": 0.8279104222462819,
+        "p_low": 0.7956286615592609,
+        "lift": 0.03228176068702093,
+        "floor_pass": false
+      },
+      {
+        "fold": 3,
+        "time_lo": 1749436786932,
+        "time_hi": 1757000378092,
+        "n": 44408,
+        "n_high": 15310,
+        "n_low": 15242,
+        "blocks": 45,
+        "q33": 0.09,
+        "q66": 0.22,
+        "mean_high": 0.8876645983017636,
+        "mean_low": 0.7659106416480778,
+        "ratio": 1.1589662684300834,
+        "gap_dollars": 0.12175395665368582,
+        "p_high": 0.7851077726975833,
+        "p_low": 0.7559375410051175,
+        "lift": 0.029170231692465798,
+        "floor_pass": false
+      },
+      {
+        "fold": 4,
+        "time_lo": 1757000378092,
+        "time_hi": 1764563969254,
+        "n": 67321,
+        "n_high": 22887,
+        "n_low": 23560,
+        "blocks": 66,
+        "q33": 0.13,
+        "q66": 0.32,
+        "mean_high": 1.4637672040896579,
+        "mean_low": 1.0775774617996603,
+        "ratio": 1.35838698931678,
+        "gap_dollars": 0.3861897422899976,
+        "p_high": 0.8425743872067112,
+        "p_low": 0.7965195246179966,
+        "lift": 0.04605486258871461,
+        "floor_pass": false
+      }
+    ],
+    "cv_ratio": 0.054693607597093755,
+    "ratio_range": 1.1720677523745608,
+    "all_floors": false,
+    "all_sign": true,
+    "stability": true
+  },
+  "hypotheses": {
+    "H-ST-02WF": {
+      "status": "REJECTED",
+      "reasons": [
+        "one or more folds below floor (ratio 1.25, gap 0.10, lift 0.05, n 1000, blocks 50)"
+      ],
+      "not_a_strategy": true,
+      "validated": false
+    }
+  },
+  "decision": "REJECTED",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "held_out_span_opened": false,
+  "safety": {
+    "DEMO_EXECUTION": "DISABLED",
+    "confirm_live": false,
+    "orders_submitted": 0
+  },
+  "view": {
+    "view_manifest_sha256": "0b163b30bb70dbd5265656b1c90c682908e3df69542bd7ec41647c291c461435",
+    "discovery_rows": 70783710,
+    "cutoff_time_msc": 1764563969254
+  }
+}
