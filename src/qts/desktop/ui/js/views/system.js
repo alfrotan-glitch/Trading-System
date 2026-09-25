@@ -84,7 +84,7 @@ export async function renderSetup(root) {
         stat({ label: "Max volume / order", value: `${lim.max_volume_per_order ?? "—"} lots` }),
         stat({ label: "Max exposure", value: `${lim.max_simultaneous_exposure ?? "—"} lots` }),
         stat({ label: "Daily loss cap", value: `$${lim.max_daily_loss_usd ?? "—"}` }),
-        stat({ label: "Kill switch", value: lim.kill_switch_enabled ? "ARMED" : "—", tone: "ok" }),
+        stat({ label: "Kill switch setting", value: lim.kill_switch_enabled ? "Required" : "Not reported", tone: "neutral", hint: "A setting, not the live stop. Risk shows whether orders are stopped." }),
       ),
       banner("info", "Safety metadata is informational and non-authorizing — what blocked, why, what next", "DEMO_EXECUTION is authorized for the DEMO account only by a recorded owner authorization; the shipped default is DISABLED BY POLICY. No acknowledgement or setup-page action creates order permission. Nothing is enabled from this page. DEMO_FORWARD observation remains order-free. DEMO vs LIVE unmistakable.", "alert"),
     ),

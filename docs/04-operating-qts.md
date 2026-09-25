@@ -30,7 +30,7 @@ When opening the QTS Workstation (`#/overview`), the first screen answers five e
 1. Navigate to **Market $\rightarrow$ Observations** (`#/market/observations`).
 2. Click **Start Observation**.
 3. Accepted quotes are stored in the machine-local observatory database under the state root (`data/sqlite/forward_observatory.db`), not in the repository checkout. A manifest is written beside the other state artifacts.
-4. No orders are ever submitted during observation (`ORDERS_POSSIBLE = False`).
+4. Observation cannot submit an order. Starting it does not grant trading permission.
 
 ### Workflow B: Autonomous Demo Trading
 1. Ensure the process is in `DEMO_EXECUTION` mode:

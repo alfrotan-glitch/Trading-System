@@ -71,4 +71,4 @@ Demo trading in QTS is not an unmonitored script; it is a fully instrumented, au
 - Confirms closing deal fills are applied to portfolio and internal position balance is zero.
 
 ### Step 12: Audit Evidence Persistence
-- All lifecycle timestamps, requested vs executed prices, slippage (bps), latency (ms), broker receipts, and realized P&L are committed to `DemoOrderJournal` (`data/evidence/demo_order_journal.db`).
+- All lifecycle timestamps, requested vs executed prices, slippage (bps), latency (ms), broker receipts, and realized P&L are committed to `DemoOrderJournal`. The file is the state-root artifact `journal_db` (`data/sqlite/qts.db` under `qts.config.paths`), not a file in the repository checkout.

@@ -99,7 +99,7 @@ export async function renderDemo(root) {
   const host = h("div", { class: "section" });
   root.appendChild(host);
 
-  let lastReadiness = null, lastState = null, lastSafety = null, lastObs = null, lastConfig = null;
+  let lastReadiness = null, lastState = null, lastSafety = null, lastObs = null, lastConfig = null, lastRisk = null;
   let acting = false;
 
   function renderFacts() {
@@ -147,14 +147,15 @@ export async function renderDemo(root) {
   async function refresh(force = false) {
     if (acting) return;
     try {
-      const [readiness, state, safety, obs, config] = await Promise.all([
+      const [readiness, state, safety, obs, config, risk] = await Promise.all([
         api.get("/api/demo/readiness"),
         api.get("/api/demo/state"),
         api.get("/api/demo/safety"),
         api.get("/api/demo/observations?limit=20"),
         api.get("/api/demo/config"),
+        api.get("/api/risk").catch(() => null),
       ]);
-      lastReadiness = readiness; lastState = state; lastSafety = safety; lastObs = obs; lastConfig = config;
+      lastReadiness = readiness; lastState = state; lastSafety = safety; lastObs = obs; lastConfig = config; lastRisk = risk;
       store.set("demoState", state);
       if (force) await Promise.all(Object.keys(RESOURCES).map((k) => syncResource(k, { force: true })));
       render();
@@ -279,6 +280,7 @@ export async function renderDemo(root) {
     ));
 
     const lim = lastSafety?.demo_limits ?? {};
+    const kill = String(lastRisk?.limits?.kill_switch ?? "").toUpperCase();
     host.appendChild(card({
       title: "Demo safety metadata — non-authorizing caps", sub: `config ${lim.config_hash ?? "—"} — descriptive only; policy still disables execution`, icon: "shield",
       actions: [h("span", { class: "prov demo" }, "DEMO LIMITS")],
@@ -288,7 +290,7 @@ export async function renderDemo(root) {
         stat({ label: "Order rate", value: `${fmtInt(lim.max_orders_per_minute)}/min`, icon: "clock" }),
         stat({ label: "Daily loss cap", value: `$${fmtNum(lim.max_daily_loss_usd, 0)}`, tone: "warn", icon: "alert" }),
         stat({ label: "Max spread", value: `${fmtNum(lim.max_spread_bps, 0)} bps`, icon: "activity" }),
-        stat({ label: "Kill switch", value: lim.kill_switch_enabled ? "ARMED" : "UNAVAILABLE", tone: lim.kill_switch_enabled ? "ok" : "err", icon: "shield" }),
+        stat({ label: "Kill switch", value: kill === "ACTIVE" ? "On — orders stopped" : kill === "ARMED" ? "Ready" : "Not reported", tone: kill === "ACTIVE" ? "err" : kill === "ARMED" ? "ok" : "neutral", hint: kill === "ACTIVE" ? (lastRisk?.kill_switch_detail?.reason || "The durable kill switch is stopping orders.") : "Ready means the switch exists. It is not permission to trade.", icon: "shield" }),
       ),
     }));
 

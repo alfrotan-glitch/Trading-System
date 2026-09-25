@@ -193,16 +193,19 @@ export async function renderOverview(root) {
     const money = s.liveLabel.includes("LOCKED") || !s.sources.live.current
       ? "Your money is not at risk."
       : "Live trading is still gated. Real money is not in use.";
-    setText(explanation, `${running} ${money} There is no validated trading opportunity.`);
+    const stopped = s.killActive ? "Orders are stopped by the kill switch." : "";
+    setText(explanation, `${running} ${money} ${stopped} There is no validated trading opportunity.`.replace(/\s+/g, " ").trim());
 
     const quoteRecorded = Boolean(s.obs?.last_tick_time);
     pMarket.querySelector(".stat-value").textContent = quoteRecorded ? "Quote recorded" : "No live price yet";
     pMarket.querySelector(".stat-hint").textContent = quoteRecorded
       ? `Last gold quote ${s.quoteAge}. A quote is not a trade.`
       : "XAUUSD. A connection is not a price.";
-    const tradingAllowed = s.permission === "PERMITTED · DEMO ONLY";
-    pExec.querySelector(".stat-value").textContent = tradingAllowed ? "Demo only" : "Not allowed";
-    pExec.querySelector(".stat-hint").textContent = tradingAllowed
+    const tradingAllowed = s.permission === "PERMITTED · DEMO ONLY" && !s.killActive;
+    pExec.querySelector(".stat-value").textContent = s.killActive ? "Orders stopped" : tradingAllowed ? "Demo only" : "Not allowed";
+    pExec.querySelector(".stat-hint").textContent = s.killActive
+      ? "The kill switch is on. That does not close an open position. Live trading stays locked."
+      : tradingAllowed
       ? "Demo orders can be considered. Live trading stays locked."
       : explainStatus(s.permission === "DISABLED BY POLICY" ? "DISABLED_BY_POLICY" : s.permission);
     pPerf.querySelector(".stat-value").textContent = "Not at risk";

@@ -197,6 +197,7 @@ Committed Evidence Manifest (data/evidence/*.json)
 | **ARCH-012** | 2026-09-25 | Phase 11 | Risk card no longer invents `$500` or a 22-check count. A research file pass is not labeled ready for demo. Live docs no longer describe a multi-signature unlock that is not in the code. | Missing limits stay unreported. Live stays locked. | UI source tests | APPROVED |
 | **ARCH-013** | 2026-09-25 | Phase 11 | Governance screen no longer claims it recorded a live request. `/api/risk` clear state says `RISK CLEAR — NOT AN ORDER`. | A button cannot invent an audit record. | `test_risk_veto_visibility`, UI shell | APPROVED |
 | **ARCH-014** | 2026-09-25 | Phase 11 | Header **Stop trading** calls `POST /api/demo/kill` and does not claim success if the request fails. Data-quality copy no longer invents a 12-check count. Troubleshooting uses the 60s freshness limit. | The documented emergency control exists. A failed stop stays visible. | UI source test | APPROVED |
+| **ARCH-015** | 2026-09-25 | Phase 11 | Home and Trading read the durable kill switch from `/api/health` and `/api/risk`. A limit flag is no longer labeled armed. The journal path in the demo guide matches `journal_db`. | A stop stays visible after it is raised. | operations test | APPROVED |
 
 ---
 
@@ -204,7 +205,7 @@ Committed Evidence Manifest (data/evidence/*.json)
 
 * **Python default suite** (`pytest`): 1,318 passed, 2 skipped, 1,320 collected (2026-09-25). The two skips are `tests/adversarial/test_impulse_lookahead.py` for family `IMP-VE-V`, when the fixed seed window produces no events. They are not integration tests. Playwright browser tests are a separate collection-time skip (`playwright not installed`) and are not inside the 1,320.
 * **Python integration suite** (`pytest tests/integration --run-integration`): 119 passed. The same 119 now also run in the default suite. The directory-name skip is gone.
-* **JavaScript UI tests** (`npm test`): 46 passed. `node --check` passed for every file under `src/qts/desktop/ui/js`.
+* **JavaScript UI tests** (`npm test`): 47 passed. `node --check` passed for every file under `src/qts/desktop/ui/js`.
 * **Linters**: `ruff check src tests` clean. `mypy src` is not clean: 38 errors in 12 research and observability files. Those formulas were not changed to silence the type checker.
 
 ---

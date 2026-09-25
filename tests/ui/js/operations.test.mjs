@@ -55,6 +55,16 @@ test("one failed source does not erase other current facts", () => {
   assert.equal(s.permission, "DISABLED");
   assert.match(s.next.label, /unavailable/);
 });
+test("an active kill switch outranks a connected terminal", () => {
+  const d = data();
+  d.health.kill_switch = { state: "ACTIVE", reason: "operator stop" };
+  const s = operationalState(d, NOW);
+  assert.equal(s.killActive, true);
+  assert.equal(s.next.label, "Orders are stopped");
+  assert.match(s.next.why, /operator stop/);
+  d.health.kill_switch = { state: "ARMED" };
+  assert.equal(operationalState(d, NOW).killActive, false);
+});
 test("LIVE eligibility is never rendered as enabled", () => {
   const d = data(); d.live.eligible = true;
   assert.equal(operationalState(d, NOW).liveLabel, "ELIGIBLE · STILL GATED");
