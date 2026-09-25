@@ -77,8 +77,9 @@ test("IA: product navigation first, engineering under Advanced", () => {
 
 test("header communicates the critical operating facts continuously", async () => {
   const facts = document.getElementById("header-facts");
-  await waitUntil(() => facts.textContent.includes("DEVELOPMENT"), 15000, "mode fact");
-  assert.ok(facts.textContent.includes("mode"), "mode chip present");
+  await waitUntil(() => facts.textContent.includes("Research only"), 15000, "mode fact");
+  assert.ok(facts.querySelector(".fact.mode"), "mode chip present");
+  assert.ok(facts.textContent.includes("Mode"));
   await waitUntil(() => facts.textContent.includes("LIVE LOCKED"), 15000, "LIVE authority response");
   assert.ok(facts.querySelector(".fact.live-locked"), "locked chip styled as locked");
 });
@@ -102,7 +103,7 @@ test("overview: authority, evidence and technical disclosure are distinct", asyn
 
 test("navigation to Trading → Demo shows authority truth: DISABLED + failing checks", async () => {
   location.hash = "#/trading/demo";
-  await waitUntil(() => document.body.textContent.includes("Demo Forward Control"), 20000, "demo view");
+  await waitUntil(() => document.body.textContent.includes("Is the practice account connected"), 20000, "demo view");
   // readiness probing runs the full 14-check gate server-side per request —
   // allow a generous window (shared server, parallel test files)
   await waitUntil(() => document.querySelectorAll(".check").length >= 10, 75000, "readiness checks");
@@ -114,17 +115,18 @@ test("navigation to Trading → Demo shows authority truth: DISABLED + failing c
 
 test("navigation to Governance shows LIVE — LOCKED hero with disabled request control", async () => {
   location.hash = "#/governance/live";
-  await waitUntil(() => document.body.textContent.includes("Live Trading Governance"), 15000, "governance view");
+  await waitUntil(() => document.body.textContent.includes("This page cannot open it"), 15000, "governance view");
   await waitUntil(() => document.body.textContent.includes("Why it is locked"), 30000, "governance checklist");
   assert.ok(document.body.textContent.includes("LIVE — LOCKED"));
-  const req = [...document.querySelectorAll("button")].find((b) => /enablement/i.test(b.textContent));
-  assert.ok(req, "an enablement control exists");
-  assert.ok(req.disabled, "enablement control is disabled while locked (calm, not pushy)");
+  assert.ok(document.body.textContent.includes("This page cannot open it"));
+  const req = [...document.querySelectorAll("button")].find((b) => /cannot be opened/i.test(b.textContent));
+  assert.ok(req, "a locked live control exists");
+  assert.ok(req.disabled, "live control is disabled while locked");
 });
 
 test("navigation to Risk shows blocked-or-permitted banner with reasons from authority", async () => {
   location.hash = "#/risk";
-  await waitUntil(() => document.body.textContent.includes("Risk Center"), 15000, "risk view");
+  await waitUntil(() => document.body.textContent.includes("A clear risk reading is not permission to trade"), 15000, "risk view");
   await waitUntil(() => document.body.textContent.match(/TRADING IS (CURRENTLY BLOCKED|NOT AUTHORIZED)/), 15000, "risk banner");
   assert.ok(!document.body.textContent.includes("TRADING IS PERMITTED"), "a clear risk limit is not permission");
   assert.ok(!document.body.textContent.includes("22 GATES"), "the risk card does not invent a gate count");
@@ -133,7 +135,7 @@ test("navigation to Risk shows blocked-or-permitted banner with reasons from aut
 
 test("navigation to Market → Monitor shows honest empty state (no fabricated charts)", async () => {
   location.hash = "#/market/monitor";
-  await waitUntil(() => document.body.textContent.includes("Market Monitor"), 15000, "monitor view");
+  await waitUntil(() => document.body.textContent.includes("The last recorded gold quote"), 15000, "monitor view");
   await waitUntil(() => document.body.textContent.match(/No real observations recorded yet|Current quote/), 15000, "monitor content");
   if (!document.querySelector("svg")) {
     assert.ok(document.body.textContent.includes("No real observations recorded yet"));
@@ -142,7 +144,7 @@ test("navigation to Market → Monitor shows honest empty state (no fabricated c
 
 test("observation view: orders-submitted stat exists and observation copy never implies trading", async () => {
   location.hash = "#/market/observations";
-  await waitUntil(() => document.body.textContent.includes("Forward Observatory"), 15000, "observation view");
+  await waitUntil(() => document.body.textContent.includes("Recorded quotes"), 15000, "observation view");
   await waitUntil(() => document.body.textContent.includes("Orders submitted"), 15000, "order count stat");
   assert.ok(document.body.textContent.includes("never submits orders"));
 });
@@ -158,7 +160,7 @@ test("command palette: Ctrl+K opens, search filters, Enter navigates", async () 
   assert.ok(items.length >= 1, "palette finds governance");
   assert.ok(items[0].textContent.toLowerCase().includes("governance"));
   items[0].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  await waitUntil(() => document.body.textContent.includes("Live Trading Governance"), 10000, "palette navigation");
+  await waitUntil(() => document.body.textContent.includes("This page cannot open it"), 10000, "palette navigation");
   assert.ok(!document.body.classList.contains("palette-open"), "palette closes after action");
 });
 

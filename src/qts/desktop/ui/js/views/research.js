@@ -17,11 +17,10 @@ function denseTable(opts) { return table({ ...opts, dense: true }); }
 export async function renderCampaigns(root) {
   skeletonInto(root);
   root.classList.add("operator-workspace");
-  const ctx = getContext();
   const head = page({
     crumb: "Research", group: "Campaigns",
-    title: "Research Campaigns",
-    answer: h("b", null, `Bounded, auditable experiment runs. Every trial — kept or discarded — permanently recorded. Trial counts never reset. Context ${ctx.symbol} syncs across windows. High density, drawer for detail, keyboard sortable.`),
+    title: "Campaigns",
+    answer: h("b", null, "Research runs, including the ones that failed. A run is not a trade, and it cannot open live trading."),
     actions: [
       h("button", { class: "btn primary", onclick: () => openCreateCampaign(root) }, icon("plus", 14), "New campaign"),
       h("button", { class: "btn", onclick: () => renderCampaigns(root) }, icon("refresh", 14), "Refresh"),
@@ -121,7 +120,7 @@ export async function renderHypotheses(root) {
   skeletonInto(root);
   root.classList.add("operator-workspace");
   const ctx = getContext();
-  root.appendChild(page({ crumb: "Research", group: "Hypotheses", title: "Hypothesis Explorer", answer: h("b", null, `Every idea is a falsifiable claim with named mechanism — never vague strategy name. Context ${ctx.symbol}. Dense table, drawer for full claim, keyboard navigable.`), body: null }));
+  root.appendChild(page({ crumb: "Research", group: "Hypotheses", title: "Hypotheses", answer: h("b", null, "Ideas written so they can be proven wrong. An idea is not a trade, and it cannot open live trading."), body: null }));
   const activity = h("h2", null, `Loading hypotheses… — context ${ctx.symbol}`);
   root.appendChild(h("section", { class: "operator-summary" }, h("div", null, h("div", { class: "eyebrow" }, "NOW / HYPOTHESES"), activity)));
   const host = h("div", { class: "section" }); root.appendChild(host);
@@ -163,8 +162,8 @@ export async function renderExperiments(root) {
   const ctx = getContext();
   root.appendChild(page({
     crumb: "Research", group: "Experiments",
-    title: "Experiment Ledger",
-    answer: h("b", null, `No hidden trials. Winners, losers, discarded variants — all preserved with reasons. DSR uses full N. Context ${ctx.symbol}. High density, keyboard sortable.`),
+    title: "Experiment ledger",
+    answer: h("b", null, "Every trial that was run, including failures. A good backtest is not permission to trade. Live trading stays locked."),
     body: null,
   }));
   const activity = h("h2", null, `Loading experiments… — context ${ctx.symbol}`);
@@ -205,7 +204,7 @@ export async function renderStrategies(root) {
   skeletonInto(root);
   root.classList.add("operator-workspace");
   const ctx = getContext();
-  root.appendChild(page({ crumb: "Research", group: "Strategies", title: "Strategy Library", answer: h("b", null, `Strategies are scientific objects: identity, thesis, mechanism, evidence grade. Context ${ctx.symbol}. High historical return alone never promotes.`), body: null }));
+  root.appendChild(page({ crumb: "Research", group: "Strategies", title: "Strategy library", answer: h("b", null, "Registered research records. A high backtest result does not allow a trade. Live trading stays locked."), body: null }));
   const activity = h("h2", null, `Loading strategies… — context ${ctx.symbol}`);
   root.appendChild(h("section", { class: "operator-summary" }, h("div", null, h("div", { class: "eyebrow" }, "NOW / STRATEGIES"), activity)));
   const host = h("div", { class: "section" }); root.appendChild(host);
@@ -245,8 +244,7 @@ export async function renderStrategies(root) {
 export async function renderValidation(root) {
   skeletonInto(root);
   root.classList.add("operator-workspace");
-  const ctx = getContext();
-  const head = page({ crumb: "Research", group: "Validation", title: "Validation Scorecard", answer: h("b", null, `Does evidence support hypothesis? Every gate must pass on its own merits — fail-closed. Context ${ctx.symbol}.`), body: null });
+  const head = page({ crumb: "Research", group: "Validation", title: "Validation", answer: h("b", null, "Whether a saved research file supports a trade. It does not. A file pass does not permit an order, and it cannot open live trading."), body: null });
   root.appendChild(head);
   const pick = h("select", { class: "input", style: { maxWidth: "260px" } });
   const host = h("div", { class: "section" }); root.appendChild(host);
@@ -356,7 +354,7 @@ export async function renderMemory(root) {
   skeletonInto(root);
   root.classList.add("operator-workspace");
   const ctx = getContext();
-  root.appendChild(page({ crumb: "Research", group: "Memory", title: "Research Memory", answer: h("b", null, `Durable knowledge of what was tested, why it failed, and what was unstable — so QTS never pays twice for same lesson. Context ${ctx.symbol}. Dense table, keyboard navigable.`), body: null }));
+  root.appendChild(page({ crumb: "Research", group: "Memory", title: "Research memory", answer: h("b", null, "What was tested and why it failed. This page cannot permit a trade. Live trading stays locked."), body: null }));
   const activity = h("h2", null, `Loading memory… — context ${ctx.symbol}`);
   root.appendChild(h("section", { class: "operator-summary" }, h("div", null, h("div", { class: "eyebrow" }, "NOW / MEMORY"), activity)));
   const host = h("div", { class: "section" }); root.appendChild(host);
@@ -397,7 +395,7 @@ export async function renderData(root) {
   skeletonInto(root);
   root.classList.add("operator-workspace");
   const ctx = getContext();
-  root.appendChild(page({ crumb: "Research", group: "Data", title: "Data Observatory", answer: h("b", null, `What data QTS has, how good it is, and what is missing — explicit REAL vs SYNTHETIC labeling on every field. Context ${ctx.symbol}. High density, no interpolation.`), body: null }));
+  root.appendChild(page({ crumb: "Research", group: "Data", title: "Data observatory", answer: h("b", null, "What market data is saved, and what is missing. Missing data is not filled in. This page cannot permit a trade."), body: null }));
   const activity = h("h2", null, `Loading data inventory… — context ${ctx.symbol}`);
   root.appendChild(h("section", { class: "operator-summary" }, h("div", null, h("div", { class: "eyebrow" }, "NOW / DATA"), activity)));
   const host = h("div", { class: "section" }); root.appendChild(host);

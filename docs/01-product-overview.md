@@ -1,11 +1,9 @@
 # 1. Product Overview
 
 ## Mission
-The Quantitative Trading System (QTS) is an institutional-grade, evidence-driven trading engine and workstation engineered for gold (`XAUUSD`). QTS governs the entire algorithmic trading lifecycle:
+QTS is a gold research workstation. It can watch a demo account. It cannot open live trading.
 
-$$\text{Market Data} \longrightarrow \text{Research} \longrightarrow \text{Evidence} \longrightarrow \text{Validation} \longrightarrow \text{Demo Trading} \longrightarrow \text{Controlled Live}$$
-
-Every phase requires verifiable mathematical, statistical, or broker-attested evidence. QTS enforces a strict fail-closed safety posture where real-money trading remains permanently locked until deliberate, multi-party governance approval is granted.
+Real-money trading stays locked. There is no multi-party approval that opens it from this workstation, and a demo result cannot create one. The research conclusion remains no validated edge.
 
 ---
 

@@ -1,17 +1,15 @@
 # QTS — Quantitative Trading System
 
-> **Institutional-grade, evidence-driven algorithmic trading system for gold (`XAUUSD`).**  
-> Safe by default. Science first. Capital preservation over profit.
+> **Gold research workstation. Live trading stays locked. There is no validated opportunity.**  
+> A connection is not a price, and a price is not a trade.
 
 ---
 
 ## Product Mission
 
-QTS is an end-to-end quantitative trading workstation and execution engine designed for high-conviction algorithmic trading on MetaTrader 5:
+QTS is a gold research workstation. It can watch a demo account. It cannot open live trading.
 
-$$\text{Market Data} \longrightarrow \text{Research} \longrightarrow \text{Evidence} \longrightarrow \text{Validation} \longrightarrow \text{Demo Trading} \longrightarrow \text{Controlled Live}$$
-
-Every phase requires verifiable mathematical, statistical, or broker-attested evidence. Real-capital trading remains permanently locked behind code-enforced invariants (`REAL_CAPITAL_EXPOSURE = 0`), requiring multi-party governance authorization before any real funds can be exposed.
+There is no validated trading opportunity. Real-money trading stays locked. `REAL_CAPITAL_EXPOSURE` must stay 0. There is no multi-party unlock in this repository, and a demo result cannot create one.
 
 Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating guides](docs/README.md). Research records in `docs/` are evidence, not operating instructions.
 
@@ -152,4 +150,4 @@ For detailed architecture, operational runbooks, and risk specifications, consul
 
 ## License & Safety Notice
 
-QTS is strictly designed for algorithmic research and controlled execution. Live trading requires verified multi-party governance clearance. Real-capital exposure is locked at `$0.00` by default.
+QTS is for research and a locked demo account. Live trading cannot be opened from this repository. Real-money exposure stays at `$0.00`.

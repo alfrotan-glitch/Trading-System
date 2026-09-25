@@ -17,8 +17,8 @@ export async function renderExplorer(root) {
   const ctx = getContext();
   root.appendChild(page({
     crumb: "Evidence", group: "Explorer",
-    title: "Evidence Explorer",
-    answer: h("b", null, `Every displayed result carries its evidence: provenance, lineage, and honest self-audit. If evidence missing, QTS says so. Context ${ctx.symbol}. Progressive disclosure: summary → evidence → raw.`),
+    title: "Reports",
+    answer: h("b", null, "Saved research reports. A missing report stays missing. A report is not permission to trade, and it cannot open live trading."),
     body: null,
   }));
   const activity = h("h2", null, `Loading evidence… — context ${ctx.symbol}`);
@@ -81,8 +81,8 @@ export async function renderAudit(root) {
   const q = h("input", { class: "input", placeholder: "Search events — decisions, risk vetoes, orders, fills, reconciliations…", style: { maxWidth: "380px" }, "aria-label": "Search audit trail" });
   const head = page({
     crumb: "Evidence", group: "Audit trail",
-    title: "Audit Trail",
-    answer: h("b", null, `Append-only, redacted record of everything QTS decided, blocked, submitted, or reconciled. Context ${ctx.symbol}. Dense table, drawer for payload, per-source freshness, keyboard navigable.`),
+    title: "Audit trail",
+    answer: h("b", null, "What QTS decided, blocked, or reconciled. This page does not place an order. Live trading stays locked."),
     actions: [q, h("button", { class: "btn primary", onclick: () => load() }, icon("search", 14), "Search")],
     body: null,
   });

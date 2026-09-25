@@ -221,20 +221,18 @@ function openWorkspace() {
   }
   const remember = h("input", { type: "checkbox", checked: p.rememberRoute });
   remember.addEventListener("change", () => { if (!saveWorkspace({ rememberRoute: remember.checked, route: location.hash })) toast("warn", "Preferences could not be saved"); });
-  form.appendChild(h("label", { class: "field-inline", style: { marginTop: "8px" } }, remember, h("span", { class: "small" }, "Restore last page on launch (never replay actions, never permission)")));
+  form.appendChild(h("label", { class: "field-inline", style: { marginTop: "8px" } }, remember, h("span", { class: "small" }, "Restore the last page on launch. This does not repeat an action and does not permit a trade.")));
   form.appendChild(h("div", { class: "stack", style: { marginTop: "12px" } },
     h("div", { class: "eyebrow" }, "Keyboard — minimal cognitive cost, keyboard-first"),
-    h("div", { class: "small text-dim" }, h("span", { class: "kbd" }, "Ctrl"), " + ", h("span", { class: "kbd" }, "K"), " palette · ", h("span", { class: "kbd" }, "/"), " filter nav · ", h("span", { class: "kbd" }, "Esc"), " close drawer/modal · ", h("span", { class: "kbd" }, "↑"), h("span", { class: "kbd" }, "↓"), " navigate rows · ", h("span", { class: "kbd" }, "Home"), "/", h("span", { class: "kbd" }, "End"), " first/last · ", h("span", { class: "kbd" }, "Enter"), " sort/open drawer"),
-    h("div", { class: "eyebrow" }, "Workspace-oriented — persistent layouts, synchronized context"),
-    h("div", { class: "small text-dim" }, "BroadcastChannel qts-context syncs symbol/timeframe across windows/tabs. localStorage qts.context.v1 persists per browser. Never permission/mode/risk. New window button opens current context for multi-monitor. TradingView benchmark for UX, not visual copy."),
-    h("div", { class: "eyebrow" }, "Performance is UX — principle 13"),
-    h("div", { class: "small text-dim" }, "Diagnostics shows last 100 measurements: load (page), route (transition), refresh (forced/periodic), render (workspace update), request (API), dup-coalesced (GET dedup), dup-sync (sync dedup), recovery (error→ok), poll (periodic), poll-skipped (hidden tab), heap (performance.memory). No payloads. Bounded 100. Measures load/transition/refresh/rendering/memory/dup/recovery."),
-    h("div", { class: "eyebrow" }, "Safety — DEMO vs LIVE unmistakable"),
-    h("div", { class: "small text-dim" }, "DEMO_FORWARD = real MT5 demo-account observation with zero orders, yellow/warn. DEMO_EXECUTION = ENABLED_AUTHORIZED only with a recorded owner authorization (default: DISABLED BY POLICY) and still gated per order. LIVE = real capital, red/locked, structurally locked. What blocked, why, what missing, what next explicit everywhere."),
-    h("div", { class: "eyebrow" }, "Truth visible — never 0 when missing"),
-    h("div", { class: "small text-dim" }, "MEASURED/UNAVAILABLE/INSUFFICIENT/BLOCKED/DEGRADED/READY/OBSERVING/LOCKED — never 0. Provenance badges REAL/SYNTHETIC/SIMULATED/ESTIMATED/IMPUTED/BROKER-DERIVED/MODEL-DERIVED explicit on every field."),
+    h("div", { class: "small text-dim" }, "Ctrl+K finds a page. Esc closes a panel."),
+    h("div", { class: "eyebrow" }, "What follows you"),
+    h("div", { class: "small text-dim" }, "The gold symbol can follow you across windows. It never changes permission, mode, or risk."),
+    h("div", { class: "eyebrow" }, "Safety"),
+    h("div", { class: "small text-dim" }, "Watching a demo account does not send an order. Demo trading stays off unless a recorded authorization and the safety checks both allow it. Live trading stays locked. This screen cannot open it."),
+    h("div", { class: "eyebrow" }, "Missing numbers"),
+    h("div", { class: "small text-dim" }, "A missing number stays missing. It is not shown as zero."),
   ));
-  drawer("Workspace preferences — presentation only, never permission", form);
+  drawer("Workspace preferences", form);
 }
 
 function stat({ label, value, hint }) {
@@ -249,25 +247,62 @@ function renderFacts(factsEl) {
   const s = operationalState(store.data);
   const ctx = getContext();
   const values = [
-    ["mode", s.mode.mode, "mode"],
-    ["Observation", s.observation, s.observing ? "observing" : ""],
-    ["DEMO", s.permission, ""],
-    ["LIVE", s.liveLabel, "live-locked"],
-    ["ctx", `${ctx.symbol}`, "optional"],
+    ["mode", "Mode", headerMode(s.mode.mode), "mode"],
+    ["Observation", "Watching", headerWatching(s.observation, s.observing), s.observing ? "observing" : ""],
+    ["DEMO", "Demo", headerPermission(s.permission), ""],
+    ["LIVE", "Live", headerLive(s.liveLabel), "live-locked"],
+    ["ctx", "Gold", `${ctx.symbol}`, "optional"],
   ];
   if (!factsEl.children.length) {
-    for (const [label, value, cls] of values) factsEl.appendChild(factChip({ label, value, cls }));
+    for (const [, shown, value, cls] of values) factsEl.appendChild(factChip({ label: shown, value, cls }));
   }
   [...factsEl.children].forEach((node, i) => {
-    const [label, value, cls] = values[i];
+    const [label, , value, cls] = values[i];
     const v = node.querySelector("b");
     const cur = label === "ctx" ? `${getContext().symbol}` : value;
     if (v.textContent !== cur) v.textContent = cur;
     node.className = `fact ${cls}`;
-    const src = label === "mode" ? s.sources.health : label === "Observation" ? s.sources.observe : label === "DEMO" ? s.sources.demoState : label === "LIVE" ? s.sources.live : null;
-    if (label === "ctx") node.title = `Context: ${getContext().symbol} · ${getContext().timeframe} — presentation only, syncs across windows via BroadcastChannel, never permission.`;
-    else node.title = `${label}: ${value}. ${src?.label ?? "UNAVAILABLE"} — ${label === "mode" ? "environment capability is not permission" : label === "DEMO" ? "readiness and permission are separate" : label === "LIVE" ? "never auto-enabled" : "collector state, zero orders"}.`;
+    if (label === "ctx") node.title = "The gold symbol shown on these pages. Changing it does not permit a trade.";
+    else if (label === "mode") node.title = "What this process may attempt. A mode is not permission to trade.";
+    else if (label === "DEMO") node.title = "Whether a demo order is allowed. Off means no demo order.";
+    else if (label === "LIVE") node.title = "Live trading stays locked. This header cannot open it.";
+    else node.title = "Whether quotes are being recorded. Recording is not a trade.";
   });
+}
+
+function headerMode(mode) {
+  const m = String(mode || "").toUpperCase();
+  if (m === "DEVELOPMENT" || m === "DEV") return "Research only";
+  if (m === "PAPER") return "Practice";
+  if (m === "SHADOW") return "Would-be only";
+  if (m === "DEMO_FORWARD") return "Watching demo";
+  if (m === "DEMO_EXECUTION") return "Demo trading";
+  if (m === "LIVE") return "Live locked";
+  return m || "Not reported";
+}
+
+function headerPermission(permission) {
+  const s = String(permission || "");
+  if (s.includes("UNAVAILABLE")) return "Not reported";
+  if (s.includes("CONFLICT")) return "Conflict";
+  if (s.includes("NOT PERMITTED") || s.includes("AUTHORIZED")) return "Recorded, not allowed";
+  if (s.includes("PERMITTED")) return "Demo only";
+  return "Off";
+}
+
+function headerLive(label) {
+  if (label === "LOCKED") return "LIVE LOCKED";
+  if (label === "ELIGIBLE · STILL GATED") return "Not open";
+  if (!label || label === "UNAVAILABLE") return "Not reported";
+  return String(label);
+}
+
+function headerWatching(observation, observing) {
+  if (observing) return "Recording";
+  const s = String(observation || "").toUpperCase();
+  if (s === "DEGRADED") return "Recording failed";
+  if (!s || s === "IDLE" || s === "STOPPED" || s === "UNAVAILABLE") return "Not recording";
+  return "Not recording";
 }
 
 function buildSidebar() {

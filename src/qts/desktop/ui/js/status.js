@@ -46,7 +46,7 @@ const MODES = {
   SHADOW: { tone: "research", canSubmit: false, realData: false, blurb: "Would-be intents only — no broker submission. Data provenance is reported separately." },
   DEMO_FORWARD: { tone: "info", canSubmit: false, realData: true, blurb: "MT5 demo-account observation only — structurally no broker orders." },
   DEMO_EXECUTION: { tone: "locked", canSubmit: false, realData: true, blurb: "Demo trading needs a recorded owner authorization. The shipped default is off. An order also needs staged arming, a confirmed demo account, and the safety checks. Live trading stays locked. This is not a validated trading opportunity." },
-  LIVE: { tone: "locked", canSubmit: "gated", realData: true, blurb: "Live capital. Structurally locked until every gate and human approval pass." },
+  LIVE: { tone: "locked", canSubmit: "gated", realData: true, blurb: "Real money. This workstation cannot open live trading." },
 };
 
 /**

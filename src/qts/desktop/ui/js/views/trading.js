@@ -2,7 +2,7 @@
    Safety is primary: DEMO vs LIVE unmistakable, what blocked why what next explicit. */
 
 import { api, store, RESOURCES, syncResource } from "../api.js";
-import { operationalState, freshness } from "../operations.js";
+import { operationalState, freshness, demoSentence } from "../operations.js";
 import { h, icon, clear } from "../dom.js";
 import {
   card, badge, page, table, emptyState, skeletonInto, tech, kv, stat, errorBox,
@@ -25,8 +25,8 @@ export async function renderPaper(root) {
   root.classList.add("operator-workspace");
   root.appendChild(page({
     crumb: "Trading", group: "Paper / Shadow",
-    title: "Paper & Shadow",
-    answer: h("b", null, "Simulated execution (PAPER) and would-be intents on real data (SHADOW). No order ever reaches a broker from these modes. Labeled SIMULATED/WOULD-BE, never REAL."),
+    title: "Practice",
+    answer: h("b", null, "Practice fills and would-be trades. Nothing here is sent to a broker. This is not a real account, and it is not live trading."),
     body: null,
   }));
   const host = h("div", { class: "section" }); root.appendChild(host);
@@ -80,8 +80,8 @@ export async function renderDemo(root) {
   const ctx = getContext();
   const head = page({
     crumb: "Trading", group: "Demo forward",
-    title: "Demo Forward Control",
-    answer: h("b", null, `Are we connected, is demo trading on, is live trading locked, and can you close a position? Live trading is locked. Demo trading stays off until every safety check passes. Context ${ctx.symbol} is display only.`),
+    title: "Demo account",
+    answer: h("b", null, "Is the practice account connected, is demo trading on, and is live trading locked? Live trading is locked. A connection is not permission to trade."),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources")],
     body: null,
   });
@@ -128,19 +128,19 @@ export async function renderDemo(root) {
       const f = meta ? freshness(meta, key === "mode" || key === "broker" ? "health" : key === "observation" ? "observe" : key === "permission" ? "demoState" : "live") : { label: "UNAVAILABLE", current: false };
       c.fresh.textContent = `${f.label}${meta?.updatedAt ? ` · ${fmtAge(meta.updatedAt)}` : ""}`;
     }
-    activity.textContent = `${s.observation} · DEMO ${s.permission} · LIVE ${s.liveLabel} · ${getContext().symbol}`;
+    activity.textContent = `${demoSentence(s.permission)} Live trading stays locked.`;
     if (s.permission === "DISABLED") {
-      next.textContent = "Review observation readiness"; next.href = "#/trading/demo"; nextWhy.textContent = "DEMO execution is authorized only by a recorded owner authorization and is still gated per order — never from this page. Observation does not require enabling execution; review only the blockers that prevent DEMO_FORWARD observation.";
+      next.textContent = "See the safety checks"; next.href = "#/trading/demo"; nextWhy.textContent = "Demo trading is off. Watching the market does not turn it on.";
     } else if (s.permission === "PERMITTED · DEMO ONLY") {
-      next.textContent = "Review the pre-trade gate"; next.href = "#/trading/demo"; nextWhy.textContent = "Execution permission is held for the DEMO account. Each order still requires the staged progression, a pinned identity, an eligible registered strategy and the full pre-trade gate (every required safeguard, contract check and registered-policy limit).";
+      next.textContent = "Read the checks before any order"; next.href = "#/trading/demo"; nextWhy.textContent = "Demo trading is on for this reading. Each order can still be refused. Live trading stays locked.";
     } else if (s.permission === "AUTHORIZED · NOT PERMITTED") {
-      next.textContent = "Review DEMO arming"; next.href = "#/trading/demo"; nextWhy.textContent = "An owner authorization is recorded, but the durable authority has not granted execution permission — it needs explicit confirmation, risk acknowledgement and fresh passing readiness.";
+      next.textContent = "See why an order is still blocked"; next.href = "#/trading/demo"; nextWhy.textContent = "A demo authorization is recorded. An order is still not allowed. Live trading stays locked.";
     } else if (s.permission === "CONFLICT · INSPECT") {
-      next.textContent = "Inspect permission conflict"; next.href = "#/system/diagnostics"; nextWhy.textContent = "Mode and authority disagree. Current permission cannot be established.";
+      next.textContent = "Inspect the conflict"; next.href = "#/system/diagnostics"; nextWhy.textContent = "The readings disagree. Do not trade until they agree.";
     } else if (s.sources.health.current && String(s.health?.mt5).toLowerCase() !== "connected") {
-      next.textContent = "Review MT5 connection"; next.href = "#/system/mt5"; nextWhy.textContent = "Terminal not connected. No permission can be established.";
+      next.textContent = "Connect the broker terminal"; next.href = "#/system/mt5"; nextWhy.textContent = "The terminal is not connected. Do not turn trading on from here.";
     } else {
-      next.textContent = "Inspect observation evidence"; next.href = "#/market/observations"; nextWhy.textContent = s.next.why;
+      next.textContent = "See the recorded quotes"; next.href = "#/market/observations"; nextWhy.textContent = s.next.why;
     }
   }
 
@@ -198,8 +198,8 @@ export async function renderDemo(root) {
     );
 
     host.appendChild(card({
-      title: "Execution Cockpit — Decision & Safety Posture",
-      sub: "Clear, unmistakable execution status · Demo environment only · Real capital permanently locked",
+      title: "Trading status",
+      sub: "Demo only. Real money stays locked. A connection is not permission to trade.",
       icon: "layers",
       body: cockpitStats,
     }));
@@ -219,8 +219,8 @@ export async function renderDemo(root) {
     // state root and the same artefact paths the CLI resolves, so a disagreement
     // is a comparison of two outputs instead of a mystery.
     host.appendChild(card({
-      title: "Runtime state — what this backend process resolved", icon: "shield",
-      sub: "mode provenance, machine-local state root, canonical → venue symbol",
+      title: "What this process decided", icon: "shield",
+      sub: "The mode, where state is stored, and the gold symbol. This page does not grant permission.",
       body: h("div", { class: "stack" },
         kv([
           ["Effective mode", String(cfg.mode ?? "UNAVAILABLE").toUpperCase()],
@@ -238,20 +238,20 @@ export async function renderDemo(root) {
     const allPass = Boolean(lastReadiness.passed);
     const failing = Object.entries(checks).filter(([, v]) => v === false).map(([k]) => k);
     host.appendChild(card({
-      title: "Readiness — 14-check gate (fresh probe) — what blocked, why, what missing, what next", icon: "shield",
+      title: "Safety checks", icon: "shield",
       sub: allPass ? `passed ${fmtAge(lastReadiness.timestamp)}` : `${failing.length} failing — ${failing.slice(0,3).join(", ")}${failing.length > 3 ? ` +${failing.length - 3} more` : ""}`,
       actions: [h("button", { class: "btn sm", onclick: () => refresh(true) }, icon("refresh", 13), "Run readiness now")],
       body: h("div", { class: "stack" },
         allPass
-          ? banner("ok", "OBSERVATION READINESS PASSED", "Passing readiness permits DEMO_FORWARD observation only. It creates no order permission: DEMO_EXECUTION needs a recorded owner authorization, staged arming, a pinned+confirmed identity, an eligible registered strategy and the full pre-trade gate (every required safeguard, contract check and registered-policy limit).", "check")
-          : banner("warn", "READINESS NOT PASSED — what blocked, why, what missing", (lastReadiness.blocked_reasons ?? []).join(" · ") || "Failed checks listed below. Fix what is missing and re-run readiness before starting DEMO_FORWARD observation. Observation remains order-free.", "alert"),
+          ? banner("ok", "Checks passed for watching only", "A pass lets QTS record quotes. It does not allow an order. Live trading stays locked.", "check")
+          : banner("warn", "Checks did not pass", (lastReadiness.blocked_reasons ?? []).join(" · ") || "The failed checks are listed below. Watching stays unable to send an order.", "alert"),
         checkGrid(checks, lastReadiness.details ?? {}),
         h("details", null, h("summary", null, "Raw readiness report / technical evidence"), tech(lastReadiness, "Raw readiness")),
       ),
     }));
 
     host.appendChild(h("div", { class: "grid-2" },
-      card({ title: "Observe only — always safe, zero orders structurally", sub: `records real ticks, submits zero — context ${getContext().symbol}`, icon: "eye", body:
+      card({ title: "Watch the market", sub: "This records quotes. It does not send an order.", icon: "eye", body:
         h("div", { class: "stack" },
           kv([["Observation mode", String(lastConfig?.observation_mode ?? "observe_only").toUpperCase()], ["Orders possible", "no — structurally"], ["Collector", s.observation], ["Context", `${getContext().symbol} · ${getContext().timeframe}`]]),
           h("div", { class: "row" },
@@ -330,8 +330,8 @@ export async function renderExecution(root) {
   root.classList.add("operator-workspace");
   root.appendChild(page({
     crumb: "Trading", group: "Execution",
-    title: "Execution Center",
-    answer: h("b", null, "The complete order lifecycle: intent → risk → preflight → submit → broker ACK → fill → reconcile. Unmeasured values display as UNAVAILABLE, never zero. Context syncs, DEMO vs LIVE unmistakable."),
+    title: "Order history",
+    answer: h("b", null, "Orders the broker accepted, rejected, or left unfinished. This page does not place an order. Live trading stays locked."),
     body: null,
   }));
   const host = h("div", { class: "section" }); root.appendChild(host);
@@ -453,8 +453,8 @@ export async function renderExecution(root) {
         })
       : emptyState({
           icon: "zap", title: "No real executions recorded yet",
-          desc: "DEMO_EXECUTION submits DEMO-account orders only after staged arming and the full pre-trade gate (every required safeguard, contract check and registered-policy limit). This view reports only recorded order evidence; with no order recorded it stays empty rather than estimated. LIVE remains locked.",
-          actions: [h("button", { class: "btn", onclick: () => navigate("#/trading/demo") }, icon("shield", 14), "Open Demo Control")],
+          desc: "No order has been recorded. An empty list is not zero profit, and this page does not place an order. Live trading stays locked.",
+          actions: [h("button", { class: "btn", onclick: () => navigate("#/trading/demo") }, icon("shield", 14), "Open the demo account")],
         }),
   }));
 }
@@ -465,8 +465,8 @@ export async function renderComparison(root) {
   root.classList.add("operator-workspace");
   root.appendChild(page({
     crumb: "Trading", group: "Comparison",
-    title: "Paper · Shadow · Demo Comparison",
-    answer: h("b", null, "Paper and shadow signals can be compared with DEMO_FORWARD observations. Fill, slippage, latency, and realized-PnL comparisons are UNAVAILABLE until DEMO orders are actually recorded — never fabricated as zero."),
+    title: "Comparison",
+    answer: h("b", null, "Practice results beside recorded demo quotes. A missing fill stays missing. It is not shown as zero. Live trading stays locked."),
     actions: [h("button", { class: "btn", onclick: async () => {
       try { await api.post("/api/demo/comparison/refresh"); toast("ok", "Comparison refreshed"); renderComparison(root); }
       catch (e) { toast("err", "Refresh failed", explain(e)); }

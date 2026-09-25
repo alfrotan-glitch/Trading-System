@@ -29,8 +29,8 @@ export async function renderMonitor(root) {
 
   root.appendChild(page({
     crumb: "Market", group: "Monitor",
-    title: "Market Monitor",
-    answer: h("b", null, "What the market looks like through QTS's data pipeline — quotes, regime, freshness — with provenance and honest empty states. Pipeline health is not quote freshness. Context syncs across windows via BroadcastChannel, presentation only."),
+    title: "Gold",
+    answer: h("b", null, "The last recorded gold quote. A connection is not a price, and a price is not a trade. Live trading stays locked."),
     actions: [ctxBadge, symInput, tfInput, applyCtx, h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources")],
     body: null,
   }));
@@ -73,8 +73,8 @@ export async function renderMonitor(root) {
       const f = meta ? freshness(meta, resKey) : { label: "UNAVAILABLE", current: false };
       setText(c.fresh, `${f.label}${meta?.updatedAt ? ` · ${fmtAge(meta.updatedAt)}` : ""}`);
     }
-    setText(activity, `${s.market} · ${s.observation} · ${s.quoteAge} · context ${getContext().symbol} — truth visible`);
-    setText(nextWhy, s.obs?.state === "OBSERVING" ? "Collector reports OBSERVING. Inspect quote timestamps and provenance. Chart explains mid = (bid+ask)/2, no interpolation." : "No active collection. Start observation if terminal connected. Context syncs, never permission.");
+    setText(activity, s.obs?.last_tick_time ? "A gold quote is recorded. A quote is not a trade." : "No gold quote is recorded. A connection is not a price.");
+    setText(nextWhy, s.obs?.state === "OBSERVING" ? "Quotes are being recorded. A recorded quote is not a trade." : "Nothing is being recorded. Recording, if you start it, still does not send an order.");
   }
 
   async function refresh(force = false) {
@@ -111,7 +111,7 @@ export async function renderMonitor(root) {
 
     content.appendChild(h("div", { class: "grid-2" },
       card({
-        title: "Current quote — last recorded tick, not live market — explanatory viz", sub: last ? `latest recorded · ${last.symbol ?? ""} — context ${currentCtx.symbol}` : "no tick recorded", icon: "activity",
+        title: "Current quote", sub: last ? "Last recorded quote. Not a live price, and not a trade." : "No quote recorded yet.", icon: "activity",
         actions: [last ? provStrip(last.provenance ?? last.data_class ?? "SYNTHETIC") : null],
         body: last
           ? h("div", { class: "stack" },
@@ -195,8 +195,8 @@ export async function renderObservations(root) {
   root.classList.add("operator-workspace");
   root.appendChild(page({
     crumb: "Market", group: "Observations",
-    title: "Forward Observatory",
-    answer: h("b", null, "Real broker ticks recorded with zero capital exposure. Observation never submits orders — it builds evidence research requires. Recorded count is not complete tick history. Context syncs, never permission. Real-time alive without flicker: focus and scroll preserved."),
+    title: "Recorded quotes",
+    answer: h("b", null, "Quotes QTS has saved. Recording never submits orders. The count is not a complete history, and a saved quote is not permission to trade."),
     actions: [
       h("button", { id: "obs-start", class: "btn primary", onclick: () => act("start") }, icon("play", 14), "Start Observation"),
       h("button", { id: "obs-stop", class: "btn danger", onclick: () => act("stop") }, icon("stop", 14), "Stop"),
@@ -220,9 +220,9 @@ export async function renderObservations(root) {
   const statSignals = h("span", null, "UNAVAILABLE");
   const statOrders = h("span", null, "UNAVAILABLE");
   const statsRow = h("div", { class: "stat-grid" },
-    stat({ label: "Session state", value: statSession, icon: "eye" }),
-    stat({ label: "Ticks recorded", value: statTicks, icon: "database" }),
-    stat({ label: "Signals recorded", value: statSignals, icon: "zap" }),
+    stat({ label: "Recording", value: statSession, icon: "eye" }),
+    stat({ label: "Quotes saved", value: statTicks, icon: "database" }),
+    stat({ label: "Signals saved", value: statSignals, icon: "zap" }),
     stat({ label: "Orders submitted", value: statOrders, icon: "shield" }),
   );
 
@@ -266,12 +266,12 @@ export async function renderObservations(root) {
     if (startBtn) startBtn.disabled = acting || running;
     if (stopBtn) stopBtn.disabled = acting || !running;
 
-    setText(sourceStatus, `CURRENT API snapshot — quote timestamps and manifest generation time are separate. Updated ${fmtUtc(Date.now())} — context ${getContext().symbol} — ${running ? "OBSERVING — zero orders" : "IDLE"}`);
-    setText(activity, `${running ? "OBSERVING" : obs.state ?? "IDLE"} · ${fmtInt(manifest.ticks_recorded)} ticks · ${fmtInt(manifest.real_market_ticks)} real-market · context ${getContext().symbol} — truth visible`);
-    setText(nextWhy, running ? "Collector reports OBSERVING. Inspect quote timestamps and provenance. Zero orders structurally." : "No active collection. Start observation if terminal connected. Context syncs, never permission.");
+    setText(sourceStatus, running ? "Recording quotes. This does not send an order." : "Not recording. Starting it still does not send an order.");
+    setText(activity, running ? "Quotes are being recorded. Recording never submits orders." : "Nothing is being recorded. Recording never submits orders.");
+    setText(nextWhy, running ? "Quotes are being recorded. Recording never submits orders." : "Nothing is being recorded. Starting it still never submits orders.");
 
-    setText(statSession, running ? "OBSERVING" : String(obs.state ?? "IDLE").toUpperCase());
-    setText(statTicks, `${fmtInt(manifest.ticks_recorded)} — ${fmtInt(manifest.real_market_ticks)} real-market — not complete history`);
+    setText(statSession, running ? "Recording" : "Not recording");
+    setText(statTicks, `${fmtInt(manifest.ticks_recorded)} saved. Not a complete history.`);
     setText(statSignals, `${fmtInt(manifest.signals_recorded)} — store-wide, FO-R1 requires zero session signals`);
     setText(statOrders, `${fmtInt(obs.orders_submitted)} — must always be 0 during observation`);
 
@@ -362,10 +362,10 @@ export async function renderObservations(root) {
       if (kind === "start") {
         const result = await api.post("/api/observe/start");
         if (result.status?.state !== "OBSERVING") throw new Error(result.note || result.status?.blocked_reasons?.join("; ") || "Backend did not confirm observation started");
-        toast("ok", "Observation confirmed", "Collector reports OBSERVING — zero orders — DEMO vs LIVE unmistakable.");
+        toast("ok", "Recording started", "Quotes will be saved. No order is sent. Live trading stays locked.");
       } else {
         await api.post("/api/observe/stop");
-        toast("warn", "Observation stopped", "Session state preserved.");
+        toast("warn", "Recording stopped", "No order was sent.");
       }
       await refresh(true);
     } catch (e) {
@@ -384,7 +384,7 @@ export async function renderQuality(root) {
   skeletonInto(root);
   root.classList.add("operator-workspace");
   const ctx = getContext();
-  root.appendChild(page({ crumb: "Market", group: "Data quality", title: "Data Quality", answer: h("b", null, `Fail-closed validation of every dataset before it can feed research. Missing is blocked, not interpolated. Context ${ctx.symbol}. Truth visible: MEASURED vs UNAVAILABLE never 0.`), body: null }));
+  root.appendChild(page({ crumb: "Market", group: "Data quality", title: "Data quality", answer: h("b", null, "Whether saved market data is complete enough for research. Missing data stays missing. It is not filled in. This page cannot permit a trade."), body: null }));
   const activity = h("h2", null, `Loading quality… — context ${ctx.symbol}`);
   root.appendChild(h("section", { class: "operator-summary" }, h("div", null, h("div", { class: "eyebrow" }, "NOW / QUALITY"), activity)));
   const host = h("div", { class: "section" }); root.appendChild(host);
@@ -469,8 +469,8 @@ export async function renderLineage(root) {
   const ctx = getContext();
   root.appendChild(page({
     crumb: "Market", group: "Lineage",
-    title: "Data Lineage",
-    answer: h("b", null, `Where did this number come from? Provider → raw → canonical → manifest → experiment → evidence. Any preprocessing change creates a NEW version. Context ${ctx.symbol}. Progressive disclosure: summary → detail → raw.`),
+    title: "Lineage",
+    answer: h("b", null, "Where a saved number came from. A changed preparation is a new version, not a silent edit. This page cannot permit a trade."),
     body: null,
   }));
   const activity = h("h2", null, `Loading lineage… — context ${ctx.symbol}`);

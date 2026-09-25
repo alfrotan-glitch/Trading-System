@@ -163,7 +163,8 @@ def test_dashboard_humanizes_machine_state_codes():
 def test_trading_view_renders_execution_cockpit():
     """Trading view must present the unmistakable Execution Cockpit card."""
     trading_src = (JS_DIR / "views" / "trading.js").read_text(encoding="utf-8")
-    assert "Execution Cockpit — Decision & Safety Posture" in trading_src
+    assert "Trading status" in trading_src
+    assert "Real money stays locked" in trading_src
     assert "DEMO EXECUTION: DISABLED BY POLICY" in trading_src
     assert "LIVE LOCKED" in trading_src
     assert "Safety checks are on" in trading_src
@@ -185,7 +186,9 @@ def test_live_trading_is_unmistakably_locked():
     gov_src = (JS_DIR / "views" / "governance.js").read_text(encoding="utf-8")
     assert "LIVE — " in gov_src
     assert "LOCKED" in gov_src
-    assert "Real capital lives behind this gate" in gov_src
+    assert "Live trading stays locked" in gov_src
+    assert "This page cannot open it" in gov_src
+    assert "demo results cannot open it" in gov_src
 
 
 # ---------------------------------------------------------------------------

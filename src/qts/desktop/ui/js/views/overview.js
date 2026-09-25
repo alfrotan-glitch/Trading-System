@@ -24,7 +24,7 @@ export async function renderOverview(root) {
   root.classList.add("operator-workspace");
   const activity = h("h2", { id: "operator-activity" }, "Loading operating state…");
   const explanation = h("p", { class: "text-dim small" });
-  const next = link("Inspect unavailable sources", "#/system/diagnostics", "btn primary");
+  const next = link("See what is missing", "#/system/diagnostics", "btn primary");
   const nextWhy = h("p", { class: "text-dim small" });
   const announce = h("div", { class: "sr-only", role: "status", "aria-live": "polite" });
   const refresh = h("button", { class: "btn", onclick: () => syncOperations(true) }, icon("refresh", 14), "Refresh sources");
@@ -32,7 +32,7 @@ export async function renderOverview(root) {
   root.appendChild(page({
     crumb: "Home",
     title: "Home",
-    answer: "Six answers, then one next step. Connection details, codes, and raw readings stay closed until you open them.",
+    answer: "What is connected, whether trading is allowed, and the one safe next step. Live trading stays locked.",
     actions: [refresh],
   }));
 
@@ -48,7 +48,7 @@ export async function renderOverview(root) {
   const pOpp = stat({ label: "Opportunity", value: "No validated opportunity", tone: "warn", hint: "Research has not authorized a trade.", icon: "scale" });
   const pExec = stat({ label: "Trading", value: "Not allowed", tone: "neutral", hint: "Demo safety is on. Live trading is locked.", icon: "lock" });
   const pPerf = stat({ label: "Your money", value: "Not at risk", tone: "ok", hint: "Real money cannot be used.", icon: "shield" });
-  const pSafety = stat({ label: "Safety", value: "Live trading locked", tone: "ok", hint: "The kill switch stays armed. Demo cannot unlock live.", icon: "shield" });
+  const pSafety = stat({ label: "Safety", value: "Live trading locked", tone: "ok", hint: "Demo cannot open live trading. A raised stop is shown above.", icon: "shield" });
   const pAction = stat({ label: "Next", value: "See the step above", tone: "warn", hint: "One step. Not a trade.", icon: "alert" });
 
   pillarGrid.append(pMarket, pOpp, pExec, pPerf, pSafety, pAction);
@@ -99,14 +99,14 @@ export async function renderOverview(root) {
   // 1. Observation Evidence
   const observationEvidence = h("dl", { class: "evidence-values" });
   const obsFields = {};
-  for (const title of ["Session", "Recorded quotes", "Orders submitted (collector)", "Last broker event (UTC)", "Context"]) {
+  for (const title of ["Session", "Recorded quotes", "Orders submitted", "Last broker event (UTC)", "Gold"]) {
     obsFields[title] = h("dd", null, "UNAVAILABLE");
     observationEvidence.append(h("dt", null, title), obsFields[title]);
   }
   const evidenceDetails = h("details", { class: "operator-section evidence-disclosure" },
-    h("summary", null, "Observation evidence / scope and limitations — summary → detail"),
+    h("summary", null, "Recorded quotes"),
     observationEvidence,
-    h("p", { class: "text-dim small" }, "Recorded quotes are sample ticks for observability. Orders submitted reflects collector activity (0)."),
+    h("p", { class: "text-dim small" }, "A missing count is not zero. Recording quotes does not send an order."),
     link("Open observations", "#/market/observations"), " ",
     link("Open research inventory", "#/research/data"), " ",
     link("Account & execution evidence", "#/trading/execution"), " ",
@@ -190,9 +190,7 @@ export async function renderOverview(root) {
     }
     setText(activity, humanActivity);
     const running = s.sources.health.current ? "QTS is running." : "QTS status is not available yet.";
-    const money = s.liveLabel.includes("LOCKED") || !s.sources.live.current
-      ? "Your money is not at risk."
-      : "Live trading is still gated. Real money is not in use.";
+    const money = "Your money is not at risk. Live trading is not open.";
     const stopped = s.killActive ? "Orders are stopped by the kill switch." : "";
     setText(explanation, `${running} ${money} ${stopped} There is no validated trading opportunity.`.replace(/\s+/g, " ").trim());
 
@@ -209,7 +207,7 @@ export async function renderOverview(root) {
       ? "Demo orders can be considered. Live trading stays locked."
       : explainStatus(s.permission === "DISABLED BY POLICY" ? "DISABLED_BY_POLICY" : s.permission);
     pPerf.querySelector(".stat-value").textContent = "Not at risk";
-    pSafety.querySelector(".stat-value").textContent = s.liveLabel.includes("LOCKED") ? "Live trading locked" : "Live still gated";
+    pSafety.querySelector(".stat-value").textContent = "Live trading locked";
     pAction.querySelector(".stat-value").textContent = s.next.label;
 
     setText(next, s.next.label);
@@ -253,16 +251,16 @@ export async function renderOverview(root) {
     ]);
 
     reasonList(liveReasons, !s.sources.live.current ? ["Live-trading status is missing or old. Treat it as locked."] : [
-      s.liveLabel.includes("LOCKED") ? "Live trading is locked. Real money cannot be used." : explainStatus(s.liveLabel),
+      "Live trading is locked. Real money cannot be used.",
       ...s.liveReasons.map((r) => explainStatus(r)),
     ]);
 
     const obs = s.obs;
     setText(obsFields.Session, obs?.session_id ?? "UNAVAILABLE");
     setText(obsFields["Recorded quotes"], obs?.ticks_recorded == null ? "UNAVAILABLE" : fmtInt(obs.ticks_recorded));
-    setText(obsFields["Orders submitted (collector)"], obs?.orders_submitted == null ? "UNAVAILABLE" : fmtInt(obs.orders_submitted));
+    setText(obsFields["Orders submitted"], obs?.orders_submitted == null ? "UNAVAILABLE" : fmtInt(obs.orders_submitted));
     setText(obsFields["Last broker event (UTC)"], obs?.last_tick_time ? fmtUtc(obs.last_tick_time) : "UNAVAILABLE");
-    setText(obsFields.Context, `${getContext().symbol} · ${getContext().timeframe} — presentation context`);
+    setText(obsFields.Gold, `${getContext().symbol} · ${getContext().timeframe}`);
 
     if (technical.open) {
       raw.textContent = JSON.stringify({

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { api, store, syncResource, RESOURCES, poll, measurements, measure } from "../../../src/qts/desktop/ui/js/api.js";
-import { freshness, operationalState } from "../../../src/qts/desktop/ui/js/operations.js";
+import { freshness, operationalState, demoSentence } from "../../../src/qts/desktop/ui/js/operations.js";
 import { sanitizeWorkspace } from "../../../src/qts/desktop/ui/js/workspace.js";
 const NOW = 1000000;
 function data() {
@@ -24,6 +24,14 @@ test("healthy pipeline is not manufactured quote freshness", () => {
   const d = data();
   assert.equal(operationalState(d, NOW).market, "Healthy");
   assert.equal(operationalState(d, NOW).quoteAge, "UNAVAILABLE");
+});
+test("a disabled permission is never described as trading on", () => {
+  assert.match(demoSentence("DISABLED"), /off/i);
+  assert.match(demoSentence("DISABLED BY POLICY"), /off/i);
+  assert.match(demoSentence("AUTHORIZED · NOT PERMITTED"), /not allowed/i);
+  assert.match(demoSentence("UNAVAILABLE"), /not reported/i);
+  assert.match(demoSentence("PERMITTED · DEMO ONLY"), /still not an order/i);
+  assert.doesNotMatch(demoSentence("DISABLED BY POLICY"), /on for this reading/);
 });
 test("passing readiness never grants execution permission", () => {
   const s = operationalState(data(), NOW);

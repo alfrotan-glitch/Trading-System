@@ -1,7 +1,7 @@
 /* Risk — safety cockpit: what can QTS do now and why, what blocked why what next explicit */
 
 import { api, store, RESOURCES, syncResource } from "../api.js";
-import { operationalState, freshness } from "../operations.js";
+import { operationalState, freshness, demoSentence } from "../operations.js";
 import { h } from "../dom.js";
 import {
   card, page, table, emptyState, skeletonInto, tech, kv, stat, errorBox,
@@ -14,11 +14,10 @@ import { getContext, onContext } from "../context.js";
 export async function renderRisk(root) {
   skeletonInto(root, "stats");
   root.classList.add("operator-workspace");
-  const ctx = getContext();
   const head = page({
     crumb: "Risk",
-    title: "Risk Center",
-    answer: h("b", null, `Risk is Safe, needs attention, or halted. Open exposure, daily loss, the position limit, the kill switch, and broker reconciliation are below. Technical evidence opens on demand. Context ${ctx.symbol} never relaxes a limit.`),
+    title: "Risk",
+    answer: h("b", null, "These are the limits. A clear risk reading is not permission to trade. Live trading stays locked."),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, "Refresh")],
     body: null,
   });
@@ -62,8 +61,10 @@ export async function renderRisk(root) {
       const f = meta ? freshness(meta, resKey) : { label: "UNAVAILABLE", current: false };
       c.fresh.textContent = `${f.label}${meta?.updatedAt ? ` · ${fmtAge(meta.updatedAt)}` : ""}`;
     }
-    activity.textContent = `${s.mode.mode} · DEMO ${s.permission} · LIVE ${s.liveLabel} · context ${getContext().symbol} — ${store.data.health ? "risk evaluated" : "UNAVAILABLE"}`;
-    nextWhy.textContent = `${s.next.why} Context ${getContext().symbol} syncs, never relaxes limits.`;
+    activity.textContent = store.data.health
+      ? `${demoSentence(s.permission)} Live trading stays locked.`
+      : "Risk status was not reported. Do not treat a blank reading as permission.";
+    nextWhy.textContent = s.next.why;
   }
 
   let lastRisk = null;

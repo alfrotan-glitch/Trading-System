@@ -60,10 +60,20 @@ export function operationalState(data, now = Date.now()) {
   }
   const killActive = health?.kill_switch?.state === "ACTIVE";
   return { sources, mode, health, obs, demo, live, observing, observation, permission, liveLabel, killActive, reasons, readinessReasons, liveReasons, next,
-    activity: observing ? "Observing market data · no order path" : obs ? `Observation ${observation.toLowerCase()}` : "Observation state unavailable",
+    activity: observing ? "Observing. Quotes are being recorded. That is not a trade." : obs ? "Not recording quotes." : "Observation state was not reported.",
     quoteAge: !obs?.last_tick_time || !Number.isFinite(Date.parse(obs.last_tick_time)) ? "UNAVAILABLE"
       : now < Date.parse(obs.last_tick_time) ? "CLOCK SKEW"
       : `${Math.floor((now - Date.parse(obs.last_tick_time)) / 1000)}s · LAST REPORTED EVENT`,
     market: text(health?.market_data), broker: text(health?.mt5),
   };
+}
+
+/** Plain sentence for the demo-permission code. Does not grant an order. */
+export function demoSentence(permission) {
+  const s = String(permission || "");
+  if (s.includes("UNAVAILABLE")) return "Demo trading was not reported.";
+  if (s.includes("CONFLICT")) return "Demo trading status conflicts. Do not trade.";
+  if (s.includes("PERMITTED") && !s.includes("NOT")) return "Demo trading is on for this reading. That is still not an order.";
+  if (s.includes("AUTHORIZED")) return "A demo authorization is recorded. An order is still not allowed.";
+  return "Demo trading is off.";
 }

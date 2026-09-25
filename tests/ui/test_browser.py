@@ -134,7 +134,16 @@ def test_mode_display_matches_backend_truth(page, server):
         mode = json.load(r)["effective_mode"]["effective_mode"]
     page.wait_for_selector(".fact.mode", timeout=10_000)
     shown = page.locator(".fact.mode b").inner_text().strip()
-    assert shown.upper() == mode.upper(), f"header shows {shown}, backend says {mode}"
+    plain = {
+        "DEVELOPMENT": "Research only",
+        "DEV": "Research only",
+        "PAPER": "Practice",
+        "SHADOW": "Would-be only",
+        "DEMO_FORWARD": "Watching demo",
+        "DEMO_EXECUTION": "Demo trading",
+        "LIVE": "Live locked",
+    }
+    assert shown == plain.get(mode.upper(), mode), f"header shows {shown}, backend says {mode}"
 
 
 def test_live_locked_always_visible(page):
@@ -174,8 +183,8 @@ def test_governance_locked_calm_ui(page):
     page.wait_for_timeout(2500)
     body = page.locator("#main").inner_text()
     assert "LIVE — LOCKED" in body
-    btn = page.locator("button", has_text="enablement").first
-    assert btn.is_disabled(), "enablement must be disabled while the gate is locked"
+    btn = page.locator("button", has_text="cannot be opened").first
+    assert btn.is_disabled(), "live control must be disabled while the gate is locked"
 
 
 def test_readiness_checks_rendered_as_checklist(page):
@@ -209,7 +218,7 @@ def test_keyboard_palette_opens_and_navigates(page):
     page.wait_for_timeout(300)
     page.keyboard.press("Enter")
     page.wait_for_timeout(2000)
-    assert "Live Trading Governance" in page.locator("#main").inner_text()
+    assert "Live trading stays locked" in page.locator("#main").inner_text()
 
 
 def test_responsive_narrow_window(page):

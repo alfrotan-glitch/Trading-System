@@ -2,7 +2,7 @@
    DEMO vs LIVE unmistakable, what blocked why what missing what next explicit. */
 
 import { api, store, RESOURCES, syncResource } from "../api.js";
-import { operationalState, freshness } from "../operations.js";
+import { operationalState, freshness, demoSentence } from "../operations.js";
 import { h } from "../dom.js";
 import {
   card, page, skeletonInto, tech, kv, errorBox,
@@ -15,18 +15,17 @@ import { getContext, onContext } from "../context.js";
 export async function renderGovernance(root) {
   skeletonInto(root, "stats");
   root.classList.add("operator-workspace");
-  const ctx = getContext();
   const head = page({
     crumb: "Governance",
-    title: "Live Trading Governance",
-    answer: h("b", null, `Real capital lives behind this gate. It opens only when every scientific, safety, and human-approval condition is met — demo results never substitute for it. Context ${ctx.symbol} syncs, never permission. DEMO vs LIVE unmistakable: DEMO = simulation, LIVE = real capital.`),
+    title: "Live trading",
+    answer: h("b", null, "Live trading stays locked. This page cannot open it, and demo results cannot open it. Demo is a practice account. Live would be real money."),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, "Refresh")],
     body: null,
   });
   root.appendChild(head);
 
-  const activity = h("h2", null, "Loading governance…");
-  const next = h("a", { class: "btn primary", href: "#/research/validation" }, "Inspect validation evidence");
+  const activity = h("h2", null, "Loading live status…");
+  const next = h("a", { class: "btn primary", href: "#/risk" }, "See the limits");
   const nextWhy = h("p", { class: "text-dim small" });
   root.appendChild(h("section", { class: "operator-summary live-boundary" },
     h("div", null, h("div", { class: "eyebrow" }, "NOW / LIVE GOVERNANCE"), activity),
@@ -65,8 +64,8 @@ export async function renderGovernance(root) {
       const f = meta ? freshness(meta, resKey) : { label: "UNAVAILABLE", current: false };
       c.fresh.textContent = `${f.label}${meta?.updatedAt ? ` · ${fmtAge(meta.updatedAt)}` : ""}`;
     }
-    activity.textContent = `${s.liveLabel} · DEMO ${s.permission} · ${s.observation} · context ${getContext().symbol} — what blocked why explicit`;
-    nextWhy.textContent = s.live?.eligible ? `Eligibility is not permission. Human approval still required and recorded. Context ${getContext().symbol}.` : `${(s.liveReasons.slice(0,2).join(" · ") || "LIVE is locked. Independent evidence and human governance required.")} Context ${getContext().symbol} syncs, never permission.`;
+    activity.textContent = `${demoSentence(s.permission)} Live trading stays locked.`;
+    nextWhy.textContent = "This page cannot open live trading. A passed check is still not permission.";
   }
 
   async function refresh(force = false) {
@@ -92,22 +91,22 @@ export async function renderGovernance(root) {
       h("div", { class: "card-body", style: { textAlign: "center", padding: "var(--sp-6)" } },
         h("div", { style: { fontSize: "var(--fs-28)", fontWeight: 700, letterSpacing: "0.06em", color: "var(--locked-text)" } }, ("LIVE — " + String(live.live_trading ?? "LOCKED")).toUpperCase()),
         h("p", { class: "text-dim", style: { maxWidth: "60ch", margin: "10px auto 0" } },
-          eligible ? `All gates pass. Human approval is still required — eligibility is not permission. Context ${getContext().symbol} syncs, never permission.` : live.message ?? `LIVE trading is structurally locked. No UI action, no backtest result, and no demo performance can change that. Context ${getContext().symbol} syncs, never permission.`),
+          eligible ? "A readiness report can pass its structural checks. That is not permission, and this page still cannot open live trading." : live.message ?? "Live trading is locked. No button, backtest, or demo result on this page can change that."),
         h("div", { class: "meta" }, `evaluated ${fmtUtc(new Date().toISOString())} · gate re-evaluates continuously, not on a timer you control · context ${getContext().symbol} — presentation only`),
       ),
     ));
 
     const checklist = live.checklist ?? {};
     const labels = {
-      validated_edge: "Validated edge — statistical gates passed (DSR/PBO/OOS)",
-      forward_observation: "Forward observation — real-data sessions recorded — zero orders, bounded, research-only",
-      risk_configuration: "Risk configuration — approved limits active",
-      mt5_connectivity: "MT5 connectivity — real terminal verified",
-      reconciliation: "Reconciliation — internal state matches broker",
-      human_approval: "Human approval — explicit, informed, recorded",
+      validated_edge: "Validated edge — not found. A backtest is not enough.",
+      forward_observation: "Recorded quotes — watching the market is not a trade.",
+      risk_configuration: "Risk limits — a limit is not permission to trade.",
+      mt5_connectivity: "Broker connection — a connection is not an order.",
+      reconciliation: "Books match the broker — a match is not permission.",
+      human_approval: "A recorded human decision — this screen cannot record one.",
     };
     content.appendChild(card({
-      title: `Requirements — each must pass independently — what blocked, why — context ${getContext().symbol}`, sub: "partial credit does not exist", icon: "check",
+      title: "What the readiness report lists", sub: "A listed pass does not open live trading.", icon: "check",
       body: h("div", { class: "check-grid" },
         Object.entries(checklist).map(([k, v]) =>
           h("div", { class: `check ${v === true ? "pass" : "fail"}` },
@@ -130,11 +129,11 @@ export async function renderGovernance(root) {
     }));
 
     content.appendChild(card({
-      title: "Why it is locked — calm, explicit — what blocked, why, what missing, what next", icon: "info",
+      title: "Why it is locked", icon: "info",
       body: h("div", { class: "stack" },
         h("ul", { class: "reason-list" }, (live.blocked_reasons ?? []).map((r) => h("li", null, r))),
-        banner("info", "What live eligibility would require — what missing", "A strategy surviving every scientific gate on claim-eligible real-data evidence, forward observation with honest divergence evidence, approved risk configuration, verified connectivity — and an explicit human approval recorded in the audit log. DEMO execution (when authorized) is forward validation on the DEMO account, not a prerequisite or evidence source for LIVE.", "info"),
-        banner("info", "What DEMO_FORWARD observation can establish — DEMO vs LIVE unmistakable", "Observation establishes provenance and hypothetical divergence only. It does not prove execution correctness, profitability, or live eligibility; DEMO execution, where authorized, is DEMO-account forward validation and LIVE remains LOCKED.", "info"),
+        banner("info", "None of these open live trading", "A research result, a recorded quote, a risk limit, or a broker connection does not open live trading. This page cannot record an approval.", "info"),
+        banner("info", "Watching is not trading", "Saving quotes does not prove a profit and does not permit an order. Demo trading, if it is ever turned on, is still not live trading.", "info"),
       ),
     }));
 
@@ -145,7 +144,7 @@ export async function renderGovernance(root) {
         h("button", {
           class: "btn", disabled: !eligible,
           onclick: eligible ? requestLive : () => toast("info", "LIVE is locked", live.message ?? "Requirements are listed above. What blocked, why, what missing, what next explicit."),
-        }, eligible ? "Request live enablement (gated) — still requires human approval" : "Live enablement unavailable — gate is LOCKED — what blocked, why"),
+        }, "Live trading cannot be opened here"),
         live.explicit_confirmation_required ? h("div", { class: "meta" }, "Explicit confirmation contract: " + live.explicit_confirmation_required) : null,
       ),
     }));

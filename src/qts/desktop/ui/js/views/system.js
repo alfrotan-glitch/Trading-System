@@ -21,7 +21,7 @@ export async function renderSetup(root) {
   const head = page({
     crumb: "System", group: "Setup",
     title: "Setup",
-    answer: h("b", null, `Guided configuration — no code editing. Progress verified against live system. Credentials never stored in QTS. Context ${ctx.symbol} syncs, never permission. DEMO vs LIVE unmistakable.`),
+    answer: h("b", null, "Choose a mode and a terminal path. This page cannot turn trading on, and it cannot open live trading. Credentials are not stored here."),
     body: null,
   });
   root.appendChild(head);
@@ -50,7 +50,7 @@ export async function renderSetup(root) {
         h("input", { type: "radio", name: "setup-env", value: val, checked: val.toLowerCase() === String(currentEnv).toLowerCase() || (String(currentEnv).toLowerCase() === "dev" && val === "development") }),
         h("div", null, h("div", { class: "name" }, label), h("div", { class: "detail" }, desc)),
       )),
-      banner("warn", "LIVE is separately gated — DEMO vs LIVE unmistakable", "No environment choice here unlocks live trading. Governance decides with human approval after every scientific and safety gate. DEMO = simulation, LIVE = real capital, locked by design.", "lock"),
+      banner("warn", "Live trading stays locked", "No choice on this page opens live trading. The Governance page cannot open it either. Demo is a practice account. Live would be real money.", "lock"),
     ),
   }));
 
@@ -149,8 +149,8 @@ export async function renderMT5(root) {
   const ctx = getContext();
   root.appendChild(page({
     crumb: "System", group: "MT5",
-    title: "MT5 Connection",
-    answer: h("b", null, `Terminal, account and instrument state — mock and real explicitly distinguished. Mock is never eligible as broker evidence. Context ${ctx.symbol} syncs, never permission. Timestamp normalization: broker stamp - measured offset -> UTC.`),
+    title: "MT5 connection",
+    answer: h("b", null, "Whether a broker terminal is attached, and whether that terminal is real or a stand-in. A connection is not a price and not a trade."),
     actions: [h("button", { class: "btn", onclick: () => renderMT5(root) }, "Refresh")],
     body: null,
   }));
@@ -220,8 +220,8 @@ export async function renderDiagnostics(root) {
   const ctx = getContext();
   const head = page({
     crumb: "System", group: "Diagnostics",
-    title: "System Diagnostics",
-    answer: h("b", null, `What is connected, what is stale, and whether live trading is locked. One failed source does not erase the others. Quote times are converted to UTC. Context ${ctx.symbol} does not grant permission.`),
+    title: "Diagnostics",
+    answer: h("b", null, "Which readings are present, missing, or old. One missing reading does not erase the others. This page cannot permit a trade."),
     actions: [h("button", { class: "btn", onclick: () => refresh(true) }, "Refresh sources")],
     body: null,
   });
