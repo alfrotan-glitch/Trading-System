@@ -2,8 +2,9 @@
 Version 2026-09-16
 
 ## Setup Fails: Python not found or unsupported version
-- Install **Python 3.11, 3.12, or 3.13** from python.org (check *Add python.exe to PATH*), restart PowerShell, `python --version`.
-- **Python 3.14 is not yet verified** — `pyproject.toml` declares `requires-python = ">=3.11,<3.14"` and `scripts/setup_windows.ps1/.bat` fail clearly with `Python 3.14 not supported` if 3.14 is detected. Install a 3.11–3.13 build from python.org. Do not force `3.11+` if 3.14 is present; the version matrix has only been verified on 3.11–3.13 (Linux sandbox 3.11.2, 266 tests pass, also green under a strict ASCII/C locale).
+- Install **Python 3.11, 3.12, 3.13, or 3.14** from python.org (check *Add python.exe to PATH*), restart PowerShell, `python --version`.
+- Python **3.11 through 3.14** is accepted. Python 3.15 is refused. `pyproject.toml` says `requires-python = ">=3.11,<3.15"`.
+- If `scripts\setup_windows.bat` prints `SyntaxError: unterminated string literal`, the checkout is old. `cmd.exe` ate the percent signs in the version check. Pull this branch and run setup again. Do not reinstall Python for that error.
 
 ## Setup Reports “Setup Complete” But Tests Failed (Fail-Closed)
 - Fixed in current release: `scripts/setup_windows.ps1` and `.bat` now check `pytest` exit code and **fail-closed** — on any test failure they print `ERROR: tests failed (pytest exit …) — Setup NOT complete` and exit 1, never printing `Setup Complete`. If you see `Setup Complete` but tests actually failed on an older checkout, update and re-run — second run is idempotent and will re-validate.
@@ -16,7 +17,7 @@ Version 2026-09-16
 - Fixed: `pyproject.toml` `[project.optional-dependencies] dev` now includes `httpx>=0.27` and `anyio>=4.0` so a fresh `pip install -e ".[dev]"` provides the correct `TestClient` dependency for FastAPI/Starlette. The warning `Using httpx with starlette.testclient is deprecated` is harmless and suppressed; the error `httpx2 is not installed` no longer occurs.
 
 ## Setup Fails: Python not found
-- Install Python 3.11, 3.12, or 3.13 from python.org, check *Add python.exe to PATH*, restart PowerShell, `python --version`.
+- Install Python 3.11, 3.12, 3.13, or 3.14 from python.org, check *Add python.exe to PATH*, restart PowerShell, `python --version`.
 
 ## Setup Fails: git not found
 - Install git from git-scm.com, restart.

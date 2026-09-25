@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - **Operating System:** Windows 10/11 (for native MT5 terminal execution) or Linux / macOS (for research, backtesting, paper trading, and development).
-- **Python:** Version 3.11, 3.12, or 3.13.
+- **Python:** Version 3.11, 3.12, 3.13, or 3.14. Python 3.15 is not accepted.
 - **Node.js (Optional):** Version 18+ for running UI unit tests (`npm test`).
 - **MetaTrader 5 Terminal:** Installed and logged into a supported broker DEMO account (e.g. WM Markets, IC Markets).
 

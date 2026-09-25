@@ -7,7 +7,7 @@ name = "qts"
 version = "0.1.0"
 description = "Autonomous Quant Research & Trading System — XAUUSD/MT5 modular monolith"
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11,<3.15"
 license = {text = "Proprietary — internal research use"}
 dependencies = [
   "pydantic>=2.5",

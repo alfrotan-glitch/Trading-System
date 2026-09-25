@@ -1,7 +1,7 @@
 @echo off
 REM QTS Trading System -- Windows Setup (Batch fallback)
 REM Usage: scripts\setup_windows.bat
-REM Requires Python 3.11-3.13, git
+REM Requires Python 3.11-3.14, git
 REM This file must stay pure ASCII: cmd.exe parses batch files in the OEM
 REM codepage (cp437/cp850); UTF-8 characters become mojibake or parse errors.
 REM Idempotent: safe to re-run; data bootstrap reuses existing usable versions.
@@ -14,15 +14,17 @@ echo Repository root: %CD%
 
 where python >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-  echo ERROR: python not found. Install Python 3.11, 3.12 or 3.13 and add to PATH.
+  echo ERROR: python not found. Install Python 3.11, 3.12, 3.13, or 3.14 and add to PATH.
   exit /b 1
 )
 
 python --version
-python -c "import sys; major, minor = sys.version_info[:2]; ok = (3,11) <= (major, minor) < (3,14); print('Python %d.%d %s' % (major, minor, 'OK' if ok else 'NOT SUPPORTED')); sys.exit(0 if ok else 1)"
+REM Do not put a percent sign in this python -c line. cmd.exe eats it
+REM before Python runs, which produced a SyntaxError on a real desktop.
+python -c "import sys; v=sys.version_info; ok=(3,11)<=v[:2]<(3,15); print('Python', v[0], v[1], 'OK' if ok else 'NOT SUPPORTED'); raise SystemExit(0 if ok else 1)"
 if %ERRORLEVEL% NEQ 0 (
-  echo ERROR: Python version not supported -- install Python 3.11, 3.12 or 3.13
-  echo        (3.14 not yet verified; see docs/desktop_installation_windows.md)
+  echo ERROR: Python version not supported -- install Python 3.11, 3.12, 3.13, or 3.14
+  echo        Python 3.15 is not accepted. See docs/desktop_installation_windows.md
   exit /b 1
 )
 

@@ -50,7 +50,7 @@ Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating
 ## Quickstart
 
 ### 1. Prerequisites
-- **Python:** 3.11, 3.12, or 3.13
+- **Python:** 3.11, 3.12, 3.13, or 3.14
 - **Git**
 - **MetaTrader 5 Terminal:** (Windows for broker IPC connection; Linux/macOS for research, API, and backtesting)
 

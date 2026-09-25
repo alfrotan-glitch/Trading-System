@@ -3,13 +3,13 @@ Version 2026-09-16
 
 ## Prerequisites
 - Windows 10/11 64-bit
-- Python **3.11, 3.12, or 3.13** (https://www.python.org/downloads/ — check *Add python.exe to PATH*). **Python 3.14 is not yet verified** — setup fails clearly if 3.14 detected (see `pyproject.toml` `requires-python = ">=3.11,<3.14"` and `docs/troubleshooting_windows.md`). Re-install a supported 3.11–3.13 build.
+- Python **3.11, 3.12, 3.13, or 3.14** (https://www.python.org/downloads/ — check *Add python.exe to PATH*). Python 3.15 is not accepted.
 - git (https://git-scm.com/download/win)
 - 2 GB free disk, 4 GB RAM, internet for pip
 
 Verify:
 ```powershell
-python --version  # e.g. Python 3.11.9 or 3.12.x or 3.13.x (3.14 will fail setup with clear message)
+python --version  # 3.11, 3.12, 3.13, or 3.14. Python 3.15 is refused.
 git --version
 ```
 

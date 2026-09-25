@@ -242,3 +242,5 @@ scripts\run_qts.bat
 ```
 
 Launch is `scripts\run_qts.bat`. It must print `UI source: src\qts\desktop\ui` and open `http://127.0.0.1:8000/`. There is no port 8901. `python -m qts.api.server` is not a launch command. Live trading stays locked. The bootstrap dataset is synthetic and is not a quote.
+
+Python 3.14 is accepted. The batch version check must not contain a percent sign, because `cmd.exe` consumes it and the check becomes a SyntaxError. Python 3.15 is refused.

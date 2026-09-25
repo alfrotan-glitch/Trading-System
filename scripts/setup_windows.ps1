@@ -1,6 +1,6 @@
 ﻿# QTS Trading System — Windows Clean-Clone Setup
 # Usage: powershell -ExecutionPolicy Bypass -File scripts/setup_windows.ps1
-# Requires: Python 3.11–3.13, git, Windows 10/11
+# Requires: Python 3.11-3.14, git, Windows 10/11
 #
 # This file MUST remain UTF-8 with BOM: Windows PowerShell 5.1 reads BOM-less
 # .ps1 files as ANSI (cp1252) and mis-parses the non-ASCII characters below.
@@ -16,15 +16,15 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 Write-Host "Repository root: $repoRoot"
 
-# 1. Check Python (supported 3.11, 3.12, 3.13 — 3.14 not yet verified)
+# 1. Check Python (3.11 through 3.14). 3.15 is refused.
 $py = Get-Command python -ErrorAction SilentlyContinue
 if (-not $py) { $py = Get-Command py -ErrorAction SilentlyContinue }
-if (-not $py) { Fail "Python not found. Install Python 3.11, 3.12, or 3.13 from https://www.python.org and add to PATH." }
+if (-not $py) { Fail "Python not found. Install Python 3.11, 3.12, 3.13, or 3.14 from https://www.python.org and add to PATH." }
 $pyExe = $py.Source
 $ver = & $pyExe --version 2>&1
 Write-Host "Found $ver at $pyExe"
-& $pyExe -c "import sys; major, minor = sys.version_info[:2]; ok = (3,11) <= (major, minor) < (3,14); print('Python %d.%d.%d %s' % (major, minor, sys.version_info[2], 'OK' if ok else 'NOT SUPPORTED')); sys.exit(0 if ok else 1)"
-if ($LASTEXITCODE -ne 0) { Fail "Python version not supported — install Python 3.11, 3.12, or 3.13 (3.14 not yet verified, see docs/desktop_installation_windows.md)" }
+& $pyExe -c "import sys; v=sys.version_info; ok=(3,11)<=v[:2]<(3,15); print('Python', v[0], v[1], v[2], 'OK' if ok else 'NOT SUPPORTED'); raise SystemExit(0 if ok else 1)"
+if ($LASTEXITCODE -ne 0) { Fail "Python version not supported. Install Python 3.11, 3.12, 3.13, or 3.14. Python 3.15 is not accepted. See docs/desktop_installation_windows.md" }
 
 # 2. Check git (Get-Command is reliable under $ErrorActionPreference=Stop)
 $git = Get-Command git -ErrorAction SilentlyContinue
