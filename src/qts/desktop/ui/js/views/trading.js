@@ -184,8 +184,6 @@ export async function renderDemo(root) {
     // the same machine: the label was a literal, not a fact.
     const cfg = lastConfig ?? {};
     const demoEnabled = cfg.demo_execution_disabled === false;
-    const cfg = lastConfig ?? {};
-    const demoEnabled = cfg.demo_execution_disabled === false;
 
     // Executive Trading Cockpit Card (Section 11)
     const cockpitStats = h("div", { class: "stat-grid", style: { gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: "14px" } });

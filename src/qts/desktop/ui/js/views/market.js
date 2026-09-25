@@ -434,7 +434,6 @@ export async function renderQuality(root) {
             ]),
           ),
         ),
-        ),
       ),
     }));
   }
