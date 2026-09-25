@@ -2,7 +2,7 @@
    Run: node --test tests/ui/js/format.test.mjs tests/ui/js/status.test.mjs  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fmtMetric, metricTone, fmtNum, fmtAge, fmtUtc, humanStatus, provInfo, fmtDuration, fmtInt } from "../../../src/qts/desktop/ui/js/format.js";
+import { fmtMetric, metricTone, fmtNum, fmtAge, fmtUtc, humanStatus, explainStatus, provInfo, fmtDuration, fmtInt } from "../../../src/qts/desktop/ui/js/format.js";
 
 test("fmtMetric: MEASURED renders the value", () => {
   assert.equal(fmtMetric({ status: "MEASURED", value: 12.345 }), "12.35");
@@ -67,6 +67,11 @@ test("fmtUtc: explicit UTC basis", () => {
 test("humanStatus: machine codes to words", () => {
   assert.equal(humanStatus("INSUFFICIENT_EVIDENCE"), "INSUFFICIENT EVIDENCE");
   assert.equal(humanStatus("NO_TRADE"), "NO TRADE");
+});
+
+test("explainStatus: blocked data is a sentence, not only a code", () => {
+  assert.match(explainStatus("BLOCKED_INSUFFICIENT_DATA"), /market data does not currently meet the required quality standard/);
+  assert.equal(humanStatus("INSUFFICIENT_EVIDENCE"), "INSUFFICIENT EVIDENCE");
 });
 
 test("provInfo: provenance is always explicit, never ambiguous", () => {

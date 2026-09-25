@@ -145,7 +145,7 @@ digits, point, stops_level, filling mode) — `get_symbol_spec` fails closed on 
 
 ## 6. Pre-trade gate — all 17 required safeguards
 
-`qts/execution/demo_pretrade.py::run_pretrade_gate` runs **31 checks** per order as of 2026-09-24: the
+`qts/execution/demo_pretrade.py::run_pretrade_gate` is the live list. A count in this document is not the authority. As of the last gate edit it covers: the
 17 required safeguards, contract-level checks (authorization, permission, mode, stage, autonomy, risk
 limit provenance), the registered-policy checks added in §12a (`policy_complete`,
 `symbol_allowed_by_policy`, `trading_hours_allowed`, `order_frequency_within_policy`,
@@ -266,16 +266,14 @@ through the existing audit sink; every authority transition emits
    readiness pass) — **not yet done**.
 4. Broker identity verified against the pin (§4) — **not yet done** (no terminal reachable from this
    sandbox, see §14).
-5. An **eligible, preregistered strategy** in the forward-validation registry — **not satisfied**
-   (registry empty).
-6. All 22 pre-trade checks `PASS` in the same cycle as the order.
+5. A registered DEMO policy. `DEMOPOL-EXEC-COST-XAUUSD-2026-09-24-V1` (H-EXEC-01) is registered as `ELIGIBLE_DIAGNOSTIC`. It is an execution-cost probe, not a validated edge. Research status remains `NO_VALIDATED_EDGE`.
+6. The fail-closed pre-trade gate (`qts.execution.demo_pretrade.run_pretrade_gate`) returns `PASS` for every check in the same cycle as the order.
 7. A broker `order_check` dry-run passes for the exact request.
 8. Size is the **broker minimum** for the first order (`size_policy.mode = "broker_minimum"`), unless the
    registry specifies otherwise.
 9. A stop-loss is attached to the order itself (never added after the fill).
 
-**Current verdict: conditions 3–5 are unmet → `NO_TRADE`. No DEMO order has been submitted
-(`orders_submitted = 0`).**
+**Current verdict: identity is not pinned and readiness has not been confirmed on the operator terminal → `NO_TRADE`. No DEMO order has been submitted (`orders_submitted = 0`). A registered diagnostic policy is not permission to trade.**
 
 ## 12. Strategy status — no validated strategy (deliberate)
 
@@ -476,7 +474,7 @@ failed = ["strategy_registered_frozen"]
 ```
 
 (Recorded on 2026-09-23, when the registry was empty. With a registered policy the same wiring
-evaluates 31 checks and the residual blocker is the one the policy or the venue actually raises —
+evaluates every check in `run_pretrade_gate` and the residual blocker is the one the policy or the venue actually raises —
 e.g. `trading_hours_allowed` outside Mon–Fri 08:00–16:00 UTC.)
 
 i.e. **every operational safeguard passes and the order is still refused**, because the binding
@@ -668,7 +666,7 @@ The branch was re-reviewed end to end against the two questions that matter most
 
 | # | Finding | Disposition |
 |---|---|---|
-| 1 | `submit_with_order_check()` in `src/qts/adapters/order_check.py` calls the broker adapter **directly**, bypassing `DemoSession` and therefore the DEMO gate. It has no callers today, so nothing could be submitted — but it is a latent hole: the first caller would inherit a broker path with no mode check, no authorization check and no DEMO-account proof. | **Fixed.** It now asserts, before anything is sent, that the process resolves to `DEMO_EXECUTION`, that a valid owner authorization is in force, and that the connected account is provably DEMO; any unresolvable fact raises `PermissionError`. Covered by `tests/unit/test_direct_broker_submit_guard.py` (7 tests, including LIVE/DEMO_FORWARD/PAPER/DEVELOPMENT, missing authorization, non-DEMO account and unreadable identity). |
+| 1 | `submit_with_order_check()` in `src/qts/adapters/order_check.py` calls the broker adapter **directly**, bypassing `DemoSession` and therefore the DEMO gate. It has no callers today, so nothing could be submitted — but it is a latent hole: the first caller would inherit a broker path with no mode check, no authorization check and no DEMO-account proof. | **Removed.** A guard was added on 2026-09-24, then the helper itself was deleted in the final audit so no second submit path remains. `mt5_order_check()` is a dry-run only and is called from `DemoSession`. Production orders go through `DemoSession.submit()`. |
 | 2 | A policy could be *carried* by the registry without being *enforced* by the gate: nothing checked the registered symbol, trading hours, daily order budget or drawdown. | **Fixed** — six new gate checks plus policy-tightened canonical caps (§12a). |
 | 3 | `ResearchPolicy` wrapped its document in a mutable `dict`, so a caller could retune a limit in memory while the registered hash still matched. | **Fixed** — the parsed document is deep-frozen (read-only mappings); the test that exposed it is `test_policy_contents_cannot_be_retuned_after_registration`. |
 | 4 | `DemoSession` **asserted** its own mode: `policy` resolved with `mode="DEMO_EXECUTION"` and the gate context reported `DEMO_EXECUTION` no matter what mode the process was actually in. A LIVE-mode (or merely misconfigured) process could therefore walk the DEMO path behind a gate check that claimed the right thing. | **Fixed** — the session resolves its mode from `QTS_MODE` (or an explicit, audited `DemoSessionConfig.mode`), uses it for the policy, the authority and the gate context, and rebuilds the authority when the mode changes. `qts demo verify` now reports the mode first and blocks on it. Covered by `test_a_process_in_any_other_mode_cannot_use_the_demo_order_path` (DEVELOPMENT/PAPER/SHADOW/DEMO_FORWARD/LIVE: 0 broker requests) and `test_demo_session_reports_the_mode_it_is_actually_running_in`. |

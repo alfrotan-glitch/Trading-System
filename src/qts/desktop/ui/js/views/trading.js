@@ -188,12 +188,12 @@ export async function renderDemo(root) {
     // Executive Trading Cockpit Card (Section 11)
     const cockpitStats = h("div", { class: "stat-grid", style: { gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: "14px" } });
     cockpitStats.append(
-      stat({ label: "Account Environment", value: "DEMO ACCOUNT", tone: "info", hint: `${cfg.account_login || "MetaQuotes Demo"} · WM Markets`, icon: "shield" }),
-      stat({ label: "Trading Instrument", value: "XAUUSD", hint: `Broker venue: ${cfg.symbol_mapping?.venue_symbol || "XAUUSD@"}`, icon: "activity" }),
-      stat({ label: "Market Data Status", value: s.broker === "CONNECTED" ? "CONNECTED" : (s.broker || "DISCONNECTED"), tone: s.broker === "CONNECTED" ? "ok" : "warn", hint: "MT5 IPC Quote Stream", icon: "activity" }),
-      stat({ label: "Trading Execution", value: demoEnabled ? "AUTHORIZED" : "DISABLED", tone: demoEnabled ? "ok" : "neutral", hint: demoEnabled ? "Staged arming required" : "Protected by Safety Policy", icon: "lock" }),
-      stat({ label: "Risk Safeguards", value: "22 GATES ACTIVE", tone: "ok", hint: "Pre-trade loss & spread caps", icon: "shield" }),
-      stat({ label: "Real Capital Exposure", value: "$0.00 — LOCKED", tone: "ok", hint: "Real-money trading: OFF", icon: "lock" }),
+      stat({ label: "Account", value: "Demo account", tone: "info", hint: cfg.account_login ? `Login recorded. Broker name comes from the terminal, not from this screen.` : "Account not confirmed yet.", icon: "shield" }),
+      stat({ label: "Gold", value: "XAUUSD", hint: cfg.symbol_mapping?.venue_symbol ? `Broker symbol ${cfg.symbol_mapping.venue_symbol}` : "Broker symbol not confirmed yet.", icon: "activity" }),
+      stat({ label: "Price feed", value: s.broker === "CONNECTED" ? "Connected" : "Not connected", tone: s.broker === "CONNECTED" ? "ok" : "warn", hint: "A connection is not a gold price and not a trade.", icon: "activity" }),
+      stat({ label: "Trading", value: demoEnabled ? "Demo only" : "Not allowed", tone: demoEnabled ? "ok" : "neutral", hint: demoEnabled ? "Still needs a fresh check before any order." : "Protected by the safety policy.", icon: "lock" }),
+      stat({ label: "Safety checks", value: "Safety checks are on", tone: "ok", hint: "Every order is refused unless the full pre-trade gate passes.", icon: "shield" }),
+      stat({ label: "Your money", value: "Not at risk", tone: "ok", hint: "Live trading is locked. Real money cannot be used.", icon: "lock" }),
     );
 
     host.appendChild(card({
@@ -264,7 +264,7 @@ export async function renderDemo(root) {
           h("div", { class: "meta" }, "A DEMO terminal must be configured; without one this honestly reports failure instead of pretending. Context syncs, permission does not."),
         ),
       }),
-      card({ title: "Demo execution — authorized ≠ permitted, DEMO vs LIVE unmistakable", sub: "DEMO_EXECUTION = ENABLED_AUTHORIZED only with a recorded owner authorization (default: DISABLED BY POLICY); readiness permits OBSERVE_ONLY only — an order additionally requires staged arming and 22 pre-trade checks; LIVE remains locked", icon: "lock", body:
+      card({ title: "Demo trading is not the same as permission", sub: "A recorded authorization does not by itself allow an order. Live trading remains locked. There is no validated trading opportunity.", icon: "lock", body:
         h("div", { class: "stack" },
           h("p", { class: "text-dim small" }, `Authority reports ${s.permission}. Mode ${s.mode.mode} — ${s.mode.blurb} — context ${getContext().symbol}. DEMO is DEMO, LIVE is LOCKED.`),
           h("div", { class: "banner info" }, "DEMO_EXECUTION is available on the DEMO account only with a recorded owner authorization; the shipped default is DISABLED BY POLICY. No readiness result, request payload, or UI action can create order permission — orders require the staged progression and the full pre-trade gate (every required safeguard, contract check and registered-policy limit). LIVE remains LOCKED."),

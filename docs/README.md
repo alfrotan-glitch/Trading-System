@@ -27,7 +27,7 @@ Files that remain beside these guides are cited by code or by an operator setup 
    The 12-step operational trade lifecycle: connect, bind, quote, preflight, order, deal sync, reconcile, monitor, close, audit.
 
 7. [**07. Risk Controls & Safety**](07-risk-and-safety.md)  
-   Fail-closed posture, 22 pre-trade safeguard checks, exposure limits, and reconciliation mechanics.
+   Fail-closed pre-trade gate, exposure limits, and reconciliation. Not a validated edge.
 
 8. [**08. Live Trading Governance**](08-live-trading-governance.md)  
    Structural live boundary, multi-signature approval prerequisites, and immutable revocation sidecars.

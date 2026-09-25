@@ -43,15 +43,15 @@ export function operationalState(data, now = Date.now()) {
   const readinessReasons = Array.isArray(demo?.current_readiness?.blocked_reasons) ? demo.current_readiness.blocked_reasons : [];
   const liveReasons = Array.isArray(live?.blocked_reasons) ? live.blocked_reasons : [];
   const liveLabel = live?.eligible === false ? "LOCKED" : live?.eligible === true ? "ELIGIBLE · STILL GATED" : "UNAVAILABLE";
-  let next = { label: "Review observation prerequisites", href: "#/market/observations", why: "Review source health and collection evidence. Observation never grants execution permission." };
+  let next = { label: "Check the gold quotes", href: "#/market/observations", why: "Watching the market does not allow a trade." };
   if (!sources.health.current || !sources.observe.current || !sources.demoState.current || !sources.live.current) {
-    next = { label: "Inspect unavailable sources", href: "#/system/diagnostics", why: "One or more operating facts are unavailable or stale. Restore the source before relying on its last-known value." };
+    next = { label: "Check the unavailable status", href: "#/system/diagnostics", why: "Some status is missing or out of date. Do not act on a blank or old reading." };
   } else if (obs?.state === "OBSERVING" && !observing || obs?.state === "STOPPED_ON_ERRORS") {
-    next = { label: "Inspect observation failure", href: "#/market/observations", why: text(obs.last_error) };
+    next = { label: "See why quotes stopped", href: "#/market/observations", why: text(obs.last_error) };
   } else if (String(health?.mt5).toLowerCase() !== "connected") {
-    next = { label: "Review MT5 connection", href: "#/system/mt5", why: "The terminal is not reporting a connected state. Inspect connection details; do not enable execution." };
+    next = { label: "Connect the broker terminal", href: "#/system/mt5", why: "The trading terminal is not connected. Do not turn trading on from here." };
   } else if (observing) {
-    next = { label: "Inspect collected evidence", href: "#/market/observations", why: "The collector reports OBSERVING with its worker alive. Review quote timestamps and provenance separately from API freshness." };
+    next = { label: "Review the recorded gold quotes", href: "#/market/observations", why: "Quotes are being recorded. That is not permission to trade." };
   }
   return { sources, mode, health, obs, demo, live, observing, observation, permission, liveLabel, reasons, readinessReasons, liveReasons, next,
     activity: observing ? "Observing market data · no order path" : obs ? `Observation ${observation.toLowerCase()}` : "Observation state unavailable",

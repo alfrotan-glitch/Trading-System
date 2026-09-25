@@ -8,15 +8,14 @@
    6. What needs attention? (Clear, actionable operator next step)
    Progressive disclosure preserves 100% of underlying technical evidence. */
 
-import { api, store, syncOperations, RESOURCES, measurements, measure } from "../api.js";
+import { store, syncOperations, RESOURCES, measurements, measure } from "../api.js";
 import { operationalState } from "../operations.js";
-import { h, icon, clear } from "../dom.js";
-import { page, table, card, stat, banner, kv } from "../components.js";
-import { fmtUtc, fmtAge, fmtInt, fmtNum } from "../format.js";
+import { h, icon } from "../dom.js";
+import { page, table, stat } from "../components.js";
+import { fmtUtc, fmtAge, fmtInt, fmtNum, explainStatus } from "../format.js";
 import { statusInfo } from "../status.js";
 import { onDispose } from "../router.js";
 import { getContext, onContext } from "../context.js";
-import { readWorkspace } from "../workspace.js";
 
 const link = (label, href, cls = "btn sm") => h("a", { class: cls, href }, label);
 const setText = (node, value) => { const s = String(value); if (node.textContent !== s) node.textContent = s; };
@@ -32,33 +31,28 @@ export async function renderOverview(root) {
 
   root.appendChild(page({
     crumb: "Home",
-    title: "QTS",
-    answer: "Is the system running, what is gold doing, is there a validated opportunity, can QTS trade, and what should you do next. Technical detail stays behind View details.",
+    title: "Home",
+    answer: "Six answers, then one next step. Connection details, codes, and raw readings stay closed until you open them.",
     actions: [refresh],
   }));
 
   root.appendChild(h("section", { class: "operator-summary", "aria-labelledby": "operator-activity" },
-    h("div", null, h("div", { class: "eyebrow" }, "SYSTEM STATUS"), activity, explanation),
-    h("div", { class: "next-action" }, h("div", { class: "eyebrow" }, "RECOMMENDED OPERATOR ACTION"), next, nextWhy)));
+    h("div", null, h("div", { class: "eyebrow" }, "Right now"), activity, explanation),
+    h("div", { class: "next-action" }, h("div", { class: "eyebrow" }, "What to do next"), next, nextWhy)));
   root.appendChild(announce);
 
   // ---------------- 6-Pillar Decision Cards ----------------
-  const pillarGrid = h("div", { class: "stat-grid", style: { gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", marginBottom: "16px" } });
-  
-  const pMarket = stat({ label: "Gold", value: "Checking", hint: "XAUUSD bid, ask, and spread", icon: "activity" });
-  const pOpp = stat({ label: "Opportunity", value: "No validated opportunity", tone: "warn", hint: "Research has not authorized a trade", icon: "scale" });
+  const pillarGrid = h("div", { class: "home-answers" });
+
+  const pMarket = stat({ label: "Gold", value: "No live price yet", hint: "XAUUSD. A connection is not a price.", icon: "activity" });
+  const pOpp = stat({ label: "Opportunity", value: "No validated opportunity", tone: "warn", hint: "Research has not authorized a trade.", icon: "scale" });
   const pExec = stat({ label: "Trading", value: "Not allowed", tone: "neutral", hint: "Demo safety is on. Live trading is locked.", icon: "lock" });
-  const pPerf = stat({ label: "Your money", value: "Not at risk", tone: "ok", hint: "Real-money exposure is zero", icon: "shield" });
-  const pSafety = stat({ label: "Safety", value: "Live trading locked", tone: "ok", hint: "Demo controls and the kill switch are active", icon: "shield" });
-  const pAction = stat({ label: "Next", value: "See the action on the right", tone: "warn", hint: "One recommended step, not a trade", icon: "alert" });
+  const pPerf = stat({ label: "Your money", value: "Not at risk", tone: "ok", hint: "Real money cannot be used.", icon: "shield" });
+  const pSafety = stat({ label: "Safety", value: "Live trading locked", tone: "ok", hint: "The kill switch stays armed. Demo cannot unlock live.", icon: "shield" });
+  const pAction = stat({ label: "Next", value: "See the step above", tone: "warn", hint: "One step. Not a trade.", icon: "alert" });
 
   pillarGrid.append(pMarket, pOpp, pExec, pPerf, pSafety, pAction);
-  root.appendChild(card({
-    title: "Core System Telemetry",
-    sub: "Decision-relevant summary of market, research, execution, and risk posture",
-    icon: "layers",
-    body: pillarGrid,
-  }));
+  root.appendChild(pillarGrid);
 
   // ---------------- Operating Facts Table ----------------
   const definitions = [
@@ -85,48 +79,21 @@ export async function renderOverview(root) {
       h("td", null, link("Inspect", href))));
   }
 
-  root.appendChild(h("section", { class: "operator-section", "aria-labelledby": "facts-title" },
-    h("h2", { id: "facts-title" }, "System Health & Connection Status"),
-    h("p", { class: "small text-dim" }, "Authoritative verification status per subsystem. Freshness reflects API receipt; stale authority cannot establish execution permission."),
-    h("div", { class: "tbl-wrap", tabindex: "0", "aria-label": "Operating facts, horizontally scrollable" },
-      h("table", { class: "tbl facts-table" },
-        h("thead", null, h("tr", null, ["Subsystem", "Reported State", "Meaning & Constraints", "Freshness", "Action"].map((t) => h("th", { scope: "col" }, t)))),
-        tbody))));
-
-  // ---------------- Workspace Facts ----------------
-  const workspaceFacts = h("div", { class: "stat-grid" });
-  function renderWorkspaceFacts() {
-    const ws = readWorkspace();
-    const ctx = getContext();
-    clear(workspaceFacts);
-    workspaceFacts.append(
-      stat({ label: "Density", value: ws.density === "compact" ? "High Density" : "Standard", hint: "Compact tabular view" }),
-      stat({ label: "Width", value: ws.width, hint: "Workspace responsive container" }),
-      stat({ label: "Context", value: `${ctx.symbol} · ${ctx.timeframe}`, hint: "Presentation symbol context" }),
-      stat({ label: "Navigation", value: ws.navigation, hint: "Standard sidebar navigation" }),
-    );
-  }
-  root.appendChild(card({
-    title: "Display & Workspace Preferences",
-    sub: "Machine-local layout preferences · presentation only, never changes execution permission",
-    icon: "gear",
-    body: workspaceFacts,
-  }));
-
-  // ---------------- Authority & Governance Overview ----------------
   const demoReasons = h("ul", { class: "reason-list" });
   const liveReasons = h("ul", { class: "reason-list" });
-  root.appendChild(h("div", { class: "operator-grid" },
-    h("section", { class: "operator-section" },
-      h("h2", null, "Demo Execution Safety Posture"),
-      h("p", { class: "text-dim small" }, "Durable execution permission is separated from connection checks. Connection tests create zero order permission."),
-      demoReasons,
-      link("Inspect permission & readiness", "#/trading/demo")),
-    h("section", { class: "operator-section live-boundary" },
-      h("h2", null, "Live Capital Protection"),
-      h("p", { class: "text-dim small" }, "Real money is locked by structural policy. Demo observations can never automatically unlock live trading."),
-      liveReasons,
-      link("Inspect missing LIVE evidence", "#/governance/live"))));
+  const connectionDetails = h("details", { class: "operator-section" },
+    h("summary", null, "Connection and safety details"),
+    h("p", { class: "small text-dim" }, "Codes stay here. A missing or old reading is not permission to trade."),
+    h("div", { class: "tbl-wrap", tabindex: "0", "aria-label": "Connection details" },
+      h("table", { class: "tbl facts-table" },
+        h("thead", null, h("tr", null, ["Item", "Status", "What it means", "How fresh", ""].map((t) => h("th", { scope: "col" }, t)))),
+        tbody)),
+    h("h3", { class: "small" }, "Why demo trading is or is not allowed"),
+    demoReasons,
+    link("Open demo account", "#/trading/demo"),
+    h("h3", { class: "small" }, "Why live trading stays locked"),
+    liveReasons,
+    link("Open live trading rules", "#/governance/live"));
 
   // ---------------- Collapsible Evidence & Details ----------------
   // 1. Observation Evidence
@@ -147,18 +114,14 @@ export async function renderOverview(root) {
 
   // 2. Raw Overview Snapshot
   const raw = h("pre");
-  const technical = h("details", { class: "operator-section" },
-    h("summary", null, "Raw overview snapshot / technical evidence — drill to raw"),
-    raw);
-
-  // 3. UI Performance Diagnostics
   const perfHost = h("div");
-  const diagnostics = h("details", { class: "operator-section" },
-    h("summary", null, "UI performance / last 100 measurements — load, transition, refresh, render, dup, recovery, memory"),
-    h("p", { class: "text-dim small" }, "Browser update metrics and transition timings in ms. Bounded to last 100 entries."),
+  const technical = h("details", { class: "operator-section" },
+    h("summary", null, "Raw overview snapshot"),
+    h("p", { class: "text-dim small" }, "Machine readings and browser timings. They do not change whether trading is allowed."),
+    raw,
     perfHost);
 
-  root.append(evidenceDetails, technical, diagnostics);
+  root.append(connectionDetails, evidenceDetails, technical);
 
   const reasonList = (el, entries) => {
     const signature = JSON.stringify(entries);
@@ -226,17 +189,25 @@ export async function renderOverview(root) {
       humanActivity = "Trading Disabled by Safety Policy";
     }
     setText(activity, humanActivity);
-    setText(explanation, `Environment: ${s.mode.mode} · Live Trading: ${s.liveLabel} · Symbol: ${getContext().symbol}`);
+    const running = s.sources.health.current ? "QTS is running." : "QTS status is not available yet.";
+    const money = s.liveLabel.includes("LOCKED") || !s.sources.live.current
+      ? "Your money is not at risk."
+      : "Live trading is still gated. Real money is not in use.";
+    setText(explanation, `${running} ${money} There is no validated trading opportunity.`);
 
-    // Update 6 Telemetry Cards
-    pMarket.querySelector(".stat-value").textContent = s.broker === "CONNECTED" ? "Connected" : "Not connected";
-    pExec.querySelector(".stat-value").textContent = s.permission === "ENABLED" ? "Demo trading allowed" : "Not allowed";
-    if (s.sources.demoState.current && s.demo?.state === "DISABLED") {
-      pExec.querySelector(".stat-value").textContent = "Not allowed";
-    }
-    if (s.liveLabel.includes("LOCKED")) {
-      pPerf.querySelector(".stat-value").textContent = "$0.00";
-    }
+    const quoteRecorded = Boolean(s.obs?.last_tick_time);
+    pMarket.querySelector(".stat-value").textContent = quoteRecorded ? "Quote recorded" : "No live price yet";
+    pMarket.querySelector(".stat-hint").textContent = quoteRecorded
+      ? `Last gold quote ${s.quoteAge}. A quote is not a trade.`
+      : "XAUUSD. A connection is not a price.";
+    const tradingAllowed = s.permission === "PERMITTED · DEMO ONLY";
+    pExec.querySelector(".stat-value").textContent = tradingAllowed ? "Demo only" : "Not allowed";
+    pExec.querySelector(".stat-hint").textContent = tradingAllowed
+      ? "Demo orders can be considered. Live trading stays locked."
+      : explainStatus(s.permission === "DISABLED BY POLICY" ? "DISABLED_BY_POLICY" : s.permission);
+    pPerf.querySelector(".stat-value").textContent = "Not at risk";
+    pSafety.querySelector(".stat-value").textContent = s.liveLabel.includes("LOCKED") ? "Live trading locked" : "Live still gated";
+    pAction.querySelector(".stat-value").textContent = s.next.label;
 
     setText(next, s.next.label);
     next.href = s.next.href;
@@ -250,13 +221,13 @@ export async function renderOverview(root) {
     }
 
     const meanings = {
-      mode: "Environment capability is not execution permission.",
-      broker: "Terminal connectivity; not proof of a healthy live quote.",
-      market: "Backend pipeline status, not proof of a healthy live quote.",
-      quoteAge: s.obs?.last_tick_time ? `Last reported broker event: ${fmtUtc(s.obs.last_tick_time)}.` : "No current collected-quote timestamp.",
-      observation: s.observing ? "Collector reports active worker. No order path." : s.obs?.last_error || s.obs?.note || "No active collection established.",
-      permission: !s.sources.demoState.current ? "Current permission cannot be established — stale source." : `Authority state: ${s.demo?.state ?? "UNAVAILABLE"}; risk and execution gates independent.`,
-      liveLabel: "Never auto-enabled. Independent evidence and human governance required. Unmistakable locked styling.",
+      mode: "The environment name is not permission to trade.",
+      broker: "Whether the terminal is connected. Not a gold price.",
+      market: "Whether stored market data is usable. Not a live quote.",
+      quoteAge: s.obs?.last_tick_time ? `Last recorded quote: ${fmtUtc(s.obs.last_tick_time)}.` : "No gold quote has been recorded.",
+      observation: s.observing ? "Quotes are being recorded. No order is sent." : s.obs?.last_error || s.obs?.note || "Quote recording is not running.",
+      permission: !s.sources.demoState.current ? "Trading permission is unknown because the status is missing or old." : explainStatus(s.permission),
+      liveLabel: "Live trading cannot turn on by itself. Real money stays unavailable.",
     };
 
     for (const [key] of definitions) {
@@ -271,16 +242,16 @@ export async function renderOverview(root) {
       fresh.title = m?.updatedAt ? `Last successful API receipt: ${fmtUtc(m.updatedAt)}; ${RESOURCES[resource].path}` : RESOURCES[resource].path;
     }
 
-    reasonList(demoReasons, !s.sources.demoState.current ? ["Permission source unavailable or stale. Retry or inspect Diagnostics."] : [
-      `Authority reports ${s.permission}.`,
-      ...(s.permission === "DISABLED" ? ["Execution remains disabled. Observation does not require enabling it."] : []),
-      ...s.reasons.map((r) => `Permission: ${r}`),
-      ...s.readinessReasons.map((r) => `Current readiness: ${r}`),
+    reasonList(demoReasons, !s.sources.demoState.current ? ["Trading permission is unknown because that status is missing or old."] : [
+      explainStatus(s.permission),
+      ...(s.permission === "DISABLED" || s.permission === "DISABLED BY POLICY" ? ["Watching the market does not turn trading on."] : []),
+      ...s.reasons.map((r) => explainStatus(r)),
+      ...s.readinessReasons.map((r) => explainStatus(r)),
     ]);
 
-    reasonList(liveReasons, !s.sources.live.current ? ["Governance source unavailable or stale."] : [
-      `Authority reports ${s.liveLabel}.`,
-      ...s.liveReasons.map((r) => String(r).replace(/_/g, " ")),
+    reasonList(liveReasons, !s.sources.live.current ? ["Live-trading status is missing or old. Treat it as locked."] : [
+      s.liveLabel.includes("LOCKED") ? "Live trading is locked. Real money cannot be used." : explainStatus(s.liveLabel),
+      ...s.liveReasons.map((r) => explainStatus(r)),
     ]);
 
     const obs = s.obs;
@@ -299,20 +270,18 @@ export async function renderOverview(root) {
         live: store.data.live,
         context: getContext(),
       }, null, 2);
+      renderPerf();
     }
-    if (diagnostics.open) renderPerf();
     measure("render", "operator workspace update", performance.now() - started);
   }
 
-  technical.addEventListener("toggle", update);
-  diagnostics.addEventListener("toggle", () => { renderPerf(); update(); });
-  const off = store.on("resources", () => { update(); renderWorkspaceFacts(); });
-  const offCtx = onContext(() => { update(); renderWorkspaceFacts(); });
+  technical.addEventListener("toggle", () => { if (technical.open) renderPerf(); update(); });
+  const off = store.on("resources", update);
+  const offCtx = onContext(update);
   const clock = setInterval(update, 1000);
   clock.unref?.();
   onDispose(root, () => { off(); offCtx(); clearInterval(clock); });
 
-  renderWorkspaceFacts();
   update();
   await syncOperations();
 }

@@ -4,7 +4,7 @@
 
 QTS adheres to strict software engineering standards designed for mission-critical trading infrastructure:
 
-- **Type Safety:** Full static typing with strict `mypy` validation across all source modules.
+- **Type checking:** `mypy src` is the check. The project config is not `--strict`. Research modules still have pre-existing annotation findings; do not treat a partial path as a clean strict run.
 - **Fail-Closed Error Handling:** Catch blocks must never swallow exceptions into permissive defaults.
 - **Path Portability:** Paths must never rely on process current working directory (`os.getcwd()`). Always resolve via `qts.config.paths.state_root()` or `artifact_path()`.
 - **Zero Hidden Invariants:** All assumptions are code-verified with explicit assertion errors or domain refusals.
@@ -15,9 +15,10 @@ QTS adheres to strict software engineering standards designed for mission-critic
 
 ```
 src/qts/
-├── adapters/       # MT5 broker adapter, market data providers, IPC bridges
-├── api/            # FastAPI REST backend, security middleware, schemas
-├── backtest/       # Backtesting engine, trade accounting, fill simulation
+├── adapters/       # BrokerAdapter, MT5, paper, shadow. Does not import execution.
+├── api/            # FastAPI app and route modules under api/routes/
+├── backtest/       # Backtesting engine. Uses RealisticPaperBroker, not a second paper adapter.
+├── cli/            # Command package. Entry point is qts.cli:main.
 ├── config/         # Path resolution, configuration wizard, settings
 ├── data/           # History acquisition, tick parsers, parquet stores
 ├── desktop/        # Vanilla JS workstation UI (ES modules, semantic CSS)
@@ -69,16 +70,18 @@ Always run the full suite before submitting changes:
 ruff check src/ tests/
 
 # 2. Type Checking
-mypy src/qts/execution src/qts/lifecycle src/qts/api src/qts/config src/qts/domain src/qts/adapters src/qts/risk src/qts/cli
+mypy src
 
 # 3. JavaScript Syntax Verification
-node --check src/qts/desktop/ui/js/**/*.js src/qts/desktop/ui/js/views/*.js
+find src/qts/desktop/ui/js -name '*.js' -print0 | xargs -0 -n1 node --check
 
 # 4. JavaScript Unit Tests
 npm test
 
-# 5. Python Unit and Integration Test Suites
-pytest tests/unit/
-pytest tests/integration/ --run-integration
-pytest tests/adversarial/
+# 5. Python tests
+# Default pytest includes tests/integration.
+# Two skips are environmental: Playwright is optional, and one fsync test is Windows-only.
+# `--run-integration` opts in to an explicit @pytest.mark.integration marker. None are marked today.
+pytest
+pytest tests/integration --run-integration
 ```

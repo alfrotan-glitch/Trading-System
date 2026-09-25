@@ -22,7 +22,7 @@ Every phase requires verifiable mathematical, statistical, or broker-attested ev
 - **No Forward Fitting:** Strategies cannot adjust parameters dynamically during live or demo execution to chase short-term variance.
 
 ### 3. Fail-Closed Execution Safety
-- **22 Active Pre-Trade Gates:** Every would-be order must satisfy account type verification, pinned broker identity, canonical symbol binding, fresh quote checks, spread limits, daily loss limits, and drawdown ceilings.
+- **Fail-closed pre-trade gate:** Every would-be order must satisfy account type verification, pinned broker identity, canonical symbol binding, fresh quote checks, spread limits, daily loss limits, and drawdown ceilings. The check list is `qts.execution.demo_pretrade`, not a second document.
 - **Continuous Broker Reconciliation:** Internal portfolio positions are reconciled with broker-reported tickets after every single order and position closure. Any drift triggers an immediate system halt.
 - **Durable Kill Switch:** SQLite-persisted halt mechanisms guarantee that emergency stops survive process restarts.
 

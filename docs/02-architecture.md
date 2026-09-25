@@ -4,38 +4,19 @@
 
 QTS is architected with strict boundary separation between domain logic, infrastructure adapters, execution engines, and presentation layers.
 
+Dependency direction is inward. Outer layers may call inner layers. Inner layers do not call outer layers.
+
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Web & Desktop UI                         │
-│   (Vanilla ES Modules, Zero Build Step, Semantic CSS)       │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ HTTP / JSON
-┌──────────────────────────────▼──────────────────────────────┐
-│                    FastAPI Server Layer                     │
-│         (34 Unified REST Endpoints, Boundary Security)      │
-└──────────────┬───────────────────────────────┬──────────────┘
-               │                               │
-┌──────────────▼──────────────┐ ┌──────────────▼──────────────┐
-│     Execution & Safety      │ │     Research & Validation   │
-│  - DemoSession              │ │  - Impulse Event Study      │
-│  - Pre-Trade Gate (22 chks) │ │  - Statistical Engine (DSR) │
-│  - RiskEngine & KillSwitch  │ │  - Walk-Forward Optimizer   │
-│  - Reconciliation Engine    │ │  - Data Quality Verifier    │
-│  - DemoOrderJournal         │ │  - Artifact Registry        │
-└──────────────┬──────────────┘ └──────────────┬──────────────┘
-               │                               │
-┌──────────────▼───────────────────────────────▼──────────────┐
-│                     Domain Layer (Core)                     │
-│    Instruments, Orders, Fills, Positions, Modes, Invariants │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│                    Adapter & Platform                       │
-│    - MT5Adapter (IPC / Windows Native / Injected Mock)      │
-│    - SQLite Persistent Stores (State Root Anchored)         │
-│    - Authoritative Symbol & Path Resolvers                  │
-└─────────────────────────────────────────────────────────────┘
+UI / CLI
+  → API and application services
+    → governance (lifecycle, authorization, policy)
+      → risk (RiskEngine, the only kill switch)
+        → execution (DemoSession, pre-trade gate, journal)
+          → adapters (BrokerAdapter, MT5, paper, shadow)
+            → domain (instruments, orders, modes)
 ```
+
+`qts.adapters` does not import `qts.execution`. The UI renders and requests. It does not decide whether an order may be sent. CLI commands call application services; they do not own a second risk engine.
 
 ---
 
@@ -52,7 +33,7 @@ QTS is architected with strict boundary separation between domain logic, infrast
 
 ### 3. Execution & Safety (`src/qts/execution/`)
 - `DemoSession`: Coordinates staged arming, preflight verification, order submission, receipt capture, deal reconciliation, and position closure.
-- `DemoPretradeGate`: 22 required safeguards evaluated atomically before any intent touches broker transport.
+- `run_pretrade_gate`: the single fail-closed order gate. `UNKNOWN` does not pass.
 - `ReconciliationEngine`: Compares internal portfolio positions with venue tickets; detects quantity mismatches, ghost orders, or unattributed fills.
 - `DemoOrderJournal`: Append-only SQLite audit log recording every signal, request, broker ticket, spread, slippage, and P&L.
 

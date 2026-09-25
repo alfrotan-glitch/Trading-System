@@ -19,7 +19,7 @@ ONE canonical `ExecutionMode`:
 | `PAPER` | no (simulation) | **no** | no |
 | `SHADOW` | no (intents only) | **no** | no |
 | `DEMO_FORWARD` | **yes** (real MT5) | **no — structurally** | no |
-| `DEMO_EXECUTION` | **yes** | **authorized only** — requires a recorded owner authorization artifact, staged arming, pinned identity, an eligible registered strategy and 22 pre-trade checks | no |
+| `DEMO_EXECUTION` | **yes** | **authorized only** — requires a recorded owner authorization artifact, staged arming, pinned identity, an eligible registered strategy and a passing `run_pretrade_gate` | no |
 | `LIVE` | **yes** | yes (gated) | **yes** |
 
 Resolution precedence (highest wins): explicit argument → `QTS_MODE` →

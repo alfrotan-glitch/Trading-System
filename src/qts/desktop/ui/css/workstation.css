@@ -21,6 +21,28 @@
 }
 .product-questions { margin-bottom: 16px; }
 
+.home-answers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0 0 8px;
+}
+.home-answers .stat {
+  padding: 14px 14px 12px;
+  min-height: 108px;
+}
+.home-answers .stat-label {
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.home-answers .stat-value {
+  font-size: 18px;
+  line-height: 1.25;
+  margin-top: 6px;
+}
+.home-answers .stat-hint { font-size: 12.5px; line-height: 1.35; }
+
 /* operator workspace — primary answer, then facts, then drill-down */
 .operator-workspace { max-width: var(--content-max); margin: 0 auto; padding: 20px 24px 36px; }
 .operator-workspace > .page { padding: 0; }

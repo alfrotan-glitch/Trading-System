@@ -26,7 +26,7 @@ Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating
    Pre-registered hypothesis testing with Deflated Sharpe Ratio (DSR) metrics, Holm multiple-testing adjustments, and zero synthetic quote smoothing.
 
 3. **End-to-End DEMO Execution Lifecycle:**  
-   Complete 12-step operational lifecycle: terminal connection, account identity pinning, symbol specification binding, quote freshness probing, 22 pre-trade gates, atomic order submission, broker receipt capture, deal synchronization, position monitoring, position closure, continuous reconciliation, and SQLite audit journaling.
+   Complete operational lifecycle: terminal connection, account identity pinning, symbol binding, quote freshness, the fail-closed pre-trade gate, atomic order submission, broker receipt, reconciliation, position close, and a durable journal. This is not a claim that a profitable strategy exists.
 
 4. **Continuous Broker Reconciliation:**  
    Internal portfolio positions are reconciled against venue tickets after every order and position exit. Any quantity mismatch, ghost position, or unmapped fill immediately halts the engine.
@@ -44,7 +44,7 @@ Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating
 | **PAPER** | No | No | Next-tick fill simulation with modeled slippage | Zero venue access |
 | **SHADOW** | Yes (MT5) | No | Evaluates would-be intents against live venue data | Zero orders submitted |
 | **DEMO_FORWARD** | Yes (MT5) | No | Real demo quote observation and logging | Zero orders submitted |
-| **DEMO_EXECUTION**| Yes (MT5) | No | Controlled order submission on MT5 DEMO account | 22 pre-trade gates active |
+| **DEMO_EXECUTION**| Yes (MT5) | No | Controlled order submission on MT5 DEMO account | Fail-closed pre-trade gate |
 | **LIVE** | Yes (MT5) | **Yes** | Real-money execution | **STRUCTURALLY LOCKED** |
 
 ---
@@ -96,7 +96,7 @@ qts demo verify
 │   ├── data/           # Tick parsers and dataset loaders
 │   ├── desktop/ui/     # Modern vanilla JS workstation UI (ES modules, semantic CSS)
 │   ├── domain/         # Core trading value objects and execution modes
-│   ├── execution/      # Demo session, 22 pre-trade gates, autopilot, order journal
+│   ├── execution/      # Demo session, pre-trade gate, autopilot, order journal
 │   ├── lifecycle/      # Authority, stage machine, forward registry
 │   ├── observability/  # Observation collectors, audit logs, event telemetry
 │   ├── portfolio/      # Portfolio tracking, fill processing, cash management
@@ -118,16 +118,17 @@ Run the complete verification suite locally:
 ```bash
 # 1. Static Analysis & Linting
 ruff check src/ tests/
-mypy src/qts/execution src/qts/lifecycle src/qts/api src/qts/config src/qts/domain src/qts/adapters src/qts/risk src/qts/cli.py
+mypy src
 
 # 2. JavaScript UI Tests
-node --check src/qts/desktop/ui/js/**/*.js src/qts/desktop/ui/js/views/*.js
+find src/qts/desktop/ui/js -name '*.js' -print0 | xargs -0 -n1 node --check
 npm test
 
-# 3. Python Integration & Unit Tests
-pytest tests/unit/
-pytest tests/integration/ --run-integration
-pytest tests/adversarial/
+# 3. Python tests
+# Default pytest runs tests/integration as well.
+# --run-integration is only required for an explicit @pytest.mark.integration marker.
+pytest
+pytest tests/integration --run-integration
 ```
 
 ---

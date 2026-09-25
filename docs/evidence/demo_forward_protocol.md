@@ -44,7 +44,7 @@ passing readiness, required checks, broker-capable mode); otherwise it returns
 HTTP 409 with `execution_permitted=false` and the reasons, and writes no
 enabled state. Per-order permission is a further, separate decision
 (staged arming, pinned+confirmed broker identity, eligible registered
-strategy, 22 pre-trade checks in the same cycle) — see
+strategy, a passing `run_pretrade_gate` in the same cycle) — see
 `docs/demo_execution_authorization_and_safety_2026-09-23.md`.
 
 No strategy has passed the research gates, so this path currently has no

@@ -28,7 +28,7 @@ observations, enable DEMO execution, or unlock LIVE.
 | Question | Canonical authority | Current contract |
 |---|---|---|
 | Effective mode | `src/qts/domain/modes.py` | Unknown modes fail closed; capability metadata is not product permission. |
-| DEMO execution permission | `src/qts/lifecycle/demo_authority.py` | `DEMO_EXECUTION = DISABLED BY POLICY` is the shipped default (durable refusal, `execution_permitted=false`); with a recorded owner authorization it resolves to `ENABLED_AUTHORIZED` for the DEMO account, while per-order permission still requires staged arming, a pinned identity, an eligible registered strategy and 22 pre-trade checks. |
+| DEMO execution permission | `src/qts/lifecycle/demo_authority.py` | `DEMO_EXECUTION = DISABLED BY POLICY` is the shipped default (durable refusal, `execution_permitted=false`); with a recorded owner authorization it resolves to `ENABLED_AUTHORIZED` for the DEMO account, while per-order permission still requires staged arming, a pinned identity, an eligible registered strategy and a passing `run_pretrade_gate`. |
 | DEMO_FORWARD readiness | `src/qts/lifecycle/demo_gate.py` | Fresh 14-check diagnostic gate for observation only. |
 | Observation persistence | `src/qts/observability/forward_observatory.py` | One append-only SQLite store; derived manifest is regenerable. |
 | Risk boundary | `src/qts/risk/authority.py` and `demo_limits.py` | Mode restrictions can only tighten; safety metadata does not authorize execution. |

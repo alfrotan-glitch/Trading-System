@@ -39,7 +39,7 @@ export async function renderSetup(root) {
     ["paper", "Paper", "Simulated fills on recorded data, next-bar-open. No real orders."],
     ["shadow", "Shadow", "Real market data; would-be intents with risk/spread checks. Nothing submitted."],
     ["demo_forward", "Demo Forward", "DEMO observation only — real MT5 demo terminal, real market data, zero orders structurally."],
-    ["demo_execution", "Demo Execution", "DEMO_EXECUTION = ENABLED_AUTHORIZED only with a recorded owner authorization (default: DISABLED BY POLICY); orders additionally require staged arming, a pinned identity, an eligible registered strategy and 22 pre-trade checks. DEMO vs LIVE unmistakable."],
+    ["demo_execution", "Demo trading", "Demo trading needs a recorded authorization. The default is off. An order also needs a confirmed demo account and the safety checks. Live trading stays locked. This is not a validated opportunity."],
   ];
   const currentEnv = env?.resolution?.effective_mode ?? "development";
   host.appendChild(card({

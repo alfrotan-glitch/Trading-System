@@ -153,7 +153,7 @@ function buildHeader() {
     h("div", { class: "brand" },
       h("span", { class: "logo", "aria-hidden": "true" }, "QTS"),
       h("span", { class: "word" }, "QTS"),
-      h("span", { class: "sub" }, "Research workstation"),
+      h("span", { class: "sub" }, "Gold"),
     ),
     facts,
     h("div", { class: "header-actions" },

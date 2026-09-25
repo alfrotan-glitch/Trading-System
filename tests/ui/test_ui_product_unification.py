@@ -166,7 +166,8 @@ def test_trading_view_renders_execution_cockpit():
     assert "Execution Cockpit — Decision & Safety Posture" in trading_src
     assert "DEMO EXECUTION: DISABLED BY POLICY" in trading_src
     assert "LIVE LOCKED" in trading_src
-    assert "22 GATES ACTIVE" in trading_src
+    assert "Safety checks are on" in trading_src
+    assert "Not at risk" in trading_src
     assert "REAL CAPITAL: OFF" in (JS_DIR / "views" / "risk.js").read_text(encoding="utf-8")
 
 

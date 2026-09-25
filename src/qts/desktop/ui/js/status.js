@@ -45,7 +45,7 @@ const MODES = {
   PAPER: { tone: "info", canSubmit: false, realData: false, blurb: "Simulated fills on recorded data — no broker contact." },
   SHADOW: { tone: "research", canSubmit: false, realData: false, blurb: "Would-be intents only — no broker submission. Data provenance is reported separately." },
   DEMO_FORWARD: { tone: "info", canSubmit: false, realData: true, blurb: "MT5 demo-account observation only — structurally no broker orders." },
-  DEMO_EXECUTION: { tone: "locked", canSubmit: false, realData: true, blurb: "DEMO_EXECUTION = ENABLED_AUTHORIZED only with a recorded owner authorization (DEMO account); the shipped default is DISABLED BY POLICY. Either way an order additionally requires staged arming, a pinned+confirmed DEMO broker identity, an eligible registered strategy and 22 pre-trade checks. LIVE stays LOCKED." },
+  DEMO_EXECUTION: { tone: "locked", canSubmit: false, realData: true, blurb: "Demo trading needs a recorded owner authorization. The shipped default is off. An order also needs staged arming, a confirmed demo account, and the safety checks. Live trading stays locked. This is not a validated trading opportunity." },
   LIVE: { tone: "locked", canSubmit: "gated", realData: true, blurb: "Live capital. Structurally locked until every gate and human approval pass." },
 };
 
@@ -95,7 +95,7 @@ export function lifecycleStages(src = {}) {
       state: src.demoPermitted === true && src.policyAuthorized === true ? "current" : "blocked",
       blockedWhy:
         src.policyAuthorized === true && src.demoPermitted !== true
-          ? "authorized but not permitted — staged arming, pinned identity, eligible strategy and 22 pre-trade checks still required"
+          ? "Authorized, but not allowed to trade yet. A confirmed account and the safety checks are still required."
           : "requires a recorded owner authorization (shipped default: DEMO_EXECUTION = DISABLED BY POLICY), then staged arming and the pre-trade gate",
     },
     {

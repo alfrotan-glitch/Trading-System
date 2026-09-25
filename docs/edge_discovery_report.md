@@ -91,8 +91,9 @@ orders. DEMO_FORWARD records real MT5 demo-account observations only when a
 real terminal/session is available. `DEMO_EXECUTION` is `DISABLED BY POLICY` by
 default and `ENABLED_AUTHORIZED` once a recorded owner authorization exists
 (DEMO account only); in both cases an order additionally requires the staged
-progression, a pinned+confirmed identity, an eligible registered strategy and
-22 pre-trade checks — currently `NO_TRADE`.
+progression, a pinned and confirmed identity, the registered diagnostic policy, and
+the fail-closed pre-trade gate. Research status remains `NO_VALIDATED_EDGE`.
+Currently `NO_TRADE`.
 
 Current derived comparison evidence reports 6 paper records, 10 shadow
 intents, zero canonical DEMO_FORWARD observations, measured paper/shadow event

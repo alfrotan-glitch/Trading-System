@@ -21,7 +21,7 @@ QTS (Quantitative Trading System) is an autonomous quantitative research, risk-g
 * **Operational Status**: Hardened research and DEMO execution workstation.
 * **Trading State**: `NO_TRADE` — zero active trading strategies authorized for real capital.
 * **Capital Risk**: `REAL_CAPITAL_EXPOSURE = 0` — live trading is permanently locked.
-* **DEMO State**: Stage 1 connectivity and diagnostic execution probe (`DEMO-EXECPROBE-XAUUSD-V1` under `H-EXEC-01`) wired and armed with 23 pretrade checks, identity pinning, and durable SQLite journal.
+* **DEMO State**: Diagnostic execution probe (`DEMOPOL-EXEC-COST-XAUUSD-2026-09-24-V1`, H-EXEC-01, `ELIGIBLE_DIAGNOSTIC`) is registered. It is not a validated edge. Orders still require `QTS_MODE=demo_execution`, a confirmed identity pin, fresh readiness, and `run_pretrade_gate`. Identity is not pinned. No order has been submitted.
 * **Research State**: `NO_VALIDATED_EDGE` certified after exhaustive evaluation of 139M ticks across 15 preregistered directional hypotheses and 10 impulse strategy families.
 
 ---
@@ -64,7 +64,7 @@ Domain Core (Entities, Value Objects, Domain Events)
 | **Connection Factory** | `qts.adapters.mt5_factory` | Resilient resolver handling terminal path normalization and venue symbol mapping. |
 | **Path Authority** | `qts.config.paths` | Authoritative state root resolver anchoring data, logs, pins, and databases to `~/.qts`. |
 | **Risk Authority** | `qts.risk.engine.RiskEngine` | Authoritative SQLite-persisted portfolio risk manager and kill switch. |
-| **Pretrade Gate** | `qts.execution.demo_pretrade` | 23 fail-closed checks required before any order can be submitted. |
+| **Pretrade Gate** | `qts.execution.demo_pretrade.run_pretrade_gate` | The only order gate. Every check that runs must be `PASS`. `UNKNOWN` does not pass. The names live in that module, not in a second list. |
 | **Order Journal** | `qts.execution.demo_journal.DemoOrderJournal` | Relational SQLite store tracking client order IDs, broker tickets, fills, and realized P&L. |
 | **Session Manager** | `qts.execution.demo_session.DemoSession` | Atomic order slot coordinator and lifecycle executor. |
 | **Autonomous Loop** | `qts.execution.demo_autopilot.run_autopilot` | Forward evaluation loop managing position exits and periodic reconciliation. |
@@ -164,7 +164,8 @@ Committed Evidence Manifest (data/evidence/*.json)
 * [x] **Phase 7: Documentation** — `docs/01` through `docs/10` are the operating guides. Cited records stay beside them. Uncited dated records are in `docs/evidence/`.
 * [x] **Phase 8: This file is the project-control register.**
 * [x] **Phase 9: Product navigation** — Home, Market, Opportunities, Trading, Risk, Reports. Advanced holds Research, System, Governance.
-* [x] **Phase 10: Full regression verification** — default `pytest` 1206 passed, 121 skipped; integration suite 119 passed with `--run-integration`.
+* [x] **Phase 10: Full regression verification** — see Test Status. The 2026-09-25 audit restored `tests/integration` to the default suite.
+* [x] **Phase 11: Final product audit** — Home answers in plain language; second submit helper removed; matching shim removed; unused dependencies removed.
 * [ ] **Phase 12: Windows MT5 identity pin** — operator action, not a repository change. Do not run `qts demo connectivity --pin` from this workspace.
 
 ---
@@ -190,15 +191,18 @@ Committed Evidence Manifest (data/evidence/*.json)
 | **ARCH-006** | 2026-09-25 | Phase 4 | Deleted unreferenced invented_strategies and discovery_pipeline | Dead prototypes are not product code | import search | APPROVED |
 | **ARCH-007** | 2026-09-25 | Phase 5 | qts research run-hypothesis is the only new invocation path | Does not merge hypotheses or change NO_VALIDATED_EDGE | catalog unit test | APPROVED |
 | **ARCH-008** | 2026-09-25 | Phase 9 | Product navigation with Advanced disclosure | Home answers the five operator questions | shell IA test updated | APPROVED |
+| **ARCH-009** | 2026-09-25 | Phase 11 | Restored `tests/integration` to the default suite. The skip matched the directory name, not an explicit marker. | No integration file was dropped. Parent `6f0c0fd` collected 1,324. This tree collects 1,320: plus `tests/unit/test_research_catalog.py` (3), minus `tests/unit/test_direct_broker_submit_guard.py` (7) deleted with its helper. | collection comparison | APPROVED |
+| **ARCH-010** | 2026-09-25 | Phase 11 | Deleted `submit_with_order_check`. Deleted the matching re-export shim. Restored the zip-inventory script the workflow calls. Removed unused `pydantic-settings` and `python-dateutil`. | One submit path: `DemoSession`. One matching engine: `qts.adapters.matching`. | direct-submit search; ruff | APPROVED |
+| **ARCH-011** | 2026-09-25 | Phase 11 | Home and trading copy no longer lead with telemetry codes or a fake broker name. | Safety facts stay visible. Codes stay under details. | UI tests | APPROVED |
 
 ---
 
 ## 13. TEST STATUS
 
-* **Python default suite**: 1,206 passed, 121 skipped (the skips are the integration suite plus 2 intentional skips).
-* **Python integration suite** (`pytest tests/integration --run-integration`): 119 passed.
-* **JavaScript UI tests**: 45 passed.
-* **Linters**: `ruff check src/ tests/` clean. `mypy` clean on adapters, execution, API, CLI, and the research catalog.
+* **Python default suite** (`pytest`): 1,318 passed, 2 skipped, 1,320 collected (2026-09-25). The two skips are `tests/adversarial/test_impulse_lookahead.py` for family `IMP-VE-V`, when the fixed seed window produces no events. They are not integration tests. Playwright browser tests are a separate collection-time skip (`playwright not installed`) and are not inside the 1,320.
+* **Python integration suite** (`pytest tests/integration --run-integration`): 119 passed. The same 119 now also run in the default suite. The directory-name skip is gone.
+* **JavaScript UI tests** (`npm test`): 46 passed. `node --check` passed for every file under `src/qts/desktop/ui/js`.
+* **Linters**: `ruff check src tests` clean. `mypy src` is not clean: 38 errors in 12 research and observability files. Those formulas were not changed to silence the type checker.
 
 ---
 

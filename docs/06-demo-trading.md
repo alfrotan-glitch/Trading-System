@@ -7,7 +7,7 @@ Demo trading in QTS is not an unmonitored script; it is a fully instrumented, au
 ```
  [1. Connect & Verify] ──► [2. Bind Tradable Symbol] ──► [3. Probe Live Quote]
                                                                │
- [6. Atomic Submit]   ◄── [5. 22 Preflight Gates]   ◄── [4. Staged Arming]
+ [6. Atomic Submit]   ◄── [5. Pre-trade gate]   ◄── [4. Staged Arming]
         │
         ▼
  [7. Broker Receipt]  ──► [8. Reconcile Order]      ──► [9. Monitor Position]
@@ -40,13 +40,14 @@ Demo trading in QTS is not an unmonitored script; it is a fully instrumented, au
 - Authority requires explicit operator confirmation and risk acknowledgement (`--confirm --risk-ack`).
 - Permission decays after 120 seconds unless refreshed by verified terminal readiness.
 
-### Step 5: 22 Preflight Gates
-- Evaluates 22 required pre-trade safeguards in a single atomic inspection.
+### Step 5: Pre-trade gate
+- Evaluates `run_pretrade_gate` before any intent reaches the broker.
 - Fails closed on any `UNKNOWN` or `FAIL` outcome.
+- Passing this gate does not mean a profitable strategy exists. Research status remains `NO_VALIDATED_EDGE`. The registered DEMO policy is an execution-cost probe.
 
 ### Step 6: Atomic Order Submission
 - Claims order slot in SQLite using `BEGIN IMMEDIATE` to prevent concurrency races.
-- Automatically calculates and attaches mandatory protective stop-loss based on frozen strategy policy.
+- Attaches the stop required by the registered diagnostic policy. That policy measures execution cost. It is not a validated edge.
 - Submits `OrderIntent` via `MT5Adapter.order_send()`.
 
 ### Step 7: Broker Receipt & Retcode Verification

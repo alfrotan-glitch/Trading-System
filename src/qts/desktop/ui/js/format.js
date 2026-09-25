@@ -100,6 +100,23 @@ export function humanStatus(s) {
   return map[s] || String(s).replace(/_/g, " ");
 }
 
+/** User-facing sentence for a machine code. The code itself stays available under details. */
+export function explainStatus(s) {
+  const code = String(s ?? "");
+  const known = {
+    BLOCKED_INSUFFICIENT_DATA: "Trading research is paused because the available market data does not currently meet the required quality standard.",
+    INSUFFICIENT_DATA: "The available market data does not currently meet the required quality standard.",
+    INSUFFICIENT_EVIDENCE: "There is not enough evidence to treat this as a trading opportunity.",
+    NO_VALIDATED_EDGE: "Research has not found a validated trading opportunity.",
+    NO_TRADE: "No trade is authorized.",
+    DISABLED: "Trading is not allowed.",
+    DISABLED_BY_POLICY: "Trading is turned off by the safety policy.",
+    LOCKED: "Live trading is locked. Real money cannot be used.",
+    UNAVAILABLE: "This fact is not available yet.",
+  };
+  return known[code] || humanStatus(code);
+}
+
 /** Provenance → {label, cls} for the .prov strip. Never ambiguous. */
 export function provInfo(p) {
   const v = String(p || "").toUpperCase();

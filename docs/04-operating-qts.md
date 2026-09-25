@@ -2,7 +2,7 @@
 
 ## Operator Mental Model
 
-QTS is designed to be operated with clarity and confidence. The system continuously evaluates 22 safety gates, tracks broker state, and provides clear guidance on what the system is doing and what action to take next.
+QTS is designed to be operated with clarity and confidence. The system evaluates the fail-closed pre-trade gate, tracks broker state, and says what is happening and what to do next. It does not claim a validated trading edge.
 
 ---
 
