@@ -29,7 +29,7 @@ When opening the QTS Workstation (`#/overview`), the first screen answers five e
 ### Workflow A: Market Observation (Zero Risk)
 1. Navigate to **Market $\rightarrow$ Observations** (`#/market/observations`).
 2. Click **Start Observation**.
-3. The observation collector streams live venue ticks into `data/evidence/` with full provenance (bid, ask, spread, broker timestamp).
+3. Accepted quotes are stored in the machine-local observatory database under the state root (`data/sqlite/forward_observatory.db`), not in the repository checkout. A manifest is written beside the other state artifacts.
 4. No orders are ever submitted during observation (`ORDERS_POSSIBLE = False`).
 
 ### Workflow B: Autonomous Demo Trading
@@ -58,13 +58,13 @@ When opening the QTS Workstation (`#/overview`), the first screen answers five e
 ## 3. Emergency Stops & Recovery
 
 ### Raising the Kill Switch
-If unexpected broker behavior, latency spikes, or network anomalies occur, trigger an immediate halt:
-- **Web UI:** Click the emergency stop icon in the header or on the dashboard.
+If unexpected broker behavior, latency spikes, or network anomalies occur, raise the durable kill switch:
+- **Web UI:** Header button **Stop trading**. It asks for confirmation, then calls `POST /api/demo/kill`. If the request fails, the screen says the stop was not confirmed. It does not close an open broker position.
 - **CLI:**
   ```bash
   qts demo kill --reason "Operator manual intervention"
   ```
-The stage machine halts instantly, preventing all further order submissions.
+The stage machine halts, preventing further order submissions. Closing an open position is a separate command (`qts demo close`).
 
 ### Clearing the Kill Switch
 Clearing the kill switch requires deliberate explanation and confirmation:

@@ -4,14 +4,14 @@
    No decorative motion. Borders carry structure. Backend is only authority. */
 
 import { h, icon, clear } from "./dom.js";
-import { store, RESOURCES, syncResource, syncOperations, poll, measure } from "./api.js";
+import { api, store, RESOURCES, syncResource, syncOperations, poll, measure } from "./api.js";
 import { operationalState, freshness } from "./operations.js";
 import { initWorkspace, readWorkspace, saveWorkspace } from "./workspace.js";
 import { registerRoutes, startRouter, navigate } from "./router.js";
 import { initPalette } from "./palette.js";
 import { fmtAge } from "./format.js";
 import { attentionRank } from "./status.js";
-import { toast, badge, drawer } from "./components.js";
+import { toast, badge, drawer, confirmModal } from "./components.js";
 import { getContext, onContext } from "./context.js";
 
 import * as overview from "./views/overview.js";
@@ -143,6 +143,28 @@ function buildNotifBell() {
   return wrapper;
 }
 
+async function stopTrading() {
+  const ok = await confirmModal({
+    title: "Stop trading",
+    danger: true,
+    body: "This asks the backend to raise the durable kill switch and halt the demo stage. It does not close an open broker position. Cancel if you only wanted to look.",
+    acks: ["I want orders stopped until an operator clears the kill switch."],
+    confirmLabel: "Stop orders",
+  });
+  if (!ok) return;
+  try {
+    const out = await api.post("/api/demo/kill", { reason: "operator stop from the header" });
+    if (!out || out.killed !== true) {
+      toast("err", "Stop was not confirmed", "The backend did not report the kill switch as raised. Check Risk before assuming orders are stopped.");
+      return;
+    }
+    toast("warn", "Orders stopped", "The kill switch is on. This does not close an open position. Live trading was already locked.");
+    syncOperations(true);
+  } catch (e) {
+    toast("err", "Stop was not confirmed", e.message || "The request failed. Do not assume orders are stopped.");
+  }
+}
+
 function buildHeader() {
   const facts = h("div", { class: "header-facts", id: "header-facts", role: "status", "aria-label": "Operating facts" });
   const conn = h("span", { class: "conn-dot", title: "API connection", role: "status", "aria-label": "Health API connecting" });
@@ -158,6 +180,7 @@ function buildHeader() {
     facts,
     h("div", { class: "header-actions" },
       conn, updated,
+      h("button", { class: "btn danger sm", onclick: stopTrading, "aria-label": "Stop trading" }, "Stop trading"),
       buildNotifBell(),
       h("button", { class: "btn ghost sm", onclick: openWorkspace, "aria-label": "Workspace preferences" }, icon("layers", 15), "Workspace"),
       h("a", { class: "btn ghost sm", href: location.hash || "#/overview", target: "_blank", rel: "noopener", "aria-label": "Open current context in another window", onclick: (e) => { e.currentTarget.href = location.hash || "#/overview"; } }, "New window"),

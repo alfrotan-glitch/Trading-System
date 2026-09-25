@@ -171,6 +171,15 @@ def test_trading_view_renders_execution_cockpit():
     assert "REAL CAPITAL: OFF" in (JS_DIR / "views" / "risk.js").read_text(encoding="utf-8")
 
 
+def test_header_stop_calls_the_kill_endpoint_and_does_not_invent_success():
+    """The header stop must hit the real kill route and admit a failed request."""
+    main_src = (JS_DIR / "main.js").read_text(encoding="utf-8")
+    assert 'api.post("/api/demo/kill"' in main_src
+    assert "Stop was not confirmed" in main_src
+    assert "does not close an open broker position" in main_src
+    assert "Request recorded" not in main_src
+
+
 def test_live_trading_is_unmistakably_locked():
     """Live trading must remain structurally locked and calm."""
     gov_src = (JS_DIR / "views" / "governance.js").read_text(encoding="utf-8")

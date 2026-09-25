@@ -35,11 +35,11 @@
 ---
 
 ### 3. Market Data Stale / Age Exceeded
-- **Symptom:** Pre-trade gate fails with `market_data_fresh: tick age X.XXs > 5.00s`.
-- **Root Cause:** Market is closed (weekend / holiday / daily rollover 21:00–22:00 UTC) or system clock is out of sync.
+- **Symptom:** Pre-trade gate fails with `market_data_fresh: tick age X.XXs > 60s` (or a tighter limit if the registered policy lowered it).
+- **Root Cause:** The last quote is older than the freshness limit, the market is closed, or the clock check failed. The default limit is 60 seconds, not 5.
 - **Resolution:**
-  1. Verify gold trading hours (London–New York overlap: Monday 08:00 UTC to Friday 16:00 UTC).
-  2. Ensure operating system clock is synchronized via NTP.
+  1. Gold can be quoted outside the registered policy window. Monday–Friday 08:00–16:00 UTC is the diagnostic policy's allowed session, not the market's open hours.
+  2. Ensure the operating system clock is synchronized via NTP.
 
 ---
 

@@ -396,7 +396,7 @@ export async function renderQuality(root) {
   ]); }
   catch (e) { host.appendChild(errorBox({ what: "data quality could not be loaded", next: "Retry.", raw: e.message })); return; }
 
-  activity.textContent = `${audit?.count ?? 0} source(s) — fail-closed, 12 checks — context ${getContext().symbol}`;
+  activity.textContent = `${audit?.count ?? 0} registered source(s) — missing data stays blocked — context ${getContext().symbol}`;
 
   if (completeness && completeness.independent_recomputation) {
     const ir = completeness.independent_recomputation;
@@ -440,7 +440,7 @@ export async function renderQuality(root) {
   }
 
   host.appendChild(h("div", { class: "grid-2" },
-    card({ title: `Source audit — dense, provenance explicit — context ${ctx.symbol}`, sub: `${audit?.count ?? 0} source(s) — fail-closed, 12 checks`, icon: "database", body:
+    card({ title: `Registered sources — ${ctx.symbol}`, sub: `${audit?.count ?? 0} source(s). This list is not a quality-check count.`, icon: "database", body:
       table({
         columns: [
           { key: "instrument", label: "Source", render: (s) => `${s.instrument} ${s.timeframe}` },
