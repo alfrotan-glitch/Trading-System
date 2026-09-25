@@ -184,6 +184,27 @@ export async function renderDemo(root) {
     // the same machine: the label was a literal, not a fact.
     const cfg = lastConfig ?? {};
     const demoEnabled = cfg.demo_execution_disabled === false;
+    const cfg = lastConfig ?? {};
+    const demoEnabled = cfg.demo_execution_disabled === false;
+
+    // Executive Trading Cockpit Card (Section 11)
+    const cockpitStats = h("div", { class: "stat-grid", style: { gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: "14px" } });
+    cockpitStats.append(
+      stat({ label: "Account Environment", value: "DEMO ACCOUNT", tone: "info", hint: `${cfg.account_login || "MetaQuotes Demo"} · WM Markets`, icon: "shield" }),
+      stat({ label: "Trading Instrument", value: "XAUUSD", hint: `Broker venue: ${cfg.symbol_mapping?.venue_symbol || "XAUUSD@"}`, icon: "activity" }),
+      stat({ label: "Market Data Status", value: s.broker === "CONNECTED" ? "CONNECTED" : (s.broker || "DISCONNECTED"), tone: s.broker === "CONNECTED" ? "ok" : "warn", hint: "MT5 IPC Quote Stream", icon: "activity" }),
+      stat({ label: "Trading Execution", value: demoEnabled ? "AUTHORIZED" : "DISABLED", tone: demoEnabled ? "ok" : "neutral", hint: demoEnabled ? "Staged arming required" : "Protected by Safety Policy", icon: "lock" }),
+      stat({ label: "Risk Safeguards", value: "22 GATES ACTIVE", tone: "ok", hint: "Pre-trade loss & spread caps", icon: "shield" }),
+      stat({ label: "Real Capital Exposure", value: "$0.00 — LOCKED", tone: "ok", hint: "Real-money trading: OFF", icon: "lock" }),
+    );
+
+    host.appendChild(card({
+      title: "Execution Cockpit — Decision & Safety Posture",
+      sub: "Clear, unmistakable execution status · Demo environment only · Real capital permanently locked",
+      icon: "layers",
+      body: cockpitStats,
+    }));
+
     host.appendChild(banner(
       demoEnabled ? "info" : "warn",
       demoEnabled

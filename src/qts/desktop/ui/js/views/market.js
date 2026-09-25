@@ -400,21 +400,40 @@ export async function renderQuality(root) {
   if (completeness && completeness.independent_recomputation) {
     const ir = completeness.independent_recomputation;
     host.appendChild(card({
-      title: "XAUUSD 15m Dataset Completeness Disposition — honest gate, zero interpolation",
-      sub: `Quality: ${ir.quality_gate} · Threshold: ≤2.00% · Status: ${completeness.recovery_outcome || "RECOVERABLE ONLY BY NEW ACQUISITION"}`,
+      title: "Historical Data Quality & Integrity",
+      sub: "Authoritative data quality disposition · Zero synthetic interpolation · Research gates fail closed",
       icon: "shield",
+      actions: [h("span", { class: `badge ${ir.quality_gate === "PASS" ? "ok" : "warn"} lg` }, ir.quality_gate === "PASS" ? "QUALITY: READY" : "QUALITY: NOT READY")],
       body: h("div", { class: "stack" },
         h("div", { class: "stat-grid" },
-          stat({ label: "Expected active span", value: fmtInt(ir.active_span_expected_intervals), hint: "Nominal intervals minus recognized weekend closures" }),
-          stat({ label: "Observed rows", value: fmtInt(ir.source_rows), hint: "Actual historical bars present in dataset" }),
-          stat({ label: "Unexpected missing", value: `${fmtInt(ir.unexpected_missing_intervals)} (${ir.active_span_missing_pct}%)`, tone: ir.quality_gate === "PASS" ? "ok" : "err", hint: `Exceeds 2.00% threshold — ${ir.unexpected_gap_events} gap events` }),
-          stat({ label: "Recognized closures", value: `${ir.recognized_closure_events} (${fmtInt(ir.recognized_closure_intervals)})`, hint: "Weekend closures excluded from missing fraction" }),
+          stat({ label: "Historical Bars Available", value: fmtInt(ir.source_rows), hint: "Actual observed rows in dataset", icon: "database" }),
+          stat({ label: "Expected Intervals Missing", value: fmtInt(ir.unexpected_missing_intervals), tone: ir.quality_gate === "PASS" ? "ok" : "err", hint: "Unaccounted data gaps", icon: "alert" }),
+          stat({ label: "Data Incompleteness", value: `${ir.active_span_missing_pct}%`, tone: ir.quality_gate === "PASS" ? "ok" : "err", hint: "Quality threshold: ≤ 2.00%", icon: "scale" }),
+          stat({ label: "Data Integrity Posture", value: "ZERO SYNTHESIS", tone: "ok", hint: "No bars interpolated or fabricated", icon: "shield" }),
         ),
         banner(
           ir.quality_gate === "PASS" ? "ok" : "warn",
-          `Status: ${completeness.recovery_outcome} — Research Blocked`,
-          `This dataset has ${ir.active_span_missing_pct}% unexpected missing bars (threshold is 2.00%). Missing data is never silently interpolated, synthesized, or forward-filled. Required action: Authoritative MT5 tick acquisition required before this history can feed fresh research.`,
-          "alert"
+          ir.quality_gate === "PASS" ? "Dataset Quality Gate Passed" : "Historical Data Incomplete — Research Blocked",
+          ir.quality_gate === "PASS"
+            ? "Dataset meets the required completeness threshold (< 2.00% missing). Valid for statistical research."
+            : `Quality check: Not ready. ${fmtInt(ir.source_rows)} bars available; ${fmtInt(ir.unexpected_missing_intervals)} expected intervals missing (${ir.active_span_missing_pct}% incomplete). Required action: Acquire a new broker dataset from MT5. No data was fabricated or interpolated.`,
+          ir.quality_gate === "PASS" ? "check" : "alert",
+        ),
+        h("details", null,
+          h("summary", null, "Detailed accounting & gap disposition (Level 3/4 evidence)"),
+          h("div", { class: "stack", style: { marginTop: "10px" } },
+            kv([
+              ["Active span expected", fmtInt(ir.active_span_expected_intervals)],
+              ["Observed source rows", fmtInt(ir.source_rows)],
+              ["Missing intervals count", fmtInt(ir.unexpected_missing_intervals)],
+              ["Missing percentage", `${ir.active_span_missing_pct}% (threshold: 2.00%)`],
+              ["Unexpected gap events", fmtInt(ir.unexpected_gap_events)],
+              ["Recognized weekend closures", `${ir.recognized_closure_events} events (${fmtInt(ir.recognized_closure_intervals)} intervals)`],
+              ["Gate disposition", ir.quality_gate],
+              ["Recovery outcome", completeness.recovery_outcome || "RECOVERABLE ONLY BY NEW ACQUISITION"],
+            ]),
+          ),
+        ),
         ),
       ),
     }));

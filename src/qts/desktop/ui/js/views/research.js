@@ -298,7 +298,36 @@ function scorecard(strategyId, v) {
     h("div", null, h("div", { class: "name" }, name), detail ? h("div", { class: "detail" }, detail) : null));
 
   const ds = ev.dataset ?? {};
+
+  // Executive Opportunity Classification (Section 10)
+  const isPass = verdict === "PASS";
+  const oppClassification = isPass ? "CANDIDATE_READY" : "BLOCKED_OR_REJECTED";
+  const oppBadge = isPass
+    ? h("span", { class: "badge ok lg" }, "VALIDATED CANDIDATE")
+    : h("span", { class: "badge err lg" }, "BLOCKED / REJECTED");
+
+  const oppSummary = card({
+    title: "Opportunity Evaluation — Plain Language Disposition",
+    sub: `Strategy: ${strategyId} · Scientific status: ${isPass ? "SURVIVED GATES" : "CONTAINED IN RESEARCH"}`,
+    icon: "shield",
+    actions: [oppBadge],
+    body: h("div", { class: "stack" },
+      h("div", { class: "stat-grid" },
+        stat({ label: "Opportunity Status", value: isPass ? "VALIDATED CANDIDATE" : "NO VALIDATED EDGE", tone: isPass ? "ok" : "err", hint: isPass ? "Passed research gates" : "Contained in research", icon: "flask" }),
+        stat({ label: "Evaluation Phase", value: isPass ? "READY FOR DEMO" : "RESEARCH BLOCKED", tone: isPass ? "ok" : "warn", hint: "Fail-closed threshold enforced", icon: "branch" }),
+        stat({ label: "Evidence Survival", value: edge.passed ? "PASSED" : "FAILED", tone: edge.passed ? "ok" : "err", hint: "Multi-testing corrected", icon: "activity" }),
+        stat({ label: "Data Quality Gate", value: ds.quality_passed ? "PASSED" : "NOT READY", tone: ds.quality_passed ? "ok" : "warn", hint: "Requires complete data", icon: "database" }),
+      ),
+      h("p", { class: "text-dim small", style: { marginTop: "6px" } },
+        isPass
+          ? "This candidate strategy survived out-of-sample stress testing, Deflated Sharpe Ratio (DSR), and Probability of Backtest Overfitting (PBO). It is scientifically eligible to be registered for forward demo observation. Real-money live trading remains structurally locked."
+          : "This strategy does not have certified edge survival. In trading research, rejecting weak or overfitted candidates is success — it prevents real capital risk. The strategy is safely contained in research.",
+      ),
+    ),
+  });
+
   return h("div", { class: "stack" },
+    oppSummary,
     banner(verdict === "PASS" ? "ok" : "err", `VERDICT: ${verdict === "PASS" ? "EVIDENCE SUPPORTS — next gates apply" : "BLOCK — evidence does not support promotion"}`, verdict === "PASS" ? `One gate; forward observation, demo and governance still apply. Context ${getContext().symbol}.` : "Strategy stays in research. Weak evidence discarded before it can cost money.", verdict === "PASS" ? "check" : "shield"),
     card({ title: `Multiple-testing corrected edge — strategy: ${strategyId} — context ${getContext().symbol}`, sub: `trials N=${ev.trial_ledger?.trial_count ?? "?"}`, icon: "pulse", actions: [chips], body:
       h("div", { class: "check-grid" },

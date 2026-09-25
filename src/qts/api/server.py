@@ -1708,7 +1708,7 @@ def _demo_session(symbol: str | None = None) -> Any:
     )
     registry = load_registry()
     entry, _reasons = resolve_entry(registry)
-    setattr(session, "_entry", entry)
+    session._entry = entry  # type: ignore[attr-defined]
     return session
 
 

@@ -1,97 +1,141 @@
-/* QTS TOKENS — neon operator workstation
-   Deep-space surfaces with luminous ambient depth, a bright cyan accent and
-   a violet secondary. Glow is earned attention: accents, active tabs,
-   running states, popovers. Structure still carries truth — semantic states
-   keep redundant (non-color) encodings; one scale for spacing, type, radii. */
+/* QTS DESIGN SYSTEM TOKENS — Modern Professional Trading Workstation
+   Calm, restrained, institutional dark surfaces with high contrast readability.
+   Structure and semantic clarity carry meaning — no decorative gaming glow.
+   Semantic colors strictly convey status: Green (Ready/Pass), Amber (Attention/Pending),
+   Red (Blocked/Unsafe/Locked), Neutral (Informational/Inactive). */
 
 :root {
-  /* surfaces — layered deep space */
-  --bg-0: #04070f;
-  --bg-1: #0a0f1f;
-  --bg-2: #0e1528;
-  --bg-3: #131c34;
-  --bg-inset: #060a16;
+  /* Surfaces — layered institutional slate */
+  --bg-0: #0a0e17;       /* Base workspace canvas */
+  --bg-1: #0f172a;       /* Card surfaces, sidebar */
+  --bg-2: #162036;       /* Elevated cards, stat chips, table headers */
+  --bg-3: #1e2942;       /* Hover states, active tabs, subtle highlights */
+  --bg-inset: #0b1120;   /* Inputs, code blocks, raw data areas */
 
-  /* ambient light washes (cyan corner / violet corner) */
-  --amb-cyan: rgba(34, 211, 238, 0.08);
-  --amb-violet: rgba(167, 139, 250, 0.07);
+  /* Lines & Borders — subtle, crisp, structured */
+  --line: #1e293b;
+  --line-strong: #334155;
+  --line-soft: #141d2e;
 
-  /* lines — single hierarchy, cool-tinted */
-  --line: #1a2440;
-  --line-strong: #2b3c64;
-  --line-soft: #121a2e;
+  /* Typography — high-contrast readability */
+  --text-1: #f8fafc;     /* Primary headings, key metrics, active states */
+  --text-2: #94a3b8;     /* Body text, descriptions, table contents */
+  --text-3: #64748b;     /* Captions, timestamps, secondary hints */
+  --text-inverse: #020617;
 
-  /* text — 3 levels */
-  --text-1: #e8f2ff;
-  --text-2: #9cb2d7;
-  --text-3: #64769c;
-  --text-inverse: #04101c;
+  /* Primary Product Accent — calm, modern cyan / sky blue */
+  --accent: #38bdf8;
+  --accent-strong: #0284c7;
+  --accent-soft: rgba(56, 189, 248, 0.10);
+  --accent-text: #7dd3fc;
+  --accent-2: #818cf8;
+  --accent-2-soft: rgba(129, 140, 248, 0.10);
+  --accent-2-text: #a5b4fc;
 
-  /* accent — neon cyan, violet secondary */
-  --accent: #22d3ee;
-  --accent-strong: #06b6d4;
-  --accent-soft: rgba(34, 211, 238, 0.14);
-  --accent-text: #7ceaff;
-  --accent-2: #a78bfa;
-  --accent-2-soft: rgba(167, 139, 250, 0.14);
-  --accent-2-text: #cbb9ff;
+  /* Gradients — restrained, reserved for primary action focus */
+  --grad-accent: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+  --grad-text: linear-gradient(135deg, #f8fafc 40%, #7dd3fc 100%);
+  --grad-line: linear-gradient(90deg, #0284c7, #818cf8);
 
-  /* gradients — reserved: primary actions, brand, active tab runs */
-  --grad-accent: linear-gradient(135deg, #0891c4 0%, #22d3ee 62%, #2fd893 135%);
-  --grad-text: linear-gradient(115deg, #eaf4ff 25%, #7ceaff 62%, #a78bfa 100%);
-  --grad-line: linear-gradient(90deg, #22d3ee, #a78bfa);
+  /* Semantic Status Colors (Redundant non-color glyphs remain mandatory) */
+  --ok: #10b981;
+  --ok-bg: rgba(16, 185, 129, 0.12);
+  --ok-text: #6ee7b7;
+  --ok-line: rgba(16, 185, 129, 0.35);
 
-  /* semantic — tint/border/text trios, never color alone */
-  --ok: #2fd893;      --ok-bg: rgba(47, 216, 147, 0.12);      --ok-text: #7cecc0;      --ok-line: rgba(47, 216, 147, 0.45);
-  --run: #22d3ee;     --run-bg: rgba(34, 211, 238, 0.12);     --run-text: #7ceaff;     --run-line: rgba(34, 211, 238, 0.45);
-  --info: #38bdf8;    --info-bg: rgba(56, 189, 248, 0.10);    --info-text: #83d4ff;    --info-line: rgba(56, 189, 248, 0.40);
-  --warn: #f0b429;    --warn-bg: rgba(240, 180, 41, 0.12);    --warn-text: #ffd479;    --warn-line: rgba(240, 180, 41, 0.45);
-  --err: #ff5470;     --err-bg: rgba(255, 84, 112, 0.12);     --err-text: #ff97aa;     --err-line: rgba(255, 84, 112, 0.50);
-  --neutral: #8b98ac; --neutral-bg: rgba(139, 152, 172, 0.10);--neutral-text: #aab6c8; --neutral-line: rgba(139, 152, 172, 0.40);
-  --research: #a78bfa;--research-bg: rgba(167, 139, 250, 0.13);--research-text: #cbb9ff;--research-line: rgba(167, 139, 250, 0.45);
-  --locked: #ff5470;  --locked-bg: rgba(255, 84, 112, 0.10);  --locked-text: #ff97aa;  --locked-line: rgba(255, 84, 112, 0.55);
+  --run: #06b6d4;
+  --run-bg: rgba(6, 182, 212, 0.12);
+  --run-text: #67e8f9;
+  --run-line: rgba(6, 182, 212, 0.35);
 
-  /* typography — Inter UI, JetBrains Mono numbers */
-  --font-ui: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  --info: #38bdf8;
+  --info-bg: rgba(56, 189, 248, 0.10);
+  --info-text: #7dd3fc;
+  --info-line: rgba(56, 189, 248, 0.35);
+
+  --warn: #f59e0b;
+  --warn-bg: rgba(245, 158, 11, 0.12);
+  --warn-text: #fcd34d;
+  --warn-line: rgba(245, 158, 11, 0.35);
+
+  --err: #f43f5e;
+  --err-bg: rgba(244, 63, 94, 0.12);
+  --err-text: #fda4af;
+  --err-line: rgba(244, 63, 94, 0.40);
+
+  --neutral: #64748b;
+  --neutral-bg: rgba(100, 116, 139, 0.12);
+  --neutral-text: #94a3b8;
+  --neutral-line: rgba(100, 116, 139, 0.30);
+
+  --research: #8b5cf6;
+  --research-bg: rgba(139, 92, 246, 0.12);
+  --research-text: #c4b5fd;
+  --research-line: rgba(139, 92, 246, 0.35);
+
+  --locked: #f43f5e;
+  --locked-bg: rgba(244, 63, 94, 0.10);
+  --locked-text: #fda4af;
+  --locked-line: rgba(244, 63, 94, 0.45);
+
+  /* Typography — Inter UI, JetBrains Mono numbers */
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
 
   --fs-11: 0.6875rem;
   --fs-12: 0.75rem;
   --fs-13: 0.8125rem;
   --fs-14: 0.875rem;
   --fs-16: 1rem;
+  --fs-18: 1.125rem;
   --fs-20: 1.25rem;
+  --fs-24: 1.5rem;
   --fs-28: 1.75rem;
 
-  /* spacing — 4px base */
-  --sp-1: 0.25rem;  --sp-2: 0.5rem;  --sp-3: 0.75rem; --sp-4: 1rem;
-  --sp-5: 1.25rem;  --sp-6: 1.5rem;  --sp-8: 2rem;    --sp-10: 2.5rem;
+  /* Spacing Scale — 4px modular grid */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --sp-10: 2.5rem;
 
-  /* radii — modern, soft corners */
-  --r-sm: 6px; --r-md: 8px; --r-lg: 12px;
+  /* Radii — clean, modern, slightly rounded */
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-xl: 12px;
 
-  /* elevation & glow — shadows carry depth, glows carry meaning */
-  --shadow-1: 0 1px 2px rgba(2, 5, 12, 0.55);
-  --shadow-2: 0 10px 32px rgba(2, 5, 12, 0.65);
-  --shadow-3: 0 20px 64px rgba(2, 5, 12, 0.75);
-  --glow-accent: 0 0 16px rgba(34, 211, 238, 0.35);
-  --glow-accent-soft: 0 0 36px rgba(34, 211, 238, 0.16);
+  /* Elevation & Shadows — clean subtle depth */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.40);
+  --shadow-3: 0 10px 28px rgba(0, 0, 0, 0.50);
+  --glow-accent: 0 0 0 1px var(--accent-strong);
+  --glow-accent-soft: 0 0 0 1px var(--line-strong);
 
-  /* layout — operator workspace */
-  --header-h: 56px;
-  --sidebar-w: 224px;
-  --sidebar-w-collapsed: 52px;
+  /* Layout geometry */
+  --header-h: 52px;
+  --sidebar-w: 230px;
+  --sidebar-w-collapsed: 54px;
   --content-max: 1440px;
 
-  /* motion — meaningful state changes only */
+  /* Transitions — fast and purposeful */
   --t-fast: 120ms ease;
-  --t-med: 180ms cubic-bezier(0.2, 0.6, 0.2, 1);
+  --t-med: 180ms ease;
 
-  /* status glyphs — redundant beyond color */
-  --dot-ok: "●"; --dot-warn: "▲"; --dot-err: "■"; --dot-neutral: "○";
+  /* Status glyphs */
+  --dot-ok: "●";
+  --dot-warn: "▲";
+  --dot-err: "■";
+  --dot-neutral: "○";
 }
 
-:focus-visible { outline-color: var(--accent); }
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

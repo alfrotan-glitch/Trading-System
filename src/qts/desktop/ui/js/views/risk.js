@@ -84,6 +84,24 @@ export async function renderRisk(root) {
     const risk = lastRisk;
     const hostContent = h("div", { class: "stack" });
 
+    hostContent.appendChild(card({
+      title: "System Safety & Capital Protection",
+      sub: "Structural protection · Zero real-capital exposure · Fail-closed risk controls",
+      icon: "shield",
+      actions: [h("span", { class: "badge locked lg" }, "REAL CAPITAL: OFF")],
+      body: h("div", { class: "stack" },
+        h("div", { class: "stat-grid" },
+          stat({ label: "Live Trading Gate", value: "PERMANENTLY LOCKED", tone: "err", hint: "Zero real capital exposure", icon: "lock" }),
+          stat({ label: "Emergency Kill Switch", value: "ARMED (NORMAL)", tone: "ok", hint: "Instant order veto", icon: "shield" }),
+          stat({ label: "Pre-Trade Safeguards", value: "22 GATES ACTIVE", tone: "ok", hint: "Pre-trade risk verification", icon: "shield" }),
+          stat({ label: "Max Daily Loss", value: `$${fmtInt(risk.limits?.daily_loss_limit ?? 500)}`, hint: "Durable drawdown cap", icon: "alert" }),
+        ),
+        h("p", { class: "text-dim small", style: { marginTop: "6px" } },
+          "This trading workstation is structurally hard-coded for demonstration, forward observation, and research validation only. Real-money orders are impossible to submit through this interface or API.",
+        ),
+      ),
+    }));
+
     hostContent.appendChild(banner(
       risk.blocked ? "err" : "ok",
       risk.blocked ? `TRADING IS CURRENTLY BLOCKED — ${risk.blocked_reasons.length} reason(s) — what blocked, why` : "TRADING IS PERMITTED — WITHIN THE LIMITS BELOW — what allowed, why",

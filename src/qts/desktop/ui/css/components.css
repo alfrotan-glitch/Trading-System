@@ -4,27 +4,23 @@
    color alone (dot shapes + borders + text stay mandatory). */
 
 .card {
-  background: linear-gradient(180deg, var(--bg-1), #0b1124 140%);
+  background: var(--bg-1);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   overflow: hidden;
   box-shadow: var(--shadow-1);
   transition: border-color var(--t-fast), box-shadow var(--t-fast);
 }
-/* signature neon-glass edge: gradient fan across the border on hover */
 .card:hover {
-  border-color: transparent;
-  background:
-    linear-gradient(180deg, #0b1128, #0a1022 140%) padding-box,
-    linear-gradient(135deg, rgba(34, 211, 238, 0.4), rgba(167, 139, 250, 0.25) 55%, rgba(34, 211, 238, 0.06)) border-box;
-  box-shadow: var(--shadow-1), 0 0 24px rgba(34, 211, 238, 0.07);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-2);
 }
 .card + .card { margin-top: 12px; }
 .card-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 10px 14px 8px;
   border-bottom: 1px solid var(--line-soft);
-  background: rgba(34, 211, 238, 0.025);
+  background: rgba(255, 255, 255, 0.015);
   min-height: 40px;
 }
 .card-head h3 { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; letter-spacing: -0.005em; }
@@ -44,14 +40,14 @@
 /* stat */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
 .stat {
-  background: linear-gradient(180deg, var(--bg-2), #0c1327 150%);
+  background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
-  padding: 10px 12px;
+  padding: 10px 14px;
   min-width: 0;
-  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  transition: border-color var(--t-fast);
 }
-.stat:hover { border-color: var(--line-strong); box-shadow: 0 0 16px rgba(56, 189, 248, 0.08); }
+.stat:hover { border-color: var(--line-strong); }
 .stat .stat-label {
   display: flex; align-items: center; gap: 6px;
   font-size: 10px; font-weight: 600;
