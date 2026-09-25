@@ -684,6 +684,8 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         click.echo(f"running mode={mode} strategy={strategy} version={data_version} (micro, minimal quantity)")
         # Setup broker with mock that simulates micro fill (or real if available)
         from qts.adapters.market_data import MarketDataProvider as _MDP2
+        from qts.adapters.matching import MatchingConfig as _MC
+        from qts.adapters.matching import MatchingEngine as _ME
         from qts.adapters.mt5_adapter import MT5Adapter as _MT5A
         from qts.domain.value_objects import Instrument as _Instr
         from qts.domain.value_objects import OrderIntent as _OI2
@@ -692,8 +694,6 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         from qts.execution.engine import ExecutionEngine as _EE
         from qts.execution.engine import OrderManager as _OM
         from qts.execution.idempotency import IdempotencyStore as _IS
-        from qts.execution.matching import MatchingConfig as _MC
-        from qts.execution.matching import MatchingEngine as _ME
         from qts.observability.audit import SqliteAuditLog as _AL2
         from qts.portfolio.portfolio import Portfolio as _PF
         from qts.risk.engine import RiskEngine as _RE2
@@ -896,10 +896,10 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         # Use realistic paper broker with same validation as MT5
         from decimal import Decimal
 
+        from qts.adapters.matching import MatchingConfig, MatchingEngine
         from qts.adapters.paper_adapter import RealisticPaperBroker
         from qts.execution.engine import ExecutionEngine, OrderManager
         from qts.execution.idempotency import IdempotencyStore
-        from qts.execution.matching import MatchingConfig, MatchingEngine
         from qts.observability.audit import SqliteAuditLog
         from qts.portfolio.portfolio import Portfolio
         from qts.research.strategy import SmaBreakoutStrategy, signal_to_intent
@@ -1002,10 +1002,10 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         timeframe = manifest.timeframe if manifest else "1H"
         from decimal import Decimal
 
+        from qts.adapters.matching import MatchingConfig, MatchingEngine
         from qts.adapters.shadow_adapter import ShadowBroker
         from qts.execution.engine import ExecutionEngine, OrderManager
         from qts.execution.idempotency import IdempotencyStore
-        from qts.execution.matching import MatchingConfig, MatchingEngine
         from qts.observability.audit import SqliteAuditLog
         from qts.portfolio.portfolio import Portfolio
         from qts.research.strategy import SmaBreakoutStrategy, signal_to_intent

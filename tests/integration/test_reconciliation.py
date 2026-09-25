@@ -4,10 +4,10 @@ from decimal import Decimal
 from pathlib import Path
 
 from qts.adapters.base import BrokerAdapter
+from qts.adapters.matching import MatchingEngine
 from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.domain.value_objects import Account, Bar, Instrument, OrderIntent, Position, Side
 from qts.execution.engine import ExecutionEngine, OrderManager
-from qts.execution.matching import MatchingEngine
 from qts.portfolio.portfolio import Portfolio
 from qts.risk.engine import RiskEngine, RiskLimits
 

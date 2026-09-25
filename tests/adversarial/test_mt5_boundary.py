@@ -14,12 +14,12 @@ import pytest
 
 from qts.adapters.base import BrokerAdapter
 from qts.adapters.market_data import MarketDataError, MarketDataProvider
+from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.adapters.mt5_adapter import MT5Adapter, SymbolSpec
 from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.domain.value_objects import Bar, Instrument, OrderIntent, OrderState, OrderType, Position, Side, Tick
 from qts.execution.engine import ExecutionEngine, OrderManager
 from qts.execution.idempotency import IdempotencyStore
-from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.observability.audit import InMemoryAuditLog
 from qts.portfolio.portfolio import Portfolio
 from qts.risk.engine import RiskEngine, RiskLimits

@@ -1,8 +1,8 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.domain.value_objects import Bar, Instrument, OrderIntent, Side, Tick
-from qts.execution.matching import MatchingConfig, MatchingEngine
 
 
 def _bar(close=Decimal("2000")):

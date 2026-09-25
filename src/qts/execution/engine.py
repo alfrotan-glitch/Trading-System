@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from qts.adapters.base import BrokerAdapter, ReconcileReport
+from qts.adapters.matching import MatchingEngine
 from qts.db import connect as db_connect
 from qts.domain.events import DomainEvent, EventType
 from qts.domain.value_objects import (
@@ -25,7 +26,6 @@ from qts.domain.value_objects import (
     uuid7,
 )
 from qts.execution.idempotency import IdempotencyStore
-from qts.execution.matching import MatchingEngine
 from qts.observability.audit import AuditLog
 from qts.portfolio.portfolio import Portfolio
 from qts.risk.engine import RiskContext, RiskEngine

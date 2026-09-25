@@ -29,12 +29,12 @@ from pathlib import Path
 
 import pytest
 
+from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.domain.events import DomainEvent, EventType
 from qts.domain.value_objects import Instrument, OrderIntent, OrderType, Position, Side
 from qts.execution.engine import ExecutionEngine, OrderManager, OrderState
 from qts.execution.idempotency import IdempotencyStore
-from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.observability.audit import InMemoryAuditLog
 from qts.portfolio.portfolio import Portfolio
 from qts.risk.engine import RiskEngine, RiskLimits

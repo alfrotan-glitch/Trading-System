@@ -8,13 +8,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.data.store import SqliteParquetDataStore
 from qts.data.synthetic import generate_gbm_bars, generate_trending_bars
 from qts.domain.value_objects import Account, Bar, Instrument, OrderIntent, Position, Side
 from qts.execution.engine import ExecutionEngine, OrderManager
 from qts.execution.idempotency import IdempotencyStore
-from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.portfolio.portfolio import Portfolio
 from qts.risk.engine import RiskContext, RiskEngine, RiskLimits
 from qts.validation.metrics import deflated_sharpe_ratio, probabilistic_sharpe_ratio
@@ -145,7 +145,7 @@ def test_leakage_fixture_only_profitable_with_lookahead():
         # Cheating execution at intrabar extremes (not allowed): would fill at 1900/2100
         # Our matching at bar close would give price != high/low, but cheating would pick them
         # Prove that next-bar price is 2000, not 1900/2100
-        from qts.execution.matching import MatchingEngine as ME
+        from qts.adapters.matching import MatchingEngine as ME
 
         me = ME(MatchingConfig(spread_bps=0, slippage_bps=0, commission_per_lot=0))
         # Correct next-bar exec_bar at next open (bar1.open =2000)

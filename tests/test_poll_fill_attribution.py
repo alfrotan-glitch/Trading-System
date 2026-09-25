@@ -26,11 +26,11 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock
 
+from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.adapters.mt5_adapter import MT5Adapter
 from qts.domain.value_objects import Instrument, OrderIntent, OrderState, OrderType, Side
 from qts.execution.engine import ExecutionEngine, OrderManager
 from qts.execution.idempotency import IdempotencyStore
-from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.observability.audit import InMemoryAuditLog
 from qts.portfolio.portfolio import Portfolio
 from qts.risk.engine import RiskEngine, RiskLimits

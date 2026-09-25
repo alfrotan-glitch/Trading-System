@@ -331,19 +331,25 @@ def pytest_addoption(parser):
         "--run-integration",
         action="store_true",
         default=False,
-        help="Explicitly request integration runs. Integration tests under tests/integration "
-        "run in the default suite as well; this flag makes the declared CI invocation "
-        "`pytest tests/integration --run-integration` valid and opts IN to any tests marked "
-        "`@pytest.mark.integration` (which are skipped when the flag is absent).",
+        help="Opt in to tests explicitly marked integration. Tests under tests/integration "
+        "run in the default suite. This flag keeps `pytest tests/integration --run-integration` "
+        "valid and also runs any test marked `@pytest.mark.integration`.",
     )
 
 
 def pytest_collection_modifyitems(config, items):
+    """Skip only an explicit ``@pytest.mark.integration``.
+
+    Pytest 9 puts every parent directory name into ``item.keywords``. Matching
+    the word ``integration`` therefore skipped the entire ``tests/integration``
+    tree in the default suite (119 tests) even though those files are not
+    marked. That was an accidental coverage loss, not an intentional skip.
+    """
     if config.getoption("--run-integration"):
         return
     skip_integration = pytest.mark.skip(reason="needs --run-integration")
     for item in items:
-        if "integration" in item.keywords:
+        if item.get_closest_marker("integration") is not None:
             item.add_marker(skip_integration)
 
 

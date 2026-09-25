@@ -173,11 +173,11 @@ def test_reconciliation():
     """
     from decimal import Decimal
 
+    from qts.adapters.matching import MatchingConfig, MatchingEngine
     from qts.adapters.paper_adapter import RealisticPaperBroker
     from qts.domain.value_objects import Instrument, Position
     from qts.execution.engine import ExecutionEngine, OrderManager
     from qts.execution.idempotency import IdempotencyStore
-    from qts.execution.matching import MatchingConfig, MatchingEngine
     from qts.observability.audit import InMemoryAuditLog
     from qts.portfolio.portfolio import Portfolio
     from qts.risk.engine import RiskEngine, RiskLimits

@@ -615,9 +615,9 @@ class DemoSession:
         """The wired execution engine (risk + idempotency + reconcile)."""
         if self._engine is not None:
             return self._engine
+        from qts.adapters.matching import MatchingEngine
         from qts.execution.engine import ExecutionEngine, OrderManager
         from qts.execution.idempotency import IdempotencyStore
-        from qts.execution.matching import MatchingEngine
         from qts.observability.audit import SqliteAuditLog
         from qts.portfolio.portfolio import Portfolio
         from qts.risk.engine import RiskEngine, RiskLimits

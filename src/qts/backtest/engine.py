@@ -25,12 +25,12 @@ from typing import Any
 
 import numpy as np
 
+from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.adapters.paper_adapter import RealisticPaperBroker
 from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
 from qts.execution.engine import ExecutionEngine, OrderManager
 from qts.execution.idempotency import IdempotencyStore
-from qts.execution.matching import MatchingConfig, MatchingEngine
 from qts.observability.audit import AuditLog, InMemoryAuditLog
 from qts.portfolio.portfolio import Portfolio
 from qts.research.strategy import SmaBreakoutStrategy, signal_to_intent
