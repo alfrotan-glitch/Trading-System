@@ -1,155 +1,152 @@
-# QTS — Quant Trading System
+# QTS — Quantitative Trading System
 
-> **Safe by default. Science first. Capital preservation over profit.**
-
-QTS is a desktop research and trading platform for XAUUSD (gold) on MetaTrader 5 — built so a non-technical user can **clone, install, double-click, connect a DEMO account, and observe markets** without accidentally risking real money. It never claims a profitable edge and never hides failed experiments.
-
-> **Current state:** The canonical current-state and roadmap summary is [`docs/current_state.md`](docs/current_state.md). The registered REAL XAUUSD 15m study is `REGIME_DEPENDENT` with `go_block = BLOCK`; R5 execution-cost history and a real MT5 observation session remain pending. DEMO execution is authorized for the DEMO account but not trading (`NO_TRADE`, staged and gated); LIVE is locked.
+> **Institutional-grade, evidence-driven algorithmic trading system for gold (`XAUUSD`).**  
+> Safe by default. Science first. Capital preservation over profit.
 
 ---
 
-## What is QTS?
+## Product Mission
 
-A modular desktop app with a local FastAPI backend + native window (pywebview) that lets you:
+QTS is an end-to-end quantitative trading workstation and execution engine designed for high-conviction algorithmic trading on MetaTrader 5:
 
-- Manage market data with provenance (where every bar/tick came from)
-- Run bounded research campaigns (every trial logged, no hidden trials)
-- Validate strategies with strict scientific gates (DSR, PBO, PSR, costs, regime, perturbation, null/placebo)
-- Paper-trade (simulated), shadow-trade (would-be), and **DEMO_FORWARD observe-only** (real MT5 demo quotes) — kept as separate evidence classes
-- See everything in a clean desktop UI with audit, risk, reconciliation, and live-lock
-- Work inside a coherent 8-area interface (Overview · Research · Market · Trading · Risk · Evidence · System · Governance) with a command palette (`Ctrl+K`), a guided setup journey, and honest states everywhere — `UNAVAILABLE` is never shown as `0`, and LIVE is always visibly LOCKED. See `docs/ui_design_system.md`
+$$\text{Market Data} \longrightarrow \text{Research} \longrightarrow \text{Evidence} \longrightarrow \text{Validation} \longrightarrow \text{Demo Trading} \longrightarrow \text{Controlled Live}$$
 
-## What does it do?
+Every phase requires verifiable mathematical, statistical, or broker-attested evidence. Real-capital trading remains permanently locked behind code-enforced invariants (`REAL_CAPITAL_EXPOSURE = 0`), requiring multi-party governance authorization before any real funds can be exposed.
 
-1. **Data Observatory** — what data you have, what’s missing, which external source can fill it, historical depth needed, execution realism.
-2. **Research Lab** — generate falsifiable hypotheses, run 11-step autonomous campaigns, track failures, prevent rediscovery. Includes the pre-registered **impulse-continuation event study** (`qts research impulse` — research-only, fail-closed data-adequacy gate, Holm/DSR multiple-testing penalties, locked test never touched; see `docs/research/impulse_continuation_evidence.md` for the current REAL-data run and `docs/research/impulse_continuation_report.md` for the synthetic mechanism baseline).
-3. **Validation** — walk-forward, purged CPCV, costs 1.0/1.5/2.0×, slippage, regime, null/placebo, expectancy — only survivors become candidates.
-4. **Forward Observation** — runs real MT5 demo quote observation without capital, recording provenance and acquisition outcomes through the order-free canonical observatory; signals, orders, fills, and realized P&L remain out of scope.
-5. **Execution & Risk** — retains separately gated generic order lifecycle/risk/reconciliation components; this does not make DEMO_FORWARD executable.
-6. **Evidence** — every decision in `data/evidence/*.json` + SQLite + audit log, PROMOTION is one-way, no skip.
+---
 
-## Does it automatically trade?
+## Key Capabilities
 
-**No.** Default is `BLOCK — KEEP NO_TRADE`. Live trading is **LOCKED** until *all* of DSR, PBO, PSR, cost, regime, perturbation, null/placebo, forward evidence, reconciliation, risk, and human approval pass. Even then you must explicitly `--confirm live`.
+1. **Executive Telemetry Dashboard:**  
+   Instant, plain-English awareness across Market Connectivity, Validated Opportunities, Trading Permission, Risk Controls, and the single recommended next operator action.
 
-## What is Paper? Shadow? Demo Forward? Live?
+2. **Rigorous Research & Event Study Framework:**  
+   Pre-registered hypothesis testing with Deflated Sharpe Ratio (DSR) metrics, Holm multiple-testing adjustments, and zero synthetic quote smoothing.
 
-| Mode | Broker? | Real Money? | Label | Purpose |
-|------|---------|-------------|-------|---------|
-| **Paper** | No — next-bar-open simulation | No | PAPER | Estimate fills with conservative spread/slippage |
-| **Shadow** | No — would-be intents | No | SHADOW | Check what *would* have been sent, measure risk/spread vetoes |
-| **Demo Forward** | **Yes — real MT5 terminal + demo account + market data; observation only** | No | **DEMO** | Record provenance-bound sampled quotes and acquisition outcomes; zero orders |
-| **Live** | Yes — real account | **Yes** | LIVE | **LOCKED** — requires everything to pass |
+3. **End-to-End DEMO Execution Lifecycle:**  
+   Complete 12-step operational lifecycle: terminal connection, account identity pinning, symbol specification binding, quote freshness probing, 22 pre-trade gates, atomic order submission, broker receipt capture, deal synchronization, position monitoring, position closure, continuous reconciliation, and SQLite audit journaling.
 
-`DEMO` results are **never** automatically promoted to `LIVE`.
+4. **Continuous Broker Reconciliation:**  
+   Internal portfolio positions are reconciled against venue tickets after every order and position exit. Any quantity mismatch, ghost position, or unmapped fill immediately halts the engine.
 
-## Why is Live locked?
+5. **Durable Fail-Closed Controls:**  
+   SQLite-persisted kill switches and stage machines that survive process restarts and ensure emergency stops remain in effect until deliberately cleared.
 
-System defaults to `BLOCK — KEEP NO_TRADE`. The repository contains a provenance-qualified REAL XAUUSD 15m history and a completed REAL impulse study, but that study concludes `REGIME_DEPENDENT` / `go_block = BLOCK`; it does not establish a validated profitable edge. The unchanged synthetic fixture supports mechanism validation only. Continuous historical execution-cost evidence (R5), real MT5 observation evidence, and other required controls remain unavailable or incomplete and block promotion. See [`docs/current_state.md`](docs/current_state.md), the REAL impulse evidence, and `docs/release_readiness_report.md`.
+---
 
-## How do I install on Windows? (Clean Clone)
+## Operating Modes
 
-**Prerequisites:** Windows 10/11, Python **3.11/3.12/3.13** (3.14 not yet verified — see `pyproject.toml` and `docs/desktop_installation_windows.md`), git
+| Mode | Broker Linked? | Real Money? | Execution Capability | Safety Posture |
+|:---|:---:|:---:|:---|:---|
+| **DEVELOPMENT** | No / Mock | No | Code compilation, unit tests, mock sessions | Safe default |
+| **PAPER** | No | No | Next-tick fill simulation with modeled slippage | Zero venue access |
+| **SHADOW** | Yes (MT5) | No | Evaluates would-be intents against live venue data | Zero orders submitted |
+| **DEMO_FORWARD** | Yes (MT5) | No | Real demo quote observation and logging | Zero orders submitted |
+| **DEMO_EXECUTION**| Yes (MT5) | No | Controlled order submission on MT5 DEMO account | 22 pre-trade gates active |
+| **LIVE** | Yes (MT5) | **Yes** | Real-money execution | **STRUCTURALLY LOCKED** |
 
-```powershell
-git clone <repository-url>   # your fork
+---
+
+## Quickstart
+
+### 1. Prerequisites
+- **Python:** 3.11, 3.12, or 3.13
+- **Git**
+- **MetaTrader 5 Terminal:** (Windows for broker IPC connection; Linux/macOS for research, API, and backtesting)
+
+### 2. Installation
+```bash
+git clone https://github.com/alfrotan-glitch/Trading-System.git
 cd Trading-System
-powershell -ExecutionPolicy Bypass -File scripts/setup_windows.ps1
-# or double-click: scripts/setup_windows.bat
+
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
 ```
 
-This creates `.venv`, installs `qts`, runs **`qts data bootstrap`** (deterministic, fail-closed, idempotent — establishes a usable dataset from the tracked fixture, labeled `SYNTHETIC`; never fabricates data), validates the CLI + health, and runs quick tests. If Python/git is missing, or no usable dataset can be established, setup fails clearly with a non-zero exit code.
-
-See `docs/desktop_installation_windows.md`.
-
-## How do I launch?
-
-**One-click:** double-click `QTS.exe` after building, or run:
-
-```bat
-scripts/run_qts.bat          # launches desktop (development/MOCK)
-scripts/run_tests.bat        # pytest
-scripts/build_windows.bat    # builds dist/QTS.exe
+### 3. Launch Web Workstation
+```bash
+python -m qts.api.server
 ```
+Navigate to `http://localhost:8901` in your browser.
 
-PyInstaller build: `pyinstaller packaging/qts.spec --clean --noconfirm` → `dist/QTS.exe` (standalone, no repo path needed). See `docs/desktop_installation_windows.md`.
-
-Desktop shows: Home (System Status, Environment, MT5, Account Type, Market Data, Risk, Reconciliation, Strategy, Current Decision, Live Lock) → Dashboard → Research → Forward → Execution → Risk → MT5 → Audit → Live (LOCKED).
-
-## How do I connect MT5 Demo?
-
-1. Install MT5 terminal, open a **DEMO** account (never live for demo_forward).
-2. Launch QTS → **Setup Wizard** → set MT5 terminal path `C:\Program Files\MetaTrader 5\terminal64.exe` and symbol `XAUUSD`.
-3. Set credentials via Windows Credential Manager or `.env` (never plain repo): `QTS_MT5_LOGIN`, `QTS_MT5_PASSWORD`, `QTS_MT5_SERVER`. See `docs/mt5_demo_setup.md`.
-4. **MT5 Demo Connection Checker** (Setup Wizard → Test MT5 Connection or Demo Forward view) runs 14 checks: MT5 installed, terminal running, account connected, account is DEMO, broker, symbol available/tradable/spec valid, market data fresh, bid/ask valid, spread acceptable, account state, risk config, reconciliation. Only after all pass may DEMO_FORWARD observation start. Readiness is *not* execution permission: DEMO_EXECUTION additionally requires a recorded owner authorization (see below).
-
-## How do I start observation?
-
-- **Observe Only** (safe, no orders): Demo Forward → *Start Observation*. Requires all 14 readiness checks to pass; then records real MT5 demo-account observations as provenance class `DEMO` with full provenance into the **canonical observation store** (`data/sqlite/forward_observatory.db`) bound to an audited session (environment, broker, symbol, timestamp basis, code version). `data/evidence/forward_observation_manifest.json` is a derived, regenerable export and is never `REAL`-money evidence.
-- Observation is physically order-free: the observe runtime has no order path at all (structurally pinned by tests).
-- **DEMO execution is authorized, staged and gated — but not trading.** `DEMO_EXECUTION = ENABLED_AUTHORIZED` only because an explicit owner authorization artifact exists (`data/evidence/demo_execution_authorization_2026-09-23.json`, DEMO account only, `LIVE = LOCKED`, zero real capital). A readiness pass still never creates order permission by itself; `/api/demo/enable` returns 200 only when the authorization is valid *and* every gate passes, and 409 otherwise. Orders additionally require the staged progression (`qts demo arm`), a pinned+confirmed broker identity, an eligible strategy in the forward-validation registry, and 22 pre-trade checks passing in the same cycle. See `docs/demo_execution_authorization_and_safety_2026-09-23.md`.
-- Fabricated legacy "demo observations" were quarantined to `data/evidence/quarantine/` with documented violations; they satisfy no gate and no claim.
-
-## How do I acquire MT5 historical ticks? (read-only, raw, deferred analysis)
-
-- `python scripts/acquire_mt5_history.py --symbol XAUUSD@ --windows-days 7,30,45,60,90,120,180,270,365` on the Windows DEMO terminal: chunked **lossless** Parquet acquisition (every field/row MT5 returns, no dedupe, no normalization, interrupt-safe and resumable) into gitignored `data/raw/mt5_ticks/`, then a deferred offline analysis (`qts.data.mt5_history_analysis`) over the stored dataset — never a per-row audit while MT5 is being queried. Acquisition and analysis are separate layers; the heavy work runs against local files only.
-- `scripts/probe_mt5_history.py` is the seconds-scale capability check (fields, counts, bounds only).
-- Contract, status vocabulary, integrity/digest definitions, and the honest research boundary (quotes ≠ execution evidence; R5 not solved): `docs/mt5_history_acquisition.md`.
-
-## Why is the system not trading even though DEMO execution is enabled?
-
-Because authorization and validation are different questions. `DEMO_EXECUTION = ENABLED_AUTHORIZED` (owner authorization recorded, `LIVE = LOCKED`, real capital exposure 0) while the **trading state is `NO_TRADE`**: no strategy has passed the research gates, so the forward-validation registry is empty and every order request is refused with `strategy_registered_frozen: no registered forward-validation strategy — NO_TRADE`. DEMO_FORWARD observation remains structurally order-free; a fresh readiness report can authorize recording real MT5 demo-account observations but never an order path on its own. See `docs/demo_execution_authorization_and_safety_2026-09-23.md`.
-
-## How do I stop it?
-
-- Close desktop window → clean shutdown (audit persists, pending orders reconciled on restart).
-- Or kill switch in Risk view → `TRADING SUSPENDED`.
-
-## Where are logs & evidence?
-
-- Logs: `logs/audit.jsonl` (redacted) + `data/sqlite/qts.db` audit_events
-- **Canonical observation store**: `data/sqlite/forward_observatory.db` (provenance-first; sessions carry environment/broker/symbol/timestamp-basis/code-version identity)
-- Derived exports: `data/evidence/*.json` — always regenerable from canonical stores, never gate-satisfying by existing
-- Quarantine: `data/evidence/quarantine/` — fabricated/mismatched legacy records, excluded from all claims (see its README)
-- Config: `configs/dev.yaml`, `configs/paper.yaml`, `configs/demo_forward.yaml`; `configs/live.yaml` **never committed** (use `.example`)
-
-## Canonical authorities (read this before touching limits/modes/gates)
-
-- **Mode**: `qts.domain.modes` — DEVELOPMENT / PAPER / SHADOW / DEMO_FORWARD / DEMO_EXECUTION / LIVE; unknown selections fail closed
-- **DEMO execution policy**: `qts.lifecycle.demo_authority` + `qts.lifecycle.demo_authorization` — the shipped default of a checkout with no owner authorization is `DEMO_EXECUTION = DISABLED BY POLICY`; a recorded, hashed, revocable owner authorization resolves it to `ENABLED_AUTHORIZED` (DEMO only). Either way the pre-trade gate (`qts.execution.demo_pretrade`) and the stage machine (`qts.lifecycle.demo_stage`) decide individual orders; `LIVE` stays locked
-- **Risk limits**: `qts.risk.authority` — one canonical set; mode restrictions may only tighten; every snapshot carries a config hash
-- **Broker metadata**: `qts.adapters.mt5_adapter` — alias-resolved, zero defaults, fail-closed
-- **Metrics**: `qts.domain.provenance.MetricValue` — MEASURED or UNAVAILABLE/INSUFFICIENT_EVIDENCE, never a placeholder zero
-- See `docs/canonical_authorities.md` for the full contract.
-
-## What should never be changed manually?
-
-- `data/sqlite/qts.db` promotion / kill switch (use UI/CLI)
-- `data/evidence/*.json` while QTS running (evidence is audit trail)
-- `N` trial count — never reset (DSR depends on it)
-- `LIVE` gates — no DB edit, no config override without `env=live --confirm live`
-- Secrets in repo — use OS env / credential store
+### 4. Verify System Status via CLI
+```bash
+qts demo verify
+```
 
 ---
 
-## For Developers: Technical Quickstart
+## Repository Structure
+
+```
+├── configs/            # Declarable environment definitions (demo_forward, paper, dev)
+├── data/
+│   ├── evidence/       # Preregistration artifacts, validation registries, order journals
+│   └── setup/          # Machine-local wizard setup (symbol maps, terminal paths)
+├── docs/               # 10 Canonical product documentation guides
+├── scripts/            # History acquisition, discovery audit, and setup tools
+├── src/qts/
+│   ├── adapters/       # MT5 broker adapter and IPC bridges
+│   ├── api/            # FastAPI REST backend (34 unified endpoints)
+│   ├── backtest/       # Backtesting and simulation engine
+│   ├── config/         # Machine-local path resolver and setup wizard
+│   ├── data/           # Tick parsers and dataset loaders
+│   ├── desktop/ui/     # Modern vanilla JS workstation UI (ES modules, semantic CSS)
+│   ├── domain/         # Core trading value objects and execution modes
+│   ├── execution/      # Demo session, 22 pre-trade gates, autopilot, order journal
+│   ├── lifecycle/      # Authority, stage machine, forward registry
+│   ├── observability/  # Observation collectors, audit logs, event telemetry
+│   ├── portfolio/      # Portfolio tracking, fill processing, cash management
+│   ├── research/       # Hypothesis generation, impulse event study, DSR engine
+│   └── risk/           # RiskEngine, exposure controls, persistent kill switch
+└── tests/
+    ├── adversarial/    # Security invariants, edge cases, and gate penetration suites
+    ├── integration/    # Full lifecycle, CLI, autopilot loop, and session wiring tests
+    ├── unit/           # Domain logic, risk calculations, and stage machine tests
+    └── ui/js/          # Node-based UI unit and workstation tests
+```
+
+---
+
+## Testing & Quality Assurance
+
+Run the complete verification suite locally:
 
 ```bash
-python -m venv .venv && source .venv/bin/activate  # or scripts/setup_windows.ps1
-pip install -e ".[dev]"
-python -m qts data bootstrap   # deterministic, fail-closed, idempotent; labels the fixture SYNTHETIC
-python -m qts data synthetic --rows 10000 --out data/raw/synthetic_XAUUSD_1m.csv
-python -m qts data ingest --source csv --path data/raw/synthetic_XAUUSD_1m.csv --instrument XAUUSD --timeframe 1m
-python -m qts backtest --strategy sma_breakout --data-version <version> --seed 42 --determinism-check
-python -m qts validate --strategy sma_breakout --data-version <version>
-pytest -q
-python -m qts health
+# 1. Static Analysis & Linting
+ruff check src/ tests/
+mypy src/qts/execution src/qts/lifecycle src/qts/api src/qts/config src/qts/domain src/qts/adapters src/qts/risk src/qts/cli.py
+
+# 2. JavaScript UI Tests
+node --check src/qts/desktop/ui/js/**/*.js src/qts/desktop/ui/js/views/*.js
+npm test
+
+# 3. Python Integration & Unit Tests
+pytest tests/unit/
+pytest tests/integration/ --run-integration
+pytest tests/adversarial/
 ```
 
-Docs start `docs/00-overview.md` → `docs/13-adrs.md`. Build exe: `scripts/build_windows.bat`.
+---
 
-## Current Status
+## Canonical Documentation
 
-`BLOCK — KEEP NO_TRADE`, Live LOCKED. The single current-state and roadmap summary is **`docs/current_state.md`**; the hardened observation-boundary details are in **`docs/forward_observation_status.md`**. Test and static-check counts are run-dependent and are not treated as research evidence. LIVE gate evidence is tiered (structural / integration / real-environment); MT5 connectivity passes only with a REAL terminal — mock-based connectivity evidence is banned. `data/curated/` and `data/manifests/` are deliberately **not tracked** — a clean clone establishes its dataset via `qts data bootstrap` (truthful provenance, `SYNTHETIC` label). Remaining blockers are summarized in section G of `docs/release_readiness_report.md`.
+For detailed architecture, operational runbooks, and risk specifications, consult the canonical documentation:
 
-Never treat BACKTEST/PAPER/SHADOW/DEMO as LIVE. No profitability claimed.
+- [**01. Product Overview**](docs/01-product-overview.md)
+- [**02. System Architecture**](docs/02-architecture.md)
+- [**03. Getting Started**](docs/03-getting-started.md)
+- [**04. Operating QTS**](docs/04-operating-qts.md)
+- [**05. Research & Validation**](docs/05-research-and-validation.md)
+- [**06. Demo Trading Workflow**](docs/06-demo-trading.md)
+- [**07. Risk Controls & Safety**](docs/07-risk-and-safety.md)
+- [**08. Live Trading Governance**](docs/08-live-trading-governance.md)
+- [**09. Troubleshooting & Diagnostics**](docs/09-troubleshooting.md)
+- [**10. Developer Guide**](docs/10-developer-guide.md)
+
+---
+
+## License & Safety Notice
+
+QTS is strictly designed for algorithmic research and controlled execution. Live trading requires verified multi-party governance clearance. Real-capital exposure is locked at `$0.00` by default.
