@@ -289,6 +289,13 @@ def test_risk_veto_visibility(tmp_path, monkeypatch):
     the endpoint reported "allowed" — and it ran against the repository's real
     data root instead of an isolated workspace.
     """
+    # The durable kill switch lives in the state-root SQLite store, and
+    # state_root() only honours a chdir when that directory contains its own
+    # ``data/`` tree. An empty tmp_path silently fell back to the SHARED repo
+    # DB, so another test's raised kill flag leaked in and turned the expected
+    # ARMED reading into ACTIVE (order-dependent flake). Owning the data tree
+    # makes the isolation the docstring promises real.
+    (tmp_path / "data").mkdir()
     monkeypatch.chdir(tmp_path)
     c = _client()
     j = c.get("/api/risk").json()
