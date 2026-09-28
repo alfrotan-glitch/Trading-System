@@ -21,7 +21,7 @@ QTS (Quantitative Trading System) is an autonomous quantitative research, risk-g
 * **Operational Status**: Hardened research and DEMO execution workstation.
 * **Trading State**: `NO_TRADE` — zero active trading strategies authorized for real capital.
 * **Capital Risk**: `REAL_CAPITAL_EXPOSURE = 0` — live trading is permanently locked.
-* **DEMO State**: Diagnostic execution probe (`DEMOPOL-EXEC-COST-XAUUSD-2026-09-24-V1`, H-EXEC-01, `ELIGIBLE_DIAGNOSTIC`) is registered. It is not a validated edge. Orders still require `QTS_MODE=demo_execution`, a confirmed identity pin, fresh readiness, and `run_pretrade_gate`. Identity is not pinned. No order has been submitted.
+* **DEMO State**: Diagnostic execution probe (`DEMOPOL-EXEC-COST-XAUUSD-2026-09-24-V1`, H-EXEC-01, `ELIGIBLE_DIAGNOSTIC`) is registered. It is not a validated edge. Orders still require `QTS_MODE=demo_execution`, a confirmed identity pin, fresh readiness, and `run_pretrade_gate`. Identity is not pinned. No order has been submitted. The MT5 order `comment` is now broker-safe (deterministic `qts` + 13-char hash prefix, ≤16 ASCII chars — the previous 31-char id made `order_send` return `None` with `-2 Invalid comment`; dry-run re-verified with zero submissions). The desktop demo screen is a guided workflow (`/api/demo/guide`): connect → confirm identity → prepare → refresh → trade, in plain language, driving the same pin/stage/authority machinery as the CLI; engineering internals remain under Advanced only.
 * **Research State**: `NO_VALIDATED_EDGE` certified after exhaustive evaluation of 139M ticks across 15 preregistered directional hypotheses and 10 impulse strategy families.
 
 ---
@@ -201,15 +201,17 @@ Committed Evidence Manifest (data/evidence/*.json)
 | **ARCH-015** | 2026-09-25 | Phase 11 | Home and Trading read the durable kill switch from `/api/health` and `/api/risk`. A limit flag is no longer labeled armed. The journal path in the demo guide matches `journal_db`. | A stop stays visible after it is raised. | operations test | APPROVED |
 | **ARCH-016** | 2026-09-25 | Phase 11 | Product pages lead with plain sentences: what is connected, whether an order is allowed, and that live trading cannot be opened here. | A clearer label does not hide Demo vs Live, the kill switch, or a missing reading. | UI shell tour | APPROVED |
 | **ARCH-017** | 2026-09-25 | Phase 11 | Mypy errors in the research runners were annotation and name-shadow fixes. The duplicate `build/qts.spec` was removed. The single-current-version rule is now section 11. | Formulas and gates were not loosened. Live stays locked. | `mypy src`, full pytest | APPROVED |
+| **ARCH-018** | 2026-09-28 | Phase 11 | Fixed the real MT5 integration bug: `order_send` returned `None` with `(-2, 'Invalid "comment" argument')` because a 31-char `client_order_id` was sent as the comment. The comment is now a deterministic `qts` + 13-char sha256 prefix (≤16 ASCII chars); `order_check` validates the exact send-time comment. | No gate, risk limit, authorization or LIVE lock changed. Dry-run against an exploding `order_send` shows zero submissions. | `test_mt5_comment_contract` (8), full suite green | APPROVED |
+| **ARCH-019** | 2026-09-28 | Phase 11 | Guided DEMO product workflow: `GET /api/demo/guide` (read-only plain-language state) and `record-identity` / `confirm-identity` / `prepare` / `refresh` / `resume` drive the SAME pin/stage/authority machinery as the CLI. The demo screen leads with one headline, one reason, one next action, an order ticket (stop required), and human error mapping; internals stay under Advanced. | Fail-closed, honest, no bypass. Refusals are 409 with a human result. | `test_demo_guide_api` (14), full suite green, live uvicorn verification | APPROVED |
 
 ---
 
 ## 13. TEST STATUS
 
-* **Python default suite** (`pytest`): exit 0 on 2026-09-25. Collection is 1,321. The run showed 2 skips, both in `tests/adversarial/test_impulse_lookahead.py` for family `IMP-VE-V` when the fixed seed window produces no events. They are not integration tests. Playwright browser tests remain a collection-time skip (`playwright not installed`) and are not inside the 1,321.
+* **Python default suite** (`pytest`): exit 0 on 2026-09-28. Collection is 1,353: **1,341 passed** plus 12 honest skips — 2 in `tests/adversarial/test_impulse_lookahead.py` (fixed seed window produces no events for family `IMP-VE-V`) and 10 in `tests/ui/test_browser.py` where `playwright` is installed but no Chromium binary exists in this sandbox (CDN blocked); on a machine with Chromium those 10 run. Without `playwright` installed the same suite collects 1,344 with 3 skips (the browser module skips once at import).
 * **Python integration suite** (`pytest tests/integration --run-integration`): 119 passed. The same 119 are also in the default collection. The directory-name skip is gone.
 * **JavaScript UI tests** (`npm test`): 48 passed. `node --check` passed for the desktop UI scripts. The UI shell tour is inside `tests/ui/test_ui_logic.py` and passed with the default suite.
-* **Linters**: `ruff check src tests` clean. `mypy src` clean: 0 errors in 166 source files. The previous 38 errors were annotation and name-shadow fixes. No formula was changed to satisfy the type checker.
+* **Linters**: `ruff check src tests` clean. `mypy src` clean: 0 errors in 166 source files. No formula was changed to satisfy the type checker.
 
 ---
 
@@ -262,3 +264,18 @@ Fixed:
 * A failed setup test still exits 1. The message now says the desk can be opened, and that a failed test is not a completed setup.
 
 Not accepted: the rendered product still has not been inspected in a browser. `NO_VALIDATED_EDGE` stands. Live trading stays locked. Real exposure stays `$0`.
+
+---
+
+## 18. REVIEW, 2026-09-28 (guided DEMO workflow + MT5 comment fix)
+
+Reviewed on `cd5a774` plus the polish commit that follows it.
+
+Fixed:
+
+* The real MT5 integration bug: `order_send` returned `None` with `(-2, 'Invalid "comment" argument')` because the 31-char `client_order_id` was sent as the comment. The comment is now deterministic `qts` + 13-char sha256 prefix (≤16 ASCII chars); `order_check` validates the exact send-time comment. Dry-run against an exploding `order_send`: zero submissions. No gate, risk limit, authorization, stage permission or LIVE lock was touched.
+* The demo screen is now a guided workflow for a non-engineer: one status headline, one plain reason, one next action (Check connection / Record identity / Confirm identity / Prepare / Refresh / Resume), and an order ticket (Buy/Sell, broker-spec size, required stop loss, preview, place) that only appears when trading is actually possible. Every action drives the same pin/stage/authority machinery as the CLI; refusals are 409 with a human result; order failures map to one plain sentence with raw reasons under collapsible Technical details. Internal lifecycle names do not appear above the `technical` key (asserted by test).
+
+Verified: full suite 1,341 passed / honest skips; ruff clean; mypy clean (166 files); live uvicorn app served the guided UI, answered `GET /api/demo/guide` honestly without a terminal (fail closed, single reason), refused unconfirmed mutations (400) and kept every pre-trade gate on `POST /api/demo/order` (409 with full reasons). The jsdom shell tour renders the demo view through the real modules and passed.
+
+Not accepted: no real browser exists in this sandbox (Playwright CDN and Debian mirrors are blocked), so a rendered-pixel inspection is still outstanding; the Playwright suite runs it automatically wherever Chromium is available. `NO_VALIDATED_EDGE` stands. Live trading stays locked. Real exposure stays `$0`. No order was submitted to any broker.

@@ -78,6 +78,33 @@ export async function renderPaper(root) {
    PowerShell, stage names, gate names, journal ids or symbol aliases.
    Every action drives the same lifecycle the CLI uses; nothing is bypassed.
    Engineering internals live under "Technical details" at the bottom. */
+/* Map a pre-trade refusal to ONE plain sentence. The exact gates, retcodes
+   and audit ids stay in the collapsible Technical details — never here. */
+function humanRefusal(reasons) {
+  if (!Array.isArray(reasons) || reasons.length === 0) return "The safety checks refused the order.";
+  const first = String(reasons[0]);
+  const gate = first.split(":")[0].trim().toLowerCase();
+  const plain = {
+    stop_loss_present: "This demo plan requires a protective stop on every order. Enter a stop-loss price.",
+    trading_hours_allowed: "The market is outside the hours this plan is allowed to trade.",
+    broker_symbol_matches_registry: "The broker symbol does not match the registered experiment.",
+    strategy_registered_frozen: "No approved, frozen trading plan is registered.",
+    reconciliation_ready: "QTS and the broker disagree about open positions. Trading stays off until they agree.",
+    reconciliation_suspension: "QTS and the broker disagree about open positions. Trading stays off until they agree.",
+    broker_order_check: "The broker refused the order request.",
+    order_size_within_hard_max: "The size is above the demo limit for a single order.",
+    spread_available: "The current gold spread is too wide for the demo limits.",
+    market_data_fresh: "No fresh gold price is available right now.",
+    identity_mismatch: "The connected account does not match the confirmed identity.",
+  };
+  if (plain[gate]) return plain[gate];
+  if (/kill switch/i.test(first)) return "Trading is stopped by the kill switch. Review and resume first.";
+  if (/execution_permission|stage_allows_order|never enabled|authority/i.test(first)) {
+    return "Demo trading is not prepared yet. Finish the steps above first.";
+  }
+  return "A safety check refused the order. See the technical details for the exact reason.";
+}
+
 export async function renderDemo(root) {
   skeletonInto(root, "stats");
   root.classList.add("operator-workspace");
@@ -191,15 +218,24 @@ export async function renderDemo(root) {
         return afterAction(out);
       }
       if (next.action === "resume") {
+        let reasonText = "";
+        const reasonBox = h("textarea", {
+          class: "input", rows: 2, placeholder: "Why are you clearing the stop? This is recorded in the audit log.",
+          oninput: (e) => { reasonText = e.target.value; },
+        });
         const ok = await confirmModal({
           danger: true,
           title: "Review and resume after the stop",
-          body: h("p", null, "The kill switch stopped orders. Clearing it is recorded with your reason. Trading does NOT resume by itself — the demo account is prepared again from the start."),
+          body: h("div", { class: "stack" },
+            h("p", null, "The kill switch stopped orders. Clearing it is recorded with your reason. Trading does NOT resume by itself — the demo account is prepared again from the start."),
+            reasonBox),
           acks: ["I reviewed why trading was stopped, and I want to clear the stop."],
           confirmLabel: "Clear the stop",
         });
         if (!ok) return;
-        const out = await api.post("/api/demo/guide/resume", { confirmed: true, reason: "operator resumed from the desktop UI" });
+        const reason = reasonText.trim();
+        if (!reason) { toast("err", "A reason is required", "Clearing the stop is recorded in the audit log — say why."); return; }
+        const out = await api.post("/api/demo/guide/resume", { confirmed: true, reason });
         return afterAction(out);
       }
     } catch (e) {
@@ -242,7 +278,7 @@ export async function renderDemo(root) {
     }
     let side = "BUY";
     const size = h("input", { class: "input", type: "number", step: "0.01", min: "0.01", value: g.order_defaults?.size ?? "0.01", style: { maxWidth: "140px" } });
-    const stop = h("input", { class: "input", type: "number", step: "0.01", placeholder: "auto from plan", style: { maxWidth: "160px" } });
+    const stop = h("input", { class: "input", type: "number", step: "0.01", placeholder: "e.g. 3280.00", style: { maxWidth: "160px" } });
     const result = h("div");
     const sideBtn = (label) => h("button", {
       class: `btn sm ${side === label ? "primary" : ""}`,
@@ -263,9 +299,8 @@ export async function renderDemo(root) {
       } catch (e) {
         const b = e.body || {};
         const reasons = Array.isArray(b.reasons) ? b.reasons : (b.detail ? [String(b.detail)] : []);
-        const secondary = reasons.join(" · ").slice(0, 220) || "The safety checks refused the order.";
         result.replaceChildren(
-          banner("warn", "Demo order could not be submitted", secondary, "alert"),
+          banner("warn", "Demo order could not be submitted", humanRefusal(reasons), "alert"),
           h("details", null, h("summary", null, "Technical details"), tech(b, "Raw refusal")),
         );
       }
@@ -280,7 +315,7 @@ export async function renderDemo(root) {
         h("div", { class: "row", style: { flexWrap: "wrap", gap: "10px", alignItems: "flex-end" } },
           h("div", { class: "field" }, h("label", { class: "small" }, "Direction"), h("div", { class: "row" }, sideBtn("BUY"), sideBtn("SELL"))),
           h("div", { class: "field" }, h("label", { class: "small" }, "Size (lots)"), size),
-          h("div", { class: "field" }, h("label", { class: "small" }, "Stop loss (optional)"), stop, h("div", { class: "hint" }, "Leave blank to use the plan's protective stop.")),
+          h("div", { class: "field" }, h("label", { class: "small" }, `Stop loss ${g.order_defaults?.stop_required === false ? "(optional)" : "(required)"}`), stop, h("div", { class: "hint" }, g.order_defaults?.stop_required === false ? "A protective stop is optional for this plan." : "The demo plan requires a protective stop on every order. Set the price where this trade must close if it moves against you.")),
         ),
         h("div", { class: "row" },
           h("button", { class: "btn", disabled: acting, onclick: () => submit(true) }, icon("eye", 14), "Preview (no order)"),
