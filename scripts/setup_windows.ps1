@@ -100,6 +100,8 @@ Write-Host "Running tests (pytest -q) ..."
 & $venvPython -m pytest tests -q --tb=short
 if ($LASTEXITCODE -ne 0) {
   Write-Host "ERROR: tests failed (pytest exit $LASTEXITCODE) — see output above. Setup NOT complete." -ForegroundColor Red
+  Write-Host "The desk can still be opened with scripts\run_qts.bat." -ForegroundColor Yellow
+  Write-Host "A failed test is not permission to trade, and it is not a completed setup." -ForegroundColor Yellow
   Write-Host "Fix failures and re-run setup_windows.ps1 (idempotent) — see docs/troubleshooting_windows.md" -ForegroundColor Yellow
   exit 1
 }

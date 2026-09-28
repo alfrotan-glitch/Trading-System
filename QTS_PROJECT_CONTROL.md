@@ -244,3 +244,21 @@ scripts\run_qts.bat
 Launch is `scripts\run_qts.bat`. It must print `UI source: src\qts\desktop\ui` and open `http://127.0.0.1:8000/`. There is no port 8901. `python -m qts.api.server` is not a launch command. Live trading stays locked. The bootstrap dataset is synthetic and is not a quote.
 
 Python 3.14 is accepted. The batch version check must not contain a percent sign, because `cmd.exe` consumes it and the check becomes a SyntaxError. Python 3.15 is refused.
+
+---
+
+## 17. REVIEW, 2026-09-28
+
+Reviewed on `0b7ab14` and the fixes in the following commit. Not a visual acceptance. Not a claim that the suite passed on Python 3.14.7.
+
+Fixed:
+
+* `/api/paper` no longer reports a missing `pnl` or `drawdown` as zero. The committed paper file has `final_equity` and no `pnl`. That figure stays a historical paper result, not current money.
+* A demo close toast no longer fills a missing result with `0.00` or a missing reconciliation with `CLEAN`.
+* `/api/health` no longer labels a structural live-gate pass as `ELIGIBLE`. `live_status` stays `LOCKED` or `BLOCKED`. `live_gate_ready` records the structural result without calling it permission.
+* `/api/live/status` no longer says explicit confirmation is the next step when structural checks pass.
+* `scripts\launch_desktop.bat` calls `scripts\run_qts.bat`. It does not start a second server and does not override `QTS_ENV`.
+* The uninstalled `docs/ci/ci.yml` is removed. It was not in `.github/workflows`, and its `on: push` line was not a running workflow.
+* A failed setup test still exits 1. The message now says the desk can be opened, and that a failed test is not a completed setup.
+
+Not accepted: the rendered product still has not been inspected in a browser. `NO_VALIDATED_EDGE` stands. Live trading stays locked. Real exposure stays `$0`.

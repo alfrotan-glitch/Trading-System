@@ -2,7 +2,7 @@
 
 ## The 12-Step Operational Trade Lifecycle
 
-Demo trading in QTS is not an unmonitored script; it is a fully instrumented, auditable lifecycle designed to prove execution mechanics before real capital is considered.
+Demo trading in QTS is not an unmonitored script; it is a fully instrumented, auditable lifecycle designed to prove execution mechanics before real capital is considered. That path is not authorized now. No broker order is submitted from this repository state, and a completed checklist would still not be a validated edge.
 
 ```
  [1. Connect & Verify] ──► [2. Bind Tradable Symbol] ──► [3. Probe Live Quote]

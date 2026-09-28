@@ -121,6 +121,8 @@ echo Running tests (pytest -q) ...
 .venv\Scripts\python.exe -m pytest tests -q --tb=short
 if errorlevel 1 (
   echo ERROR: tests failed -- Setup NOT complete.
+  echo The desk can still be opened with scripts\run_qts.bat.
+  echo A failed test is not permission to trade, and it is not a completed setup.
   echo Fix failures and re-run setup_windows.bat (idempotent) -- see docs/troubleshooting_windows.md
   exit /b 1
 )

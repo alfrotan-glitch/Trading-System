@@ -1,22 +1,7 @@
 @echo off
-REM One-click launch for QTS Trading System -- Windows
-REM Double-click this file to open desktop
+REM One desktop path. This file exists so older shortcuts still work.
+REM It does not start a second server and does not override QTS_ENV.
 setlocal
 cd /d "%~dp0.."
-
-if not exist .venv\Scripts\python.exe (
-  echo ERROR: .venv not found. Run scripts\setup_windows.bat or scripts\setup_windows.ps1 first.
-  pause
-  exit /b 1
-)
-
-set QTS_ENV=development
-set QTS_MT5_MODE=MOCK
-REM For paper/shadow use: set QTS_ENV=paper
-
-.venv\Scripts\python.exe -m qts.desktop.launcher
-if errorlevel 1 (
-  echo Launcher exited with error %ERRORLEVEL%.
-  pause
-)
+call "%~dp0run_qts.bat"
 endlocal

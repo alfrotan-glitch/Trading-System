@@ -100,17 +100,17 @@ def health() -> dict[str, Any]:
 
         rpt = live_readiness_report()
         live_report = rpt
-        ready = rpt.get("ready", False)
+        ready = bool(rpt.get("ready", False))
         blocked = rpt.get("blocked_reasons", [])
-        if ready:
-            live_status = "ELIGIBLE"
-        elif blocked:
-            live_status = "BLOCKED"
-        else:
-            live_status = "LOCKED"
+        # A structural pass is not permission. LIVE stays locked even when
+        # every listed check passes. live_gate_ready keeps that distinction
+        # without labeling the account eligible.
+        live_status = "BLOCKED" if blocked and not ready else "LOCKED"
+        live_gate_ready = ready
         live_reasons = blocked
     except Exception as e:
         live_status = "LOCKED"
+        live_gate_ready = False
         live_reasons = [str(e)]
 
     # MT5 connectivity — MEASURED, never a constant. The report above already
@@ -149,6 +149,7 @@ def health() -> dict[str, Any]:
         "lifecycle": lifecycle,
         "trading_mode": _env_mode(),
         "live_status": live_status,
+        "live_gate_ready": live_gate_ready,
         "live_blocked_reasons": live_reasons,
         "data_versions": versions[-3:] if versions else [],
         "latest_version": latest,

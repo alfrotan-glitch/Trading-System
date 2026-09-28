@@ -19,19 +19,42 @@ def _bind():
     return server
 
 
+def _recorded_or_unavailable(value: object, *, missing: str) -> dict[str, Any]:
+    """A recorded number stays a number. Absence is not zero."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return {"status": "UNAVAILABLE", "value": None, "reason": missing}
+    return {"status": "MEASURED", "value": value, "reason": None}
+
+
 @router.get("/api/paper")
 def paper_center() -> dict[str, Any]:
     ev_path = artifact_path("paper_trades")
     paper: dict[str, Any] = (
         json.loads(ev_path.read_text(encoding="utf-8"))
         if ev_path.exists()
-        else {"fills": [], "positions": [], "pnl": 0, "drawdown": 0}
+        else {"fills": []}
     )
+    recorded_equity = paper.get("final_equity")
     return {
         "simulated_positions": paper.get("fills", [])[:10],
         "fills": paper.get("fills", []),
-        "pnl": paper.get("pnl", 0),
-        "drawdown": paper.get("drawdown", 0),
+        "pnl": _recorded_or_unavailable(
+            paper.get("pnl"),
+            missing="this paper record has no pnl field; absence is not a measured zero",
+        ),
+        "drawdown": _recorded_or_unavailable(
+            paper.get("drawdown"),
+            missing="this paper record has no drawdown field; absence is not a measured zero",
+        ),
+        "recorded_final_equity": _recorded_or_unavailable(
+            recorded_equity,
+            missing="no recorded paper final equity",
+        ),
+        "recorded_final_equity_note": (
+            "Historical paper-run figure from the evidence file. Not current money, not a live result, and not a validated edge."
+            if isinstance(recorded_equity, (int, float)) and not isinstance(recorded_equity, bool)
+            else None
+        ),
         "execution_statistics": {
             "total_fills": len(paper.get("fills", [])),
             # PAPER fills are MODEL expectations — slippage is modeled, never

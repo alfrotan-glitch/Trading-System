@@ -240,7 +240,7 @@ def live_status() -> dict[str, Any]:
             "checklist_detail": checklist_detail,
             "message": "LIVE NOT AVAILABLE"
             if not eligible
-            else "All prerequisites met — explicit confirmation required",
+            else "Structural checks passed. That is not permission. This repository cannot open live trading.",
             "explicit_confirmation_required": True,
         }
     except Exception as e:

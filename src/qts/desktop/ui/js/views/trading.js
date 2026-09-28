@@ -374,7 +374,9 @@ export async function renderExecution(root) {
         risk_ack: true,
         reason: "operator closed position via Execution Center UI",
       });
-      toast("ok", `Position #${pos.ticket} closed`, `Realized P&L: ${res.realized_pnl || res.profit || "0.00"}. Reconciliation: ${res.reconciliation?.drift || "CLEAN"}`);
+      const realized = res.realized_pnl ?? res.profit;
+      const drift = res.reconciliation?.drift;
+      toast("ok", `Position #${pos.ticket} closed`, `Realized P&L: ${realized === undefined || realized === null || realized === "" ? "UNAVAILABLE" : realized}. Reconciliation: ${drift || "UNAVAILABLE"}`);
       renderExecution(root);
     } catch (e) {
       toast("err", "Failed to close position", explain(e));
