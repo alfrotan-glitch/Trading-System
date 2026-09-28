@@ -7,9 +7,10 @@ audited, and reconciled.
 Symbol metadata is authoritative: contract_size, volume_min/max/step,
 digits/precision, trade_mode, filling_mode, point, tick_size, trade_allowed.
 
-Idempotency: client_order_id is stored in MT5 order comment (truncated to 31
-chars with mapping table persisted). On restart, comment ↔ client_order_id
-mapping is recovered via history.
+Idempotency: client_order_id is stored in MT5 order comment (a short,
+deterministic, ASCII-safe digest — see MT5_COMMENT_MAX — with the full
+client_order_id ↔ comment mapping table persisted). On restart,
+comment ↔ client_order_id mapping is recovered via history.
 
 Account: real broker account_info with balance/equity/margin/free_margin/
 leverage/margin_level, with staleness/contradiction checks.
@@ -46,6 +47,50 @@ from qts.domain.value_objects import (
     Side,
     Tick,
 )
+
+
+#: Hard cap on the MT5 order ``comment`` field. The terminal documentation
+#: allows 31 characters, but the MetaTrader5 Python library rejects comments
+#: shorter than that — ``order_send`` returns ``None`` with
+#: ``last_error() == (-2, 'Invalid "comment" argument')`` once a comment
+#: reaches roughly 29-31 chars (real failure: journal_id=1,
+#: ``demo-20260928T140630-884971d1e6``, 31 chars, refused on
+#: WMMarkets-Demo). Some brokers also retain only the first 16 characters of
+#: a stored comment, so QTS never sends more than 16: the library accepts it,
+#: the broker stores it unchanged, and fill attribution by comment stays
+#: exact. The full client_order_id lives in the persisted comment map —
+#: the comment only has to be accepted by the broker, not carry identity.
+MT5_COMMENT_MAX = 16
+
+
+def mt5_comment_for(client_order_id: str) -> str:
+    """Deterministic MT5-safe comment for a client_order_id (pure function).
+
+    Exactly :data:`MT5_COMMENT_MAX` ASCII characters: a short ``qts`` marker
+    plus a sha256 prefix of the client_order_id. The same id always yields
+    the same comment (idempotent retries and restart recovery send/match the
+    identical string), and 13 hex chars of sha256 make accidental collisions
+    irrelevant at DEMO order volumes. Callers that persist attribution must
+    store the mapping — see :meth:`MT5Adapter._store_comment_map`.
+    """
+    import hashlib
+
+    digest = hashlib.sha256(client_order_id.encode("utf-8")).hexdigest()
+    comment = ("qts" + digest)[:MT5_COMMENT_MAX]
+    if not comment.isascii() or not (0 < len(comment) <= MT5_COMMENT_MAX):  # pragma: no cover - guard
+        raise ValueError(f"constructed an invalid MT5 comment for {client_order_id!r}: {comment!r}")
+    return comment
+
+
+def mt5_safe_comment_text(text: str) -> str:
+    """Free-form comment (e.g. a position close marker) made MT5-safe.
+
+    Keeps only printable ASCII and caps at :data:`MT5_COMMENT_MAX` — the same
+    constraint that protects order submission. Pure truncation: nothing is
+    invented, and an empty result stays empty so callers decide the default.
+    """
+    cleaned = "".join(ch for ch in str(text) if ch.isascii() and ch.isprintable())
+    return cleaned[:MT5_COMMENT_MAX]
 
 
 @dataclass(frozen=True)
@@ -957,18 +1002,24 @@ class MT5Adapter(BrokerAdapter):
     # ---------- Order submission ----------
 
     def _build_comment(self, client_order_id: str) -> str:
-        """MT5 comment limited to 31 chars. Use truncated + mapping."""
-        # MT5 comment max 31 chars; client_order_id is uuid hex 32 + prefix, often longer.
-        # We store full mapping in DB and use first 31 chars as comment, or hash.
-        if len(client_order_id) <= 31:
-            comment = client_order_id
-        else:
-            # Use hash prefix to avoid collision, keep first 24 + hash 6
-            import hashlib
+        """MT5-safe order comment — deterministic, short, ASCII-only.
 
-            h = hashlib.sha256(client_order_id.encode()).hexdigest()[:6]
-            comment = client_order_id[:24] + "_" + h
-            comment = comment[:31]
+        Regression (journal_id=1, ``demo-20260928T140630-884971d1e6``): the
+        31-char client_order_id used to be sent verbatim, and the MetaTrader5
+        library refused the whole request — ``order_send`` returned ``None``
+        with ``last_error() == (-2, 'Invalid "comment" argument')`` — even
+        though the terminal documentation allows 31 characters. The pre-trade
+        dry-run did not catch it because it never validates the comment field.
+
+        Every comment is now built by :func:`mt5_comment_for` (exactly
+        :data:`MT5_COMMENT_MAX` ASCII chars, well below every observed
+        limit), and the full client_order_id ↔ comment mapping is persisted
+        so restart recovery and fill attribution keep working. An invalid
+        comment is raised, never sent: fail closed.
+        """
+        comment = mt5_comment_for(client_order_id)
+        if not comment.isascii() or not (0 < len(comment) <= MT5_COMMENT_MAX):  # pragma: no cover - guard
+            raise ValueError(f"refusing to send an invalid MT5 comment for {client_order_id!r}: {comment!r}")
         self._store_comment_map(client_order_id, comment)
         return comment
 
@@ -1146,7 +1197,7 @@ class MT5Adapter(BrokerAdapter):
     def cancel(self, client_order_id: str) -> None:
         mt5 = self._require_mt5()
         # Find MT5 order by comment
-        comment = self._load_comment_map(client_order_id) or client_order_id[:31]
+        comment = self._load_comment_map(client_order_id) or mt5_comment_for(client_order_id)
         # Need to find order ticket via orders_get
         try:
             orders = mt5.orders_get()
@@ -1303,7 +1354,9 @@ class MT5Adapter(BrokerAdapter):
             "price": price,
             "deviation": int(self.config.get("deviation", 20)),
             "magic": int(self.config.get("magic", 20250916)),
-            "comment": str(comment)[:31],
+            # Same MT5 comment constraint as order submission — a long or
+            # non-ASCII close marker would make order_send return None too.
+            "comment": mt5_safe_comment_text(comment) or "qts-close",
             "type_time": getattr(mt5, "ORDER_TIME_GTC", 0),
             "type_filling": filling,
         }
@@ -1602,7 +1655,7 @@ class MT5Adapter(BrokerAdapter):
             if deals is None:
                 return []
             if client_order_id:
-                comment = self._load_comment_map(client_order_id) or client_order_id[:31]
+                comment = self._load_comment_map(client_order_id) or mt5_comment_for(client_order_id)
                 # Filter by comment
                 return [d for d in deals if getattr(d, "comment", "") == comment]
             return list(deals)
@@ -1640,7 +1693,7 @@ class MT5Adapter(BrokerAdapter):
                 if attributed is None and client_order_id:
                     # history_deals already filtered by this order's comment —
                     # accept the match when the comment equals the mapped/expected one
-                    expected = self._load_comment_map(client_order_id) or client_order_id[:31]
+                    expected = self._load_comment_map(client_order_id) or mt5_comment_for(client_order_id)
                     if comment == expected:
                         attributed = client_order_id
                 if ticket is not None:

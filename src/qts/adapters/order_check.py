@@ -29,6 +29,22 @@ def mt5_order_check(adapter, intent, market_price: Decimal | None = None) -> Ord
     (BUY→ask, SELL→bid). Required for market orders; limit/stop orders use
     their own price.
     """
+    # Comment validity — the real ``order_send`` returns None with
+    # last_error (-2, 'Invalid "comment" argument') for a comment that is
+    # non-ASCII or beyond the MT5-safe length, while nothing else in this
+    # dry-run touches the field. Validate the SAME comment that would be
+    # sent so the dry-run cannot pass what the broker will refuse
+    # (regression: journal_id=1, demo-20260928T140630-884971d1e6).
+    from qts.adapters.mt5_adapter import MT5_COMMENT_MAX, mt5_comment_for
+
+    try:
+        comment = mt5_comment_for(intent.client_order_id)
+    except Exception as e:
+        return OrderCheckResult(False, 10014, f"invalid comment: {e}", {})
+    if not comment.isascii() or not (0 < len(comment) <= MT5_COMMENT_MAX):
+        return OrderCheckResult(
+            False, 10014, f"invalid comment: len={len(comment)} ascii={comment.isascii()}", {}
+        )
     # Use adapter.get_symbol_spec and validation
     spec = adapter.get_symbol_spec(intent.instrument.symbol)
     # Validate quantity, price
