@@ -38,8 +38,6 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 from qts.adapters.mt5_adapter import (
     MT5_COMMENT_MAX,
     MT5Adapter,

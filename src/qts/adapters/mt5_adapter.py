@@ -48,7 +48,6 @@ from qts.domain.value_objects import (
     Tick,
 )
 
-
 #: Hard cap on the MT5 order ``comment`` field. The terminal documentation
 #: allows 31 characters, but the MetaTrader5 Python library rejects comments
 #: shorter than that — ``order_send`` returns ``None`` with

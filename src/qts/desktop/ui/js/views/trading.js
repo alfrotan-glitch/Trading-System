@@ -73,152 +73,282 @@ export async function renderPaper(root) {
   if (diff) host.appendChild(card({ title: "Shadow vs paper discrepancy", sub: "systematic differences between simulation and reality proxies", icon: "scale", body: tech(diff, "Show discrepancy detail") }));
 }
 
-/* Demo Forward — authority + readiness separate, DEMO vs LIVE unmistakable */
+/* Demo account — guided product workflow.
+   A normal user connects, reviews, prepares and trades WITHOUT a terminal,
+   PowerShell, stage names, gate names, journal ids or symbol aliases.
+   Every action drives the same lifecycle the CLI uses; nothing is bypassed.
+   Engineering internals live under "Technical details" at the bottom. */
 export async function renderDemo(root) {
   skeletonInto(root, "stats");
   root.classList.add("operator-workspace");
-  const ctx = getContext();
-  const head = page({
-    crumb: "Trading", group: "Demo forward",
+  root.appendChild(page({
+    crumb: "Trading", group: "Demo",
     title: "Demo account",
-    answer: h("b", null, "Is the practice account connected, is demo trading on, and is live trading locked? Live trading is locked. A connection is not permission to trade."),
-    actions: [h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources")],
+    answer: h("b", null, "Connect your practice account, let QTS run the safety checks, and place demo orders. Live trading stays locked. No real money is at risk."),
+    actions: [h("button", { class: "btn", onclick: () => load(true) }, icon("refresh", 14), "Refresh")],
     body: null,
-  });
-  root.appendChild(head);
+  }));
 
-  const activity = h("h2", { id: "demo-activity" }, "Loading authority…");
-  const next = h("a", { class: "btn primary", href: "#/system/setup" }, "Inspect setup");
-  const nextWhy = h("p", { class: "text-dim small" });
-  root.appendChild(h("section", { class: "operator-summary", "aria-labelledby": "demo-activity" },
-    h("div", null, h("div", { class: "eyebrow" }, "NOW / AUTHORITY"), activity),
-    h("div", { class: "next-action" }, h("div", { class: "eyebrow" }, "NEXT MEANINGFUL ACTION"), next, nextWhy)));
-
-  const factsBody = h("tbody");
-  const factCells = {};
   const host = h("div", { class: "section" });
   root.appendChild(host);
-
-  let lastReadiness = null, lastState = null, lastSafety = null, lastObs = null, lastConfig = null, lastRisk = null;
+  let guide = null;
   let acting = false;
 
-  function renderFacts() {
-    const s = operationalState(store.data);
-    const rows = [
-      ["mode", "Environment / mode", s.mode.mode, "Environment capability is not execution permission. DEMO vs LIVE unmistakable via badge and banner."],
-      ["broker", "Broker (MT5)", s.broker, "Terminal connectivity; not proof of healthy quote."],
-      ["observation", "Observation collector", s.observation, s.obs?.last_error ? `Last error: ${s.obs.last_error}` : s.obs?.note || "No active collection established."],
-      ["permission", "DEMO execution", s.permission, s.sources.demoState.current ? `Authority state ${s.demo?.state ?? "UNAVAILABLE"}; readiness and permission separate.` : "Permission source unavailable or stale."],
-      ["liveLabel", "LIVE governance", s.liveLabel, "Never auto-enabled from DEMO evidence. Locked styling unmistakable."],
-    ];
-    if (!factsBody.children.length) {
-      for (const [key, title] of rows) {
-        const st = h("span", { class: "badge neutral" }, "UNAVAILABLE");
-        const det = h("span", null, "");
-        const fresh = h("span", { class: "mono small" }, "");
-        factCells[key] = { st, det, fresh };
-        factsBody.appendChild(h("tr", null, h("th", { scope: "row" }, title), h("td", null, st), h("td", { class: "fact-detail" }, det), h("td", null, fresh)));
+  // ---- plain-language helpers ------------------------------------------------
+  const toneFor = (g) => (g.status === "ready" ? "ok" : g.status === "stopped" ? "err" : "warn");
+  const headlineIcon = (g) => (g.status === "ready" ? "check" : g.status === "stopped" ? "stop" : "alert");
+
+  function connectionCard(g) {
+    const c = g.connection || {};
+    const connected = Boolean(c.connected);
+    const demo = c.account_type === "Demo";
+    return card({
+      title: "Connection", icon: "activity",
+      sub: "Is the practice account connected?",
+      actions: [h("button", { class: "btn sm", disabled: acting, onclick: () => load(true) }, icon("refresh", 13), "Check connection")],
+      body: h("div", { class: "stack" },
+        h("div", { class: "stat-grid" },
+          stat({ label: "Status", value: connected ? "Connected" : "Not connected", tone: connected ? "ok" : "warn", icon: connected ? "check" : "alert", hint: connected ? "MetaTrader 5 answered." : "Open MetaTrader 5 and sign in to your demo account, then press Check connection." }),
+          stat({ label: "Account", value: connected ? (c.account_type || "Unknown") : "—", tone: demo ? "ok" : "neutral", icon: "shield", hint: demo ? "This is a practice account. No real money." : "QTS only trades demo accounts." }),
+          stat({ label: "Broker", value: connected ? (c.broker || c.server || "—") : "—", icon: "bank" }),
+          stat({ label: "Instrument", value: g.instrument || "Gold", icon: "activity", hint: "The product trades gold." }),
+        ),
+        connected
+          ? h("p", { class: "small text-dim" }, `Signed in as ${c.login ?? "unknown account"} · ${c.server ?? "unknown server"}.`)
+          : banner("warn", "MetaTrader 5 is not connected", "Open MetaTrader 5 on this computer and sign in to your demo account. Then press “Check connection”. No command line is needed.", "alert"),
+      ),
+    });
+  }
+
+  function stepRow(s, i) {
+    const done = s.state === "done";
+    return h("div", { class: "guide-step", style: { display: "flex", gap: "12px", alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--border)" } },
+      h("div", { class: "badge", style: { minWidth: "26px", justifyContent: "center" } }, done ? "✓" : String(i + 1)),
+      h("div", { style: { flex: 1 } },
+        h("div", { class: "small", style: { fontWeight: 600 } }, s.title),
+        h("div", { class: "small text-dim" }, s.detail || ""),
+      ),
+    );
+  }
+
+  async function runNextAction(g) {
+    const next = g.next;
+    if (!next || next.action === "none") return;
+    if (acting) return;
+    acting = true;
+    try {
+      if (next.action === "check_connection") { await load(true); return; }
+      if (next.action === "open_setup") { navigate("#/system/setup"); return; }
+      if (next.action === "review_authorization") { navigate("#/governance/live"); return; }
+
+      if (next.action === "record_identity") {
+        const out = await api.post("/api/demo/guide/record-identity", {});
+        return afterAction(out);
+      }
+      if (next.action === "confirm_identity") {
+        const ok = await confirmModal({
+          title: "Confirm this is your demo account",
+          body: h("div", { class: "stack" },
+            h("p", null, "QTS recorded the connected account. Please review it before any order can be prepared."),
+            kv([
+              ["Account", String(guide?.connection?.login ?? "—")],
+              ["Broker", String(guide?.connection?.broker ?? guide?.connection?.server ?? "—")],
+              ["Server", String(guide?.connection?.server ?? "—")],
+              ["Type", String(guide?.connection?.account_type ?? "—")],
+            ])),
+          acks: ["This is my demo account, and I reviewed the account number and broker above."],
+          confirmLabel: "Confirm identity",
+        });
+        if (!ok) return;
+        const out = await api.post("/api/demo/guide/confirm-identity", { confirmed: true });
+        return afterAction(out);
+      }
+      if (next.action === "prepare") {
+        const ok = await confirmModal({
+          title: "Prepare demo trading",
+          body: h("div", { class: "stack" },
+            h("p", null, "QTS will run the full safety checks against the terminal, confirm your risk acknowledgement, and prepare the demo account. This never touches real money and never opens live trading."),
+            banner("info", "No real money is at risk", "This is a practice account only. Live trading stays locked.", "lock")),
+          acks: [
+            "I understand this prepares DEMO trading only — live trading stays locked.",
+            "I acknowledge the demo risk limits and that any order can still be refused.",
+          ],
+          confirmLabel: "Prepare demo trading",
+        });
+        if (!ok) return;
+        const out = await api.post("/api/demo/guide/prepare", { confirmed: true, risk_ack: true });
+        return afterAction(out);
+      }
+      if (next.action === "refresh") {
+        const ok = await confirmModal({
+          title: "Refresh connection",
+          body: h("p", null, "The proof that the terminal is healthy has expired. QTS will re-check the connection. This is routine."),
+          acks: ["Re-check the connection so demo trading stays prepared."],
+          confirmLabel: "Refresh connection",
+        });
+        if (!ok) return;
+        const out = await api.post("/api/demo/guide/refresh", { confirmed: true, risk_ack: true });
+        return afterAction(out);
+      }
+      if (next.action === "resume") {
+        const ok = await confirmModal({
+          danger: true,
+          title: "Review and resume after the stop",
+          body: h("p", null, "The kill switch stopped orders. Clearing it is recorded with your reason. Trading does NOT resume by itself — the demo account is prepared again from the start."),
+          acks: ["I reviewed why trading was stopped, and I want to clear the stop."],
+          confirmLabel: "Clear the stop",
+        });
+        if (!ok) return;
+        const out = await api.post("/api/demo/guide/resume", { confirmed: true, reason: "operator resumed from the desktop UI" });
+        return afterAction(out);
+      }
+    } catch (e) {
+      const b = e.body || {};
+      const res = b.result || {};
+      toast("err", res.headline || "Action failed", res.detail || explain(e));
+      await load();
+    } finally {
+      acting = false;
+    }
+  }
+
+  function afterAction(out) {
+    const res = out?.result || {};
+    guide = out?.guide ?? guide;
+    if (res.ok) toast("ok", res.headline || "Done", res.detail || "");
+    else toast("err", res.headline || "Not completed", res.detail || "See the reason above.");
+    render();
+  }
+
+  function nextActionButton(g) {
+    const next = g.next;
+    if (!next || next.action === "none") {
+      return h("p", { class: "small text-dim" }, next?.description || "Nothing to do right now.");
+    }
+    const btn = h("button", { class: "btn primary", disabled: acting, onclick: () => runNextAction(g) }, icon("play", 14), next.label || "Continue");
+    return h("div", { class: "stack" },
+      h("div", { class: "row" }, btn),
+      next.description ? h("p", { class: "small text-dim" }, next.description) : null,
+    );
+  }
+
+  function orderTicket(g) {
+    if (!g.can_trade) {
+      return card({
+        title: "Place a demo order", icon: "zap",
+        sub: "Available once the steps above are complete",
+        body: emptyState({ icon: "lock", title: "Not ready to trade yet", desc: g.reason || "Finish the steps above. QTS will tell you when an order is possible. No real money is at risk either way." }),
+      });
+    }
+    let side = "BUY";
+    const size = h("input", { class: "input", type: "number", step: "0.01", min: "0.01", value: g.order_defaults?.size ?? "0.01", style: { maxWidth: "140px" } });
+    const stop = h("input", { class: "input", type: "number", step: "0.01", placeholder: "auto from plan", style: { maxWidth: "160px" } });
+    const result = h("div");
+    const sideBtn = (label) => h("button", {
+      class: `btn sm ${side === label ? "primary" : ""}`,
+      onclick: (e) => { side = label; [...e.currentTarget.parentNode.children].forEach((b) => b.className = "btn sm"); e.currentTarget.className = "btn sm primary"; },
+    }, label === "BUY" ? "Buy" : "Sell");
+
+    async function submit(dry) {
+      const payload = { side, lots: size.value || undefined, stop_loss: stop.value || undefined, confirmed: true, risk_ack: true };
+      if (dry) payload.dry_run = true;
+      try {
+        const out = await api.post("/api/demo/order", payload);
+        if (dry) {
+          result.replaceChildren(banner("ok", "Preview passed the safety checks", "No order was sent. Press “Place demo order” to submit on the demo account.", "check"), tech(out, "Preview detail"));
+        } else {
+          result.replaceChildren(banner("ok", "Demo order placed", `Broker reference ${out.broker_order_id ?? "recorded"}. This is a practice account — no real money.`, "check"), tech(out, "Order detail"));
+          toast("ok", "Demo order placed", "No real money is at risk.");
+        }
+      } catch (e) {
+        const b = e.body || {};
+        const reasons = Array.isArray(b.reasons) ? b.reasons : (b.detail ? [String(b.detail)] : []);
+        const secondary = reasons.join(" · ").slice(0, 220) || "The safety checks refused the order.";
+        result.replaceChildren(
+          banner("warn", "Demo order could not be submitted", secondary, "alert"),
+          h("details", null, h("summary", null, "Technical details"), tech(b, "Raw refusal")),
+        );
       }
     }
-    for (const [key, , value, meaning] of rows) {
-      const c = factCells[key];
-      c.st.textContent = value;
-      c.det.textContent = meaning;
-      const meta = store.data.resources[key === "mode" || key === "broker" ? "health" : key === "observation" ? "observe" : key === "permission" ? "demoState" : "live"];
-      const f = meta ? freshness(meta, key === "mode" || key === "broker" ? "health" : key === "observation" ? "observe" : key === "permission" ? "demoState" : "live") : { label: "UNAVAILABLE", current: false };
-      c.fresh.textContent = `${f.label}${meta?.updatedAt ? ` · ${fmtAge(meta.updatedAt)}` : ""}`;
-    }
-    activity.textContent = `${demoSentence(s.permission)} Live trading stays locked.`;
-    if (s.permission === "DISABLED") {
-      next.textContent = "See the safety checks"; next.href = "#/trading/demo"; nextWhy.textContent = "Demo trading is off. Watching the market does not turn it on.";
-    } else if (s.permission === "PERMITTED · DEMO ONLY") {
-      next.textContent = "Read the checks before any order"; next.href = "#/trading/demo"; nextWhy.textContent = "Demo trading is on for this reading. Each order can still be refused. Live trading stays locked.";
-    } else if (s.permission === "AUTHORIZED · NOT PERMITTED") {
-      next.textContent = "See why an order is still blocked"; next.href = "#/trading/demo"; nextWhy.textContent = "A demo authorization is recorded. An order is still not allowed. Live trading stays locked.";
-    } else if (s.permission === "CONFLICT · INSPECT") {
-      next.textContent = "Inspect the conflict"; next.href = "#/system/diagnostics"; nextWhy.textContent = "The readings disagree. Do not trade until they agree.";
-    } else if (s.sources.health.current && String(s.health?.mt5).toLowerCase() !== "connected") {
-      next.textContent = "Connect the broker terminal"; next.href = "#/system/mt5"; nextWhy.textContent = "The terminal is not connected. Do not turn trading on from here.";
-    } else {
-      next.textContent = "See the recorded quotes"; next.href = "#/market/observations"; nextWhy.textContent = s.next.why;
-    }
+
+    return card({
+      title: "Place a demo order", icon: "zap",
+      sub: `${g.instrument} · practice account · no real money at risk`,
+      actions: [h("span", { class: "prov demo" }, "DEMO ONLY")],
+      body: h("div", { class: "stack" },
+        banner("info", "No real money is at risk", "This order goes to your demo (practice) account only. Live trading stays locked.", "lock"),
+        h("div", { class: "row", style: { flexWrap: "wrap", gap: "10px", alignItems: "flex-end" } },
+          h("div", { class: "field" }, h("label", { class: "small" }, "Direction"), h("div", { class: "row" }, sideBtn("BUY"), sideBtn("SELL"))),
+          h("div", { class: "field" }, h("label", { class: "small" }, "Size (lots)"), size),
+          h("div", { class: "field" }, h("label", { class: "small" }, "Stop loss (optional)"), stop, h("div", { class: "hint" }, "Leave blank to use the plan's protective stop.")),
+        ),
+        h("div", { class: "row" },
+          h("button", { class: "btn", disabled: acting, onclick: () => submit(true) }, icon("eye", 14), "Preview (no order)"),
+          h("button", { class: "btn primary", disabled: acting, onclick: () => submit(false) }, icon("zap", 14), "Place demo order"),
+        ),
+        result,
+      ),
+    });
   }
 
-  async function refresh(force = false) {
-    if (acting) return;
-    try {
-      const [readiness, state, safety, obs, config, risk] = await Promise.all([
-        api.get("/api/demo/readiness"),
-        api.get("/api/demo/state"),
-        api.get("/api/demo/safety"),
-        api.get("/api/demo/observations?limit=20"),
-        api.get("/api/demo/config"),
-        api.get("/api/risk").catch(() => null),
-      ]);
-      lastReadiness = readiness; lastState = state; lastSafety = safety; lastObs = obs; lastConfig = config; lastRisk = risk;
-      store.set("demoState", state);
-      if (force) await Promise.all(Object.keys(RESOURCES).map((k) => syncResource(k, { force: true })));
-      render();
-    } catch (e) {
-      clear(host);
-      host.appendChild(errorBox({ what: "demo authority could not be loaded", next: "Retry. If readiness probing fails, terminal is not installed — that is honest, not a silent pass.", raw: e.message }));
-      host.appendChild(h("div", { class: "mt-3" }, h("button", { class: "btn primary", onclick: () => refresh(true) }, icon("refresh", 14), "Retry")));
-    }
+  function observationControls() {
+    const status = h("span", { class: "small text-dim" }, "Checking…");
+    const startBtn = h("button", { class: "btn sm", onclick: async () => {
+      try { const r = await api.post("/api/observe/start"); toast("ok", "Observation started", "Recording quotes only — zero orders."); status.textContent = String(r?.status?.state ?? "OBSERVING"); }
+      catch (e) { toast("err", "Could not start observation", explain(e)); }
+    } }, icon("play", 13), "Start watching");
+    const stopBtn = h("button", { class: "btn sm", onclick: async () => {
+      try { await api.post("/api/observe/stop"); toast("warn", "Observation stopped"); status.textContent = "STOPPED"; }
+      catch (e) { toast("err", "Could not stop observation", explain(e)); }
+    } }, icon("stop", 13), "Stop");
+    api.get("/api/observe/status").then((s) => { status.textContent = String(s?.state ?? s?.status?.state ?? "IDLE"); }).catch(() => { status.textContent = "UNAVAILABLE"; });
+    return h("div", { class: "row", style: { alignItems: "center", gap: "10px" } }, startBtn, stopBtn, status);
   }
 
-  function render() {
-    if (!lastReadiness || !lastState) return;
-    clear(host);
-    renderFacts();
+  async function advancedSection(g) {
+    const box = h("div", { class: "stack", style: { paddingTop: "10px" } },
+      h("p", { class: "small text-dim" }, "Engineering detail and secondary controls. None of this changes what the guided workflow enforces. Stage names, readiness checks, the identity pin and raw reports are shown verbatim."),
+      card({ title: "Watch the market", sub: "Records quotes only — never an order", icon: "eye", body: h("div", { class: "stack" },
+        observationControls(),
+        h("p", { class: "small text-dim" }, "Watching does not trade and does not grant permission. Context syncs; permission does not."),
+      ) }),
+    );
+    const [readiness, config, state, safety, obs] = await Promise.all([
+      api.get("/api/demo/readiness").catch(() => null),
+      api.get("/api/demo/config").catch(() => null),
+      api.get("/api/demo/state").catch(() => null),
+      api.get("/api/demo/safety").catch(() => null),
+      api.get("/api/demo/observations?limit=20").catch(() => []),
+    ]);
 
-    const s = operationalState(store.data);
-    host.appendChild(h("section", { class: "operator-section" },
-      h("h2", null, "Operating facts — per-source freshness, DEMO vs LIVE unmistakable"),
-      h("div", { class: "tbl-wrap" },
-        h("table", { class: "tbl facts-table" },
-          h("thead", null, h("tr", null, ["Source","Reported state","Meaning / constraint","API freshness"].map((t) => h("th", { scope: "col" }, t)))),
-          factsBody))));
-
-    // unmistakable DEMO vs LIVE banner — derived from the resolved backend
-    // state, never hard-coded. A fixed "DISABLED BY PRODUCT POLICY" string is how
-    // the UI came to contradict a CLI that reported DEMO_EXECUTION/AUTHORIZED on
-    // the same machine: the label was a literal, not a fact.
-    const cfg = lastConfig ?? {};
+    const cfg = config ?? {};
     const demoEnabled = cfg.demo_execution_disabled === false;
 
-    // Executive Trading Cockpit Card (Section 11)
-    const cockpitStats = h("div", { class: "stat-grid", style: { gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: "14px" } });
-    cockpitStats.append(
-      stat({ label: "Account", value: "Demo account", tone: "info", hint: cfg.account_login ? `Login recorded. Broker name comes from the terminal, not from this screen.` : "Account not confirmed yet.", icon: "shield" }),
-      stat({ label: "Gold", value: "XAUUSD", hint: cfg.symbol_mapping?.venue_symbol ? `Broker symbol ${cfg.symbol_mapping.venue_symbol}` : "Broker symbol not confirmed yet.", icon: "activity" }),
-      stat({ label: "Price feed", value: s.broker === "CONNECTED" ? "Connected" : "Not connected", tone: s.broker === "CONNECTED" ? "ok" : "warn", hint: "A connection is not a gold price and not a trade.", icon: "activity" }),
-      stat({ label: "Trading", value: demoEnabled ? "Demo only" : "Not allowed", tone: demoEnabled ? "ok" : "neutral", hint: demoEnabled ? "Still needs a fresh check before any order." : "Protected by the safety policy.", icon: "lock" }),
-      stat({ label: "Safety checks", value: "Safety checks are on", tone: "ok", hint: "Every order is refused unless the full pre-trade gate passes.", icon: "shield" }),
-      stat({ label: "Your money", value: "Not at risk", tone: "ok", hint: "Live trading is locked. Real money cannot be used.", icon: "lock" }),
-    );
-
-    host.appendChild(card({
+    // Execution cockpit facts — derived from the resolved backend state, never
+    // hard-coded into the guided workflow above.
+    box.appendChild(card({
       title: "Trading status",
       sub: "Demo only. Real money stays locked. A connection is not permission to trade.",
       icon: "layers",
-      body: cockpitStats,
+      body: h("div", { class: "stat-grid" },
+        stat({ label: "Account", value: g.connection?.account_type ?? "Unknown", tone: g.connection?.account_type === "Demo" ? "info" : "neutral", hint: g.connection?.login ? `Login ${g.connection.login} at ${g.connection.server ?? "broker"}` : "Account not confirmed yet.", icon: "shield" }),
+        stat({ label: "Gold", value: "XAUUSD", hint: cfg.symbol_mapping?.venue_symbol ? `Broker symbol ${cfg.symbol_mapping.venue_symbol}` : "Broker symbol not confirmed yet.", icon: "activity" }),
+        stat({ label: "Trading", value: demoEnabled ? "Demo only" : "Not allowed", tone: demoEnabled ? "ok" : "neutral", hint: demoEnabled ? "Still needs a fresh check before any order." : "Protected by the safety policy.", icon: "lock" }),
+        stat({ label: "Safety checks", value: "Safety checks are on", tone: "ok", hint: "Every order is refused unless the full pre-trade gate passes.", icon: "shield" }),
+        stat({ label: "Your money", value: "Not at risk", tone: "ok", hint: "Live trading is locked. Real money cannot be used.", icon: "lock" }),
+      ),
     }));
 
-    host.appendChild(banner(
+    box.appendChild(banner(
       demoEnabled ? "info" : "warn",
-      demoEnabled
-        ? "Demo may be considered. Live trading is locked."
-        : "Trading is off. Live trading is locked.",
+      demoEnabled ? "Demo may be considered. Live trading is locked." : "Trading is off. Live trading is locked.",
       `${demoEnabled
         ? `DEMO EXECUTION: ${String(cfg.demo_execution?.state ?? "ENABLED_AUTHORIZED")} — LIVE LOCKED. This backend process resolved a DEMO-capable mode and a recorded owner authorization. Order permission is still per-order: staged arming, a confirmed identity pin, fresh readiness, a registered policy and the full pre-trade gate.`
         : "DEMO EXECUTION: DISABLED BY POLICY — LIVE LOCKED. No readiness result or UI action creates demo order permission. Watching the market does not turn trading on."} Mode ${String(cfg.mode ?? "UNAVAILABLE").toUpperCase()} — decided by: ${String(cfg.mode_source ?? "unresolved")}.`,
       "lock",
     ));
 
-    // Runtime agreement panel: the UI shows the same resolved mode, the same
-    // state root and the same artefact paths the CLI resolves, so a disagreement
-    // is a comparison of two outputs instead of a mystery.
-    host.appendChild(card({
+    box.appendChild(card({
       title: "What this process decided", icon: "shield",
       sub: "The mode, where state is stored, and the gold symbol. This page does not grant permission.",
       body: h("div", { class: "stack" },
@@ -227,100 +357,112 @@ export async function renderDemo(root) {
           ["Decided by", String(cfg.mode_source ?? "unresolved")],
           ["Persisted declaration", String(cfg.mode_declaration ?? "none")],
           ["State root", String(cfg.state?.state_root ?? "UNAVAILABLE")],
-          ["Setup file", String(cfg.state?.artifacts?.setup?.path ?? "UNAVAILABLE") + (cfg.state?.artifacts?.setup?.exists ? "" : " (absent)")],
+          ["Authority state", `${String(state?.state ?? "UNAVAILABLE")} · permitted: ${String(state?.execution_permitted ?? false)}`],
           ["Orders possible from this page", "no — nothing here grants permission"],
         ]),
-        h("details", null, h("summary", null, "Raw runtime state / technical evidence"), tech(cfg, "Raw /api/demo/config")),
+        h("details", null, h("summary", null, "Raw runtime state / technical evidence"), tech({ config: cfg, state }, "Raw /api/demo/config + /api/demo/state")),
       ),
     }));
 
-    const checks = lastReadiness.checks ?? {};
-    const allPass = Boolean(lastReadiness.passed);
+    const checks = readiness?.checks ?? {};
+    const allPass = Boolean(readiness?.passed);
     const failing = Object.entries(checks).filter(([, v]) => v === false).map(([k]) => k);
-    host.appendChild(card({
+    box.appendChild(card({
       title: "Safety checks", icon: "shield",
-      sub: allPass ? `passed ${fmtAge(lastReadiness.timestamp)}` : `${failing.length} failing — ${failing.slice(0,3).join(", ")}${failing.length > 3 ? ` +${failing.length - 3} more` : ""}`,
-      actions: [h("button", { class: "btn sm", onclick: () => refresh(true) }, icon("refresh", 13), "Run readiness now")],
+      sub: readiness
+        ? (allPass ? `passed ${fmtAge(readiness.timestamp)}` : `${failing.length} failing — ${failing.slice(0, 3).join(", ")}${failing.length > 3 ? ` +${failing.length - 3} more` : ""}`)
+        : "readiness report unavailable",
       body: h("div", { class: "stack" },
         allPass
           ? banner("ok", "Checks passed for watching only", "A pass lets QTS record quotes. It does not allow an order. Live trading stays locked.", "check")
-          : banner("warn", "Checks did not pass", (lastReadiness.blocked_reasons ?? []).join(" · ") || "The failed checks are listed below. Watching stays unable to send an order.", "alert"),
-        checkGrid(checks, lastReadiness.details ?? {}),
-        h("details", null, h("summary", null, "Raw readiness report / technical evidence"), tech(lastReadiness, "Raw readiness")),
+          : banner("warn", "Checks did not pass", (readiness?.blocked_reasons ?? []).join(" · ") || "The failed checks are listed below. Watching stays unable to send an order.", "alert"),
+        checkGrid(checks, readiness?.details ?? {}),
+        h("details", null, h("summary", null, "Raw readiness report / technical evidence"), tech(readiness ?? {}, "Raw /api/demo/readiness")),
       ),
     }));
 
+    const lim = safety?.demo_limits ?? {};
+    box.appendChild(card({ title: "Demo safety limits — non-authorizing", sub: `config ${lim.config_hash ?? "—"} · descriptive only`, icon: "shield", body: h("div", { class: "stat-grid" },
+      stat({ label: "Max volume / order", value: `${fmtNum(lim.max_volume_per_order)} lots`, icon: "layers" }),
+      stat({ label: "Max exposure", value: `${fmtNum(lim.max_simultaneous_exposure)} lots`, icon: "layers" }),
+      stat({ label: "Order rate", value: `${fmtInt(lim.max_orders_per_minute)}/min`, icon: "clock" }),
+      stat({ label: "Daily loss cap", value: `$${fmtNum(lim.max_daily_loss_usd, 0)}`, tone: "warn", icon: "alert" }),
+      stat({ label: "Max spread", value: `${fmtNum(lim.max_spread_bps, 0)} bps`, icon: "activity" }),
+    ) }));
+    box.appendChild(Array.isArray(obs) && obs.length && !obs[0]?.error
+      ? card({ title: "Recent demo observations", sub: "recorded quotes with provenance", icon: "database", body: table({
+          columns: [
+            { key: "timestamp", label: "Time (UTC)", render: (o) => h("span", { class: "mono small" }, fmtUtc(o.timestamp)) },
+            { key: "bid", label: "Bid", num: true, render: (o) => fmtNum(o.bid) },
+            { key: "ask", label: "Ask", num: true, render: (o) => fmtNum(o.ask) },
+            { key: "prov", label: "Provenance", render: (o) => provStrip(o.provenance ?? o.data_class ?? "") },
+          ],
+          rows: obs, dense: true,
+        }) })
+      : card({ title: "Recent demo observations", icon: "database", body: emptyState({ icon: "database", title: "No demo observations yet", desc: "Start watching above. Every tick persists with full provenance." }) }));
+    box.appendChild(h("details", null, h("summary", null, "Raw guided-workflow state / technical evidence"), tech(g.technical || {}, "Raw guided-workflow state")));
+    return h("details", { class: "mt-3" },
+      h("summary", null, "Advanced — technical details, limits, observations"),
+      box,
+    );
+  }
+
+  function render() {
+    if (!guide) return;
+    clear(host);
+    const g = guide;
+
+    // Unmistakable status headline.
+    host.appendChild(h("section", { class: "operator-summary" },
+      h("div", null,
+        h("div", { class: "eyebrow" }, "STATUS"),
+        h("h2", null, g.headline || "Loading…"),
+        g.reason ? h("p", { class: "text-dim small" }, g.reason) : null,
+      ),
+      h("div", { class: "next-action" },
+        h("div", { class: "eyebrow" }, g.can_trade ? "TRADE" : "NEXT"),
+        g.can_trade ? h("span", { class: "badge ok" }, "Ready — place a demo order below") : nextActionButton(g),
+      )));
+
+    host.appendChild(banner(toneFor(g), g.status === "ready" ? "Ready for demo trading" : g.status === "stopped" ? "Trading is stopped" : "Not ready yet",
+      `Live trading is locked. Real-capital exposure is $0. ${g.reason ? g.reason : (g.status === "ready" ? "Every order still passes the full pre-trade safety gate." : "Follow the next step — QTS runs the checks for you.")}`,
+      headlineIcon(g)));
+
     host.appendChild(h("div", { class: "grid-2" },
-      card({ title: "Watch the market", sub: "This records quotes. It does not send an order.", icon: "eye", body:
-        h("div", { class: "stack" },
-          kv([["Observation mode", String(lastConfig?.observation_mode ?? "observe_only").toUpperCase()], ["Orders possible", "no — structurally"], ["Collector", s.observation], ["Context", `${getContext().symbol} · ${getContext().timeframe}`]]),
-          h("div", { class: "row" },
-            h("button", { class: "btn", disabled: acting || s.observing, onclick: async () => {
-              acting = true; try { const r = await api.post("/api/observe/start"); if (r.status?.state !== "OBSERVING") throw new Error(r.note || "Backend did not confirm OBSERVING"); toast("ok","Observation confirmed","Zero orders."); await refresh(); } catch (e){ toast("err","Could not start",explain(e)); } finally { acting=false; }
-            } }, icon("play", 14), "Start observation"),
-            h("button", { class: "btn", disabled: acting || !s.observing, onclick: async () => {
-              acting = true; try { await api.post("/api/observe/stop"); toast("warn","Observation stopped"); await refresh(); } catch (e){ toast("err","Could not stop",explain(e)); } finally { acting=false; }
-            } }, icon("stop", 14), "Stop"),
-          ),
-          h("div", { class: "meta" }, "A DEMO terminal must be configured; without one this honestly reports failure instead of pretending. Context syncs, permission does not."),
-        ),
-      }),
-      card({ title: "Demo trading is not the same as permission", sub: "A recorded authorization does not by itself allow an order. Live trading remains locked. There is no validated trading opportunity.", icon: "lock", body:
-        h("div", { class: "stack" },
-          h("p", { class: "text-dim small" }, `Authority reports ${s.permission}. Mode ${s.mode.mode} — ${s.mode.blurb} — context ${getContext().symbol}. DEMO is DEMO, LIVE is LOCKED.`),
-          h("div", { class: "banner info" }, "DEMO_EXECUTION is available on the DEMO account only with a recorded owner authorization; the shipped default is DISABLED BY POLICY. No readiness result, request payload, or UI action can create order permission — orders require the staged progression and the full pre-trade gate (every required safeguard, contract check and registered-policy limit). LIVE remains LOCKED."),
-          h("div", { class: "meta" }, "The authority, the stage machine and the pre-trade gate each refuse independently. Readiness evidence is retained for observation diagnostics only."),
-          h("details", null, h("summary", null, "Why DEMO is not an ordinary switch / evidence — summary → detail"),
-            h("ul", { class: "reason-list" },
-              [`Authority state: ${lastState.state}`, `Execution permitted: ${String(lastState.execution_permitted)}`, `Mode: ${s.mode.mode}`, `LIVE: ${s.liveLabel} — unmistakable`, `Context: ${getContext().symbol} — presentation only`, ...(lastState.reasons || []).map((r) => `Permission: ${r}`), ...(lastReadiness.blocked_reasons || []).map((r) => `Readiness: ${r}`)].map((x) => h("li", null, x))
-            )
-          ),
+      connectionCard(g),
+      card({
+        title: "Setup steps", icon: "shield",
+        sub: "QTS runs the safety checks for you",
+        body: h("div", { class: "stack" },
+          ...(g.steps || []).map(stepRow),
+          h("div", { class: "mt-3" }, nextActionButton(g)),
         ),
       }),
     ));
 
-    const lim = lastSafety?.demo_limits ?? {};
-    const kill = String(lastRisk?.limits?.kill_switch ?? "").toUpperCase();
-    host.appendChild(card({
-      title: "Demo safety metadata — non-authorizing caps", sub: `config ${lim.config_hash ?? "—"} — descriptive only; policy still disables execution`, icon: "shield",
-      actions: [h("span", { class: "prov demo" }, "DEMO LIMITS")],
-      body: h("div", { class: "stat-grid" },
-        stat({ label: "Max volume / order", value: `${fmtNum(lim.max_volume_per_order)} lots`, icon: "layers" }),
-        stat({ label: "Max exposure", value: `${fmtNum(lim.max_simultaneous_exposure)} lots`, icon: "layers" }),
-        stat({ label: "Order rate", value: `${fmtInt(lim.max_orders_per_minute)}/min`, icon: "clock" }),
-        stat({ label: "Daily loss cap", value: `$${fmtNum(lim.max_daily_loss_usd, 0)}`, tone: "warn", icon: "alert" }),
-        stat({ label: "Max spread", value: `${fmtNum(lim.max_spread_bps, 0)} bps`, icon: "activity" }),
-        stat({ label: "Kill switch", value: kill === "ACTIVE" ? "On — orders stopped" : kill === "ARMED" ? "Ready" : "Not reported", tone: kill === "ACTIVE" ? "err" : kill === "ARMED" ? "ok" : "neutral", hint: kill === "ACTIVE" ? (lastRisk?.kill_switch_detail?.reason || "The durable kill switch is stopping orders.") : "Ready means the switch exists. It is not permission to trade.", icon: "shield" }),
-      ),
-    }));
-
-    host.appendChild(card({ title: "Recent demo observations — provenance explicit, not completeness proof", sub: `canonical store — context ${getContext().symbol}`, icon: "database", body:
-      (lastObs ?? []).length
-        ? table({
-            columns: [
-              { key: "timestamp", label: "Time (UTC)", render: (o) => h("span", { class: "mono small" }, fmtUtc(o.timestamp)) },
-              { key: "bid", label: "Bid", num: true, render: (o) => fmtNum(o.bid) },
-              { key: "ask", label: "Ask", num: true, render: (o) => fmtNum(o.ask) },
-              { key: "prov", label: "Provenance", render: (o) => provStrip(o.provenance ?? o.data_class ?? "") },
-              { key: "signal", label: "Signal", render: (o) => o.signal ? badge(String(o.signal).toUpperCase() === "NO_TRADE" ? "NO_TRADE" : "SIGNAL") : h("span", { class: "text-faint small" }, "—") },
-            ],
-            rows: lastObs, empty: "No demo observations yet.", dense: true,
-          })
-        : emptyState({ icon: "database", title: "No real demo observations recorded yet", desc: "Start an observation session with the DEMO terminal connected. Every tick persists with full provenance." }),
-    }));
-
-    if (lastSafety?.boundary) {
-      host.appendChild(card({ title: "Environment boundary — what each mode may do — demo never grants live", icon: "shield", body:
-        kv(Object.entries(lastSafety.boundary).map(([k, v]) => [k, h("span", { class: "small text-dim" }, v)])),
-      }));
-    }
-    host.appendChild(h("details", null, h("summary", null, "Raw authority snapshots / technical evidence"), tech({ readiness: lastReadiness, state: lastState, safety: lastSafety, config: lastConfig, context: getContext() }, "Raw authority")));
+    host.appendChild(orderTicket(g));
+    advancedSection(g).then((node) => host.appendChild(node)).catch(() => {
+      host.appendChild(h("details", { class: "mt-3" },
+        h("summary", null, "Advanced — technical details"),
+        tech(g.technical || {}, "Raw guided-workflow state"),
+      ));
+    });
   }
 
-  const off = store.on("resources", renderFacts);
-  const offCtx = onContext(renderFacts);
-  onDispose(root, () => { off(); offCtx(); });
-  await refresh();
+  async function load(force = false) {
+    if (acting && !force) return;
+    try {
+      const g = await api.get("/api/demo/guide");
+      guide = g;
+      render();
+    } catch (e) {
+      clear(host);
+      host.appendChild(errorBox({ what: "the guided demo state could not be loaded", next: "Retry. If MetaTrader 5 is not installed, connection steps report that honestly.", raw: e.message }));
+      host.appendChild(h("div", { class: "mt-3" }, h("button", { class: "btn primary", onclick: () => load(true) }, icon("refresh", 14), "Retry")));
+    }
+  }
+
+  await load();
 }
 
 /* Execution Center */
