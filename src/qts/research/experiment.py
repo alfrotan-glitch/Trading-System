@@ -330,8 +330,12 @@ class ExperimentStore:
 
     def all_experiments(self) -> list[Experiment]:
         with db_connect(self.db_path) as con:
-            rows = con.execute("SELECT payload FROM experiments ORDER BY trial_count, rowid").fetchall()
-            return [Experiment.model_validate_json(r[0]) for r in rows]
+            # Order in Python, not SQL: trial_count lives inside the payload,
+            # not as a column — ORDER BY trial_count crashed every store with
+            # "no such column" (raw SQLite error leaked to the UI, §16).
+            rows = con.execute("SELECT payload FROM experiments ORDER BY rowid").fetchall()
+        exps = [Experiment.model_validate_json(r[0]) for r in rows]
+        return sorted(exps, key=lambda e: (e.trial_count, e.id))
 
     def complete(
         self,
