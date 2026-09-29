@@ -165,8 +165,8 @@ export async function renderDemo(root) {
     acting = true;
     try {
       if (next.action === "check_connection") { await load(true); return; }
-      if (next.action === "open_setup") { navigate("#/system/setup"); return; }
-      if (next.action === "review_authorization") { navigate("#/governance/live"); return; }
+      if (next.action === "open_setup") { navigate("#/advanced/system-setup"); return; }
+      if (next.action === "review_authorization") { navigate("#/advanced/governance"); return; }
 
       if (next.action === "record_identity") {
         const out = await api.post("/api/demo/guide/record-identity", {});
@@ -651,7 +651,7 @@ export async function renderExecution(root) {
       : emptyState({
           icon: "zap", title: "No real executions recorded yet",
           desc: "No order has been recorded. An empty list is not zero profit, and this page does not place an order. Live trading stays locked.",
-          actions: [h("button", { class: "btn", onclick: () => navigate("#/trading/demo") }, icon("shield", 14), "Open the demo account")],
+          actions: [h("button", { class: "btn", onclick: () => navigate("#/trading") }, icon("shield", 14), "Open the demo account")],
         }),
   }));
 }
@@ -688,7 +688,7 @@ export async function renderComparison(root) {
       emptyState({
         icon: "scale", title: "No DEMO_FORWARD observations to compare yet",
         desc: "Signal alignment can be measured only when paper/shadow events share a decision event with recorded observations. Fill, slippage, latency, and realized execution metrics remain UNAVAILABLE until DEMO orders are recorded — never fabricated as zero.",
-        actions: [h("button", { class: "btn", onclick: () => navigate("#/trading/demo") }, icon("shield", 14), "Demo control")],
+        actions: [h("button", { class: "btn", onclick: () => navigate("#/trading") }, icon("shield", 14), "Demo control")],
       }),
     }));
   }

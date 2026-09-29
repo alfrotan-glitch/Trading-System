@@ -190,6 +190,24 @@ test("keyboard search still finds pages (no advertised palette button)", async (
   await waitUntil(() => document.body.textContent.includes("This page cannot open it"), 15000, "governance render");
 });
 
+test("every Advanced page renders under the new IA — nothing broke in the move", async () => {
+  const advancedRoutes = [
+    "research-campaigns", "research-hypotheses", "research-experiments",
+    "research-strategies", "research-validation", "research-memory", "research-data",
+    "data-observations", "data-quality", "data-lineage",
+    "trading-practice", "trading-history", "trading-comparison",
+    "risk", "evidence", "audit", "governance",
+    "system-setup", "system-mt5", "system-diagnostics",
+  ];
+  for (const id of advancedRoutes) {
+    await goto(`#/advanced/${id}`);
+    await waitUntil(() => document.getElementById("main").textContent.trim().length > 60, 20000, `advanced/${id} content`);
+    const body = document.getElementById("main").textContent;
+    assert.ok(!body.includes("this view failed to render"), `advanced/${id} fell back to the error box`);
+    assert.ok(document.querySelectorAll(".nav-item.adv").length === 20, "Advanced list stays intact while navigating");
+  }
+});
+
 test("no uncaught page errors during the whole tour", () => {
   const real = errors.filter((e) => !/Could not load content|css/i.test(e));
   assert.deepEqual(real, [], `page errors: ${real.join(" | ")}`);

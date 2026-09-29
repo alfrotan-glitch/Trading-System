@@ -64,7 +64,7 @@ export async function renderExplorer(root) {
             kv([["Dataset manifest", h("span", { class: "mono small" }, v.evidence?.dataset?.manifest ?? "—")], ["Trials (N)", v.evidence?.trial_ledger?.trial_count ?? "—"], ["Edge survival", badge(edge?.passed ? "PASSED" : "FAILED")], ["PSR / DSR / PBO", `${edge?.psr ?? "—"} / ${edge?.dsr ?? "—"} / ${edge?.pbo ?? "—"}`], ["Context", `${getContext().symbol} — presentation only`]]),
             h("details", null, h("summary", null, "Raw discovery evidence / technical — summary → detail → raw"), tech(v.evidence, "Raw discovery evidence")),
           )
-        : emptyState({ icon: "archive", title: "No validation evidence available", desc: "Evidence appears after research campaigns run. QTS never invents portfolio to look complete.", actions: [h("button", { class: "btn", onclick: () => navigate("#/research/campaigns") }, icon("play", 14), "Open Research")] }),
+        : emptyState({ icon: "archive", title: "No validation evidence available", desc: "Evidence appears after research campaigns run. QTS never invents portfolio to look complete.", actions: [h("button", { class: "btn", onclick: () => navigate("#/advanced/research-campaigns") }, icon("play", 14), "Open Research")] }),
     }),
     card({ title: "Confidence calibration — explanatory, not decorative", icon: "scale", body: h("div", { class: "stack" }, banner("info", "Calibrated probability, not vibes", "PSR/DSR give calibrated probabilities; permutation tests control false positives; null and placebo verify machinery itself.", "info"), h("p", { class: "gate-note" }, "High backtest Sharpe is treated as hypothesis to attack, never as result to display proudly."))}),
   ));

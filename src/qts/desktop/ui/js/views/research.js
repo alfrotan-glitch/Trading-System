@@ -130,7 +130,7 @@ export async function renderHypotheses(root) {
   activity.textContent = `${hyps.length} hypotheses — context ${getContext().symbol} — dense, mechanism explicit`;
 
   if (!hyps.length) {
-    host.appendChild(card({ title: "Hypotheses", icon: "brain", body: emptyState({ icon: "brain", title: "No hypotheses recorded yet", desc: "Hypotheses generated inside campaigns: each states claim, mechanism, how it can be refuted.", actions: [h("button", { class: "btn", onclick: () => navigate("#/research/campaigns") }, icon("play", 14), "Open Campaigns")] }) }));
+    host.appendChild(card({ title: "Hypotheses", icon: "brain", body: emptyState({ icon: "brain", title: "No hypotheses recorded yet", desc: "Hypotheses generated inside campaigns: each states claim, mechanism, how it can be refuted.", actions: [h("button", { class: "btn", onclick: () => navigate("#/advanced/research-campaigns") }, icon("play", 14), "Open Campaigns")] }) }));
   } else {
     host.appendChild(card({ title: `${hyps.length} hypotheses — dense, keyboard navigable`, icon: "brain", body: denseTable({
       columns: [
@@ -187,7 +187,7 @@ export async function renderExperiments(root) {
       ],
       rows: allTrials,
       onRowClick: (t) => drawer(`Trial ${t.id ?? ""}`, h("div", { class: "stack" }, kv([["Campaign", String(t.campaign_id)], ["Outcome", badge(t.status ?? "RECORDED")], ["Reason", t.reason ?? "—"], ["Context", `${getContext().symbol} — presentation only`]]), tech(t, "Raw trial"))),
-    }) : emptyState({ icon: "archive", title: "No trials recorded yet", desc: "Failed experiments are knowledge: each eliminates search space. They appear here with same prominence as successes.", actions: [h("button", { class: "btn", onclick: () => navigate("#/research/campaigns") }, icon("play", 14), "Run a campaign")] }),
+    }) : emptyState({ icon: "archive", title: "No trials recorded yet", desc: "Failed experiments are knowledge: each eliminates search space. They appear here with same prominence as successes.", actions: [h("button", { class: "btn", onclick: () => navigate("#/advanced/research-campaigns") }, icon("play", 14), "Run a campaign")] }),
   }));
 
   host.appendChild(h("div", { class: "grid-2" },
@@ -214,7 +214,7 @@ export async function renderStrategies(root) {
   activity.textContent = `${list.length} strategies — context ${getContext().symbol} — evidence graded`;
 
   if (!list.length) {
-    host.appendChild(card({ body: emptyState({ icon: "flask", title: "No strategies registered", desc: "Strategies appear after campaigns surface surviving candidates. Empty library is honest starting state.", actions: [h("button", { class: "btn", onclick: () => navigate("#/research/campaigns") }, icon("play", 14), "Open Research")] }) }));
+    host.appendChild(card({ body: emptyState({ icon: "flask", title: "No strategies registered", desc: "Strategies appear after campaigns surface surviving candidates. Empty library is honest starting state.", actions: [h("button", { class: "btn", onclick: () => navigate("#/advanced/research-campaigns") }, icon("play", 14), "Open Research")] }) }));
     return;
   }
 
@@ -227,14 +227,14 @@ export async function renderStrategies(root) {
         { key: "instrument", label: "Instrument", render: (s) => `${s.symbol ?? "—"} · ${s.timeframe ?? "—"}` },
         { key: "params", label: "Parameters", render: (s) => h("span", { class: "mono small text-dim" }, trunc(JSON.stringify(s.parameter_definition ?? {}), 40)) },
         { key: "hypothesis", label: "Thesis", render: (s) => h("span", { class: "small text-dim" }, trunc(s.hypothesis ?? "", 50)) },
-        { key: "score", label: "Validation", render: (s) => h("button", { class: "btn ghost sm", onclick: (e) => { e.stopPropagation(); navigate("#/research/validation"); } }, "Scorecard") },
+        { key: "score", label: "Validation", render: (s) => h("button", { class: "btn ghost sm", onclick: (e) => { e.stopPropagation(); navigate("#/advanced/research-validation"); } }, "Scorecard") },
       ],
       rows: list,
       onRowClick: (s) => drawer(s.strategy_id, h("div", { class: "stack" },
         kv([["Name", s.name ?? "—"], ["Version", s.version ?? "—"], ["Market", `${s.market ?? "—"} ${s.symbol ?? ""} ${s.timeframe ?? ""}`], ["Data manifest", h("span", { class: "mono small" }, s.data_manifest ?? "—")], ["Context", `${getContext().symbol} — presentation only`]]),
         h("div", null, h("div", { class: "eyebrow" }, "Thesis"), h("p", { class: "text-dim small" }, s.hypothesis ?? "—")),
         h("details", null, h("summary", null, "Feature definition / technical — summary → detail → raw"), tech(s.feature_definition, "Show features")),
-        h("button", { class: "btn primary", onclick: () => { closeDrawer(); navigate("#/research/validation"); } }, icon("pulse", 14), "Open validation scorecard"),
+        h("button", { class: "btn primary", onclick: () => { closeDrawer(); navigate("#/advanced/research-validation"); } }, icon("pulse", 14), "Open validation scorecard"),
       )),
     }),
   }));
@@ -244,7 +244,8 @@ export async function renderStrategies(root) {
 export async function renderValidation(root) {
   skeletonInto(root);
   root.classList.add("operator-workspace");
-  const head = page({ crumb: "Research", group: "Validation", title: "Validation", answer: h("b", null, "Whether a saved research file supports a trade. It does not. A file pass does not permit an order, and it cannot open live trading."), body: null });
+  // actions: [] renders the (empty) .page-actions slot; the strategy picker is appended into it below
+  const head = page({ crumb: "Research", group: "Validation", title: "Validation", answer: h("b", null, "Whether a saved research file supports a trade. It does not. A file pass does not permit an order, and it cannot open live trading."), actions: [], body: null });
   root.appendChild(head);
   const pick = h("select", { class: "input", style: { maxWidth: "260px" } });
   const host = h("div", { class: "section" }); root.appendChild(host);
