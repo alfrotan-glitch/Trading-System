@@ -88,7 +88,7 @@ test("freshness distinguishes loading, current refresh, stale, failed and unknow
 });
 test("presentation preferences reject permission, mode, arbitrary routes and unknown values", () => {
   const p = sanitizeWorkspace({density: "huge", width: "wide", enabled: true, mode: "LIVE", risk_ack: true, route: "#/demo/enable?yes=true", rememberRoute: true});
-  assert.deepEqual(p, {density: "compact", width: "wide", navigation: "standard", rememberRoute: true, route: "#/overview"});
+  assert.deepEqual(p, {density: "compact", width: "wide", navigation: "standard", rememberRoute: true, route: "#/home"});
   assert.equal(sanitizeWorkspace(null).rememberRoute, false);
 });
 test("GET requests coalesce and POST requests never coalesce", async () => {

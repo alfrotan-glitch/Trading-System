@@ -25,7 +25,7 @@ export async function renderGovernance(root) {
   root.appendChild(head);
 
   const activity = h("h2", null, "Loading live status…");
-  const next = h("a", { class: "btn primary", href: "#/risk" }, "See the limits");
+  const next = h("a", { class: "btn primary", href: "#/advanced/risk" }, "See the limits");
   const nextWhy = h("p", { class: "text-dim small" });
   root.appendChild(h("section", { class: "operator-summary live-boundary" },
     h("div", null, h("div", { class: "eyebrow" }, "NOW / LIVE GOVERNANCE"), activity),

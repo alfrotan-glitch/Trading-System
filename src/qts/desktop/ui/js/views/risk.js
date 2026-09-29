@@ -24,7 +24,7 @@ export async function renderRisk(root) {
   root.appendChild(head);
 
   const activity = h("h2", null, "Loading risk authority…");
-  const next = h("a", { class: "btn primary", href: "#/trading/demo" }, "Inspect DEMO authority");
+  const next = h("a", { class: "btn primary", href: "#/trading" }, "Inspect DEMO authority");
   const nextWhy = h("p", { class: "text-dim small" });
   root.appendChild(h("section", { class: "operator-summary" },
     h("div", null, h("div", { class: "eyebrow" }, "NOW / RISK"), activity),

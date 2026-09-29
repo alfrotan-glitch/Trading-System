@@ -316,3 +316,165 @@
   font-weight: 600;
 }
 .skip-link:focus { left: 0; }
+
+/* ==========================================================================
+   PRODUCT SHELL — consumer transformation (2026-09-29)
+   Calm, premium, readable. Rules below intentionally override the operator
+   chrome above for the primary surfaces (header, sidebar, home, market).
+   Advanced pages keep the full engineering component set.
+   ========================================================================== */
+
+.header {
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--line);
+  gap: var(--sp-4);
+}
+.header::after { display: none; }
+
+.brand { text-decoration: none; }
+.brand .word { background: none; -webkit-background-clip: initial; background-clip: initial; color: var(--text-1); }
+.brand .logo { box-shadow: none; border-radius: 8px; }
+.brand .sub { color: var(--text-3); font-weight: 500; }
+
+.header-center { display: flex; align-items: center; gap: var(--sp-4); flex: 1; min-width: 0; margin-left: var(--sp-4); }
+.header-account {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: var(--fs-13); color: var(--text-2);
+  background: var(--bg-2); border: 1px solid var(--line);
+  padding: 5px 12px; border-radius: 999px; white-space: nowrap;
+}
+.header-account.connected { color: var(--ok-text); border-color: var(--ok-line); background: var(--ok-bg); }
+.account-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.account-dot.ok { background: var(--ok); }
+.account-dot.off { background: var(--neutral); }
+.header-status { font-size: var(--fs-13); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-status[data-tone="ok"] { color: var(--ok-text); }
+.header-status[data-tone="err"] { color: var(--err-text); }
+.header-lock {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--fs-11); color: var(--text-3);
+  border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
+  white-space: nowrap;
+}
+.header-updated { font-size: var(--fs-11); color: var(--text-3); white-space: nowrap; }
+
+/* sidebar — few friendly choices, quiet Advanced */
+.sidebar { background: var(--bg-1); border-right: 1px solid var(--line); padding: var(--sp-3) 0; gap: var(--sp-1); }
+.nav-primary { display: flex; flex-direction: column; gap: 2px; padding: 0 var(--sp-2); }
+.nav-item.primary {
+  margin: 0; width: 100%;
+  padding: 10px 14px; min-height: 40px;
+  font-size: var(--fs-14); font-weight: 550;
+  color: var(--text-2); border-radius: 10px;
+}
+.nav-item.primary .icon { width: 16px; height: 16px; opacity: 0.85; }
+.nav-item.primary:hover { background: var(--bg-2); color: var(--text-1); transform: none; }
+.nav-item.primary.active {
+  background: var(--accent-soft); color: var(--accent-text);
+  border-left: none; border-radius: 10px; font-weight: 650;
+  box-shadow: inset 0 0 0 1px var(--info-line);
+}
+.nav-item.primary.active .icon { color: var(--accent-text); }
+
+.nav-advanced { margin: var(--sp-4) var(--sp-2) 0; border-top: 1px solid var(--line-soft); padding-top: var(--sp-3); }
+.nav-advanced summary {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px; cursor: pointer; list-style: none;
+  font-size: var(--fs-12); font-weight: 600; color: var(--text-3);
+  border-radius: 8px; user-select: none;
+}
+.nav-advanced summary::-webkit-details-marker { display: none; }
+.nav-advanced summary:hover { color: var(--text-2); background: var(--bg-2); }
+.nav-advanced .adv-hint { margin-left: auto; font-weight: 400; font-size: var(--fs-11); color: var(--text-3); opacity: 0.7; }
+.adv-body { padding: var(--sp-1) 0 var(--sp-2); }
+.adv-sub {
+  padding: 10px 14px 3px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--text-3); opacity: 0.85;
+}
+.nav-item.adv {
+  margin: 0 var(--sp-1); width: calc(100% - 8px);
+  padding: 5px 12px 5px 24px; min-height: 26px;
+  font-size: var(--fs-12); color: var(--text-3); border-radius: 7px;
+}
+.nav-item.adv:hover { color: var(--text-1); background: var(--bg-2); transform: none; }
+.nav-item.adv.active { background: var(--accent-soft); color: var(--accent-text); border-left: none; font-weight: 600; box-shadow: none; }
+.sidebar-footer { font-size: var(--fs-11); }
+.sidebar-footer .icon { width: 12px; height: 12px; vertical-align: -1px; }
+
+/* buttons — calm primary */
+.btn.lg { padding: 10px 18px; font-size: var(--fs-14); border-radius: 10px; min-height: 40px; }
+
+/* home — the product command center */
+.home .page-head { display: none; }
+.home-hero {
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px 30px;
+  margin-bottom: var(--sp-5);
+  box-shadow: var(--shadow-1);
+}
+.home-hero[data-tone="ok"] { border-color: var(--ok-line); }
+.home-hero[data-tone="warn"] { border-color: var(--warn-line); }
+.home-hero[data-tone="err"] { border-color: var(--err-line); }
+.hero-eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: 8px;
+}
+.hero-headline { font-size: var(--fs-28); font-weight: 750; letter-spacing: -0.015em; color: var(--text-1); margin: 0 0 6px; }
+.home-hero[data-tone="ok"] .hero-headline { color: var(--ok-text); }
+.home-hero[data-tone="warn"] .hero-headline { color: var(--warn-text); }
+.home-hero[data-tone="err"] .hero-headline { color: var(--err-text); }
+.hero-reason { font-size: var(--fs-14); max-width: 70ch; margin: 0 0 18px; }
+.hero-actions { display: flex; gap: var(--sp-3); align-items: center; flex-wrap: wrap; }
+
+.home-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--sp-4); margin-bottom: var(--sp-6); }
+.home-card {
+  background: var(--bg-1); border: 1px solid var(--line); border-radius: 14px;
+  padding: 20px; height: 100%; box-shadow: var(--shadow-1);
+  display: flex; flex-direction: column; gap: var(--sp-3);
+}
+.home-card-head { display: flex; align-items: center; gap: 8px; color: var(--text-3); }
+.home-card-head h2 { font-size: var(--fs-13); font-weight: 650; color: var(--text-2); margin: 0; text-transform: none; letter-spacing: 0; }
+.home-card-head .icon { width: 15px; height: 15px; }
+.home-value { display: flex; align-items: center; gap: 6px; font-size: var(--fs-16); font-weight: 650; color: var(--text-1); }
+.home-value.ok { color: var(--ok-text); }
+.home-value.warn { color: var(--warn-text); }
+.home-value.neutral { color: var(--text-1); }
+.home-value .icon { width: 15px; height: 15px; flex: none; }
+.home-price { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--text-1); }
+.home-link { margin-top: auto; color: var(--accent-text); text-decoration: none; }
+.home-link:hover { text-decoration: underline; }
+.home-technical { margin-top: var(--sp-2); }
+.home-technical summary { cursor: pointer; color: var(--text-3); font-size: var(--fs-12); padding: 8px 0; }
+.home-technical summary:hover { color: var(--text-2); }
+.home-technical .tech-body { padding: var(--sp-2) 0; }
+
+/* market — professional gold screen */
+.market .page-head { border-bottom: none; }
+.market-hero {
+  background: var(--bg-1); border: 1px solid var(--line); border-radius: 16px;
+  padding: 26px 30px; margin-bottom: var(--sp-5); box-shadow: var(--shadow-1);
+}
+.market-hero-inner { display: flex; justify-content: space-between; gap: var(--sp-6); flex-wrap: wrap; align-items: flex-end; }
+.market-price { font-size: 44px; font-weight: 750; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--text-1); line-height: 1.05; }
+.market-price.unavailable { font-size: var(--fs-24); color: var(--text-2); font-weight: 650; padding: 10px 0; }
+.market-sub { color: var(--text-2); font-size: var(--fs-13); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.market-change { display: flex; gap: 8px; align-items: baseline; margin-top: 10px; font-size: var(--fs-14); font-weight: 600; }
+.market-change.up { color: var(--ok-text); }
+.market-change.down { color: var(--err-text); }
+.market-change.flat { color: var(--text-2); }
+.market-change .chg-pct { font-weight: 550; }
+.market-change .chg-note { color: var(--text-3); font-size: var(--fs-11); font-weight: 400; }
+.market-meta { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.market-status { display: flex; align-items: center; gap: 8px; font-size: var(--fs-13); color: var(--text-2); }
+.market-status.ok { color: var(--ok-text); }
+.market-status.warn { color: var(--warn-text); }
+.market-chart svg { width: 100%; height: auto; }
+
+@media (max-width: 920px) {
+  .header-center { margin-left: 0; }
+  .header-lock { display: none; }
+  .market-meta { align-items: flex-start; }
+}

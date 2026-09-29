@@ -7,8 +7,22 @@ import { readWorkspace, saveWorkspace } from "./workspace.js";
    ============================================================ */
 
 let routes = new Map(); // "#/market/observations" → {render, group, label}
+let redirects = new Map(); // legacy hash → canonical hash (product IA changed; deep links survive)
 let current = null;
 let currentHost = null;
+
+export const HOME = "#/home";
+
+/** Legacy product URLs keep working after an information-architecture change. */
+export function registerRedirects(map) {
+  redirects = new Map(Object.entries(map));
+}
+export function canonical(hash) {
+  const clean = (hash || "").split("?")[0];
+  let h = clean;
+  for (let i = 0; i < 4 && redirects.has(h); i++) h = redirects.get(h);
+  return h;
+}
 const cleanups = new WeakMap();
 export function onDispose(host, fn) {
   if (!host.isConnected) { fn(); return; }
@@ -37,8 +51,8 @@ export function registerRoutes(IA) {
 }
 
 export function resolve(hash) {
-  const clean = (hash || location.hash || "#/overview").split("?")[0];
-  return routes.get(clean) || routes.get("#/overview") || null;
+  const clean = canonical(hash || location.hash || HOME);
+  return routes.get(clean) || routes.get(HOME) || null;
 }
 
 export function currentRoute() { return current; }
@@ -49,6 +63,13 @@ export async function navigate(hash) {
 }
 
 export async function dispatch() {
+  // Legacy URLs are rewritten to the canonical product hash so the sidebar
+  // highlight and shareable address always reflect the current IA.
+  const raw = (location.hash || HOME).split("?")[0];
+  const target = canonical(raw);
+  if (target !== raw && window.history?.replaceState) {
+    window.history.replaceState(null, "", target);
+  }
   const route = resolve(location.hash);
   if (!route) return;
   current = route;
@@ -98,9 +119,9 @@ export function startRouter() {
   if (!location.hash || location.hash === "#" || location.hash === "#/") {
     if (window.history?.replaceState) {
       const p = readWorkspace();
-      window.history.replaceState(null, "", p.rememberRoute && routes.has(p.route) ? p.route : "#/overview"); // silent — one initial dispatch below
+      window.history.replaceState(null, "", p.rememberRoute && routes.has(p.route) ? p.route : HOME); // silent — one initial dispatch below
     } else {
-      location.hash = "#/overview"; // hashchange will dispatch; skip the manual call
+      location.hash = HOME; // hashchange will dispatch; skip the manual call
       return;
     }
   }

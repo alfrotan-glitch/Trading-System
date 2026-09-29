@@ -43,20 +43,20 @@ export function operationalState(data, now = Date.now()) {
   const readinessReasons = Array.isArray(demo?.current_readiness?.blocked_reasons) ? demo.current_readiness.blocked_reasons : [];
   const liveReasons = Array.isArray(live?.blocked_reasons) ? live.blocked_reasons : [];
   const liveLabel = live?.eligible === false ? "LOCKED" : live?.eligible === true ? "ELIGIBLE · STILL GATED" : "UNAVAILABLE";
-  let next = { label: "Check the gold quotes", href: "#/market/observations", why: "Watching the market does not allow a trade." };
+  let next = { label: "Check the gold quotes", href: "#/advanced/data-observations", why: "Watching the market does not allow a trade." };
   if (!sources.health.current || !sources.observe.current || !sources.demoState.current || !sources.live.current) {
-    next = { label: "Check the unavailable status", href: "#/system/diagnostics", why: "Some status is missing or out of date. Do not act on a blank or old reading." };
+    next = { label: "Check the unavailable status", href: "#/advanced/system-diagnostics", why: "Some status is missing or out of date. Do not act on a blank or old reading." };
   } else if (health?.kill_switch?.state === "ACTIVE") {
     const why = health.kill_switch.reason
       ? `Kill switch: ${health.kill_switch.reason}. This does not close an open position.`
       : "The kill switch is on. This does not close an open position.";
-    next = { label: "Orders are stopped", href: "#/risk", why };
+    next = { label: "Orders are stopped", href: "#/advanced/risk", why };
   } else if (obs?.state === "OBSERVING" && !observing || obs?.state === "STOPPED_ON_ERRORS") {
-    next = { label: "See why quotes stopped", href: "#/market/observations", why: text(obs.last_error) };
+    next = { label: "See why quotes stopped", href: "#/advanced/data-observations", why: text(obs.last_error) };
   } else if (String(health?.mt5).toLowerCase() !== "connected") {
-    next = { label: "Connect the broker terminal", href: "#/system/mt5", why: "The trading terminal is not connected. Do not turn trading on from here." };
+    next = { label: "Connect the broker terminal", href: "#/advanced/system-mt5", why: "The trading terminal is not connected. Do not turn trading on from here." };
   } else if (observing) {
-    next = { label: "Review the recorded gold quotes", href: "#/market/observations", why: "Quotes are being recorded. That is not permission to trade." };
+    next = { label: "Review the recorded gold quotes", href: "#/advanced/data-observations", why: "Quotes are being recorded. That is not permission to trade." };
   }
   const killActive = health?.kill_switch?.state === "ACTIVE";
   return { sources, mode, health, obs, demo, live, observing, observation, permission, liveLabel, killActive, reasons, readinessReasons, liveReasons, next,

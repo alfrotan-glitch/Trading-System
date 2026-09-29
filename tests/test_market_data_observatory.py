@@ -545,11 +545,13 @@ def test_desktop_5_views_exist():
     from qts.api.server import app
 
     _c = TestClient(app)
-    # The data/monitoring views exist as routes in the grouped IA (js/main.js)
+    # The data/monitoring views exist as routes in the product IA (js/main.js):
+    # monitor is the primary Market page; the rest live under Advanced.
     ia = Path("src/qts/desktop/ui/js/main.js").read_text(encoding="utf-8")
-    for view in ["data", "monitor", "observations", "quality", "lineage"]:
+    for view in ["research-data", "data-observations", "data-quality", "data-lineage"]:
         assert f'{{ id: "{view}",' in ia, f"missing IA route {view}"
-    assert 'id: "market"' in ia and 'id: "research"' in ia
+    assert 'id: "market"' in ia  # market monitor is a primary product page
+    assert 'sub: "Research"' in ia  # research surfaces remain reachable
 
 
 def test_clean_room_reproducibility():

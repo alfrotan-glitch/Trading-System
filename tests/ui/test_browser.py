@@ -92,24 +92,24 @@ def page(browser, server):
     errors: list[str] = []
     pg.on("pageerror", lambda e: errors.append(str(e)))
     pg.errors = errors  # type: ignore[attr-defined]
-    pg.goto(server + "/#/overview")
-    pg.wait_for_selector("[data-fact=broker]", timeout=20_000)
+    pg.goto(server + "/#/home")
+    pg.wait_for_selector(".home-hero .hero-headline", timeout=30_000)
     yield pg
     ctx.close()
 
 
 SCREENS = [
-    ("overview", "#/overview"),
-    ("research_campaigns", "#/research/campaigns"),
-    ("research_validation", "#/research/validation"),
-    ("market_monitor", "#/market/monitor"),
-    ("market_observations", "#/market/observations"),
-    ("trading_demo", "#/trading/demo"),
-    ("trading_execution", "#/trading/execution"),
-    ("risk", "#/risk"),
-    ("evidence_audit", "#/evidence/audit"),
-    ("system_setup", "#/system/setup"),
-    ("governance_live", "#/governance/live"),
+    ("home", "#/home"),
+    ("market", "#/market"),
+    ("trading", "#/trading"),
+    ("reports", "#/reports"),
+    ("advanced_research", "#/advanced/research-campaigns"),
+    ("advanced_observations", "#/advanced/data-observations"),
+    ("advanced_trading_history", "#/advanced/trading-history"),
+    ("advanced_risk", "#/advanced/risk"),
+    ("advanced_audit", "#/advanced/audit"),
+    ("advanced_system_setup", "#/advanced/system-setup"),
+    ("advanced_governance", "#/advanced/governance"),
 ]
 
 
@@ -119,40 +119,34 @@ def test_navigation_and_screens(page):
     for name, route in SCREENS:
         page.goto(route)
         page.wait_for_timeout(1200)
-        assert page.locator(".page-title").count() >= 1, f"{route} rendered no page title"
+        # Product pages use the standard page head; Home uses its hero headline.
+        has_title = page.locator(".page-title").count() >= 1 or page.locator(".home-hero .hero-headline").count() >= 1
+        assert has_title, f"{route} rendered no page title"
         assert page.locator("#main").inner_text().strip(), f"{route} rendered empty content"
         page.screenshot(path=str(UI_SCREENSHOTS / f"{name}.png"), full_page=False)
     assert not page.errors, f"page errors: {page.errors}"
 
 
-def test_mode_display_matches_backend_truth(page, server):
-    """Header mode chip mirrors /api/health effective_mode exactly (§40)."""
+def test_header_account_state_matches_backend_truth(page, server):
+    """The header account chip mirrors /api/health mt5 state exactly (§40)."""
     import json
     import urllib.request
 
     with urllib.request.urlopen(server + "/api/health") as r:
-        mode = json.load(r)["effective_mode"]["effective_mode"]
-    page.wait_for_selector(".fact.mode", timeout=10_000)
-    shown = page.locator(".fact.mode b").inner_text().strip()
-    plain = {
-        "DEVELOPMENT": "Research only",
-        "DEV": "Research only",
-        "PAPER": "Practice",
-        "SHADOW": "Would-be only",
-        "DEMO_FORWARD": "Watching demo",
-        "DEMO_EXECUTION": "Demo trading",
-        "LIVE": "Live locked",
-    }
-    assert shown == plain.get(mode.upper(), mode), f"header shows {shown}, backend says {mode}"
+        mt5 = str(json.load(r).get("mt5", "")).lower()
+    page.wait_for_selector("#header-account", timeout=10_000)
+    shown = page.locator("#header-account").inner_text()
+    expected = "Demo account: Connected" if mt5 == "connected" else "Demo account: Not connected"
+    assert expected in shown, f"header shows {shown!r}, backend mt5 says {mt5!r}"
 
 
 def test_live_locked_always_visible(page):
-    page.wait_for_selector(".fact.live-locked", timeout=10_000)
-    page.wait_for_function("document.querySelector('.fact.live-locked').textContent.includes('LIVE LOCKED')")
-    assert "LIVE LOCKED" in page.locator(".fact.live-locked").inner_text()
+    """Live lock stays visible in the product shell — quietly, but always."""
+    page.wait_for_selector(".header-lock", timeout=10_000)
+    assert "Live locked" in page.locator(".header-lock").inner_text()
 
 
-def test_demo_permission_display_is_authoritative(page):
+def test_demo_permission_display_is_authoritative(page, server):
     """DEMO state banner mirrors /api/demo/state (§34: no false permission)."""
     import json
     import urllib.request
@@ -198,12 +192,10 @@ def test_stale_indicator_when_api_down(browser, server):
     """When the API dies, the header says so — never silent staleness (§31)."""
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
     pg = ctx.new_page()
-    pg.goto(server + "/#/overview")
-    pg.wait_for_selector("[data-fact=broker]", timeout=20_000)
-    # block all API calls and explicitly refresh: source failure must be visible
+    pg.goto(server + "/#/home")
+    pg.wait_for_selector(".home-hero .hero-headline", timeout=30_000)
+    # block all API calls: source failure must become visible, never silent
     pg.route("**/api/*", lambda route: route.abort())
-    pg.wait_for_selector(".operator-workspace button:not([disabled])")
-    pg.get_by_role("button", name="Refresh sources").click()
     pg.wait_for_function("document.querySelector('#header-updated').textContent.includes('RETRYING')")
     dot_class = pg.locator(".conn-dot").get_attribute("class")
     assert "stale" in dot_class, f"connection indicator should show down, got {dot_class}"

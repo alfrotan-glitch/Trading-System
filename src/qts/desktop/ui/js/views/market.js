@@ -1,6 +1,8 @@
-/* Market — Monitor (quotes/regime/quality) · Observations · Data quality · Lineage
-   Flat, dense, honest empties. Context synchronized across windows via context.js
-   Real-time alive without flicker: focus/scroll preserved, setText not replace. */
+/* Market — a professional gold screen for a normal user.
+   renderMarket: current price (only when valid), change, status, update
+   time and a chart of REAL recorded observations only.
+   renderObservations / renderQuality / renderLineage remain available
+   under Advanced for engineers. */
 
 import { api, store, RESOURCES, syncResource, poll } from "../api.js";
 import { operationalState, freshness } from "../operations.js";
@@ -15,177 +17,122 @@ import { getContext, setContext, onContext } from "../context.js";
 
 const setText = (node, value) => { const s = String(value); if (node.textContent !== s) node.textContent = s; };
 
-/* Monitor */
-export async function renderMonitor(root) {
-  skeletonInto(root, "stats");
-  root.classList.add("operator-workspace");
-
-  const ctx = getContext();
-  const ctxBadge = h("span", { class: "badge neutral" }, `${ctx.symbol} · ${ctx.timeframe}`);
-  const symInput = h("input", { class: "input", style: { maxWidth: "120px" }, value: ctx.symbol, "aria-label": "Symbol context" });
-  const tfInput = h("select", { class: "input", style: { maxWidth: "90px" }, "aria-label": "Timeframe context" },
-    ["1M","5M","15M","1H","4H","1D"].map((tf) => h("option", { value: tf, selected: tf === ctx.timeframe }, tf)));
-  const applyCtx = h("button", { class: "btn sm", onclick: () => { setContext({ symbol: symInput.value.trim().toUpperCase(), timeframe: tfInput.value }); toast("ok","Context updated",`${symInput.value} · ${tfInput.value} — syncs across windows`); } }, "Set context");
-
+/* Market — Gold, plainly. */
+export async function renderMarket(root) {
+  root.classList.add("operator-workspace", "market");
   root.appendChild(page({
-    crumb: "Market", group: "Monitor",
-    title: "Gold",
-    answer: h("b", null, "The last recorded gold quote. A connection is not a price, and a price is not a trade. Live trading stays locked."),
-    actions: [ctxBadge, symInput, tfInput, applyCtx, h("button", { class: "btn", onclick: () => refresh(true) }, icon("refresh", 14), "Refresh sources")],
-    body: null,
+    crumb: "Market",
+    title: "Gold — XAUUSD",
+    answer: "The current gold price when it is valid. QTS never shows an old or invented price as the current one.",
+    actions: [h("button", { class: "btn", onclick: () => load(true) }, icon("refresh", 14), "Refresh")],
   }));
 
-  const activity = h("h2", null, "Loading market evidence…");
-  const next = h("a", { class: "btn primary", href: "#/market/observations" }, "Open observations");
-  const nextWhy = h("p", { class: "text-dim small" });
-  root.appendChild(h("section", { class: "operator-summary" },
-    h("div", null, h("div", { class: "eyebrow" }, "NOW / MARKET"), activity),
-    h("div", { class: "next-action" }, h("div", { class: "eyebrow" }, "NEXT — why, what missing"), next, nextWhy)));
+  const heroHost = h("section", { class: "market-hero" }, h("p", { class: "text-dim small" }, "Loading the gold price…"));
+  const detailHost = h("div", { class: "section stack" });
+  root.append(heroHost, detailHost);
 
-  const factsBody = h("tbody");
-  const factCells = {};
-  const host = h("div", { class: "section" }); root.appendChild(host);
-  let lastManifest = null, lastRegime = null, lastAdv = null;
+  let guide = null;
+  let manifest = null;
+  let regime = null;
+  let busy = false;
 
-  function renderFacts() {
-    const s = operationalState(store.data);
-    const rows = [
-      ["market", "Market data pipeline", s.market, "Backend pipeline status, not proof of live quote."],
-      ["quoteAge", "Collected quote age", s.quoteAge, "Age of last broker event, not API freshness."],
-      ["observation", "Observation collector", s.observation, s.obs?.note || "Collector state — zero orders structurally"],
-      ["mode", "Environment / mode", s.mode.mode, s.mode.blurb],
-    ];
-    if (!factsBody.children.length) {
-      for (const [key, title] of rows) {
-        const st = h("span", { class: "badge neutral" }, "UNAVAILABLE");
-        const det = h("span", null, "");
-        const fresh = h("span", { class: "mono small" }, "");
-        factCells[key] = { st, det, fresh };
-        factsBody.appendChild(h("tr", null, h("th", { scope: "row" }, title), h("td", null, st), h("td", { class: "fact-detail" }, det), h("td", null, fresh)));
-      }
+  function paint() {
+    clear(heroHost); clear(detailHost);
+    const q = guide?.quote || {};
+    const conn = guide?.connection || {};
+    const priceOk = Boolean(q.fresh && (q.bid || q.ask));
+    const ticks = (manifest?.sample_ticks ?? []).filter((t) => Number.isFinite(Number(t.bid)) && Number.isFinite(Number(t.ask)));
+    const mids = ticks.map((t) => (Number(t.bid) + Number(t.ask)) / 2);
+
+    // ---- hero: price, change, status -----------------------------------
+    const statusLine = !conn.connected
+      ? { tone: "warn", text: "Not connected — open MetaTrader 5 and sign in to your demo account." }
+      : priceOk
+        ? { tone: "ok", text: "Live prices from your broker." }
+        : { tone: "neutral", text: "Connected — waiting for a fresh price." };
+
+    let changeNode = null;
+    if (mids.length >= 2) {
+      const first = mids[0];
+      const lastMid = mids[mids.length - 1];
+      const delta = lastMid - first;
+      const pct = first ? (delta / first) * 100 : null;
+      const dir = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+      changeNode = h("div", { class: `market-change ${dir}` },
+        h("span", { class: "chg-value" }, `${delta >= 0 ? "+" : ""}${fmtNum(delta)}`),
+        pct != null ? h("span", { class: "chg-pct" }, ` ${pct >= 0 ? "+" : ""}${fmtNum(pct, 2)}%`) : null,
+        h("span", { class: "chg-note" }, "over the recorded window"));
     }
-    for (const [key, , value, meaning] of rows) {
-      const c = factCells[key];
-      setText(c.st, value);
-      setText(c.det, meaning);
-      const resKey = key === "market" || key === "mode" ? "health" : "observe";
-      const meta = store.data.resources[resKey];
-      const f = meta ? freshness(meta, resKey) : { label: "UNAVAILABLE", current: false };
-      setText(c.fresh, `${f.label}${meta?.updatedAt ? ` · ${fmtAge(meta.updatedAt)}` : ""}`);
-    }
-    setText(activity, s.obs?.last_tick_time ? "A gold quote is recorded. A quote is not a trade." : "No gold quote is recorded. A connection is not a price.");
-    setText(nextWhy, s.obs?.state === "OBSERVING" ? "Quotes are being recorded. A recorded quote is not a trade." : "Nothing is being recorded. Recording, if you start it, still does not send an order.");
-  }
 
-  async function refresh(force = false) {
-    try {
-      const [manifest, regime, adv] = await Promise.all([
-        api.get("/api/research/forward-manifest"),
-        api.get("/api/research/regime-observations"),
-        api.get("/api/research/data-quality-adversarial"),
-      ]);
-      lastManifest = manifest; lastRegime = regime; lastAdv = adv;
-      if (force) await Promise.all(Object.keys(RESOURCES).map((k) => syncResource(k, { force: true })));
-      render();
-    } catch (e) {
-      host.replaceChildren(errorBox({ what: "market data could not be loaded", next: "Retry; if API down, restart QTS.", raw: e.message }));
-    }
-  }
-
-  function render() {
-    if (!lastManifest) return;
-    renderFacts();
-    const manifest = lastManifest, regime = lastRegime, adv = lastAdv;
-    const ticks = manifest.sample_ticks ?? [];
-    const last = ticks[ticks.length - 1];
-    const currentCtx = getContext();
-    setText(ctxBadge, `${currentCtx.symbol} · ${currentCtx.timeframe} — synced`);
-
-    const content = h("div", { class: "stack" });
-    content.appendChild(h("section", { class: "operator-section" },
-      h("h2", null, "Operating facts — pipeline health vs quote freshness — truth visible"),
-      h("div", { class: "tbl-wrap" },
-        h("table", { class: "tbl facts-table" },
-          h("thead", null, h("tr", null, ["Source","Reported state","Meaning / constraint","API freshness"].map((t) => h("th", { scope: "col" }, t)))),
-          factsBody))));
-
-    content.appendChild(h("div", { class: "grid-2" },
-      card({
-        title: "Current quote", sub: last ? "Last recorded quote. Not a live price, and not a trade." : "No quote recorded yet.", icon: "activity",
-        actions: [last ? provStrip(last.provenance ?? last.data_class ?? "SYNTHETIC") : null],
-        body: last
-          ? h("div", { class: "stack" },
-              h("div", { class: "quote" },
-                h("div", { class: "q-side" }, h("span", { class: "q-label" }, "BID"), h("span", { class: "q-value bid" }, fmtNum(last.bid))),
-                h("div", { class: "q-side" }, h("span", { class: "q-label" }, "ASK"), h("span", { class: "q-value ask" }, fmtNum(last.ask))),
-                h("div", { class: "q-side" }, h("span", { class: "q-label" }, "SPREAD"), h("span", { class: "q-value" }, `${fmtNum(last.spread_bps, 1)} bps`)),
-              ),
-              h("div", { class: "meta" }, `broker time ${last.broker_time ?? "—"} · canonical UTC ${fmtUtc(last.timestamp ?? last.canonical_ts)} · basis ${last.timestamp_basis ?? "canonical-UTC"}`),
-              h("div", { class: "meta" }, `API freshness ${freshness(store.data.resources.observe, "observe").label} — quote age is separate from API receipt — context ${currentCtx.symbol} presentation only`),
-              ticks.length >= 2
-                ? [h("div", { class: "chart-block" }, spark(ticks.map((t) => (Number(t.bid) + Number(t.ask)) / 2), { height: 70 })),
-                   h("div", { class: "chart-caption" }, h("span", { class: "cap-item" }, `${ticks.length} recorded DEMO observation ticks`), h("span", { class: "cap-item" }, "source: DEMO_FORWARD observation — not historical REAL"), h("span", { class: "cap-item" }, "mid = (bid+ask)/2, no interpolation"), h("span", { class: "cap-item" }, `context ${currentCtx.symbol} — chart explains, not decorates`), h("span", { class: "cap-item" }, `range ${fmtNum(Math.min(...ticks.map((t)=>(Number(t.bid)+Number(t.ask))/2)))} → ${fmtNum(Math.max(...ticks.map((t)=>(Number(t.bid)+Number(t.ask))/2)))}`))]
-                : banner("info", "Not enough observations yet", "Chart appears after ≥2 recorded ticks — QTS never fabricates history. Explanatory, not decorative.", "info"),
-            )
-          : emptyState({
-              icon: "activity", title: "No real observations recorded yet — INSUFFICIENT, not 0",
-              desc: "Quotes appear once observation records real broker ticks. Observation is order-free. Pipeline HEALTHY does not mean a fresh quote exists. Truth visible: MEASURED vs UNAVAILABLE.",
-              actions: [h("button", { class: "btn primary", onclick: () => navigate("#/market/observations") }, icon("play", 14), "Start Observation")],
-            }),
-      }),
-      card({
-        title: "Regime picture — explanatory, not predictive — truth visible", sub: regime?.count != null ? `${fmtInt(regime.count)} observations — not a strategy signal — context ${currentCtx.symbol}` : null, icon: "pulse",
-        body: regime?.volatility_distribution
-          ? h("div", { class: "stack" },
-              barList([
-                { label: "Low volatility", value: regime.volatility_distribution.low ?? 0, max: regime.count ?? 1, tone: "", valText: `${fmtInt(regime.volatility_distribution.low)} of ${fmtInt(regime.count)}` },
-                { label: "Normal", value: regime.volatility_distribution.normal ?? 0, max: regime.count ?? 1, tone: "ok", valText: `${fmtInt(regime.volatility_distribution.normal)} of ${fmtInt(regime.count)}` },
-                { label: "High volatility", value: regime.volatility_distribution.high ?? 0, max: regime.count ?? 1, tone: "warn", valText: `${fmtInt(regime.volatility_distribution.high)} of ${fmtInt(regime.count)}` },
-              ]),
-              regime.trend_strength_avg != null ? h("div", { class: "meta" }, `avg trend strength ${fmtNum(regime.trend_strength_avg, 3)} — descriptive, not predictive — range 0→1, higher = stronger trend`) : null,
-              (regime.transitions ?? []).length
-                ? [h("div", { class: "eyebrow mt-3" }, "Recent transitions — explanatory"), timeline((regime.transitions ?? []).slice(0, 6).map((t) => ({ when: fmtUtc(t.time), what: `${t.symbol ?? ""} ${t.from ?? "?"} → ${t.to ?? "?"}`, tone: "" })))]
-                : null,
-            )
-          : emptyState({ icon: "pulse", title: "No regime observations — INSUFFICIENT", desc: "Regime classification starts once observation records real ticks. Explanatory, not decorative." }),
-      }),
-    ));
-
-    content.appendChild(card({
-      title: "Data quality — adversarial stress must fail closed — safety understandable", sub: "corrupted input never passes silently — what blocked, why", icon: "shield",
-      body: adv ? h("div", { class: "check-grid" },
-        h("div", { class: `check ${adv.duplicate_corrupted_passed ? "pass" : "fail"}` }, h("div", { class: "mark" }, adv.duplicate_corrupted_passed ? "✓" : "✕"), h("div", null, h("div", { class: "name" }, "Duplicate & corrupted rows"), h("div", { class: "detail" }, "faults injected on purpose are caught — what blocked, why explicit"))),
-        h("div", { class: `check ${adv.missing_corrupted_gap_check ? "pass" : "fail"}` }, h("div", { class: "mark" }, adv.missing_corrupted_gap_check ? "✓" : "✕"), h("div", null, h("div", { class: "name" }, "Gap detection"), h("div", { class: "detail" }, "missing ranges block rather than interpolate — never silently pass"))),
-        adv.zero_price_error ? h("div", { class: "check fail" }, h("div", { class: "mark" }, "■"), h("div", null, h("div", { class: "name" }, "Zero-price guard"), h("div", { class: "detail" }, adv.zero_price_error))) : null,
-      ) : emptyState({ icon: "shield", title: "Quality stress results unavailable — UNAVAILABLE, not 0" }),
-    }));
-
-    // timestamp normalization health — FS-c42bbd fix visible in monitor
-    const bases = manifest.timestamp_bases ?? {};
-    const offsets = manifest.server_utc_offsets_s ?? [];
-    content.appendChild(card({
-      title: `Quote clock — ${currentCtx.symbol}`, sub: "Broker time is converted to UTC. A failed clock check keeps the last measured offset.",
-      icon: "clock",
-      body: h("div", { class: "stack" },
-        h("div", { class: "stat-grid" },
-          stat({ label: "Timestamp bases", value: Object.keys(bases).length ? Object.entries(bases).map(([k,v])=>`${k}·${v}`).join(", ") : "UNAVAILABLE", hint: "broker-normalized(measured-m1-bar) vs assumed-utc-fallback — truth visible, never 0" }),
-          stat({ label: "Server UTC offsets", value: offsets.length ? offsets.map((o) => `${o / 3600}h`).join(", ") : "Not reported", hint: "Hours east of UTC. A missing offset is not zero." }),
-          stat({ label: "Quotes recorded", value: fmtInt(manifest.ticks_recorded), hint: "Count in this observation record. Not a price and not a trade." }),
-          stat({ label: "Last event", value: manifest.last_event_time ? fmtUtc(manifest.last_event_time) : "UNAVAILABLE", hint: "broker-normalized true UTC, not server-local" }),
-        ),
-        banner("info", "How the quote clock works", "Broker time is local to the terminal. QTS measures the offset and converts each stamp to UTC once. If that measurement fails, the last offset is kept. It is not reset to zero. A quote that is more than one second in the future is still rejected.", "clock"),
-        h("details", null, h("summary", null, "Why this rule exists"), h("p", { class: "small text-dim" }, "An earlier observation session kept a three-hour offset wrong, then rejected future quotes. The incident id is FS-c42bbd. That history is not the current quote count.")),
+    heroHost.appendChild(h("div", { class: "market-hero-inner" },
+      h("div", { class: "market-price-block" },
+        priceOk
+          ? h("div", { class: "market-price" }, fmtNum(q.ask ?? q.bid))
+          : h("div", { class: "market-price unavailable" }, "Current price unavailable"),
+        priceOk ? h("div", { class: "market-sub" }, `Bid ${fmtNum(q.bid)} · Ask ${fmtNum(q.ask)}`) : null,
+        changeNode,
       ),
+      h("div", { class: "market-meta" },
+        h("div", { class: `market-status ${statusLine.tone}` }, h("span", { class: "account-dot " + (statusLine.tone === "ok" ? "ok" : statusLine.tone === "warn" ? "off" : "") }), statusLine.text),
+        h("div", { class: "small text-dim" }, guide?.checked_at ? `Last checked ${fmtAge(Date.parse(guide.checked_at))}` : ""),
+        q.spread_bps != null && priceOk ? h("div", { class: "small text-dim" }, `Spread ${fmtNum(q.spread_bps, 1)} bps`) : null,
+      )));
+
+    // ---- chart: real recorded observations only -------------------------
+    detailHost.appendChild(card({
+      title: "Recorded price window", icon: "activity",
+      sub: ticks.length >= 2 ? `${ticks.length} real recorded observations — mid = (bid + ask) / 2, no interpolation` : "A chart appears once QTS has recorded real observations.",
+      body: ticks.length >= 2
+        ? h("div", { class: "stack" },
+            h("div", { class: "chart-block market-chart" }, spark(mids, { width: 720, height: 140 })),
+            h("div", { class: "meta" }, `range ${fmtNum(Math.min(...mids))} → ${fmtNum(Math.max(...mids))} · recorded observations only`))
+        : emptyState({ icon: "activity", title: "No recorded observations yet", desc: "QTS never fabricates price history. Once observations are recorded, the chart appears here." }),
     }));
 
-    if (manifest.canonical_store) content.appendChild(h("details", null, h("summary", null, "Raw forward-observation manifest / technical — summary → detail → raw"), tech(manifest, "Raw manifest")));
-    host.replaceChildren(content);
+    detailHost.appendChild(h("div", { class: "grid-2" },
+      card({ title: "Market status", icon: "activity", body: h("div", { class: "stack" },
+        kv([
+          ["Instrument", "Gold — XAUUSD"],
+          ["Account", conn.connected ? `Demo · ${conn.broker || conn.server || "broker"}` : "Not connected"],
+          ["Price feed", priceOk ? "Fresh" : conn.connected ? "Waiting for prices" : "Unavailable"],
+          ["Last update", guide?.checked_at ? fmtUtc(guide.checked_at) : "Unavailable"],
+        ]),
+        h("p", { class: "small text-dim" }, "A connection is not a price, and a price is not a trade."),
+      ) }),
+      card({ title: "Good to know", icon: "info", body: h("div", { class: "stack" },
+        h("p", { class: "small text-dim" }, "QTS shows a price only when it is current and valid. If the feed stops, this page says so instead of showing an old number."),
+        h("p", { class: "small text-dim" }, "Live trading stays locked. Watching gold never sends an order."),
+        h("a", { class: "btn sm", href: "#/advanced/data-observations" }, "Recorded observations"),
+      ) })));
+
+    const techDetails = h("details", null, h("summary", null, "Technical details"), h("div", { class: "tech-lazy small text-dim" }, "Loads when expanded."));
+    techDetails.addEventListener("toggle", async () => {
+      if (!techDetails.open || techDetails.dataset.loaded) return;
+      techDetails.dataset.loaded = "1";
+      regime = await api.get("/api/research/regime-observations").catch(() => null);
+      techDetails.replaceChildren(h("summary", null, "Technical details"), tech({ guide, manifest, regime }, "Raw market state"));
+    });
+    detailHost.appendChild(techDetails);
   }
 
-  const off = store.on("resources", renderFacts);
-  const offCtx = onContext(() => { setText(ctxBadge, `${getContext().symbol} · ${getContext().timeframe} — synced`); renderFacts(); });
-  onDispose(root, () => { off(); offCtx(); });
-  await refresh();
+  async function load() {
+    if (busy) return;
+    busy = true;
+    try {
+      const [g, m] = await Promise.all([
+        api.get("/api/demo/guide"),
+        api.get("/api/research/forward-manifest").catch(() => null),
+      ]);
+      guide = g; manifest = m;
+      paint();
+    } catch (e) {
+      clear(heroHost); clear(detailHost);
+      heroHost.appendChild(errorBox({ what: "the gold price could not be loaded", next: "Retry. If MetaTrader 5 is closed, the price stays unavailable — honestly.", raw: e.message }));
+      detailHost.appendChild(h("div", { class: "mt-3" }, h("button", { class: "btn primary", onclick: () => load() }, icon("refresh", 14), "Retry")));
+    } finally { busy = false; }
+  }
+
+  await load();
 }
 
 /* Observations — real-time alive without flicker: preserve focus, scroll, disclosure */

@@ -1,80 +1,92 @@
-/* QTS MAIN — professional operator shell
-   Header facts (instant awareness) · Sidebar (grouped IA, searchable, keyboard) ·
-   Router (shallow, predictable) · Palette (Ctrl+K) · Polling (pauses when hidden).
-   No decorative motion. Borders carry structure. Backend is only authority. */
+/* QTS MAIN — product shell for a normal (non-technical) user.
+   Primary navigation: Home · Market · Trading · Reports.
+   Everything engineering lives behind one quiet "Advanced" area.
+   The header says only what matters: the demo account and overall status.
+   The backend remains the only authority; this shell renders and requests. */
 
 import { h, icon, clear } from "./dom.js";
 import { api, store, RESOURCES, syncResource, syncOperations, poll, measure } from "./api.js";
 import { operationalState, freshness } from "./operations.js";
 import { initWorkspace, readWorkspace, saveWorkspace } from "./workspace.js";
-import { registerRoutes, startRouter, navigate } from "./router.js";
+import { registerRoutes, registerRedirects, startRouter, navigate, HOME } from "./router.js";
 import { initPalette } from "./palette.js";
 import { fmtAge } from "./format.js";
 import { attentionRank } from "./status.js";
 import { toast, badge, drawer, confirmModal } from "./components.js";
 import { getContext, onContext } from "./context.js";
 
-import * as overview from "./views/overview.js";
-import * as opportunities from "./views/opportunities.js";
-import * as research from "./views/research.js";
+import * as home from "./views/overview.js";
 import * as market from "./views/market.js";
 import * as trading from "./views/trading.js";
+import * as reports from "./views/reports.js";
+import * as research from "./views/research.js";
 import * as risk from "./views/risk.js";
 import * as evidence from "./views/evidence.js";
 import * as system from "./views/system.js";
 import * as governance from "./views/governance.js";
 
+/* ---------------- information architecture ----------------
+   Four primary pages for a normal user. Every engineering
+   surface keeps working — under Advanced, out of the way. */
 const IA = [
-  { id: "overview", label: "Home", section: "Product", icon: "grid", render: overview.renderOverview },
+  { id: "home", label: "Home", section: "Product", icon: "home", render: home.renderHome },
+  { id: "market", label: "Market", section: "Product", icon: "activity", render: market.renderMarket },
+  { id: "trading", label: "Trading", section: "Product", icon: "layers", render: trading.renderDemo },
+  { id: "reports", label: "Reports", section: "Product", icon: "fileCheck", render: reports.renderReports },
   {
-    id: "market", label: "Market", section: "Product", icon: "candle", defaultChild: "monitor",
+    id: "advanced", label: "Advanced", section: "Advanced", icon: "sliders", quiet: true, defaultChild: "research-campaigns",
     children: [
-      { id: "monitor", label: "Gold", render: market.renderMonitor },
-      { id: "observations", label: "Observations", render: market.renderObservations },
-      { id: "quality", label: "Data quality", render: market.renderQuality },
-      { id: "lineage", label: "Lineage", render: market.renderLineage },
+      { id: "research-campaigns", label: "Research campaigns", sub: "Research", render: research.renderCampaigns },
+      { id: "research-hypotheses", label: "Hypotheses", sub: "Research", render: research.renderHypotheses },
+      { id: "research-experiments", label: "Experiment ledger", sub: "Research", render: research.renderExperiments },
+      { id: "research-strategies", label: "Strategy library", sub: "Research", render: research.renderStrategies },
+      { id: "research-validation", label: "Validation", sub: "Research", render: research.renderValidation },
+      { id: "research-memory", label: "Research memory", sub: "Research", render: research.renderMemory },
+      { id: "research-data", label: "Data observatory", sub: "Research", render: research.renderData },
+      { id: "data-observations", label: "Recorded observations", sub: "Data", render: market.renderObservations },
+      { id: "data-quality", label: "Data quality", sub: "Data", render: market.renderQuality },
+      { id: "data-lineage", label: "Data lineage", sub: "Data", render: market.renderLineage },
+      { id: "trading-practice", label: "Practice (paper)", sub: "Trading tools", render: trading.renderPaper },
+      { id: "trading-history", label: "Order history", sub: "Trading tools", render: trading.renderExecution },
+      { id: "trading-comparison", label: "Comparison", sub: "Trading tools", render: trading.renderComparison },
+      { id: "risk", label: "Risk controls", sub: "Trading tools", render: risk.renderRisk },
+      { id: "evidence", label: "Evidence explorer", sub: "Evidence & audit", render: evidence.renderExplorer },
+      { id: "audit", label: "Audit trail", sub: "Evidence & audit", render: evidence.renderAudit },
+      { id: "governance", label: "Live trading rules", sub: "Governance", render: governance.renderGovernance },
+      { id: "system-setup", label: "Setup", sub: "System", render: system.renderSetup },
+      { id: "system-mt5", label: "Terminal connection", sub: "System", render: system.renderMT5 },
+      { id: "system-diagnostics", label: "Diagnostics", sub: "System", render: system.renderDiagnostics },
     ],
   },
-  { id: "opportunities", label: "Opportunities", section: "Product", icon: "scale", render: opportunities.renderOpportunities },
-  {
-    id: "trading", label: "Trading", section: "Product", icon: "layers", defaultChild: "demo",
-    children: [
-      { id: "demo", label: "Demo account", render: trading.renderDemo },
-      { id: "paper", label: "Practice", render: trading.renderPaper },
-      { id: "execution", label: "Order history", render: trading.renderExecution },
-      { id: "comparison", label: "Comparison", render: trading.renderComparison },
-    ],
-  },
-  { id: "risk", label: "Risk", section: "Product", icon: "shield", render: risk.renderRisk },
-  {
-    id: "evidence", label: "Reports", section: "Product", icon: "fileCheck", defaultChild: "explorer",
-    children: [
-      { id: "explorer", label: "Reports", render: evidence.renderExplorer },
-      { id: "audit", label: "Audit trail", render: evidence.renderAudit },
-    ],
-  },
-  {
-    id: "research", label: "Research", section: "Advanced", icon: "flask", defaultChild: "campaigns",
-    children: [
-      { id: "campaigns", label: "Campaigns", render: research.renderCampaigns },
-      { id: "hypotheses", label: "Hypotheses", render: research.renderHypotheses },
-      { id: "experiments", label: "Experiment ledger", render: research.renderExperiments },
-      { id: "strategies", label: "Strategy library", render: research.renderStrategies },
-      { id: "validation", label: "Validation", render: research.renderValidation },
-      { id: "memory", label: "Research memory", render: research.renderMemory },
-      { id: "data", label: "Data observatory", render: research.renderData },
-    ],
-  },
-  {
-    id: "system", label: "System", section: "Advanced", icon: "gear", defaultChild: "setup",
-    children: [
-      { id: "setup", label: "Setup", render: system.renderSetup },
-      { id: "mt5", label: "MT5 connection", render: system.renderMT5 },
-      { id: "diagnostics", label: "Diagnostics", render: system.renderDiagnostics },
-    ],
-  },
-  { id: "governance", label: "Governance", section: "Advanced", path: "#/governance/live", icon: "lock", render: governance.renderGovernance, restricted: true },
 ];
+
+/* Deep links and bookmarks from the previous IA keep working. */
+const REDIRECTS = {
+  "#/overview": "#/home",
+  "#/market/monitor": "#/market",
+  "#/market/observations": "#/advanced/data-observations",
+  "#/market/quality": "#/advanced/data-quality",
+  "#/market/lineage": "#/advanced/data-lineage",
+  "#/opportunities": "#/reports",
+  "#/trading/demo": "#/trading",
+  "#/trading/paper": "#/advanced/trading-practice",
+  "#/trading/execution": "#/advanced/trading-history",
+  "#/trading/comparison": "#/advanced/trading-comparison",
+  "#/risk": "#/advanced/risk",
+  "#/evidence/explorer": "#/advanced/evidence",
+  "#/evidence/audit": "#/advanced/audit",
+  "#/research/campaigns": "#/advanced/research-campaigns",
+  "#/research/hypotheses": "#/advanced/research-hypotheses",
+  "#/research/experiments": "#/advanced/research-experiments",
+  "#/research/strategies": "#/advanced/research-strategies",
+  "#/research/validation": "#/advanced/research-validation",
+  "#/research/memory": "#/advanced/research-memory",
+  "#/research/data": "#/advanced/research-data",
+  "#/system/setup": "#/advanced/system-setup",
+  "#/system/mt5": "#/advanced/system-mt5",
+  "#/system/diagnostics": "#/advanced/system-diagnostics",
+  "#/governance/live": "#/advanced/governance",
+};
 
 const LEVEL_TONE = {
   critical: { tone: "err", label: "CRITICAL", mark: "■" },
@@ -101,15 +113,15 @@ function buildNotifBell() {
     clear(listEl);
     const notes = attentionRank(store.data.notifications || []);
     if (!notes.length) {
-      listEl.appendChild(h("div", { class: "notif-empty" }, freshness(store.data.resources.notifications, "notifications").current ? "No notifications reported. See operating facts for permission and health." : "Notifications unavailable or stale. No all-clear can be established."));
+      listEl.appendChild(h("div", { class: "notif-empty" }, "Nothing needs your attention."));
       return;
     }
     for (const n of notes) {
       const info = LEVEL_TONE[String(n.level).toLowerCase()] ?? { tone: "neutral", label: String(n.level || "NOTICE").toUpperCase(), mark: "○" };
       listEl.appendChild(h("div", {
         class: "notif-item", role: "button", tabindex: "0",
-        onclick: () => { close(); navigate("#/overview"); },
-        onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); close(); navigate("#/overview"); } },
+        onclick: () => { close(); navigate(HOME); },
+        onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); close(); navigate(HOME); } },
       },
         badge(info),
         h("div", { class: "n-body" },
@@ -147,72 +159,128 @@ async function stopTrading() {
   const ok = await confirmModal({
     title: "Stop trading",
     danger: true,
-    body: "This asks the backend to raise the durable kill switch and halt the demo stage. It does not close an open broker position. Cancel if you only wanted to look.",
-    acks: ["I want orders stopped until an operator clears the kill switch."],
+    body: "This stops demo orders until you review and resume. It does not close an open position. Cancel if you only wanted to look.",
+    acks: ["I want orders stopped until I review and resume."],
     confirmLabel: "Stop orders",
   });
   if (!ok) return;
   try {
     const out = await api.post("/api/demo/kill", { reason: "operator stop from the header" });
     if (!out || out.killed !== true) {
-      toast("err", "Stop was not confirmed", "The backend did not report the kill switch as raised. Check Risk before assuming orders are stopped.");
+      toast("err", "Stop was not confirmed", "QTS could not confirm that orders are stopped. Check Trading before assuming anything.");
       return;
     }
-    toast("warn", "Orders stopped", "The kill switch is on. This does not close an open position. Live trading was already locked.");
+    toast("warn", "Orders stopped", "Trading is temporarily stopped. You can review and resume from Trading. Live trading was already locked.");
     syncOperations(true);
   } catch (e) {
     toast("err", "Stop was not confirmed", e.message || "The request failed. Do not assume orders are stopped.");
   }
 }
 
+/* ---------------- header: only what matters ---------------- */
 function buildHeader() {
-  const facts = h("div", { class: "header-facts", id: "header-facts", role: "status", "aria-label": "Operating facts" });
-  const conn = h("span", { class: "conn-dot", title: "API connection", role: "status", "aria-label": "Health API connecting" });
-  const updated = h("span", { class: "meta", id: "header-updated", "aria-live": "polite" }, "connecting…");
+  const account = h("span", { class: "header-account", id: "header-account", role: "status" },
+    h("span", { class: "account-dot", "aria-hidden": "true" }),
+    h("span", { class: "account-text" }, "Demo account: checking…"));
+  const status = h("span", { class: "header-status", id: "header-status" }, "");
+  const conn = h("span", { class: "conn-dot", title: "QTS service connection", role: "status", "aria-label": "QTS service connecting" });
+  const updated = h("span", { class: "meta header-updated", id: "header-updated", "aria-live": "polite" }, "connecting…");
 
   const header = h("header", { class: "header" },
     h("button", { class: "btn ghost nav-toggle", "aria-label": "Toggle navigation", "aria-expanded": "false", onclick: (e) => { const open = document.getElementById("app").classList.toggle("nav-open"); e.currentTarget.setAttribute("aria-expanded", String(open)); } }, icon("menu", 18)),
-    h("div", { class: "brand" },
-      h("span", { class: "logo", "aria-hidden": "true" }, "QTS"),
+    h("a", { class: "brand", href: HOME, "aria-label": "QTS home" },
+      h("span", { class: "logo", "aria-hidden": "true" }, "Q"),
       h("span", { class: "word" }, "QTS"),
-      h("span", { class: "sub" }, "Gold"),
-    ),
-    facts,
+      h("span", { class: "sub" }, "Gold · Demo")),
+    h("div", { class: "header-center" }, account, status),
     h("div", { class: "header-actions" },
       conn, updated,
+      h("span", { class: "header-lock", title: "Live trading cannot be opened from QTS. Real money is never at risk." }, icon("lock", 12), "Demo only · Live locked"),
       h("button", { class: "btn danger sm", onclick: stopTrading, "aria-label": "Stop trading" }, "Stop trading"),
-      buildNotifBell(),
-      h("button", { class: "btn ghost sm", onclick: openWorkspace, "aria-label": "Workspace preferences" }, icon("layers", 15), "Workspace"),
-      h("a", { class: "btn ghost sm", href: location.hash || "#/overview", target: "_blank", rel: "noopener", "aria-label": "Open current context in another window", onclick: (e) => { e.currentTarget.href = location.hash || "#/overview"; } }, "New window"),
-      h("button", { class: "btn ghost sm", onclick: () => palette?.open(), "aria-label": "Open command palette (Ctrl+K)", title: "Ctrl+K" }, icon("search", 15)),
-    ),
+      buildNotifBell()),
   );
-  return { header, facts, conn, updated };
+  return { header, account, status, conn, updated };
 }
 
-function factChip({ label, value, cls = "", title }) {
-  return h("span", { class: `fact ${cls}`, title: title ?? "" },
-    label ? h("span", null, label, " ") : null,
-    h("b", null, value),
-  );
+function renderHeaderStatus({ account, status }) {
+  const s = operationalState(store.data);
+  const connected = s.sources.health.current && String(s.health?.mt5).toLowerCase() === "connected";
+  const dot = account.querySelector(".account-dot");
+  const text = account.querySelector(".account-text");
+  account.classList.toggle("connected", connected);
+  dot.className = `account-dot ${connected ? "ok" : "off"}`;
+  text.textContent = connected ? "Demo account: Connected" : "Demo account: Not connected";
+
+  let label = "";
+  if (!s.sources.health.current) label = "Status unavailable";
+  else if (s.killActive) label = "Trading is temporarily stopped";
+  else if (s.permission === "PERMITTED · DEMO ONLY") label = "Ready for demo trading";
+  else if (connected) label = "Connected — setup continues on Trading";
+  else label = "Getting started";
+  status.textContent = label;
+  status.dataset.tone = s.killActive ? "err" : s.permission === "PERMITTED · DEMO ONLY" ? "ok" : "neutral";
 }
 
-let palette;
+/* ---------------- sidebar: few choices, quiet Advanced ---------------- */
+function buildSidebar() {
+  const aside = h("nav", { class: "sidebar", "aria-label": "Primary" });
+
+  const primary = h("div", { class: "nav-primary" });
+  for (const g of IA.filter((x) => !x.quiet)) {
+    primary.appendChild(h("button", {
+      class: "nav-item primary",
+      dataset: { href: `#/${g.id}` },
+      onclick: () => navigate(`#/${g.id}`),
+    }, icon(g.icon, 16), h("span", null, g.label)));
+  }
+  aside.appendChild(primary);
+
+  const adv = IA.find((x) => x.quiet);
+  const advBody = h("div", { class: "adv-body" });
+  let lastSub = "";
+  for (const c of adv.children) {
+    if (c.sub !== lastSub) {
+      advBody.appendChild(h("div", { class: "adv-sub" }, c.sub));
+      lastSub = c.sub;
+    }
+    advBody.appendChild(h("button", {
+      class: "nav-item adv",
+      dataset: { href: `#/advanced/${c.id}` },
+      onclick: () => navigate(`#/advanced/${c.id}`),
+    }, h("span", null, c.label)));
+  }
+  aside.appendChild(h("details", { class: "nav-advanced" },
+    h("summary", null, icon("sliders", 14), h("span", null, "Advanced"), h("span", { class: "adv-hint" }, "technical")),
+    advBody));
+
+  aside.appendChild(h("div", { class: "sidebar-footer" },
+    h("span", null, icon("lock", 12), " Demo only — live trading stays locked."),
+    h("span", { class: "text-faint" }, "QTS decides nothing on its own. Every order still passes the safety checks.")));
+  return aside;
+}
+
+function markActiveNav() {
+  const hash = (location.hash || HOME).split("?")[0];
+  document.querySelectorAll(".nav-item").forEach((el) => {
+    const active = el.dataset.href === hash || (hash.startsWith("#/advanced/") && el.dataset.href === hash);
+    el.classList.toggle("active", active);
+    if (active) el.setAttribute("aria-current", "page"); else el.removeAttribute("aria-current");
+  });
+  // Opening Advanced automatically when one of its pages is shown.
+  const advDetails = document.querySelector(".nav-advanced");
+  if (advDetails) advDetails.open = advDetails.open || hash.startsWith("#/advanced/");
+}
+
+/* ---------------- workspace drawer (kept for power users via palette) ---------------- */
 function openWorkspace() {
   const p = readWorkspace();
   const ctx = getContext();
   const form = h("div", { class: "stack" },
-    h("p", { class: "small text-dim" }, `Presentation preferences only. Modes, permissions and risk acknowledgements are never restored from browser storage. Context ${ctx.symbol} · ${ctx.timeframe} syncs across windows via BroadcastChannel, never permission. Multi-monitor: New window opens current context for second monitor. Native monitor placement and linked crosshairs benchmark — not claimed implemented if not.`),
-    h("div", { class: "stat-grid" },
-      stat({ label: "Density", value: p.density, hint: "compact = 5px rows, 10px cards — high density without chaos" }),
-      stat({ label: "Width", value: p.width, hint: "focused 1440px, wide 1600px" }),
-      stat({ label: "Context", value: `${ctx.symbol} · ${ctx.timeframe}`, hint: "presentation only, syncs, never permission" }),
-    ),
-  );
+    h("p", { class: "small text-dim" }, `Presentation preferences only. Modes, permissions and risk acknowledgements are never stored here. Context ${ctx.symbol} · ${ctx.timeframe} is presentation only.`));
   for (const [key, label, options, hint] of [
-    ["density", "Density", ["compact", "comfortable"], "Compact: 5px table rows, 10px cards — high density without chaos. Comfortable: more whitespace — professional instrument, not decorative."],
-    ["width", "Workspace width", ["focused", "wide"], "Focused: 1440px max — readable, oriented. Wide: 1600px — more columns visible, controlled complexity."],
-    ["navigation", "Navigation width", ["narrow", "standard", "wide"], "Sidebar width — persists per browser, never permission. Shallow, predictable, searchable."],
+    ["density", "Density", ["compact", "comfortable"], "Compact rows vs more whitespace."],
+    ["width", "Workspace width", ["focused", "wide"], "Focused 1440px, wide 1600px."],
+    ["navigation", "Navigation width", ["narrow", "standard", "wide"], "Sidebar width."],
   ]) {
     const select = h("select", { class: "input", "aria-label": label }, options.map((v) => h("option", { value: v }, v)));
     select.value = p[key];
@@ -221,149 +289,15 @@ function openWorkspace() {
   }
   const remember = h("input", { type: "checkbox", checked: p.rememberRoute });
   remember.addEventListener("change", () => { if (!saveWorkspace({ rememberRoute: remember.checked, route: location.hash })) toast("warn", "Preferences could not be saved"); });
-  form.appendChild(h("label", { class: "field-inline", style: { marginTop: "8px" } }, remember, h("span", { class: "small" }, "Restore the last page on launch. This does not repeat an action and does not permit a trade.")));
-  form.appendChild(h("div", { class: "stack", style: { marginTop: "12px" } },
-    h("div", { class: "eyebrow" }, "Keyboard — minimal cognitive cost, keyboard-first"),
-    h("div", { class: "small text-dim" }, "Ctrl+K finds a page. Esc closes a panel."),
-    h("div", { class: "eyebrow" }, "What follows you"),
-    h("div", { class: "small text-dim" }, "The gold symbol can follow you across windows. It never changes permission, mode, or risk."),
-    h("div", { class: "eyebrow" }, "Safety"),
-    h("div", { class: "small text-dim" }, "Watching a demo account does not send an order. Demo trading stays off unless a recorded authorization and the safety checks both allow it. Live trading stays locked. This screen cannot open it."),
-    h("div", { class: "eyebrow" }, "Missing numbers"),
-    h("div", { class: "small text-dim" }, "A missing number stays missing. It is not shown as zero."),
-  ));
-  drawer("Workspace preferences", form);
-}
-
-function stat({ label, value, hint }) {
-  return h("div", { class: "stat" },
-    h("div", { class: "stat-label" }, label),
-    h("div", { class: "stat-value" }, value),
-    hint ? h("div", { class: "stat-hint" }, hint) : null,
-  );
-}
-
-function renderFacts(factsEl) {
-  const s = operationalState(store.data);
-  const ctx = getContext();
-  const values = [
-    ["mode", "Mode", headerMode(s.mode.mode), "mode"],
-    ["Observation", "Watching", headerWatching(s.observation, s.observing), s.observing ? "observing" : ""],
-    ["DEMO", "Demo", headerPermission(s.permission), ""],
-    ["LIVE", "Live", headerLive(s.liveLabel), "live-locked"],
-    ["ctx", "Gold", `${ctx.symbol}`, "optional"],
-  ];
-  if (!factsEl.children.length) {
-    for (const [, shown, value, cls] of values) factsEl.appendChild(factChip({ label: shown, value, cls }));
-  }
-  [...factsEl.children].forEach((node, i) => {
-    const [label, , value, cls] = values[i];
-    const v = node.querySelector("b");
-    const cur = label === "ctx" ? `${getContext().symbol}` : value;
-    if (v.textContent !== cur) v.textContent = cur;
-    node.className = `fact ${cls}`;
-    if (label === "ctx") node.title = "The gold symbol shown on these pages. Changing it does not permit a trade.";
-    else if (label === "mode") node.title = "What this process may attempt. A mode is not permission to trade.";
-    else if (label === "DEMO") node.title = "Whether a demo order is allowed. Off means no demo order.";
-    else if (label === "LIVE") node.title = "Live trading stays locked. This header cannot open it.";
-    else node.title = "Whether quotes are being recorded. Recording is not a trade.";
-  });
-}
-
-function headerMode(mode) {
-  const m = String(mode || "").toUpperCase();
-  if (m === "DEVELOPMENT" || m === "DEV") return "Research only";
-  if (m === "PAPER") return "Practice";
-  if (m === "SHADOW") return "Would-be only";
-  if (m === "DEMO_FORWARD") return "Watching demo";
-  if (m === "DEMO_EXECUTION") return "Demo trading";
-  if (m === "LIVE") return "Live locked";
-  return m || "Not reported";
-}
-
-function headerPermission(permission) {
-  const s = String(permission || "");
-  if (s.includes("UNAVAILABLE")) return "Not reported";
-  if (s.includes("CONFLICT")) return "Conflict";
-  if (s.includes("NOT PERMITTED") || s.includes("AUTHORIZED")) return "Recorded, not allowed";
-  if (s.includes("PERMITTED")) return "Demo only";
-  return "Off";
-}
-
-function headerLive(label) {
-  if (label === "LOCKED") return "LIVE LOCKED";
-  if (label === "ELIGIBLE · STILL GATED") return "Not open";
-  if (!label || label === "UNAVAILABLE") return "Not reported";
-  return String(label);
-}
-
-function headerWatching(observation, observing) {
-  if (observing) return "Recording";
-  const s = String(observation || "").toUpperCase();
-  if (s === "DEGRADED") return "Recording failed";
-  if (!s || s === "IDLE" || s === "STOPPED" || s === "UNAVAILABLE") return "Not recording";
-  return "Not recording";
-}
-
-function buildSidebar() {
-  const aside = h("nav", { class: "sidebar", "aria-label": "Primary" });
-  const search = h("input", { class: "input nav-search", type: "search", "aria-label": "Find a workspace page", placeholder: "Find a page… ( / )" });
-  search.addEventListener("input", () => {
-    const q = search.value.trim().toLowerCase();
-    aside.querySelectorAll(".sidebar-group").forEach((group) => {
-      group.querySelectorAll(".nav-item").forEach((item) => { item.hidden = !`${group.querySelector(".sidebar-group-label").textContent} ${item.textContent}`.toLowerCase().includes(q); });
-      group.hidden = [...group.querySelectorAll(".nav-item")].every((x) => x.hidden);
-    });
-  });
-  search.addEventListener("keydown", (e) => { if (e.key === "Escape") { search.value = ""; search.dispatchEvent(new window.Event("input")); } });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "/" && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
-      e.preventDefault(); search.focus();
-    }
-  });
-  aside.appendChild(search);
-  let lastSection = "";
-  for (const g of IA) {
-    const section = g.section || "Product";
-    if (section !== lastSection) {
-      aside.appendChild(h("div", { class: "nav-section" }, section));
-      lastSection = section;
-    }
-    const grp = h("div", { class: "sidebar-group" });
-    grp.appendChild(h("div", { class: "sidebar-group-label" }, icon(g.icon, 14), h("span", null, g.label)));
-    const add = (label, href, restricted) => {
-      grp.appendChild(h("button", {
-        class: `nav-item${restricted ? " restricted" : ""}`,
-        dataset: { href },
-        onclick: () => navigate(href),
-      }, icon(restricted ? "lock" : g.icon, 14), h("span", null, label)));
-    };
-    if (g.children) {
-      for (const c of g.children) add(c.label, `#/${g.id}/${c.id}`, false);
-    } else {
-      add(g.label, g.path ?? `#/${g.id}`, g.restricted);
-    }
-    aside.appendChild(grp);
-  }
-  aside.appendChild(h("div", { class: "sidebar-footer" },
-    h("span", null, [h("span", { class: "kbd" }, "Ctrl"), " + ", h("span", { class: "kbd" }, "K"), " palette · ", h("span", { class: "kbd" }, "/"), " filter"]),
-    h("span", null, "Backend is the only authority — UI requests and displays, never decides."),
-  ));
-  return aside;
-}
-
-function markActiveNav() {
-  const hash = (location.hash || "#/overview").split("?")[0];
-  document.querySelectorAll(".nav-item").forEach((el) => {
-    el.classList.toggle("active", el.dataset.href === hash);
-    if (el.dataset.href === hash) el.setAttribute("aria-current", "page"); else el.removeAttribute("aria-current");
-  });
+  form.appendChild(h("label", { class: "field-inline", style: { marginTop: "8px" } }, remember, h("span", { class: "small" }, "Restore the last page on launch. This never repeats an action.")));
+  form.appendChild(h("div", { class: "small text-dim", style: { marginTop: "12px" } }, "A missing number stays missing — it is never shown as zero. Watching the market never sends an order. Live trading stays locked."));
+  drawer("Display preferences", form);
 }
 
 function main() {
   const loadStart = performance.now();
   initWorkspace();
-  const { header, facts, conn, updated } = buildHeader();
+  const { header, account, status, conn, updated } = buildHeader();
   const app = h("div", { id: "app" },
     header,
     buildSidebar(),
@@ -373,30 +307,24 @@ function main() {
   document.body.appendChild(app);
 
   registerRoutes(IA);
-  palette = initPalette(IA, [
-    { label: "Inspect observation (no orders)", group: "Actions", icon: "eye", run: () => navigate("#/market/observations") },
-    { label: "Inspect readiness and permission", group: "Actions", icon: "shield", run: () => navigate("#/trading/demo") },
-    { label: "Inspect the quote clock", group: "Diagnostics", icon: "clock", run: () => navigate("#/system/diagnostics") },
-    { label: "Market monitor — timestamp bases & offsets", group: "Market", icon: "activity", run: () => navigate("#/market/monitor") },
-    { label: "Workspace preferences", group: "Workspace", icon: "layers", run: openWorkspace },
-    { label: "Refresh operating sources", group: "Actions", icon: "refresh", run: () => syncOperations(true) },
-    { label: "Toggle density compact/comfortable", group: "Workspace", icon: "layers", run: () => {
-      const ws = readWorkspace();
-      const next = ws.density === "compact" ? "comfortable" : "compact";
-      saveWorkspace({ density: next });
-      toast("ok", `Density ${next}`, "High density without chaos — professional instrument");
-    }},
+  registerRedirects(REDIRECTS);
+  initPalette(IA, [
+    { label: "Check the demo connection", group: "Actions", icon: "activity", run: () => navigate("#/trading") },
+    { label: "Start a demo trade", group: "Actions", icon: "zap", run: () => navigate("#/trading") },
+    { label: "See reports", group: "Actions", icon: "fileCheck", run: () => navigate("#/reports") },
+    { label: "Display preferences", group: "Workspace", icon: "sliders", run: openWorkspace },
+    { label: "Refresh status", group: "Actions", icon: "refresh", run: () => syncOperations(true) },
   ]);
 
   window.addEventListener("hashchange", () => { markActiveNav(); });
   const update = () => {
-    renderFacts(facts);
+    renderHeaderStatus({ account, status });
     const f = freshness(store.data.resources.health, "health");
     const stateClass = f.current ? "" : f.label.includes("STALE") ? " stale" : " down";
     conn.className = `conn-dot${stateClass}`;
-    conn.title = `Health API: ${f.label}`;
-    conn.setAttribute("aria-label", `Health API ${f.label.toLowerCase()}`);
-    updated.textContent = `Health API: ${f.label}${store.data.resources.health?.updatedAt ? ` · ${fmtAge(store.data.resources.health.updatedAt)}` : ""}`;
+    conn.title = `QTS service: ${f.label}`;
+    conn.setAttribute("aria-label", `QTS service ${f.label.toLowerCase()}`);
+    updated.textContent = f.current ? (store.data.resources.health?.updatedAt ? `Updated ${fmtAge(store.data.resources.health.updatedAt)}` : "Up to date") : f.label;
   };
   store.on("resources", update);
   onContext(update);

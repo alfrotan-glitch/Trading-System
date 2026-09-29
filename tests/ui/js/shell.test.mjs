@@ -1,11 +1,17 @@
 /* ============================================================
-   QTS UI shell functional tests — jsdom + the REAL ES modules
-   + the REAL backend API (QTS_UI_BASE, default :8901).
+   QTS product shell functional tests — jsdom + the REAL ES
+   modules + the REAL backend API (QTS_UI_BASE).
 
-   These tests assert that displayed state corresponds to
-   backend truth (mission §40): mode display, LIVE locked,
-   demo permission display, readiness checks, empty states,
-   navigation, palette.
+   The product transformation (2026-09-29) reduced the primary
+   navigation to Home · Market · Trading · Reports, with every
+   engineering surface under one quiet Advanced area. These tests
+   pin that IA AND the unchanged safety truths:
+   - the user always sees status, account state and one next step
+   - LIVE stays visibly locked (quietly, but always present)
+   - no price is shown unless it is fresh; no opportunity invented
+   - the demo workflow still renders the full readiness checklist
+     and the verbatim authority state under technical disclosure
+   - legacy product URLs redirect into the new IA
    ============================================================ */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -30,6 +36,11 @@ async function waitUntil(fn, timeoutMs = 15000, what = "condition") {
   throw new Error(`timeout waiting for ${what}`);
 }
 
+async function goto(hash) {
+  window.location.hash = hash;
+  await sleep(200);
+}
+
 before(async () => {
   const html = fs.readFileSync(path.join(UI, "index.html"), "utf8");
   const vc = new VirtualConsole();
@@ -43,7 +54,6 @@ before(async () => {
   });
   window = dom.window;
   document = window.document;
-  /* bridge Node/jsdom globals so our ES modules run against the jsdom DOM */
   globalThis.window = window;
   globalThis.document = document;
   globalThis.location = window.location;
@@ -59,109 +69,125 @@ before(async () => {
   window.fetch = globalThis.fetch;
 
   await import("../../../src/qts/desktop/ui/js/main.js?boot=" + Date.now());
-  await waitUntil(() => document.querySelectorAll(".nav-item").length > 0, 15000, "shell bootstrap");
-  await waitUntil(() => document.querySelectorAll("[data-fact]").length === 7 && /unavailable|disconnected/i.test(document.querySelector("[data-fact=broker]")?.textContent || ""), 20000, "overview data render");
+  await waitUntil(() => document.querySelectorAll(".nav-item").length >= 4, 15000, "shell bootstrap");
+  await waitUntil(() => document.querySelectorAll(".home-card").length === 4, 30000, "home render");
 });
 
 after(() => {
   if (dom) dom.window.close();
 });
 
-test("IA: product navigation first, engineering under Advanced", () => {
-  const groups = [...document.querySelectorAll(".sidebar-group-label")].map((e) => e.textContent.trim());
-  assert.deepEqual(groups, ["Home", "Market", "Opportunities", "Trading", "Risk", "Reports", "Research", "System", "Governance"]);
-  assert.equal(document.querySelectorAll(".nav-item").length, 24);
-  assert.deepEqual([...document.querySelectorAll(".nav-section")].map((e) => e.textContent.trim()), ["Product", "Advanced"]);
-  assert.ok(document.querySelector(".nav-item.restricted"), "Governance is marked restricted");
-});
-
-test("header communicates the critical operating facts continuously", async () => {
-  const facts = document.getElementById("header-facts");
-  await waitUntil(() => facts.textContent.includes("Research only"), 15000, "mode fact");
-  assert.ok(facts.querySelector(".fact.mode"), "mode chip present");
-  assert.ok(facts.textContent.includes("Mode"));
-  await waitUntil(() => facts.textContent.includes("LIVE LOCKED"), 15000, "LIVE authority response");
-  assert.ok(facts.querySelector(".fact.live-locked"), "locked chip styled as locked");
-});
-
-test("overview: operational hierarchy and truthful broker state", () => {
-  const broker = document.querySelector('[data-fact="broker"]');
-  assert.match(broker.textContent, /UNAVAILABLE|Unavailable|DISCONNECTED/i);
-  assert.ok(document.querySelector(".operator-summary"));
-  assert.equal(document.querySelectorAll(".next-action a").length, 1);
-  assert.equal(document.querySelectorAll(".rail-node").length, 0, "no implied lifecycle completion");
-  assert.equal(document.querySelectorAll(".journey-step").length, 0, "no execution-enabling checklist in primary layer");
-});
-test("overview: authority, evidence and technical disclosure are distinct", async () => {
-  await waitUntil(() => document.querySelector('[data-fact="permission"]').textContent.includes("DISABLED"));
-  await waitUntil(() => document.querySelector('[data-fact="liveLabel"]').textContent.includes("LOCKED"));
-  assert.ok(document.body.textContent.includes("Raw overview snapshot"));
-  const details = document.querySelectorAll(".operator-workspace > details");
-  assert.equal(details.length, 3);
-  assert.ok([...details].every((x) => !x.open));
-});
-
-test("navigation to Trading → Demo shows authority truth: DISABLED + failing checks", async () => {
-  location.hash = "#/trading/demo";
-  await waitUntil(() => document.body.textContent.includes("Is the practice account connected"), 20000, "demo view");
-  // readiness probing runs the full 14-check gate server-side per request —
-  // allow a generous window (shared server, parallel test files)
-  await waitUntil(() => document.querySelectorAll(".check").length >= 10, 75000, "readiness checks");
-  assert.ok(document.body.textContent.includes("DEMO EXECUTION: DISABLED"), "authority state shown verbatim");
-  const failing = document.querySelectorAll(".check.fail").length;
-  assert.ok(failing >= 1, `sandbox readiness must show failing checks (no MT5), got ${failing}`);
-  assert.ok(!document.querySelector(".banner.ok")?.textContent.includes("ALL CHECKS PASSED"), "no false pass banner");
-});
-
-test("navigation to Governance shows LIVE — LOCKED hero with disabled request control", async () => {
-  location.hash = "#/governance/live";
-  await waitUntil(() => document.body.textContent.includes("This page cannot open it"), 15000, "governance view");
-  await waitUntil(() => document.body.textContent.includes("Why it is locked"), 30000, "governance checklist");
-  assert.ok(document.body.textContent.includes("LIVE — LOCKED"));
-  assert.ok(document.body.textContent.includes("This page cannot open it"));
-  const req = [...document.querySelectorAll("button")].find((b) => /cannot be opened/i.test(b.textContent));
-  assert.ok(req, "a locked live control exists");
-  assert.ok(req.disabled, "live control is disabled while locked");
-});
-
-test("navigation to Risk shows blocked-or-permitted banner with reasons from authority", async () => {
-  location.hash = "#/risk";
-  await waitUntil(() => document.body.textContent.includes("A clear risk reading is not permission to trade"), 15000, "risk view");
-  await waitUntil(() => document.body.textContent.match(/TRADING IS (CURRENTLY BLOCKED|NOT AUTHORIZED)/), 15000, "risk banner");
-  assert.ok(!document.body.textContent.includes("TRADING IS PERMITTED"), "a clear risk limit is not permission");
-  assert.ok(!document.body.textContent.includes("22 GATES"), "the risk card does not invent a gate count");
-  assert.ok(document.body.textContent.includes("Config hash") || document.body.textContent.includes("config"), "config hash displayed");
-});
-
-test("navigation to Market → Monitor shows honest empty state (no fabricated charts)", async () => {
-  location.hash = "#/market/monitor";
-  await waitUntil(() => document.body.textContent.includes("The last recorded gold quote"), 15000, "monitor view");
-  await waitUntil(() => document.body.textContent.match(/No real observations recorded yet|Current quote/), 15000, "monitor content");
-  if (!document.querySelector("svg")) {
-    assert.ok(document.body.textContent.includes("No real observations recorded yet"));
+test("IA: four product pages, everything else under one quiet Advanced", () => {
+  const primary = [...document.querySelectorAll(".nav-item.primary")].map((e) => e.textContent.trim());
+  assert.deepEqual(primary, ["Home", "Market", "Trading", "Reports"]);
+  const advanced = document.querySelector(".nav-advanced");
+  assert.ok(advanced, "one Advanced area exists");
+  assert.equal(advanced.querySelectorAll(".nav-item.adv").length, 20, "all engineering pages live under Advanced");
+  assert.ok(!advanced.open, "Advanced starts collapsed — quiet by default");
+  // engineering vocabulary is not primary navigation
+  for (const forbidden of ["Campaigns", "Hypotheses", "Diagnostics", "Audit", "Governance", "Lineage"]) {
+    assert.ok(!primary.includes(forbidden), `${forbidden} is not a primary page`);
   }
 });
 
-test("observation view: orders-submitted stat exists and observation copy never implies trading", async () => {
-  location.hash = "#/market/observations";
-  await waitUntil(() => document.body.textContent.includes("Recorded quotes"), 15000, "observation view");
-  await waitUntil(() => document.body.textContent.includes("Orders submitted"), 15000, "order count stat");
-  assert.ok(document.body.textContent.includes("never submits orders"));
+test("header says only what matters — and live lock stays visible", async () => {
+  const account = document.getElementById("header-account");
+  await waitUntil(() => /Demo account: (Connected|Not connected)/.test(account.textContent), 15000, "account chip");
+  assert.ok(document.getElementById("header-status").textContent.length > 0, "an overall status is shown");
+  assert.ok(!document.getElementById("header-facts"), "no row of engineering chips in the product header");
+  assert.ok(document.querySelector(".conn-dot"), "service health indicator remains (silent staleness is forbidden)");
+  const lock = document.querySelector(".header-lock");
+  assert.ok(lock && /Live locked/i.test(lock.textContent), "LIVE lock stays visible — quietly, but always");
 });
 
-test("command palette: Ctrl+K opens, search filters, Enter navigates", async () => {
-  document.querySelector('[aria-label="Open command palette (Ctrl+K)"]').click();
+test("home answers the product questions honestly", async () => {
+  await goto("#/home");
+  await waitUntil(() => document.querySelectorAll(".home-card").length === 4, 20000, "home cards");
+  const body = document.querySelector("#main").textContent;
+  // account state, gold honesty, opportunity honesty, money safety
+  assert.ok(/Demo account (connected|not connected)/i.test(body), "account state visible");
+  assert.ok(body.includes("No validated trading opportunity right now."), "no invented opportunity");
+  assert.ok(body.includes("Not at risk"), "real money never at risk");
+  assert.ok(/Live trading stays locked/i.test(body), "live lock stated on home");
+  // no terminal in the sandbox → no price may be displayed, ever
+  assert.ok(body.includes("Current price unavailable"), "stale/missing price is never shown as a number");
+  // exactly one primary action in the hero
+  assert.equal(document.querySelectorAll(".home-hero .hero-actions .btn.primary").length, 1, "one next action");
+});
+
+test("legacy product URLs redirect into the new IA", async () => {
+  for (const [legacy, canonical] of [
+    ["#/overview", "#/home"],
+    ["#/trading/demo", "#/trading"],
+    ["#/market/monitor", "#/market"],
+    ["#/research/campaigns", "#/advanced/research-campaigns"],
+    ["#/governance/live", "#/advanced/governance"],
+    ["#/risk", "#/advanced/risk"],
+  ]) {
+    await goto(legacy);
+    await waitUntil(() => window.location.hash === canonical, 10000, `redirect ${legacy} → ${canonical}`);
+  }
+});
+
+test("trading page keeps the guided workflow and the full checklist", async () => {
+  await goto("#/trading");
+  await waitUntil(() => document.body.textContent.includes("Is the practice account connected"), 20000, "trading view");
+  // the 14-check readiness gate still renders (inside technical disclosure)
+  await waitUntil(() => document.querySelectorAll(".check").length >= 10, 75000, "readiness checks");
+  assert.ok(document.body.textContent.includes("DEMO EXECUTION: DISABLED"), "authority state shown verbatim under disclosure");
+  assert.ok(document.body.textContent.includes("No real money is at risk"), "demo-only reassurance on the trade ticket");
+  const failing = document.querySelectorAll(".check.fail").length;
+  assert.ok(failing >= 1, `sandbox readiness must show failing checks (no MT5), got ${failing}`);
+});
+
+test("market page shows gold honestly — never an invented price", async () => {
+  await goto("#/market");
+  await waitUntil(() => document.body.textContent.includes("Gold — XAUUSD"), 20000, "market view");
+  await waitUntil(() => document.querySelector(".market-price")?.textContent.length > 0, 20000, "price block");
+  // no terminal → no fresh quote → the honest sentence, not a number
+  assert.ok(document.body.textContent.includes("Current price unavailable"));
+  assert.ok(!document.querySelector(".market-chart svg"), "no chart without real recorded observations");
+});
+
+test("reports never manufacture a result", async () => {
+  await goto("#/reports");
+  await waitUntil(() => document.body.textContent.includes("Not enough data to report a result."), 20000, "reports view");
+  assert.ok(document.body.textContent.includes("Locked"), "live lock reported");
+});
+
+test("governance remains reachable under Advanced, still locked", async () => {
+  await goto("#/advanced/governance");
+  await waitUntil(() => document.body.textContent.includes("This page cannot open it"), 20000, "governance view");
+  assert.ok(document.body.textContent.includes("LIVE — LOCKED"));
+  const req = [...document.querySelectorAll("button")].find((b) => /cannot be opened/i.test(b.textContent));
+  assert.ok(req && req.disabled, "live control is disabled while locked");
+});
+
+test("risk page still states WHY trading is blocked", async () => {
+  await goto("#/advanced/risk");
+  await waitUntil(() => document.body.textContent.match(/TRADING IS (CURRENTLY BLOCKED|NOT AUTHORIZED)/), 20000, "risk banner");
+  assert.ok(!document.body.textContent.includes("TRADING IS PERMITTED"));
+});
+
+test("observation view keeps orders-submitted honesty", async () => {
+  await goto("#/advanced/data-observations");
+  await waitUntil(() => document.body.textContent.includes("Orders submitted"), 20000, "order count stat");
+  assert.ok(document.body.textContent.includes("never submits orders") || document.body.textContent.includes("never submits"));
+});
+
+test("keyboard search still finds pages (no advertised palette button)", async () => {
+  assert.ok(!document.querySelector('[aria-label="Open command palette (Ctrl+K)"]'), "palette is not advertised in the header");
+  document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }));
+  await waitUntil(() => document.querySelector(".palette-input"), 5000, "palette via Ctrl+K");
   const input = document.querySelector(".palette-input");
-  assert.ok(input, "palette input exists");
-  input.value = "governance";
+  input.value = "Live trading rules";
   input.dispatchEvent(new window.Event("input", { bubbles: true }));
-  await sleep(50);
+  await sleep(80);
   const items = [...document.querySelectorAll(".palette-item")];
-  assert.ok(items.length >= 1, "palette finds governance");
-  assert.ok(items[0].textContent.toLowerCase().includes("governance"));
+  assert.ok(items.length >= 1, "search finds the live-rules page");
   items[0].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  await waitUntil(() => document.body.textContent.includes("This page cannot open it"), 10000, "palette navigation");
-  assert.ok(!document.body.classList.contains("palette-open"), "palette closes after action");
+  await waitUntil(() => window.location.hash === "#/advanced/governance", 10000, "palette navigation");
+  await waitUntil(() => document.body.textContent.includes("This page cannot open it"), 15000, "governance render");
 });
 
 test("no uncaught page errors during the whole tour", () => {

@@ -839,5 +839,5 @@ def test_ui_wires_observe_endpoints() -> None:
     assert '"/api/observe/stop"' in market_js
     assert '"/api/observe/status"' in market_js
     assert "refresh" in market_js  # live refresh loop for observation state
-    assert '"observations"' in main_js  # observations route registered in the IA
+    assert '"data-observations"' in main_js  # observations route registered in the IA
     assert "Start Observation" in market_js

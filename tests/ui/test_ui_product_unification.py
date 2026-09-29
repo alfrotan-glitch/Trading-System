@@ -2,25 +2,21 @@
 
 Asserts:
 1. Product Information Architecture:
-   - Product navigation first, engineering pages under Advanced.
+   - Four primary pages (Home / Market / Trading / Reports) for a normal
+     user; every engineering surface under one quiet Advanced area.
+   - Legacy product URLs redirect into the new IA.
    - All legacy endpoints accounted for.
-2. Decision-First Executive Dashboard:
-   - Telemetry cards addressing the 6 core product questions:
-     * Market Status
-     * Opportunity Status
-     * Execution Permission
-     * Capital Exposure
-     * Safety Controls
-     * Attention Required
-3. Plain-Language Humanization:
-   - Technical codes translated into clear, professional operator language.
-   - No raw, frightening, or unexplained machine states.
-4. Execution & Safety Clarity:
+2. Plain-Language Home (command center):
+   - System status, demo account, gold price, opportunity and money-safety
+     answered in plain language from the guided API — nothing invented.
+   - Internal state names (STAGE_, HALTED, readiness IDs, pins) never leak
+     into primary pages.
+3. Execution & Safety Clarity:
    - DEMO environment clearly distinguished from simulation and live.
    - LIVE trading gate is permanently locked with zero capital exposure.
-5. Data Quality & Completeness:
+4. Data Quality & Completeness:
    - Truthful non-interpolated accounting reported honestly.
-6. Design System & CSS Invariants:
+5. Design System & CSS Invariants:
    - Calm, restrained institutional design tokens without gaming clutter.
    - Semantic color system with redundant status glyphs.
 """
@@ -52,26 +48,28 @@ def client():
 
 
 def test_ia_has_product_navigation_and_advanced_disclosure():
-    """Product tasks come first. Engineering pages stay available under Advanced."""
+    """Four product pages for a normal user. ALL engineering under one quiet Advanced."""
     main_src = (JS_DIR / "main.js").read_text(encoding="utf-8")
-    top_level_groups = re.findall(r"^  \{", main_src, re.M)
-    assert len(top_level_groups) == 9, f"Expected 9 primary groups, found {len(top_level_groups)}"
 
-    expected_groups = [
-        "Home",
-        "Market",
-        "Opportunities",
-        "Trading",
-        "Risk",
-        "Reports",
-        "Research",
-        "System",
-        "Governance",
-    ]
-    for grp in expected_groups:
-        assert f'label: "{grp}"' in main_src, f"Primary group {grp} missing in IA"
-    assert 'section: "Advanced"' in main_src
-    assert "restricted: true" in main_src
+    # Exactly four primary pages, in product order.
+    primary = re.findall(r'id: "([a-z]+)", label: "[^"]+", section: "Product"', main_src)
+    assert primary == ["home", "market", "trading", "reports"], primary
+
+    # One Advanced group — collapsed by default, holding every engineering page.
+    assert 'id: "advanced", label: "Advanced"' in main_src
+    advanced_children = re.findall(r'\{ id: "([a-z0-9-]+)", label: "[^"]+", sub: "[^"]+", render:', main_src)
+    assert len(advanced_children) == 20, advanced_children
+    for page_id in ["research-campaigns", "data-observations", "trading-history", "risk", "audit", "governance", "system-diagnostics"]:
+        assert page_id in advanced_children, f"engineering page {page_id} must live under Advanced"
+
+    # Engineering vocabulary must NOT be primary navigation.
+    for forbidden in ["Opportunities", "Risk controls", "Diagnostics", "Governance", "Campaigns", "Lineage"]:
+        assert f'label: "{forbidden}", section: "Product"' not in main_src
+
+    # Legacy product URLs keep working through redirects.
+    assert '"#/overview": "#/home"' in main_src
+    assert '"#/trading/demo": "#/trading"' in main_src
+    assert '"#/governance/live": "#/advanced/governance"' in main_src
 
 
 def test_all_legacy_endpoints_have_ui_representation():
@@ -123,36 +121,31 @@ def test_all_legacy_endpoints_have_ui_representation():
 
 
 # ---------------------------------------------------------------------------
-# 2. Executive Dashboard & Decision-First Design
+# 2. Product Home — plain answers, no invented data
 # ---------------------------------------------------------------------------
 
 
-def test_executive_dashboard_features_6_telemetry_pillars():
-    """Dashboard must structure telemetry answering the 6 core product questions."""
-    overview_src = (JS_DIR / "views" / "overview.js").read_text(encoding="utf-8")
-    assert "No validated opportunity" in overview_src
-    assert "Live trading locked" in overview_src
-    assert "Not at risk" in overview_src
-
-    # The home cards answer the operator questions in plain language:
-    assert 'label: "Gold"' in overview_src
-    assert 'label: "Opportunity"' in overview_src
-    assert 'label: "Trading"' in overview_src
-    assert 'label: "Your money"' in overview_src
-    assert 'label: "Safety"' in overview_src
-    assert 'label: "Next"' in overview_src
-
-    # Operating facts table with mandatory data-fact attributes
-    for fact in ["mode", "broker", "market", "quoteAge", "observation", "permission", "liveLabel"]:
-        assert f'fact: "{fact}"' in overview_src or f"fact: '{fact}'" in overview_src or f'fact === "{fact}"' in overview_src or f'["{fact}"' in overview_src, f"Operating fact {fact} missing in dashboard"
+def test_home_answers_the_product_questions_in_plain_language():
+    """Home must answer: status, account, gold, opportunity, money — plainly."""
+    home_src = (JS_DIR / "views" / "overview.js").read_text(encoding="utf-8")
+    assert "System status" in home_src
+    assert "Demo account" in home_src
+    assert "Gold — XAUUSD" in home_src
+    assert "Trading opportunity" in home_src
+    assert "No validated trading opportunity right now." in home_src
+    assert "Not at risk" in home_src
+    assert "Live trading stays locked" in home_src
+    # honesty contract: a missing price is a sentence, never a number
+    assert "Current price unavailable" in home_src
 
 
-def test_dashboard_humanizes_machine_state_codes():
-    """Technical state codes like STAGE_1_CONNECTIVITY_ONLY must be humanized."""
-    overview_src = (JS_DIR / "views" / "overview.js").read_text(encoding="utf-8")
-    assert "Connection Test Mode — Orders Disabled" in overview_src
-    assert "Trading Disabled by Safety Policy" in overview_src
-    assert "System Ready — Research Blocked" in overview_src
+def test_home_never_shows_internal_state_names():
+    """Stage/gate/authority internals must not appear in the product home."""
+    home_src = (JS_DIR / "views" / "overview.js").read_text(encoding="utf-8")
+    for forbidden in ["STAGE_1", "STAGE_2", "STAGE_3", "HALTED", "readiness_passed", "identity_pin", "preflight"]:
+        assert forbidden not in home_src, f"internal name {forbidden} leaked into the product home"
+    # the single allowed disclosure is behind an explicit Technical details toggle
+    assert "Technical details" in home_src
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +170,7 @@ def test_header_stop_calls_the_kill_endpoint_and_does_not_invent_success():
     main_src = (JS_DIR / "main.js").read_text(encoding="utf-8")
     assert 'api.post("/api/demo/kill"' in main_src
     assert "Stop was not confirmed" in main_src
-    assert "does not close an open broker position" in main_src
+    assert "does not close an open position" in main_src
     assert "Request recorded" not in main_src
 
 

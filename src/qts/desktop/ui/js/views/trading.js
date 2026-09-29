@@ -288,38 +288,56 @@ export async function renderDemo(root) {
     async function submit(dry) {
       const payload = { side, lots: size.value || undefined, stop_loss: stop.value || undefined, confirmed: true, risk_ack: true };
       if (dry) payload.dry_run = true;
+      if (!dry) {
+        // One simple review before anything is sent — exactly what will happen.
+        const ok = await confirmModal({
+          title: "Confirm demo trade",
+          body: h("div", { class: "stack" },
+            kv([
+              ["Direction", side === "BUY" ? "Buy" : "Sell"],
+              ["Instrument", g.instrument || "Gold (XAUUSD)"],
+              ["Amount", `${size.value || "—"} lot`],
+              ["Stop loss", stop.value || "—"],
+              ["Account", "Demo — no real money"],
+            ]),
+            banner("info", "This trade is placed on a Demo account.", "No real money is at risk. Live trading stays locked.", "lock")),
+          acks: ["I want to place this demo trade."],
+          confirmLabel: "Place demo trade",
+        });
+        if (!ok) return;
+      }
       try {
         const out = await api.post("/api/demo/order", payload);
         if (dry) {
-          result.replaceChildren(banner("ok", "Preview passed the safety checks", "No order was sent. Press “Place demo order” to submit on the demo account.", "check"), tech(out, "Preview detail"));
+          result.replaceChildren(banner("ok", "Preview passed the safety checks", "No order was sent. Press “Place demo trade” to submit on the demo account.", "check"), tech(out, "Preview detail"));
         } else {
-          result.replaceChildren(banner("ok", "Demo order placed", `Broker reference ${out.broker_order_id ?? "recorded"}. This is a practice account — no real money.`, "check"), tech(out, "Order detail"));
-          toast("ok", "Demo order placed", "No real money is at risk.");
+          result.replaceChildren(banner("ok", "Demo trade placed", `Broker reference ${out.broker_order_id ?? "recorded"}. This is a practice account — no real money.`, "check"), tech(out, "Order detail"));
+          toast("ok", "Demo trade placed", "No real money is at risk.");
         }
       } catch (e) {
         const b = e.body || {};
         const reasons = Array.isArray(b.reasons) ? b.reasons : (b.detail ? [String(b.detail)] : []);
         result.replaceChildren(
-          banner("warn", "Demo order could not be submitted", humanRefusal(reasons), "alert"),
+          banner("warn", "Demo trade could not be placed", humanRefusal(reasons), "alert"),
           h("details", null, h("summary", null, "Technical details"), tech(b, "Raw refusal")),
         );
       }
     }
 
     return card({
-      title: "Place a demo order", icon: "zap",
+      title: "New demo trade", icon: "zap",
       sub: `${g.instrument} · practice account · no real money at risk`,
       actions: [h("span", { class: "prov demo" }, "DEMO ONLY")],
       body: h("div", { class: "stack" },
         banner("info", "No real money is at risk", "This order goes to your demo (practice) account only. Live trading stays locked.", "lock"),
         h("div", { class: "row", style: { flexWrap: "wrap", gap: "10px", alignItems: "flex-end" } },
           h("div", { class: "field" }, h("label", { class: "small" }, "Direction"), h("div", { class: "row" }, sideBtn("BUY"), sideBtn("SELL"))),
-          h("div", { class: "field" }, h("label", { class: "small" }, "Size (lots)"), size),
+          h("div", { class: "field" }, h("label", { class: "small" }, "Amount (lots)"), size),
           h("div", { class: "field" }, h("label", { class: "small" }, `Stop loss ${g.order_defaults?.stop_required === false ? "(optional)" : "(required)"}`), stop, h("div", { class: "hint" }, g.order_defaults?.stop_required === false ? "A protective stop is optional for this plan." : "The demo plan requires a protective stop on every order. Set the price where this trade must close if it moves against you.")),
         ),
         h("div", { class: "row" },
           h("button", { class: "btn", disabled: acting, onclick: () => submit(true) }, icon("eye", 14), "Preview (no order)"),
-          h("button", { class: "btn primary", disabled: acting, onclick: () => submit(false) }, icon("zap", 14), "Place demo order"),
+          h("button", { class: "btn primary", disabled: acting, onclick: () => submit(false) }, icon("zap", 14), "Place demo trade"),
         ),
         result,
       ),

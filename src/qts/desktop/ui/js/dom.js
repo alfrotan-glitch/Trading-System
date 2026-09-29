@@ -37,6 +37,7 @@ export const frag = (...kids) => append(document.createDocumentFragment(), kids)
 /* ================= ICONS (24×24 stroke, currentColor) ================= */
 const P = {
   grid: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
+  home: 'M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5',
   flask: 'M9 3h6M10 3v5l-5.5 9.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-3.5L14 8V3M7.5 15h9',
   candle: 'M7 4v3M7 17v3M5 7h4v10H5zM17 3v4M17 15v6M15 7h4v8h-4z',
   layers: 'M12 2 2 7l10 5 10-5-10-5zM2 12l10 5 10-5M2 17l10 5 10-5',

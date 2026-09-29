@@ -573,21 +573,19 @@ def test_desktop_ui_static_files():
         assert (ui_dir / "css" / css).exists(), f"missing design-system file css/{css}"
     assert (ui_dir / "js" / "main.js").exists()
     assert (ui_dir / "index.html").read_text(encoding="utf-8")  # shell parses as text (UTF-8)
-    # Must cover the primary IA areas (defined in js/main.js)
+    # Must cover the primary IA areas (defined in js/main.js): four product
+    # pages for a normal user plus the one quiet Advanced engineering area.
     main_js = (ui_dir / "js" / "main.js").read_text(encoding="utf-8")
     for view in [
         "Home",
         "Market",
-        "Opportunities",
         "Trading",
-        "Risk",
         "Reports",
-        "Research",
-        "System",
-        "Governance",
         "Advanced",
     ]:
         assert view in main_js, f"missing IA area {view}"
+    # The removed Opportunities page survives as a redirect to Reports.
+    assert '"#/opportunities": "#/reports"' in main_js
 
 
 def test_packaging_docs():

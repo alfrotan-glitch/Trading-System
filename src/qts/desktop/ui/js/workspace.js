@@ -3,7 +3,7 @@
    Syncs across tabs via storage event. Multi-monitor: new window opens current context. */
 
 const KEY = "qts.workspace.v1";
-const defaults = { density: "compact", width: "focused", navigation: "standard", rememberRoute: false, route: "#/overview" };
+const defaults = { density: "compact", width: "focused", navigation: "standard", rememberRoute: false, route: "#/home" };
 
 export function sanitizeWorkspace(raw = {}) {
   const d = raw?.density, w = raw?.width, n = raw?.navigation, r = raw?.route;
@@ -12,7 +12,7 @@ export function sanitizeWorkspace(raw = {}) {
     width: ["focused", "wide"].includes(w) ? w : defaults.width,
     navigation: ["narrow", "standard", "wide"].includes(n) ? n : defaults.navigation,
     rememberRoute: raw?.rememberRoute === true,
-    route: typeof r === "string" && /^#\/[a-z]+(?:\/[a-z]+)?$/.test(r) ? r : defaults.route,
+    route: typeof r === "string" && /^#\/[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)?$/.test(r) ? r : defaults.route,
   };
 }
 

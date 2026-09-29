@@ -66,8 +66,11 @@ def test_flat_tab_navigation_is_gone(client):
     html = _get(client, "/").text
     assert "data-view=" not in html, "old flat nav markup still present"
     src = (JS / "main.js").read_text(encoding="utf-8")
-    top_level_groups = re.findall(r"^  \{", src, re.M)
-    assert len(top_level_groups) == 9, "IA must have the product groups plus Advanced engineering groups"
+    # The product IA is four user pages plus ONE quiet Advanced area — never
+    # the old flat tab list, and never the 9-group operator console either.
+    primary = re.findall(r'id: "([a-z]+)", label: "[^"]+", section: "Product"', src)
+    assert primary == ["home", "market", "trading", "reports"], primary
+    assert 'id: "advanced", label: "Advanced"' in src
 
 
 def test_semantic_state_system_exists():
@@ -94,8 +97,11 @@ def test_truthfulness_primitives_present():
 def test_raw_evidence_layer_present():
     comps = (JS / "components.js").read_text(encoding="utf-8")
     assert "Technical details" in comps, "raw evidence toggle must exist"
+    # The product home keeps progressive disclosure: a Technical details toggle
+    # with the raw backend snapshot, hidden until explicitly expanded.
     overview = (JS / "views" / "overview.js").read_text(encoding="utf-8")
-    assert "Raw overview snapshot" in overview
+    assert "Technical details" in overview
+    assert "Raw home state" in overview
 
 
 def test_views_cover_all_legacy_functionality():
