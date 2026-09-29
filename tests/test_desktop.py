@@ -910,3 +910,33 @@ def test_restore_state_reads_the_real_audit_and_kill_tables(tmp_path, monkeypatc
     ok, msg = verify_no_state_loss(info, restore_state(db))
     assert ok is False
     assert "kill" in msg
+
+def test_startup_health_fresh_install_is_not_blocked(tmp_path, monkeypatch):
+    """A clean clone has no durable DB yet — that is not a failure (§16).
+
+    First launch must not report BLOCKED just because the store has not
+    been created (or was created empty by bootstrap); a present-but-corrupt
+    store must still fail.
+    """
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "sqlite").mkdir(parents=True)
+    from qts.desktop.health import startup_health_check
+
+    health = startup_health_check()
+    state = next(c for c in health["checks"] if c["name"] == "load_durable_state")
+    assert state["passed"], f"fresh install wrongly blocked: {state['detail']}"
+
+    # Bootstrap leaves an EMPTY qts.db behind — still a fresh install.
+    import sqlite3
+
+    (tmp_path / "data" / "sqlite" / "qts.db").write_bytes(b"")
+    sqlite3.connect(tmp_path / "data" / "sqlite" / "qts.db").close()
+    health = startup_health_check()
+    state = next(c for c in health["checks"] if c["name"] == "load_durable_state")
+    assert state["passed"], f"empty store wrongly blocked: {state['detail']}"
+
+    # A store that cannot be read at all is corruption — fail closed.
+    (tmp_path / "data" / "sqlite" / "qts.db").write_bytes(b"this is not a sqlite database")
+    health = startup_health_check()
+    state = next(c for c in health["checks"] if c["name"] == "load_durable_state")
+    assert not state["passed"], "corrupt store must stay blocked"

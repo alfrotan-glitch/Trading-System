@@ -28,12 +28,25 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
     def check_state():
         p = Path("data/sqlite/qts.db")
         if not p.exists():
-            return False, "qts.db missing — first run will create"
+            # Fresh installation: there is no durable state to load yet.
+            # That is not a failure — the store is created on first use.
+            # A BLOCKED verdict here made every clean clone look broken (§16).
+            return True, "no durable state yet — first run will create it"
         try:
             with db_connect(p) as con:
-                con.execute("SELECT 1 FROM promotion_state LIMIT 1")
-                con.execute("SELECT 1 FROM experiments LIMIT 1")
-            return True, "durable state loaded"
+                try:
+                    con.execute("SELECT 1 FROM promotion_state LIMIT 1")
+                    con.execute("SELECT 1 FROM experiments LIMIT 1")
+                    return True, "durable state loaded"
+                except Exception as e:
+                    if "no such table" in str(e).lower():
+                        # State tables are created lazily on first use
+                        # (lifecycle writes promotion_state, research writes
+                        # experiments). Their absence on a fresh install is
+                        # not corruption — the database itself read fine.
+                        # Real damage (unreadable file) still fails below.
+                        return True, "durable store present — state tables initialize on first use"
+                    raise
         except Exception as e:
             return False, f"state load failed: {e}"
 
