@@ -162,7 +162,8 @@ test("reports never manufacture a result", async () => {
 test("governance remains reachable under Advanced, still locked", async () => {
   await goto("#/advanced/governance");
   await waitUntil(() => document.body.textContent.includes("This page cannot open it"), 20000, "governance view");
-  assert.ok(document.body.textContent.includes("LIVE — LOCKED"));
+  // The fact rows paint asynchronously from polled sources — wait for them.
+  await waitUntil(() => document.body.textContent.includes("LIVE — LOCKED"), 20000, "governance fact rows");
   const req = [...document.querySelectorAll("button")].find((b) => /cannot be opened/i.test(b.textContent));
   assert.ok(req && req.disabled, "live control is disabled while locked");
 });
