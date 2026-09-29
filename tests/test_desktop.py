@@ -927,10 +927,10 @@ def test_startup_health_fresh_install_is_not_blocked(tmp_path, monkeypatch):
     assert state["passed"], f"fresh install wrongly blocked: {state['detail']}"
 
     # Bootstrap leaves an EMPTY qts.db behind — still a fresh install.
-    import sqlite3
+    from qts.db import connect as db_connect
 
-    (tmp_path / "data" / "sqlite" / "qts.db").write_bytes(b"")
-    sqlite3.connect(tmp_path / "data" / "sqlite" / "qts.db").close()
+    with db_connect(tmp_path / "data" / "sqlite" / "qts.db"):
+        pass  # opens/creates the empty store, closes deterministically
     health = startup_health_check()
     state = next(c for c in health["checks"] if c["name"] == "load_durable_state")
     assert state["passed"], f"empty store wrongly blocked: {state['detail']}"
