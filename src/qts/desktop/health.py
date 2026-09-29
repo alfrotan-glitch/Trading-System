@@ -131,10 +131,42 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
             mode = os.getenv("QTS_MT5_MODE", "MOCK")
             if mode == "MOCK":
                 return True, "MT5 MOCK — no real broker connection (correct for dev)"
-            # A mode name is not a connection. This check does not probe a terminal.
-            return False, f"MT5 mode {mode!r} was not probed — a mode name is not a connection"
+            if mode != "REAL":
+                return False, f"MT5 mode {mode!r} unrecognized — expected MOCK or REAL"
+            # REAL means "probe the actual terminal". The probe goes through the
+            # SAME canonical path Demo execution uses — adapter_from_setup()
+            # (terminal_path + symbol map from the machine-local setup) and
+            # MT5Adapter.ensure_session() (establish + verify the IPC link).
+            # A mode name alone is never treated as a connection; a probe that
+            # cannot run fails closed with the precise reason.
+            from qts.adapters.mt5_factory import adapter_from_setup
+
+            adapter, connection = adapter_from_setup()
+            adapter.ensure_session()
+            identity = adapter.broker_identity()
+            # DEMO ONLY — hard gate: a REAL, CONTEST or unverifiable account
+            # cannot pass startup health, whatever its connectivity.
+            if identity.is_demo is not True:
+                return False, (
+                    f"MT5 REAL connected (login={identity.login} server={identity.server}) but account type is "
+                    f"{identity.account_type} — only a DEMO account passes this check"
+                )
+            broker_symbol = connection["broker_symbol"]
+            spec = adapter.get_symbol_spec(broker_symbol)
+            from qts.domain.value_objects import Instrument
+
+            tick = adapter.ticks(Instrument(symbol=connection["canonical_symbol"], venue="MT5"))
+            if tick is not None:
+                age_s = (datetime.now(UTC) - tick.event_time).total_seconds()
+                quote_note = f"quote age {age_s:.0f}s (readiness enforces freshness before trading)"
+            else:
+                quote_note = "quote unavailable right now (readiness enforces freshness before trading)"
+            return True, (
+                f"MT5 REAL connected: login={identity.login} server={identity.server} account=DEMO "
+                f"{connection['canonical_symbol']}->{broker_symbol} tradable vol_min={spec.volume_min} {quote_note}"
+            )
         except Exception as e:
-            return False, str(e)
+            return False, f"MT5 REAL probe failed: {type(e).__name__}: {e}"
 
     # 7 reconciliation
     def check_recon():

@@ -860,6 +860,8 @@ def test_shadow_does_not_invent_divergence_reasons(tmp_path, monkeypatch):
 
 
 def test_startup_health_does_not_pass_an_unprobed_mt5_mode(tmp_path, monkeypatch):
+    # A mode name that is neither MOCK nor REAL is never treated as a
+    # connection — it fails closed with the allowed vocabulary.
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("QTS_MT5_MODE", "LIVE")
     from qts.desktop.health import startup_health_check
@@ -867,7 +869,8 @@ def test_startup_health_does_not_pass_an_unprobed_mt5_mode(tmp_path, monkeypatch
     health = startup_health_check()
     mt5 = next(c for c in health["checks"] if c["name"] == "verify_account_MT5")
     assert mt5["passed"] is False
-    assert "not probed" in mt5["detail"]
+    assert "unrecognized" in mt5["detail"]
+    assert "expected MOCK or REAL" in mt5["detail"]
 
 
 def test_restore_state_reads_the_real_audit_and_kill_tables(tmp_path, monkeypatch):
@@ -940,3 +943,138 @@ def test_startup_health_fresh_install_is_not_blocked(tmp_path, monkeypatch):
     health = startup_health_check()
     state = next(c for c in health["checks"] if c["name"] == "load_durable_state")
     assert not state["passed"], "corrupt store must stay blocked"
+
+
+# ---------------------------------------------------------------------------
+# REAL MT5 startup probe — QTS_MT5_MODE=REAL must probe, not label
+# ---------------------------------------------------------------------------
+
+
+def _real_probe_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Machine-local setup + REAL mode, cwd isolated from the dev store."""
+    setup = {
+        "terminal_path": r"C:\Program Files\MetaTrader 5\terminal64.exe",
+        "symbol": "XAUUSD",
+        "symbol_map": {"XAUUSD": "XAUUSD@"},
+    }
+    setup_file = tmp_path / "mt5_setup.json"
+    setup_file.write_text(json.dumps(setup), encoding="utf-8")
+    monkeypatch.setenv("QTS_MT5_MODE", "REAL")
+    monkeypatch.setenv("QTS_SETUP_FILE", str(setup_file))
+    monkeypatch.chdir(tmp_path)
+
+
+def _inject_fake_terminal(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Route adapter_from_setup's module import to the stateful FakeTerminal.
+
+    The resolver, alias table, ensure_session, identity/spec/tick probes all
+    stay REAL — only the MetaTrader5 module itself is the repo's test double.
+    """
+    from fakes_mt5_demo import FakeTerminal
+
+    from qts.adapters import mt5_factory
+
+    terminal = FakeTerminal()
+    original = mt5_factory.adapter_from_setup
+
+    def with_fake(symbol=None, **kwargs):
+        kwargs.setdefault("mt5_module", terminal)
+        kwargs.setdefault("db_path", tmp_path / "qts.db")
+        return original(symbol, **kwargs)
+
+    monkeypatch.setattr(mt5_factory, "adapter_from_setup", with_fake)
+
+
+def test_startup_health_real_mode_probes_through_canonical_adapter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """REAL mode + a reachable terminal is recognized via the canonical path."""
+    _real_probe_env(tmp_path, monkeypatch)
+    _inject_fake_terminal(monkeypatch, tmp_path)
+
+    from qts.desktop.health import startup_health_check
+
+    health = startup_health_check()
+    mt5_check = next(c for c in health["checks"] if c["name"] == "verify_account_MT5")
+    assert mt5_check["passed"], f"REAL probe wrongly failed: {mt5_check['detail']}"
+    detail = mt5_check["detail"]
+    assert "MT5 REAL connected" in detail
+    assert "account=DEMO" in detail
+    # Symbol mapping from the machine-local setup survived the probe.
+    assert "XAUUSD->XAUUSD@" in detail
+
+    # The resolver itself reports the same canonical -> venue pair.
+    from qts.adapters.mt5_factory import resolve_connection
+
+    connection = resolve_connection()
+    assert connection["canonical_symbol"] == "XAUUSD"
+    assert connection["broker_symbol"] == "XAUUSD@"
+
+
+def test_startup_health_real_mode_fails_closed_without_ipc(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Missing module or a dead IPC link fails startup — with the real reason."""
+    _real_probe_env(tmp_path, monkeypatch)
+
+    from qts.desktop.health import startup_health_check
+
+    # 1) No MetaTrader5 module at all (this environment): precise failure.
+    health = startup_health_check()
+    mt5_check = next(c for c in health["checks"] if c["name"] == "verify_account_MT5")
+    assert not mt5_check["passed"]
+    assert "MT5 REAL probe failed" in mt5_check["detail"]
+    assert "not probed" not in mt5_check["detail"]  # the stale label guard is gone
+
+    # 2) Module present but initialize() fails (terminal not running / no IPC).
+    from types import SimpleNamespace
+
+    from qts.adapters import mt5_factory
+
+    dead_module = SimpleNamespace(
+        initialize=lambda **kwargs: False,
+        last_error=lambda: (-10005, "IPC timeout"),
+        order_send=lambda request: None,
+        positions_get=lambda *a, **k: None,
+    )
+    original = mt5_factory.adapter_from_setup
+
+    def with_dead(symbol=None, **kwargs):
+        kwargs.setdefault("mt5_module", dead_module)
+        kwargs.setdefault("db_path", tmp_path / "qts.db")
+        return original(symbol, **kwargs)
+
+    monkeypatch.setattr(mt5_factory, "adapter_from_setup", with_dead)
+    health = startup_health_check()
+    mt5_check = next(c for c in health["checks"] if c["name"] == "verify_account_MT5")
+    assert not mt5_check["passed"]
+    assert "MT5 REAL probe failed" in mt5_check["detail"]
+    assert health["system_status"] != "Running"
+
+
+def test_startup_health_real_mode_probe_unlocks_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A passing REAL probe grants no authority: LIVE stays LOCKED, readiness
+    still requires the real terminal, demo execution stays un-armed."""
+    _real_probe_env(tmp_path, monkeypatch)
+    _inject_fake_terminal(monkeypatch, tmp_path)
+
+    from qts.desktop.health import startup_health_check
+
+    health = startup_health_check()
+    mt5_check = next(c for c in health["checks"] if c["name"] == "verify_account_MT5")
+    assert mt5_check["passed"]
+
+    from qts.api.routes.risk import live_status
+
+    live = live_status()
+    assert live["live_trading"] == "LOCKED"
+    assert live["eligible"] is False
+
+    # Readiness without an injected module still fails closed — the startup
+    # probe does not stand in for the 14-check authorization probe.
+    from qts.lifecycle.demo_gate import demo_forward_readiness_report
+
+    readiness = demo_forward_readiness_report(symbol="XAUUSD", symbol_map={"XAUUSD": "XAUUSD@"})
+    assert readiness["passed"] is False
