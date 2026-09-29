@@ -183,6 +183,7 @@ function buildHeader() {
     h("span", { class: "account-dot", "aria-hidden": "true" }),
     h("span", { class: "account-text" }, "Demo account: checking…"));
   const status = h("span", { class: "header-status", id: "header-status" }, "");
+  const mode = h("span", { class: "header-mode", id: "header-mode", title: "Runtime mode — Development never touches a broker account", hidden: true }, "");
   const conn = h("span", { class: "conn-dot", title: "QTS service connection", role: "status", "aria-label": "QTS service connecting" });
   const updated = h("span", { class: "meta header-updated", id: "header-updated", "aria-live": "polite" }, "connecting…");
 
@@ -192,18 +193,34 @@ function buildHeader() {
       h("span", { class: "logo", "aria-hidden": "true" }, "Q"),
       h("span", { class: "word" }, "QTS"),
       h("span", { class: "sub" }, "Gold · Demo")),
-    h("div", { class: "header-center" }, account, status),
+    h("div", { class: "header-center" }, account, status, mode),
     h("div", { class: "header-actions" },
       conn, updated,
       h("span", { class: "header-lock", title: "Live trading cannot be opened from QTS. Real money is never at risk." }, icon("lock", 12), "Demo only · Live locked"),
       h("button", { class: "btn danger sm", onclick: stopTrading, "aria-label": "Stop trading" }, "Stop trading"),
       buildNotifBell()),
   );
-  return { header, account, status, conn, updated };
+  return { header, account, status, mode, conn, updated };
 }
 
-function renderHeaderStatus({ account, status }) {
+const MODE_LABEL = {
+  DEVELOPMENT: "Development mode",
+  DEV: "Development mode",
+  PAPER: "Practice mode",
+  SHADOW: "Shadow mode",
+  DEMO_FORWARD: "Demo · observing",
+  DEMO_EXECUTION: "Demo · trading",
+  LIVE: "Live locked",
+};
+function renderHeaderStatus({ account, status, mode }) {
   const s = operationalState(store.data);
+  if (mode) {
+    // Runtime mode is backend truth, never guessed: unknown hides the chip.
+    const raw = String(s.health?.effective_mode?.effective_mode || "").toUpperCase();
+    const label = MODE_LABEL[raw];
+    mode.hidden = !label;
+    if (label) mode.textContent = label;
+  }
   const connected = s.sources.health.current && String(s.health?.mt5).toLowerCase() === "connected";
   const dot = account.querySelector(".account-dot");
   const text = account.querySelector(".account-text");
@@ -297,7 +314,7 @@ function openWorkspace() {
 function main() {
   const loadStart = performance.now();
   initWorkspace();
-  const { header, account, status, conn, updated } = buildHeader();
+  const { header, account, status, mode, conn, updated } = buildHeader();
   const app = h("div", { id: "app" },
     header,
     buildSidebar(),
@@ -318,7 +335,7 @@ function main() {
 
   window.addEventListener("hashchange", () => { markActiveNav(); });
   const update = () => {
-    renderHeaderStatus({ account, status });
+    renderHeaderStatus({ account, status, mode });
     const f = freshness(store.data.resources.health, "health");
     const stateClass = f.current ? "" : f.label.includes("STALE") ? " stale" : " down";
     conn.className = `conn-dot${stateClass}`;

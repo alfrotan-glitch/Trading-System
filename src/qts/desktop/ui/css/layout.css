@@ -478,3 +478,9 @@
   .header-lock { display: none; }
   .market-meta { align-items: flex-start; }
 }
+
+/* Runtime mode chip — quiet, factual, hidden unless the backend reports a mode */
+.header-mode { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px;
+  font-size: var(--fs-11); font-weight: 600; letter-spacing: 0.02em; color: var(--text-2);
+  background: var(--bg-3); border: 1px solid var(--border); white-space: nowrap; }
+.header-mode[hidden] { display: none; }

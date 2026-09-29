@@ -460,6 +460,92 @@ export async function renderDemo(root) {
     );
   }
 
+
+  // ---- Open positions (§9): broker-authoritative, never faked ----------------
+  async function fetchPositions() {
+    try { return await api.get("/api/demo/positions"); } catch { return null; }
+  }
+  function positionRow(p, onClose) {
+    const profit = Number(p.profit);
+    const profitOk = Number.isFinite(profit);
+    const current = Number(p.price_current);
+    const opened = p.time ? new Date(Number(p.time) * 1000).toISOString() : null;
+    return h("tr", null,
+      h("td", null, h("b", null, p.canonical_symbol || p.symbol || "Gold"), h("div", { class: "small text-dim" }, p.broker_symbol ? `broker: ${p.broker_symbol}` : "")),
+      h("td", null, h("span", { class: `badge ${p.side === "BUY" ? "ok" : "err"}` }, p.side === "BUY" ? "Buy" : "Sell")),
+      h("td", null, p.volume ? `${p.volume}` : "—"),
+      h("td", { class: "mono" }, p.price_open && Number(p.price_open) ? fmtNum(Number(p.price_open)) : "—"),
+      h("td", { class: "mono" }, Number.isFinite(current) && current > 0 ? fmtNum(current) : "—"),
+      h("td", { class: "mono" }, profitOk ? `${profit >= 0 ? "+" : ""}${fmtNum(profit)}` : "—"),
+      h("td", { class: "mono" }, p.sl && Number(p.sl) > 0 ? fmtNum(Number(p.sl)) : "—"),
+      h("td", null, opened ? fmtUtc(opened) : "—"),
+      h("td", null, h("button", { class: "btn sm", disabled: acting, onclick: () => onClose(p) }, "Close")),
+    );
+  }
+  async function closePosition(p) {
+    const ok = await confirmModal({
+      title: "Close this demo position?",
+      body: h("div", { class: "stack" },
+        banner("info", "Demo account only", "No real money is at risk. Closing sends the close to the broker and then checks the result.", "shield"),
+        kv([
+          ["Instrument", p.canonical_symbol || p.symbol || "Gold"],
+          ["Direction", p.side === "BUY" ? "Buy" : "Sell"],
+          ["Size", p.volume || "—"],
+          ["Ticket", String(p.ticket ?? "—")],
+        ])),
+      acks: ["I understand this closes the position on the Demo account."],
+      confirmLabel: "Close position",
+    });
+    if (!ok) return;
+    acting = true;
+    try {
+      const out = await api.post("/api/demo/close", { ticket: p.ticket, confirmed: true, risk_ack: true, reason: "operator close from the Trading page" });
+      toast(out?.success ? "ok" : "warn",
+        out?.success ? "Position closed" : "Close reported — check the result",
+        out?.success ? `Realized P/L ${out.realized_pnl ?? "—"} · reconciled with the broker and recorded in the journal.` : (out?.detail || "The broker result is recorded in the journal."));
+    } catch (e) {
+      toast("err", "Position was not closed", e.message || "The close request failed. The position stays open until the broker confirms a close.");
+    } finally {
+      acting = false;
+      refreshPositions(host.querySelector("[data-positions]"));
+    }
+  }
+  async function refreshPositions(into) {
+    if (!into) return;
+    const g = guide;
+    if (!g?.connection?.connected) {
+      into.replaceChildren(emptyState({ icon: "layers", title: "No open positions", desc: "Positions appear here once your Demo account is connected and a trade is open. Nothing is invented here." }));
+      return;
+    }
+    into.replaceChildren(h("div", { class: "skeleton skl-line", style: { width: "50%" } }));
+    const data = await fetchPositions();
+    if (!data) {
+      into.replaceChildren(banner("warn", "Positions unavailable", "The Demo account is connected but QTS could not read positions from the terminal. Nothing was changed. Retry, or check the terminal.", "alert"));
+      return;
+    }
+    const list = data.positions || [];
+    if (!list.length) {
+      into.replaceChildren(emptyState({ icon: "layers", title: "No open positions", desc: "The broker reports no open demo positions right now." }));
+      return;
+    }
+    into.replaceChildren(h("div", { class: "table-wrap" },
+      h("table", { class: "table" },
+        h("thead", null, h("tr", null, ...["Instrument", "Direction", "Size", "Entry", "Current", "Profit", "Stop loss", "Opened", ""].map((t) => h("th", null, t)))),
+        h("tbody", null, ...list.map((pos) => positionRow(pos, closePosition))),
+      ),
+      h("p", { class: "small text-dim" }, "Profit is the broker\u2019s unrealized figure. Closing reconciles with the broker and records the outcome \u2014 QTS never fakes a closed position.")));
+  }
+  function positionsSection() {
+    const into = h("div", { dataset: { positions: "1" }, class: "stack" });
+    refreshPositions(into);
+    return card({
+      title: "Open positions", icon: "layers",
+      sub: "Broker-authoritative \u2014 read from the Demo account, closed through the broker",
+      actions: [h("button", { class: "btn sm", onclick: () => refreshPositions(into) }, icon("refresh", 13), "Refresh positions")],
+      body: into,
+    });
+  }
+
   function render() {
     if (!guide) return;
     clear(host);
@@ -494,6 +580,7 @@ export async function renderDemo(root) {
     ));
 
     host.appendChild(orderTicket(g));
+    host.appendChild(positionsSection());
     advancedSection(g).then((node) => host.appendChild(node)).catch(() => {
       host.appendChild(h("details", { class: "mt-3" },
         h("summary", null, "Advanced — technical details"),

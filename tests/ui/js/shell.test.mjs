@@ -98,6 +98,10 @@ test("header says only what matters — and live lock stays visible", async () =
   assert.ok(document.querySelector(".conn-dot"), "service health indicator remains (silent staleness is forbidden)");
   const lock = document.querySelector(".header-lock");
   assert.ok(lock && /Live locked/i.test(lock.textContent), "LIVE lock stays visible — quietly, but always");
+  // Runtime mode is stated plainly (sandbox runs Development mode) — §3 modes
+  const modeChip = document.getElementById("header-mode");
+  await waitUntil(() => !modeChip.hidden && modeChip.textContent.length > 0, 15000, "mode chip");
+  assert.equal(modeChip.textContent, "Development mode");
 });
 
 test("home answers the product questions honestly", async () => {
