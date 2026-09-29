@@ -17,8 +17,8 @@ Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating
 
 ## Key Capabilities
 
-1. **Executive Telemetry Dashboard:**  
-   Instant, plain-English awareness across Market Connectivity, Validated Opportunities, Trading Permission, Risk Controls, and the single recommended next operator action.
+1. **Home Command Center:**  
+   Instant, plain-English awareness of system status, Demo account connection, the gold price (shown only when fresh), trading opportunity (never invented — `NO_VALIDATED_EDGE` stays honest), money never at risk, and the single recommended next action.
 
 2. **Rigorous Research & Event Study Framework:**  
    Pre-registered hypothesis testing with Deflated Sharpe Ratio (DSR) metrics, Holm multiple-testing adjustments, and zero synthetic quote smoothing.

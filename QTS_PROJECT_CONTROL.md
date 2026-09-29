@@ -163,7 +163,7 @@ Committed Evidence Manifest (data/evidence/*.json)
 * [x] **Phase 6: Tests** — research tests live in `tests/research/`. Python UI tests live in `tests/ui/`. Shared fixtures stay at `tests/` because other suites import them by that path.
 * [x] **Phase 7: Documentation** — `docs/01` through `docs/10` are the operating guides. Cited records stay beside them. Uncited dated records are in `docs/evidence/`.
 * [x] **Phase 8: This file is the project-control register.**
-* [x] **Phase 9: Product navigation** — Home, Market, Opportunities, Trading, Risk, Reports. Advanced holds Research, System, Governance.
+* [x] **Phase 9: Product navigation** — Home, Market, Trading, Reports. One quiet, collapsed Advanced area holds all twenty engineering pages (research, data, trading tools, risk, evidence & audit, governance, system). Legacy product URLs redirect into this IA.
 * [x] **Phase 10: Full regression verification** — see Test Status. The 2026-09-25 audit restored `tests/integration` to the default suite.
 * [x] **Phase 11: Final product audit** — Home answers in plain language; second submit helper removed; matching shim removed; unused dependencies removed.
 * [ ] **Phase 12: Windows MT5 identity pin** — operator action, not a repository change. Do not run `qts demo connectivity --pin` from this workspace.

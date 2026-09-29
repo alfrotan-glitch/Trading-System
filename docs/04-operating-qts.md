@@ -6,28 +6,29 @@ QTS is designed to be operated with clarity and confidence. The system evaluates
 
 ---
 
-## 1. Reading the Executive Dashboard
+## 1. Reading the Home Screen
 
-When opening the QTS Workstation (`#/overview`), the first screen answers five essential operational questions:
+When opening the QTS Workstation (`#/home`), the first screen answers five essential operational questions in plain language:
 
 1. **What is happening?**
-   - **Market Status:** Indicates whether the MetaTrader 5 IPC link is active and quotes are arriving.
-   - **Quote Freshness:** Honest age of the latest broker event.
+   - **System status and account:** The hero states the overall state in plain language (e.g. *Ready*, *Connect your Demo account to get started*, *Trading is temporarily stopped*), and the Demo account card shows whether MetaTrader 5 is connected. Gold appears on the Market page only when fresh — otherwise it says *Current price unavailable*.
 2. **Is there an opportunity?**
-   - **Opportunity Status:** Summarizes whether an automated strategy candidate has passed validation. If data is incomplete or research gates are unproven, it reports `NO VALIDATED EDGE`.
+   - **Trading opportunity:** Reports whether a validated strategy exists. QTS is certified `NO_VALIDATED_EDGE`, so Home reads *“No validated trading opportunity right now.”* — nothing is invented.
 3. **Can QTS trade right now?**
-   - **Execution Permission:** Reports whether the stage machine is armed and authority is active (`ENABLED` vs `DISABLED`).
+   - **Status and next action:** The hero action points at the single required step (e.g. *Connect account*, *Continue setup*, *Start a trade*). The full readiness checklist and verbatim authority state live on the Trading page under Technical details.
 4. **Is any real money at risk?**
-   - **Capital Exposure:** Always shows `$0.00 — LOCKED` in development, paper, and demo modes. Real capital exposure is impossible without live governance clearance.
+   - **Your money:** Always *“Not at risk”* — Demo account only, Live stays locked, `REAL_CAPITAL_EXPOSURE = 0`.
 5. **What should I do next?**
-   - **Recommended Action:** A prominent action button pointing directly to the required step (e.g. *Inspect Setup*, *Start Observation*, *Review Demo Session*).
+   - **One primary action** in the hero, always reflecting the current state.
+
+Engineering internals (raw guide snapshot, stage/authority state, diagnostics) remain reachable under **Advanced** and the **Technical details** disclosures — they inform, but never override what the backend enforces.
 
 ---
 
 ## 2. Daily Operating Workflows
 
 ### Workflow A: Market Observation (Zero Risk)
-1. Navigate to **Market $\rightarrow$ Observations** (`#/market/observations`).
+1. Navigate to **Advanced $\rightarrow$ Recorded observations** (`#/advanced/data-observations`).
 2. Click **Start Observation**.
 3. Accepted quotes are stored in the machine-local observatory database under the state root (`data/sqlite/forward_observatory.db`), not in the repository checkout. A manifest is written beside the other state artifacts.
 4. Observation cannot submit an order. Starting it does not grant trading permission.
@@ -51,7 +52,7 @@ When opening the QTS Workstation (`#/overview`), the first screen answers five e
    ```bash
    qts demo run --strategy DEMO-EXECPROBE-XAUUSD-V1 --confirm --risk-ack
    ```
-5. Inspect active positions and order journals via the web workstation at **Trading $\rightarrow$ Execution** (`#/trading/execution`).
+5. Inspect active positions and order journals via the web workstation at **Advanced $\rightarrow$ Order history** (`#/advanced/trading-history`).
 
 ---
 

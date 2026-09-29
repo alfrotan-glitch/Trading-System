@@ -18,7 +18,7 @@ Files that remain beside these guides are cited by code or by an operator setup 
    Prerequisites, environment setup, dependencies, configuration, and startup.
 
 4. [**04. Operating QTS**](04-operating-qts.md)  
-   Reading the Executive Dashboard, operational workflows, and emergency controls.
+   Reading the Home screen, operational workflows, and emergency controls.
 
 5. [**05. Research & Validation**](05-research-and-validation.md)  
    Hypothesis preregistration, statistical defense (DSR/Holm), walk-forward validation, and the forward registry.

@@ -48,6 +48,6 @@ UI / CLI
 
 ### 6. Desktop UI (`src/qts/desktop/ui/`)
 - Vanilla JavaScript. No build step.
-- Product navigation: Home, Market, Opportunities, Trading, Risk, Reports.
-- Engineering detail lives under Advanced: Research, System, Governance.
+- Product navigation: Home, Market, Trading, Reports.
+- Every engineering surface lives under one quiet, collapsed Advanced area (research, data, trading tools, risk, evidence & audit, governance, system). Legacy product URLs redirect into the new IA.
 - The command line is the package `src/qts/cli/`. Entry point remains `qts`.
