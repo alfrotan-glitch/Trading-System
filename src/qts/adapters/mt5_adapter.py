@@ -35,6 +35,11 @@ from pathlib import Path
 from typing import Any
 
 from qts.adapters.base import BrokerAdapter
+from qts.adapters.broker_outcome import (
+    BrokerOutcomeUnknown,
+    BrokerRequestRejected,
+    raise_for_send_failure,
+)
 from qts.db import connect as db_connect
 from qts.domain.value_objects import (
     Account,
@@ -90,6 +95,99 @@ def mt5_safe_comment_text(text: str) -> str:
     """
     cleaned = "".join(ch for ch in str(text) if ch.isascii() and ch.isprintable())
     return cleaned[:MT5_COMMENT_MAX]
+
+
+#: Fields every MT5 trade request must carry, with the type the client library
+#: requires. A request that violates this contract is refused by the library
+#: itself — ``order_send`` returns ``None`` and nothing is transmitted.
+_REQUEST_FIELD_TYPES: dict[str, type | tuple[type, ...]] = {
+    "action": int,
+    "symbol": str,
+    "volume": float,
+    "type": int,
+    "type_filling": int,
+    "type_time": int,
+    "comment": str,
+    "magic": int,
+}
+_OPTIONAL_NUMERIC_FIELDS = ("price", "sl", "tp", "deviation", "position")
+
+
+def validate_broker_request(request: dict[str, Any], *, max_comment: int = MT5_COMMENT_MAX) -> dict[str, Any]:
+    """Validate a trade request against the broker request contract.
+
+    THE definition of a well-formed MT5 request, applied at construction so the
+    dry-run preview and the real submission are validated identically. A
+    violation raises :class:`~qts.adapters.broker_outcome.BrokerRequestRejected`
+    *before* any send, which is both fail-closed and unambiguous: an order that
+    was never transmitted cannot have a broker-side effect.
+
+    This exists because ``demo-20260928T140630-884971d1e6`` was refused by the
+    client library for an over-long ``comment``; the failure surfaced as
+    ``order_send`` returning ``None``, was classified AMBIGUOUS, and durably
+    suspended trading. The dry-run preview never validated the comment, so the
+    pre-trade gate passed a request the library would always refuse.
+    """
+    from qts.adapters.broker_outcome import BrokerRequestRejected
+
+    def refuse(detail: str) -> None:
+        raise BrokerRequestRejected(f"MT5 request contract violation — refusing to send: {detail}")
+
+    for field, expected in _REQUEST_FIELD_TYPES.items():
+        if field not in request:
+            refuse(f"missing required field {field!r}")
+        value = request[field]
+        if expected is float:
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                refuse(f"{field} must be numeric, got {type(value).__name__} {value!r}")
+            if not math.isfinite(float(value)):
+                refuse(f"{field} must be finite, got {value!r}")
+        elif expected is int:
+            # The enum-ish fields carry the terminal's own constants. MT5
+            # requires an integer; accept anything the C binding could marshal
+            # as one (``__index__``), which rejects None/str/float — the values
+            # that actually provoke ``Invalid "<field>" argument`` — while
+            # tolerating the integer-like constants of a substituted module.
+            if isinstance(value, bool) or not (
+                isinstance(value, int) or hasattr(type(value), "__index__")
+            ):
+                refuse(f"{field} must be an integer, got {type(value).__name__} {value!r}")
+        elif isinstance(value, bool) or not isinstance(value, expected):
+            refuse(f"{field} must be {expected.__name__}, got {type(value).__name__} {value!r}")
+
+    symbol = str(request["symbol"])
+    if not symbol or not symbol.isascii() or not symbol.isprintable():
+        refuse(f"symbol must be non-empty printable ASCII, got {symbol!r}")
+
+    volume = float(request["volume"])
+    if volume <= 0:
+        refuse(f"volume must be > 0, got {volume!r}")
+
+    comment = str(request["comment"])
+    if not comment:
+        refuse("comment must not be empty")
+    if len(comment) > max_comment:
+        refuse(f"comment {comment!r} is {len(comment)} chars, limit {max_comment}")
+    if not comment.isascii() or not comment.isprintable():
+        refuse(f"comment must be printable ASCII, got {comment!r}")
+    if '"' in comment or "'" in comment:
+        refuse(f"comment must not contain quote characters, got {comment!r}")
+
+    with contextlib.suppress(TypeError, ValueError):
+        if int(request["magic"]) < 0:
+            refuse(f"magic must be >= 0, got {request['magic']!r}")
+
+    for field in _OPTIONAL_NUMERIC_FIELDS:
+        if field not in request:
+            continue
+        value = request[field]
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            refuse(f"{field} must be numeric when present, got {type(value).__name__} {value!r}")
+        if not math.isfinite(float(value)):
+            refuse(f"{field} must be finite, got {value!r}")
+        if field in ("price", "sl", "tp") and float(value) < 0:
+            refuse(f"{field} must not be negative, got {value!r}")
+    return request
 
 
 @dataclass(frozen=True)
@@ -880,6 +978,7 @@ class MT5Adapter(BrokerAdapter):
             request["sl"] = float(sl)
         if tp is not None:
             request["tp"] = float(tp)
+        validate_broker_request(request, max_comment=MT5_COMMENT_MAX)
         return request
 
     def _executable_reference(self, mt5: Any, mt5_symbol: str, side: Side) -> Decimal:
@@ -1057,71 +1156,24 @@ class MT5Adapter(BrokerAdapter):
         return sl, tp
 
     def submit(self, intent: OrderIntent) -> Order:
+        """Submit an order using THE canonical request builder.
+
+        The request dict is built by :meth:`build_broker_request` — the same
+        code path the pre-trade dry-run previews and validates. Two independent
+        constructions used to exist here and there; they could drift, and the
+        dry-run consequently proved nothing about the request that would
+        actually be sent.
+        """
         mt5 = self._require_mt5()
         spec = self.get_symbol_spec(intent.instrument.symbol)
-        # Validate and normalize quantity
         normalized_qty = self.validate_and_normalize_quantity(intent.quantity, spec)
-        # Validate prices
         limit_price = self.validate_price_precision(intent.limit_price, spec) if intent.limit_price else None
         stop_price = self.validate_price_precision(intent.stop_price, spec) if intent.stop_price else None
 
-        # Build MT5 request
-        mt5_symbol = self._map_symbol(intent.instrument.symbol)
-        comment = self._build_comment(intent.client_order_id)
-
-        # Determine MT5 order type
-        # For simplicity, support MARKET, LIMIT, STOP
-        if intent.order_type == OrderType.MARKET:
-            mt5_type = mt5.ORDER_TYPE_BUY if intent.side == Side.BUY else mt5.ORDER_TYPE_SELL
-            action = mt5.TRADE_ACTION_DEAL
-            price = 0.0  # market
-        elif intent.order_type == OrderType.LIMIT:
-            if limit_price is None:
-                raise ValueError("LIMIT requires limit_price")
-            mt5_type = mt5.ORDER_TYPE_BUY_LIMIT if intent.side == Side.BUY else mt5.ORDER_TYPE_SELL_LIMIT
-            action = mt5.TRADE_ACTION_PENDING
-            price = float(limit_price)
-        elif intent.order_type == OrderType.STOP:
-            if stop_price is None:
-                raise ValueError("STOP requires stop_price")
-            mt5_type = mt5.ORDER_TYPE_BUY_STOP if intent.side == Side.BUY else mt5.ORDER_TYPE_SELL_STOP
-            action = mt5.TRADE_ACTION_PENDING
-            price = float(stop_price)
-        else:
-            raise ValueError(f"unsupported order_type {intent.order_type}")
-
-        # Filling mode — use spec.filling_mode or default IOC
-        # MT5 filling: 0 FOK, 1 IOC, 2 RETURN
-        filling = getattr(mt5, "ORDER_FILLING_IOC", 1)
-        if spec.filling_mode == 1:
-            filling = mt5.ORDER_FILLING_IOC
-        elif spec.filling_mode == 2:
-            filling = mt5.ORDER_FILLING_FOK
-        else:
-            filling = mt5.ORDER_FILLING_RETURN
-
-        request: dict[str, Any] = {
-            "action": action,
-            "symbol": mt5_symbol,
-            "volume": float(normalized_qty),
-            "type": mt5_type,
-            "type_filling": filling,
-            "type_time": getattr(mt5, "ORDER_TIME_GTC", 0),
-            "comment": comment,
-            "magic": int(self.config.get("magic", 20250916)),
-        }
-        if price:
-            request["price"] = price
-
-        # Protective levels on the order actually sent — the gate requires a
-        # stop, so the request must carry one (not only the dry-run preview).
-        sl, tp = self._protective_levels(
-            mt5, mt5_symbol, spec, intent, limit_price=limit_price, stop_price=stop_price
-        )
-        if sl is not None:
-            request["sl"] = float(sl)
-        if tp is not None:
-            request["tp"] = float(tp)
+        # ONE construction, already validated against the broker request
+        # contract. A contract violation raises BrokerRequestRejected here —
+        # before any send — so it can never be mistaken for an unknown outcome.
+        request = self.build_broker_request(intent)
 
         # Dev guard: if config says dry_run, don't actually send
         if self.config.get("dry_run", False):
@@ -1132,12 +1184,19 @@ class MT5Adapter(BrokerAdapter):
         try:
             result = mt5.order_send(request)
         except Exception as e:
-            # Transport failure — ambiguous
-            raise TimeoutError(f"MT5 order_send transport failure for {intent.client_order_id}: {e}") from e
+            # The call itself blew up after we handed the request over: we
+            # cannot prove it was not transmitted, so the outcome is UNKNOWN.
+            raise BrokerOutcomeUnknown(
+                f"MT5 order_send transport failure for {intent.client_order_id}: {e}"
+            ) from e
 
         if result is None:
-            err = mt5.last_error()
-            raise TimeoutError(f"MT5 order_send returned None for {intent.client_order_id}: {err}")
+            # `None` is NOT automatically ambiguous. The client library returns
+            # it both for a locally refused request (never transmitted, safe)
+            # and for a lost reply (possible broker-side order, unsafe).
+            # classify_send_failure decides on the reported error code and
+            # defaults to UNKNOWN when non-transmission is not proven.
+            raise_for_send_failure(mt5.last_error(), intent.client_order_id)
 
         # Classify result
         retcode = getattr(result, "retcode", None)
@@ -1173,25 +1232,19 @@ class MT5Adapter(BrokerAdapter):
                 exchange_order_id=str(exchange_id) if exchange_id else None,
             )
         elif retcode in self.AMBIGUOUS_RETCODES:
-            raise TimeoutError(
+            raise BrokerOutcomeUnknown(
                 f"MT5 ambiguous retcode {retcode} for {intent.client_order_id}: {getattr(result, 'comment', '')}"
             )
         else:
             # Definitive rejection — map retcode to reason
             comment = getattr(result, "comment", f"retcode {retcode}")
             # Classify known rejection codes
-            if retcode in (
-                self.RETCODE_INVALID,
-                self.RETCODE_INVALID_VOLUME,
-                self.RETCODE_INVALID_PRICE,
-                self.RETCODE_REJECT,
-                self.RETCODE_NO_MONEY,
-                self.RETCODE_PRICE_OFF,
-                self.RETCODE_TRADE_DISABLED,
-            ):
-                raise ValueError(f"MT5 rejected {intent.client_order_id} retcode {retcode}: {comment}")
-            # Unknown retcode — treat as reject if not timeout
-            raise ValueError(f"MT5 rejected {intent.client_order_id} retcode {retcode}: {comment}")
+            # A retcode means the SERVER answered: it saw the request and
+            # refused it, so no order exists. That is a definitive rejection
+            # regardless of the wording in `comment` (which previously leaked
+            # words like "connection" into the engine's text-matching
+            # classifier and turned a clean rejection into a suspension).
+            raise BrokerRequestRejected(f"MT5 rejected {intent.client_order_id} retcode {retcode}: {comment}")
 
     def cancel(self, client_order_id: str) -> None:
         mt5 = self._require_mt5()
@@ -1366,9 +1419,13 @@ class MT5Adapter(BrokerAdapter):
         with contextlib.suppress(Exception):
             self._store_comment_map(f"close-{int(ticket)}", str(request["comment"]))
 
+        # The close request obeys the same contract as a submission: a
+        # malformed close would return None and be indistinguishable from a
+        # lost reply, leaving a real position in an unknown state.
+        validate_broker_request(request, max_comment=MT5_COMMENT_MAX)
         result = mt5.order_send(request)
         if result is None:
-            raise TimeoutError(f"MT5 close returned None for position {ticket}: {mt5.last_error()}")
+            raise_for_send_failure(mt5.last_error(), f"close-{ticket}", operation="close order_send")
         retcode = getattr(result, "retcode", None)
         receipt = {
             "retcode": retcode,
@@ -1660,8 +1717,17 @@ class MT5Adapter(BrokerAdapter):
             provenance=provenance,
         )
 
-    def history_deals(self, client_order_id: str | None = None) -> list[Any]:
-        """Fetch deals for reconciliation — deals are fills."""
+    def history_deals(
+        self, client_order_id: str | None = None, *, strict: bool = False, days: int = 30
+    ) -> list[Any]:
+        """Fetch deals for reconciliation — deals are fills.
+
+        ``strict=True`` is required when the ABSENCE of deals is used as
+        evidence. In lenient mode a failed query is indistinguishable from "no
+        deals" (both return ``[]``), which would let a broken history lookup
+        masquerade as proof that nothing executed. In strict mode the failure
+        propagates so the caller must fail closed.
+        """
         mt5 = self._require_mt5()
         # Use history_deals_get with date range — for now last 30 days
         try:
@@ -1669,16 +1735,25 @@ class MT5Adapter(BrokerAdapter):
             from datetime import datetime, timedelta
 
             now = datetime.now(UTC)
-            start = now - timedelta(days=30)
+            start = now - timedelta(days=days)
             deals = mt5.history_deals_get(start, now)
-            if deals is None:
-                return []
+        except Exception as exc:
+            if strict:
+                raise ConnectionError(f"MT5 history_deals_get failed: {exc}") from exc
+            return []
+        if deals is None:
+            if strict:
+                raise ConnectionError(f"MT5 history_deals_get returned None: {mt5.last_error()}")
+            return []
+        try:
             if client_order_id:
                 comment = self._load_comment_map(client_order_id) or mt5_comment_for(client_order_id)
                 # Filter by comment
                 return [d for d in deals if getattr(d, "comment", "") == comment]
             return list(deals)
         except Exception:
+            if strict:
+                raise
             return []
 
     def poll_fills(self, client_order_id: str) -> list[Any]:

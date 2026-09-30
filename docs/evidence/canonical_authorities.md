@@ -222,6 +222,16 @@ the operation, never of the request being understood — `200` recovered, `409`
 blocked with machine-readable `recovery.active_blockers`, `400` invalid
 request. A `200` cannot imply readiness.
 
+## 9a. Execution outcome authority
+
+Everything from broker request construction to durable resolution of the
+outcome — the transmission classification, the request contract, and how an
+UNKNOWN outcome is ended with broker evidence — is specified in
+`docs/evidence/execution_outcome_contract.md`. It is the other half of this
+section: §9 owns suspension → recovery, that document owns
+submission → outcome → resolution, and they meet at
+`resume_from_suspension`, which runs the resolver as one of its predicates.
+
 ## 10. What was deliberately NOT changed
 
 - The 14-check DEMO readiness contract and the verified WM Markets timestamp

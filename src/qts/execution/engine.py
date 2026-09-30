@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from qts.adapters.base import BrokerAdapter, ReconcileReport
+from qts.adapters.broker_outcome import BrokerOutcomeUnknown, BrokerRequestRejected
 from qts.adapters.matching import MatchingEngine
 from qts.db import connect as db_connect
 from qts.domain.events import DomainEvent, EventType
@@ -749,15 +750,34 @@ class ExecutionEngine:
                 exchange_order_id=broker_order.exchange_order_id or broker_order.order_id,
             )
         except Exception as e:
-            # Classify: definitive rejection vs ambiguous transport failure
-            err_msg = str(e).lower()
-            # Heuristic: timeout, connection, network, ambiguous -> AMBIGUOUS
-            is_ambiguous = any(
-                k in err_msg for k in ["timeout", "connection", "network", "ambiguous", "unknown", "disconnected"]
-            )
-            # Also check exception type
-            if isinstance(e, (TimeoutError, ConnectionError)):
+            # Classify: definitive rejection vs UNKNOWN outcome.
+            #
+            # The only safe question is "could the broker have acted on this
+            # request?". The adapter answers it with an exception TYPE derived
+            # from broker evidence (see qts.adapters.broker_outcome):
+            #
+            #   BrokerRequestRejected  -> provably never transmitted, or the
+            #                             server answered with a rejection;
+            #                             deterministic, no suspension.
+            #   BrokerOutcomeUnknown   -> may have reached the broker; fail
+            #                             closed, suspend, reconcile.
+            #
+            # This used to be decided by substring-matching the exception text
+            # for "timeout"/"connection"/"unknown"/..., which was wrong in both
+            # directions: a locally refused request (invalid comment) became a
+            # durable suspension, while a definitive rejection whose broker
+            # comment merely contained the word "connection" was treated as
+            # ambiguous. The text heuristic survives only as a fallback for
+            # third-party adapters that raise bare exceptions.
+            if isinstance(e, BrokerRequestRejected):
+                is_ambiguous = False
+            elif isinstance(e, (BrokerOutcomeUnknown, TimeoutError, ConnectionError)):
                 is_ambiguous = True
+            else:
+                err_msg = str(e).lower()
+                is_ambiguous = any(
+                    k in err_msg for k in ["timeout", "connection", "network", "ambiguous", "unknown", "disconnected"]
+                )
             state = OrderState.AMBIGUOUS if is_ambiguous else OrderState.REJECTED
             self.om.update_state(intent.client_order_id, state, reject_reason=str(e))
             if self.audit:

@@ -1064,6 +1064,19 @@ def demo_guide_resume(payload: dict[str, Any] | None = None) -> Any:
         }
         blockers = recovery["active_blockers"] or [{"id": "unknown", "detail": "recovery did not complete"}]
         detail = "; ".join(f"{plain.get(b['id'], b['id'])} ({b['detail']})" for b in blockers)
+        # Name the real cause when an order's outcome is what blocks recovery:
+        # "QTS and the broker disagree about positions" would be a lie.
+        unresolved = recovery.get("unresolved_executions") or {}
+        if unresolved.get("executed"):
+            detail = (
+                "an earlier order DID reach the broker and now needs handling before trading resumes "
+                f"({unresolved['detail']})"
+            )
+        elif unresolved.get("unverifiable"):
+            detail = (
+                "the broker could not confirm what happened to an earlier order, so nothing was cleared "
+                f"({unresolved['detail']})"
+            )
         response = _guide_response(guide, False, "Trading could not be resumed.", detail)
 
     payload_body = json.loads(response.body.decode("utf-8"))

@@ -575,6 +575,192 @@ class DemoSession:
 
             SqliteAuditLog().emit(event_type(payload))
 
+    # ------------------------------------------------ unresolved executions
+    UNRESOLVED_STATES = ("AMBIGUOUS", "NEW", "SUBMITTED")
+
+    def unresolved_executions(self) -> list[dict[str, Any]]:
+        """Durable rows whose broker outcome is not known. Read-only."""
+        return [r for r in self.journal.list_orders(limit=500) if r.get("state") in self.UNRESOLVED_STATES]
+
+    def resolve_unresolved_executions(self, *, actor: str | None = None) -> dict[str, Any]:
+        """Resolve every unresolved execution against BROKER evidence.
+
+        The missing exit from the dead end. An order whose outcome was unknown
+        durably suspended trading, and nothing in the product could ever
+        resolve it: :meth:`reconcile` compares the in-memory order manager with
+        the venue, and after a restart that map is empty, so the unresolved
+        order was invisible to the only check that could have cleared it. The
+        suspension therefore outlived the condition it described, with no
+        evidence-based way back.
+
+        For each unresolved row we ask the broker the only question that
+        matters — *did this order execute?* — and accept only a definite
+        answer:
+
+        ``EXECUTED``
+            a deal, position or live order carries this order's comment. The
+            broker's record is adopted onto the journal row. Nothing is
+            cleared: real exposure needs an operator, and reconciliation will
+            keep the system suspended until local and venue state agree.
+        ``NO_EXECUTION``
+            the broker link answered, and its positions, orders and deal
+            history contain no trace of this order. It provably never
+            executed, so the row is closed as REJECTED with the evidence
+            recorded.
+        ``UNVERIFIABLE``
+            the broker could not be asked (disconnected, history unreadable).
+            Nothing is decided and nothing is cleared — fail closed.
+
+        Absence of evidence is only accepted as evidence of absence when the
+        broker positively answered all three queries; a swallowed error can
+        never masquerade as "nothing executed".
+        """
+        actor = actor or f"{self.config.actor}:resolve"
+        unresolved = self.unresolved_executions()
+        report: dict[str, Any] = {
+            "checked": len(unresolved),
+            "resolved": [],
+            "executed": [],
+            "unverifiable": [],
+            "all_resolved": True,
+            "detail": "no unresolved executions",
+        }
+        if not unresolved:
+            return report
+
+        from qts.domain.events import DomainEvent, EventType
+
+        # Broker liveness must be PROVEN before absence means anything. These
+        # calls raise on a dead link, which is what makes "no trace" evidence.
+        try:
+            adapter = self.adapter
+            venue_positions = list(adapter.positions() or [])
+            venue_orders = list(adapter.orders() or [])
+            broker_reachable = True
+            link_error = ""
+        except Exception as exc:
+            venue_positions, venue_orders = [], []
+            broker_reachable = False
+            link_error = f"{type(exc).__name__}: {exc}"
+
+        for row in unresolved:
+            cid = str(row.get("client_order_id") or "")
+            journal_id = row.get("journal_id")
+            entry = {"client_order_id": cid, "journal_id": journal_id, "state": row.get("state")}
+            if not broker_reachable:
+                report["unverifiable"].append(
+                    {**entry, "detail": f"broker link unavailable — fail closed ({link_error})"}
+                )
+                report["all_resolved"] = False
+                continue
+            try:
+                comment = adapter._load_comment_map(cid) or ""
+                deals = adapter.history_deals(cid, strict=True)
+            except Exception as exc:
+                report["unverifiable"].append(
+                    {**entry, "detail": f"broker deal history unreadable — fail closed ({type(exc).__name__}: {exc})"}
+                )
+                report["all_resolved"] = False
+                continue
+
+            def _matches(obj: Any, _comment: str = comment, _cid: str = cid) -> bool:
+                text = str(getattr(obj, "comment", "") or "")
+                return bool(_comment) and text == _comment
+
+            matching_positions = [p for p in venue_positions if _matches(p)]
+            matching_orders = [
+                o
+                for o in venue_orders
+                if _matches(o) or str(getattr(o, "client_order_id", "") or "") == cid
+            ]
+            if deals or matching_positions or matching_orders:
+                evidence = {
+                    "deals": [str(getattr(d, "ticket", "")) for d in deals],
+                    "positions": [str(getattr(p, "ticket", "") or getattr(p, "symbol", "")) for p in matching_positions],
+                    "orders": [str(getattr(o, "client_order_id", "") or getattr(o, "order_id", "")) for o in matching_orders],
+                }
+                adopted_state = "FILLED" if deals or matching_positions else "ACCEPTED"
+                try:
+                    self.journal.mark_outcome(
+                        int(journal_id),
+                        state=adopted_state,
+                        exit_reason=(
+                            "broker evidence: this order DID reach the broker — adopted from "
+                            f"deals={evidence['deals']} positions={evidence['positions']} orders={evidence['orders']}"
+                        ),
+                    )
+                except Exception as exc:  # the durable record MUST reflect the finding
+                    report["unverifiable"].append(
+                        {**entry, "detail": f"broker evidence found but the journal write failed: {exc}"}
+                    )
+                    report["all_resolved"] = False
+                    continue
+                self._record_idempotency_status(cid, adopted_state)
+                report["executed"].append({**entry, "evidence": evidence})
+                report["all_resolved"] = False
+                self._emit_recovery_event(
+                    lambda payload: DomainEvent(event_type=EventType.RECONCILE, payload=payload),
+                    {
+                        "action": "unresolved_execution_adopted",
+                        "client_order_id": cid,
+                        "evidence": evidence,
+                        "actor": actor,
+                    },
+                )
+                continue
+
+            detail = (
+                "broker evidence: no position, no working order and no deal carries this order's "
+                f"comment {comment!r} — it never executed"
+            )
+            try:
+                self.journal.mark_outcome(int(journal_id), state="REJECTED", exit_reason=detail)
+            except Exception as exc:
+                # Never report an order resolved unless the durable row says so.
+                report["unverifiable"].append(
+                    {**entry, "detail": f"broker proved no execution but the journal write failed: {exc}"}
+                )
+                report["all_resolved"] = False
+                continue
+            self._record_idempotency_status(cid, "REJECTED")
+            report["resolved"].append({**entry, "detail": detail})
+            self._emit_recovery_event(
+                lambda payload: DomainEvent(event_type=EventType.RECONCILE, payload=payload),
+                {
+                    "action": "unresolved_execution_resolved",
+                    "client_order_id": cid,
+                    "resolution": "NO_EXECUTION",
+                    "detail": detail,
+                    "actor": actor,
+                },
+            )
+
+        parts = []
+        if report["resolved"]:
+            parts.append(f"{len(report['resolved'])} proven not executed")
+        if report["executed"]:
+            parts.append(f"{len(report['executed'])} DID execute and were adopted from broker evidence")
+        if report["unverifiable"]:
+            parts.append(f"{len(report['unverifiable'])} could not be verified")
+        report["detail"] = "; ".join(parts) if parts else "no unresolved executions"
+        return report
+
+    def _record_idempotency_status(self, client_order_id: str, status: str) -> None:
+        """Keep the duplicate guard in step with the journal's resolution.
+
+        The idempotency ledger answers a different question ("has this id been
+        used?") but stores the same outcome vocabulary. If a resolution updated
+        only the journal the two stores would disagree about whether an order
+        is still ambiguous — the split-brain this work exists to remove.
+        """
+        if not client_order_id:
+            return
+        with contextlib.suppress(Exception):
+            from qts.execution.idempotency import IdempotencyStore
+
+            store = self._idempotency or IdempotencyStore(db_path=self.db_path)
+            store.update(client_order_id, status)
+
     def resume_from_suspension(self, *, reason: str, actor: str | None = None) -> dict[str, Any]:
         """The ONE canonical recovery transition out of a durable suspension.
 
@@ -620,6 +806,7 @@ class DemoSession:
             "cleared": [],
             "active_blockers": list(before["active_blockers"]),
             "recovery_checks": {},
+            "failed_predicates": [],
             "stage": before["stage"],
             "orders_permitted": False,
             "next": "prepare",
@@ -628,6 +815,7 @@ class DemoSession:
             result["active_blockers"] = [
                 {"id": "invalid_request", "detail": "a recovery decision requires a recorded reason"}
             ]
+            result["failed_predicates"] = ["recorded_reason_supplied"]
             return result
 
         if not before["active_blockers"]:
@@ -667,6 +855,19 @@ class DemoSession:
                 ),
             }
 
+        # --- predicate: no execution is left in an unknown state ------------
+        # Resolved against BROKER evidence first, because reconciliation
+        # compares state the resolution may correct. Skipped entirely when the
+        # journal holds nothing unresolved, so a clean recovery never needs a
+        # terminal.
+        if "reconciliation_suspension" in active_ids and self.unresolved_executions():
+            resolution = self.resolve_unresolved_executions(actor=actor)
+            result["unresolved_executions"] = resolution
+            checks["unresolved_executions_resolved"] = {
+                "satisfied": bool(resolution["all_resolved"]),
+                "detail": resolution["detail"],
+            }
+
         # --- predicate: broker-authoritative reconciliation reports no drift -
         fresh_reconcile: dict[str, Any] | None = None
         if "reconciliation_suspension" in active_ids:
@@ -689,6 +890,7 @@ class DemoSession:
             result["reconciliation"] = fresh_reconcile
 
         unsatisfied = [name for name, c in checks.items() if not c["satisfied"]]
+        result["failed_predicates"] = list(unsatisfied)
         if unsatisfied:
             after = self.durable_suspension_state()
             result.update(
