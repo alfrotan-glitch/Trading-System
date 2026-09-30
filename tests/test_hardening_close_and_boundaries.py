@@ -369,3 +369,45 @@ def test_dependency_constraints_are_pinned_and_installable() -> None:
     assert len(pins) > 20, "constraints file looks empty"
     for pin in pins:
         assert "==" in pin, f"{pin} is not an exact pin"
+
+
+# ------------------------------------------------- database path anchoring
+def test_every_database_resolves_to_one_location_whatever_the_cwd(tmp_path: Path) -> None:
+    """DEFECT: ~20 modules default to db_path="data/sqlite/qts.db".
+
+    sqlite3 resolves that against the process working directory, so the same
+    SqliteAuditLog() opened a different file depending on where the CLI, the
+    API or a test was launched from — silently splitting audit, kill-switch
+    and journal state across several databases. qts.db.connect anchors every
+    relative path to the canonical state root.
+    """
+    import os
+
+    from qts.db import _anchored
+
+    before = _anchored("data/sqlite/qts.db")
+    cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        after = _anchored("data/sqlite/qts.db")
+    finally:
+        os.chdir(cwd)
+
+    assert before == after, "the same database must not follow the working directory"
+    assert Path(str(before)).is_absolute()
+
+
+def test_anchoring_leaves_memory_and_absolute_paths_alone() -> None:
+    from qts.db import _anchored
+
+    assert _anchored(":memory:") == ":memory:"
+    assert str(_anchored("/tmp/explicit.db")) == "/tmp/explicit.db"
+    assert _anchored("file:x?mode=ro") == "file:x?mode=ro"
+
+
+def test_operator_facing_text_never_calls_a_demo_connection_real() -> None:
+    """DEFECT: startup health printed "MT5 REAL connected ... account=DEMO"."""
+    health = (REPO / "src" / "qts" / "desktop" / "health.py").read_text(encoding="utf-8")
+    body = "\n".join(ln for ln in health.splitlines() if not ln.lstrip().startswith("#"))
+    assert "MT5 REAL connected" not in body
+    assert "MT5 terminal attached" in body

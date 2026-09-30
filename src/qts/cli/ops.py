@@ -746,7 +746,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         # simulated broker can never produce broker-execution evidence.
         broker = _MT5A(mt5_module=_mock, config={"dry_run": False})
         broker_is_mock = True
-        # Also try real if env var QTS_USE_REAL_MT5=true
+        # Attach the real MT5 *terminal* if asked. "REAL" here names the
+        # library/IPC link, never the account: DEMO-only enforcement is
+        # unchanged and lives in the authorization and pre-trade gates.
         if _os.getenv("QTS_USE_REAL_MT5") == "true":
             with contextlib.suppress(Exception):
                 import MetaTrader5 as _real

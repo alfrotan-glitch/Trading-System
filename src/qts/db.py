@@ -25,6 +25,30 @@ from pathlib import Path
 from typing import Any
 
 
+def _anchored(database: Path | str) -> Path | str:
+    """Resolve a relative database path against the canonical state root.
+
+    Roughly twenty modules default to ``db_path="data/sqlite/qts.db"``, which
+    sqlite3 interprets against the process working directory: the same
+    ``SqliteAuditLog()`` opened a different file depending on where the CLI,
+    the API or a test happened to be launched from, silently splitting audit,
+    kill-switch and journal state across several databases.
+
+    Anchoring here fixes every caller at one chokepoint instead of rewriting
+    twenty defaults, and keeps :func:`qts.config.paths.state_root` the single
+    authority on where state lives — including its isolated-workspace rule,
+    so a test that chdirs into its own fixture tree still gets that tree.
+
+    ``:memory:`` and absolute paths are returned untouched.
+    """
+    if isinstance(database, str) and (database == ":memory:" or database.startswith("file:")):
+        return database
+    from qts.config.paths import resolve_state_path
+
+    return resolve_state_path(database)
+
+
+
 @contextmanager
 def connect(database: Path | str, **kwargs: Any) -> Iterator[sqlite3.Connection]:
     """Open a SQLite connection that is ALWAYS closed on context exit.
@@ -33,7 +57,7 @@ def connect(database: Path | str, **kwargs: Any) -> Iterator[sqlite3.Connection]
     rollback on error) plus deterministic ``close()`` — required on Windows
     where open handles block file/directory deletion.
     """
-    con = sqlite3.connect(database, **kwargs)  # sqlite3 accepts str/Path
+    con = sqlite3.connect(_anchored(database), **kwargs)  # sqlite3 accepts str/Path
     try:
         with con:
             yield con
@@ -55,7 +79,7 @@ def immediate(database: Path | str, *, timeout: float = 30.0) -> Iterator[sqlite
     Semantics: commit on success, rollback on any exception, ``close()`` on
     every path (Windows handle discipline, as in :func:`connect`).
     """
-    con = sqlite3.connect(database, timeout=timeout, isolation_level=None)
+    con = sqlite3.connect(_anchored(database), timeout=timeout, isolation_level=None)
     try:
         con.execute("BEGIN IMMEDIATE")
         try:
