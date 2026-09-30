@@ -324,16 +324,23 @@ def demo_order(payload: dict[str, Any]) -> Any:
 
     entry, entry_reasons = resolve_entry(load_registry(), payload.get("strategy"))
     if entry is None:
+        from qts.execution.demo_refusal import explain_refusal
+
+        reasons = list(entry_reasons) + [
+            "no eligible strategy in the forward-validation registry — DEMO_EXECUTION may be "
+            "ENABLED while no strategy has passed the research gates"
+        ]
         return JSONResponse(
             status_code=409,
             content={
                 "allowed": False,
                 "state": "NO_TRADE",
-                "reasons": list(entry_reasons)
-                + [
-                    "no eligible strategy in the forward-validation registry — DEMO_EXECUTION may be "
-                    "ENABLED while no strategy has passed the research gates"
-                ],
+                "reasons": reasons,
+                # Same explanation contract as every other refusal: this path
+                # never reaches the gate, so it names its own predicate.
+                "refusal": explain_refusal(
+                    reasons=reasons, blocked_by="strategy_registered_frozen", state="NO_TRADE"
+                ),
             },
         )
     if payload.get("dry_run"):

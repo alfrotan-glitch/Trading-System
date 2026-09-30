@@ -78,31 +78,55 @@ export async function renderPaper(root) {
    PowerShell, stage names, gate names, journal ids or symbol aliases.
    Every action drives the same lifecycle the CLI uses; nothing is bypassed.
    Engineering internals live under "Technical details" at the bottom. */
-/* Map a pre-trade refusal to ONE plain sentence. The exact gates, retcodes
-   and audit ids stay in the collapsible Technical details — never here. */
-function humanRefusal(reasons) {
-  if (!Array.isArray(reasons) || reasons.length === 0) return "The safety checks refused the order.";
-  const first = String(reasons[0]);
-  const gate = first.split(":")[0].trim().toLowerCase();
-  const plain = {
-    stop_loss_present: "This demo plan requires a protective stop on every order. Enter a stop-loss price.",
-    trading_hours_allowed: "The market is outside the hours this plan is allowed to trade.",
-    broker_symbol_matches_registry: "The broker symbol does not match the registered experiment.",
-    strategy_registered_frozen: "No approved, frozen trading plan is registered.",
-    reconciliation_ready: "QTS and the broker disagree about open positions. Trading stays off until they agree.",
-    reconciliation_suspension: "QTS and the broker disagree about open positions. Trading stays off until they agree.",
-    broker_order_check: "The broker refused the order request.",
-    order_size_within_hard_max: "The size is above the demo limit for a single order.",
-    spread_available: "The current gold spread is too wide for the demo limits.",
-    market_data_fresh: "No fresh gold price is available right now.",
-    identity_mismatch: "The connected account does not match the confirmed identity.",
+/* Render the refusal the SERVER built. The plain sentence, the condition to
+   retry on and the technical detail all come from qts.execution.demo_refusal,
+   which sits next to the gate that produced the verdict — so the wording can
+   never drift from the predicate, and every one of the gate's checks is
+   covered.
+
+   This used to be a hand-written dictionary here in the browser: eleven
+   entries for twenty-eight predicates (four of them keys the gate never
+   emits), matched by splitting reasons[0] on ":". Everything unmatched fell
+   back to a generic "a safety check refused the order" line — the system knew
+   the exact predicate and told the operator nothing actionable. */
+function refusalOf(body) {
+  const r = body && typeof body === "object" ? body.refusal : null;
+  if (r && r.primary) return r;
+  // No structured refusal (an older server, or a transport-level error):
+  // say exactly that rather than inventing a cause.
+  const reasons = Array.isArray(body?.reasons) ? body.reasons
+    : (body?.detail ? [String(body.detail)] : []);
+  return {
+    headline: "Order blocked",
+    summary: "Trading is not ready yet.",
+    explanation_available: false,
+    primary: {
+      id: "unidentified",
+      plain: "The order was refused by a safety check, but QTS could not identify which one. It has NOT been sent.",
+      retry_when: "The exact reason is unavailable — see the technical details below.",
+      technical: reasons.join("; ") || "no refusal detail was recorded",
+    },
+    blockers: [],
   };
-  if (plain[gate]) return plain[gate];
-  if (/kill switch/i.test(first)) return "Trading is stopped by the kill switch. Review and resume first.";
-  if (/execution_permission|stage_allows_order|never enabled|authority/i.test(first)) {
-    return "Demo trading is not prepared yet. Finish the steps above first.";
+}
+
+/* The refusal block for the normal (non-technical) Trading view. */
+function refusalBody(r) {
+  const p = r.primary || {};
+  const rows = [h("div", { class: "stack" },
+    h("div", null, h("b", null, "Reason: "), String(p.plain || "")),
+    p.retry_when ? h("div", null, h("b", null, "Retry when: "), String(p.retry_when)) : null,
+  )];
+  const others = (r.blockers || []).slice(1).filter((b) => b && b.plain);
+  if (others.length) {
+    rows.push(h("div", { class: "hint" },
+      `Also blocking: ${others.map((b) => b.plain).join(" ")}`));
   }
-  return "A safety check refused the order. See the technical details for the exact reason.";
+  if (r.explanation_available === false) {
+    rows.push(h("div", { class: "hint" },
+      "QTS could not identify the exact failed check — the order was still refused."));
+  }
+  return h("div", { class: "stack" }, ...rows);
 }
 
 export async function renderDemo(root) {
@@ -314,17 +338,33 @@ export async function renderDemo(root) {
       try {
         const out = await api.post("/api/demo/order", payload);
         if (dry) {
-          result.replaceChildren(banner("ok", "Preview passed the safety checks", "No order was sent. Press “Place demo trade” to submit on the demo account.", "check"), tech(out, "Preview detail"));
+          // A 200 preview can still be a refusal: the dry run reports the
+          // verdict rather than raising. Never call that "passed".
+          if (out && out.allowed === false) {
+            const r = refusalOf(out);
+            result.replaceChildren(
+              banner("warn", "Preview: this order would be blocked", r.summary || "Trading is not ready yet.", "alert"),
+              refusalBody(r),
+              h("details", null, h("summary", null, "Technical details"),
+                h("div", { class: "hint" }, `Failed check: ${r.primary?.id ?? "unidentified"} — ${r.primary?.technical ?? ""}`),
+                tech(out, "Preview detail")),
+            );
+          } else {
+            result.replaceChildren(banner("ok", "Preview passed the safety checks", "No order was sent. Press “Place demo trade” to submit on the demo account.", "check"), tech(out, "Preview detail"));
+          }
         } else {
           result.replaceChildren(banner("ok", "Demo trade placed", `Broker reference ${out.broker_order_id ?? "recorded"}. This is a practice account — no real money.`, "check"), tech(out, "Order detail"));
           toast("ok", "Demo trade placed", "No real money is at risk.");
         }
       } catch (e) {
         const b = e.body || {};
-        const reasons = Array.isArray(b.reasons) ? b.reasons : (b.detail ? [String(b.detail)] : []);
+        const r = refusalOf(b);
         result.replaceChildren(
-          banner("warn", "Demo trade could not be placed", humanRefusal(reasons), "alert"),
-          h("details", null, h("summary", null, "Technical details"), tech(b, "Raw refusal")),
+          banner("warn", r.headline || "Order blocked", r.summary || "Trading is not ready yet.", "alert"),
+          refusalBody(r),
+          h("details", null, h("summary", null, "Technical details"),
+            h("div", { class: "hint" }, `Failed check: ${r.primary?.id ?? "unidentified"} — ${r.primary?.technical ?? ""}`),
+            tech(b, "Raw refusal")),
         );
       }
     }

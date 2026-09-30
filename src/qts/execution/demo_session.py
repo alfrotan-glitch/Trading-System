@@ -79,13 +79,17 @@ class SubmissionResult:
     state: str = "NO_TRADE"
     reasons: list[str] = field(default_factory=list)
     verdict: dict[str, Any] | None = None
+    #: Predicate id for a refusal raised OUTSIDE the pre-trade gate. The gate's
+    #: own verdict names its failures; these paths must name theirs too, in the
+    #: same vocabulary, or the user gets "a safety check refused the order".
+    blocked_by: str | None = None
     executed_price: str | None = None
     spread_bps: float | None = None
     slippage_bps: float | None = None
     latency_ms: float | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "allowed": self.allowed,
             "client_order_id": self.client_order_id,
             "journal_id": self.journal_id,
@@ -99,6 +103,19 @@ class SubmissionResult:
             "slippage_bps": self.slippage_bps,
             "latency_ms": self.latency_ms,
         }
+        if not self.allowed:
+            # Every refusal — from the gate or from any guard around it —
+            # leaves with an explanation attached. This is the single
+            # chokepoint, so no refusal path can forget to explain itself.
+            from qts.execution.demo_refusal import explain_refusal
+
+            payload["refusal"] = explain_refusal(
+                verdict=self.verdict,
+                reasons=list(self.reasons),
+                blocked_by=self.blocked_by,
+                state=self.state,
+            )
+        return payload
 
 
 class DemoSession:
@@ -1431,8 +1448,10 @@ class DemoSession:
             autonomous=autonomous,
         )
         verdict = run_pretrade_gate(ctx)
-        return {
-            "verdict": verdict.as_dict(),
+        verdict_dict = verdict.as_dict()
+        preflight: dict[str, Any] = {
+            "verdict": verdict_dict,
+            "allowed": bool(verdict.passed),
             "intended_order": {
                 "symbol": self.canonical_symbol,
                 "broker_symbol": ctx.broker_symbol,
@@ -1445,6 +1464,15 @@ class DemoSession:
             "order_check": self._order_check_probe(lots=size),
             "stage": self.stage.current().as_dict(),
         }
+        if not verdict.passed:
+            # The dry run explains itself exactly like a real refusal, so the
+            # preview and the order tell the operator the same thing.
+            from qts.execution.demo_refusal import explain_refusal
+
+            preflight["refusal"] = explain_refusal(
+                verdict=verdict_dict, reasons=list(verdict.reasons), state="NO_TRADE"
+            )
+        return preflight
 
     def reverify_authority(
         self,
@@ -1617,6 +1645,7 @@ class DemoSession:
                 client_order_id=client_order_id,
                 state="NO_TRADE",
                 reasons=[f"stage {self.stage.current().stage} does not permit orders"],
+                blocked_by="stage_allows_order",
                 verdict=verdict.as_dict(),
             )
 
@@ -1681,6 +1710,7 @@ class DemoSession:
                 client_order_id=client_order_id,
                 state="NO_TRADE",
                 reasons=[claim_reason],
+                blocked_by="duplicate_order_protection",
                 verdict=verdict.as_dict(),
             )
 
@@ -1695,6 +1725,7 @@ class DemoSession:
                 journal_id=journal_id,
                 state="NO_TRADE",
                 reasons=["registered policy requires a stop-loss and none could be derived — refused"],
+                blocked_by="stop_loss_required",
                 verdict=verdict.as_dict(),
             )
 
@@ -1709,6 +1740,7 @@ class DemoSession:
                 journal_id=journal_id,
                 state="REJECTED",
                 reasons=[f"submission error: {type(exc).__name__}: {exc}"],
+                blocked_by="submission_error",
                 verdict=verdict.as_dict(),
             )
 
@@ -1736,6 +1768,7 @@ class DemoSession:
                 journal_id=journal_id,
                 state="NO_TRADE",
                 reasons=["execution engine refused the intent — see audit log (risk veto / kill / suspend)"],
+                blocked_by="execution_engine_refused",
                 verdict=verdict.as_dict(),
             )
 

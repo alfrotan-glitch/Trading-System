@@ -209,3 +209,57 @@ fail against the pre-fix code:
 | both outcome stores stay in step | `test_resolution_keeps_the_journal_and_the_duplicate_guard_in_step` |
 | in-flight rows are unresolved too | `test_an_in_flight_submission_is_unresolved_too` |
 | API reports failed predicates | `test_the_resume_api_reports_failed_predicates_and_never_fakes_success` |
+
+---
+
+## 10. Refusal explanation contract
+
+**Authority:** `qts.execution.demo_refusal`. It lives beside the gate that
+produces the verdict, so the operator-facing wording cannot drift from the
+predicate it describes.
+
+Every refusal — from the 28-check pre-trade gate or from any guard around it —
+leaves the system carrying a `refusal` block:
+
+```jsonc
+{
+  "allowed": false,
+  "headline": "Order blocked",
+  "summary":  "Trading is not ready yet.",
+  "explanation_available": true,
+  "primary":  { "id": "trading_hours_allowed",
+                "plain": "Trading session is outside the permitted trading hours.",
+                "retry_when": "The market/trading window is open.",
+                "current": "now 03:14 UTC is outside the policy window 07:00-20:00 UTC",
+                "technical": "trading_hours_allowed: now 03:14 UTC is outside ...",
+                "explained": true },
+  "blockers": [ ... every failed predicate, same shape ... ],
+  "blocker_ids": ["trading_hours_allowed", ...],
+  "unknown_checks": [],
+  "reasons": ["trading_hours_allowed: ..."]
+}
+```
+
+Rules:
+
+1. **Completeness.** Every predicate `demo_pretrade` can `record()` has an
+   entry in `REFUSAL_EXPLANATIONS`. `missing_explanations()` is asserted empty
+   by the suite, so a new safeguard cannot ship without its sentence.
+2. **One chokepoint.** `SubmissionResult.as_dict()` attaches the block
+   whenever `allowed is False`, so no refusal path can forget to explain
+   itself. Refusals raised outside the gate carry `blocked_by` and use the
+   *same* predicate vocabulary (`stage_allows_order`,
+   `duplicate_order_protection`, `stop_loss_required`, `submission_error`,
+   `execution_engine_refused`, `strategy_registered_frozen`).
+3. **Never invent.** An unidentifiable refusal sets
+   `explanation_available: false` and says the exact reason is unavailable.
+   Fail-closed is unchanged: the order is still refused.
+4. **Separation.** `plain` and `retry_when` are for the normal Trading view;
+   `id`, `current`, `technical` and the raw `verdict` are for Advanced.
+5. **The UI renders, it does not decide.** `trading.js` prints what the server
+   built. It previously kept its own dictionary of 11 sentences for 28
+   predicates — 4 of its keys matched no predicate the gate can emit — so
+   coverage was 7/28 and everything else became a generic line.
+6. **HTTP unchanged.** 409 still means refused; only the explanation improved.
+   A `dry_run` preview that fails now renders as a refusal too, instead of
+   "Preview passed the safety checks".
