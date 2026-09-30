@@ -21,8 +21,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-from qts.db import connect as db_connect
-
 
 def check_mt5_submission_implemented() -> tuple[bool, str]:
     try:
@@ -373,38 +371,45 @@ def check_symbol_spec() -> tuple[bool, str]:
 def check_reconciliation_health() -> tuple[bool, str]:
     """No unresolved reconcile suspension in the durable state.
 
-    A missing ``reconcile_state`` table means no ExecutionEngine has ever
-    persisted suspension state — honestly "nothing suspended", not a failure.
-    Previously that benign case raised and was reported as a gate failure
-    whenever another component had created ``qts.db`` first, so the result
-    depended on which subsystem happened to touch the database.
+    A missing ``reconcile_state`` table — or no store at all — means no
+    ExecutionEngine has ever persisted suspension state: honestly "nothing
+    suspended", not a failure. ONLY that case is benign. Every other read
+    failure (a locked store, a damaged page, a permission error) fails CLOSED,
+    because "could not read the suspension flag" must never be reported as
+    "not suspended".
 
-    ONLY "no such table" is benign. Every other read failure — a locked store,
-    a damaged page, a permission error — fails CLOSED, because "could not read
-    the suspension flag" must never be reported as "not suspended".
+    Two defects are fixed here and both mattered for a LIVE gate:
+
+    * the store was addressed as ``Path("data/sqlite/qts.db")`` — resolved
+      against the *working directory of whichever process asked*. Launched
+      from anywhere but the state root, this gate read a file that does not
+      exist and passed with "no qts.db, so no recorded suspension": a
+      fail-OPEN answer produced by looking in the wrong place. It now uses the
+      same anchored path (:func:`qts.config.paths.artifact_path`) as the
+      ExecutionEngine that WRITES the row and the health check that reports it.
+    * the SELECT-and-classify logic was a second hand-written copy. It is now
+      a thin adapter over :func:`qts.execution.engine.load_reconcile_suspension`,
+      the one canonical reader, so the LIVE gate cannot drift away from the
+      component that enforces the same row.
 
     The structural reconcile capability itself is asserted separately by
     :func:`check_reconciliation`; this check is the durable-state probe.
     """
-    import sqlite3
-    from pathlib import Path
+    from qts.config.paths import artifact_path
+    from qts.execution.engine import load_reconcile_suspension
 
-    db = Path("data/sqlite/qts.db")
-    if not db.exists():
-        return True, "reconciliation health OK — no qts.db, so no recorded suspension"
+    db = artifact_path("db")
     try:
-        with db_connect(db) as con:
-            try:
-                row = con.execute("SELECT suspended FROM reconcile_state WHERE k=1").fetchone()
-            except sqlite3.OperationalError as e:
-                if "no such table" in str(e).lower():
-                    return True, f"reconciliation health OK — no reconcile_state table recorded ({e})"
-                return False, f"reconcile suspension state unreadable — fail closed ({type(e).__name__}: {e})"
-        if row and row[0]:
-            return False, f"unresolved SUSPENDED in {db} — must heal"
-        return True, "reconciliation health OK, no unresolved suspension"
-    except Exception as e:
+        state = load_reconcile_suspension(db)
+    except Exception as e:  # pragma: no cover - defensive; the reader fails closed itself
         return False, f"reconcile health failed: {e}"
+    if not state.readable:
+        return False, str(state.reason)
+    if state.suspended:
+        return False, f"unresolved SUSPENDED in {db} — must heal ({state.reason or 'no reason recorded'})"
+    if not state.recorded:
+        return True, f"reconciliation health OK — no reconcile_state table recorded in {db}"
+    return True, "reconciliation health OK, no unresolved suspension"
 
 
 def check_validation_evidence() -> tuple[bool, str]:

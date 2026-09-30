@@ -92,6 +92,11 @@ def load_reconcile_suspension(db_path: Path | str) -> ReconcileSuspension:
     * any other read failure is reported as SUSPENDED and ``readable=False``.
     """
     path = Path(db_path)
+    if not path.exists():
+        # A read probe must not CREATE the store. sqlite3.connect() would, and
+        # an empty file materialised by /api/health is both a lie ("the store
+        # exists") and the kind of side effect that silently re-anchors state.
+        return ReconcileSuspension(suspended=False, readable=True, recorded=False)
     try:
         with db_connect(path) as con:
             row = con.execute("SELECT suspended, reason, updated_at FROM reconcile_state WHERE k=1").fetchone()

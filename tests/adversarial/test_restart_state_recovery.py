@@ -31,6 +31,7 @@ import pytest
 
 from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.adapters.paper_adapter import RealisticPaperBroker
+from qts.db import connect as db_module_connect
 from qts.domain.events import DomainEvent, EventType
 from qts.domain.value_objects import Instrument, OrderIntent, OrderType, Position, Side
 from qts.execution.engine import ExecutionEngine, OrderManager, OrderState
@@ -380,6 +381,8 @@ class _FakeEngine:
         self._db_path = db_path
 
 
+
+
 @contextlib.contextmanager
 def _broken_connection_at(_path):
     """``db_connect`` itself raises — the store cannot even be opened."""
@@ -408,28 +411,28 @@ def _broken_query(real_connect, _path):
 
 
 def test_every_reader_fails_closed_when_the_store_cannot_be_opened(tmp_path, monkeypatch):
-    """Three components read the SAME durable ``reconcile_state`` row:
+    """Four components report the SAME durable ``reconcile_state`` row:
 
     * ``ExecutionEngine._load_reconcile_suspend`` (enforcement / restart),
     * ``live_gate.check_reconciliation_health`` (the LIVE gate),
-    * ``api.server._reconciliation_status`` (``/api/health`` + ``/api/risk``).
+    * ``api.server._reconciliation_status`` (``/api/health`` + ``/api/risk``),
+    * ``desktop.health.startup_health_check`` (``run_reconciliation``).
 
-    None of them may report "not suspended" when the store cannot be read, and
-    they must not disagree with each other.
+    They used to be separate hand-written copies of the same SELECT, kept in
+    agreement only by discipline. They are now thin adapters over the ONE
+    canonical reader, so breaking that reader must break ALL of them
+    identically — none may report "not suspended" when the store is unreadable.
     """
-    import qts.db as db_module
     import qts.execution.engine as engine_module
-    import qts.lifecycle.live_gate as live_gate
     from qts.api.server import _reconciliation_status
+    from qts.desktop.health import startup_health_check
     from qts.lifecycle.live_gate import check_reconciliation_health
 
     monkeypatch.chdir(tmp_path)
     store = _store_with_table(tmp_path)
 
+    # ONE patch point, because there is now ONE reader.
     monkeypatch.setattr(engine_module, "db_connect", _broken_connection_at)
-    monkeypatch.setattr(live_gate, "db_connect", _broken_connection_at)
-    # api.server._reconciliation_status imports qts.db.connect inside the call
-    monkeypatch.setattr(db_module, "connect", _broken_connection_at)
 
     suspended, reason = engine_module.ExecutionEngine._load_reconcile_suspend(_FakeEngine(store))
     assert suspended is True, "engine must restart SUSPENDED when the store cannot be opened"
@@ -444,6 +447,10 @@ def test_every_reader_fails_closed_when_the_store_cannot_be_opened(tmp_path, mon
     assert status == "UNAVAILABLE", f"an unreadable probe must not report {status}"
     assert "locked" in api_detail
 
+    recon = next(c for c in startup_health_check()["checks"] if c["name"] == "run_reconciliation")
+    assert recon["passed"] is False, "startup health must not report an unreadable store as healthy"
+    assert "locked" in recon["detail"]
+
 
 def test_every_reader_fails_closed_when_the_query_fails_but_the_store_opens(tmp_path, monkeypatch):
     """The narrower and more dangerous case: the connection succeeds and only
@@ -452,8 +459,8 @@ def test_every_reader_fails_closed_when_the_query_fails_but_the_store_opens(tmp_
     """
     import qts.db as db_module
     import qts.execution.engine as engine_module
-    import qts.lifecycle.live_gate as live_gate
     from qts.api.server import _reconciliation_status
+    from qts.desktop.health import startup_health_check
     from qts.lifecycle.live_gate import check_reconciliation_health
 
     monkeypatch.chdir(tmp_path)
@@ -464,8 +471,6 @@ def test_every_reader_fails_closed_when_the_query_fails_but_the_store_opens(tmp_
         return _broken_query(real_connect, path)
 
     monkeypatch.setattr(engine_module, "db_connect", _opens_then_locks)
-    monkeypatch.setattr(live_gate, "db_connect", _opens_then_locks)
-    monkeypatch.setattr(db_module, "connect", _opens_then_locks)
 
     suspended, reason = engine_module.ExecutionEngine._load_reconcile_suspend(_FakeEngine(store))
     assert suspended is True
@@ -479,6 +484,51 @@ def test_every_reader_fails_closed_when_the_query_fails_but_the_store_opens(tmp_
     assert healthy is False
     assert status == "UNAVAILABLE"
     assert "fail closed" in api_detail
+
+    recon = next(c for c in startup_health_check()["checks"] if c["name"] == "run_reconciliation")
+    assert recon["passed"] is False
+    assert "fail closed" in recon["detail"]
+
+
+def test_the_live_gate_reads_the_anchored_store_not_the_working_directory(tmp_path, monkeypatch):
+    """A LIVE gate that looks in the wrong place fails OPEN.
+
+    ``check_reconciliation_health`` used to address the store as
+    ``Path("data/sqlite/qts.db")`` — relative to whatever directory the
+    process happened to start in. Run from anywhere but the state root it
+    found no file and returned "no qts.db, so no recorded suspension": a PASS
+    manufactured by looking somewhere empty, while the real store said
+    SUSPENDED.
+    """
+    from qts.api.server import _reconciliation_status
+    from qts.execution.engine import RECONCILE_STATE_SCHEMA
+    from qts.lifecycle.live_gate import check_reconciliation_health
+
+    monkeypatch.delenv("QTS_DB_PATH", raising=False)
+    # The real store lives under the state root …
+    root = tmp_path / "state_root"
+    (root / "data" / "sqlite").mkdir(parents=True)
+    monkeypatch.setenv("QTS_STATE_ROOT", str(root))
+    with db_module_connect(root / "data" / "sqlite" / "qts.db") as con:
+        con.execute(RECONCILE_STATE_SCHEMA)
+        con.execute("INSERT OR REPLACE INTO reconcile_state VALUES (1,1,'venue XAUUSD 0.01 not local','t')")
+        con.commit()
+
+    # … and the process is started from somewhere else entirely.
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+
+    ok, detail = check_reconciliation_health()
+    assert ok is False, "the LIVE gate must read the anchored store, not the working directory"
+    assert "must heal" in detail
+    assert "venue XAUUSD 0.01 not local" in detail
+
+    healthy, status, _ = _reconciliation_status()
+    assert healthy is False and status == "Drift Detected"
+
+    # A read probe must never CREATE a store where it looked.
+    assert not (elsewhere / "data").exists()
 
 
 def test_missing_reconcile_table_is_benign_for_every_reader(tmp_path, monkeypatch):

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import sqlite3
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -131,50 +130,40 @@ def _reconciliation_status() -> tuple[bool, str, str]:
     A probe that cannot be completed is never reported as Healthy: an
     unmeasurable reconciliation state is not a clean one.
 
-    ONLY a missing ``reconcile_state`` table is benign — it honestly means no
-    ExecutionEngine has ever persisted suspension state. A locked, damaged or
-    otherwise unreadable store is ``UNAVAILABLE`` and not healthy, matching
-    ``ExecutionEngine._load_reconcile_suspend`` and
-    ``live_gate.check_reconciliation_health`` so all three readers of the same
-    durable row cannot disagree.
+    ONLY a missing ``reconcile_state`` table (or no store at all) is benign —
+    it honestly means no ExecutionEngine has ever persisted suspension state.
+    A locked, damaged or otherwise unreadable store is ``UNAVAILABLE``.
+
+    This is a THIN ADAPTER over
+    :func:`qts.execution.engine.load_reconcile_suspension`, the one canonical
+    reader of that row. It used to be a third hand-written copy of the same
+    SELECT-and-classify logic, alongside ``ExecutionEngine`` and
+    ``live_gate.check_reconciliation_health``. Three implementations of "is
+    reconciliation suspended?" can only be kept in agreement by discipline;
+    one implementation cannot disagree with itself.
 
     Shared by ``/api/health`` and ``/api/risk`` so both endpoints report the
     same fact and ``/api/risk`` no longer has to invoke the whole health
     report (which re-runs the full live-readiness gate) to read one row.
     """
-    from qts.db import connect as db_connect
+    from qts.execution.engine import load_reconcile_suspension
 
     try:
-        dbp = _db_path()
-        if not dbp.exists():
-            return True, "Healthy", "no reconcile state"
-        with db_connect(dbp) as con:
-            try:
-                row = con.execute("SELECT suspended FROM reconcile_state WHERE k=1").fetchone()
-            except sqlite3.OperationalError as e:
-                # ONLY a missing table is benign (nothing was ever persisted).
-                # A locked or damaged store is unreadable, and "could not read
-                # the suspension flag" must never be reported as "Healthy".
-                if "no such table" in str(e).lower():
-                    return True, "Healthy", f"no reconcile state recorded ({e})"
-                return (
-                    False,
-                    "UNAVAILABLE",
-                    f"reconciliation suspension state unreadable — fail closed ({type(e).__name__}: {e})",
-                )
-        if row and row[0]:
-            return (
-                False,
-                "Drift Detected",
-                "unresolved reconciliation SUSPENDED — broker/local state diverged",
-            )
-        if row is None:
-            return True, "Healthy", "no reconcile state"
-        return True, "Healthy", "no unresolved reconciliation suspension"
-    except Exception as e:
+        state = load_reconcile_suspension(_db_path())
+    except Exception as e:  # pragma: no cover - defensive; the reader fails closed itself
         return False, "UNAVAILABLE", f"reconciliation health probe failed: {e}"
-
-
+    if not state.readable:
+        return False, "UNAVAILABLE", str(state.reason)
+    if state.suspended:
+        return (
+            False,
+            "Drift Detected",
+            "unresolved reconciliation SUSPENDED — broker/local state diverged"
+            + (f": {state.reason}" if state.reason else ""),
+        )
+    if not state.recorded:
+        return True, "Healthy", "no reconcile state recorded"
+    return True, "Healthy", "no unresolved reconciliation suspension"
 
 
 def _env_mode() -> str:
