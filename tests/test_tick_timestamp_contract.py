@@ -258,7 +258,9 @@ def test_no_probe_server_basis_stamp_fails_loudly(tmp_path: Path):
             return (1, "ok")
 
     adapter = _adapter(LegacyMT5(), tmp_path)
-    with pytest.raises(MarketDataError, match="tick from future"):
+    # Rejection is now voiced by the shared server-clock freshness contract
+    # (same one the readiness gate uses) — still loud, still fail-closed.
+    with pytest.raises(MarketDataError, match="tick not fresh on server clock"):
         MarketDataProvider(broker=adapter).get_tick(INSTR)
 
 

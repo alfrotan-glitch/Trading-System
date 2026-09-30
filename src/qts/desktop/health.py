@@ -157,8 +157,16 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
 
             tick = adapter.ticks(Instrument(symbol=connection["canonical_symbol"], venue="MT5"))
             if tick is not None:
-                age_s = (datetime.now(UTC) - tick.event_time).total_seconds()
-                quote_note = f"quote age {age_s:.0f}s (readiness enforces freshness before trading)"
+                # Freshness is judged on the RAW broker stamp by the same
+                # server-clock contract the readiness gate uses — never on the
+                # normalized event_time, which is unusable while the server-UTC
+                # offset is unmeasured.
+                provenance = getattr(tick, "provenance", None) or {}
+                raw_msc = provenance.get("mt5_time_msc")
+                raw_s = provenance.get("mt5_time")
+                raw_epoch = float(raw_msc) / 1000.0 if raw_msc is not None and float(raw_msc) > 1e12 else raw_s
+                fresh, detail = adapter.raw_tick_freshness(broker_symbol, raw_epoch)
+                quote_note = f"quote {'fresh' if fresh else 'not fresh'} on server clock — {detail}"
             else:
                 quote_note = "quote unavailable right now (readiness enforces freshness before trading)"
             return True, (

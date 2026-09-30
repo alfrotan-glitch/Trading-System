@@ -268,8 +268,9 @@ def test_no_prior_offset_fallback_still_loudly_rejects_server_basis(tmp_path: Pa
             return (1, "ok")
 
     adapter = _adapter(NoProbeMT5(), tmp_path)
-    # No bar probe, no cache -> fallback 0, server stamp appears future
-    with pytest.raises(MarketDataError, match="tick from future"):
+    # No bar probe, no cache -> fallback 0; the shared server-clock contract
+    # rejects the future-looking raw stamp loudly (never assumed fresh).
+    with pytest.raises(MarketDataError, match="tick not fresh on server clock"):
         MarketDataProvider(broker=adapter).get_tick(INSTR)
 
 

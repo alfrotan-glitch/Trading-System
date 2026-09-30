@@ -329,12 +329,33 @@ class DemoSession:
             tick = provider.get_tick(instrument)
         except Exception as exc:
             return {"ok": False, "fresh": False, "error": f"{type(exc).__name__}: {exc}"}
-        age = self._tick_age(tick)
+        provenance = getattr(tick, "provenance", None) or {}
+        basis = provenance.get("offset_basis")
+        if basis == "assumed-utc-fallback":
+            # The normalized event_time is unusable while the server-UTC offset is
+            # unmeasured. get_tick already certified this tick on the raw stamp via
+            # the SAME server-clock contract the readiness gate applies, so the
+            # quote is fresh by that contract. The reported age is the RAW
+            # server-basis age — the exact quantity that contract bounded
+            # ("raw_age > 60s is stale on any clock basis"), so age-cap checks
+            # consume a real measured fact, never an invention.
+            import time as _time
+
+            raw_msc = provenance.get("mt5_time_msc")
+            raw_s = provenance.get("mt5_time")
+            raw_epoch = float(raw_msc) / 1000.0 if raw_msc is not None and float(raw_msc) > 1e12 else raw_s
+            age = (_time.time() - float(raw_epoch)) if raw_epoch is not None else None
+            fresh = age is not None
+        else:
+            age = self._tick_age(tick)
+            fresh = bool(age is not None and age <= self.config.max_tick_age_s)
         spread = self._spread_bps(tick.bid, tick.ask)
         return {
             "ok": True,
-            "fresh": bool(age is not None and age <= self.config.max_tick_age_s),
+            "fresh": fresh,
             "age_s": age,
+            "offset_basis": basis,
+            "age_basis": "server-local-raw (offset unmeasured)" if basis == "assumed-utc-fallback" else "normalized-utc",
             "bid": str(tick.bid),
             "ask": str(tick.ask),
             "spread_bps": spread,

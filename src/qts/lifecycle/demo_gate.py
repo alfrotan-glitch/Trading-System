@@ -111,34 +111,18 @@ def _fmt_offset(seconds: float) -> str:
     return f"{sign}{hh}h{mm:02d}m"
 
 
-def _evaluate_tick_freshness(tick: Any, mt5_module: Any, symbol: str, now: float) -> tuple[bool, str, str | None]:
-    """Freshness under an explicit, fail-closed time contract.
+def evaluate_tick_epoch_freshness(
+    epoch_seconds: float | None, mt5_module: Any, symbol: str, now: float
+) -> tuple[bool, str, str | None]:
+    """THE shared broker-quote freshness contract (fail-closed).
 
-    Background (proven on a real WMMarkets-Demo terminal): MT5 stamps ticks
-    in TRADE-SERVER local time (Unix epoch on the server's timezone basis,
-    e.g. UTC+3) while ``time.time()`` is true UTC. Comparing them directly
-    produced ``age = -10537.1s`` (a tick ~3h minus its true age "in the
-    future") and the old ``age < 60`` test ACCEPTED it — along with any
-    quote up to ~3h stale. Rules, in order:
-
-    1. Unusable timestamp -> FAIL (never age=0/fresh; the old ``else: age=0``
-       branch fabricated freshness for garbage).
-    2. ``raw_age > 60s`` -> STALE. Sound for any server offset >= 0 because
-       true_age = raw_age + offset >= raw_age. Also rejects closed-market
-       quotes (hours old) regardless of basis.
-    3. Server-clock probe (latest M1 bar) available:
-       - tick before the current bar open -> provably older than the forming
-         bar -> STALE (no false accept; near minute boundaries a genuinely
-         fresh tick can be conservatively rejected — re-checking passes);
-       - tick stamped beyond ``bar_time + 60 + tol`` -> corrupt/future -> FAIL;
-       - tick inside the current bar -> true age < 60s PROVABLY
-         (server_now < bar_time + 60) -> FRESH, reported with the raw local
-         age and implied server offset for auditability.
-    4. No probe (mocks/legacy modules): require a same-basis timestamp,
-       ``-5s <= raw_age <= 60s``. Future timestamps beyond tolerance FAIL —
-       never clamped to zero, never assumed fresh.
+    Every consumer that must answer "is this broker quote fresh?" evaluates
+    the RAW broker stamp against the server clock here — the readiness gate
+    and the product quote probes alike, so they can never disagree about the
+    same quote. Accepts the raw stamp epoch (server basis); see
+    :func:`_evaluate_tick_freshness` for the tick-object wrapper.
     """
-    epoch = _tick_epoch_seconds(tick)
+    epoch = epoch_seconds
     if epoch is None:
         return False, "tick timestamp missing/invalid — fail-closed, never assumed fresh", "Market data not fresh"
     raw_age = now - epoch
@@ -174,6 +158,36 @@ def _evaluate_tick_freshness(tick: Any, mt5_module: Any, symbol: str, now: float
             "Market data not fresh",
         )
     return True, f"age {raw_age:.1f}s", None
+
+
+def _evaluate_tick_freshness(tick: Any, mt5_module: Any, symbol: str, now: float) -> tuple[bool, str, str | None]:
+    """Freshness under an explicit, fail-closed time contract.
+
+    Background (proven on a real WMMarkets-Demo terminal): MT5 stamps ticks
+    in TRADE-SERVER local time (Unix epoch on the server's timezone basis,
+    e.g. UTC+3) while ``time.time()`` is true UTC. Comparing them directly
+    produced ``age = -10537.1s`` (a tick ~3h minus its true age "in the
+    future") and the old ``age < 60`` test ACCEPTED it — along with any
+    quote up to ~3h stale. Rules, in order:
+
+    1. Unusable timestamp -> FAIL (never age=0/fresh; the old ``else: age=0``
+       branch fabricated freshness for garbage).
+    2. ``raw_age > 60s`` -> STALE. Sound for any server offset >= 0 because
+       true_age = raw_age + offset >= raw_age. Also rejects closed-market
+       quotes (hours old) regardless of basis.
+    3. Server-clock probe (latest M1 bar) available:
+       - tick before the current bar open -> provably older than the forming
+         bar -> STALE (no false accept; near minute boundaries a genuinely
+         fresh tick can be conservatively rejected — re-checking passes);
+       - tick stamped beyond ``bar_time + 60 + tol`` -> corrupt/future -> FAIL;
+       - tick inside the current bar -> true age < 60s PROVABLY
+         (server_now < bar_time + 60) -> FRESH, reported with the raw local
+         age and implied server offset for auditability.
+    4. No probe (mocks/legacy modules): require a same-basis timestamp,
+       ``-5s <= raw_age <= 60s``. Future timestamps beyond tolerance FAIL —
+       never clamped to zero, never assumed fresh.
+    """
+    return evaluate_tick_epoch_freshness(_tick_epoch_seconds(tick), mt5_module, symbol, now)
 
 
 def _resolve_symbol_map(symbol_map: dict[str, str] | None) -> dict[str, str]:

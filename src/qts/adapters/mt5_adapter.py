@@ -1567,10 +1567,30 @@ class MT5Adapter(BrokerAdapter):
             self._server_offset_cache[symbol] = (prev_offset, prev_basis, now_epoch)
             return prev_offset, prev_basis
 
-        # No previous offset ever measured — fallback, loudly rejected for server-basis stamps
-        fallback_offset, fallback_basis = 0.0, "assumed-utc-fallback"
-        self._server_offset_cache[symbol] = (fallback_offset, fallback_basis, now_epoch)
-        return fallback_offset, fallback_basis
+        # No previous offset ever measured — fallback for THIS call only, loudly
+        # rejected for server-basis stamps downstream. The fallback is deliberately
+        # NOT cached: caching it for the whole TTL meant one transient copy_rates
+        # failure poisoned every normalized tick until expiry — the readiness gate
+        # (server-clock contract) saw fresh quotes while the product quote probes
+        # starved on fabricated-future event times. Uncached, the next tick
+        # re-attempts the measurement; a retained measured offset is never lost.
+        return 0.0, "assumed-utc-fallback"
+
+    def raw_tick_freshness(self, symbol: str, epoch_seconds: float | None) -> tuple[bool, str]:
+        """Judge a RAW broker stamp with the readiness gate's server-clock contract.
+
+        The single shared answer to "is this broker quote fresh?" — the same
+        contract the DEMO readiness gate applies, evaluated on the raw
+        server-basis stamp (never on a normalized ``event_time``, which is
+        unusable while the server-UTC offset is unmeasured). ``symbol`` may be
+        canonical; it is mapped before the bar probe.
+        """
+        from qts.lifecycle.demo_gate import evaluate_tick_epoch_freshness
+
+        mt5 = self._require_mt5()
+        broker_sym = self._map_symbol(symbol)
+        fresh, detail, _blocker = evaluate_tick_epoch_freshness(epoch_seconds, mt5, broker_sym, time.time())
+        return fresh, detail
 
     def offset_cache_info(self, symbol: str) -> dict[str, Any]:
         """Read-only view of the cached broker-offset state. Never measures.

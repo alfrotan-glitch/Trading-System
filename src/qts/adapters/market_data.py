@@ -64,12 +64,25 @@ class MarketDataProvider:
         # Symbol identity
         if tick.instrument.symbol != expected_symbol:
             raise MarketDataError(f"tick symbol mismatch: got {tick.instrument.symbol} expected {expected_symbol}")
-        # Timestamp freshness
-        age = (now - tick.event_time).total_seconds()
-        if age < -1:  # tick from future (clock skew)
-            raise MarketDataError(f"tick from future: {tick.event_time} vs now {now} age {age}")
-        if age > self.max_tick_age_s:
-            raise MarketDataError(f"tick stale: age {age:.1f}s > {self.max_tick_age_s}s for {expected_symbol}")
+        # Timestamp freshness. The normalized ``event_time`` is trustworthy only
+        # while the server-UTC offset is MEASURED; under the assumed-UTC fallback
+        # it can be hours wrong and must not be treated as truth. In that case the
+        # raw broker stamp is judged by the SAME fail-closed server-clock contract
+        # the DEMO readiness gate applies — one freshness contract, no split brain.
+        provenance = getattr(tick, "provenance", None) or {}
+        if provenance.get("offset_basis") == "assumed-utc-fallback" and hasattr(self.broker, "raw_tick_freshness"):
+            raw_msc = provenance.get("mt5_time_msc")
+            raw_s = provenance.get("mt5_time")
+            raw_epoch = float(raw_msc) / 1000.0 if raw_msc is not None and float(raw_msc) > 1e12 else raw_s
+            fresh, detail = self.broker.raw_tick_freshness(expected_symbol, raw_epoch)
+            if not fresh:
+                raise MarketDataError(f"tick not fresh on server clock: {detail} for {expected_symbol}")
+        else:
+            age = (now - tick.event_time).total_seconds()
+            if age < -1:  # tick from future (clock skew)
+                raise MarketDataError(f"tick from future: {tick.event_time} vs now {now} age {age}")
+            if age > self.max_tick_age_s:
+                raise MarketDataError(f"tick stale: age {age:.1f}s > {self.max_tick_age_s}s for {expected_symbol}")
         # Bid/ask integrity
         if tick.ask < tick.bid:
             raise MarketDataError(f"tick ask {tick.ask} < bid {tick.bid} for {expected_symbol}")
