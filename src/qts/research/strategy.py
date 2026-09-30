@@ -1,4 +1,18 @@
-"""Strategy interface and examples."""
+"""Strategy interface and RESEARCH-ONLY reference implementations.
+
+QUARANTINE NOTE — this module is not an execution authority.
+
+``SmaBreakoutStrategy`` is a pipeline exerciser with no claimed edge. It is
+reachable only from research surfaces: the backtest engine, the edge
+orchestrator, and the paper/shadow CLI runs. Nothing here may become the
+source of a DEMO or live order.
+
+The canonical strategy authority for execution is the forward-validation
+registry (:mod:`qts.lifecycle.demo_registry`), which resolves a frozen,
+hash-pinned entry naming its own ``signal_provider``. The DEMO execution path
+imports that provider and nothing from this module — a boundary pinned by
+``test_execution_never_imports_a_research_strategy_prototype``.
+"""
 
 from __future__ import annotations
 

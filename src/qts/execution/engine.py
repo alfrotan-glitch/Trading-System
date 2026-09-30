@@ -762,22 +762,37 @@ class ExecutionEngine:
             #   BrokerOutcomeUnknown   -> may have reached the broker; fail
             #                             closed, suspend, reconcile.
             #
-            # This used to be decided by substring-matching the exception text
-            # for "timeout"/"connection"/"unknown"/..., which was wrong in both
-            # directions: a locally refused request (invalid comment) became a
-            # durable suspension, while a definitive rejection whose broker
-            # comment merely contained the word "connection" was treated as
-            # ambiguous. The text heuristic survives only as a fallback for
-            # third-party adapters that raise bare exceptions.
+            # Classification is by exception TYPE only. It used to fall back to
+            # substring-matching the exception text for "timeout"/"connection"/
+            # "unknown"/... for adapters that raise bare exceptions, which
+            # reintroduced — in the fallback — both of the misclassifications
+            # the typed contract was built to remove:
+            #
+            #   * a pre-send validation error that interpolates its cause
+            #     (mt5_adapter "tick unavailable for XAUUSD: ...") becomes
+            #     AMBIGUOUS and durably suspends trading, though nothing was
+            #     ever transmitted;
+            #   * an unrecognised failure with no matching keyword becomes
+            #     REJECTED — fail OPEN — though the broker may be holding the
+            #     order. That is the expensive error qts.adapters.broker_outcome
+            #     says we never accept ("unrecognised codes are UNKNOWN too").
+            #
+            # So: unrecognised means UNKNOWN, and we fail closed. Note the
+            # keyword list could only ever produce the SAFE answer when it
+            # matched — every keyword implied ambiguity — so defaulting to
+            # ambiguous subsumes it entirely and nothing is lost.
             if isinstance(e, BrokerRequestRejected):
                 is_ambiguous = False
             elif isinstance(e, (BrokerOutcomeUnknown, TimeoutError, ConnectionError)):
                 is_ambiguous = True
+            elif isinstance(e, ValueError):
+                # Adapter contract: ValueError is raised only while validating
+                # or normalising a request the adapter then refuses to send, or
+                # on a retcode the server has already answered with. Both are
+                # definitive; neither can leave an order in flight.
+                is_ambiguous = False
             else:
-                err_msg = str(e).lower()
-                is_ambiguous = any(
-                    k in err_msg for k in ["timeout", "connection", "network", "ambiguous", "unknown", "disconnected"]
-                )
+                is_ambiguous = True
             state = OrderState.AMBIGUOUS if is_ambiguous else OrderState.REJECTED
             self.om.update_state(intent.client_order_id, state, reject_reason=str(e))
             if self.audit:

@@ -58,7 +58,6 @@ class MarketDataProvider:
         self.max_tick_age_s = max_tick_age_s
         self.max_spread_bps = max_spread_bps
         self._last_tick: dict[str, Tick] = {}
-        self._last_valid: dict[str, datetime] = {}
 
     def _validate_tick(self, tick: Tick, expected_symbol: str) -> None:
         now = datetime.now(UTC)
@@ -146,7 +145,6 @@ class MarketDataProvider:
             )
         self._validate_tick(tick, instrument.symbol)
         self._last_tick[instrument.symbol] = tick
-        self._last_valid[instrument.symbol] = datetime.now(UTC)
         return tick
 
     def get_executable_price(self, instrument: Instrument, side: str) -> Decimal:
@@ -166,13 +164,6 @@ class MarketDataProvider:
 
     def get_last_valid_tick(self, symbol: str) -> Tick | None:
         return self._last_tick.get(symbol)
-
-    def is_fresh(self, symbol: str) -> bool:
-        last = self._last_valid.get(symbol)
-        if not last:
-            return False
-        age = (datetime.now(UTC) - last).total_seconds()
-        return age <= self.max_tick_age_s
 
     def check_market_open(self, instrument: Instrument) -> bool:
         """Check if market is open via broker symbol info."""

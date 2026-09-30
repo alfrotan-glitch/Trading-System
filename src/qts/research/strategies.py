@@ -1,4 +1,13 @@
-"""Interpretable strategy families — trend, breakout, mean-reversion, momentum, volatility, regime-conditioned."""
+"""Interpretable strategy families — RESEARCH-ONLY candidate generators.
+
+QUARANTINE NOTE — this module is not an execution authority.
+
+These families exist to generate and score candidates inside bounded research
+campaigns. A family instance has never passed a validation gate simply by
+existing, and none of them may be wired into the DEMO or live order path; the
+canonical strategy authority for execution is the forward-validation registry
+(:mod:`qts.lifecycle.demo_registry`).
+"""
 
 from __future__ import annotations
 

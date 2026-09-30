@@ -1086,17 +1086,6 @@ class MT5Adapter(BrokerAdapter):
             raise ValueError(f"price must be >0, got {quantized}")
         return quantized
 
-    @staticmethod
-    def lots_to_mt5_volume(quantity_lots: float | str | Decimal, lot_size: float | Decimal = 0.01) -> float:
-        """Legacy helper — now delegates to validate_and_normalize."""
-        q = Decimal(str(quantity_lots))
-        step = Decimal(str(lot_size))
-        steps = (q / step).to_integral_value(rounding=ROUND_HALF_UP)
-        quantized = steps * step
-        if quantized <= 0:
-            raise ValueError(f"quantity {q} below lot_size {step}")
-        return float(quantized)
-
     # ---------- Order submission ----------
 
     def _build_comment(self, client_order_id: str) -> str:

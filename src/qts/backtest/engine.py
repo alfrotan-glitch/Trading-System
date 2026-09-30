@@ -175,17 +175,18 @@ class BacktestEngine:
 
                 strat = HoldLong()  # type: ignore
             else:
-                # Generic fallback: treat unknown as sma_breakout with given params (for research campaign placeholder)
-                # This ensures bounded campaigns never crash on unknown strategy_id, but still produce deterministic backtest
-                try:
-                    strat = SmaBreakoutStrategy(
-                        instrument,
-                        fast=int(strategy_params.get("fast", 10)),
-                        slow=int(strategy_params.get("slow", 20)),
-                        strategy_id=strategy_id,
-                    )
-                except Exception as e:
-                    raise ValueError(f"unknown strategy {strategy_id}: {e}") from e
+                # An unknown strategy_id used to be silently backtested as an
+                # SMA breakout (fast=10, slow=20) while KEEPING the requested
+                # id, so the run produced a complete, plausible result set
+                # attributed to a strategy whose logic never executed. Results
+                # that name one strategy and measure another are worse than a
+                # failed run: they are evidence of something that did not
+                # happen. Research integrity requires refusing, not improvising.
+                raise ValueError(
+                    f"unknown strategy_id {strategy_id!r}: no family could be inferred and no built-in "
+                    "strategy matches. Register the strategy or pass _family in strategy_params — "
+                    "a backtest will not substitute a different strategy under this id."
+                )
 
         matching = MatchingEngine(self.matching_config)
         # Isolated idempotency: backtest must NOT mutate live/shared lineage (G2)
