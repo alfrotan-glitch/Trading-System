@@ -4,10 +4,15 @@ No MT5 import or network access is performed.  UTC strings are diagnostics only:
 the raw ``time_msc`` basis is never converted or rewritten.
 """
 from __future__ import annotations
-import argparse, hashlib, json, sys
+
+import argparse
+import hashlib
+import json
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import pyarrow.parquet as pq
 
@@ -31,18 +36,21 @@ def weekend(a: int, b: int) -> bool:
     d = datetime.fromtimestamp(a / 1000, UTC).date()
     end = datetime.fromtimestamp(b / 1000, UTC).date()
     while d <= end:
-        if d.weekday() >= 5: return True
+        if d.weekday() >= 5:
+            return True
         d += timedelta(days=1)
     return False
 
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
-        for block in iter(lambda: f.read(1024 * 1024), b""): h.update(block)
+        for block in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(block)
     return h.hexdigest()
 
 def source_facts(path: Path | None) -> dict[str, Any]:
-    if not path: return {}
+    if not path:
+        return {}
     value = json.loads(path.read_text(encoding="utf-8"))
     return value.get("gaps", value) if isinstance(value, dict) else {}
 
@@ -51,7 +59,6 @@ def analyze(dataset: Path, evidence: Path | None = None, threshold_ms: int = 86_
     facts = source_facts(evidence)
     gaps: list[dict[str, Any]] = []
     previous: int | None = None
-    before_row: int | None = None
     for entry in manifest.get("parts", []):
         table = pq.read_table(dataset / "parts" / entry["part"], columns=["time_msc"])
         for value in table.column("time_msc").to_pylist():
@@ -60,7 +67,8 @@ def analyze(dataset: Path, evidence: Path | None = None, threshold_ms: int = 86_
                 gap_id = f"gap-{len(gaps)+1:04d}"
                 fact = facts.get(gap_id, {}) if isinstance(facts, dict) else {}
                 classification = fact.get("classification", "UNRESOLVED")
-                if classification not in ALLOWED: raise ValueError(f"unsupported classification for {gap_id}: {classification}")
+                if classification not in ALLOWED:
+                    raise ValueError(f"unsupported classification for {gap_id}: {classification}")
                 record = {
                     "gap_id": gap_id,
                     "raw_start_time_msc": previous,
@@ -80,7 +88,7 @@ def analyze(dataset: Path, evidence: Path | None = None, threshold_ms: int = 86_
                     "evidence_refs": fact.get("evidence_refs", []),
                 }
                 gaps.append(record)
-            previous, before_row = current, current
+            previous = current
         del table
     counts = {name: sum(g["classification"] == name for g in gaps) for name in sorted(ALLOWED)}
     return {
@@ -124,4 +132,5 @@ def main(argv=None) -> int:
     a.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"wrote {a.output} ({len(result['gaps'])} gaps >24h)")
     return 0
-if __name__ == "__main__": raise SystemExit(main())
+if __name__ == "__main__":
+    raise SystemExit(main())

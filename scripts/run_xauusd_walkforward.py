@@ -11,7 +11,7 @@ import pyarrow.parquet as pq
 
 from qts.research.xauusd_directional_view import preflight_view
 from qts.research.xauusd_walkforward import DISCOVERY_ROWS, WalkForwardScan, evaluate_walkforward
-from qts.research.xauusd_walkforward import TIME_MIN, CUTOFF
+
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="H-ST-02WF walk-forward")
@@ -22,7 +22,6 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     authority = json.loads(Path(args.authority).read_text(encoding="utf-8"))
-    from qts.research.xauusd_walkforward import TIME_MIN as tmin, CUTOFF as cut
     from qts.research.xauusd_directional_view import DiscoveryIdentity
 
     # Reuse view identity (same 70.78M)

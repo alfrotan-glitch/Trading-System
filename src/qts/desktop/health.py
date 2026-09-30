@@ -173,9 +173,9 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
 
             mode = os.getenv("QTS_MT5_MODE", "MOCK")
             if mode == "MOCK":
-                return True, "MT5 MOCK — no real broker connection (correct for dev)"
+                return True, "MT5 simulated adapter (QTS_MT5_MODE=MOCK) — no broker terminal attached (correct for dev)"
             if mode != "REAL":
-                return False, f"MT5 mode {mode!r} unrecognized — expected MOCK or REAL"
+                return False, f"MT5 mode {mode!r} unrecognized — expected MOCK (simulated) or REAL (attached terminal)"
             # REAL means "probe the actual terminal". The probe goes through the
             # SAME canonical path Demo execution uses — adapter_from_setup()
             # (terminal_path + symbol map from the machine-local setup) and
@@ -191,7 +191,7 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
             # cannot pass startup health, whatever its connectivity.
             if identity.is_demo is not True:
                 return False, (
-                    f"MT5 REAL connected (login={identity.login} server={identity.server}) but account type is "
+                    f"MT5 terminal attached (login={identity.login} server={identity.server}) but account type is "
                     f"{identity.account_type} — only a DEMO account passes this check"
                 )
             broker_symbol = connection["broker_symbol"]
@@ -213,11 +213,12 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
             else:
                 quote_note = "quote unavailable right now (readiness enforces freshness before trading)"
             return True, (
-                f"MT5 REAL connected: login={identity.login} server={identity.server} account=DEMO "
+                f"MT5 terminal attached (live IPC link, DEMO account — no real money): "
+                f"login={identity.login} server={identity.server} account_type=DEMO "
                 f"{connection['canonical_symbol']}->{broker_symbol} tradable vol_min={spec.volume_min} {quote_note}"
             )
         except Exception as e:
-            return False, f"MT5 REAL probe failed: {type(e).__name__}: {e}"
+            return False, f"MT5 terminal probe failed: {type(e).__name__}: {e}"
 
     # 7 reconciliation — the DURABLE ``reconcile_state`` row is the authority.
     #

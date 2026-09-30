@@ -26,16 +26,23 @@ mode gate forbids it, and the identity check refuses any non-DEMO trade_mode.
 from __future__ import annotations
 
 import contextlib
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
 from qts.domain.modes import ExecutionMode
 from qts.execution.demo_journal import DemoOrderJournal
-from qts.execution.demo_pretrade import DEFAULT_MIN_ORDER_INTERVAL_S, DemoPretradeContext, run_pretrade_gate
+from qts.execution.demo_pretrade import (
+    CHECK_PASS,
+    DEFAULT_MIN_ORDER_INTERVAL_S,
+    DemoPretradeContext,
+    run_pretrade_gate,
+)
+from qts.execution.demo_refusal import explain_refusal
 from qts.execution.order_truth import open_demo_journal
 from qts.lifecycle.demo_authorization import resolve_demo_execution_policy
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStageMachine
@@ -1029,6 +1036,74 @@ class DemoSession:
             out.append(item)
         return out
 
+    #: Predicates that authorize ANY trading mutation, including a close.
+    #:
+    #: A close is *risk reducing*, so the entry-quality predicates (spread,
+    #: market-data freshness, stop-loss presence, exposure/frequency ceilings,
+    #: stage, kill switch) are deliberately NOT applied to it: those controls
+    #: exist to stop NEW risk, and letting them block a close would trap an
+    #: operator in a live position — the opposite of safety.
+    #:
+    #: What may never be skipped is *authority*: which account, which broker,
+    #: which symbol, and whether this actor is permitted to trade at all.
+    #: Closing the wrong ticket on the wrong account is unrecoverable, so these
+    #: predicates are enforced on the close path exactly as they are on the
+    #: order path, from the same gate and the same registry.
+    CLOSE_AUTHORITY_PREDICATES: tuple[str, ...] = (
+        "authorization_valid",
+        "execution_permission",
+        "mode_is_demo_execution",
+        "account_is_demo",
+        "broker_identity_verified",
+        "symbol_mapping_canonical",
+        "symbol_allowed_by_policy",
+        "broker_symbol_matches_registry",
+    )
+
+    def authorize_close(self, *, symbol: str | None = None) -> tuple[bool, list[str], list[str]]:
+        """Evaluate the mutation-authority subset of the canonical gate.
+
+        Reuses :func:`run_pretrade_gate` rather than re-deriving authority, so
+        manual closes, autopilot closes and order submission all answer to one
+        execution-policy authority. Returns ``(ok, reasons, blocked_by)``.
+        """
+        ctx = self.build_context(
+            side="SELL",
+            lots=Decimal("0"),
+            stop_loss=None,
+            take_profit=None,
+            client_order_id=f"close-authority-{int(time.time() * 1000)}",
+            entry=None,
+            autonomous=False,
+        )
+        verdict = run_pretrade_gate(ctx)
+        reasons: list[str] = []
+        blocked_by: list[str] = []
+        for name in self.CLOSE_AUTHORITY_PREDICATES:
+            check = verdict.checks.get(name)
+            if check is None:
+                # Fail closed: an authority predicate the gate did not evaluate
+                # is an unproven fact, not a pass.
+                blocked_by.append(name)
+                reasons.append(f"{name}: not evaluated — cannot prove authority to close")
+                continue
+            if check.status != CHECK_PASS:
+                blocked_by.append(name)
+                reasons.append(f"{name}: {check.detail}")
+        return (not blocked_by), reasons, blocked_by
+
+    @staticmethod
+    def _close_refused(ticket: int, blocked_by: str, message: str) -> dict[str, Any]:
+        """One shape for every close refusal: named predicate + explanation."""
+        reason = f"close refused: {message}"
+        return {
+            "success": False,
+            "ticket": ticket,
+            "error": reason,
+            "blocked_by": [blocked_by],
+            "refusal": explain_refusal(reasons=[reason], blocked_by=blocked_by, state="CLOSE_REFUSED"),
+        }
+
     def close_position(
         self,
         ticket: int,
@@ -1038,57 +1113,175 @@ class DemoSession:
         comment: str | None = None,
         actor: str | None = None,
     ) -> dict[str, Any]:
-        """Close an open DEMO position by ticket, journal the outcome, and reconcile."""
-        ticket_int = int(ticket)
-        matching_pos: dict[str, Any] | None = None
-        try:
-            for p in self.adapter.position_details():
-                if p.get("ticket") == ticket_int:
-                    matching_pos = p
-                    break
-        except Exception:
-            pass
+        """Close an open DEMO position by ticket, journal the outcome, and reconcile.
 
-        close_comment = comment or f"close-{ticket_int}"[:31]
+        Fail-closed and broker-authoritative throughout: the broker's position
+        list decides whether the ticket exists and how large it is, the broker's
+        deal history decides the realized P&L, and any failure to establish
+        those facts refuses the close instead of guessing.
+        """
+        ticket_int = int(ticket)
+
+        # ---------------------------------------------------------- authority
+        # Same execution-policy authority as the order path (see
+        # CLOSE_AUTHORITY_PREDICATES for why the subset is the subset).
+        authorized, auth_reasons, auth_blocked = self.authorize_close()
+        if not authorized:
+            return {
+                "success": False,
+                "ticket": ticket_int,
+                "error": "close refused: " + "; ".join(auth_reasons),
+                "blocked_by": auth_blocked,
+                "refusal": explain_refusal(
+                    reasons=auth_reasons, blocked_by=auth_blocked[0], state="CLOSE_REFUSED"
+                ),
+            }
+
+        # ------------------------------------------------- broker-authoritative
+        # A broker-state error is NOT an empty position list. Swallowing it used
+        # to produce "no matching position" and then submit the close anyway —
+        # closing a ticket whose size, symbol and account were unknown.
+        try:
+            open_positions = self.adapter.position_details()
+        except Exception as exc:
+            return self._close_refused(
+                ticket_int,
+                "broker_state_unavailable",
+                f"broker position state unavailable ({exc}) — cannot prove the ticket exists or its size",
+            )
+
+        matching_pos: dict[str, Any] | None = None
+        for p in open_positions:
+            if p.get("ticket") == ticket_int:
+                matching_pos = p
+                break
+        if matching_pos is None:
+            # Ticket ownership: the broker does not report this position for
+            # this account. Never send a close for a ticket we cannot see.
+            return self._close_refused(
+                ticket_int,
+                "ticket_not_owned",
+                f"ticket {ticket_int} is not an open position on this account",
+            )
+
+        pos_symbol = str(matching_pos.get("symbol") or "")
+        try:
+            pos_volume = Decimal(str(matching_pos.get("volume") or "0"))
+        except (InvalidOperation, ValueError):
+            pos_volume = Decimal("0")
+        if pos_volume <= 0:
+            return self._close_refused(
+                ticket_int,
+                "ticket_not_owned",
+                f"broker reports non-positive volume {pos_volume} for ticket {ticket_int}",
+            )
+
+        # ------------------------------------------------ volume conformance
+        try:
+            requested = pos_volume if volume is None else Decimal(str(volume))
+        except (InvalidOperation, ValueError):
+            return self._close_refused(ticket_int, "close_volume_invalid", f"close volume {volume!r} is not a number")
+        if requested <= 0:
+            return self._close_refused(
+                ticket_int, "close_volume_invalid", f"close volume {requested} must be greater than zero"
+            )
+        if requested > pos_volume:
+            return self._close_refused(
+                ticket_int,
+                "close_volume_invalid",
+                f"close volume {requested} exceeds the open volume {pos_volume} of ticket {ticket_int}",
+            )
+        partial = requested < pos_volume
+        if partial:
+            # A partial close must still be a tradable size at this broker, and
+            # must leave a tradable remainder — otherwise the venue rejects it
+            # or strands an unclosable residue.
+            spec = None
+            with contextlib.suppress(Exception):
+                spec = self.adapter.get_symbol_spec(pos_symbol)
+            if spec is not None:
+                remainder = pos_volume - requested
+                step = Decimal(str(spec.volume_step or "0"))
+                vmin = Decimal(str(spec.volume_min or "0"))
+                problems: list[str] = []
+                if vmin > 0 and requested < vmin:
+                    problems.append(f"close volume {requested} is below the broker minimum {vmin}")
+                if vmin > 0 and remainder < vmin:
+                    problems.append(
+                        f"a partial close of {requested} would strand {remainder}, below the broker minimum {vmin}"
+                    )
+                if step > 0 and (requested % step) != 0:
+                    problems.append(f"close volume {requested} is not a multiple of the broker step {step}")
+                if problems:
+                    return self._close_refused(ticket_int, "close_volume_invalid", "; ".join(problems))
+
+        close_comment = comment or f"close-{ticket_int}"
         receipt = self.adapter.close_position(
             ticket_int,
-            volume=volume,
+            volume=requested,
             comment=close_comment,
         )
 
+        # --------------------------------------------------- journal matching
+        # Broker position id ONLY. The old symbol+side fallback could attach the
+        # close (and its P&L) to an unrelated order on the same instrument.
         matched_journal_row: dict[str, Any] | None = None
         with contextlib.suppress(Exception):
             for row in self.journal.open_orders():
                 if row.get("broker_position_id") and str(row["broker_position_id"]) == str(ticket_int):
                     matched_journal_row = row
                     break
-                if matching_pos and row.get("broker_symbol") == matching_pos.get("symbol") and row.get("side") == matching_pos.get("side"):
-                    matched_journal_row = row
-                    break
 
-        profit = Decimal(str(matching_pos.get("profit") or "0")) if matching_pos else Decimal("0")
-        price_current = matching_pos.get("price_current") if matching_pos else None
-
-        if matched_journal_row is not None:
-            self.journal.mark_outcome(
-                int(matched_journal_row["journal_id"]),
-                state="CLOSED",
-                exit_reason=reason,
-                realized_pnl=profit,
-                market_state_exit={
-                    "price_current": price_current,
-                    "close_receipt": receipt,
-                    "closed_by": actor or self.config.actor,
-                },
-            )
-
+        # Fold the closing deal into local state BEFORE reading P&L, so the
+        # realized number comes from executed deals rather than the pre-close
+        # unrealized snapshot.
         with contextlib.suppress(Exception):
             self.sync_fills()
+        realized, pnl_source = self._realized_pnl_for_close(ticket_int, receipt, matching_pos)
+
+        price_current = matching_pos.get("price_current")
+        if matched_journal_row is not None:
+            executed = receipt.get("executed_volume") if isinstance(receipt, dict) else None
+            try:
+                closed_volume = Decimal(str(executed)) if executed not in (None, "") else requested
+            except (InvalidOperation, ValueError):
+                closed_volume = requested
+            remaining = pos_volume - closed_volume
+            market_state_exit = {
+                "price_current": price_current,
+                "close_receipt": receipt,
+                "closed_by": actor or self.config.actor,
+                "closed_volume": str(closed_volume),
+                "remaining_volume": str(remaining if remaining > 0 else Decimal("0")),
+                "realized_pnl_source": pnl_source,
+            }
+            if remaining > 0:
+                # A partial close leaves real exposure open. Marking the row
+                # CLOSED here used to erase that remaining position from the
+                # journal while the broker still held it.
+                self.journal.mark_outcome(
+                    int(matched_journal_row["journal_id"]),
+                    state="OPEN",
+                    exit_reason=f"partial-close ({reason})",
+                    realized_pnl=realized,
+                    market_state_exit=market_state_exit,
+                )
+            else:
+                self.journal.mark_outcome(
+                    int(matched_journal_row["journal_id"]),
+                    state="CLOSED",
+                    exit_reason=reason,
+                    realized_pnl=realized,
+                    market_state_exit=market_state_exit,
+                )
 
         reconciliation = self.reconcile()
         if reconciliation.get("requires_suspend"):
             self.stage.halt(
-                reason=f"reconciliation drift after closing ticket {ticket_int}: {reconciliation.get('drift')} {reconciliation.get('details')}",
+                reason=(
+                    f"reconciliation drift after closing ticket {ticket_int}: "
+                    f"{reconciliation.get('drift')} {reconciliation.get('details')}"
+                ),
                 actor=actor or self.config.actor,
             )
 
@@ -1096,10 +1289,55 @@ class DemoSession:
             "success": True,
             "ticket": ticket_int,
             "receipt": receipt,
-            "realized_pnl": str(profit),
+            "realized_pnl": str(realized),
+            "realized_pnl_source": pnl_source,
+            "partial": partial,
+            "closed_volume": str(requested),
+            "remaining_volume": str(pos_volume - requested),
             "journal_id": matched_journal_row.get("journal_id") if matched_journal_row else None,
             "reconciliation": reconciliation,
         }
+
+    def _realized_pnl_for_close(
+        self,
+        ticket: int,
+        receipt: dict[str, Any] | Any,
+        snapshot: dict[str, Any] | None,
+    ) -> tuple[Decimal, str]:
+        """Realized P&L from broker deal evidence, with an explicit source label.
+
+        The pre-close ``profit`` field is an *unrealized* mark, not a realized
+        result: it excludes the closing spread, slippage, commission and swap.
+        Reporting it as realized P&L overstates or understates every closed
+        trade. Deal history is authoritative; the snapshot is only ever a
+        labelled fallback so the caller can tell the difference.
+        """
+        deal_id = ""
+        if isinstance(receipt, dict):
+            deal_id = str(receipt.get("broker_position_id") or "")
+        try:
+            deals = self.adapter.history_deals(days=1)
+        except Exception:
+            deals = []
+        total = Decimal("0")
+        matched = False
+        for d in deals or []:
+            d_ticket = getattr(d, "position_id", None)
+            d_id = str(getattr(d, "ticket", "") or "")
+            if (d_ticket is not None and int(d_ticket or 0) == int(ticket)) or (deal_id and d_id == deal_id):
+                for field in ("profit", "commission", "swap", "fee"):
+                    raw = getattr(d, field, None)
+                    if raw in (None, ""):
+                        continue
+                    with contextlib.suppress(InvalidOperation, ValueError):
+                        total += Decimal(str(raw))
+                matched = True
+        if matched:
+            return total, "broker_deal_history"
+        if snapshot is not None and snapshot.get("profit") not in (None, ""):
+            with contextlib.suppress(InvalidOperation, ValueError):
+                return Decimal(str(snapshot["profit"])), "pre_close_snapshot_unverified"
+        return Decimal("0"), "unavailable"
 
     def sync_fills(self) -> int:
         """Fold broker deals into local state (best effort, idempotent).

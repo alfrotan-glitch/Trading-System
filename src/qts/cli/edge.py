@@ -20,14 +20,19 @@ def edge() -> None:
 @click.option("--data-version", default=None)
 @click.option("--strict", is_flag=True, help="fail-closed on weak edge")
 def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None:
-
+    from qts.config.paths import artifact_path
     from qts.edge.orchestrator import run_full_edge_validation
 
     click.echo(f"running edge validation for {strategy} version {data_version or 'latest'} (capital preservation)")
     evidence = run_full_edge_validation(data_version=data_version, strategy_id=strategy)
     # Write machine-readable
-    Path("data/evidence").mkdir(parents=True, exist_ok=True)
-    Path("data/evidence/edge_validation.json").write_text(json.dumps(evidence, indent=2, default=str), encoding="utf-8")
+    # Canonical artefact path: writing "data/evidence/..." relative to the
+    # process cwd meant the evidence landed in a different place depending on
+    # where the CLI happened to be invoked from, and the reader
+    # (artifact_path("edge_validation")) then could not find it.
+    _edge_out = artifact_path("edge_validation")
+    _edge_out.parent.mkdir(parents=True, exist_ok=True)
+    _edge_out.write_text(json.dumps(evidence, indent=2, default=str), encoding="utf-8")
     # Generate docs
     # 1 edge_validation_report
     ev = evidence

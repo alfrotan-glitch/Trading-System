@@ -1,0 +1,59 @@
+# Reproducible dependency constraints for CI and local development.
+#
+# pyproject.toml declares COMPATIBLE ranges (what the code supports);
+# this file pins the EXACT versions a run is reproduced with, so a CI
+# failure is attributable to the change under test rather than to a
+# transitive dependency that moved underneath it.
+#
+# These are constraints, not requirements: nothing here is installed
+# unless pyproject already asks for it, directly or transitively.
+#
+# Install:   pip install -e ".[dev]" -c constraints.txt
+# Refresh:   pip freeze --exclude-editable  (after a deliberate upgrade)
+#
+# Generated from a clean 3.11 environment resolved from pyproject.
+PyYAML==6.0.3
+Pygments==2.21.0
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+ast_serialize==0.11.2
+bandit==1.9.4
+certifi==2026.7.22
+click==8.5.0
+coverage==7.16.2
+fastapi==0.142.2
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+hypothesis==6.168.3
+idna==3.20
+iniconfig==2.3.0
+librt==0.16.0
+markdown-it-py==4.2.0
+mdurl==0.1.2
+mypy==2.3.1
+mypy_extensions==1.1.0
+numpy==2.4.6
+opentelemetry-api==1.45.0
+packaging==26.3
+pandas-stubs==3.0.5.260914
+pandas==3.0.6
+pathspec==1.1.1
+pluggy==1.6.0
+pyarrow==25.0.1
+pydantic==2.13.5
+pydantic_core==2.46.5
+pytest-cov==7.1.0
+pytest==9.1.1
+python-dateutil==2.9.0.post0
+rich==15.0.0
+ruff==0.16.9
+scipy==1.17.1
+six==1.17.0
+sortedcontainers==2.4.0
+starlette==1.7.0
+stevedore==5.9.1
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+uvicorn==0.54.0

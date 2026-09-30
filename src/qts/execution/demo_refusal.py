@@ -165,6 +165,47 @@ REFUSAL_EXPLANATIONS: dict[str, tuple[str, str]] = {
         "QTS cannot record everything it must about this order, so it will not place it.",
         "The order journal can store the full execution record.",
     ),
+    # --- predicates emitted through helper functions -------------------------
+    # These reach `record()` as `record(*_helper(...))`, so no static scan of
+    # this package can see them. They were invisible to the first completeness
+    # test and uncovered until `record()` began enforcing the registry.
+    "symbol_mapping_canonical": (
+        "The instrument could not be matched to the broker's own symbol.",
+        "The broker symbol for this instrument resolves from the confirmed setup.",
+    ),
+    "order_size_within_hard_max": (
+        "The order size is above the hard limit for a single demo order.",
+        "The size is reduced to the plan's maximum for one order.",
+    ),
+    "stop_loss_present": (
+        "This demo plan requires a protective stop on every order. Enter a stop-loss price.",
+        "A stop-loss price is set for the order.",
+    ),
+    "stop_within_policy_distance": (
+        "The stop-loss is too close to or too far from the current price for this plan.",
+        "The stop-loss is moved inside the distance the plan allows.",
+    ),
+    "max_total_exposure": (
+        "This order would push total open exposure past the demo limit.",
+        "Existing exposure is reduced, or a smaller size is used.",
+    ),
+    # --- position-close refusals ---------------------------------------------
+    "broker_state_unavailable": (
+        "The broker could not be asked which positions are open, so the close was not sent.",
+        "The broker connection answers again and the position list can be read.",
+    ),
+    "ticket_not_owned": (
+        "That position is not open on this demo account, so there is nothing to close.",
+        "The ticket appears in the broker's open positions for this account.",
+    ),
+    "close_volume_invalid": (
+        "The requested close size does not fit the open position or the broker's size rules.",
+        "The close size is at most the open volume and matches the broker's minimum and step.",
+    ),
+    "close_not_authorized": (
+        "This close was not authorized for the current account, broker or instrument.",
+        "The account, broker identity and instrument checks pass for this session.",
+    ),
     # --- refusals raised outside the gate ------------------------------------
     "stop_loss_required": (
         "This demo plan requires a protective stop on every order, and none could be worked out.",

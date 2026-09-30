@@ -10,9 +10,9 @@ from pathlib import Path
 import numpy as np
 import pyarrow.parquet as pq
 
-from qts.research.xauusd_temporal_discovery import discover_temporal
-from qts.research.xauusd_directional_view import preflight_view
 from qts.research.xauusd_directional import DiscoveryIdentity
+from qts.research.xauusd_directional_view import preflight_view
+from qts.research.xauusd_temporal_discovery import discover_temporal
 
 IDENTITY = DiscoveryIdentity(rows=70783710)  # verifiable
 VIEW_IDENTITY = DiscoveryIdentity(rows=70783710)

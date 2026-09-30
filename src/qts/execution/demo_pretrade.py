@@ -64,6 +64,7 @@ from decimal import Decimal
 from typing import Any
 
 from qts.execution.demo_identity import BrokerIdentity
+from qts.execution.demo_refusal import REFUSAL_EXPLANATIONS
 from qts.lifecycle.demo_authorization import LoadedAuthorization
 from qts.lifecycle.demo_registry import StrategyRegistration
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStage
@@ -247,6 +248,17 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
     checks: dict[str, CheckResult] = {}
 
     def record(name: str, status: str, detail: str) -> None:
+        # The predicate registry is canonical and enforced HERE, at runtime.
+        # A predicate with no operator-facing explanation would reach the user
+        # as "a safety check refused the order", so emitting one is a defect,
+        # not a warning. A static scan of this file could not catch a name
+        # built dynamically; this can.
+        if name not in REFUSAL_EXPLANATIONS:
+            raise KeyError(
+                f"pre-trade predicate {name!r} is not in the canonical registry "
+                "(qts.execution.demo_refusal.REFUSAL_EXPLANATIONS) — add its plain-language "
+                "explanation and retry condition before emitting it"
+            )
         checks[name] = CheckResult(name=name, status=status, detail=detail)
 
     # ------------------------------------------------------------------ #0

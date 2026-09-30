@@ -380,9 +380,18 @@ def demo_positions() -> dict[str, Any]:
 
 
 @router.post("/api/demo/close")
-def demo_close(payload: dict[str, Any]) -> dict[str, Any]:
-    """Close an open DEMO position by ticket (requires confirmed=true and risk_ack=true)."""
-    from decimal import Decimal
+def demo_close(payload: dict[str, Any]) -> Any:
+    """Close an open DEMO position by ticket (requires confirmed=true and risk_ack=true).
+
+    The confirmation booleans are an *intent* signal from the operator, not an
+    authorization: they say "yes, I meant to press this", and nothing more.
+    Authorization — which account, which broker, which instrument, whether this
+    session may trade at all — is decided by the same canonical execution
+    policy the order path uses, inside :meth:`DemoSession.close_position`.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    from qts.execution.demo_refusal import explain_refusal
 
     ticket = payload.get("ticket")
     if ticket is None:
@@ -396,16 +405,36 @@ def demo_close(payload: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(400, "closing a DEMO position requires explicit confirmed=true and risk_ack=true")
 
     volume_str = payload.get("volume")
-    volume = Decimal(str(volume_str)) if volume_str is not None else None
+    try:
+        volume = Decimal(str(volume_str)) if volume_str is not None else None
+    except (InvalidOperation, ValueError) as err:
+        raise HTTPException(400, f"invalid close volume: {volume_str}") from err
     reason = str(payload.get("reason") or "operator-close via API")
 
     session = _bind()._demo_session(payload.get("symbol"))
     try:
-        return session.close_position(ticket_int, volume=volume, reason=reason, actor="api:demo-close")
+        result = session.close_position(ticket_int, volume=volume, reason=reason, actor="api:demo-close")
     except Exception as exc:
-        raise HTTPException(500, f"failed to close position {ticket_int}: {exc}") from exc
-
-
+        # A close that failed at the broker is a refusal with a named cause,
+        # not an opaque 500: the operator must be able to tell "the venue
+        # rejected this" from "the server broke".
+        blocked = ["broker_state_unavailable"]
+        return JSONResponse(
+            status_code=502,
+            content={
+                "success": False,
+                "ticket": ticket_int,
+                "error": f"failed to close position {ticket_int}: {exc}",
+                "blocked_by": blocked,
+                "refusal": explain_refusal(
+                    reasons=[f"broker close failed: {exc}"], blocked_by=blocked, state="CLOSE_FAILED"
+                ),
+            },
+        )
+    if not result.get("success"):
+        # Refused by the authorization boundary or by ticket/volume validation.
+        return JSONResponse(status_code=409, content=result)
+    return result
 
 
 @router.post("/api/demo/kill")

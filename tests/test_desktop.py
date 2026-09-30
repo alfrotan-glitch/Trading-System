@@ -870,7 +870,7 @@ def test_startup_health_does_not_pass_an_unprobed_mt5_mode(tmp_path, monkeypatch
     mt5 = next(c for c in health["checks"] if c["name"] == "verify_account_MT5")
     assert mt5["passed"] is False
     assert "unrecognized" in mt5["detail"]
-    assert "expected MOCK or REAL" in mt5["detail"]
+    assert "unrecognized" in mt5["detail"] and "MOCK" in mt5["detail"]
 
 
 def test_restore_state_reads_the_real_audit_and_kill_tables(tmp_path, monkeypatch):
@@ -998,8 +998,13 @@ def test_startup_health_real_mode_probes_through_canonical_adapter(
     mt5_check = next(c for c in health["checks"] if c["name"] == "verify_account_MT5")
     assert mt5_check["passed"], f"REAL probe wrongly failed: {mt5_check['detail']}"
     detail = mt5_check["detail"]
-    assert "MT5 REAL connected" in detail
-    assert "account=DEMO" in detail
+    # Terminology: "REAL" named the MT5 *library*, not the money. Printed
+    # beside a login it read as a real-money connection, so the status line
+    # now says what is actually true and says it unambiguously.
+    assert "MT5 terminal attached" in detail
+    assert "no real money" in detail
+    assert "MT5 REAL connected" not in detail
+    assert "account_type=DEMO" in detail
     # Symbol mapping from the machine-local setup survived the probe.
     assert "XAUUSD->XAUUSD@" in detail
 
@@ -1023,7 +1028,7 @@ def test_startup_health_real_mode_fails_closed_without_ipc(
     health = startup_health_check()
     mt5_check = next(c for c in health["checks"] if c["name"] == "verify_account_MT5")
     assert not mt5_check["passed"]
-    assert "MT5 REAL probe failed" in mt5_check["detail"]
+    assert "MT5 terminal probe failed" in mt5_check["detail"]
     assert "not probed" not in mt5_check["detail"]  # the stale label guard is gone
 
     # 2) Module present but initialize() fails (terminal not running / no IPC).
@@ -1048,7 +1053,7 @@ def test_startup_health_real_mode_fails_closed_without_ipc(
     health = startup_health_check()
     mt5_check = next(c for c in health["checks"] if c["name"] == "verify_account_MT5")
     assert not mt5_check["passed"]
-    assert "MT5 REAL probe failed" in mt5_check["detail"]
+    assert "MT5 terminal probe failed" in mt5_check["detail"]
     assert health["system_status"] != "Running"
 
 

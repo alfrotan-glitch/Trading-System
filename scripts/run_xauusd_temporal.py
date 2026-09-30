@@ -52,12 +52,12 @@ def main(argv=None) -> int:
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     if args.markdown:
         args.markdown.parent.mkdir(parents=True, exist_ok=True)
-        md = f"# XAUUSD H-TEMP-01 raw-hour magnitude (16/64) — discovery only\n\n"
+        md = "# XAUUSD H-TEMP-01 raw-hour magnitude (16/64) — discovery only\n\n"
         hyp = result["hypotheses"].get("H-TEMP-01", {})
         md += f"## H-TEMP-01: {hyp.get('status','?')}\n"
         for r in hyp.get("reasons", []):
             md += f"- {r}\n"
-        md += f"\nHeld-out 40%: CLOSED. Orders: 0. Demo execution: DISABLED.\n"
+        md += "\nHeld-out 40%: CLOSED. Orders: 0. Demo execution: DISABLED.\n"
         md += f"\n16: {result['measured'].get('16')}\n"
         args.markdown.write_text(md, encoding="utf-8")
 

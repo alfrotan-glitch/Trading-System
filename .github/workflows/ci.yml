@@ -1,0 +1,72 @@
+name: CI
+
+# The repository's only functional CI. Before this, .github/workflows held
+# sixteen one-off XAUUSD research jobs, every one triggered exclusively by
+# pushes to a DIFFERENT session branch (arena/01a0cdf1-trading-system) — so no
+# workflow ever linted or tested this branch, and no pull request was ever
+# checked. Those jobs also ran with `contents: write` and
+# `persist-credentials: true` and ended in
+# `git push origin HEAD:arena/01a0cdf1-trading-system`, meaning a manual
+# dispatch from any branch would have pushed that branch's HEAD into another
+# session's branch. They are removed; this replaces them.
+
+on:
+  push:
+    branches:
+      - arena/01a0f151-trading-system
+      - main
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege: CI reads the code and reports. It never writes to the
+# repository, never pushes, and never needs a token with write scope.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: lint + tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install (pinned constraints for a reproducible run)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" -c constraints.txt
+
+      - name: Lint
+        run: python -m ruff check src/ tests/ scripts/
+
+      - name: Offline static safety validation
+        run: python scripts/demo_static_validation.py
+
+      # Deterministic and honest: no `|| true`, no `--exitfirst`, no skipped
+      # directories. A red suite fails the job and the real counts are printed.
+      - name: Tests
+        run: python -m pytest tests/ -q -p no:cacheprovider --durations=10
+
+      - name: Assert the safety invariants CI must never let regress
+        run: |
+          python - <<'PY'
+          from qts.lifecycle.demo_authorization import resolve_demo_execution_policy  # noqa: F401
+          from qts.lifecycle.live_gate import check_validated_edge
+          from qts.research.catalog import CURRENT_EDGE_STATUS
+
+          ok, detail = check_validated_edge()
+          assert CURRENT_EDGE_STATUS == "NO_VALIDATED_EDGE", CURRENT_EDGE_STATUS
+          assert ok is False, f"live eligibility must stay blocked while there is no validated edge: {detail}"
+          print("live-safety invariant holds:", detail)
+          PY

@@ -60,6 +60,14 @@ RELATIVE_DEFAULTS: dict[str, str] = {
     "completeness_disposition": "data/evidence/xauusd_completeness_disposition.json",
     "comparison": "data/evidence/paper_shadow_demo_comparison.json",
     "reality": "data/evidence/execution_reality.json",
+    "dry_run": "data/evidence/dry_run.json",
+    "paper_cli_db": "data/sqlite/paper_cli.db",
+    "paper_cli_idempotency_db": "data/sqlite/paper_cli_idemp.db",
+    "paper_cli_risk_db": "data/sqlite/paper_cli_risk.db",
+    "shadow_cli_db": "data/sqlite/shadow_cli.db",
+    "shadow_cli_idempotency_db": "data/sqlite/shadow_cli_idemp.db",
+    "shadow_cli_risk_db": "data/sqlite/shadow_cli_risk.db",
+    "logs_dir": "logs",
 }
 
 #: Environment override per artefact (highest precedence, used verbatim).
@@ -83,6 +91,14 @@ ENV_OVERRIDES: dict[str, str] = {
     "completeness_disposition": "QTS_COMPLETENESS_DISPOSITION_PATH",
     "comparison": "QTS_COMPARISON_PATH",
     "reality": "QTS_REALITY_PATH",
+    "dry_run": "QTS_DRY_RUN_PATH",
+    "paper_cli_db": "QTS_PAPER_CLI_DB",
+    "paper_cli_idempotency_db": "QTS_PAPER_CLI_IDEMP_DB",
+    "paper_cli_risk_db": "QTS_PAPER_CLI_RISK_DB",
+    "shadow_cli_db": "QTS_SHADOW_CLI_DB",
+    "shadow_cli_idempotency_db": "QTS_SHADOW_CLI_IDEMP_DB",
+    "shadow_cli_risk_db": "QTS_SHADOW_CLI_RISK_DB",
+    "logs_dir": "QTS_LOGS_DIR",
 }
 
 STATE_ROOT_ENV = "QTS_STATE_ROOT"

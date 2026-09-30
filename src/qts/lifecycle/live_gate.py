@@ -438,6 +438,35 @@ def check_validation_evidence() -> tuple[bool, str]:
         return False, f"validation evidence check failed: {e}"
 
 
+def check_validated_edge() -> tuple[bool, str]:
+    """A validated edge is a HARD prerequisite for live eligibility.
+
+    ``CURRENT_EDGE_STATUS`` was consulted by the risk API and the UI, but by no
+    live check — so the live-readiness report could reach ``ready: true`` while
+    the research catalog still said ``NO_VALIDATED_EDGE``. Infrastructure
+    readiness is not permission to trade real money: with no edge that has
+    survived validation, every other check passing only proves the system can
+    place an order competently, not that it should.
+
+    This is the canonical consumer of the research catalog's status, so the
+    answer cannot drift between the API, the UI and the gate.
+    """
+    try:
+        from qts.research.catalog import CURRENT_EDGE_STATUS
+
+        status = str(CURRENT_EDGE_STATUS or "").strip().upper()
+        if status == "NO_VALIDATED_EDGE":
+            return False, (
+                "NO_VALIDATED_EDGE — no strategy has passed the research validation gates; "
+                "live trading is not eligible regardless of infrastructure readiness"
+            )
+        if not status:
+            return False, "edge status is empty — cannot prove a validated edge exists (fail closed)"
+        return True, f"validated edge status: {status}"
+    except Exception as e:  # pragma: no cover - defensive
+        return False, f"edge status check failed: {e}"
+
+
 def live_readiness_report() -> dict[str, Any]:
     checks = {
         "environment": check_environment(),
@@ -455,6 +484,7 @@ def live_readiness_report() -> dict[str, Any]:
         "shadow_evidence": check_shadow_evidence(),
         "audit_evidence": check_audit_evidence(),
         "validation_evidence": check_validation_evidence(),
+        "validated_edge": check_validated_edge(),
     }
     report: dict[str, Any] = {}
     all_pass = True
@@ -477,6 +507,7 @@ def live_readiness_report() -> dict[str, Any]:
         "shadow_evidence": "integration",
         "audit_evidence": "integration",
         "validation_evidence": "integration",
+        "validated_edge": "research",
     }
     for k, (passed, detail) in checks.items():
         report[k] = {"passed": passed, "detail": detail, "proof_tier": PROOF_TIERS.get(k, "structural")}

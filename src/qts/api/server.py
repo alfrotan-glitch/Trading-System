@@ -70,23 +70,27 @@ async def local_operator_boundary_middleware(request: Request, call_next):
     return response
 
 
-_use_wildcard_cors = os.getenv("QTS_CORS_WILDCARD") == "1"
-if _use_wildcard_cors:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=False,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "X-QTS-Operator"],
+# CORS is default-deny and has no wildcard mode. This API exposes trading
+# mutations (order submission, position close, kill switch); with
+# ``allow_origins=["*"]`` any page the operator visited could drive them from
+# their browser. The old ``QTS_CORS_WILDCARD=1`` escape hatch did exactly that
+# and is removed — an operator who needs an extra origin names it explicitly.
+#
+# ``Origin: null`` (sandboxed iframes, file:// documents, some redirects) is
+# untrusted and matches neither the regex nor an explicit entry.
+_extra_origins = [o.strip() for o in os.getenv("QTS_CORS_ORIGINS", "").split(",") if o.strip()]
+if any(o == "*" for o in _extra_origins):
+    raise RuntimeError(
+        "QTS_CORS_ORIGINS must list explicit origins; '*' is not accepted on an API that can place and close orders"
     )
-else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$|^https://.*\.e2b\.app$|^tauri://localhost$|^vscode-webview://.*$",
-        allow_credentials=False,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "X-QTS-Operator"],
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_extra_origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$|^https://.*\.e2b\.app$|^tauri://localhost$|^vscode-webview://.*$",
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-QTS-Operator"],
+)
 
 # Process-local seams. Tests patch these names on this module; route handlers
 # resolve them at call time through ``_bind()``.

@@ -340,10 +340,26 @@ def test_a_dollar_gap_below_the_floor_rejects() -> None:
     assert "dollar" in verdict["reason"]
 
 
-def test_workflow_cannot_retrigger_the_state_scan() -> None:
-    text = Path(".github/workflows/canonical-xauusd-volatility.yml").read_text(encoding="utf-8")
-    assert "xauusd_state_scan.py" not in text
-    assert "xauusd_volatility_preregistration" not in text
-    assert "src/qts/research/xauusd_volatility.py" in text
-    assert "scripts/run_xauusd_volatility.py" in text
-    assert "arena/01a0c9cc-trading-system" in text
+def test_no_workflow_can_retrigger_a_research_scan_or_push_to_a_foreign_branch() -> None:
+    """Research integrity, stated as a repository-wide invariant.
+
+    This used to pin the body of canonical-xauusd-volatility.yml. That
+    workflow — and fifteen siblings — only ever triggered on pushes to another
+    session's branch, so none of them tested or protected anything here, and
+    each one ended with `git push origin HEAD:<foreign branch>` while holding
+    `contents: write`. They were removed.
+
+    The concern behind the original test survives and is now checked over
+    EVERY workflow rather than one file: nothing in CI may silently re-run a
+    research scan or write to a branch that is not this one.
+    """
+    root = Path(__file__).resolve().parents[2] / ".github" / "workflows"
+    workflows = sorted(root.glob("*.yml")) + sorted(root.glob("*.yaml"))
+    assert workflows, "no workflows found — CI must exist"
+    for wf in workflows:
+        text = wf.read_text(encoding="utf-8")
+        body = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+        assert "xauusd_state_scan.py" not in body, f"{wf.name} can retrigger the state scan"
+        assert "git push" not in body, f"{wf.name} pushes from CI"
+        for foreign in ("arena/01a0c9cc-trading-system", "arena/01a0cdf1-trading-system"):
+            assert foreign not in body, f"{wf.name} still references the stale branch {foreign}"

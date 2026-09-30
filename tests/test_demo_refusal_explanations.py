@@ -18,7 +18,6 @@ nothing actionable. These tests pin the repaired contract:
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
@@ -29,19 +28,77 @@ SRC = Path(__file__).resolve().parents[1] / "src" / "qts"
 
 
 # --------------------------------------------------------------- completeness
+def _emitted_predicate_names() -> set[str]:
+    """Every name that can reach ``record()`` — including the dynamic ones.
+
+    A regex/AST scan for ``record("literal")`` is NOT sufficient: five
+    predicates are emitted as ``record(*_helper(...))`` and were completely
+    invisible to the first version of this test, which passed while
+    ``symbol_mapping_canonical``, ``order_size_within_hard_max``,
+    ``stop_loss_present``, ``stop_within_policy_distance`` and
+    ``max_total_exposure`` had no operator-facing explanation at all.
+
+    So: collect the literal names AND the names returned by every helper that
+    is splatted into ``record``.
+    """
+    import ast
+
+    tree = ast.parse((SRC / "execution" / "demo_pretrade.py").read_text(encoding="utf-8"))
+    names: set[str] = set()
+    helper_names: set[str] = set()
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "record"):
+            continue
+        if not node.args:
+            continue
+        first = node.args[0]
+        if isinstance(first, ast.Constant) and isinstance(first.value, str):
+            names.add(first.value)
+        elif isinstance(first, ast.Starred) and isinstance(first.value, ast.Call):
+            func = first.value.func
+            if isinstance(func, ast.Name):
+                helper_names.add(func.id)
+    # every string literal returned first-position by those helpers
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name in helper_names:
+            for inner in ast.walk(node):
+                if isinstance(inner, ast.Return) and isinstance(inner.value, ast.Tuple) and inner.value.elts:
+                    head = inner.value.elts[0]
+                    if isinstance(head, ast.Constant) and isinstance(head.value, str):
+                        names.add(head.value)
+    assert helper_names, "no helper-emitted predicates found — the scan is broken"
+    return names
+
+
 def test_every_gate_predicate_has_a_plain_explanation():
     """A new safeguard cannot ship without an operator-facing sentence."""
     from qts.execution.demo_refusal import missing_explanations
 
-    gate_src = (SRC / "execution" / "demo_pretrade.py").read_text(encoding="utf-8")
-    predicates = sorted(set(re.findall(r'record\(\s*"([a-z0-9_]+)"', gate_src)))
-    assert len(predicates) >= 25, f"gate predicate discovery looks wrong: {predicates}"
-
+    predicates = sorted(_emitted_predicate_names())
+    assert len(predicates) >= 30, f"predicate discovery looks wrong: {predicates}"
     missing = missing_explanations(predicates)
     assert missing == [], (
         "these pre-trade predicates would fall back to the generic "
         f"'a safety check refused the order' message: {missing}"
     )
+
+
+def test_the_gate_refuses_to_emit_an_unregistered_predicate():
+    """Runtime enforcement — the guarantee a static scan cannot give.
+
+    This is what actually caught the five helper-emitted predicates.
+    """
+    from qts.execution import demo_pretrade
+
+    ctx = demo_pretrade.DemoPretradeContext()
+    with pytest.raises(KeyError, match="canonical registry"):
+        # drive one gate run with a predicate name that has no explanation
+        original = demo_pretrade.REFUSAL_EXPLANATIONS
+        try:
+            demo_pretrade.REFUSAL_EXPLANATIONS = {}
+            demo_pretrade.run_pretrade_gate(ctx)
+        finally:
+            demo_pretrade.REFUSAL_EXPLANATIONS = original
 
 
 def test_every_explanation_states_a_retry_condition():

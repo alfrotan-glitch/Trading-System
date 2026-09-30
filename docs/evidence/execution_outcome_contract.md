@@ -263,3 +263,47 @@ Rules:
 6. **HTTP unchanged.** 409 still means refused; only the explanation improved.
    A `dry_run` preview that fails now renders as a refusal too, instead of
    "Preview passed the safety checks".
+
+## 11. Position-close contract
+
+A close is a trading mutation and answers to the same authority as an order.
+It is **not** governed by the same predicates, and the difference is deliberate.
+
+**Authority (enforced — `DemoSession.CLOSE_AUTHORITY_PREDICATES`)**
+
+`authorization_valid`, `execution_permission`, `mode_is_demo_execution`,
+`account_is_demo`, `broker_identity_verified`, `symbol_mapping_canonical`,
+`symbol_allowed_by_policy`, `broker_symbol_matches_registry`.
+
+These answer *which account, which broker, which instrument, and may this
+actor trade at all*. Closing the wrong ticket on the wrong account is
+unrecoverable, so they are evaluated by `run_pretrade_gate` — the same gate,
+the same registry, the same vocabulary as the order path. A predicate the gate
+did not evaluate is treated as unproven and refuses the close.
+
+**Entry-quality predicates (deliberately not applied)**
+
+Spread, market-data freshness, stop-loss presence, exposure and frequency
+ceilings, stage, kill switch. These exist to stop *new* risk. Applying them to
+a close would let a halted stage or a stale quote trap an operator in an open
+position — the opposite of safety. Before this contract the close path enforced
+*nothing at all*, so this is strictly more enforcement, not less.
+
+**Broker-authoritative facts**
+
+| Fact | Source | On failure |
+|---|---|---|
+| Does the ticket exist? | `position_details()` | refuse `ticket_not_owned` |
+| Broker state readable? | `position_details()` | refuse `broker_state_unavailable` — never an empty list |
+| Open volume / symbol | the matched position | refuse if non-positive |
+| Size legality | `get_symbol_spec()` min/step + remainder | refuse `close_volume_invalid` |
+| Realized P&L | `history_deals()` (profit + commission + swap + fee) | labelled `pre_close_snapshot_unverified` |
+
+**Partial closes.** The journal row stays `OPEN` with `remaining_volume`
+recorded; only a full close writes `CLOSED`. The journal is matched on
+`broker_position_id` alone — never symbol+side, which could attach a close and
+its P&L to an unrelated order on the same instrument.
+
+**Transport.** A refusal is `409` carrying `blocked_by` and the standard
+`refusal` object from §10. A broker failure is `502` with a named predicate,
+never an opaque `500` and never a fabricated success.

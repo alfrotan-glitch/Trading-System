@@ -5,13 +5,13 @@ from __future__ import annotations
 import contextlib
 import sys
 from datetime import UTC
-from pathlib import Path
 from typing import Any
 
 import click
 import numpy as np
 
 from qts.backtest.engine import BacktestEngine
+from qts.config.paths import artifact_path as _artifact_path
 from qts.config.settings import load_settings
 from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
@@ -428,7 +428,6 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         click.echo(f"running mode={mode} strategy={strategy} version={data_version} (dry-run, offline, no submission)")
         from datetime import datetime
         from decimal import Decimal as _Decimal
-        from pathlib import Path as _Path
         from unittest.mock import MagicMock as _MagicMock
 
         from qts.adapters.market_data import MarketDataProvider as _MDP
@@ -638,8 +637,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "request_error": req_err,
             "audit_emitted": True,
         }
-        _Path("data/evidence").mkdir(parents=True, exist_ok=True)
-        _Path("data/evidence/dry_run.json").write_text(_json.dumps(evidence, indent=2, default=str), encoding="utf-8")
+        _dry_out = _artifact_path("dry_run")
+        _dry_out.parent.mkdir(parents=True, exist_ok=True)
+        _dry_out.write_text(_json.dumps(evidence, indent=2, default=str), encoding="utf-8")
         click.echo(
             f"dry-run result: prereq {prereq['ok']} md {md_ok} acct {acct_ok} risk {decision.allowed} req {req_ok} (no order submitted, evidence written)"
         )
@@ -907,9 +907,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
 
         # Clean persistent state for deterministic evidence (kill/idempotency would block re-run)
         for _p in [
-            Path("data/sqlite/paper_cli.db"),
-            Path("data/sqlite/paper_cli_idemp.db"),
-            Path("data/sqlite/paper_cli_risk.db"),
+            _artifact_path("paper_cli_db"),
+            _artifact_path("paper_cli_idempotency_db"),
+            _artifact_path("paper_cli_risk_db"),
         ]:
             with contextlib.suppress(Exception):
                 if _p.exists():
@@ -921,11 +921,11 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         strat = SmaBreakoutStrategy(instr, fast=10, slow=20, strategy_id=strategy)
         matching = MatchingEngine(MatchingConfig())
         audit = SqliteAuditLog()
-        idemp = IdempotencyStore(db_path=Path("data/sqlite/paper_cli_idemp.db"))
+        idemp = IdempotencyStore(db_path=_artifact_path("paper_cli_idempotency_db"))
         om = OrderManager(audit=audit, idempotency=idemp)
-        paper_broker = RealisticPaperBroker(matching=matching, db_path=Path("data/sqlite/paper_cli.db"))
+        paper_broker = RealisticPaperBroker(matching=matching, db_path=_artifact_path("paper_cli_db"))
         portfolio = Portfolio(initial_balance=Decimal("10000"))
-        risk = RiskEngine(RiskLimits(), db_path=Path("data/sqlite/paper_cli_risk.db"))
+        risk = RiskEngine(RiskLimits(), db_path=_artifact_path("paper_cli_risk_db"))
         paper_engine = ExecutionEngine(om, risk, paper_broker, matching, portfolio, audit=audit)
         # Run paper loop: next-bar execution, same as backtest but via ExecutionEngine
         pending: list = []
@@ -985,10 +985,11 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "code_version": _code_version(),
             "data_class": "PAPER",
         }
-        Path("data/evidence").mkdir(parents=True, exist_ok=True)
-        Path("data/evidence/paper_trades.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
+        _paper_out = _artifact_path("paper_trades")
+        _paper_out.parent.mkdir(parents=True, exist_ok=True)
+        _paper_out.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
         # Also write audit evidence
-        Path("logs").mkdir(parents=True, exist_ok=True)
+        _artifact_path("logs_dir").mkdir(parents=True, exist_ok=True)
         click.echo(
             f"paper result: equity={float(portfolio.equity()):.2f} trades={len(fills_out)} (realistic paper, evidence written)"
         )
@@ -1012,9 +1013,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         from qts.risk.engine import RiskEngine, RiskLimits
 
         for _p in [
-            Path("data/sqlite/shadow_cli.db"),
-            Path("data/sqlite/shadow_cli_idemp.db"),
-            Path("data/sqlite/shadow_cli_risk.db"),
+            _artifact_path("shadow_cli_db"),
+            _artifact_path("shadow_cli_idempotency_db"),
+            _artifact_path("shadow_cli_risk_db"),
         ]:
             with contextlib.suppress(Exception):
                 if _p.exists():
@@ -1024,11 +1025,11 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         strat = SmaBreakoutStrategy(instr, fast=10, slow=20, strategy_id=strategy)
         matching = MatchingEngine(MatchingConfig())
         audit = SqliteAuditLog()
-        idemp = IdempotencyStore(db_path=Path("data/sqlite/shadow_cli_idemp.db"))
+        idemp = IdempotencyStore(db_path=_artifact_path("shadow_cli_idempotency_db"))
         om = OrderManager(audit=audit, idempotency=idemp)
-        shadow_broker = ShadowBroker(db_path=Path("data/sqlite/shadow_cli.db"))
+        shadow_broker = ShadowBroker(db_path=_artifact_path("shadow_cli_db"))
         portfolio = Portfolio(initial_balance=Decimal("10000"))
-        risk = RiskEngine(RiskLimits(), db_path=Path("data/sqlite/shadow_cli_risk.db"))
+        risk = RiskEngine(RiskLimits(), db_path=_artifact_path("shadow_cli_risk_db"))
         shadow_engine = ExecutionEngine(om, risk, shadow_broker, matching, portfolio, audit=audit)
         pending = []
         shadow_intents = []
@@ -1084,8 +1085,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "code_version": _code_version(),
             "data_class": "SHADOW",
         }
-        Path("data/evidence").mkdir(parents=True, exist_ok=True)
-        Path("data/evidence/shadow_intents.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
+        _shadow_out = _artifact_path("shadow_intents")
+        _shadow_out.parent.mkdir(parents=True, exist_ok=True)
+        _shadow_out.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
         click.echo(
             f"shadow result: intents={len(shadow_intents)} would_be_fills={len(shadow_broker.get_would_be_fills())} (evidence written, no venue orders)"
         )
