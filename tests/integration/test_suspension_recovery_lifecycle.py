@@ -549,3 +549,94 @@ def test_startup_health_reads_the_durable_reconciliation_authority(tmp_path, mon
     assert recon2["passed"] is True, recon2["detail"]
     with db_connect(db) as con:
         assert con.execute("SELECT COUNT(*) FROM audit_events").fetchone()[0] >= 60
+
+
+# ------------------------------- startup health reads the order-state authority
+
+
+def _seed_journal(db, *, state: str) -> None:
+    """A real journal row, written through the journal's own API."""
+    from decimal import Decimal
+
+    from qts.execution.demo_journal import DemoOrderJournal
+
+    journal = DemoOrderJournal(db)
+    journal_id = journal.open_order(
+        client_order_id="qts-abc123",
+        strategy_id="DEMO-EXECPROBE-XAUUSD-V1",
+        strategy_config_hash="deadbeef",
+        symbol="XAUUSD",
+        broker_symbol="XAUUSD@",
+        side="BUY",
+        requested_lots=Decimal("0.01"),
+        order_request={"symbol": "XAUUSD@", "volume": 0.01},
+    )
+    if state not in ("NEW", "SUBMITTED"):
+        journal.mark_outcome(journal_id, state=state, exit_reason="test fixture")
+    elif state == "SUBMITTED":
+        journal.mark_submitted(journal_id, broker_order_id="1", submitted_at=datetime.now(UTC).isoformat())
+    assert any(r["state"] == state for r in journal.list_orders()), journal.list_orders()
+
+
+def _bury_under_audit_noise(db, count: int, payload: dict) -> None:
+    """Push `count` newer events in, the way a running system would."""
+    from qts.domain.events import DomainEvent, EventType
+    from qts.observability.audit import SqliteAuditLog
+
+    log = SqliteAuditLog(db_path=db, jsonl_path=db.parent / "audit.jsonl")
+    for i in range(count):
+        log.emit(DomainEvent(event_type=EventType.TICK, payload={**payload, "seq": i}))
+
+
+def test_startup_health_reads_the_order_journal_not_an_audit_keyword_scan(tmp_path, monkeypatch):
+    """``restore_pending_orders`` must report the durable order state.
+
+    The old probe scanned the last 20 audit events for the substring
+    "AMBIGUOUS". That failed OPEN: an order whose outcome is genuinely unknown
+    stopped being reported the moment 20 newer events existed.
+    """
+    from qts.desktop.health import startup_health_check
+
+    monkeypatch.chdir(tmp_path)
+    db = tmp_path / "data" / "sqlite" / "qts.db"
+    db.parent.mkdir(parents=True)
+    _seed_journal(db, state="AMBIGUOUS")
+    _bury_under_audit_noise(db, 40, {"note": "routine"})
+
+    pending = next(c for c in startup_health_check()["checks"] if c["name"] == "restore_pending_orders")
+    assert pending["passed"] is False, pending["detail"]
+    assert "AMBIGUOUS" in pending["detail"]
+    assert "qts-abc123" in pending["detail"], "the blocking order must be named, not just counted"
+
+
+def test_startup_health_does_not_block_on_a_reconciliation_drift_word(tmp_path, monkeypatch):
+    """The mirror image: a resolved order must not keep blocking, and a
+    reconciliation report carrying ``drift="AMBIGUOUS"`` is a DIFFERENT
+    condition — the substring scan conflated the two."""
+    from qts.desktop.health import startup_health_check
+
+    monkeypatch.chdir(tmp_path)
+    db = tmp_path / "data" / "sqlite" / "qts.db"
+    db.parent.mkdir(parents=True)
+    _seed_journal(db, state="CLOSED")
+    _bury_under_audit_noise(db, 3, {"drift": "AMBIGUOUS", "details": "transport timeout, since resolved"})
+
+    pending = next(c for c in startup_health_check()["checks"] if c["name"] == "restore_pending_orders")
+    assert pending["passed"] is True, pending["detail"]
+    assert pending["detail"] == "pending/ambiguous orders none"
+
+
+def test_startup_health_blocks_on_a_submission_with_no_recorded_outcome(tmp_path, monkeypatch):
+    """A row still SUBMITTED at startup means a process died mid-order: the
+    outcome is UNKNOWN, which is a blocker, not a clean state."""
+    from qts.desktop.health import startup_health_check
+
+    monkeypatch.chdir(tmp_path)
+    db = tmp_path / "data" / "sqlite" / "qts.db"
+    db.parent.mkdir(parents=True)
+    _seed_journal(db, state="SUBMITTED")
+
+    pending = next(c for c in startup_health_check()["checks"] if c["name"] == "restore_pending_orders")
+    assert pending["passed"] is False, pending["detail"]
+    assert "no recorded outcome" in pending["detail"]
+    assert "qts-abc123" in pending["detail"]

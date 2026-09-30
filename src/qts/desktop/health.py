@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -79,16 +78,49 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
             # Fail closed: an unreadable kill-switch state is treated as active.
             return False, f"kill switch state unreadable — fail closed: {type(e).__name__}: {e}"
 
-    # 3 pending orders
+    # 3 pending orders — the DURABLE order journal is the authority.
+    #
+    # This used to scan the last 20 audit events for the substring
+    # "AMBIGUOUS". Same defect as the reconciliation probe below: evidence is
+    # not state, and a rolling window is wrong in both directions.
+    #
+    #   * fail OPEN — an order whose outcome is genuinely UNKNOWN stopped
+    #     being reported as soon as 20 newer events existed, so startup
+    #     announced "pending/ambiguous orders none" with an unresolved order
+    #     sitting in the journal;
+    #   * false positive — a long-resolved order kept blocking startup until
+    #     it aged out, and because the scan matched the whole payload text it
+    #     also tripped on a reconciliation report carrying
+    #     ``drift="AMBIGUOUS"``, which is a different condition entirely.
+    #
+    # `DemoOrderJournal` is the only store that persists execution history
+    # (QTS_PROJECT_CONTROL.md §11.4), so it is what this check reads.
     def check_pending():
         try:
-            from qts.observability.audit import SqliteAuditLog
+            from qts.config.paths import artifact_path
+            from qts.execution.demo_journal import DemoOrderJournal
 
-            log = SqliteAuditLog()
-            events = log.query(limit=20)
-            ambiguous = [e for e in events if "AMBIGUOUS" in json.dumps(e.payload)]
+            journal = DemoOrderJournal(artifact_path("journal_db"))
+            rows = journal.list_orders(limit=500)
+            ambiguous = [r for r in rows if r.get("state") == "AMBIGUOUS"]
             if ambiguous:
-                return False, f"{len(ambiguous)} ambiguous orders require reconciliation"
+                ids = ", ".join(str(r.get("client_order_id") or r.get("journal_id")) for r in ambiguous[:5])
+                more = "" if len(ambiguous) <= 5 else f" (+{len(ambiguous) - 5} more)"
+                return False, (
+                    f"{len(ambiguous)} order(s) in AMBIGUOUS state require reconciliation "
+                    f"with the broker: {ids}{more}"
+                )
+            # A row still NEW/SUBMITTED at startup means a process died between
+            # the broker call and the journal update: the outcome is UNKNOWN,
+            # which is a blocker, not a clean state. `expire_inflight_rows`
+            # resolves these to REJECTED once they are provably abandoned.
+            inflight = [r for r in rows if r.get("state") in ("NEW", "SUBMITTED")]
+            if inflight:
+                ids = ", ".join(str(r.get("client_order_id") or r.get("journal_id")) for r in inflight[:5])
+                return False, (
+                    f"{len(inflight)} submission(s) in flight with no recorded outcome — "
+                    f"verify with the broker before trading: {ids}"
+                )
             return True, "pending/ambiguous orders none"
         except Exception as e:
             # Fail closed: unverified pending/ambiguous state is not clean state.

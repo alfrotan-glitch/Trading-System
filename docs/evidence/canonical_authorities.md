@@ -184,6 +184,18 @@ wrong in both directions: a healed drift blocked startup until it aged out,
 and an unhealed suspension reported "reconciliation healthy" once 50 newer
 events existed while every order was still refused.
 
+**No startup probe may infer state from an audit keyword scan.** The audit log
+is append-only evidence of what happened; a durable row is what *is*. A
+rolling window over it fails in both directions — stale evidence blocks a
+recovered system, and a genuine unresolved condition disappears behind newer
+events, which is a fail-OPEN on unknown state. `startup_health_check`'s probes
+therefore each read their own authority: `restore_suspension` and
+`run_reconciliation` read the two durable records above, and
+`restore_pending_orders` reads `demo_order_journal` (§11.4 — the only store of
+execution history), reporting `AMBIGUOUS` rows and submissions still in flight
+with no recorded outcome. Each names the blocking order rather than counting
+it, so the operator can reconcile it with the broker.
+
 **One recovery transition.** `DemoSession.resume_from_suspension(reason, actor)`:
 
 ```
