@@ -645,6 +645,19 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
             "label": "See what is missing",
             "description": "An owner approval file for demo trading must be recorded first. It is a governance record — see Advanced → Governance. Live trading stays locked either way.",
         }
+    elif guide["kill_switch"]["active"]:
+        # The operator stop is reviewable regardless of connection state: the
+        # UI promises "review and resume from Trading", and clearing the stop
+        # never grants order permission (the stage must be prepared again and
+        # every gate still applies). It must not be hidden behind the
+        # connection/identity/readiness steps, which need a running terminal.
+        headline, reason = "Stopped", "Trading is stopped by the kill switch."
+        next_action = {
+            "action": "resume",
+            "label": "Review and resume",
+            "description": "Clearing the stop is recorded with your reason. After that the demo account is prepared again from the start.",
+            "requires_reason": True,
+        }
     elif not conn["connected"]:
         headline, reason = "Not connected", "MetaTrader 5 is not connected."
         next_action = {
@@ -686,14 +699,6 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
             "action": "check_connection",
             "label": "Check connection",
             "description": "QTS re-runs its safety checks: terminal, demo account, gold symbol and fresh prices.",
-        }
-    elif guide["kill_switch"]["active"]:
-        headline, reason = "Stopped", "Trading is stopped by the kill switch."
-        next_action = {
-            "action": "resume",
-            "label": "Review and resume",
-            "description": "Clearing the stop is recorded with your reason. After that the demo account is prepared again from the start.",
-            "requires_reason": True,
         }
     elif not guide["reconciliation"]["clean"]:
         headline, reason = "Not ready", "QTS and the broker disagree about open positions."

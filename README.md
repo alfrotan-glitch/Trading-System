@@ -62,7 +62,15 @@ cd Trading-System
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
+python -m qts data bootstrap
 ```
+
+`qts data bootstrap` establishes the research data version QTS verifies at
+startup. Without it the first launch reports
+`Blocked — verify_data: FAIL no data versions`. The step is deterministic and
+idempotent (re-running reuses an already usable version). On Windows the
+`scripts\setup_windows.bat` / `scripts\run_qts.bat` path below runs it for
+you automatically.
 
 Do not clone `main`. That branch is the initial commit and does not contain this desktop build.
 

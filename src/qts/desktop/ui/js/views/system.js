@@ -43,7 +43,7 @@ export async function renderSetup(root) {
   ];
   const currentEnv = env?.resolution?.effective_mode ?? "development";
   host.appendChild(card({
-    title: `Step 1 · Choose environment — presentation only, restart re-resolves — context ${ctx.symbol}`, icon: "layers",
+    title: `Step 1 · Choose environment — applies after you save; each QTS start reads it again — context ${ctx.symbol}`, icon: "layers",
     sub: `effective: ${modeInfo(currentEnv).mode}`,
     body: h("div", { class: "stack" },
       envOpts.map(([val, label, desc]) => h("label", { class: "check", style: { cursor: "pointer", display: "flex" } },
@@ -116,7 +116,9 @@ export async function renderSetup(root) {
         sm[cs] = bs;
       }
       await api.post("/api/setup/mt5", {
-        terminal_path: path.value.trim(),
+        // Blank means "no explicit path — auto-detect" (as the field hint
+        // says); the API rejects empty strings, so send null instead.
+        terminal_path: path.value.trim() || null,
         symbol: cs,
         symbol_map: sm,
         mode: selectedEnv,

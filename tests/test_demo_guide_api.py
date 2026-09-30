@@ -172,6 +172,52 @@ def test_guide_reports_kill_switch_as_stopped(client, api_env, monkeypatch):
     assert body["can_trade"] is False
 
 
+def test_guide_resume_is_reachable_when_the_terminal_is_gone(client, api_env, monkeypatch):
+    """Journey regression: a stopped system must offer "Review and resume"
+    even when no terminal can be connected.
+
+    The UI tells the operator "You can review and resume from Trading" after
+    Stop trading. If the resume action hid behind the connection/identity/
+    readiness steps, a machine without MetaTrader 5 could never clear the
+    stop — a dead end. Clearing never grants order permission: the stage
+    must be prepared again and every gate still applies."""
+    from fakes_mt5_demo import FakeTerminal
+
+    _register_plan(api_env)
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+    _inject(session, monkeypatch)
+
+    def _no_terminal() -> dict:
+        raise RuntimeError(
+            "MetaTrader5 package not installed — DEMO identity cannot be verified (fail closed)"
+        )
+
+    monkeypatch.setattr(session, "connectivity_report", _no_terminal)
+
+    assert client.post("/api/demo/kill", json={"reason": "guide test"}).json()["killed"] is True
+    body = client.get("/api/demo/guide").json()
+    assert body["connection"]["connected"] is False
+    assert body["kill_switch"]["active"] is True
+    assert body["status"] == "stopped"
+    assert body["headline"] == "Stopped"
+    assert body["next"]["action"] == "resume"
+    assert body["can_trade"] is False
+
+    # Clearing the stop requires a reason and still grants nothing: the guide
+    # falls back to the honest connection blocker, never to permission.
+    refused = client.post("/api/demo/guide/resume", json={"confirmed": True, "reason": ""})
+    assert refused.status_code == 400
+    ok = client.post(
+        "/api/demo/guide/resume", json={"confirmed": True, "reason": "reviewed the stop; clearing"}
+    )
+    assert ok.status_code == 200
+    body2 = client.get("/api/demo/guide").json()
+    assert body2["kill_switch"]["active"] is False
+    assert body2["can_trade"] is False
+    assert body2["next"]["action"] == "check_connection"
+
+
 def test_guide_reports_unreconciled_state_without_crashing(client, api_env, monkeypatch):
     """A drift report must surface as a human blocker, not a stack trace."""
     from fakes_mt5_demo import FakeTerminal

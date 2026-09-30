@@ -93,11 +93,17 @@ def save_setup(payload: dict[str, Any], path: Path | str | None = None) -> dict[
 
     if payload.get("terminal_path") is not None:
         tp = payload["terminal_path"]
-        if not isinstance(tp, str) or not tp.strip() or len(tp) > _MAX_PATH_LEN:
-            raise ValueError(f"terminal_path must be a non-empty string (<= {_MAX_PATH_LEN} chars)")
-        from qts.adapters.mt5_adapter import normalize_terminal_path
+        if isinstance(tp, str) and not tp.strip():
+            # The Setup page says "Leave blank to auto-detect": a blank field
+            # means "no explicit path", not an invalid value. Leave the stored
+            # value untouched and let the adapter auto-detect the terminal.
+            tp = None
+        if tp is not None:
+            if not isinstance(tp, str) or len(tp) > _MAX_PATH_LEN:
+                raise ValueError(f"terminal_path must be a non-empty string (<= {_MAX_PATH_LEN} chars)")
+            from qts.adapters.mt5_adapter import normalize_terminal_path
 
-        saved["terminal_path"] = normalize_terminal_path(tp.strip())
+            saved["terminal_path"] = normalize_terminal_path(tp.strip())
 
     if payload.get("symbol") is not None:
         sym = payload["symbol"]

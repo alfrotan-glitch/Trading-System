@@ -94,10 +94,30 @@ def test_validation_is_fail_closed(tmp_path: Path):
     with pytest.raises(ValueError):
         save_setup({"terminal_path": "x" * 600}, path=f)
     with pytest.raises(ValueError):
-        save_setup({"terminal_path": "   "}, path=f)
+        save_setup({"terminal_path": 12345}, path=f)
     with pytest.raises(ValueError):
         save_setup({"symbol_map": {"XAUUSD": "ok", "bad key!": "y"}}, path=f)
     assert not f.exists(), "invalid payloads must store nothing"
+
+
+def test_blank_terminal_path_means_auto_detect(tmp_path: Path):
+    """The Setup page tells a first-time user to "Leave blank to auto-detect",
+    so a blank field must save successfully — it means "no explicit path",
+    not an invalid value. The readiness probe still fails closed without a
+    real terminal; this only removes a UI-contract contradiction."""
+    f = tmp_path / "mt5_setup.json"
+
+    # Fresh setup with a blank path: accepted, no path stored.
+    out = save_setup({"terminal_path": "   ", "symbol": "XAUUSD"}, path=f)
+    assert "terminal_path" not in out["saved"]
+    assert out["saved"]["symbol"] == "XAUUSD"
+
+    # An already-stored path survives a blank re-save (auto-detect applies
+    # only when nothing is stored; the stored value stays visible in the UI).
+    out2 = save_setup({"terminal_path": TERMINAL_PATH}, path=f)
+    assert out2["saved"]["terminal_path"] == TERMINAL_PATH
+    out3 = save_setup({"terminal_path": ""}, path=f)
+    assert out3["saved"]["terminal_path"] == TERMINAL_PATH
 
 
 def test_corrupt_or_missing_file_yields_empty(tmp_path: Path):
@@ -128,6 +148,18 @@ def test_api_save_and_get(client: TestClient):
     # invalid input -> 400, nothing stored for that field
     r3 = client.post("/api/setup/mt5", json={"symbol": "bad symbol!"})
     assert r3.status_code == 400
+
+
+def test_api_accepts_blank_terminal_path_as_auto_detect(client: TestClient):
+    """First-run journey regression: the Setup page says "Leave blank to
+    auto-detect", so saving with an empty/whitespace path must succeed (it
+    previously returned a raw 400, blocking the documented first setup)."""
+    r = client.post("/api/setup/mt5", json={"terminal_path": "", "symbol": "XAUUSD"})
+    assert r.status_code == 200
+    assert "terminal_path" not in r.json()["saved"]
+
+    r2 = client.post("/api/setup/mt5", json={"terminal_path": "   ", "symbol": "XAUUSD"})
+    assert r2.status_code == 200
 
 
 def test_readiness_uses_saved_setup(client: TestClient, captured: dict[str, Any]):

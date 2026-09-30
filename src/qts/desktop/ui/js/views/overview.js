@@ -6,7 +6,7 @@
 
 import { api, store } from "../api.js";
 import { h, icon } from "../dom.js";
-import { banner, tech, errorBox, stat } from "../components.js";
+import { banner, tech, errorBox, stat, toast } from "../components.js";
 import { fmtNum, fmtAge } from "../format.js";
 import { navigate, onDispose } from "../router.js";
 
@@ -179,7 +179,18 @@ export async function renderHome(root) {
     paintHero();
     paintCards();
     if (userInitiated) {
-      // honest, visible result of a manual check
+      // honest, visible result of a manual check — the button must never
+      // look like it did nothing
+      const c = guide?.connection || {};
+      if (c.connected) {
+        toast("ok", "Demo account connected",
+          `${c.broker || c.server || "Your broker"}${c.login ? ` · account ${c.login}` : ""}. QTS only trades demo accounts.`);
+      } else {
+        const detail = String(guide?.connection?.detail || "");
+        const actionable = "Open MetaTrader 5 on this computer and sign in to your demo account, then press Connect account again.";
+        toast("warn", "MetaTrader 5 is not connected",
+          detail && detail !== "MetaTrader 5 is not connected." ? `${detail} ${actionable}` : actionable);
+      }
     }
   }
 
