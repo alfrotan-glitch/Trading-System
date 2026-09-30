@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import sqlite3
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -36,6 +37,87 @@ try:
 except ImportError:
     MarketDataProvider = None  # type: ignore
     MarketDataError = RuntimeError  # type: ignore
+
+
+#: DDL for the durable reconciliation-suspension row. One writer
+#: (:class:`ExecutionEngine`), one authority, one schema.
+RECONCILE_STATE_SCHEMA = (
+    "CREATE TABLE IF NOT EXISTS reconcile_state "
+    "(k INTEGER PRIMARY KEY, suspended INTEGER NOT NULL, reason TEXT, updated_at TEXT)"
+)
+
+
+@dataclass(frozen=True)
+class ReconcileSuspension:
+    """The DURABLE reconciliation-suspension record — a read-only snapshot.
+
+    ``suspended`` is the ACTIVE blocking condition. ``reason``/``updated_at``
+    are the evidence of the fault that raised it; they are preserved in the
+    audit log even after the condition is healed, so "historical evidence" and
+    "active blocker" never collapse into the same fact.
+    """
+
+    suspended: bool
+    reason: str | None = None
+    updated_at: str | None = None
+    #: ``False`` when the row could not be read at all (fail closed ⇒ suspended).
+    readable: bool = True
+    #: ``True`` when a row actually exists (absent ⇒ nothing was ever persisted).
+    recorded: bool = False
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "suspended": self.suspended,
+            "reason": self.reason,
+            "updated_at": self.updated_at,
+            "readable": self.readable,
+            "recorded": self.recorded,
+            "source": "durable:reconcile_state",
+        }
+
+
+def load_reconcile_suspension(db_path: Path | str) -> ReconcileSuspension:
+    """Read the durable ``reconcile_state`` row — the ONE reconciliation authority.
+
+    Every surface that reports or enforces "reconciliation suspended" must read
+    THIS function, so enforcement (``ExecutionEngine``), recovery
+    (``DemoSession.resume_from_suspension``) and reporting (startup health,
+    ``/api/demo/guide``) cannot drift apart. A keyword scan over recent audit
+    events is *evidence*, never the active condition — the row is.
+
+    Fail closed:
+
+    * a recorded row is returned exactly;
+    * ``no such table`` honestly means no suspension was ever persisted;
+    * any other read failure is reported as SUSPENDED and ``readable=False``.
+    """
+    path = Path(db_path)
+    try:
+        with db_connect(path) as con:
+            row = con.execute("SELECT suspended, reason, updated_at FROM reconcile_state WHERE k=1").fetchone()
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            return ReconcileSuspension(suspended=False, readable=True, recorded=False)
+        return ReconcileSuspension(
+            suspended=True,
+            reason=f"reconcile suspend state unreadable — fail closed ({type(e).__name__}: {e})",
+            readable=False,
+        )
+    except Exception as e:
+        return ReconcileSuspension(
+            suspended=True,
+            reason=f"reconcile suspend state unreadable — fail closed ({type(e).__name__}: {e})",
+            readable=False,
+        )
+    if row:
+        return ReconcileSuspension(
+            suspended=bool(row[0]),
+            reason=row[1] or None,
+            updated_at=row[2] if len(row) > 2 else None,
+            readable=True,
+            recorded=True,
+        )
+    return ReconcileSuspension(suspended=False, readable=True, recorded=False)
 
 
 class OrderManager:
@@ -223,35 +305,18 @@ class ExecutionEngine:
 
     def _init_reconcile_db(self) -> None:
         with db_connect(self._db_path) as con:
-            con.execute(
-                "CREATE TABLE IF NOT EXISTS reconcile_state (k INTEGER PRIMARY KEY, suspended INTEGER NOT NULL, reason TEXT, updated_at TEXT)"
-            )
+            con.execute(RECONCILE_STATE_SCHEMA)
             con.commit()
 
     def _load_reconcile_suspend(self) -> tuple[bool, str | None]:
         """Restore the durable suspension flag — FAIL CLOSED on a read error.
 
-        Every exception used to be suppressed and ``(False, None)`` returned, so
-        a locked, corrupt or otherwise unreadable suspension store silently
-        restarted the engine as HEALTHY and defeated the durable-suspend
-        recovery guarantee the live gate claims to check. Now:
-
-        * a recorded row is restored exactly;
-        * "no such table" honestly means no suspension was ever persisted;
-        * any other read failure is treated as SUSPENDED.
+        Delegates to :func:`load_reconcile_suspension`, the ONE reader shared
+        with the recovery path and every reporting surface, so enforcement and
+        reporting cannot answer differently for the same row.
         """
-        try:
-            with db_connect(self._db_path) as con:
-                row = con.execute("SELECT suspended, reason FROM reconcile_state WHERE k=1").fetchone()
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e).lower():
-                return False, None
-            return True, f"reconcile suspend state unreadable — fail closed ({type(e).__name__}: {e})"
-        except Exception as e:
-            return True, f"reconcile suspend state unreadable — fail closed ({type(e).__name__}: {e})"
-        if row:
-            return bool(row[0]), row[1]
-        return False, None
+        state = load_reconcile_suspension(self._db_path)
+        return state.suspended, state.reason
 
     def _persist_reconcile_suspend(self, suspended: bool, reason: str | None) -> None:
         if not self.persist_reconcile_state:

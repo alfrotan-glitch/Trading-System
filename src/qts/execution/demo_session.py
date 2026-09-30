@@ -487,6 +487,275 @@ class DemoSession:
         record = self.stage.halt(reason=reason, actor=self.config.actor)
         return {"killed": True, "reason": reason, "stage": record.as_dict()}
 
+    # ------------------------------------------------- durable suspension set
+    #: Every DURABLE record that can suspend trading, and the canonical
+    #: predicate that alone is allowed to recover it. There is exactly one
+    #: authority per record; nothing here introduces a second state machine.
+    SUSPENSION_RECORDS: tuple[str, ...] = ("kill_switch", "reconciliation_suspension")
+
+    def durable_suspension_state(self) -> dict[str, Any]:
+        """The complete DURABLE suspension set, read from its own authorities.
+
+        Two independent rows can each block trading and they are written by
+        different components:
+
+        * ``risk_state.killed`` — :class:`~qts.risk.engine.RiskEngine`, the flag
+          ``pre_trade`` enforces and the startup ``restore_suspension`` check
+          reports;
+        * ``reconcile_state.suspended`` — :class:`~qts.execution.engine.
+          ExecutionEngine`, the flag the pre-trade check ``reconciliation_ready``
+          enforces.
+
+        Reporting only one of them is what allowed "the stop was cleared" and
+        "orders are refused because reconciliation is suspended" to be true at
+        the same time. This method is the single read every surface uses, so
+        the two can no longer be described separately.
+
+        Unreadable is SUSPENDED (fail closed), never "healthy".
+        """
+        from qts.execution.engine import load_reconcile_suspension
+
+        kill = self.kill_switch_state()
+        kill_readable = bool(kill.get("readable"))
+        kill_active = bool(kill.get("killed")) or not kill_readable
+        recon = load_reconcile_suspension(self.db_path)
+
+        active: list[dict[str, Any]] = []
+        if kill_active:
+            active.append(
+                {
+                    "id": "kill_switch",
+                    "detail": (
+                        str(kill.get("reason") or "no reason recorded")
+                        if kill_readable
+                        else f"kill-switch state unreadable — treated as ACTIVE ({kill.get('reason')})"
+                    ),
+                    "recoverable_by": "operator decision recorded with a reason (resume)",
+                }
+            )
+        if recon.suspended:
+            active.append(
+                {
+                    "id": "reconciliation_suspension",
+                    "detail": str(recon.reason or "unresolved drift"),
+                    "recoverable_by": "a fresh broker-authoritative reconciliation reporting no drift",
+                }
+            )
+        stage = self.stage.current()
+        return {
+            "kill_switch": dict(kill),
+            "reconciliation": recon.as_dict(),
+            "stage": stage.as_dict(),
+            "active_blockers": active,
+            "active_ids": [b["id"] for b in active],
+            "suspended": bool(active),
+            "orders_permitted": (not active) and stage.stage in ORDER_STAGES,
+        }
+
+    def _emit_recovery_event(self, event_type: Any, payload: dict[str, Any]) -> None:
+        """Best-effort audit of a recovery decision. Never erases history."""
+        with contextlib.suppress(Exception):
+            from qts.observability.audit import SqliteAuditLog
+
+            SqliteAuditLog().emit(event_type(payload))
+
+    def resume_from_suspension(self, *, reason: str, actor: str | None = None) -> dict[str, Any]:
+        """The ONE canonical recovery transition out of a durable suspension.
+
+        ``SUSPENDED`` → ``RECOVERY IN PROGRESS`` → ``RECOVERY VERIFIED`` →
+        ``RECOVERED`` (stage still ``HALTED``), or back to ``SUSPENDED`` when a
+        recovery predicate is not satisfied.
+
+        Every durable record is recovered through its OWN authority and only
+        when its own predicate holds:
+
+        * ``reconciliation_suspension`` → a fresh, broker-authoritative
+          :meth:`reconcile` reporting ``requires_suspend=False``, cleared with
+          :meth:`~qts.execution.engine.ExecutionEngine.heal_reconcile`;
+        * ``kill_switch`` → an explicit operator decision with a recorded
+          reason, cleared with :meth:`~qts.risk.engine.RiskEngine.reset_kill`.
+
+        The operation is **all-or-nothing**: if any active record cannot be
+        recovered, nothing is cleared and the refusal is recorded. It is
+        **idempotent** (already-recovered is a success with ``changed=False``)
+        and **verified after the write** (the durable set is re-read, so an
+        in-memory "cleared" can never disagree with the store).
+
+        Recovery clears the *active blocking conditions* only. It grants no
+        permission: the stage machine stays ``HALTED``, the authority is
+        untouched, and every pre-trade gate still runs before any order. The
+        original fault stays in the audit log as evidence.
+        """
+        actor = actor or f"{self.config.actor}:resume"
+        reason = str(reason or "").strip()
+        from qts.domain.events import DomainEvent, EventType
+
+        def _event(event_type: Any):
+            return lambda payload: DomainEvent(event_type=event_type, payload=payload)
+
+        before = self.durable_suspension_state()
+        result: dict[str, Any] = {
+            "recovered": False,
+            "changed": False,
+            "reason": reason,
+            "actor": actor,
+            "before": before,
+            "after": before,
+            "cleared": [],
+            "active_blockers": list(before["active_blockers"]),
+            "recovery_checks": {},
+            "stage": before["stage"],
+            "orders_permitted": False,
+            "next": "prepare",
+        }
+        if not reason:
+            result["active_blockers"] = [
+                {"id": "invalid_request", "detail": "a recovery decision requires a recorded reason"}
+            ]
+            return result
+
+        if not before["active_blockers"]:
+            # Already recovered — idempotent success, still recorded.
+            result.update(recovered=True, changed=False, active_blockers=[])
+            result["recovery_checks"]["no_active_suspension"] = {
+                "satisfied": True,
+                "detail": "no durable suspension record is active",
+            }
+            result["orders_permitted"] = before["orders_permitted"]
+            result["next"] = None if before["orders_permitted"] else "prepare"
+            self._emit_recovery_event(
+                _event(EventType.KILL_SWITCH),
+                {
+                    "action": "resume_noop",
+                    "recovered": True,
+                    "changed": False,
+                    "reason": reason,
+                    "actor": actor,
+                    "stage": before["stage"]["stage"],
+                },
+            )
+            return result
+
+        active_ids = set(before["active_ids"])
+        checks: dict[str, Any] = result["recovery_checks"]
+
+        # --- predicate: the kill-switch row must be readable to act on it ----
+        if "kill_switch" in active_ids:
+            readable = bool(before["kill_switch"].get("readable"))
+            checks["kill_switch_state_readable"] = {
+                "satisfied": readable,
+                "detail": (
+                    "durable kill-switch row readable; an explicit operator decision may clear it"
+                    if readable
+                    else "durable kill-switch row unreadable — cannot clear a state that cannot be read"
+                ),
+            }
+
+        # --- predicate: broker-authoritative reconciliation reports no drift -
+        fresh_reconcile: dict[str, Any] | None = None
+        if "reconciliation_suspension" in active_ids:
+            try:
+                fresh_reconcile = self.reconcile()
+                clean = not bool(fresh_reconcile.get("requires_suspend"))
+                detail = (
+                    f"fresh reconciliation drift={fresh_reconcile.get('drift')} "
+                    f"details={fresh_reconcile.get('details')}"
+                )
+            except Exception as exc:
+                fresh_reconcile = {
+                    "drift": "UNAVAILABLE",
+                    "details": f"{type(exc).__name__}: {exc}",
+                    "requires_suspend": True,
+                }
+                clean = False
+                detail = f"reconciliation could not be run — fail closed ({type(exc).__name__}: {exc})"
+            checks["reconciliation_verified_clean"] = {"satisfied": clean, "detail": detail}
+            result["reconciliation"] = fresh_reconcile
+
+        unsatisfied = [name for name, c in checks.items() if not c["satisfied"]]
+        if unsatisfied:
+            after = self.durable_suspension_state()
+            result.update(
+                recovered=False,
+                changed=False,
+                after=after,
+                active_blockers=list(after["active_blockers"]),
+                stage=after["stage"],
+            )
+            self._emit_recovery_event(
+                _event(EventType.KILL_SWITCH),
+                {
+                    "action": "resume_refused",
+                    "reason": reason,
+                    "actor": actor,
+                    "unsatisfied_recovery_checks": unsatisfied,
+                    "active_blockers": [b["id"] for b in after["active_blockers"]],
+                    "evidence": {name: c["detail"] for name, c in checks.items()},
+                    "stage": after["stage"]["stage"],
+                },
+            )
+            return result
+
+        # ---------------------------------------------------------- recover
+        # Every predicate holds. Clear each active record through its OWN
+        # canonical API, recording the ORIGINAL fault reason as evidence.
+        if "reconciliation_suspension" in active_ids:
+            original = before["reconciliation"].get("reason")
+            self.engine.heal_reconcile(
+                f"recovery verified via canonical reconciliation: {reason} "
+                f"(original suspension: {original or 'unrecorded'})"
+            )
+            result["cleared"].append("reconciliation_suspension")
+
+        if "kill_switch" in active_ids:
+            from qts.risk.engine import RiskEngine, RiskLimits
+
+            original_kill = before["kill_switch"].get("reason")
+            RiskEngine(RiskLimits(), db_path=self.db_path, persist_kill=True).reset_kill()
+            result["cleared"].append("kill_switch")
+            self._emit_recovery_event(
+                _event(EventType.KILL_SWITCH),
+                {
+                    "action": "cleared",
+                    "was_killed": True,
+                    "reason": reason,
+                    "previous_reason": original_kill,
+                    "actor": actor,
+                    "stage": before["stage"]["stage"],
+                },
+            )
+
+        # ------------------------------------------------- verify the write
+        # Re-read the durable set: an in-memory "cleared" that the store does
+        # not agree with must never be reported as recovered.
+        after = self.durable_suspension_state()
+        recovered = not after["active_blockers"]
+        result.update(
+            recovered=recovered,
+            changed=bool(result["cleared"]),
+            after=after,
+            active_blockers=list(after["active_blockers"]),
+            stage=after["stage"],
+            orders_permitted=after["orders_permitted"],
+        )
+        result["next"] = None if after["orders_permitted"] else "prepare"
+        self._emit_recovery_event(
+            _event(EventType.RECONCILE if "reconciliation_suspension" in active_ids else EventType.KILL_SWITCH),
+            {
+                "action": "resume_completed" if recovered else "resume_incomplete",
+                "drift": "RECOVERED" if recovered else "STILL_SUSPENDED",
+                "recovered": recovered,
+                "cleared": list(result["cleared"]),
+                "reason": reason,
+                "actor": actor,
+                "previous_blockers": before["active_ids"],
+                "remaining_blockers": [b["id"] for b in after["active_blockers"]],
+                "stage": after["stage"]["stage"],
+                "orders_permitted": after["orders_permitted"],
+            },
+        )
+        return result
+
     def positions(self) -> list[dict[str, Any]]:
         """List open broker positions enriched with canonical symbol and journal correlation."""
         try:

@@ -346,57 +346,50 @@ def demo_verify(symbol: str | None, db: str, terminal_path: str | None, json_out
 @click.option("--reason", required=True, help="why the halt is being lifted (recorded)")
 @click.option("--confirm", is_flag=True, help="explicit operator confirmation (required)")
 def demo_clear_kill(db: str, reason: str, confirm: bool) -> None:
-    """Clear the durable kill switch — recorded; the stage stays HALTED.
+    """Recover from a durable suspension — recorded; the stage stays HALTED.
 
-    Clearing the flag does NOT resume trading: the stage machine remains
-    HALTED, so orders stay refused until an operator re-arms explicitly and
-    the whole staged progression is proved again.
+    Runs the ONE canonical recovery transition
+    (:meth:`~qts.execution.demo_session.DemoSession.resume_from_suspension`),
+    which covers the COMPLETE durable suspension set: the operator kill switch
+    AND the reconciliation suspension. Clearing only the kill flag left the
+    reconciliation row SUSPENDED, so the very next order failed
+    ``reconciliation_ready`` and the policy kill condition immediately re-raised
+    the halt.
+
+    Recovery does NOT resume trading: the stage machine remains HALTED, so
+    orders stay refused until an operator re-arms explicitly and the whole
+    staged progression is proved again. A recovery predicate that is not
+    satisfied clears nothing and exits non-zero.
     """
     if not confirm or not reason.strip():
         click.echo("REFUSED: clearing a kill switch requires --confirm and a non-empty --reason", err=True)
         raise SystemExit(2)
 
-    from qts.risk.engine import RiskEngine, RiskLimits
-
-    engine = RiskEngine(RiskLimits(), db_path=Path(db), persist_kill=True)
-    was_killed = bool(engine.is_killed())
-    engine.reset_kill()
-
     session = _demo_session("", db)
-    stage_record = session.stage.current()
-
-    # Audit the recovery: a lifted halt must be as traceable as the halt itself.
-    audit_note = None
-    try:
-        from qts.domain.events import DomainEvent, EventType
-        from qts.observability.audit import SqliteAuditLog
-
-        audit = SqliteAuditLog()
-        audit.emit(
-            DomainEvent(
-                event_type=EventType.KILL_SWITCH,
-                payload={
-                    "action": "cleared",
-                    "was_killed": was_killed,
-                    "reason": reason,
-                    "stage": stage_record.stage,
-                    "actor": "cli:demo-clear-kill",
-                },
-            )
-        )
-        audit_note = "audit event recorded"
-    except Exception as exc:  # pragma: no cover - audit best effort
-        audit_note = f"audit event NOT recorded: {type(exc).__name__}: {exc}"
+    before = session.durable_suspension_state()
+    recovery = session.resume_from_suspension(reason=reason, actor="cli:demo-clear-kill")
+    after = recovery["after"]
 
     out = {
-        "was_killed": was_killed,
-        "killed": bool(engine.is_killed()),
+        "was_killed": bool(before["kill_switch"].get("killed")),
+        "killed": bool(after["kill_switch"].get("killed")),
+        "was_suspended": bool(before["reconciliation"].get("suspended")),
+        "suspended": bool(after["reconciliation"].get("suspended")),
+        "recovered": recovery["recovered"],
+        "cleared": recovery["cleared"],
+        "active_blockers": recovery["active_blockers"],
+        "recovery_checks": recovery["recovery_checks"],
         "reason": reason,
-        "stage": stage_record.as_dict(),
-        "audit": audit_note,
+        "stage": after["stage"],
+        "audit": "recovery decision recorded in the audit log",
         "next": f"qts demo arm --stage 1 --confirm --risk-ack --db {db}",
     }
     click.echo(json.dumps(out, indent=2, default=str))
+    if not recovery["recovered"]:
+        for blocker in recovery["active_blockers"]:
+            click.echo(f"REFUSED: {blocker['id']}: {blocker['detail']}", err=True)
+        click.echo("nothing was cleared — the suspension is still ACTIVE.", err=True)
+        raise SystemExit(2)
     click.echo("kill switch cleared — the stage remains HALTED; re-arm explicitly before any order.")
 
 

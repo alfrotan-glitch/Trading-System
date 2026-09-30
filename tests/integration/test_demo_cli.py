@@ -390,6 +390,91 @@ def test_clear_kill_lifts_the_flag_but_leaves_the_stage_halted(run_cli, operator
     assert "kill_switch=clear" in healthy.output
 
 
+def _suspend_reconciliation_durably(operator_env, *, reason: str) -> None:
+    """Leave behind the durable row a previous drift fault would have written."""
+    from qts.db import connect as db_connect
+    from qts.execution.engine import RECONCILE_STATE_SCHEMA
+
+    with db_connect(Path(operator_env["db"])) as con:
+        con.execute(RECONCILE_STATE_SCHEMA)
+        con.execute(
+            "INSERT OR REPLACE INTO reconcile_state (k, suspended, reason, updated_at) VALUES (1,1,?,?)",
+            (reason, datetime.now(UTC).isoformat()),
+        )
+        con.commit()
+
+
+def _unaccounted_venue_position():
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        ticket=555_001,
+        symbol="XAUUSD@",
+        volume=0.01,
+        type=0,
+        price_open=2000.0,
+        price_current=2000.0,
+        profit=-1.0,
+        time=int(datetime.now(UTC).timestamp()) - 60,
+        comment="",
+        magic=0,
+    )
+
+
+def test_clear_kill_refuses_while_reconciliation_is_still_suspended(run_cli, operator_env):
+    """clear-kill is a RECOVERY, not a switch: it must refuse while the
+    broker and QTS still disagree, and it must not half-clear the state."""
+    from qts.execution.engine import load_reconcile_suspension
+
+    run_cli("arm", "--stage", "1", "--db", operator_env["db"], "--confirm", "--risk-ack")
+    run_cli("kill", "--db", operator_env["db"], "--reason", "drift triage")
+    operator_env["terminal"].positions = [_unaccounted_venue_position()]
+    _suspend_reconciliation_durably(operator_env, reason="venue XAUUSD 0.01 not local")
+
+    refused = run_cli(
+        "clear-kill", "--db", operator_env["db"], "--reason", "trying to clear the halt", "--confirm"
+    )
+    assert refused.exit_code == 2, refused.output
+    assert "REFUSED:" in _out(refused)
+    assert "reconciliation" in _out(refused).lower()
+
+    body = json.loads(refused.output.split("\nREFUSED:")[0])
+    assert body["recovered"] is False
+    assert body["cleared"] == []
+    assert body["was_killed"] is True
+    assert body["killed"] is True, "an all-or-nothing recovery must not half-clear the state"
+    assert load_reconcile_suspension(Path(operator_env["db"])).suspended is True
+    assert operator_env["terminal"].requests == []
+
+
+def test_clear_kill_recovers_the_whole_suspension_once_the_drift_is_resolved(run_cli, operator_env):
+    from qts.execution.engine import load_reconcile_suspension
+
+    run_cli("arm", "--stage", "1", "--db", operator_env["db"], "--confirm", "--risk-ack")
+    run_cli("kill", "--db", operator_env["db"], "--reason", "drift triage")
+    _suspend_reconciliation_durably(operator_env, reason="venue XAUUSD 0.01 not local")
+
+    # The operator resolves the divergence; the venue now matches QTS.
+    operator_env["terminal"].positions = []
+    cleared = run_cli(
+        "clear-kill", "--db", operator_env["db"], "--reason", "venue position closed and verified", "--confirm"
+    )
+    assert cleared.exit_code == 0, _out(cleared)
+    body = json.loads(cleared.output.split("\nkill switch cleared")[0])
+    assert body["recovered"] is True
+    assert set(body["cleared"]) == {"reconciliation_suspension", "kill_switch"}
+    assert body["was_suspended"] is True
+    assert body["suspended"] is False
+    assert body["stage"]["stage"] == "HALTED"
+    assert "stage remains HALTED" in cleared.output
+    assert load_reconcile_suspension(Path(operator_env["db"])).suspended is False
+
+    # Restart-safe: a fresh verify no longer reports a stop.
+    healthy = run_cli("verify", "--db", operator_env["db"])
+    assert "kill_switch=clear" in healthy.output
+    assert operator_env["terminal"].requests == []
+
+
 def test_positions_and_close_commands_lifecycle(run_cli, operator_env):
     """Test qts demo positions and qts demo close end to end."""
     # Setup and arm

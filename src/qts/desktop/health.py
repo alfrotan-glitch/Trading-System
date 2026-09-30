@@ -62,7 +62,18 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
             state = RiskEngine(RiskLimits()).kill_state()
             if state.get("killed"):
                 reason = state.get("reason") or "no reason recorded"
-                return False, f"kill switch active — trading suspended ({reason})"
+                # The reason is HISTORICAL evidence of the fault that raised
+                # the flag; it is not, by itself, proof that the fault is still
+                # present. Say so, and name the canonical recovery transition —
+                # a restored suspension that no lifecycle can clear is how this
+                # system spent a whole session "Suspended" with a fresh quote
+                # and a healthy reconciliation.
+                return False, (
+                    f"kill switch active — trading suspended (recorded reason: {reason}); "
+                    "recoverable through the canonical resume transition "
+                    "(POST /api/demo/guide/resume or `qts demo clear-kill`) once every "
+                    "recovery predicate holds"
+                )
             return True, f"suspension state healthy (source={state.get('source')})"
         except Exception as e:
             # Fail closed: an unreadable kill-switch state is treated as active.
@@ -176,18 +187,38 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
         except Exception as e:
             return False, f"MT5 REAL probe failed: {type(e).__name__}: {e}"
 
-    # 7 reconciliation
+    # 7 reconciliation — the DURABLE ``reconcile_state`` row is the authority.
+    #
+    # This used to scan the last 50 audit events for the words "DRIFT" or
+    # "SUSPENDED". That is evidence, not state, and it is wrong in BOTH
+    # directions:
+    #
+    #   * a healed drift kept failing startup until it aged out of the window
+    #     (historical evidence treated as an active blocker), and
+    #   * an UNHEALED suspension reported "reconciliation healthy" as soon as
+    #     50 newer events had been recorded — which is exactly how a host could
+    #     show `run_reconciliation: PASS` while `reconcile_state.suspended=1`
+    #     kept every order refused on ``reconciliation_ready``.
+    #
+    # It now reads the same row ExecutionEngine enforces, through the same
+    # function (``load_reconcile_suspension``), so reporting and enforcement
+    # cannot disagree. The audit trail is untouched and remains the evidence.
     def check_recon():
         try:
-            # Check last reconcile report in audit
-            from qts.observability.audit import SqliteAuditLog
+            from qts.config.paths import artifact_path
+            from qts.execution.engine import load_reconcile_suspension
 
-            log = SqliteAuditLog()
-            events = log.query(limit=50)
-            drifts = [e for e in events if "DRIFT" in json.dumps(e.payload) or "SUSPENDED" in json.dumps(e.payload)]
-            if drifts:
-                return False, "reconciliation drift previously detected — requires review"
-            return True, "reconciliation healthy"
+            state = load_reconcile_suspension(artifact_path("db"))
+            if not state.readable:
+                return False, f"reconciliation suspension state unreadable — fail closed ({state.reason})"
+            if state.suspended:
+                return False, (
+                    f"reconciliation SUSPENDED (durable reconcile_state): {state.reason or 'unresolved drift'} — "
+                    "recoverable through the canonical resume transition once a fresh reconciliation reports no drift"
+                )
+            if not state.recorded:
+                return True, "reconciliation healthy — no suspension was ever recorded"
+            return True, "reconciliation healthy — no active durable suspension"
         except Exception as e:
             # Fail closed: reconciliation health that could not be measured is
             # never reported as healthy.
@@ -203,15 +234,22 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
 
     results["overall"] = all(c["passed"] for c in results["checks"])
     results["system_status"] = "Running" if results["overall"] else "Blocked"
-    suspension = next((c for c in results["checks"] if c["name"] == "restore_suspension"), None)
-    # The named suspension check is the authority for "Suspended" — it is read
-    # directly rather than inferred from wording. The keyword scan is kept only
-    # as a backstop so that a kill condition reported by any OTHER check still
-    # wins the conservative status; both directions fail safe.
-    kill_reported = (suspension is not None and not suspension["passed"]) or any(
-        "kill" in c["detail"].lower() for c in results["checks"]
+    # The two named suspension checks are the authority for "Suspended" — they
+    # are read directly rather than inferred from wording. BOTH durable records
+    # count: an unhealed ``reconcile_state.suspended`` is a suspension even when
+    # the kill switch is clear, and reporting it merely as "Blocked" is what
+    # made the two surfaces describe the same machine differently. The keyword
+    # scan is kept only as a backstop so that a kill condition reported by any
+    # OTHER check still wins the conservative status; all directions fail safe.
+    named = {c["name"]: c for c in results["checks"]}
+    suspension = named.get("restore_suspension")
+    reconciliation = named.get("run_reconciliation")
+    suspension_reported = (
+        (suspension is not None and not suspension["passed"])
+        or (reconciliation is not None and not reconciliation["passed"] and "SUSPENDED" in reconciliation["detail"])
+        or any("kill" in c["detail"].lower() for c in results["checks"])
     )
-    if kill_reported:
+    if suspension_reported:
         results["system_status"] = "Suspended"
     return results
 

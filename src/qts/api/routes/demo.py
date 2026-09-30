@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from qts.api.deps import (
@@ -546,20 +548,34 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
         "spread_bps": quote.get("spread_bps"),
     }
 
-    kill = session.kill_switch_state()
-    guide["kill_switch"] = {
-        "active": bool(kill.get("killed")),
-        "readable": bool(kill.get("readable")),
-        "reason": kill.get("reason"),
-    }
     try:
         reconciliation = session.reconcile()
     except Exception as exc:
         reconciliation = {"requires_suspend": True, "drift": "UNAVAILABLE", "details": f"reconciliation failed: {exc}"}
+
+    # The DURABLE suspension set, read from the SAME authorities the order
+    # gate enforces (and AFTER the fresh probe, so a drift detected just now is
+    # already included). Reporting only the fresh probe is what let the guide
+    # say "reconciliation clean" while ``/api/demo/order`` refused on
+    # ``reconciliation_ready`` — the durable row was still SUSPENDED.
+    durable = session.durable_suspension_state()
+    kill = durable["kill_switch"]
+    guide["kill_switch"] = {
+        "active": bool(kill.get("killed")) or not bool(kill.get("readable")),
+        "readable": bool(kill.get("readable")),
+        "reason": kill.get("reason"),
+    }
+    durable_suspended = bool(durable["reconciliation"].get("suspended"))
     guide["reconciliation"] = {
-        "clean": not reconciliation.get("requires_suspend"),
+        "clean": (not reconciliation.get("requires_suspend")) and not durable_suspended,
+        "suspended": durable_suspended,
+        "suspended_reason": durable["reconciliation"].get("reason"),
         "drift": reconciliation.get("drift"),
         "details": reconciliation.get("details"),
+    }
+    guide["suspension"] = {
+        "suspended": bool(durable["suspended"]),
+        "active_blockers": list(durable["active_blockers"]),
     }
 
     stage_record = session.stage.current()
@@ -700,6 +716,23 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
             "label": "Check connection",
             "description": "QTS re-runs its safety checks: terminal, demo account, gold symbol and fresh prices.",
         }
+    elif guide["reconciliation"]["suspended"]:
+        # A DURABLE reconciliation suspension is a recorded stop, not a passing
+        # observation: no amount of re-checking clears the row. It leaves only
+        # through the same recorded recovery decision the kill switch uses, and
+        # only when a fresh reconciliation actually agrees with the broker.
+        # Offering "Check connection" here was a dead end — the operator had no
+        # action that could ever clear it.
+        headline, reason = "Stopped", "Trading is stopped: QTS and the broker disagreed about open positions."
+        next_action = {
+            "action": "resume",
+            "label": "Review and resume",
+            "description": (
+                "QTS compares its own records with the broker again. If they now agree, the stop is cleared "
+                "and recorded with your reason; if they still disagree, trading stays off."
+            ),
+            "requires_reason": True,
+        }
     elif not guide["reconciliation"]["clean"]:
         headline, reason = "Not ready", "QTS and the broker disagree about open positions."
         next_action = {
@@ -734,7 +767,13 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
         headline, reason = "Ready for demo trading", None
         next_action = None
 
-    guide["status"] = "ready" if can_trade else ("stopped" if guide["kill_switch"]["active"] else "blocked")
+    # "stopped" means exactly "a recorded stop is active AND reviewing it is
+    # the next thing to do" — i.e. the status and the offered action can never
+    # disagree. A durable suspension the operator cannot yet act on (terminal
+    # down) reports the honest connection blocker instead of a dead end.
+    guide["status"] = (
+        "ready" if can_trade else ("stopped" if (next_action or {}).get("action") == "resume" else "blocked")
+    )
     guide["headline"] = headline
     guide["reason"] = reason
     guide["next"] = next_action
@@ -750,6 +789,7 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
         "order_check": report.get("order_check"),
         "kill_switch": kill,
         "reconciliation": reconciliation,
+        "durable_suspension": durable,
         "registry_reasons": list(entry_reasons or []),
         "note": "Engineering detail for Advanced views. None of it changes what the product workflow enforces.",
     }
@@ -970,11 +1010,24 @@ def demo_guide_refresh(payload: dict[str, Any] | None = None) -> Any:
 
 @router.post("/api/demo/guide/resume")
 def demo_guide_resume(payload: dict[str, Any] | None = None) -> Any:
-    """Clear the durable kill switch with a recorded reason (guided).
+    """Recover from a durable suspension through the canonical lifecycle.
 
-    Same semantics as ``qts demo clear-kill``: the flag is cleared and
-    audited, the stage machine stays HALTED until the operator prepares the
-    demo account again — clearing never resumes trading by itself.
+    Same semantics as ``qts demo clear-kill``, but over the COMPLETE durable
+    suspension set (:meth:`~qts.execution.demo_session.DemoSession.
+    durable_suspension_state`): the operator stop *and* the reconciliation
+    suspension. Clearing only one of them is what let ``resume`` answer 200
+    while the order gate still refused on ``reconciliation_ready`` — and the
+    policy kill condition then re-raised the stop on the next order attempt.
+
+    HTTP is the result of the requested operation, not of the request being
+    understood:
+
+    * **200** — every active suspension was recovered (or none was active).
+      Trading is *not* resumed by this: the stage machine stays HALTED and the
+      response says so (``orders_permitted=false``, ``next="prepare"``).
+    * **409** — a recovery predicate is not satisfied. Nothing was cleared and
+      ``recovery.active_blockers`` names what still blocks, machine-readably.
+    * **400** — the request itself is invalid (no confirmation / no reason).
     """
     body = payload or {}
     confirmed = bool(body.get("confirmed"))
@@ -982,39 +1035,31 @@ def demo_guide_resume(payload: dict[str, Any] | None = None) -> Any:
     if not confirmed or not reason:
         raise HTTPException(400, "resuming requires explicit confirmed=true and a non-empty reason")
 
-    from qts.risk.engine import RiskEngine, RiskLimits
-
     server = _bind()
     session = server._demo_session()
-    engine = RiskEngine(RiskLimits(), db_path=session.db_path, persist_kill=True)
-    was_killed = bool(engine.is_killed())
-    engine.reset_kill()
-    try:
-        from qts.domain.events import DomainEvent, EventType
-        from qts.observability.audit import SqliteAuditLog
-
-        audit = SqliteAuditLog()
-        audit.emit(
-            DomainEvent(
-                event_type=EventType.KILL_SWITCH,
-                payload={
-                    "action": "cleared",
-                    "was_killed": was_killed,
-                    "reason": reason,
-                    "stage": session.stage.current().stage,
-                    "actor": "api:guide",
-                },
-            )
-        )
-    except Exception:
-        pass  # audit best effort — the kill flag itself is authoritative
+    recovery = session.resume_from_suspension(reason=reason, actor="api:guide")
     guide = _build_guide(session)
-    return _guide_response(
-        guide,
-        True,
-        "The stop was cleared.",
-        "The demo account still needs to be prepared again before an order. Trading did not resume by itself.",
-    )
+
+    if recovery["recovered"]:
+        if not recovery["changed"]:
+            headline = "Nothing was stopped."
+            detail = "There was no active stop to clear. Trading still requires the demo account to be prepared."
+        else:
+            cleared = ", ".join(recovery["cleared"])
+            headline = "The stop was cleared."
+            detail = (
+                f"Recovered: {cleared}. The demo account still needs to be prepared again before an order. "
+                "Trading did not resume by itself."
+            )
+        response = _guide_response(guide, True, headline, detail)
+    else:
+        blockers = recovery["active_blockers"] or [{"id": "unknown", "detail": "recovery did not complete"}]
+        detail = "; ".join(f"{b['id']}: {b['detail']}" for b in blockers)
+        response = _guide_response(guide, False, "Trading could not be resumed.", detail)
+
+    payload_body = json.loads(response.body.decode("utf-8"))
+    payload_body["recovery"] = recovery
+    return JSONResponse(status_code=response.status_code, content=jsonable_encoder(payload_body))
 
 
 # Mount static UI if exists

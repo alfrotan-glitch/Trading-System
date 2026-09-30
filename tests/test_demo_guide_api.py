@@ -404,3 +404,166 @@ def test_resume_clears_the_kill_switch_but_keeps_the_stage_halted(client, api_en
     assert guide["technical"]["stage"]["stage"] == "HALTED"
     assert guide["can_trade"] is False
     assert guide["next"]["action"] == "prepare"
+
+
+# ------------------------------------------- resume: HTTP == the real outcome
+#
+# The Windows host answered ``200 OK`` to ``POST /api/demo/guide/resume`` while
+# the system stayed suspended and every order kept returning 409: resume
+# cleared ``risk_state.killed`` but never ``reconcile_state.suspended``, which
+# had no recovery edge at all. These tests pin the contract that a 2xx now
+# means the requested recovery ACTUALLY happened, and that a remaining blocker
+# is reported as 409 with a machine-readable reason.
+
+
+def _venue_drift_position():
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        ticket=555_001,
+        symbol="XAUUSD@",
+        volume=0.01,
+        type=0,
+        price_open=2000.0,
+        price_current=2000.0,
+        profit=-1.0,
+        time=int(datetime.now(UTC).timestamp()) - 60,
+        comment="",
+        magic=0,
+    )
+
+
+def _suspend_reconciliation(client, session, terminal) -> None:
+    """Drive the REAL drift path: a venue position QTS cannot account for."""
+    terminal.positions = [_venue_drift_position()]
+    terminal.deals = []
+    assert session.reconcile()["requires_suspend"] is True
+    refused = client.post(
+        "/api/demo/order",
+        json={"side": "BUY", "stop_loss": "1995.00", "confirmed": True, "risk_ack": True},
+    )
+    assert refused.status_code == 409, refused.text
+    assert "reconciliation_ready" in refused.json()["verdict"]["failed"]
+    assert terminal.requests == [], "a refused gate must never reach the broker"
+
+
+def test_resume_reports_409_while_a_real_blocker_remains(client, api_env, monkeypatch):
+    from fakes_mt5_demo import FakeTerminal
+
+    from qts.execution.engine import load_reconcile_suspension
+
+    _register_plan(api_env)
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+    _inject(session, monkeypatch)
+    _suspend_reconciliation(client, session, terminal)
+
+    # The drift is still present: recovery is impossible and must say so.
+    response = client.post(
+        "/api/demo/guide/resume", json={"confirmed": True, "reason": "trying to clear the halt"}
+    )
+    assert response.status_code == 409, response.text
+    body = response.json()
+    assert body["result"]["ok"] is False
+    recovery = body["recovery"]
+    assert recovery["recovered"] is False
+    assert recovery["changed"] is False
+    assert recovery["cleared"] == []
+    assert "reconciliation_suspension" in {b["id"] for b in recovery["active_blockers"]}
+    assert recovery["recovery_checks"]["reconciliation_verified_clean"]["satisfied"] is False
+
+    # Nothing was cleared — all-or-nothing, and durable.
+    assert load_reconcile_suspension(session.db_path).suspended is True
+    assert session.kill_switch_state()["killed"] is True
+    assert client.get("/api/demo/guide").json()["status"] == "stopped"
+
+
+def test_resume_recovers_the_whole_durable_suspension_set_once_it_is_safe(client, api_env, monkeypatch):
+    from fakes_mt5_demo import FakeTerminal
+
+    from qts.execution.engine import load_reconcile_suspension
+
+    _register_plan(api_env)
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+    _inject(session, monkeypatch)
+    _suspend_reconciliation(client, session, terminal)
+
+    # The operator resolves the divergence at the venue.
+    terminal.positions = []
+    terminal.deals = []
+
+    response = client.post(
+        "/api/demo/guide/resume", json={"confirmed": True, "reason": "venue position closed and verified"}
+    )
+    assert response.status_code == 200, response.text
+    recovery = response.json()["recovery"]
+    assert recovery["recovered"] is True
+    assert set(recovery["cleared"]) == {"reconciliation_suspension", "kill_switch"}
+    assert recovery["active_blockers"] == []
+    # A successful recovery must NOT imply that trading is ready.
+    assert recovery["orders_permitted"] is False
+    assert recovery["next"] == "prepare"
+
+    assert load_reconcile_suspension(session.db_path).suspended is False
+    assert session.kill_switch_state()["killed"] is False
+
+    guide = response.json()["guide"]
+    assert guide["kill_switch"]["active"] is False
+    assert guide["reconciliation"]["suspended"] is False
+    assert guide["can_trade"] is False
+    assert guide["next"]["action"] == "prepare"
+
+
+def test_resume_prepare_order_surfaces_agree_after_recovery(client, api_env, monkeypatch, passing_readiness):
+    """resume → prepare → order must describe ONE state, not three."""
+    from fakes_mt5_demo import FakeTerminal
+
+    _register_plan(api_env)
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+    _inject(session, monkeypatch)
+    _suspend_reconciliation(client, session, terminal)
+    terminal.positions = []
+    terminal.deals = []
+
+    assert (
+        client.post("/api/demo/guide/resume", json={"confirmed": True, "reason": "resolved"}).status_code == 200
+    )
+    prepared = client.post("/api/demo/guide/prepare", json={"confirmed": True, "risk_ack": True})
+    assert prepared.status_code == 200, prepared.text
+
+    guide = client.get("/api/demo/guide").json()
+    assert guide["status"] == "ready"
+    assert guide["can_trade"] is True
+
+    # The order path sees the SAME readiness — proved without sending an order.
+    dry = client.post(
+        "/api/demo/order",
+        json={"side": "BUY", "stop_loss": "1995.00", "confirmed": True, "risk_ack": True, "dry_run": True},
+    )
+    assert dry.status_code == 200, dry.text
+    verdict = dry.json()["verdict"]
+    assert verdict["passed"] is True, verdict["failed"] + verdict["unknown"]
+    assert verdict["checks"]["reconciliation_ready"]["status"] == "PASS"
+    assert verdict["checks"]["kill_switch_functional"]["status"] == "PASS"
+    assert terminal.requests == [], "no broker order was submitted anywhere in this test"
+
+
+def test_resume_on_an_unsuspended_system_is_an_honest_no_op(client, api_env, monkeypatch):
+    from fakes_mt5_demo import FakeTerminal
+
+    _register_plan(api_env)
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+    _inject(session, monkeypatch)
+
+    response = client.post("/api/demo/guide/resume", json={"confirmed": True, "reason": "nothing is stopped"})
+    assert response.status_code == 200, response.text
+    recovery = response.json()["recovery"]
+    assert recovery["recovered"] is True
+    assert recovery["changed"] is False
+    assert recovery["cleared"] == []
+    assert recovery["recovery_checks"]["no_active_suspension"]["satisfied"] is True
+    assert terminal.requests == []
