@@ -16,6 +16,7 @@ Fail closed on any violation: returns None or raises, caller must suspend.
 
 from __future__ import annotations
 
+import time
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -77,6 +78,16 @@ class MarketDataProvider:
             fresh, detail = self.broker.raw_tick_freshness(expected_symbol, raw_epoch)
             if not fresh:
                 raise MarketDataError(f"tick not fresh on server clock: {detail} for {expected_symbol}")
+            # The shared contract certifies against the canonical 60s window; the
+            # provider's own (possibly tighter, policy-derived) cap still applies —
+            # judged on the raw server-basis age, sound for any offset >= 0 because
+            # true_age = raw_age + offset >= raw_age. Conservative, never looser.
+            if raw_epoch is not None:
+                raw_age = time.time() - float(raw_epoch)
+                if raw_age > self.max_tick_age_s:
+                    raise MarketDataError(
+                        f"tick stale: raw age {raw_age:.1f}s > {self.max_tick_age_s}s for {expected_symbol}"
+                    )
         else:
             age = (now - tick.event_time).total_seconds()
             if age < -1:  # tick from future (clock skew)
