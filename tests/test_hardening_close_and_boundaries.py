@@ -405,6 +405,22 @@ def test_anchoring_leaves_memory_and_absolute_paths_alone() -> None:
     assert _anchored("file:x?mode=ro") == "file:x?mode=ro"
 
 
+def test_a_path_shaped_memory_database_is_never_turned_into_a_real_file() -> None:
+    """REGRESSION: the first version of the anchoring fix caused this.
+
+    IdempotencyStore stores ``Path(":memory:")``, not the string. An
+    ``isinstance(database, str)`` guard missed it, so the anchor resolved it
+    to ``<state_root>/:memory:`` and sqlite created a real 12 KB file there.
+    """
+    from qts.db import _anchored
+
+    assert str(_anchored(Path(":memory:"))) == ":memory:"
+
+
+def test_no_stray_database_file_is_committed_at_the_repository_root() -> None:
+    assert not (REPO / ":memory:").exists(), "a literal ':memory:' file was created at the repo root"
+
+
 def test_operator_facing_text_never_calls_a_demo_connection_real() -> None:
     """DEFECT: startup health printed "MT5 REAL connected ... account=DEMO"."""
     health = (REPO / "src" / "qts" / "desktop" / "health.py").read_text(encoding="utf-8")

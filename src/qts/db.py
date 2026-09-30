@@ -41,7 +41,11 @@ def _anchored(database: Path | str) -> Path | str:
 
     ``:memory:`` and absolute paths are returned untouched.
     """
-    if isinstance(database, str) and (database == ":memory:" or database.startswith("file:")):
+    # Compare on the STRING form: IdempotencyStore stores Path(":memory:"),
+    # and an isinstance(str) check alone would resolve that into a real file
+    # literally named ":memory:" at the state root.
+    text = str(database)
+    if text == ":memory:" or text.startswith("file:"):
         return database
     from qts.config.paths import resolve_state_path
 
