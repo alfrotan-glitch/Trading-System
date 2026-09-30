@@ -147,6 +147,72 @@ def test_isolated_test_workspace_with_local_data_is_honoured(tmp_path: Path, mon
     assert isolated_root == tmp_path
 
 
+def test_demo_session_anchors_its_durable_state_like_every_other_authority(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """One session must not split its durable state across two files.
+
+    ``DemoSession`` owns the journal, the stage machine and the durable
+    reconciliation row; it *constructs* the ``RiskEngine`` that owns the
+    durable kill switch. ``RiskEngine`` anchors its path through
+    ``qts.config.paths``; the session used its configured path verbatim. From
+    any working directory other than the state root that put the two halves of
+    the durable suspension set in DIFFERENT SQLite files — and startup health,
+    which reads ``artifact_path("db")``, agreed with neither.
+
+    Worse, creating ``<cwd>/data/sqlite`` as a side effect armed the
+    "isolated workspace" rule in :func:`state_root`, so an unrelated mkdir
+    silently re-anchored every artefact for the rest of the process.
+    """
+    from qts.config.paths import artifact_path
+    from qts.execution.demo_session import DemoSession, DemoSessionConfig
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    monkeypatch.delenv("QTS_DB_PATH", raising=False)
+    monkeypatch.delenv("QTS_STATE_ROOT", raising=False)
+    outside = tmp_path / "launched_from_here"
+    outside.mkdir()
+    monkeypatch.chdir(outside)
+
+    anchored_before = artifact_path("db")
+    session = DemoSession(DemoSessionConfig())
+
+    # The session's own durable state is the anchored one …
+    assert session.db_path == anchored_before, "DemoSession must anchor its durable state, not use cwd"
+    # … the same file the RiskEngine it builds will use for the kill switch …
+    risk = RiskEngine(RiskLimits(), db_path=session.db_path)
+    assert risk.db_path == session.db_path
+    # … and the same file startup health reads.
+    assert artifact_path("db") == session.db_path
+
+    # Constructing a session must not re-anchor the whole process.
+    assert artifact_path("db") == anchored_before
+    assert not (outside / "data").exists(), "a session must not create a state tree in the working directory"
+
+
+def test_a_relative_db_option_resolves_to_the_one_anchored_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """`qts demo clear-kill --db data/sqlite/qts.db` is the documented operator
+    form. Typed from any directory it must reach the SAME store the desktop
+    backend and the startup health check use — otherwise a recovery clears a
+    kill switch in one file and heals reconciliation in another."""
+    from qts.config.paths import artifact_path
+    from qts.execution.demo_session import DemoSession, DemoSessionConfig
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    monkeypatch.delenv("QTS_DB_PATH", raising=False)
+    monkeypatch.delenv("QTS_STATE_ROOT", raising=False)
+    outside = tmp_path / "some_other_folder"
+    outside.mkdir()
+    monkeypatch.chdir(outside)
+
+    anchored = artifact_path("db")
+    # Both separator spellings an operator may type (POSIX and Windows).
+    for typed in ("data/sqlite/qts.db", str(Path("data") / "sqlite" / "qts.db")):
+        session = DemoSession(DemoSessionConfig(db_path=Path(typed)))
+        assert session.db_path == anchored, typed
+        assert RiskEngine(RiskLimits(), db_path=typed).db_path == anchored, typed
+
+
 def test_resolve_state_path_handles_relative_and_absolute():
     """resolve_state_path correctly expands relative paths against state root."""
     rel = resolve_state_path("data/evidence/test.json")

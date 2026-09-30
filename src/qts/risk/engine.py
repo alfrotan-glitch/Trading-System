@@ -115,7 +115,11 @@ class RiskEngine:
         from qts.config.paths import artifact_path, resolve_state_path
 
         self.limits = limits
-        if db_path is None or str(db_path) == "data/sqlite/qts.db":
+        # Compare as a Path, not as a string: ``str(Path("data/sqlite/qts.db"))``
+        # is ``data\sqlite\qts.db`` on Windows, so the repository-relative
+        # default slipped past a literal string test on the one platform this
+        # system actually runs on. Path equality normalises the separator.
+        if db_path is None or Path(db_path) == Path("data/sqlite/qts.db"):
             self.db_path = artifact_path("db")
         else:
             self.db_path = resolve_state_path(db_path)

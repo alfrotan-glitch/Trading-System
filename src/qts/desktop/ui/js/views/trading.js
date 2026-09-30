@@ -227,7 +227,12 @@ export async function renderDemo(root) {
           danger: true,
           title: "Review and resume after the stop",
           body: h("div", { class: "stack" },
-            h("p", null, "The kill switch stopped orders. Clearing it is recorded with your reason. Trading does NOT resume by itself — the demo account is prepared again from the start."),
+            // Say what actually stopped trading. "Resume" now also clears a
+            // reconciliation stop, so hard-coding "the kill switch" would
+            // describe the wrong fault half the time — the guide already
+            // carries the honest reason.
+            h("p", null, g.reason || "Trading is stopped."),
+            h("p", null, "QTS re-checks the stop against the broker before clearing it. If the problem is still there, nothing is cleared. Clearing is recorded with your reason, and trading does NOT resume by itself — the demo account is prepared again from the start."),
             reasonBox),
           acks: ["I reviewed why trading was stopped, and I want to clear the stop."],
           confirmLabel: "Clear the stop",

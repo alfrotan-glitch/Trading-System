@@ -473,6 +473,12 @@ def test_resume_reports_409_while_a_real_blocker_remains(client, api_env, monkey
     assert "reconciliation_suspension" in {b["id"] for b in recovery["active_blockers"]}
     assert recovery["recovery_checks"]["reconciliation_verified_clean"]["satisfied"] is False
 
+    # The operator reads plain language; the gate id stays machine-readable
+    # in `recovery`, not in the message shown on the product surface.
+    detail = body["result"]["detail"]
+    assert "QTS and the broker still disagree about open positions" in detail
+    assert not detail.startswith("reconciliation_suspension:")
+
     # Nothing was cleared — all-or-nothing, and durable.
     assert load_reconcile_suspension(session.db_path).suspended is True
     assert session.kill_switch_state()["killed"] is True

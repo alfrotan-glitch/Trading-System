@@ -1053,8 +1053,17 @@ def demo_guide_resume(payload: dict[str, Any] | None = None) -> Any:
             )
         response = _guide_response(guide, True, headline, detail)
     else:
+        # Plain language for the operator; the machine-readable ids stay in
+        # ``recovery.active_blockers`` for the Advanced view and for tooling.
+        plain = {
+            "reconciliation_suspension": (
+                "QTS and the broker still disagree about open positions, so the stop was not cleared"
+            ),
+            "kill_switch": "the stop could not be cleared",
+            "invalid_request": "a recorded reason is required",
+        }
         blockers = recovery["active_blockers"] or [{"id": "unknown", "detail": "recovery did not complete"}]
-        detail = "; ".join(f"{b['id']}: {b['detail']}" for b in blockers)
+        detail = "; ".join(f"{plain.get(b['id'], b['id'])} ({b['detail']})" for b in blockers)
         response = _guide_response(guide, False, "Trading could not be resumed.", detail)
 
     payload_body = json.loads(response.body.decode("utf-8"))

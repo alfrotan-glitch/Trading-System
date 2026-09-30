@@ -105,8 +105,24 @@ class DemoSession:
     """A wired DEMO execution session. Every method fails closed."""
 
     def __init__(self, config: DemoSessionConfig) -> None:
+        from qts.config.paths import artifact_path, resolve_state_path
+
         self.config = config
-        self.db_path = Path(config.db_path)
+        # Anchor the durable store exactly the way RiskEngine does. The session
+        # owns the journal, the stage machine and the durable reconciliation
+        # row, and it CONSTRUCTS the RiskEngine that owns the durable kill
+        # switch — but it used its configured path verbatim while RiskEngine
+        # resolved the same value through qts.config.paths. Launched from any
+        # directory other than the state root, that split the two halves of the
+        # durable suspension set across two SQLite files, and startup health
+        # (which reads artifact_path("db")) agreed with neither. A relative
+        # ``--db data/sqlite/qts.db`` — the documented operator form — hit the
+        # same split. One session, one store, whatever the working directory.
+        configured = config.db_path
+        if configured is None or Path(configured) == DEFAULT_DB_PATH:
+            self.db_path = artifact_path("db")
+        else:
+            self.db_path = resolve_state_path(configured)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.journal = open_demo_journal(self.db_path)
         # Recovery: a submission that never recorded an outcome (this process
