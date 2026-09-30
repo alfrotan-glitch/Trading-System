@@ -154,7 +154,63 @@ Simulation accounts (`PAPER_SIMULATION`, `SHADOW_SIMULATION`,
 `PORTFOLIO_SIMULATION`, `CLI_SYNTHETIC`) are explicitly labeled and can
 never be confused with broker truth.
 
-## 9. What was deliberately NOT changed
+## 9. Durable suspension & recovery authority — `qts.execution.demo_session`
+
+Exactly TWO durable records can suspend DEMO trading. They are written by
+different components and enforced by different pre-trade checks:
+
+| Durable record | Owning authority | Enforced by | Recovery predicate | Cleared through |
+|---|---|---|---|---|
+| `risk_state.killed` | `qts.risk.engine.RiskEngine` | `pre_trade`, `kill_switch_functional` | an explicit operator decision with a recorded reason, over a readable row | `RiskEngine.reset_kill()` |
+| `reconcile_state.suspended` | `qts.execution.engine.ExecutionEngine` | `reconciliation_ready` | a fresh broker-authoritative `reconcile()` reporting `requires_suspend=False` | `ExecutionEngine.heal_reconcile()` |
+
+This is not a second kill switch (§11.2 of `QTS_PROJECT_CONTROL.md` stands):
+they answer different questions — "an operator stopped trading" versus "QTS
+and the broker disagree about open positions" — and neither is an in-memory
+mirror of the other.
+
+**One reader.** `qts.execution.engine.load_reconcile_suspension()` is the ONLY
+implementation that reads `reconcile_state`. `ExecutionEngine`, the LIVE gate
+(`live_gate.check_reconciliation_health`), the API
+(`api.deps._reconciliation_status` → `/api/health`, `/api/risk`) and startup
+health (`desktop.health.run_reconciliation`) are thin adapters over it.
+Agreement is structural, not maintained by discipline. Unreadable is
+SUSPENDED; only a missing table or a missing store is benign; a read probe
+never creates the store.
+
+Historical evidence is never the active condition. `run_reconciliation`
+previously scanned the last 50 audit events for `DRIFT`/`SUSPENDED`, which was
+wrong in both directions: a healed drift blocked startup until it aged out,
+and an unhealed suspension reported "reconciliation healthy" once 50 newer
+events existed while every order was still refused.
+
+**One recovery transition.** `DemoSession.resume_from_suspension(reason, actor)`:
+
+```
+SUSPENDED → RECOVERY IN PROGRESS → RECOVERY VERIFIED → RECOVERED (stage HALTED)
+          ↘ a predicate is unsatisfied → SUSPENDED (nothing cleared)
+```
+
+It is all-or-nothing, idempotent, verified by re-reading the durable set after
+the write, fail-closed, and audited in both directions — a refusal is durable
+evidence, not a silent no-op. `DemoSession.durable_suspension_state()` is the
+single read every surface reports.
+
+Recovery clears active blocking conditions and grants NO permission: the stage
+machine stays `HALTED`, the authority is untouched, and the full pre-trade gate
+still runs before any order (`orders_permitted=false`, `next="prepare"`). The
+live predicates are re-proven by `/api/demo/guide/prepare` and the existing
+21-check gate — recovery duplicates none of them. `must_kill_on()` is
+deliberately NOT a resume precondition: `stage_not_order_permitted` always
+holds while HALTED and would deadlock recovery.
+
+Surfaces: `qts demo clear-kill` and `POST /api/demo/guide/resume` are the only
+entry points, and both run this transition. The HTTP status is the outcome of
+the operation, never of the request being understood — `200` recovered, `409`
+blocked with machine-readable `recovery.active_blockers`, `400` invalid
+request. A `200` cannot imply readiness.
+
+## 10. What was deliberately NOT changed
 
 - The 14-check DEMO readiness contract and the verified WM Markets timestamp
   behavior (fail-closed freshness, measured server offset) are preserved and
