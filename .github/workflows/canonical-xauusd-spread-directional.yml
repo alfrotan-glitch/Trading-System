@@ -1,0 +1,78 @@
+name: Canonical XAUUSD spread-state directional H-DIR-03
+
+on:
+  push:
+    branches:
+      - arena/01a0cdf1-trading-system
+    paths:
+      - .github/workflows/canonical-xauusd-spread-directional.yml
+      - scripts/run_xauusd_spread_directional.py
+      - src/qts/research/xauusd_spread_directional.py
+      - docs/xauusd_directional_next_step_H-DIR-03_2026-09-23.md
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: canonical-xauusd-spread-directional
+  cancel-in-progress: false
+
+jobs:
+  spread-directional:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install QTS
+        run: pip install -e .
+
+      - name: Download canonical ZIP and rebuild verifiable view
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/qts_view"
+          gh release download dataset-xauusd-730d-20260919 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "XAUUSD_730d_20260919T114013Z.zip" \
+            --dir "${RUNNER_TEMP}/qts_view" \
+            --clobber
+          test -f "${RUNNER_TEMP}/qts_view/XAUUSD_730d_20260919T114013Z.zip"
+          # Rebuild verifiable view (70,783,710 rows) exactly as H-DIR-02 did
+          python scripts/build_verifiable_discovery_view.py \
+            --zip "${RUNNER_TEMP}/qts_view/XAUUSD_730d_20260919T114013Z.zip" \
+            --view-dir "${RUNNER_TEMP}/qts_verifiable_view" \
+            --authority-out "${RUNNER_TEMP}/qts_verifiable_authority.json"
+          cat "${RUNNER_TEMP}/qts_verifiable_authority.json"
+
+      - name: Run H-DIR-03 spread-state directional on verifiable view
+        run: |
+          set -euo pipefail
+          python scripts/run_xauusd_spread_directional.py \
+            --view-dir "${RUNNER_TEMP}/qts_verifiable_view" \
+            --authority "${RUNNER_TEMP}/qts_verifiable_authority.json" \
+            --output reports/xauusd_spread_directional_state.json \
+            --markdown reports/xauusd_spread_directional_state.md
+          cat reports/xauusd_spread_directional_state.json | head -n 400
+          cat reports/xauusd_spread_directional_state.md
+
+      - name: Commit H-DIR-03 result
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/xauusd_spread_directional_state.json reports/xauusd_spread_directional_state.md
+          if git diff --cached --quiet; then
+            echo "no change"
+            exit 0
+          fi
+          git commit -m "H-DIR-03 spread-state directional (16/64, tighten/widen) on verifiable 70.78M view — distinct from rejected H-DIR-02 [skip ci]"
+          git push origin HEAD:arena/01a0cdf1-trading-system

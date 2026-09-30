@@ -1,0 +1,21 @@
+# Deterministic checkouts — Windows reproducibility requires stable line endings.
+# Scripts executed by cmd.exe / Windows PowerShell MUST be CRLF on checkout;
+# PowerShell 5.1 additionally requires a UTF-8 BOM in the file content itself
+# (committed as bytes) to parse non-ASCII correctly.
+* text=auto eol=lf
+
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Data fixtures: keep exactly as committed (CRLF, matches generator output)
+data/fixtures/*.csv text eol=crlf
+
+# Binary artifacts — never touch
+*.parquet binary
+*.db binary
+*.png binary
+*.ico binary
+*.jpg binary
+*.zip binary
+*.exe binary

@@ -1,0 +1,75 @@
+{
+  "schema": "qts.hypothesis_preregistration.v1",
+  "registered_at_utc": "2026-09-23T06:40:00Z",
+  "registered_before_canonical_zip_inventory": true,
+  "dataset": {
+    "release": "dataset-xauusd-730d-20260919",
+    "asset": "XAUUSD_730d_20260919T114013Z.zip",
+    "expected_zip_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+    "bytes_verified_at_registration": false
+  },
+  "locked_validation_window": {
+    "rule": "last 40 percent of the raw time_msc span after the zip checksum matches",
+    "status": "LOCKED_NOT_READ",
+    "note": "Discovery code must not aggregate this window. Inventory of the whole archive is allowed and is not a strategy fit."
+  },
+  "hypotheses": [
+    {
+      "id": "H-MS-01",
+      "mechanism": "quote bounce: a mid-price change larger than the prevailing spread is followed by a reversal more often than a continuation, after paying one spread",
+      "prediction": "on the discovery window, reversal frequency exceeds 0.5 after one spread cost",
+      "null": "the sign of the next mid change is independent of the previous sign once one spread is paid",
+      "competitors": ["spread bounce that is only the bid-ask bounce and has no residual", "stale repeated quotes counted as reversals"],
+      "falsification": "discovery-window residual after one spread is not distinguishable from zero, or it depends on dropping inverted quotes or gaps",
+      "data": "canonical zip after checksum match; bid and ask required",
+      "features": ["mid change", "prevailing spread"],
+      "horizon": "next quote",
+      "population": "XAUUSD quotes in the discovery window only",
+      "regime": "not conditioned; a regime split would be a new hypothesis",
+      "execution_and_cost_assumptions": "one full spread paid on the reversal; no latency, no partial fill, no queue",
+      "validation_method": "not run; validation window remains locked",
+      "result": "NOT TESTED",
+      "reject_or_survive_reason": "not applicable"
+    },
+    {
+      "id": "H-MS-02",
+      "mechanism": "wide spreads coincide with larger subsequent absolute mid changes beyond the spread itself",
+      "prediction": "mean absolute next mid change divided by spread is higher after spreads above the discovery-window median than after spreads below it",
+      "null": "no difference in spread-scaled absolute next change between the two pre-declared spread halves",
+      "competitors": ["wide spreads are just the cost, with no extra movement", "the split threshold was chosen after seeing the result"],
+      "falsification": "the two halves do not differ, or the comparison requires a searched threshold",
+      "data": "canonical zip after checksum match",
+      "features": ["spread", "next absolute mid change"],
+      "horizon": "next quote",
+      "population": "valid positive bid and ask quotes in the discovery window",
+      "regime": "binary split at the discovery-window median spread, declared here, not searched",
+      "execution_and_cost_assumptions": "this is a mechanism check, not a strategy; no order is implied",
+      "validation_method": "not run",
+      "result": "NOT TESTED",
+      "reject_or_survive_reason": "not applicable"
+    },
+    {
+      "id": "H-TOD-01",
+      "mechanism": "two pre-declared clock windows, London 07:00-08:00 UTC and New York 13:00-14:00 UTC, have a mean mid change different from the complement after one spread",
+      "prediction": "at least one window differs from its complement after Holm adjustment across the two windows",
+      "null": "both windows have zero excess mean change versus the complement after one spread",
+      "competitors": ["apparent seasonality is an unverified timestamp offset", "weekend gaps dominate the complement"],
+      "falsification": "blocked, not tested, unless timestamp_interpretation_confirmed is true; a provisional UTC rendering is not confirmation",
+      "data": "canonical zip after checksum match and a confirmed timestamp basis",
+      "features": ["hour of week under confirmed UTC", "mid change"],
+      "horizon": "quotes inside the declared hour",
+      "population": "discovery window only",
+      "regime": "the two hours are the only clock conditions; no other hour may be reported as a test",
+      "execution_and_cost_assumptions": "one spread; no latency model",
+      "validation_method": "not run; blocked until timestamp basis is confirmed",
+      "result": "NOT TESTED",
+      "reject_or_survive_reason": "not applicable"
+    }
+  ],
+  "constraints": [
+    "Do not repair gaps, inverted quotes, or timestamp order to obtain a result.",
+    "Do not run H-TOD-01 on an unconfirmed clock.",
+    "A passing discovery statistic is not VALIDATED and does not authorize DEMO_EXECUTION.",
+    "Failed and blocked hypotheses stay recorded."
+  ]
+}

@@ -1,0 +1,73 @@
+name: Canonical XAUUSD market-making H-MM-02 WF (verifiable view)
+
+on:
+  push:
+    branches:
+      - arena/01a0cdf1-trading-system
+    paths:
+      - .github/workflows/canonical-xauusd-marketmaking-wf.yml
+      - scripts/run_xauusd_marketmaking_wf.py
+      - src/qts/research/xauusd_marketmaking_wf.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: canonical-xauusd-marketmaking-wf
+  cancel-in-progress: false
+
+jobs:
+  marketmaking_wf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install QTS
+        run: pip install -e .
+
+      - name: Download canonical ZIP and rebuild verifiable view
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/qts_view"
+          gh release download dataset-xauusd-730d-20260919 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "XAUUSD_730d_20260919T114013Z.zip" \
+            --dir "${RUNNER_TEMP}/qts_view" \
+            --clobber
+          python scripts/build_verifiable_discovery_view.py \
+            --zip "${RUNNER_TEMP}/qts_view/XAUUSD_730d_20260919T114013Z.zip" \
+            --view-dir "${RUNNER_TEMP}/qts_verifiable_view" \
+            --authority-out "${RUNNER_TEMP}/qts_verifiable_authority.json"
+
+      - name: Run H-MM-02 WF
+        run: |
+          set -euo pipefail
+          python scripts/run_xauusd_marketmaking_wf.py \
+            --view-dir "${RUNNER_TEMP}/qts_verifiable_view" \
+            --authority "${RUNNER_TEMP}/qts_verifiable_authority.json" \
+            --output reports/xauusd_marketmaking_wf_state.json \
+            --markdown reports/xauusd_marketmaking_wf_state.md
+          cat reports/xauusd_marketmaking_wf_state.json | head -n 600
+          cat reports/xauusd_marketmaking_wf_state.md
+
+      - name: Commit H-MM-02 WF result
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin arena/01a0cdf1-trading-system
+          git rebase origin/arena/01a0cdf1-trading-system || (git rebase --abort; git pull --rebase origin arena/01a0cdf1-trading-system)
+          git add reports/xauusd_marketmaking_wf_state.json reports/xauusd_marketmaking_wf_state.md
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git commit -m "H-MM-02 risk-adjusted market-making walk-forward 5-fold on verifiable 70.78M view — next milestone to execution [skip ci]"
+          git push origin HEAD:arena/01a0cdf1-trading-system

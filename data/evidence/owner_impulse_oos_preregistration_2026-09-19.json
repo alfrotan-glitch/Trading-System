@@ -1,0 +1,22 @@
+{
+  "schema": "qts.impulse_oos_preregistration.v1",
+  "registered_at_utc": "2026-09-19T00:00:00Z",
+  "status": "PREREGISTERED_NOT_EXECUTED",
+  "hypothesis": "Following an unusually strong directional movement, the next 12 XAUUSD 15-minute bars exhibit incremental directional persistence versus a matched non-event baseline and positive net expectancy after declared costs.",
+  "candidate_definition": {
+    "families": ["IMP-BE-B", "IMP-RB-B", "IMP-RE-B"],
+    "source_definition": "exact frozen family definitions and parameters in impulse_research_xauusd_dukascopy_15m.json; no parameter changes permitted",
+    "primary_horizon_bars": 12,
+    "sensitivity_horizon_bars": 4,
+    "directions": ["LONG", "SHORT"],
+    "regimes": "all declared volatility regimes; no regime may be silently excluded"
+  },
+  "population": {"instrument":"XAUUSD","timeframe":"15m","source":"the exact immutable source dataset referenced by the frozen artifact data_version 20260918-010+8f120133-1ba57af7","timezone":"UTC"},
+  "oos_partition": {"method":"chronological frozen split","source_boundaries":{"discovery_end":15622,"validation_end":20830,"total":26038},"rule":"validation rows remain untouched until the preregistered run; no randomization or re-partitioning"},
+  "metrics": ["net_mean_bps","net_confidence_interval","continuation_rate_vs_baseline","Holm-adjusted_p_value","placebo_result","per-regime_net_mean_bps","event_count_by_direction","censored_rate","per-event Sharpe/DSR where supported"],
+  "cost_assumptions": {"spread_bps":2.0,"commission_bps_round_turn":0.4,"slippage_bps_per_side":0.5,"latency_bars":1,"round_turn_cost_bps":3.4,"provenance":"declared estimated assumptions, not broker-observed execution costs; sensitivity must include higher costs and latency"},
+  "falsification_criteria": ["validation continuation does not exceed matched baseline after correction","net expectancy is non-positive or its interval does not support the declared threshold","effect disappears under declared cost/latency sensitivity","required event counts or regime coverage fail","result depends on changed partition, changed family, leakage, or unresolved data handling"],
+  "stop_conditions": ["any source checksum mismatch","source unavailable","any attempt to access locked OOS before preregistration","missing provenance or completeness failure","no promotion if R5 execution evidence remains failed"],
+  "decision_rule": "A surviving statistical result is not sufficient for trading. Candidate remains BLOCKED until execution-specific evidence, shadow validation, safety controls, and independent reproduction pass.",
+  "execution_status": "NOT_RUN: immutable source dataset is not present in this repository and must not be reconstructed or substituted"
+}

@@ -1,0 +1,276 @@
+{
+  "schema": "qts.event_spread_evidence.v1",
+  "purpose": "Supplementary MEASURED bid/ask spread evidence around scheduled macro events, from the same upstream repository/commit as the registered dataset. It is NOT a continuous spread history and is NOT wired into the impulse data-adequacy gate: R5-EXECUTION-DATA remains FAIL (blocking=false).",
+  "source_repository": "vudo805/forex-price-simulator",
+  "source_commit": "4d6f15543e6285fad91fd57fe42f716bc7273075",
+  "source_path": "app/public/data/news_ticks/XAUUSD/",
+  "manifest_sha256": "3766c373a834ecf5bed2f90659e1ba6ba643bef1f0b95d55207f57811bc21bd8",
+  "event_count": 23,
+  "tick_count_total": 368326,
+  "pooled_spread_bps": {
+    "median": 1.732,
+    "p95": 3.037,
+    "mean": 1.982
+  },
+  "declared_cost_assumption_spread_bps": 2.0,
+  "limitations": [
+    "Only ~30-minute windows around 23 scheduled CPI/FOMC/NFP prints (2026-01-09..2026-09-16).",
+    "No continuous tick/spread history and no broker fill/latency/slippage data; nothing here overrides R5.",
+    "Windows are event-time selections by the upstream project; no selection rule of ours."
+  ],
+  "events": {
+    "CPI_2026-01-13": {
+      "ticks": 15552,
+      "window_start_utc": "2026-01-13T13:29:00.191000+00:00",
+      "window_end_utc": "2026-01-13T13:59:59.516000+00:00",
+      "spread_bps_median": 1.856,
+      "spread_bps_p95": 2.212,
+      "spread_bps_max": 8.289,
+      "mid_min": 4600.52,
+      "mid_max": 4620.92,
+      "sha256": "18acfd5e2e7fae37d6cdfe61f26ba1dda2ac52360e6944b0e7a365b6dd617602"
+    },
+    "CPI_2026-02-13": {
+      "ticks": 11676,
+      "window_start_utc": "2026-02-13T13:29:00.074000+00:00",
+      "window_end_utc": "2026-02-13T13:59:59.604000+00:00",
+      "spread_bps_median": 2.085,
+      "spread_bps_p95": 3.085,
+      "spread_bps_max": 19.302,
+      "mid_min": 4967.145,
+      "mid_max": 4999.955,
+      "sha256": "3bc0fffec4c71f1c3c3d520efc9f92008b11839fa1bfa5cc73f469f2515b811e"
+    },
+    "CPI_2026-03-11": {
+      "ticks": 13015,
+      "window_start_utc": "2026-03-11T12:29:00.205000+00:00",
+      "window_end_utc": "2026-03-11T12:59:59.815000+00:00",
+      "spread_bps_median": 1.52,
+      "spread_bps_p95": 1.542,
+      "spread_bps_max": 20.887,
+      "mid_min": 5166.879,
+      "mid_max": 5196.617,
+      "sha256": "3ca28debe3033315cb882868e8ced2427845bbe335e83cc3a9e8f18de3fea31c"
+    },
+    "CPI_2026-04-10": {
+      "ticks": 9790,
+      "window_start_utc": "2026-04-10T12:29:00.116000+00:00",
+      "window_end_utc": "2026-04-10T12:59:59.476000+00:00",
+      "spread_bps_median": 1.654,
+      "spread_bps_p95": 1.697,
+      "spread_bps_max": 23.998,
+      "mid_min": 4760.81,
+      "mid_max": 4782.71,
+      "sha256": "335fc44613a29fc6e7e4b66148718b20203cb62f4f6ff91aea5c5e27158c002e"
+    },
+    "CPI_2026-05-12": {
+      "ticks": 15063,
+      "window_start_utc": "2026-05-12T12:29:00.253000+00:00",
+      "window_end_utc": "2026-05-12T12:59:59.962000+00:00",
+      "spread_bps_median": 1.19,
+      "spread_bps_p95": 1.359,
+      "spread_bps_max": 4.805,
+      "mid_min": 4689.75,
+      "mid_max": 4711.69,
+      "sha256": "b82306d326fa5c232589f9bab21ba87e6fad9ef5cb8078d0503843122356ef06"
+    },
+    "CPI_2026-06-10": {
+      "ticks": 19411,
+      "window_start_utc": "2026-06-10T12:29:00.022000+00:00",
+      "window_end_utc": "2026-06-10T12:59:59.975000+00:00",
+      "spread_bps_median": 1.956,
+      "spread_bps_p95": 2.307,
+      "spread_bps_max": 29.999,
+      "mid_min": 4138.11,
+      "mid_max": 4173.908,
+      "sha256": "a0e545280982aae691801fbb7fc955ef1248b3f18121e431e7805c31290949ab"
+    },
+    "CPI_2026-07-14": {
+      "ticks": 15967,
+      "window_start_utc": "2026-07-14T12:29:00.089000+00:00",
+      "window_end_utc": "2026-07-14T12:59:59.907000+00:00",
+      "spread_bps_median": 1.931,
+      "spread_bps_p95": 23.834,
+      "spread_bps_max": 36.633,
+      "mid_min": 4028.615,
+      "mid_max": 4103.25,
+      "sha256": "529f20c934aec3c6120706de3b89262abd1fa0fd3f2e78499d3bf9e33582336a"
+    },
+    "CPI_2026-08-12": {
+      "ticks": 13792,
+      "window_start_utc": "2026-08-12T12:29:00.044000+00:00",
+      "window_end_utc": "2026-08-12T12:59:59.859000+00:00",
+      "spread_bps_median": 1.718,
+      "spread_bps_p95": 2.159,
+      "spread_bps_max": 15.311,
+      "mid_min": 4382.29,
+      "mid_max": 4438.525,
+      "sha256": "ac14105b4b64f3c6646f4b4105877a83c1a14fda16ac009255b969f34804691b"
+    },
+    "CPI_2026-09-11": {
+      "ticks": 24687,
+      "window_start_utc": "2026-09-11T12:29:00.090000+00:00",
+      "window_end_utc": "2026-09-11T12:59:59.928000+00:00",
+      "spread_bps_median": 1.53,
+      "spread_bps_p95": 1.962,
+      "spread_bps_max": 33.008,
+      "mid_min": 4292.405,
+      "mid_max": 4390.28,
+      "sha256": "0fd24f160ca834bfa6f651a9ceb8854c5a92e0f6db586469f96c05fe6897d85a"
+    },
+    "FOMC_2026-01-28": {
+      "ticks": 22054,
+      "window_start_utc": "2026-01-28T18:59:00.044000+00:00",
+      "window_end_utc": "2026-01-28T19:29:59.913000+00:00",
+      "spread_bps_median": 1.681,
+      "spread_bps_p95": 2.313,
+      "spread_bps_max": 11.273,
+      "mid_min": 5269.57,
+      "mid_max": 5301.975,
+      "sha256": "d629802005850da29438499243f7c710062772e3c49fbce12ab917ed1a8f34bb"
+    },
+    "FOMC_2026-03-18": {
+      "ticks": 11593,
+      "window_start_utc": "2026-03-18T17:59:00.180000+00:00",
+      "window_end_utc": "2026-03-18T18:29:59.857000+00:00",
+      "spread_bps_median": 1.167,
+      "spread_bps_p95": 1.514,
+      "spread_bps_max": 4.212,
+      "mid_min": 4876.84,
+      "mid_max": 4899.385,
+      "sha256": "dcd9876b031c40976e7bb75ef5b61522827ac8e2ca84a7b0f3269509835bb6ab"
+    },
+    "FOMC_2026-04-29": {
+      "ticks": 15359,
+      "window_start_utc": "2026-04-29T17:59:00.051000+00:00",
+      "window_end_utc": "2026-04-29T18:29:59.897000+00:00",
+      "spread_bps_median": 1.346,
+      "spread_bps_p95": 1.451,
+      "spread_bps_max": 4.706,
+      "mid_min": 4525.238,
+      "mid_max": 4553.095,
+      "sha256": "fd0ed15b84ed3f274b5f48c96096a10a1bc7691038989abf27bdb1816db33641"
+    },
+    "FOMC_2026-06-17": {
+      "ticks": 21502,
+      "window_start_utc": "2026-06-17T17:59:00.133000+00:00",
+      "window_end_utc": "2026-06-17T18:29:59.909000+00:00",
+      "spread_bps_median": 1.889,
+      "spread_bps_p95": 2.613,
+      "spread_bps_max": 16.991,
+      "mid_min": 4277.335,
+      "mid_max": 4380.46,
+      "sha256": "e20b826b91e2bda5f7aba5556ec31a7d0a715db6d97996489192103f86a855be"
+    },
+    "FOMC_2026-07-29": {
+      "ticks": 12021,
+      "window_start_utc": "2026-07-29T17:59:02.276000+00:00",
+      "window_end_utc": "2026-07-29T18:29:59.718000+00:00",
+      "spread_bps_median": 1.854,
+      "spread_bps_p95": 4.12,
+      "spread_bps_max": 27.841,
+      "mid_min": 4042.59,
+      "mid_max": 4086.295,
+      "sha256": "76029bc06016a33f09aa76378483fbb40691da1aebaaff086f405b067537031a"
+    },
+    "FOMC_2026-09-16": {
+      "ticks": 15641,
+      "window_start_utc": "2026-09-16T18:00:00.077000+00:00",
+      "window_end_utc": "2026-09-16T18:29:59.977000+00:00",
+      "spread_bps_median": 2.274,
+      "spread_bps_p95": 2.752,
+      "spread_bps_max": 27.087,
+      "mid_min": 4306.235,
+      "mid_max": 4367.87,
+      "sha256": "aa52fabf22ad10f3da88811df3160f94642cd62431ed7a1fc607f1eaee1cfd3e"
+    },
+    "NFP_2026-01-09": {
+      "ticks": 17331,
+      "window_start_utc": "2026-01-09T13:29:00.101000+00:00",
+      "window_end_utc": "2026-01-09T13:59:59.647000+00:00",
+      "spread_bps_median": 1.871,
+      "spread_bps_p95": 2.457,
+      "spread_bps_max": 13.087,
+      "mid_min": 4459.43,
+      "mid_max": 4492.01,
+      "sha256": "a6b55da456542b81dcf8229ffcd05fbe3a58dec4c178f56440ca606b4c23d4da"
+    },
+    "NFP_2026-02-11": {
+      "ticks": 18887,
+      "window_start_utc": "2026-02-11T13:29:00.036000+00:00",
+      "window_end_utc": "2026-02-11T13:59:59.744000+00:00",
+      "spread_bps_median": 2.646,
+      "spread_bps_p95": 4.037,
+      "spread_bps_max": 22.483,
+      "mid_min": 5019.048,
+      "mid_max": 5085.901,
+      "sha256": "f22a5126932d3486e1f9e9acfb24bbc5ea16f8b97503eb671ce537e717ef012b"
+    },
+    "NFP_2026-03-06": {
+      "ticks": 18113,
+      "window_start_utc": "2026-03-06T13:29:00.241000+00:00",
+      "window_end_utc": "2026-03-06T13:59:59.914000+00:00",
+      "spread_bps_median": 1.66,
+      "spread_bps_p95": 2.929,
+      "spread_bps_max": 29.401,
+      "mid_min": 5073.935,
+      "mid_max": 5131.15,
+      "sha256": "0f1638769b420106a29fe123a153c8908f09481e2df0c8d7d34bc279a6be6e16"
+    },
+    "NFP_2026-05-08": {
+      "ticks": 16430,
+      "window_start_utc": "2026-05-08T12:29:00.191000+00:00",
+      "window_end_utc": "2026-05-08T12:59:59.854000+00:00",
+      "spread_bps_median": 1.164,
+      "spread_bps_p95": 1.444,
+      "spread_bps_max": 14.944,
+      "mid_min": 4703.619,
+      "mid_max": 4732.04,
+      "sha256": "1b0ea4ade1a55fbff436fed7dced6c297ce172cc1df0460754ccedb73326e8d5"
+    },
+    "NFP_2026-06-05": {
+      "ticks": 15191,
+      "window_start_utc": "2026-06-05T12:29:00.100000+00:00",
+      "window_end_utc": "2026-06-05T12:59:59.961000+00:00",
+      "spread_bps_median": 1.395,
+      "spread_bps_p95": 2.157,
+      "spread_bps_max": 15.346,
+      "mid_min": 4404.963,
+      "mid_max": 4466.205,
+      "sha256": "ec96e26380d64b19c798762a5db7786cc27e7998b644b0e824e9768a17253820"
+    },
+    "NFP_2026-07-02": {
+      "ticks": 17267,
+      "window_start_utc": "2026-07-02T12:29:00.147000+00:00",
+      "window_end_utc": "2026-07-02T12:59:59.860000+00:00",
+      "spread_bps_median": 1.669,
+      "spread_bps_p95": 3.747,
+      "spread_bps_max": 36.603,
+      "mid_min": 4062.91,
+      "mid_max": 4140.435,
+      "sha256": "4778896911c5056e605fa1cf6c480b14bc3c2fccd7915dd4e45e85343b9113b2"
+    },
+    "NFP_2026-08-07": {
+      "ticks": 14207,
+      "window_start_utc": "2026-08-07T12:29:00.002000+00:00",
+      "window_end_utc": "2026-08-07T12:59:59.979000+00:00",
+      "spread_bps_median": 1.447,
+      "spread_bps_p95": 4.176,
+      "spread_bps_max": 31.26,
+      "mid_min": 4301.57,
+      "mid_max": 4371.975,
+      "sha256": "98c501d9da619359e5a0abbcc5466e3049c548a4a38693cc19a9f4b6d12f6d53"
+    },
+    "NFP_2026-09-04": {
+      "ticks": 13777,
+      "window_start_utc": "2026-09-04T12:29:00.029000+00:00",
+      "window_end_utc": "2026-09-04T12:59:59.535000+00:00",
+      "spread_bps_median": 2.395,
+      "spread_bps_p95": 5.805,
+      "spread_bps_max": 33.087,
+      "mid_min": 4379.07,
+      "mid_max": 4476.405,
+      "sha256": "05a40cc02299ef026b1755ab8fe18ce8407e2a526568c579df689b66870292bd"
+    }
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "schema": "qts.xauusd_cross.v1",
+  "preregistration": "docs/xauusd_cross_next_step_H-XF-01_2026-09-23.md",
+  "window": {
+    "time_msc_min": 1726746013452,
+    "cutoff_time_msc": 1764563969254,
+    "discovery_rows_read": 70783710,
+    "held_out_rows_read": 0
+  },
+  "measured": {
+    "256": {
+      "n_A": 42086,
+      "n_B": 8647,
+      "mean_A": 1.3150781732642685,
+      "mean_B": 0.6450352723487915,
+      "ratio": 2.038769397021692,
+      "gap_dollars": 0.6700429009154769,
+      "p_A": 0.7939457301715535,
+      "p_B": 0.7519370880074014,
+      "lift": 0.04200864216415201
+    },
+    "1024": {
+      "n_A": 10386,
+      "n_B": 2151,
+      "mean_A": 2.538359329867129,
+      "mean_B": 1.254974430497443,
+      "ratio": 2.0226382850373943,
+      "gap_dollars": 1.283384899369686,
+      "p_A": 0.8884074715963798,
+      "p_B": 0.8823802882380288,
+      "lift": 0.0060271833583509515
+    },
+    "terciles": [
+      {
+        "n_A": 5496,
+        "n_B": 4813,
+        "mean_A": 0.6956413755458515,
+        "mean_B": 0.5537876584250987,
+        "ratio": 1.2561518209419231,
+        "gap_dollars": 0.1418537171207528,
+        "p_A": 0.6553857350800583,
+        "p_B": 0.7309370455017661,
+        "lift": -0.07555131042170782,
+        "tercile": 0,
+        "blocks": 90
+      },
+      {
+        "n_A": 14846,
+        "n_B": 3353,
+        "mean_A": 1.3304243567290854,
+        "mean_B": 0.677857142857143,
+        "ratio": 1.962691358715194,
+        "gap_dollars": 0.6525672138719424,
+        "p_A": 0.81227266603799,
+        "p_B": 0.7637936176558306,
+        "lift": 0.04847904838215933,
+        "tercile": 1,
+        "blocks": 86
+      },
+      {
+        "n_A": 21744,
+        "n_B": 481,
+        "mean_A": 1.461168828182487,
+        "mean_B": 1.3292827442827442,
+        "ratio": 1.0992159752821482,
+        "gap_dollars": 0.13188608389974288,
+        "p_A": 0.8164551140544518,
+        "p_B": 0.8794178794178794,
+        "lift": -0.0629627653634276,
+        "tercile": 2,
+        "blocks": 95
+      }
+    ],
+    "gap_under_one_hour": {
+      "n_A": 42009,
+      "n_B": 8643,
+      "mean_A": 1.3093183603513532,
+      "mean_B": 0.6450509082494503,
+      "ratio": 2.0297907399349344,
+      "gap_dollars": 0.6642674521019029,
+      "p_A": 0.7938060891713681,
+      "p_B": 0.7520536850630568,
+      "lift": 0.04175240410831127
+    },
+    "delay": {
+      "n_A": 42086,
+      "n_B": 8647,
+      "mean_A": 1.3136747374423798,
+      "mean_B": 0.6452272464438534,
+      "ratio": 2.035987699965633,
+      "gap_dollars": 0.6684474909985264,
+      "p_A": 0.7939457301715535,
+      "p_B": 0.7519370880074014,
+      "lift": 0.04200864216415201
+    },
+    "blocks_per_tercile": {
+      "0": 90,
+      "1": 86,
+      "2": 95
+    },
+    "exclusions": {
+      "note": "non-High or typical spread ignored"
+    },
+    "gates": {
+      "identity_and_minimums": false,
+      "material_ratio_gap_lift": null,
+      "mirrors_terciles_1024_gap_delay": null,
+      "bootstrap_required": null
+    }
+  },
+  "hypotheses": {
+    "H-XF-01": {
+      "status": "INCONCLUSIVE",
+      "reasons": [
+        "tercile 2 n < 1000: A 21744 B 481"
+      ],
+      "not_a_strategy": true,
+      "validated": false
+    }
+  },
+  "decision": "INCONCLUSIVE",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "held_out_span_opened": false,
+  "safety": {
+    "DEMO_EXECUTION": "DISABLED",
+    "confirm_live": false,
+    "orders_submitted": 0
+  },
+  "view": {
+    "view_manifest_sha256": "0b163b30bb70dbd5265656b1c90c682908e3df69542bd7ec41647c291c461435",
+    "discovery_rows": 70783710,
+    "cutoff_time_msc": 1764563969254
+  }
+}

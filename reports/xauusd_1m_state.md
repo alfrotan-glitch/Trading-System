@@ -1,0 +1,8 @@
+# XAUUSD H-1M-01 1m Donchian 20/12 (SYNTHETIC_DERIVED) — discovery only
+
+## H-1M-01: REJECTED
+- floor miss: long mean -0.0004773084866904284 pf 0.255229511280977 win 0.24370095002065262 short mean -0.0005303615684232772 pf 0.2807341031422628 win 0.22413723019389456 baseline -0.0004947769942237757 h48 4.871579051118192e-05/-6.522355652559511e-05 tercile_ok False h48_ok True
+
+Held-out 40%: CLOSED. Orders: 0. Demo execution: DISABLED. Bars derived from tick mids.
+
+Bars: 423490 Events: 53653 Long 29052 Short 24601

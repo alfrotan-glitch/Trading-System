@@ -1,0 +1,970 @@
+{
+  "plan": {
+    "name": "canonical-final-source",
+    "data_version": "20260918-010-572728d9",
+    "weaknesses": [
+      "PBO unavailable \u2014 CPCV evidence is missing",
+      "DSR unavailable/low \u2014 multiple-testing penalty",
+      "Cost break-even unavailable \u2014 cost evidence is missing",
+      "Regime evidence unavailable or not trial-bound"
+    ],
+    "data_limitation": "500 bars across 20.8 days for XAUUSD 1H; dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims",
+    "budget": {
+      "max_trials": 6,
+      "max_runtime_s": 60,
+      "max_feature_count": 6,
+      "max_param_combinations": 6,
+      "max_mutation_depth": 2,
+      "max_retries": 1,
+      "max_data_scope": "20260918-010-572728d9",
+      "seed": 42
+    },
+    "mechanisms": [
+      "trend persistence",
+      "breakout failure",
+      "volatility expansion",
+      "range compression",
+      "time-of-day",
+      "event shock"
+    ]
+  },
+  "summary": {
+    "campaign_id": "C-9bbe8aa4",
+    "config": {
+      "name": "canonical-final-source",
+      "symbol": "XAUUSD",
+      "timeframe": "1H",
+      "data_version": "20260918-010-572728d9",
+      "family": "trend",
+      "param_space": {},
+      "max_trials": 6,
+      "max_runtime_s": 30.0,
+      "max_param_combinations": 6,
+      "seed": 42,
+      "hypothesis_template": "Test {family} with {params}",
+      "minimum_bars": 5000,
+      "minimum_span_days": 180.0,
+      "require_claim_eligible_data": true
+    },
+    "total_trials": 6,
+    "passed": 0,
+    "failed": 6,
+    "discarded": 0,
+    "trials": [
+      {
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0000",
+        "strategy_id": "trend_9bbe8aa4_0000",
+        "params": {
+          "fast": 5,
+          "slow": 20,
+          "ma_type": "sma"
+        },
+        "passed": false,
+        "sharpe_oos": null,
+        "sharpe_is": null,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+        "data_readiness": {
+          "data_version": "20260918-010-572728d9",
+          "status": "BLOCKED_INSUFFICIENT_DATA",
+          "data_class": "SYNTHETIC",
+          "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "instrument": "XAUUSD",
+          "timeframe": "1H",
+          "rows": 500,
+          "span_days": 20.833333333333332,
+          "quality_passed": true,
+          "ready_for_claims": false,
+          "mechanism_validation_only": true,
+          "reasons": [
+            "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+            "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+            "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+          ],
+          "requirements": {
+            "min_bars": 5000,
+            "min_span_days": 180.0,
+            "allowed_claim_classes": [
+              "REAL",
+              "HISTORICAL",
+              "BROKER-DERIVED"
+            ]
+          }
+        },
+        "experiment_id": "E-bfc25cac",
+        "configuration_hash": "364fe6023bba4745",
+        "dataset_provenance": "SYNTHETIC",
+        "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+        "code_version": "0.1.0+64fab8dae9dc",
+        "evidence": {
+          "status": "BLOCKED",
+          "reason": "claim-eligible execution was not attempted"
+        },
+        "created_at": "2026-09-18 10:20:48.871061+00:00"
+      },
+      {
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0001",
+        "strategy_id": "trend_9bbe8aa4_0001",
+        "params": {
+          "fast": 5,
+          "slow": 30,
+          "ma_type": "sma"
+        },
+        "passed": false,
+        "sharpe_oos": null,
+        "sharpe_is": null,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+        "data_readiness": {
+          "data_version": "20260918-010-572728d9",
+          "status": "BLOCKED_INSUFFICIENT_DATA",
+          "data_class": "SYNTHETIC",
+          "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "instrument": "XAUUSD",
+          "timeframe": "1H",
+          "rows": 500,
+          "span_days": 20.833333333333332,
+          "quality_passed": true,
+          "ready_for_claims": false,
+          "mechanism_validation_only": true,
+          "reasons": [
+            "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+            "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+            "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+          ],
+          "requirements": {
+            "min_bars": 5000,
+            "min_span_days": 180.0,
+            "allowed_claim_classes": [
+              "REAL",
+              "HISTORICAL",
+              "BROKER-DERIVED"
+            ]
+          }
+        },
+        "experiment_id": "E-dc703662",
+        "configuration_hash": "35e136f37a5b9e72",
+        "dataset_provenance": "SYNTHETIC",
+        "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+        "code_version": "0.1.0+64fab8dae9dc",
+        "evidence": {
+          "status": "BLOCKED",
+          "reason": "claim-eligible execution was not attempted"
+        },
+        "created_at": "2026-09-18 10:20:48.878506+00:00"
+      },
+      {
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0002",
+        "strategy_id": "trend_9bbe8aa4_0002",
+        "params": {
+          "fast": 5,
+          "slow": 50,
+          "ma_type": "sma"
+        },
+        "passed": false,
+        "sharpe_oos": null,
+        "sharpe_is": null,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+        "data_readiness": {
+          "data_version": "20260918-010-572728d9",
+          "status": "BLOCKED_INSUFFICIENT_DATA",
+          "data_class": "SYNTHETIC",
+          "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "instrument": "XAUUSD",
+          "timeframe": "1H",
+          "rows": 500,
+          "span_days": 20.833333333333332,
+          "quality_passed": true,
+          "ready_for_claims": false,
+          "mechanism_validation_only": true,
+          "reasons": [
+            "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+            "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+            "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+          ],
+          "requirements": {
+            "min_bars": 5000,
+            "min_span_days": 180.0,
+            "allowed_claim_classes": [
+              "REAL",
+              "HISTORICAL",
+              "BROKER-DERIVED"
+            ]
+          }
+        },
+        "experiment_id": "E-6754df0e",
+        "configuration_hash": "984ff046c979417c",
+        "dataset_provenance": "SYNTHETIC",
+        "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+        "code_version": "0.1.0+64fab8dae9dc",
+        "evidence": {
+          "status": "BLOCKED",
+          "reason": "claim-eligible execution was not attempted"
+        },
+        "created_at": "2026-09-18 10:20:48.886626+00:00"
+      },
+      {
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0003",
+        "strategy_id": "trend_9bbe8aa4_0003",
+        "params": {
+          "fast": 10,
+          "slow": 20,
+          "ma_type": "sma"
+        },
+        "passed": false,
+        "sharpe_oos": null,
+        "sharpe_is": null,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+        "data_readiness": {
+          "data_version": "20260918-010-572728d9",
+          "status": "BLOCKED_INSUFFICIENT_DATA",
+          "data_class": "SYNTHETIC",
+          "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "instrument": "XAUUSD",
+          "timeframe": "1H",
+          "rows": 500,
+          "span_days": 20.833333333333332,
+          "quality_passed": true,
+          "ready_for_claims": false,
+          "mechanism_validation_only": true,
+          "reasons": [
+            "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+            "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+            "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+          ],
+          "requirements": {
+            "min_bars": 5000,
+            "min_span_days": 180.0,
+            "allowed_claim_classes": [
+              "REAL",
+              "HISTORICAL",
+              "BROKER-DERIVED"
+            ]
+          }
+        },
+        "experiment_id": "E-a7126a53",
+        "configuration_hash": "4d031e296a72a37e",
+        "dataset_provenance": "SYNTHETIC",
+        "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+        "code_version": "0.1.0+64fab8dae9dc",
+        "evidence": {
+          "status": "BLOCKED",
+          "reason": "claim-eligible execution was not attempted"
+        },
+        "created_at": "2026-09-18 10:20:48.893437+00:00"
+      },
+      {
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0004",
+        "strategy_id": "trend_9bbe8aa4_0004",
+        "params": {
+          "fast": 10,
+          "slow": 30,
+          "ma_type": "sma"
+        },
+        "passed": false,
+        "sharpe_oos": null,
+        "sharpe_is": null,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+        "data_readiness": {
+          "data_version": "20260918-010-572728d9",
+          "status": "BLOCKED_INSUFFICIENT_DATA",
+          "data_class": "SYNTHETIC",
+          "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "instrument": "XAUUSD",
+          "timeframe": "1H",
+          "rows": 500,
+          "span_days": 20.833333333333332,
+          "quality_passed": true,
+          "ready_for_claims": false,
+          "mechanism_validation_only": true,
+          "reasons": [
+            "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+            "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+            "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+          ],
+          "requirements": {
+            "min_bars": 5000,
+            "min_span_days": 180.0,
+            "allowed_claim_classes": [
+              "REAL",
+              "HISTORICAL",
+              "BROKER-DERIVED"
+            ]
+          }
+        },
+        "experiment_id": "E-73abd2c6",
+        "configuration_hash": "48d295a0372c3324",
+        "dataset_provenance": "SYNTHETIC",
+        "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+        "code_version": "0.1.0+64fab8dae9dc",
+        "evidence": {
+          "status": "BLOCKED",
+          "reason": "claim-eligible execution was not attempted"
+        },
+        "created_at": "2026-09-18 10:20:48.900870+00:00"
+      },
+      {
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0005",
+        "strategy_id": "trend_9bbe8aa4_0005",
+        "params": {
+          "fast": 10,
+          "slow": 50,
+          "ma_type": "sma"
+        },
+        "passed": false,
+        "sharpe_oos": null,
+        "sharpe_is": null,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+        "data_readiness": {
+          "data_version": "20260918-010-572728d9",
+          "status": "BLOCKED_INSUFFICIENT_DATA",
+          "data_class": "SYNTHETIC",
+          "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "instrument": "XAUUSD",
+          "timeframe": "1H",
+          "rows": 500,
+          "span_days": 20.833333333333332,
+          "quality_passed": true,
+          "ready_for_claims": false,
+          "mechanism_validation_only": true,
+          "reasons": [
+            "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+            "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+            "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+          ],
+          "requirements": {
+            "min_bars": 5000,
+            "min_span_days": 180.0,
+            "allowed_claim_classes": [
+              "REAL",
+              "HISTORICAL",
+              "BROKER-DERIVED"
+            ]
+          }
+        },
+        "experiment_id": "E-0f8caca5",
+        "configuration_hash": "adcee91e422954b5",
+        "dataset_provenance": "SYNTHETIC",
+        "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+        "code_version": "0.1.0+64fab8dae9dc",
+        "evidence": {
+          "status": "BLOCKED",
+          "reason": "claim-eligible execution was not attempted"
+        },
+        "created_at": "2026-09-18 10:20:48.907982+00:00"
+      }
+    ],
+    "ranked_for_inspection": [
+      {
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0000",
+        "strategy_id": "trend_9bbe8aa4_0000",
+        "params": {
+          "fast": 5,
+          "slow": 20,
+          "ma_type": "sma"
+        },
+        "passed": false,
+        "sharpe_oos": null,
+        "sharpe_is": null,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+        "data_readiness": {
+          "data_version": "20260918-010-572728d9",
+          "status": "BLOCKED_INSUFFICIENT_DATA",
+          "data_class": "SYNTHETIC",
+          "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "instrument": "XAUUSD",
+          "timeframe": "1H",
+          "rows": 500,
+          "span_days": 20.833333333333332,
+          "quality_passed": true,
+          "ready_for_claims": false,
+          "mechanism_validation_only": true,
+          "reasons": [
+            "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+            "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+            "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+          ],
+          "requirements": {
+            "min_bars": 5000,
+            "min_span_days": 180.0,
+            "allowed_claim_classes": [
+              "REAL",
+              "HISTORICAL",
+              "BROKER-DERIVED"
+            ]
+          }
+        },
+        "experiment_id": "E-bfc25cac",
+        "configuration_hash": "364fe6023bba4745",
+        "dataset_provenance": "SYNTHETIC",
+        "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+        "code_version": "0.1.0+64fab8dae9dc",
+        "evidence": {
+          "status": "BLOCKED",
+          "reason": "claim-eligible execution was not attempted"
+        },
+        "created_at": "2026-09-18 10:20:48.871061+00:00"
+      },
+      {
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0001",
+        "strategy_id": "trend_9bbe8aa4_0001",
+        "params": {
+          "fast": 5,
+          "slow": 30,
+          "ma_type": "sma"
+        },
+        "passed": false,
+        "sharpe_oos": null,
+        "sharpe_is": null,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+        "data_readiness": {
+          "data_version": "20260918-010-572728d9",
+          "status": "BLOCKED_INSUFFICIENT_DATA",
+          "data_class": "SYNTHETIC",
+          "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "instrument": "XAUUSD",
+          "timeframe": "1H",
+          "rows": 500,
+          "span_days": 20.833333333333332,
+          "quality_passed": true,
+          "ready_for_claims": false,
+          "mechanism_validation_only": true,
+          "reasons": [
+            "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+            "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+            "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+          ],
+          "requirements": {
+            "min_bars": 5000,
+            "min_span_days": 180.0,
+            "allowed_claim_classes": [
+              "REAL",
+              "HISTORICAL",
+              "BROKER-DERIVED"
+            ]
+          }
+        },
+        "experiment_id": "E-dc703662",
+        "configuration_hash": "35e136f37a5b9e72",
+        "dataset_provenance": "SYNTHETIC",
+        "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+        "code_version": "0.1.0+64fab8dae9dc",
+        "evidence": {
+          "status": "BLOCKED",
+          "reason": "claim-eligible execution was not attempted"
+        },
+        "created_at": "2026-09-18 10:20:48.878506+00:00"
+      },
+      {
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0002",
+        "strategy_id": "trend_9bbe8aa4_0002",
+        "params": {
+          "fast": 5,
+          "slow": 50,
+          "ma_type": "sma"
+        },
+        "passed": false,
+        "sharpe_oos": null,
+        "sharpe_is": null,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+        "data_readiness": {
+          "data_version": "20260918-010-572728d9",
+          "status": "BLOCKED_INSUFFICIENT_DATA",
+          "data_class": "SYNTHETIC",
+          "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "instrument": "XAUUSD",
+          "timeframe": "1H",
+          "rows": 500,
+          "span_days": 20.833333333333332,
+          "quality_passed": true,
+          "ready_for_claims": false,
+          "mechanism_validation_only": true,
+          "reasons": [
+            "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+            "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+            "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+          ],
+          "requirements": {
+            "min_bars": 5000,
+            "min_span_days": 180.0,
+            "allowed_claim_classes": [
+              "REAL",
+              "HISTORICAL",
+              "BROKER-DERIVED"
+            ]
+          }
+        },
+        "experiment_id": "E-6754df0e",
+        "configuration_hash": "984ff046c979417c",
+        "dataset_provenance": "SYNTHETIC",
+        "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+        "code_version": "0.1.0+64fab8dae9dc",
+        "evidence": {
+          "status": "BLOCKED",
+          "reason": "claim-eligible execution was not attempted"
+        },
+        "created_at": "2026-09-18 10:20:48.886626+00:00"
+      },
+      {
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0003",
+        "strategy_id": "trend_9bbe8aa4_0003",
+        "params": {
+          "fast": 10,
+          "slow": 20,
+          "ma_type": "sma"
+        },
+        "passed": false,
+        "sharpe_oos": null,
+        "sharpe_is": null,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+        "data_readiness": {
+          "data_version": "20260918-010-572728d9",
+          "status": "BLOCKED_INSUFFICIENT_DATA",
+          "data_class": "SYNTHETIC",
+          "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "instrument": "XAUUSD",
+          "timeframe": "1H",
+          "rows": 500,
+          "span_days": 20.833333333333332,
+          "quality_passed": true,
+          "ready_for_claims": false,
+          "mechanism_validation_only": true,
+          "reasons": [
+            "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+            "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+            "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+          ],
+          "requirements": {
+            "min_bars": 5000,
+            "min_span_days": 180.0,
+            "allowed_claim_classes": [
+              "REAL",
+              "HISTORICAL",
+              "BROKER-DERIVED"
+            ]
+          }
+        },
+        "experiment_id": "E-a7126a53",
+        "configuration_hash": "4d031e296a72a37e",
+        "dataset_provenance": "SYNTHETIC",
+        "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+        "code_version": "0.1.0+64fab8dae9dc",
+        "evidence": {
+          "status": "BLOCKED",
+          "reason": "claim-eligible execution was not attempted"
+        },
+        "created_at": "2026-09-18 10:20:48.893437+00:00"
+      },
+      {
+        "campaign_id": "C-9bbe8aa4",
+        "trial_id": "T-9bbe8aa4-0004",
+        "strategy_id": "trend_9bbe8aa4_0004",
+        "params": {
+          "fast": 10,
+          "slow": 30,
+          "ma_type": "sma"
+        },
+        "passed": false,
+        "sharpe_oos": null,
+        "sharpe_is": null,
+        "reasons": [
+          "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+          "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+          "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+        ],
+        "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+        "data_readiness": {
+          "data_version": "20260918-010-572728d9",
+          "status": "BLOCKED_INSUFFICIENT_DATA",
+          "data_class": "SYNTHETIC",
+          "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "instrument": "XAUUSD",
+          "timeframe": "1H",
+          "rows": 500,
+          "span_days": 20.833333333333332,
+          "quality_passed": true,
+          "ready_for_claims": false,
+          "mechanism_validation_only": true,
+          "reasons": [
+            "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+            "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+            "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+          ],
+          "requirements": {
+            "min_bars": 5000,
+            "min_span_days": 180.0,
+            "allowed_claim_classes": [
+              "REAL",
+              "HISTORICAL",
+              "BROKER-DERIVED"
+            ]
+          }
+        },
+        "experiment_id": "E-73abd2c6",
+        "configuration_hash": "48d295a0372c3324",
+        "dataset_provenance": "SYNTHETIC",
+        "dataset_manifest_hash": "sha256:572728d92ebb5c2a",
+        "code_version": "0.1.0+64fab8dae9dc",
+        "evidence": {
+          "status": "BLOCKED",
+          "reason": "claim-eligible execution was not attempted"
+        },
+        "created_at": "2026-09-18 10:20:48.900870+00:00"
+      }
+    ],
+    "dsr_trial_count": 303,
+    "elapsed_s": 0.12729263305664062,
+    "status": "COMPLETED",
+    "conclusion": "BLOCKED_INSUFFICIENT_DATA",
+    "data_readiness": {
+      "data_version": "20260918-010-572728d9",
+      "status": "BLOCKED_INSUFFICIENT_DATA",
+      "data_class": "SYNTHETIC",
+      "source_label": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+      "instrument": "XAUUSD",
+      "timeframe": "1H",
+      "rows": 500,
+      "span_days": 20.833333333333332,
+      "quality_passed": true,
+      "ready_for_claims": false,
+      "mechanism_validation_only": true,
+      "reasons": [
+        "PROVENANCE_NOT_CLAIM_ELIGIBLE: data_class=SYNTHETIC; allowed=REAL,HISTORICAL,BROKER-DERIVED",
+        "INSUFFICIENT_DEPTH: 500 bars < required 5000",
+        "INSUFFICIENT_SPAN: 20.83 days < required 180.00"
+      ],
+      "requirements": {
+        "min_bars": 5000,
+        "min_span_days": 180.0,
+        "allowed_claim_classes": [
+          "REAL",
+          "HISTORICAL",
+          "BROKER-DERIVED"
+        ]
+      }
+    },
+    "notes": "A completed campaign is not a positive result. Claim-ineligible data produces blocked trials; no trial is auto-promoted."
+  },
+  "evidence_portfolio": {
+    "generated_at": "2026-09-18T10:20:48.913380+00:00",
+    "research_question": "Search for durable XAUUSD edge under conservative execution assumptions",
+    "hypotheses": [
+      {
+        "id": "HYP-8a75bb",
+        "thought_id": "THT-347b54",
+        "statement": "trend persistence: if trend persistence exists, strategy capturing it should survive walk-forward, CPCV, costs, regime",
+        "mechanism": "trend persistence",
+        "why": "Previous evidence shows regime dependence and cost sensitivity \u2014 testing trend persistence may reveal conditional edge",
+        "falsifiable_prediction": "Strategy on trend persistence will have DSR>0.95, PBO<0.5, cost BE>20bps, and separate from null",
+        "support": "OOS Sharpe >0.3 with WFE>0.3, DSR>0.95, regime stable, cost BE >20bps",
+        "falsify": "OOS Sharpe <=0, WFE<0.3, DSR <0.5, or placebo equivalent, or cost BE <5bps",
+        "data_required": "500 bars across 20.8 days for XAUUSD 1H; dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims",
+        "cost_conditions": "spread 3bps, slippage realistic, latency 100ms, next-bar-open execution",
+        "regimes": "trend for persistence, range for mean-reversion",
+        "stop_conditions": "high_vol or opposite regime should degrade",
+        "family": "trend_persistence",
+        "feature_lineage": [],
+        "null_hypothesis": "No incremental predictive or economic effect beyond the declared baseline and costs",
+        "competing_explanations": [
+          "selection or multiple-testing artifact",
+          "regime/sample dependence",
+          "unmodeled spread, slippage, or latency"
+        ],
+        "horizon": "the declared out-of-sample evaluation horizon",
+        "population": "the declared instrument, timeframe, regime, and provenance-qualified dataset",
+        "falsification_criteria": "OOS Sharpe <=0, WFE<0.3, DSR <0.5, or placebo equivalent, or cost BE <5bps",
+        "required_data": "500 bars across 20.8 days for XAUUSD 1H; dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims",
+        "created_at": "2026-09-18T10:20:48.762476Z"
+      },
+      {
+        "id": "HYP-21f108",
+        "thought_id": "THT-6aec41",
+        "statement": "breakout failure: if breakout failure exists, strategy capturing it should survive walk-forward, CPCV, costs, regime",
+        "mechanism": "breakout failure",
+        "why": "Previous evidence shows regime dependence and cost sensitivity \u2014 testing breakout failure may reveal conditional edge",
+        "falsifiable_prediction": "Strategy on breakout failure will have DSR>0.95, PBO<0.5, cost BE>20bps, and separate from null",
+        "support": "OOS Sharpe >0.3 with WFE>0.3, DSR>0.95, regime stable, cost BE >20bps",
+        "falsify": "OOS Sharpe <=0, WFE<0.3, DSR <0.5, or placebo equivalent, or cost BE <5bps",
+        "data_required": "500 bars across 20.8 days for XAUUSD 1H; dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims",
+        "cost_conditions": "spread 3bps, slippage realistic, latency 100ms, next-bar-open execution",
+        "regimes": "trend for persistence, range for mean-reversion",
+        "stop_conditions": "high_vol or opposite regime should degrade",
+        "family": "breakout_failure",
+        "feature_lineage": [],
+        "null_hypothesis": "No incremental predictive or economic effect beyond the declared baseline and costs",
+        "competing_explanations": [
+          "selection or multiple-testing artifact",
+          "regime/sample dependence",
+          "unmodeled spread, slippage, or latency"
+        ],
+        "horizon": "the declared out-of-sample evaluation horizon",
+        "population": "the declared instrument, timeframe, regime, and provenance-qualified dataset",
+        "falsification_criteria": "OOS Sharpe <=0, WFE<0.3, DSR <0.5, or placebo equivalent, or cost BE <5bps",
+        "required_data": "500 bars across 20.8 days for XAUUSD 1H; dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims",
+        "created_at": "2026-09-18T10:20:48.765889Z"
+      },
+      {
+        "id": "HYP-df7f58",
+        "thought_id": "THT-34b665",
+        "statement": "volatility expansion: if volatility expansion exists, strategy capturing it should survive walk-forward, CPCV, costs, regime",
+        "mechanism": "volatility expansion",
+        "why": "Previous evidence shows regime dependence and cost sensitivity \u2014 testing volatility expansion may reveal conditional edge",
+        "falsifiable_prediction": "Strategy on volatility expansion will have DSR>0.95, PBO<0.5, cost BE>20bps, and separate from null",
+        "support": "OOS Sharpe >0.3 with WFE>0.3, DSR>0.95, regime stable, cost BE >20bps",
+        "falsify": "OOS Sharpe <=0, WFE<0.3, DSR <0.5, or placebo equivalent, or cost BE <5bps",
+        "data_required": "500 bars across 20.8 days for XAUUSD 1H; dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims",
+        "cost_conditions": "spread 3bps, slippage realistic, latency 100ms, next-bar-open execution",
+        "regimes": "trend for persistence, range for mean-reversion",
+        "stop_conditions": "high_vol or opposite regime should degrade",
+        "family": "volatility_expansion",
+        "feature_lineage": [],
+        "null_hypothesis": "No incremental predictive or economic effect beyond the declared baseline and costs",
+        "competing_explanations": [
+          "selection or multiple-testing artifact",
+          "regime/sample dependence",
+          "unmodeled spread, slippage, or latency"
+        ],
+        "horizon": "the declared out-of-sample evaluation horizon",
+        "population": "the declared instrument, timeframe, regime, and provenance-qualified dataset",
+        "falsification_criteria": "OOS Sharpe <=0, WFE<0.3, DSR <0.5, or placebo equivalent, or cost BE <5bps",
+        "required_data": "500 bars across 20.8 days for XAUUSD 1H; dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims",
+        "created_at": "2026-09-18T10:20:48.768940Z"
+      }
+    ],
+    "mechanism": "autonomous intelligence generated 3-6 falsifiable hypotheses",
+    "data_used": {
+      "available_sources": [
+        {
+          "version": "20260918-010-572728d9",
+          "instrument": "XAUUSD",
+          "venue": "MT5",
+          "timeframe": "1H",
+          "rows": 500,
+          "date_range": {
+            "start": "2020-01-01T00:00:00+00:00",
+            "end": "2020-01-21T20:00:00+00:00"
+          },
+          "checksum": "sha256:572728d92ebb5c2a",
+          "source": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+          "data_class": "SYNTHETIC",
+          "bid_ask_available": {
+            "status": "UNAVAILABLE",
+            "value": null,
+            "reason": "no bid field in canonical OHLC schema"
+          },
+          "spread_available": "UNAVAILABLE \u2014 SYNTHETIC dataset has no measured bid/ask; high-low is not spread",
+          "tick_available": {
+            "status": "UNAVAILABLE",
+            "value": null,
+            "reason": "canonical dataset contains OHLC bars, not tick records"
+          },
+          "timestamp_quality": {
+            "timezone": "UTC",
+            "resolution": "3600s bar cadence",
+            "missingness": {
+              "status": "MEASURED",
+              "value": {
+                "gap_count": 0,
+                "closure_gap_count": 0,
+                "max_gap_s": 0,
+                "missing_intervals": 0,
+                "missing_pct": 0.0,
+                "common_delta_s": 3600
+              },
+              "reason": null
+            }
+          },
+          "survivorship": "UNAVAILABLE: survivorship requires a multi-instrument universe and membership history",
+          "corporate_adjustments": "NOT_APPLICABLE for the registered instrument",
+          "broker_differences": "UNAVAILABLE: broker session/fill metadata is not in canonical OHLC bars",
+          "historical_depth": {
+            "status": "MEASURED",
+            "rows": 500,
+            "span": {
+              "start": "2020-01-01T00:00:00+00:00",
+              "end": "2020-01-21T20:00:00+00:00"
+            }
+          },
+          "market_regimes": "UNAVAILABLE: regime coverage needs a declared regime taxonomy and sufficient span",
+          "execution_conditions": {
+            "status": "UNAVAILABLE",
+            "reason": "no measured bid/ask, latency, slippage, or fill history in OHLC dataset"
+          },
+          "licensing": "UNAVAILABLE: licensing metadata is not encoded in the manifest"
+        }
+      ],
+      "count": 1,
+      "limitation": "1 canonical dataset version(s), classes=['SYNTHETIC'], total_rows=500, largest_dataset_rows=500; claim eligibility remains dataset-specific and requires measured provenance, depth, span, quality, and costs",
+      "recommendation": "Acquire provenance-qualified history with licensing, broker/session semantics, bid/ask or measured cost data, UTC timestamp evidence, multiple regimes, and a declared cross-instrument population before generalizing a claim.",
+      "minimum_expansion_needed": {
+        "historical_depth": "UNAVAILABLE until the target claim specifies horizon, population, and power requirement",
+        "symbols": "UNAVAILABLE until the target population is declared",
+        "timeframes": "UNAVAILABLE until the mechanism specifies a timeframe",
+        "regimes": "UNAVAILABLE until a regime taxonomy and sufficient history are measured",
+        "execution": "measured bid/ask/tick/fill evidence required for execution claims"
+      },
+      "never_substitute": "Do not substitute synthetic, paper, shadow, demo, imputed, estimated, or model-derived data for claim-eligible market observations.",
+      "raw_files": []
+    },
+    "trial_count": 6,
+    "distinct_hypotheses": 6,
+    "strategies_tested": 6,
+    "failed_candidates": 6,
+    "surviving_candidates": 0,
+    "strongest_for": [],
+    "strongest_against": [
+      "missing trial-bound adversarial inputs"
+    ],
+    "DSR": {
+      "status": "UNAVAILABLE",
+      "reason": "no trial-bound multiple-testing report"
+    },
+    "PBO": {
+      "status": "UNAVAILABLE",
+      "reason": "no trial-bound probability-of-backtest-overfit report"
+    },
+    "white_reality_check": {
+      "status": "UNAVAILABLE",
+      "reason": "campaign did not produce trial-bound return vectors for White reality check"
+    },
+    "hansen_spa": {
+      "status": "UNAVAILABLE",
+      "reason": "campaign did not produce trial-bound return vectors for Hansen SPA"
+    },
+    "cost_sensitivity": {
+      "status": "UNAVAILABLE",
+      "reason": "no trial-bound gross/net cost decomposition"
+    },
+    "execution_sensitivity": {
+      "status": "UNAVAILABLE",
+      "reason": "no execution or fill observations in campaign"
+    },
+    "regime_behavior": {
+      "status": "UNAVAILABLE",
+      "reason": "no trial-bound regime report"
+    },
+    "robustness": {
+      "status": "UNAVAILABLE",
+      "reason": "no trial-bound perturbation report"
+    },
+    "forward_evidence": {
+      "status": "UNAVAILABLE",
+      "reason": "no forward observation evidence bound to campaign trials"
+    },
+    "unresolved_uncertainty": [
+      "500 bars across 20.8 days for XAUUSD 1H; dataset depth, symbol/timeframe breadth, provenance, and field semantics must be verified before claims",
+      "campaign-level leakage/frozen-test audit is not implemented",
+      "null, placebo, cost, execution, and forward evidence are not trial-bound"
+    ],
+    "never_winner_by_return": "No winner declared; campaign conclusion is fail-closed",
+    "candidate_survival_standard": "No promotion without OOS, multiple testing, costs, perturbation, regime, null/placebo, expectancy, forward, and execution evidence",
+    "self_audit": {
+      "did_we_leak": "NOT_PROVEN \u2014 campaign-level leakage audit is not implemented",
+      "did_we_cherry_pick": "MEASURED \u2014 6 trial records returned; no records were removed by this runner",
+      "did_we_over_search": "MEASURED \u2014 requested max_trials=6, executed_records=6",
+      "did_we_reset_trial_count": "MEASURED \u2014 delegated to append-only experiment ledger",
+      "did_we_reuse_test_set": "NOT_PROVEN \u2014 campaign-level frozen-test audit is not implemented",
+      "did_we_overfit_params": "INSUFFICIENT_EVIDENCE \u2014 no trial-bound perturbation report",
+      "did_we_under_model_costs": "INSUFFICIENT_EVIDENCE \u2014 no trial-bound gross/net cost report",
+      "did_we_assume_unrealistic_fills": "INSUFFICIENT_EVIDENCE \u2014 no trial-bound execution/fill report",
+      "did_we_confuse_correlation": "INSUFFICIENT_EVIDENCE \u2014 no trial-bound null/placebo report",
+      "did_we_repeatedly_test_same_idea": "MEASURED \u2014 novelty distinct=6 of 6 records",
+      "did_we_suppress_failures": "MEASURED \u2014 failed/blocked trial records are retained by the campaign ledger",
+      "verdict": "BLOCK \u2014 missing evidence is fail-closed"
+    },
+    "retest_summary": {
+      "retested": 0,
+      "planned": 0,
+      "status": "NOT_EXECUTED",
+      "reason": "no refinement rerun was performed by this bounded campaign"
+    },
+    "live_safety": "RESEARCH\u2192VALIDATION\u2192FORWARD\u2192PAPER\u2192SHADOW\u2192MICRO\u2192LIVE_ELIGIBLE never skipped, no LIVE move",
+    "overall": "BLOCK \u2014 keep NO_TRADE"
+  },
+  "novelty": {
+    "total_trials": 6,
+    "distinct_hypotheses": 6,
+    "largest_cluster_size": 1,
+    "clusters": {
+      "e59e0090240f": 1,
+      "a1d9c1b122dd": 1,
+      "1352ec94a837": 1,
+      "dea43580c870": 1,
+      "3115212ec145": 1,
+      "c706d820c4f7": 1
+    },
+    "honest_note": "6 trials but only 6 materially distinct hypotheses \u2014 essential for honest multiple-testing"
+  },
+  "self_audit": {
+    "did_we_leak": "NOT_PROVEN \u2014 campaign-level leakage audit is not implemented",
+    "did_we_cherry_pick": "MEASURED \u2014 6 trial records returned; no records were removed by this runner",
+    "did_we_over_search": "MEASURED \u2014 requested max_trials=6, executed_records=6",
+    "did_we_reset_trial_count": "MEASURED \u2014 delegated to append-only experiment ledger",
+    "did_we_reuse_test_set": "NOT_PROVEN \u2014 campaign-level frozen-test audit is not implemented",
+    "did_we_overfit_params": "INSUFFICIENT_EVIDENCE \u2014 no trial-bound perturbation report",
+    "did_we_under_model_costs": "INSUFFICIENT_EVIDENCE \u2014 no trial-bound gross/net cost report",
+    "did_we_assume_unrealistic_fills": "INSUFFICIENT_EVIDENCE \u2014 no trial-bound execution/fill report",
+    "did_we_confuse_correlation": "INSUFFICIENT_EVIDENCE \u2014 no trial-bound null/placebo report",
+    "did_we_repeatedly_test_same_idea": "MEASURED \u2014 novelty distinct=6 of 6 records",
+    "did_we_suppress_failures": "MEASURED \u2014 failed/blocked trial records are retained by the campaign ledger",
+    "verdict": "BLOCK \u2014 missing evidence is fail-closed"
+  }
+}

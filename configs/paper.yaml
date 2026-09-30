@@ -1,0 +1,16 @@
+env: paper
+data:
+  root: data
+execution:
+  mode: paper
+  spread_bps: 3.0
+  slippage_bps: 2.0
+  reconcile_interval_s: 15
+risk:
+  max_quantity: 0.5
+  max_notional: 5000
+  max_exposure: 1.0
+  daily_loss_limit: 100
+  max_drawdown: 300
+  approved: false
+  kill_switch_enabled: true

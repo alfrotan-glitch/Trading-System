@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-09-16T14:08:45.054679+00:00",
+  "health": {
+    "timestamp": "2026-09-16T14:08:44.689742+00:00",
+    "checks": [
+      {
+        "name": "load_durable_state",
+        "passed": true,
+        "detail": "durable state loaded"
+      },
+      {
+        "name": "restore_suspension",
+        "passed": true,
+        "detail": "suspension state healthy"
+      },
+      {
+        "name": "restore_pending_orders",
+        "passed": true,
+        "detail": "pending/ambiguous orders none"
+      },
+      {
+        "name": "verify_data",
+        "passed": true,
+        "detail": "data healthy 20260916-010-572728d9 500 bars"
+      },
+      {
+        "name": "verify_configuration",
+        "passed": true,
+        "detail": "config loaded env=dev mode=research"
+      },
+      {
+        "name": "verify_account_MT5",
+        "passed": true,
+        "detail": "MT5 MOCK \u2014 no real broker connection (correct for dev)"
+      },
+      {
+        "name": "run_reconciliation",
+        "passed": true,
+        "detail": "reconciliation healthy"
+      }
+    ],
+    "overall": true,
+    "system_status": "Running"
+  },
+  "restore": {
+    "risk_state_table": true,
+    "idempotency_table": false,
+    "audit_count": 0,
+    "restored": true,
+    "timestamp": "2026-09-16T14:08:45.054658+00:00",
+    "note": "suspension, pending/ambiguous orders, audit preserved across restart"
+  },
+  "env": "development",
+  "mt5_mode": "MOCK"
+}

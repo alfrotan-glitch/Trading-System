@@ -1,0 +1,109 @@
+{
+  "schema": "qts.mt5_history_capability_report.v1",
+  "evidence_status": "OPERATOR_REPORTED_PRIVATE_RAW_NOT_IN_REPOSITORY",
+  "reported_at": "2026-09-19",
+  "probe": {
+    "implementation": "scripts/probe_mt5_history.py",
+    "repository_commit_at_probe": "9ad810d",
+    "mt5_package_version": "5.0.6180",
+    "terminal": "WM Markets MT5 DEMO",
+    "read_only": true,
+    "orders_submitted": 0,
+    "order_send_called": false
+  },
+  "symbol": {
+    "requested": "XAUUSD@",
+    "actual_broker_symbol": "XAUUSD@",
+    "symbol_mapping_verified": true
+  },
+  "capability_status": "CAPABILITY_VERIFIED_LIMITED_HISTORY",
+  "capability_statement": "The WM Markets DEMO terminal returned broker-specific historical XAUUSD@ tick responses through copy_ticks_range with bid, ask, time, and time_msc fields for 1-day, 7-day, and 30-day requests. The 365-day request failed with (-1, 'Terminal: Call failed'). This proves a working limited historical tick/bid/ask capability, not the maximum retention boundary.",
+  "windows": [
+    {
+      "window_days": 1,
+      "status": "RESPONSE_RECEIVED_BID_ASK_PRESENT",
+      "rows": 165418,
+      "fields": ["bid", "ask", "time", "time_msc"],
+      "non_monotonic_time_msc": 0,
+      "same_time_msc_excess_rows_reported_as_duplicate_time_msc": 1014,
+      "raw_rows_sha256": null,
+      "quality_status": "NOT_ASSESSED"
+    },
+    {
+      "window_days": 7,
+      "status": "RESPONSE_RECEIVED_BID_ASK_PRESENT",
+      "rows": 970303,
+      "fields": ["bid", "ask", "time", "time_msc"],
+      "non_monotonic_time_msc": 0,
+      "same_time_msc_excess_rows_reported_as_duplicate_time_msc": 5057,
+      "raw_rows_sha256": null,
+      "quality_status": "NOT_ASSESSED"
+    },
+    {
+      "window_days": 30,
+      "status": "RESPONSE_RECEIVED_BID_ASK_PRESENT",
+      "rows": 4292917,
+      "fields": ["bid", "ask", "time", "time_msc"],
+      "non_monotonic_time_msc": 0,
+      "same_time_msc_excess_rows_reported_as_duplicate_time_msc": 39535,
+      "raw_rows_sha256": "sha256:c2b59d6e41e85e08f4acb45f434e6bb205a3a3a5db07301f20e9bb5d675fad02",
+      "quality_status": "NOT_ASSESSED"
+    },
+    {
+      "window_days": 365,
+      "status": "QUERY_ERROR",
+      "rows": null,
+      "error": "(-1, 'Terminal: Call failed')",
+      "quality_status": "UNAVAILABLE"
+    }
+  ],
+  "timestamp_assessment": {
+    "raw_fields_present": ["time", "time_msc"],
+    "normalization_applied": false,
+    "canonical_utc_status": "PENDING_INDEPENDENT_HISTORICAL_BASIS_CONFIRMATION",
+    "basis_statement": "The probe preserved raw MT5 timestamp fields and did not apply the current live-observation offset. Historical rows must not inherit the current +10800 offset without a same-terminal basis check."
+  },
+  "duplicate_semantics": {
+    "reported_duplicate_time_msc": "timestamp-collision excess rows: total rows minus distinct time_msc values",
+    "identical_full_tick_row": "not measured by the operator report",
+    "same_time_msc_different_quote": "not measured by the operator report; such rows are distinct quote events and must be retained",
+    "repeated_standing_quote": "not measured by the operator report; repeated bid/ask state is not automatically a duplicate tick"
+  },
+  "raw_evidence_custody": {
+    "location": "private operator terminal or controlled local storage",
+    "repository_presence": false,
+    "repository_statement": "raw/canonical tick-level evidence is not present in the repository",
+    "digest_scope": "reported 30-day raw-row representation digest; raw rows were not supplied for independent recomputation in this checkout"
+  },
+  "execution_boundary": {
+    "broker_specific_market_data": "AVAILABLE_FOR_REPORTED_WINDOWS",
+    "realized_fills": "NOT_AVAILABLE",
+    "requested_price": "NOT_AVAILABLE",
+    "fill_price": "NOT_AVAILABLE",
+    "slippage": "NOT_AVAILABLE",
+    "submission_ack_latency": "NOT_AVAILABLE",
+    "broker_execution_response": "NOT_AVAILABLE"
+  },
+  "research_disposition": {
+    "r5_status": "FAIL_WITH_LIMITED_BROKER_QUOTE_EVIDENCE",
+    "research_eligibility": "NOT_ELIGIBLE_PENDING_QUALITY_AND_TIMESTAMP_BASIS",
+    "allowed_future_uses": [
+      "broker-specific spread measurement after quality audit",
+      "comparison against the independent Dukascopy-derived population",
+      "quote-level market microstructure research after timestamp and coverage audit",
+      "cost-aware hypothesis evaluation after a new preregistered research run"
+    ],
+    "prohibited_claims": [
+      "real-money execution evidence",
+      "fill or slippage evidence",
+      "continuous historical coverage beyond the returned windows",
+      "hedge claim",
+      "rerun or modification of the frozen impulse study"
+    ]
+  },
+  "next_probe": {
+    "status": "PENDING_OPERATOR_ACTION",
+    "purpose": "characterize the practical history boundary without requesting an enormous dataset",
+    "windows_days": [45, 60, 90, 180]
+  }
+}

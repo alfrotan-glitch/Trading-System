@@ -1,0 +1,71 @@
+{
+  "20260918-010-572728d9": {
+    "rows": 500,
+    "passed": true,
+    "data_class": "SYNTHETIC",
+    "source": "SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+    "checks": [
+      {
+        "name": "monotonic_time",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "tz_aware",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_future",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "ohlc_invariants",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "positive_prices",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "abnormal_spreads",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_duplicates",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "single_symbol",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_missing_bars",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "session_boundaries",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "no_broker_artifacts",
+        "passed": true,
+        "details": ""
+      },
+      {
+        "name": "volume_non_negative",
+        "passed": true,
+        "details": ""
+      }
+    ],
+    "research_eligibility": "MECHANISM_VALIDATION_ONLY \u2014 synthetic data cannot support real-market claims"
+  }
+}

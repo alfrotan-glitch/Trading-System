@@ -1,0 +1,137 @@
+{
+  "schema": "qts.xauusd_marketmaking.v1",
+  "preregistration": "docs/xauusd_marketmaking_next_step_H-MM-01_2026-09-23.md",
+  "window": {
+    "time_msc_min": 1726746013452,
+    "cutoff_time_msc": 1764563969254,
+    "discovery_rows_read": 70783710,
+    "held_out_rows_read": 0
+  },
+  "measured": {
+    "16_fill_256_exc": {
+      "n_F": 332077,
+      "n_U": 634897,
+      "p_F": 0.7823938423919754,
+      "p_U": 0.7281622058381123,
+      "lift": 0.054231636553863094,
+      "mean_exc_F": 0.49854321437497934,
+      "mean_exc_U": 1.3076671412843344,
+      "ratio": 2.6229765115221735,
+      "gap_dollars": 0.8091239269093551,
+      "mean_max_F": 0.7584336614700807,
+      "mean_max_U": 1.9689166274214558,
+      "net_F": 0.13176690948183703,
+      "net_U": 0.23890054607282754,
+      "p_delay_F": 0.7749648424913499,
+      "p_delay_U": 0.7420510728511869
+    },
+    "terciles": [
+      {
+        "tercile": 0,
+        "n_F": 232339,
+        "n_U": 82851,
+        "p_F": 0.7914469804897155,
+        "p_U": 0.737516746931238,
+        "lift": 0.05393023355847748,
+        "mean_exc_F": 0.45628062873645836,
+        "mean_exc_U": 0.6950487622358209,
+        "ratio": 1.5232922865048295,
+        "gap_dollars": 0.23876813349936254,
+        "mean_max_F": 0.6985757234041637,
+        "mean_max_U": 1.0564369772241735,
+        "net_F": 0.13104610074072798,
+        "net_U": 0.22477290557748247,
+        "p_delay_F": 0.7825203689436556,
+        "p_delay_U": 0.7527971901365101,
+        "blocks": 1109
+      },
+      {
+        "tercile": 1,
+        "n_F": 96459,
+        "n_U": 223995,
+        "p_F": 0.7616396603738376,
+        "p_U": 0.7327842139333467,
+        "lift": 0.028855446440490873,
+        "mean_exc_F": 0.5778114017354524,
+        "mean_exc_U": 1.3264260139735262,
+        "ratio": 2.2956037385029355,
+        "gap_dollars": 0.7486146122380738,
+        "mean_max_F": 0.8682696275101338,
+        "mean_max_U": 1.9819969865398783,
+        "net_F": 0.13338527249919654,
+        "net_U": 0.241368959128552,
+        "p_delay_F": 0.7578245679511503,
+        "p_delay_U": 0.7447934105672002,
+        "blocks": 1240
+      },
+      {
+        "tercile": 2,
+        "n_F": 3279,
+        "n_U": 328051,
+        "p_F": 0.7514486123818237,
+        "p_U": 0.7226437352728692,
+        "lift": 0.02880487710895452,
+        "mean_exc_F": 1.16128087831656,
+        "mean_exc_U": 1.449578464933806,
+        "ratio": 1.2482582741181218,
+        "gap_dollars": 0.2882975866172459,
+        "mean_max_F": 1.768700823421775,
+        "mean_max_U": 2.190436807081826,
+        "net_F": 0.13523330283623056,
+        "net_U": 0.24078310994327096,
+        "p_delay_F": 0.7438243366880146,
+        "p_delay_U": 0.7374646015406141,
+        "blocks": 1394
+      }
+    ],
+    "gap_under_one_hour": {
+      "n_F": 331968,
+      "n_U": 633561,
+      "p_F": 0.7823977009832273,
+      "p_U": 0.7280640696002437,
+      "lift": 0.05433363138298353,
+      "mean_exc_F": 0.4984450910931174,
+      "mean_exc_U": 1.3028993340814856,
+      "ratio": 2.613927506486534,
+      "gap_dollars": 0.8044542429883682
+    },
+    "blocks_per_tercile": {
+      "0": 1109,
+      "1": 1240,
+      "2": 1394
+    },
+    "exclusions": {
+      "note": "non Low+Tight and non High+Wide ignored, front-of-queue SYNTHETIC"
+    },
+    "gates": {
+      "identity_and_minimums": true,
+      "material_fill_exc_net": false,
+      "mirrors_terciles_gap_max": true,
+      "bootstrap_required": "pending"
+    }
+  },
+  "hypotheses": {
+    "H-MM-01": {
+      "status": "REJECTED",
+      "reasons": [
+        "floor miss: lift 0.054 < 0.05 or ratio 2.623 < 1.25 or gap $0.809 < $0.1 or net_F $0.132 <= $0.1 or net_F <= net_U"
+      ],
+      "not_a_strategy": true,
+      "validated": false
+    }
+  },
+  "decision": "REJECTED",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "held_out_span_opened": false,
+  "safety": {
+    "DEMO_EXECUTION": "DISABLED",
+    "confirm_live": false,
+    "orders_submitted": 0
+  },
+  "view": {
+    "view_manifest_sha256": "0b163b30bb70dbd5265656b1c90c682908e3df69542bd7ec41647c291c461435",
+    "discovery_rows": 70783710,
+    "cutoff_time_msc": 1764563969254
+  }
+}

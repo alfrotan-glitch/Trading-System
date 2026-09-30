@@ -1,0 +1,44 @@
+{
+  "schema": "qts.xauusd_discovery_boundary_audit.v1",
+  "source": {
+    "release": "dataset-xauusd-730d-20260919",
+    "asset": "XAUUSD_730d_20260919T114013Z.zip",
+    "zip_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+    "manifest_sha256": "d9a61ad583002c6e24f2ad04aee6399e6ec00a9a47928712a7c3f4418e15972f",
+    "dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789"
+  },
+  "published_boundary": {
+    "time_msc_min": 1726746013452,
+    "cutoff_time_msc_exclusive": 1764563969254,
+    "time_msc_max": 1789775939790,
+    "rows_total": 139930971,
+    "rows_discovery": 70834426,
+    "rows_held_out_not_read": 69096545
+  },
+  "manifest_part_count": 734,
+  "exact_immutable_part_boundary": false,
+  "discovery_end_part": null,
+  "straddling_part": {
+    "part_index": 441,
+    "part": "part-000441.parquet",
+    "rows": 132705,
+    "global_row_start_inclusive": 70783710,
+    "global_row_end_exclusive": 70916415,
+    "discovery_rows_within_part": 50716,
+    "locked_rows_within_part": 81989,
+    "chunk_request_start": "2025-11-30T11:40:13.383522+00:00",
+    "chunk_request_end": "2025-12-01T11:40:13.383522+00:00"
+  },
+  "previous_complete_part": {
+    "part_index": 440,
+    "part": "part-000440.parquet",
+    "rows": 0,
+    "global_row_start_inclusive": 70783710,
+    "global_row_end_exclusive": 70783710
+  },
+  "disposition": "NO_SAFE_DISCOVERY_VIEW_FROM_IMMUTABLE_PARTS",
+  "held_out_quote_members_opened": 0,
+  "quote_rows_decoded": 0,
+  "inspection_scope": "SHA-256 of opaque compressed ZIP bytes; ZIP central-directory metadata; manifest.json only. No Parquet/quote member was opened, extracted or decoded.",
+  "h_dir_01_ran": false
+}

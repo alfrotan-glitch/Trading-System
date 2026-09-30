@@ -1,0 +1,15 @@
+{
+  "decision": "INCONCLUSIVE",
+  "strategy_promoted": false,
+  "hypotheses": {
+    "H-QD-01": "REJECTED",
+    "H-QD-02": "REJECTED",
+    "H-INT-01": "REJECTED",
+    "H-SP-01": "TESTED",
+    "H-MV-01": "REJECTED",
+    "H-VOL-01": "REJECTED",
+    "H-SPR-01": "REJECTED"
+  },
+  "mutual_information_bits": 0.12950981420361188,
+  "timestamp_basis": "BLOCKED"
+}

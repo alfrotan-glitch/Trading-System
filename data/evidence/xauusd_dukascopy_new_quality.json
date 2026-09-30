@@ -1,0 +1,14 @@
+{
+  "schema": "qts.data_quality_disposition.v1",
+  "dataset_version": "20260919-new-dukascopy-4d6f155",
+  "source_acquisition_report": "data/evidence/xauusd_dukascopy_acquisition_new.json",
+  "source": {"repository":"vudo805/forex-price-simulator","commit":"4d6f15543e6285fad91fd57fe42f716bc7273075","provider":"Dukascopy-derived upstream feed","instrument":"XAUUSD","timeframe":"15m","timezone":"UTC","price_semantics":"mid-price OHLC derived from bid/ask ticks","license":"unlicensed upstream content; internal research use only; no redistribution"},
+  "identity": {"raw_source_files_sha256_verified_against_pinned_commit":true,"export_sha256":"7271892fa9bacf2a4ad20655d6a019020a4aaf057510e769bb42c5ba59d0a074","row_count":26038,"coverage_start":"2025-08-06T00:00:00+00:00","coverage_end":"2026-09-16T23:45:00+00:00","old_frozen_dataset_identity":"NOT ASSERTED; old full checksum was unavailable/truncated"},
+  "quality_checks": {"monotonic_time":true,"timezone_aware":true,"no_future":true,"ohlc_invariants":true,"positive_prices":true,"abnormal_ranges":true,"duplicate_intervals":false,"single_symbol":true,"session_boundaries":true,"nonnegative_volume":true},
+  "completeness": {"cadence_seconds":900,"expected_intervals":39072,"actual_intervals":26038,"calendar_missing_intervals":13034,"calendar_missing_pct":33.36,"gap_events":336,"recognized_weekend_closure_events":57,"recognized_closure_intervals":11249,"unexpected_gap_events":279,"unexpected_missing_intervals":1785,"active_expected_intervals":27823,"active_missing_pct":6.42,"max_gap_seconds":262800,"policy":"existing QTS weekend-boundary-only policy; no undocumented holiday gaps forgiven"},
+  "gate": {"threshold_unexpected_missing_fraction":0.02,"observed_unexpected_missing_fraction":0.06415555475685585,"status":"BLOCKED_INSUFFICIENT_DATA","research_execution_authorized":false,"reason":"6.42% unexpected active-span missing intervals exceeds the unchanged 2% gate"},
+  "transformations": "Pinned Parquet files were read and exported unchanged as 15m CSV rows; no interpolation, forward-fill, synthesis, gap repair, or deletion. 1H export was not used for research.",
+  "reproduction_command": ".\\.venv\\Scripts\\python.exe scripts\\acquire_xauusd_dukascopy.py --source-dir <clone-of-vudo805/forex-price-simulator-at-4d6f155> --out-dir data\\raw --report data\\evidence\\xauusd_dukascopy_acquisition_new.json",
+  "oos_status": "NOT_EXECUTED_BY_STOP_GATE",
+  "no_trade": true
+}
