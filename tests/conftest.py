@@ -442,3 +442,28 @@ def repository_tracked_files_must_not_be_modified_by_tests():
         if deleted:
             lines.append("deleted: " + ", ".join(sorted(deleted)))
         pytest.fail("\n".join(lines), pytrace=False)
+
+
+# ---------------------------------------------------------------------------
+# Shared DEMO operator environment
+# ---------------------------------------------------------------------------
+# ``demo_env`` builds one hermetic operator environment (authorization,
+# registry, setup, DB, audit log, kill-switch self test — all inside
+# ``tmp_path``) so no test can touch the operator's real state. Only the
+# ``tests/integration`` suite requests it; fixtures are opt-in by name, so
+# exposing it tree-wide costs nothing.
+#
+# It is re-exported HERE rather than from ``tests/integration/conftest.py``
+# deliberately. pytest 9 matches a fixture to a test by the IDENTITY of the
+# collector node that owns it (``FixtureDef.node in node.iter_parents()``),
+# and it re-creates the ``Dir`` node for a subdirectory when that directory is
+# revisited after a sibling argument. So with an interleaved invocation like
+#
+#     pytest tests/integration/a.py tests/test_b.py tests/integration/c.py
+#
+# the third argument got a SECOND ``Dir('tests/integration')`` object, the
+# owning node no longer matched, and every ``demo_env`` test in it failed with
+# "fixture 'demo_env' not found" — 13 spurious errors with nothing wrong.
+# ``Dir('tests')`` is the shared common ancestor in every ordering, so owning
+# the fixture at this level makes the suite immune to the argument order.
+from demo_harness import demo_env  # noqa: E402, F401  (pytest fixture, re-exported)
