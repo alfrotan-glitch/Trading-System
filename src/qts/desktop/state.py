@@ -1,4 +1,7 @@
-"""Desktop state restoration — ensures no safety state lost on restart / unexpected termination."""
+"""Desktop state restoration — ensures no safety state lost on restart / unexpected termination.
+
+NOT WIRED: no production path imports this module. It is a diagnostic that reads the canonical stores and compares before/after; restart safety itself is owned by those stores — the kill switch, ``qts.execution.engine.load_reconcile_suspension`` and the demo stage machine — which the startup path reads directly.
+"""
 
 from __future__ import annotations
 

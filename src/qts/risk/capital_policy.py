@@ -1,4 +1,7 @@
-"""Phase 12: Capital survival policy — hard limits, NO_TRADE/SUSPENDED."""
+"""Phase 12: Capital survival policy — hard limits, NO_TRADE/SUSPENDED.
+
+NOT WIRED: no production path imports this module, and the numbers below are NOT the enforced ceilings. Risk limits in force are ``RiskLimits`` in ``qts.risk.engine`` (daily loss, drawdown, quantity, notional) together with the ``max_daily_loss``/``max_drawdown_within_policy`` predicates of the pre-trade gate. This module repeats similar figures and enforces none of them; change a ceiling in ``qts.risk.engine``/settings, never here.
+"""
 
 from __future__ import annotations
 

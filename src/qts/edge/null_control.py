@@ -1,4 +1,7 @@
-"""Phase 6: Null / placebo control — randomized signal timing, shuffled labels, etc."""
+"""Phase 6: Null / placebo control — randomized signal timing, shuffled labels, etc.
+
+NOT WIRED: no production path imports this module. It is a research instrument run from tests; the edge pipeline that runs is ``qts.edge.orchestrator``.
+"""
 
 from __future__ import annotations
 

@@ -3,6 +3,8 @@
 These controls are deliberately labelled and deterministic.  They may be run
 against a real measured bar population, but their outputs are never evidence
 for a positive strategy and they are never replaced by random score lists.
+
+NOT WIRED: no production path imports this module. It is a research instrument run from tests; the edge pipeline that runs is ``qts.edge.orchestrator``.
 """
 
 from __future__ import annotations

@@ -1,6 +1,8 @@
 """Provider-neutral ingestion interface — Provider → Raw Storage → Validation → Normalization → Canonical Dataset → Manifest → Evidence.
 Preserves raw source where legally possible, never overwrites raw with processed.
 Every dataset immutable: dataset ID, source ID, ingestion timestamp, checksum, schema, preprocessing, timezone, symbol mapping, quality report.
+
+NOT WIRED: no production path imports this module. Ingestion that actually runs is ``qts.data.ingest``/``qts.data.bootstrap`` for files and ``qts.data.mt5_history_acquisition`` for broker ticks, and provenance is classified by ``qts.data.bootstrap.classify_source``. Kept as a research harness and exercised by tests; do not treat ``SyntheticProvider`` here as a source the product can produce evidence from.
 """
 
 from __future__ import annotations

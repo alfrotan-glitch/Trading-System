@@ -501,3 +501,56 @@ def test_no_source_module_is_orphaned_from_every_import_path() -> None:
     assert orphans == [], (
         f"these modules are imported by nothing — wire them in or delete them: {orphans}"
     )
+
+
+def test_a_module_no_production_path_reaches_says_so() -> None:
+    """Code that only tests import must declare that, both ways.
+
+    `qts.validation.adversarial` hid here: it was imported, so the orphan
+    check above passed, but the only importer was a test of itself. It
+    re-declared research-integrity thresholds that Settings already owned and
+    offered a `check_lookahead()` that could not detect lookahead — a control
+    in name, reachable by nobody. Seven further modules are in the same
+    position (capital limits, emergency controls, a provider abstraction, a
+    regime observatory, placebo instruments, a restart-state diagnostic).
+
+    They are kept because real adversarial tests exercise them, so each one
+    now states in its docstring that nothing in production reaches it and
+    names the authority that is actually in force. The marker is checked in
+    both directions: an unreachable module must carry it, and a module that
+    production does reach must not — otherwise a wired module could keep a
+    stale "NOT WIRED" notice and mislead exactly the reader it was meant to
+    protect.
+    """
+    repo = SRC.parent.parent
+    modules: dict[str, Path] = {}
+    for path in SRC.rglob("*.py"):
+        name = ".".join(path.relative_to(SRC.parent).with_suffix("").parts)
+        modules[name.removesuffix(".__init__")] = path
+
+    production_imports: set[str] = set()
+    for root in (SRC, repo / "scripts"):
+        if not root.exists():
+            continue
+        for path in root.rglob("*.py"):
+            with contextlib.suppress(SyntaxError):
+                for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                    if isinstance(node, ast.Import):
+                        production_imports.update(alias.name for alias in node.names)
+                    elif isinstance(node, ast.ImportFrom) and node.module:
+                        production_imports.add(node.module)
+                        production_imports.update(f"{node.module}.{alias.name}" for alias in node.names)
+
+    undeclared: list[str] = []
+    stale: list[str] = []
+    for name, path in sorted(modules.items()):
+        if name == "qts" or name.endswith("__main__"):
+            continue
+        reached = name in production_imports or any(o.startswith(name + ".") for o in production_imports)
+        declares = "NOT WIRED:" in path.read_text(encoding="utf-8")
+        if not reached and not declares:
+            undeclared.append(f"{name} (no production importer; say so in its docstring or delete it)")
+        if reached and declares:
+            stale.append(f"{name} (production imports it, but it still claims NOT WIRED)")
+    assert undeclared == [], undeclared
+    assert stale == [], stale

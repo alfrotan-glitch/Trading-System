@@ -1,4 +1,7 @@
-"""Phase 17: Real-time emergency controls — 10 independent safeguards."""
+"""Phase 17: Real-time emergency controls — 10 independent safeguards.
+
+NOT WIRED: no production path imports this module. The emergency stops that actually run are the kill switch, ``DemoStageMachine.halt`` and reconciliation suspension, all enforced through the pre-trade gate. Treat the safeguards here as a research sketch, not as controls in force.
+"""
 
 from __future__ import annotations
 

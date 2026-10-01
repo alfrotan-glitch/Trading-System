@@ -1,4 +1,7 @@
-"""Market Regime Observatory — builds regime dataset over time, tracks transitions."""
+"""Market Regime Observatory — builds regime dataset over time, tracks transitions.
+
+NOT WIRED: no production path imports this module. No live consumer builds or reads this regime dataset; it is exercised by tests only.
+"""
 
 from __future__ import annotations
 
