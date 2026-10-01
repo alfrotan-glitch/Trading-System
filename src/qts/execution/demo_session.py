@@ -1299,7 +1299,7 @@ class DemoSession:
             "success": True,
             "ticket": ticket_int,
             "receipt": receipt,
-            "realized_pnl": str(realized),
+            "realized_pnl": None if realized is None else str(realized),
             "realized_pnl_source": pnl_source,
             "partial": partial,
             "closed_volume": str(requested),
@@ -1313,7 +1313,7 @@ class DemoSession:
         ticket: int,
         receipt: dict[str, Any] | Any,
         snapshot: dict[str, Any] | None,
-    ) -> tuple[Decimal, str]:
+    ) -> tuple[Decimal | None, str]:
         """Realized P&L from broker deal evidence, with an explicit source label.
 
         The pre-close ``profit`` field is an *unrealized* mark, not a realized
@@ -1347,7 +1347,14 @@ class DemoSession:
         if snapshot is not None and snapshot.get("profit") not in (None, ""):
             with contextlib.suppress(InvalidOperation, ValueError):
                 return Decimal(str(snapshot["profit"])), "pre_close_snapshot_unverified"
-        return Decimal("0"), "unavailable"
+        # UNKNOWN is not zero. Returning Decimal("0") here recorded "this trade
+        # made exactly nothing" in the journal, and daily_realized_pnl() sums
+        # every non-NULL row, so a loss the broker could not be asked about
+        # made the daily-loss budget look healthier than it was — the
+        # max_daily_loss predicate then passed on a fabricated number. None
+        # keeps the cell NULL, which the gate already turns into CHECK_UNKNOWN
+        # and fails closed on.
+        return None, "unavailable"
 
     def sync_fills(self) -> int:
         """Fold broker deals into local state (best effort, idempotent).

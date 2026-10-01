@@ -539,24 +539,38 @@ class DemoOrderJournal:
             if r.get("state") in ("NEW", "SUBMITTED", "ACCEPTED", "FILLED")
         ]
 
-    def daily_realized_pnl(self, day: date | None = None) -> Decimal:
-        """Realized P&L for the UTC day (negative = loss)."""
+    def daily_realized_pnl(self, day: date | None = None) -> Decimal | None:
+        """Realized P&L for the UTC day (negative = loss), or None if unknown.
+
+        ``None`` means at least one position closed today without establishing
+        its realized result — the broker could not be asked, so the day's total
+        is not a known number. The old signature could not say that: rows with
+        a NULL result were skipped and the remainder returned as though
+        complete, which silently under-reports a loss. The pre-trade gate
+        already turns ``None`` into CHECK_UNKNOWN for ``max_daily_loss`` and
+        fails closed, so an unresolved close now blocks trading until it is
+        reconciled instead of quietly enlarging the day's loss budget.
+        """
         target = (day or datetime.now(UTC).date()).isoformat()
         total = Decimal("0")
         with db_connect(self.db_path) as con:
             con.row_factory = _row_factory
             rows = con.execute(
-                "SELECT realized_pnl, closed_at FROM demo_order_journal"
-                " WHERE realized_pnl IS NOT NULL AND closed_at IS NOT NULL"
+                "SELECT realized_pnl, closed_at FROM demo_order_journal WHERE closed_at IS NOT NULL"
             ).fetchall()
         for row in rows:
-            closed_at = row_dict(row).get("closed_at")
+            data = row_dict(row)
+            closed_at = data.get("closed_at")
             if not closed_at or not str(closed_at).startswith(target):
                 continue
+            raw = data.get("realized_pnl")
+            if raw is None or str(raw) == "":
+                return None
             try:
-                total += Decimal(str(row_dict(row).get("realized_pnl")))
+                total += Decimal(str(raw))
             except Exception:
-                continue
+                # An unparseable stored result is also not a known number.
+                return None
         return total
 
     def orders_today(self, day: date | None = None) -> int:

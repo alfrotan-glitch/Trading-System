@@ -677,3 +677,62 @@ def test_close_authority_still_demands_the_account_and_symbol_facts() -> None:
         "broker_symbol_matches_registry",
     ):
         assert required in MUTATION_AUTHORITY_PREDICATES, f"{required} must gate every mutation, closes included"
+
+
+# ------------------------------------- an unknown result is not a zero result
+def test_an_unestablished_realized_pnl_is_not_recorded_as_zero(tmp_path: Path) -> None:
+    """DEFECT: unknown P&L became a definite 0.00 in the journal.
+
+    `_realized_pnl_for_close` returned `Decimal("0")` when broker deal history
+    could not be read, and `daily_realized_pnl()` summed every non-NULL row —
+    so a loss the broker could not be asked about was counted as "this trade
+    made exactly nothing". That number feeds the `max_daily_loss` predicate,
+    which therefore passed on a fabricated figure and left the day's remaining
+    loss budget looking larger than it was: fail OPEN, on a risk limit.
+    """
+    from qts.execution.order_truth import open_demo_journal
+
+    journal = open_demo_journal(tmp_path / "journal.db")
+    assert journal.daily_realized_pnl() == Decimal("0"), "no closes today means a known zero"
+
+
+def test_a_day_containing_an_unresolved_close_reports_unknown_not_a_total(tmp_path: Path) -> None:
+    from datetime import UTC, datetime
+
+    from qts.db import connect as db_connect
+    from qts.execution.order_truth import open_demo_journal
+
+    journal = open_demo_journal(tmp_path / "journal.db")
+    today = datetime.now(UTC).isoformat()
+
+    def insert(cid: str, pnl: str | None) -> None:
+        with db_connect(journal.db_path) as con:
+            con.execute(
+                "INSERT INTO demo_order_journal"
+                " (label, client_order_id, state, created_at, updated_at, closed_at, realized_pnl)"
+                " VALUES ('demo', ?, 'CLOSED', ?, ?, ?, ?)",
+                (cid, today, today, today, pnl),
+            )
+            con.commit()
+
+    insert("known-loss", "-25")
+    assert journal.daily_realized_pnl() == Decimal("-25")
+
+    insert("unresolved", None)
+    assert journal.daily_realized_pnl() is None, (
+        "a close whose realized result was never established must make the day's total UNKNOWN, "
+        "not silently drop out of the sum"
+    )
+
+
+def test_unknown_daily_pnl_fails_the_daily_loss_predicate_closed() -> None:
+    """The gate already had the right branch; the fabricated zero bypassed it."""
+    import inspect
+
+    from qts.execution import demo_pretrade
+
+    source = inspect.getsource(demo_pretrade.run_pretrade_gate)
+    assert 'record("max_daily_loss", CHECK_UNKNOWN' in source, (
+        "max_daily_loss must report UNKNOWN (fail closed) when the day's realized P&L is not known"
+    )
+    assert "max_daily_loss" in demo_pretrade.ENTRY_QUALITY_PREDICATES
