@@ -4,8 +4,9 @@ Runs, in order:
   1. `node --test` over every DOM-free suite in tests/ui/js (discovered by
      glob, so a new file cannot be left unrun) — truthfulness logic, always,
      if node exists.
-  2. `node --test tests/ui/js/shell.test.mjs` — full jsdom functional tour
-     against a REAL uvicorn server (requires jsdom; best-effort install).
+  2. `node --test` over every suite that imports jsdom — the full functional
+     tour against a REAL uvicorn server (requires jsdom; installed from the
+     lockfile on demand).
 
 Skip logic: no node → skip all; no jsdom and npm install fails → skip shell
 tests only (logic tests still run). This keeps the standard suite green on
@@ -28,13 +29,23 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 JS_DIR = REPO / "tests" / "ui" / "js"
 SHELL = JS_DIR / "shell.test.mjs"
-# Every DOM-free suite in the directory, discovered rather than listed. The
-# hand-written list here named format and status only, so operations.test.mjs
-# and workstation.test.mjs — 22 passing assertions about the operations and
-# workstation views — were run by nothing: package.json's "npm test" script
-# mentions them, and neither CI nor any other script invokes npm test. A file
-# added to this directory is now run by virtue of existing.
-LOGIC = sorted(p for p in JS_DIR.glob("*.test.mjs") if p != SHELL)
+
+
+def _needs_jsdom(path: Path) -> bool:
+    """A suite needs the jsdom group if it imports jsdom. Asking the file is
+    the only classification that cannot drift from the file."""
+    return "jsdom" in path.read_text(encoding="utf-8")
+
+
+# Discovered, not listed. The hand-written list named format and status only,
+# so operations.test.mjs and workstation.test.mjs were run by nothing:
+# package.json's "npm test" script mentions them and neither CI nor any other
+# script invokes npm test. Splitting by what a file imports rather than by its
+# name keeps workstation.test.mjs — which does need a DOM — out of the group
+# that must run on a bare machine with no node_modules.
+_SUITES = sorted(JS_DIR.glob("*.test.mjs"))
+LOGIC = [p for p in _SUITES if not _needs_jsdom(p)]
+DOM_SUITES = [p for p in _SUITES if _needs_jsdom(p)]
 
 node = shutil.which("node")
 
@@ -112,7 +123,7 @@ def test_ui_shell_functional_tour():
                 time.sleep(0.5)
         else:
             pytest.fail("API server for UI shell tests did not become healthy")
-        r = _run([node, "--test", "--test-concurrency=1", str(SHELL)], env=env)
-        assert r.returncode == 0, f"UI shell tour failed:\n{r.stdout[-4000:]}\n{r.stderr[-1000:]}"
+        r = _run([node, "--test", "--test-concurrency=1", *[str(p) for p in DOM_SUITES]], env=env)
+        assert r.returncode == 0, f"UI DOM suites failed:\n{r.stdout[-4000:]}\n{r.stderr[-1000:]}"
     finally:
         proc.terminate()
