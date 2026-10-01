@@ -79,7 +79,22 @@ jobs:
           grep -E '^(FAILED|ERROR)' "$log" | while IFS= read -r line; do
             echo "::error::${line}"
           done
-          echo "::error::pytest summary: $(grep -E '^(=+ .*(passed|failed|error).*=+|[0-9]+ (passed|failed))' "$log" | tail -n 1)"
+          # This suite's plugins suppress pytest's terminal summary, so there
+          # is no counts line to scrape. Derive the totals from the progress
+          # line, which is always printed.
+          python - "$log" <<'PY'
+          import collections, re, sys
+
+          counts: collections.Counter[str] = collections.Counter()
+          with open(sys.argv[1], encoding="utf-8", errors="replace") as fh:
+              for line in fh:
+                  match = re.match(r"^([.sFExX]+)\s+\[\s*\d+%\]", line)
+                  if match:
+                      counts.update(match.group(1))
+          names = {".": "passed", "s": "skipped", "F": "failed", "E": "error", "x": "xfailed", "X": "xpassed"}
+          totals = ", ".join(f"{counts[key]} {name}" for key, name in names.items() if counts[key])
+          print(f"::error::pytest totals: {totals or 'no progress output to parse'}")
+          PY
 
       - name: Assert the safety invariants CI must never let regress
         run: |
