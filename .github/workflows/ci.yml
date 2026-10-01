@@ -58,8 +58,28 @@ jobs:
 
       # Deterministic and honest: no `|| true`, no `--exitfirst`, no skipped
       # directories. A red suite fails the job and the real counts are printed.
+      # `-ra` prints the reason for every non-passing test, so the summary says
+      # which tests failed and why rather than only "exit code 1".
       - name: Tests
-        run: python -m pytest tests/ -q -p no:cacheprovider --durations=10
+        run: |
+          set -o pipefail
+          python -m pytest tests/ -q -ra -p no:cacheprovider --durations=10 2>&1 \
+            | tee "$RUNNER_TEMP/pytest-output.txt"
+
+      # A failure nobody can read is not a report. Log archives are not always
+      # retrievable (the Actions log blob store is unreachable from some
+      # networks, and logs expire), so the failing test ids and the final
+      # counts are re-emitted as workflow annotations, which travel with the
+      # run metadata and survive log expiry.
+      - name: Report which tests failed
+        if: failure()
+        run: |
+          log="$RUNNER_TEMP/pytest-output.txt"
+          [ -f "$log" ] || { echo "::error::pytest produced no output file"; exit 0; }
+          grep -E '^(FAILED|ERROR)' "$log" | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+          echo "::error::pytest summary: $(grep -E '^(=+ .*(passed|failed|error).*=+|[0-9]+ (passed|failed))' "$log" | tail -n 1)"
 
       - name: Assert the safety invariants CI must never let regress
         run: |
