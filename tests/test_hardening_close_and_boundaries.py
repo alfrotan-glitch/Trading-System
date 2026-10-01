@@ -736,3 +736,67 @@ def test_unknown_daily_pnl_fails_the_daily_loss_predicate_closed() -> None:
         "max_daily_loss must report UNKNOWN (fail closed) when the day's realized P&L is not known"
     )
     assert "max_daily_loss" in demo_pretrade.ENTRY_QUALITY_PREDICATES
+
+
+# ----------------------------- a broken control must stop the autopilot loop
+def test_autopilot_halts_on_every_authority_failure_not_just_some() -> None:
+    """DEFECT: the loop's "a control is broken" list was hand-copied and short.
+
+    `_is_control_failure` decides whether a gate refusal halts the autopilot
+    (and the stage machine) or is shrugged off as a routine market limit and
+    retried next poll. Its marker list was a third hand-copied set of
+    predicate names, and it omitted every symbol-identity authority check. So
+    if the broker's symbol stopped mapping canonically to the registry symbol
+    — the exact "broker renamed the instrument" drift the authority checks
+    exist to catch — the loop treated it as "spread too wide", kept polling
+    forever and never halted. No unsafe order could be submitted (the gate
+    still refused), but a broken identity control was reported to the operator
+    as a running system.
+    """
+    from qts.execution.demo_autopilot import _CONTROL_FAILURE_MARKERS, _is_control_failure
+    from qts.execution.demo_pretrade import MUTATION_AUTHORITY_PREDICATES
+
+    missing = set(MUTATION_AUTHORITY_PREDICATES) - set(_CONTROL_FAILURE_MARKERS)
+    assert not missing, (
+        "these authority predicates can fail without halting the autopilot, so the loop would retry "
+        f"forever against a broken control: {sorted(missing)}"
+    )
+
+    class _Result:
+        reasons: list[str] = []
+
+        def __init__(self, failed: list[str]) -> None:
+            self.verdict = {"failed": failed}
+
+    for predicate in MUTATION_AUTHORITY_PREDICATES:
+        assert _is_control_failure(_Result([predicate])), f"{predicate} must halt the loop"
+    assert not _is_control_failure(_Result(["spread_within_limit"])), "a wide spread is not a broken control"
+    assert not _is_control_failure(_Result([])), "a clean verdict is not a broken control"
+
+
+def test_control_failure_markers_are_not_a_fourth_hand_copied_list() -> None:
+    import pathlib
+
+    from qts.execution.demo_autopilot import _CONTROL_FAILURE_MARKERS
+    from qts.execution.demo_pretrade import CONTROL_FAILURE_PREDICATES
+
+    assert _CONTROL_FAILURE_MARKERS is CONTROL_FAILURE_PREDICATES, (
+        "the autopilot must use the canonical classification, not its own copy"
+    )
+    source = pathlib.Path("src/qts/execution/demo_autopilot.py").read_text(encoding="utf-8")
+    assert '"broker_identity_verified",' not in source, "predicate names re-listed in demo_autopilot.py"
+
+
+def test_every_declared_kill_condition_maps_to_a_real_gate_predicate() -> None:
+    """A kill condition enforced by a misspelled predicate is a comment."""
+    from qts.execution.demo_pretrade import ENTRY_QUALITY_PREDICATES, MUTATION_AUTHORITY_PREDICATES
+    from qts.lifecycle.demo_policy import KILL_CONDITION_CHECKS
+
+    known = set(MUTATION_AUTHORITY_PREDICATES) | set(ENTRY_QUALITY_PREDICATES)
+    for condition, predicates in KILL_CONDITION_CHECKS.items():
+        assert predicates, f"kill condition {condition!r} is enforced by nothing"
+        unknown = set(predicates) - known
+        assert not unknown, (
+            f"kill condition {condition!r} names predicates the gate does not evaluate: {sorted(unknown)} — "
+            "rename it to a live predicate or the condition is unenforced"
+        )

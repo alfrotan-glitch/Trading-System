@@ -41,7 +41,7 @@ from decimal import Decimal
 from typing import Any, NoReturn, Protocol
 
 from qts.execution.demo_journal import DemoOrderJournal
-from qts.execution.demo_pretrade import RESEARCH_DEMO_ORDER
+from qts.execution.demo_pretrade import CONTROL_FAILURE_PREDICATES, RESEARCH_DEMO_ORDER
 from qts.lifecycle.demo_registry import StrategyRegistration, load_registry, resolve_entry
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStage, DemoStageMachine
 
@@ -366,18 +366,10 @@ def _auth_id(session: Any) -> str | None:
     return auth.authorization_id if auth else None
 
 
-_CONTROL_FAILURE_MARKERS = (
-    "kill_switch_functional",
-    "reconciliation_ready",
-    "broker_identity_verified",
-    "account_is_demo",
-    "authorization_valid",
-    "execution_permission",
-    "mode_is_demo_execution",
-    "stage_allows_order",
-    "strategy_registered_frozen",
-    "duplicate_order_protection",
-)
+#: Hand-copying this list omitted every symbol-identity authority check, so
+#: canonical-mapping drift was retried forever instead of halting the loop.
+#: It is now the canonical classification, declared beside the gate.
+_CONTROL_FAILURE_MARKERS = CONTROL_FAILURE_PREDICATES
 
 
 def _is_control_failure(result: Any) -> bool:

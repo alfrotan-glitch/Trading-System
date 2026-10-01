@@ -129,6 +129,29 @@ ENTRY_QUALITY_PREDICATES: tuple[str, ...] = (
     "trading_hours_allowed",
 )
 
+#: Refusals that mean *a control is broken*, as opposed to *a market condition
+#: said no*. This is a third, orthogonal axis: the two sets above answer "may
+#: this predicate block a close?", while this one answers "is retrying futile?"
+#:
+#: The autopilot loop halts itself and the stage machine on these, and merely
+#: waits and re-polls on everything else. Every authority predicate qualifies
+#: by construction — if we cannot establish the account, the authorization or
+#: which instrument we are actually trading, no amount of waiting will fix it,
+#: and the operator must be told the system stopped rather than shown a loop
+#: that looks alive. Derived, not re-listed: a new authority predicate becomes
+#: loop-halting automatically instead of silently degrading to "retry forever".
+#:
+#: The five added here are entry-quality on the close axis (a broken kill
+#: switch must never trap an operator in a position) but are still broken
+#: controls rather than market conditions, so they stop the loop too.
+CONTROL_FAILURE_PREDICATES: tuple[str, ...] = MUTATION_AUTHORITY_PREDICATES + (
+    "duplicate_order_protection",
+    "kill_switch_functional",
+    "reconciliation_ready",
+    "stage_allows_order",
+    "strategy_registered_frozen",
+)
+
 
 CHECK_PASS = "PASS"
 CHECK_FAIL = "FAIL"
