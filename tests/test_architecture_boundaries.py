@@ -297,13 +297,15 @@ def test_no_cwd_relative_state_default_remains() -> None:
         for match in re.finditer(r'(?<![=!<>])=\s*"(?:data/(?:sqlite|evidence)|logs)/[^"]*"', body):
             offenders.append(f"{module.relative_to(SRC)} has a cwd-relative default: {match.group(0)}")
         # The same defect wearing different syntax: a bare `Path("data/...")`
-        # that is immediately used for IO is just as cwd-bound. A module-level
+        # (or "logs/...", or "docs/..." — `qts edge validate` once wrote five
+        # Markdown reports straight to a cwd-relative "docs/" tree) that is
+        # immediately used for IO is just as cwd-bound. A module-level
         # UPPER_CASE constant is exempt — it DECLARES the canonical relative
         # location and is anchored at the point of use (DEFAULT_PIN_PATH ->
         # pin_path() -> artifact_path). Resolving such a constant at import
         # time would be worse: it freezes state_root() before a caller or test
         # can set QTS_STATE_ROOT.
-        io_call = r'(?<![.\w])Path\(\s*"(?:data|logs)/[^"]*"\s*\)\s*(?:/[^\n]*)?\.\s*(?:mkdir|write_text|write_bytes|read_text|read_bytes|exists|open|unlink|touch|glob|rglob|iterdir)\('
+        io_call = r'(?<![.\w])Path\(\s*"(?:data|logs|docs)/[^"]*"\s*\)\s*(?:/[^\n]*)?\.\s*(?:mkdir|write_text|write_bytes|read_text|read_bytes|exists|open|unlink|touch|glob|rglob|iterdir)\('
         for match in re.finditer(io_call, body):
             offenders.append(f"{module.relative_to(SRC)} does IO on an unanchored {match.group(0)[:60]}")
     assert offenders == [], offenders

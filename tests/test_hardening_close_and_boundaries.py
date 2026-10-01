@@ -373,6 +373,11 @@ def test_the_cli_modules_no_longer_hardcode_cwd_relative_state() -> None:
         assert 'Path("data/evidence' not in body, f"{rel} still writes evidence relative to cwd"
         assert 'Path("data/sqlite' not in body, f"{rel} still opens a database relative to cwd"
         assert '_Path("data/' not in body, f"{rel} still uses a cwd-relative state path"
+        # DEFECT: `qts edge validate` wrote its five Markdown reports to a bare
+        # "docs/..." — resolved against the process cwd, not the state root —
+        # so the report a user went looking for was wherever they happened to
+        # invoke the command from, not the one qts itself reads back.
+        assert 'Path("docs/' not in body, f"{rel} still writes a doc report relative to cwd"
 
 
 # ------------------------------------------------------------------------ CI

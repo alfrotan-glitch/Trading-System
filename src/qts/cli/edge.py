@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 import click
@@ -20,7 +19,7 @@ def edge() -> None:
 @click.option("--data-version", default=None)
 @click.option("--strict", is_flag=True, help="fail-closed on weak edge")
 def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None:
-    from qts.config.paths import artifact_path
+    from qts.config.paths import artifact_path, state_root
     from qts.edge.orchestrator import run_full_edge_validation
 
     click.echo(f"running edge validation for {strategy} version {data_version or 'latest'} (capital preservation)")
@@ -33,6 +32,13 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
     _edge_out = artifact_path("edge_validation")
     _edge_out.parent.mkdir(parents=True, exist_ok=True)
     _edge_out.write_text(json.dumps(evidence, indent=2, default=str), encoding="utf-8")
+    # The five Markdown reports below have the identical cwd-relative hazard:
+    # "docs/..." resolves against the process's current working directory, so
+    # invoking `qts edge validate` from a different directory wrote (or
+    # overwrote) a *different* docs/ tree than the one the repository/state
+    # root actually serves. Anchor at the same state_root() the rest of QTS
+    # uses, never at cwd.
+    _docs_dir = state_root() / "docs"
     # Generate docs
     # 1 edge_validation_report
     ev = evidence
@@ -119,8 +125,8 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
 - Emergency kill: {ev["emergency"]}
 
 """
-    Path("docs").mkdir(parents=True, exist_ok=True)
-    Path("docs/edge_validation_report.md").write_text(report_md, encoding="utf-8")
+    _docs_dir.mkdir(parents=True, exist_ok=True)
+    (_docs_dir / "edge_validation_report.md").write_text(report_md, encoding="utf-8")
     # 2 capital_preservation_policy
     cap_md = f"""# Capital Preservation Policy
 **Generated:** {ev["generated_at"]}
@@ -146,7 +152,7 @@ Current check: {ev["capital_policy"]}
 Emergency controls (Phase 17): kill_switch, cancel_all, suspend_new_orders, max_order_rate, max_order_size, stale_data_stop, abnormal_spread_stop, latency_stop, account_state_stop, reconciliation_stop — independently tested.
 
 """
-    Path("docs/capital_preservation_policy.md").write_text(cap_md, encoding="utf-8")
+    (_docs_dir / "capital_preservation_policy.md").write_text(cap_md, encoding="utf-8")
     # 3 strategy_promotion_policy
     promo_md = f"""# Strategy Promotion Policy — One-Way
 **State:** {ev["promotion"]["state"]}
@@ -160,7 +166,7 @@ Immutable lifecycle: RESEARCH → CANDIDATE → VALIDATED → FORWARD_OBSERVATIO
 - Current: {ev["promotion"]["state"]}
 
 """
-    Path("docs/strategy_promotion_policy.md").write_text(promo_md, encoding="utf-8")
+    (_docs_dir / "strategy_promotion_policy.md").write_text(promo_md, encoding="utf-8")
     # 4 locked_test_protocol
     locked_md = f"""# Locked Test Protocol
 **Data version:** {ds["manifest"]["version"]}
@@ -173,7 +179,7 @@ Immutable lifecycle: RESEARCH → CANDIDATE → VALIDATED → FORWARD_OBSERVATIO
 - Record every attempt to access/modify locked-test artifacts
 
 """
-    Path("docs/locked_test_protocol.md").write_text(locked_md, encoding="utf-8")
+    (_docs_dir / "locked_test_protocol.md").write_text(locked_md, encoding="utf-8")
     # 5 experiment_ledger
     exp_store = __import__("qts.research.experiment", fromlist=["ExperimentStore"]).ExperimentStore()
     trials = exp_store.count_trials()
@@ -189,7 +195,7 @@ Every experiment recorded: strategy identity, parameter set, feature set, timefr
 
 Current ledger count: {trials}
 """
-    Path("docs/experiment_ledger.md").write_text(ledger_md, encoding="utf-8")
+    (_docs_dir / "experiment_ledger.md").write_text(ledger_md, encoding="utf-8")
     click.echo("edge validation evidence written to data/evidence/edge_validation.json")
     click.echo(
         "docs: edge_validation_report.md, capital_preservation_policy.md, strategy_promotion_policy.md, locked_test_protocol.md, experiment_ledger.md"
