@@ -6,6 +6,7 @@ Each test pins a defect that was real in this tree and is now fixed.
 from __future__ import annotations
 
 import ast
+import contextlib
 import re
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -306,6 +307,71 @@ def test_no_cwd_relative_state_default_remains() -> None:
         for match in re.finditer(io_call, body):
             offenders.append(f"{module.relative_to(SRC)} does IO on an unanchored {match.group(0)[:60]}")
     assert offenders == [], offenders
+
+
+def test_the_upper_case_exemption_requires_an_actual_use_site() -> None:
+    """A cwd-relative constant nobody anchors is not a declaration, it is a trap.
+
+    The exemption above lets a module-level UPPER_CASE constant hold a
+    repository-relative location so the point of USE can anchor it. Two such
+    constants had no point of use at all (``DEFAULT_SETUP_FILE``,
+    ``DEFAULT_AUTHORIZATION_PATH``) — the modules had long since moved to
+    ``artifact_path()``. Dead, and worse than dead: the next caller who needs
+    "where does the setup file live?" reaches for the constant and silently
+    reintroduces the cwd dependence the resolver exists to prevent. The
+    exemption now has to earn itself.
+    """
+    def used_identifiers(path: Path) -> set[str]:
+        """Identifiers the file actually USES — a prose mention is not a use.
+
+        Counting raw text defeated this check once already: the sentence above
+        names the two offending constants, which made them look referenced.
+        """
+        names: set[str] = set()
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+                # Load only: the assignment that DECLARES the constant is a
+                # Store, and counting it made every constant look used.
+                names.add(node.id)
+            elif isinstance(node, ast.Attribute):
+                names.add(node.attr)
+            elif isinstance(node, ast.alias):
+                names.add(node.name.rsplit(".", 1)[-1])
+            elif isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
+            ):
+                # Naming a constant in __all__ is an explicit statement that it
+                # is this module's public API (DEFAULT_PIN_PATH), which is a
+                # real use site even when no caller imports it yet.
+                names |= {
+                    e.value
+                    for e in getattr(node.value, "elts", [])
+                    if isinstance(e, ast.Constant) and isinstance(e.value, str)
+                }
+        return names
+
+    repo = SRC.parent.parent
+    used: set[str] = set()
+    for root in (SRC, repo / "scripts", repo / "tests"):
+        if not root.exists():
+            continue
+        for module in root.rglob("*.py"):
+            with contextlib.suppress(SyntaxError):
+                used |= used_identifiers(module)
+
+    unused: list[str] = []
+    for module in sorted(SRC.rglob("*.py")):
+        for match in re.finditer(
+            r'^([A-Z][A-Z0-9_]+)\s*(?::[^=]+)?=\s*Path\("(?:data|logs)/[^"]*"\)',
+            module.read_text(encoding="utf-8"),
+            re.M,
+        ):
+            if match.group(1) not in used:
+                unused.append(
+                    f"{module.relative_to(SRC)}:{match.group(1)} is a cwd-relative constant with no use site — "
+                    "delete it, or anchor it somewhere via qts.config.paths"
+                )
+    assert unused == [], unused
 
 
 # ------------------------------- the adapter states transmission evidence

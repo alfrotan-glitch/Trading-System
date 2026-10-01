@@ -55,7 +55,6 @@ REVOCATION_SCHEMA = "qts.demo_execution_revocation.v1"
 #: itself must still validate; pointing at another path is not a bypass).
 ENV_AUTHORIZATION_PATH = "QTS_DEMO_AUTHORIZATION"
 
-DEFAULT_AUTHORIZATION_PATH = Path("data/evidence/demo_execution_authorization_2026-09-23.json")
 REVOCATION_SUFFIX = ".revocation.json"
 
 #: Shipped default policy strings. ``DISABLED BY POLICY`` is what a checkout

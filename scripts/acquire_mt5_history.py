@@ -52,7 +52,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "src"))
 
 from qts.data.mt5_history_acquisition import (  # noqa: E402
     DEFAULT_DATASET_ROOT,
@@ -129,7 +130,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--symbol", default=os.getenv("QTS_MT5_SYMBOL", "XAUUSD@"))
     parser.add_argument("--windows-days", type=_parse_windows, default=_parse_windows(DEFAULT_WINDOWS_DAYS))
-    parser.add_argument("--dataset-root", type=Path, default=DEFAULT_DATASET_ROOT)
+    # Anchored at the repository, not the caller's cwd: the same command run
+    # from another directory must write to the same dataset root.
+    parser.add_argument("--dataset-root", type=Path, default=REPO / DEFAULT_DATASET_ROOT)
     parser.add_argument("--evidence", type=Path, default=Path("data/evidence/mt5_history_acquisition.json"))
     parser.add_argument("--chunk-hours", type=float, default=24.0, help="base chunk size (bounded memory)")
     parser.add_argument("--min-chunk-minutes", type=float, default=60.0, help="adaptive split floor")
