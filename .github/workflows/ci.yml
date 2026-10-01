@@ -53,6 +53,13 @@ jobs:
       - name: Types
         run: python -m mypy src/qts
 
+      # bandit was a declared dev dependency with a [tool.bandit] config and
+      # 26 `# nosec` markers in the code, and nothing ever invoked it. Every
+      # finding it had accumulated is now fixed or annotated with the reason
+      # it is safe, so any NEW finding — at any severity — fails here.
+      - name: Security (bandit)
+        run: python -m bandit -c pyproject.toml -r src/qts -q
+
       - name: Offline static safety validation
         run: python scripts/demo_static_validation.py
 

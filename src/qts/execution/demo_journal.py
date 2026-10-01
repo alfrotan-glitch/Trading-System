@@ -113,6 +113,23 @@ def _epoch(iso_value: str | None) -> float | None:
     return dt.timestamp()
 
 
+#: States in which a journal row represents a position that existed and was
+#: closed, so a realized result is owed. REJECTED and CANCELLED orders never
+#: opened a position and owe nothing; AMBIGUOUS means we do not know what the
+#: broker did, which is precisely an unknown result.
+PNL_BEARING_STATES = frozenset({"CLOSED", "AMBIGUOUS"})
+
+
+def _known_realized(raw: Any) -> Decimal | None:
+    """The stored realized result as a number, or None if it is not one."""
+    if raw is None or str(raw) == "":
+        return None
+    try:
+        return Decimal(str(raw))
+    except Exception:
+        return None
+
+
 class DemoOrderJournal:
     """Durable DEMO order/signal journal (SQLite, exported to JSONL)."""
 
@@ -391,13 +408,33 @@ class DemoOrderJournal:
             return None, f"order slot could not be claimed atomically ({exc}) — refusing to submit"
 
     def _update(self, journal_id: int, **fields: Any) -> None:
+        """Update journal columns by name.
+
+        The column names are interpolated into the statement, so they are
+        checked against the table's real schema first. Every caller today
+        passes literal keywords, but CPython accepts non-identifier strings
+        through ``**kwargs`` (``f(**{"state=1, x": 2})`` is legal), so the
+        safety of this statement would otherwise rest on every future caller
+        remembering that. Asking the schema keeps the check correct as the
+        table changes, and an unknown column fails closed rather than being
+        silently dropped or interpolated.
+        """
         if not fields:
             return
         fields["updated_at"] = _now()
-        assignments = ", ".join(f"{k}=?" for k in fields)
         values = list(fields.values()) + [journal_id]
         with db_connect(self.db_path) as con:
-            con.execute(f"UPDATE demo_order_journal SET {assignments} WHERE journal_id=?", values)
+            columns = {str(row[1]) for row in con.execute("PRAGMA table_info(demo_order_journal)")}
+            unknown = sorted(set(fields) - columns)
+            if unknown:
+                raise ValueError(f"refusing to update unknown demo_order_journal column(s): {unknown}")
+            assignments = ", ".join(f"{k}=?" for k in fields)
+            # Column names are interpolated, every one of them checked against
+            # the schema immediately above; the values stay parameterised.
+            con.execute(
+                f"UPDATE demo_order_journal SET {assignments} WHERE journal_id=?",  # nosec B608
+                values,
+            )
             con.commit()
 
     def mark_submitted(
@@ -556,21 +593,21 @@ class DemoOrderJournal:
         with db_connect(self.db_path) as con:
             con.row_factory = _row_factory
             rows = con.execute(
-                "SELECT realized_pnl, closed_at FROM demo_order_journal WHERE closed_at IS NOT NULL"
+                "SELECT realized_pnl, closed_at, state FROM demo_order_journal WHERE closed_at IS NOT NULL"
             ).fetchall()
         for row in rows:
             data = row_dict(row)
             closed_at = data.get("closed_at")
             if not closed_at or not str(closed_at).startswith(target):
                 continue
-            raw = data.get("realized_pnl")
-            if raw is None or str(raw) == "":
+            if str(data.get("state") or "") not in PNL_BEARING_STATES:
+                # A rejected or cancelled order never opened a position, so it
+                # owes no realized result and must not make the day unknown.
+                continue
+            value = _known_realized(data.get("realized_pnl"))
+            if value is None:
                 return None
-            try:
-                total += Decimal(str(raw))
-            except Exception:
-                # An unparseable stored result is also not a known number.
-                return None
+            total += value
         return total
 
     def orders_today(self, day: date | None = None) -> int:
@@ -581,7 +618,7 @@ class DemoOrderJournal:
             if str(r.get("requested_at") or "").startswith(target) and r.get("state") != "REJECTED"
         )
 
-    def realized_curve(self, limit: int = 5000) -> list[Decimal]:
+    def realized_curve(self, limit: int = 5000) -> list[Decimal] | None:
         """Cumulative realized P&L after each journal row, oldest first.
 
         The drawdown a policy limits has to be measured against something
@@ -593,17 +630,24 @@ class DemoOrderJournal:
         with db_connect(self.db_path) as con:
             con.row_factory = _row_factory
             rows = con.execute(
-                "SELECT realized_pnl FROM demo_order_journal WHERE realized_pnl IS NOT NULL"
+                "SELECT realized_pnl, state FROM demo_order_journal WHERE closed_at IS NOT NULL"
                 " ORDER BY journal_id ASC LIMIT ?",
                 (limit,),
             ).fetchall()
         curve: list[Decimal] = []
         running = Decimal("0")
         for row in rows:
-            try:
-                running += Decimal(str(row_dict(row).get("realized_pnl")))
-            except Exception:
+            data = row_dict(row)
+            if str(data.get("state") or "") not in PNL_BEARING_STATES:
                 continue
+            value = _known_realized(data.get("realized_pnl"))
+            if value is None:
+                # A closed position whose result was never established makes
+                # the whole curve unmeasurable. Dropping the row instead would
+                # understate the peak-to-trough the policy limits, which is the
+                # one direction a drawdown limit must never be wrong in.
+                return None
+            running += value
             curve.append(running)
         return curve
 
@@ -615,6 +659,10 @@ class DemoOrderJournal:
         waiting to be realized.
         """
         curve = self.realized_curve()
+        if curve is None:
+            # Unknown, not zero: the gate turns None into CHECK_UNKNOWN for
+            # max_drawdown_within_policy and fails closed.
+            return {"peak": None, "current": None, "drawdown": None, "samples": 0}
         peak = Decimal("0")
         for value in curve:
             if value > peak:
@@ -625,10 +673,10 @@ class DemoOrderJournal:
             unrealized_val = row.get("unrealized_pnl")
             if unrealized_val is None:
                 continue
-            try:
-                unrealized += Decimal(str(unrealized_val))
-            except Exception:
-                continue
+            unrealized_value = _known_realized(unrealized_val)
+            if unrealized_value is None:
+                return {"peak": None, "current": None, "drawdown": None, "samples": len(curve)}
+            unrealized += unrealized_value
         current = current + unrealized
         return {
             "peak": peak,
@@ -686,11 +734,15 @@ def summarize(journal: DemoOrderJournal) -> JournalSummary:
     orders = journal.list_orders(limit=1000)
     realized = Decimal("0")
     for row in orders:
-        if row.get("realized_pnl"):
-            try:
-                realized += Decimal(str(row["realized_pnl"]))
-            except Exception:
-                continue
+        # Same rule as the aggregates above: only a position that was closed
+        # owes a result, and a value that is not a number is not counted as
+        # one. Such a row is necessarily unreconciled, which this summary
+        # already reports, so the total never silently absorbs it.
+        if str(row.get("state") or "") not in PNL_BEARING_STATES:
+            continue
+        value = _known_realized(row.get("realized_pnl"))
+        if value is not None:
+            realized += value
     return JournalSummary(
         orders=len(orders),
         open_orders=len(journal.open_orders()),

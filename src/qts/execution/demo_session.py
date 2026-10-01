@@ -1377,7 +1377,10 @@ class DemoSession:
         try:
             if not engine.portfolio.positions and list(engine.broker.positions() or []):
                 self.sync_fills()
-        except Exception:
+        except Exception:  # nosec B110
+            # Best effort only. If the broker cannot be read here, reconcile()
+            # below asks it again and turns the failure into BROKER_DISCONNECT
+            # with requires_suspend — never into an empty-position state.
             pass
         report = engine.reconcile()
         self._last_reconcile = report

@@ -13,6 +13,8 @@ from typing import Any
 
 import pytest
 
+from qts.execution.order_truth import open_demo_journal
+
 REPO = Path(__file__).resolve().parents[1]
 
 
@@ -800,3 +802,83 @@ def test_every_declared_kill_condition_maps_to_a_real_gate_predicate() -> None:
             f"kill condition {condition!r} names predicates the gate does not evaluate: {sorted(unknown)} — "
             "rename it to a live predicate or the condition is unenforced"
         )
+
+
+def test_journal_update_refuses_a_column_name_it_does_not_recognise(tmp_path: Path) -> None:
+    """The order journal interpolates column names, so it must check them.
+
+    Every caller passes literal keywords today, but CPython accepts
+    non-identifier strings through ``**kwargs`` — ``f(**{"state=1, x": 2})``
+    is legal — so without a check the safety of that statement would rest on
+    every future caller remembering it. Bandit flagged the statement (B608)
+    and had never run in CI to say so.
+    """
+    journal = open_demo_journal(tmp_path / "journal.db")
+    journal_id = journal.open_order(
+        client_order_id="guard-1",
+        strategy_id="s",
+        strategy_config_hash="h",
+        symbol="XAUUSD",
+        side="BUY",
+        requested_lots=Decimal("0.01"),
+        order_request={"symbol": "XAUUSD"},
+    )
+
+    with pytest.raises(ValueError, match="unknown demo_order_journal column"):
+        journal._update(journal_id, **{"state='X' WHERE 1=1 --": "pwned"})
+
+    # the legitimate path still works, and the row is untouched by the above
+    journal._update(journal_id, state="SUBMITTED")
+    row = journal.get(journal_id)
+    assert row is not None and row["state"] == "SUBMITTED"
+
+
+def _journal_with(tmp_path: Path, outcomes: list[tuple[str, Decimal | None]]) -> Any:
+    journal = open_demo_journal(tmp_path / "pnl.db")
+    for index, (state, pnl) in enumerate(outcomes):
+        journal_id = journal.open_order(
+            client_order_id=f"o{index}",
+            strategy_id="s",
+            strategy_config_hash="h",
+            symbol="XAUUSD",
+            side="BUY",
+            requested_lots=Decimal("0.01"),
+            order_request={"symbol": "XAUUSD"},
+        )
+        journal.mark_outcome(journal_id, state=state, realized_pnl=pnl)
+    return journal
+
+
+def test_a_rejected_order_owes_no_realized_result(tmp_path: Path) -> None:
+    """A rejection must not make the day's P&L unknown.
+
+    ARCH-034 made an unestablished realized result read as UNKNOWN so it could
+    not be mistaken for zero. Taken literally over every row with a closed_at,
+    that also caught REJECTED and CANCELLED orders — which never opened a
+    position and so owe no result at all. The day then went UNKNOWN with
+    nothing that could ever clear it, because there is no P&L to reconcile,
+    and the gate would refuse every subsequent trade until midnight UTC.
+    """
+    journal = _journal_with(tmp_path, [("CLOSED", Decimal("-5")), ("REJECTED", None), ("CANCELLED", None)])
+    assert journal.daily_realized_pnl() == Decimal("-5")
+    assert journal.drawdown()["drawdown"] == Decimal("5")
+
+
+def test_a_close_without_an_established_result_is_still_unknown(tmp_path: Path) -> None:
+    """ARCH-034's property, kept: a CLOSED position owes a number."""
+    journal = _journal_with(tmp_path, [("CLOSED", Decimal("-5")), ("CLOSED", None)])
+    assert journal.daily_realized_pnl() is None
+
+
+def test_drawdown_is_unknown_rather_than_understated(tmp_path: Path) -> None:
+    """A dropped row would understate peak-to-trough — the one wrong direction.
+
+    The curve used to select `realized_pnl IS NOT NULL` and skip whatever it
+    could not parse, so a closed position whose result was never established
+    simply vanished from the drawdown the policy limits, permanently and
+    silently. The gate reads None as CHECK_UNKNOWN and fails closed.
+    """
+    journal = _journal_with(tmp_path, [("CLOSED", Decimal("-50")), ("CLOSED", None)])
+    report = journal.drawdown()
+    assert report == {"peak": None, "current": None, "drawdown": None, "samples": 0}
+    assert journal.realized_curve() is None

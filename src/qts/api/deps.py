@@ -9,7 +9,9 @@ from urllib.parse import urlparse
 
 from qts.config.paths import artifact_path
 
-DEFAULT_TRUSTED_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "testserver"})
+# A Host-header allowlist, not a bind address: "0.0.0.0" appears because the
+# desktop app may be reached through it, and an unlisted Host is rejected.
+DEFAULT_TRUSTED_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "testserver"})  # nosec B104
 
 
 def _is_trusted_origin(origin_or_url: str | None) -> bool:

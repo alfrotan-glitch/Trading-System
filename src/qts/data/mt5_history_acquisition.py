@@ -635,7 +635,7 @@ def terminal_identity(mt5: Any) -> dict[str, Any]:
 def software_identity(mt5: Any | None = None) -> dict[str, Any]:
     """Best-effort software/probe version identity for provenance."""
     import platform
-    import subprocess
+    import subprocess  # nosec B404
 
     from qts import __version__ as qts_version
 
@@ -644,7 +644,7 @@ def software_identity(mt5: Any | None = None) -> dict[str, Any]:
     with contextlib.suppress(Exception):
         root = Path(__file__).resolve().parents[3]
         env = {**os.environ, "LC_ALL": "C"}
-        result = subprocess.run(  # nosec B404 B603 B607 — fixed argv, best-effort provenance
+        result = subprocess.run(  # nosec B404 B603 B607
             ["git", "rev-parse", "HEAD"],
             cwd=root,
             capture_output=True,
@@ -654,7 +654,7 @@ def software_identity(mt5: Any | None = None) -> dict[str, Any]:
         )
         if result.returncode == 0:
             commit = result.stdout.strip()
-        status = subprocess.run(  # nosec B404 B603 B607 — fixed argv, best-effort provenance
+        status = subprocess.run(  # nosec B404 B603 B607
             ["git", "status", "--porcelain"],
             cwd=root,
             capture_output=True,

@@ -203,7 +203,11 @@ def _resolve_symbol_map(symbol_map: dict[str, str] | None) -> dict[str, str]:
         saved = load_setup().get("symbol_map")
         if isinstance(saved, dict) and saved:
             return {str(k): str(v) for k, v in saved.items()}
-    except Exception:
+    except Exception:  # nosec B110
+        # An unreadable setup file must not decide the broker symbol: fall
+        # through to the env form, and if that is empty the map stays empty,
+        # which leaves the symbol-identity predicates to fail closed rather
+        # than silently trading a symbol nobody chose.
         pass
     env_map = os.getenv("QTS_MT5_SYMBOL_MAP", "")
     out: dict[str, str] = {}
