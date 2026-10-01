@@ -133,8 +133,21 @@ def test_acquired_dataset_roundtrip_counts_defects_and_does_not_rewrite(tmp_path
     assert dataset["content"]["timezone"] .startswith("UNAVAILABLE")
     assert dataset["content"]["session_calendar"].startswith("UNAVAILABLE")
     assert any(item["code"] == "INVERTED_OR_NEGATIVE_SPREAD" for item in dataset["defects"])
-    extracted_part = next((work / "parts").glob("*.parquet"))
-    assert extracted_part.read_bytes() == (mutated_dir / "parts" / part.name).read_bytes()
+    # Every extracted part must be byte-identical to the part that was zipped.
+    # This used to take `next(glob("*.parquet"))` — whichever file the
+    # filesystem happened to list first — and compare it against ONE named
+    # part. glob() yields os.scandir() order, which is arbitrary and differs
+    # between filesystems: locally it returned the part being compared and the
+    # test passed, while on CI it returned the other part of this two-part
+    # dataset and the test failed on a byte diff of two perfectly valid files.
+    # Comparing every part by name states the property and depends on nothing
+    # about directory ordering.
+    sources = sorted((mutated_dir / "parts").glob("*.parquet"))
+    assert len(sources) > 1, "a single-part dataset would not exercise the ordering hazard"
+    for source in sources:
+        extracted = work / "parts" / source.name
+        assert extracted.is_file(), f"{source.name} was not extracted"
+        assert extracted.read_bytes() == source.read_bytes(), f"{source.name} was rewritten during inventory"
     assert part.read_bytes() == before
 
 
