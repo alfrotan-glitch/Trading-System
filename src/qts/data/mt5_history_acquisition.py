@@ -66,7 +66,7 @@ import pyarrow.parquet as pq
 
 ACQUISITION_SCHEMA = "qts.mt5_raw_tick_acquisition.v1"
 MANIFEST_FILENAME = "manifest.json"
-DEFAULT_DATASET_ROOT = Path("data/raw/mt5_ticks")
+DEFAULT_DATASET_ROOT = Path("data/raw/mt5_ticks")  # declaration; anchor at use
 
 # Dataset-level status vocabulary (see docs/mt5_history_acquisition.md).
 STATUS_IN_PROGRESS = "IN_PROGRESS"

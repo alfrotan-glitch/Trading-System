@@ -13,6 +13,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from pydantic import BaseModel
 
+from qts.config.paths import resolve_state_path
 from qts.data.quality import dataset_missing_stats
 from qts.db import connect as db_connect
 from qts.domain.value_objects import Bar, Instrument
@@ -92,8 +93,11 @@ def _checksum_bars(bars: list[Bar]) -> str:
 class SqliteParquetDataStore:
     """Parquet partitioned by date + SQLite manifest index."""
 
-    def __init__(self, root: Path | str = "data", db_path: Path | str | None = None):
-        self.root = Path(root)
+    def __init__(self, root: Path | str | None = None, db_path: Path | str | None = None):
+        # Anchored: three mkdirs used to land in the caller's cwd, which also
+        # fabricated the marker state_root() reads to detect an isolated
+        # workspace — so the store then disagreed with startup health.
+        self.root = resolve_state_path("data" if root is None else root)
         self.curated = self.root / "curated"
         self.manifests_dir = self.root / "manifests"
         self.curated.mkdir(parents=True, exist_ok=True)

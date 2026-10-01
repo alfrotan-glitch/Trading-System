@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from qts.db import connect as db_connect
 
 
-def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
-    """1. Load durable state. 2. Restore suspension. 3. Restore pending/ambiguous orders. 4. Verify data. 5. Verify config. 6. Verify account/MT5 if requested. 7. Run reconciliation. 8. Only then permit normal operation."""
-    data_dir = Path(data_dir)
+def startup_health_check() -> dict[str, Any]:
+    """1. Load durable state. 2. Restore suspension. 3. Restore pending/ambiguous orders. 4. Verify data. 5. Verify config. 6. Verify account/MT5 if requested. 7. Run reconciliation. 8. Only then permit normal operation.
+
+    Takes no root argument. It used to accept ``data_dir="data"``, which was
+    bound, never read, and cwd-relative — three ways of being wrong at once.
+    Every check resolves through the canonical path authority, so startup
+    health reports on the SAME state the rest of the system uses regardless of
+    which directory the desk was launched from.
+    """
     results: dict[str, Any] = {"timestamp": datetime.now(UTC).isoformat(), "checks": []}
 
     def _check(name: str, fn):
@@ -25,7 +30,9 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
 
     # 1 durable state
     def check_state():
-        p = Path("data/sqlite/qts.db")
+        from qts.config.paths import artifact_path
+
+        p = artifact_path("db")
         if not p.exists():
             # Fresh installation: there is no durable state to load yet.
             # That is not a failure — the store is created on first use.

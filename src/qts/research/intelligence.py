@@ -10,6 +10,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from qts.config.paths import artifact_path, resolve_state_path
 from qts.db import connect as db_connect
 from qts.domain.value_objects import uuid7
 
@@ -66,7 +67,8 @@ class HypothesisSpec(BaseModel):
 class IntelligenceOrchestrator:
     """Inspects data/evidence, identifies weaknesses, generates falsifiable hypotheses, designs experiments, runs bounded, analyzes failures, mutates, maintains lineage."""
 
-    def __init__(self, db_path: Path | str = "data/sqlite/qts.db"):
+    def __init__(self, db_path: Path | str | None = None):
+        db_path = artifact_path("db") if db_path is None else db_path
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init()
@@ -117,9 +119,9 @@ class IntelligenceOrchestrator:
         }
 
     def inspect_evidence(self) -> dict[str, Any]:
-        ev_path = Path("data/evidence/edge_validation.json")
+        ev_path = resolve_state_path("data/evidence/edge_validation.json")
         ev = json.loads(ev_path.read_text(encoding="utf-8")) if ev_path.exists() else {}
-        camp_path = Path("data/evidence/campaigns_summary.json")
+        camp_path = resolve_state_path("data/evidence/campaigns_summary.json")
         camps = json.loads(camp_path.read_text(encoding="utf-8")) if camp_path.exists() else {}
         # Identify weaknesses
         weaknesses = []

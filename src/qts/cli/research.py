@@ -7,6 +7,7 @@ from pathlib import Path
 
 import click
 
+from qts.config.paths import resolve_state_path
 from qts.data.store import SqliteParquetDataStore
 from qts.research.agent import NullAgent
 from qts.research.experiment import ExperimentStore
@@ -120,8 +121,8 @@ def research_campaign(
     )
     click.echo(f"launching bounded campaign family={family} trials={trials}")
     summary = run_campaign(cfg)
-    Path("data/evidence").mkdir(parents=True, exist_ok=True)
-    Path("data/evidence/campaign_last.json").write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
+    resolve_state_path("data/evidence").mkdir(parents=True, exist_ok=True)
+    resolve_state_path("data/evidence/campaign_last.json").write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
     click.echo(
         f"campaign {summary['campaign_id']} completed: passed={summary['passed']} failed={summary['failed']} total={summary['total_trials']} DSR N={summary['dsr_trial_count']}"
     )
@@ -144,8 +145,8 @@ def research_autonomous(
 
     click.echo(f"launching autonomous campaign {name} trials={trials} (11 steps, never LIVE)")
     result = run_autonomous_campaign(name, symbol, timeframe, data_version, trials, max_runtime, seed)
-    Path("data/evidence").mkdir(parents=True, exist_ok=True)
-    Path("data/evidence/autonomous_campaign.json").write_text(
+    resolve_state_path("data/evidence").mkdir(parents=True, exist_ok=True)
+    resolve_state_path("data/evidence/autonomous_campaign.json").write_text(
         json.dumps(result, indent=2, default=str), encoding="utf-8"
     )
     ev = result["evidence_portfolio"]

@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 #: Repository-relative default; resolved via :mod:`qts.config.paths`.
-DEFAULT_SETUP_FILE = Path("data/setup/mt5_setup.json")
+DEFAULT_SETUP_FILE = Path("data/setup/mt5_setup.json")  # declaration; anchor at use
 
 #: Modes an operator or setup wizard may declare in the machine-local setup file.
 #: Real-capital modes are absent on purpose: LIVE stays locked behind its own gate

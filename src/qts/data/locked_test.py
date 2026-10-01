@@ -14,6 +14,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+from qts.config.paths import artifact_path
 from qts.db import connect as db_connect
 from qts.domain.value_objects import Bar
 
@@ -25,7 +26,8 @@ class LockedTestViolation(RuntimeError):
 class LockedTestPartitioner:
     """Chronological partitioner with immutable LOCKED TEST."""
 
-    def __init__(self, db_path: Path | str = "data/sqlite/qts.db"):
+    def __init__(self, db_path: Path | str | None = None):
+        db_path = artifact_path("db") if db_path is None else db_path
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()

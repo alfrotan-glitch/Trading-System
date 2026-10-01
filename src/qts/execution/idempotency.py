@@ -23,6 +23,7 @@ import sqlite3
 from datetime import UTC
 from pathlib import Path
 
+from qts.config.paths import artifact_path
 from qts.db import connect as db_connect
 
 TERMINAL_REJECTED = {"REJECTED", "CANCELLED"}
@@ -32,7 +33,8 @@ BLOCKING_STATUSES = {"PENDING", "ACCEPTED", "PARTIALLY_FILLED", "FILLED", "AMBIG
 class IdempotencyStore:
     """Stores client_order_id -> status to prevent duplicate economic orders."""
 
-    def __init__(self, db_path: Path | str = "data/sqlite/qts.db"):
+    def __init__(self, db_path: Path | str | None = None):
+        db_path = artifact_path("db") if db_path is None else db_path
         self.db_path = Path(db_path) if str(db_path) != ":memory:" else Path(":memory:")
         if str(db_path) != ":memory:":
             self.db_path.parent.mkdir(parents=True, exist_ok=True)

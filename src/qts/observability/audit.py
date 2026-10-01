@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from qts.config.paths import artifact_path
 from qts.db import connect as db_connect
 from qts.domain.events import DomainEvent, EventType
 
@@ -89,12 +90,21 @@ class InMemoryAuditLog:
         self.events.clear()
 
 
+#: Distinct from ``None``, which explicitly disables the JSONL sink.
+_DEFAULT_JSONL: Any = object()
+
+
 class SqliteAuditLog:
     def __init__(
         self,
-        db_path: Path | str = "data/sqlite/qts.db",
-        jsonl_path: Path | str | None = "logs/audit.jsonl",
+        db_path: Path | str | None = None,
+        jsonl_path: Path | str | None = _DEFAULT_JSONL,
     ):
+        # `jsonl_path=None` is a meaningful argument: it DISABLES the JSONL
+        # sink. So the "use the default" signal cannot also be None — it is a
+        # distinct sentinel, or disabling would become impossible.
+        db_path = artifact_path("db") if db_path is None else db_path
+        jsonl_path = artifact_path("audit_jsonl") if jsonl_path is _DEFAULT_JSONL else jsonl_path
         self.db_path = Path(db_path)
         self.jsonl_path = Path(jsonl_path) if jsonl_path else None
         self.db_path.parent.mkdir(parents=True, exist_ok=True)

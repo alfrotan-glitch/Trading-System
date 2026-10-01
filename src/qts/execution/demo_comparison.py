@@ -32,6 +32,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from qts.config.paths import resolve_state_path
 from qts.domain.provenance import MetricValue
 from qts.observability.lineage import code_version
 
@@ -183,7 +184,7 @@ def compare_paper_shadow_demo(
 
 
 def _load_evidence_list(filename: str, key: str) -> list[dict[str, Any]]:
-    p = Path("data/evidence") / filename
+    p = resolve_state_path("data/evidence") / filename
     if not p.exists():
         return []
     try:
@@ -207,7 +208,8 @@ def _mean_bps(rows: list[dict[str, Any]], key: str) -> dict[str, Any]:
     return _mean(vals, key)
 
 
-def write_comparison(path: Path = Path("data/evidence/paper_shadow_demo_comparison.json")) -> dict[str, Any]:
+def write_comparison(path: Path | None = None) -> dict[str, Any]:
+    path = resolve_state_path("data/evidence/paper_shadow_demo_comparison.json") if path is None else Path(path)
     res = compare_paper_shadow_demo()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(res, indent=2), encoding="utf-8")

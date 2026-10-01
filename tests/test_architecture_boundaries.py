@@ -6,6 +6,7 @@ Each test pins a defect that was real in this tree and is now fixed.
 from __future__ import annotations
 
 import ast
+import re
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -221,3 +222,169 @@ def test_no_second_freshness_authority_survives_on_the_market_data_adapter() -> 
 @pytest.mark.parametrize("module", ["qts.adapters.market_data", "qts.adapters.mt5_adapter"])
 def test_trimmed_modules_still_import(module: str) -> None:
     __import__(module)
+
+
+# ------------------------------------------- state never follows the cwd
+def test_constructing_a_store_in_a_foreign_directory_creates_no_state_there(tmp_path: Path) -> None:
+    """DEFECT: the cwd-relative default defeated the anchoring that fixed it.
+
+    Twenty modules defaulted to ``db_path="data/sqlite/qts.db"``. The
+    constructor ran ``Path(db_path).parent.mkdir(parents=True)`` BEFORE any
+    connection, which created ``<cwd>/data`` — and ``state_root()`` treats a
+    cwd containing its own ``data/`` tree as an isolated workspace. So the
+    mkdir *fabricated* the marker that made the anchor resolve back to the
+    stray directory, and a real database was created there. Anchoring
+    ``connect()`` alone could not fix it; the defaults had to stop being
+    cwd-relative.
+    """
+    import subprocess
+    import sys
+
+    probe = (
+        "from qts.observability.audit import SqliteAuditLog\n"
+        "from qts.execution.idempotency import IdempotencyStore\n"
+        "from qts.research.registry import StrategyRegistry\n"
+        "from qts.data.store import SqliteParquetDataStore\n"
+        "from qts.desktop.health import startup_health_check\n"
+        "SqliteAuditLog(); IdempotencyStore(); StrategyRegistry()\n"
+        "SqliteParquetDataStore()\n"
+        "startup_health_check()\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe], cwd=tmp_path, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+
+    strays = sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*"))
+    assert strays == [], f"state was created in a foreign working directory: {strays}"
+
+
+def test_the_default_state_location_is_identical_from_any_directory(tmp_path: Path) -> None:
+    import os
+
+    from qts.observability.audit import SqliteAuditLog
+
+    here = SqliteAuditLog().db_path
+    cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        there = SqliteAuditLog().db_path
+    finally:
+        os.chdir(cwd)
+    assert here == there
+    assert Path(here).is_absolute()
+
+
+def test_disabling_the_jsonl_audit_sink_is_still_possible(tmp_path: Path) -> None:
+    """`jsonl_path=None` disables the sink; it must not mean "use the default"."""
+    from qts.observability.audit import SqliteAuditLog
+
+    assert SqliteAuditLog(db_path=tmp_path / "a.db", jsonl_path=None).jsonl_path is None
+    assert SqliteAuditLog(db_path=tmp_path / "b.db").jsonl_path is not None
+
+
+def test_no_cwd_relative_state_default_remains() -> None:
+    offenders: list[str] = []
+    for module in sorted(SRC.rglob("*.py")):
+        if module.name in ("paths.py", "db.py"):
+            continue
+        body = "\n".join(
+            ln for ln in module.read_text(encoding="utf-8").splitlines() if not ln.lstrip().startswith("#")
+        )
+        # A DEFAULT assignment only — not `==` comparisons, which some modules
+        # legitimately use to recognise a caller passing the old literal.
+        for match in re.finditer(r'(?<![=!<>])=\s*"(?:data/(?:sqlite|evidence)|logs)/[^"]*"', body):
+            offenders.append(f"{module.relative_to(SRC)} has a cwd-relative default: {match.group(0)}")
+        # The same defect wearing different syntax: a bare `Path("data/...")`
+        # that is immediately used for IO is just as cwd-bound. A module-level
+        # UPPER_CASE constant is exempt — it DECLARES the canonical relative
+        # location and is anchored at the point of use (DEFAULT_PIN_PATH ->
+        # pin_path() -> artifact_path). Resolving such a constant at import
+        # time would be worse: it freezes state_root() before a caller or test
+        # can set QTS_STATE_ROOT.
+        io_call = r'(?<![.\w])Path\(\s*"(?:data|logs)/[^"]*"\s*\)\s*(?:/[^\n]*)?\.\s*(?:mkdir|write_text|write_bytes|read_text|read_bytes|exists|open|unlink|touch|glob|rglob|iterdir)\('
+        for match in re.finditer(io_call, body):
+            offenders.append(f"{module.relative_to(SRC)} does IO on an unanchored {match.group(0)[:60]}")
+    assert offenders == [], offenders
+
+
+# ------------------------------- the adapter states transmission evidence
+def test_a_pre_send_validation_failure_is_typed_as_never_transmitted() -> None:
+    """The adapter, not the engine, knows whether anything was sent.
+
+    Pre-send validation used to raise a bare ValueError, leaving the engine to
+    INFER non-transmission from the exception type. The adapter now states it.
+    """
+    from qts.adapters.broker_outcome import BrokerRequestRejected
+    from qts.adapters.mt5_adapter import MT5Adapter
+    from tests.adversarial.test_mt5_boundary import _mock_mt5_for_spec
+
+    adapter = MT5Adapter(mt5_module=_mock_mt5_for_spec())
+    from qts.domain.value_objects import Instrument, OrderIntent, OrderType
+
+    intent = OrderIntent(
+        instrument=Instrument(symbol="XAUUSD", venue="MT5"),
+        side=Side.BUY,
+        quantity=Decimal("0.0001"),  # positive, but below the broker minimum -> refused before send
+        order_type=OrderType.MARKET,
+        client_order_id="presend-typed",
+        strategy_id="s",
+    )
+    with pytest.raises(BrokerRequestRejected):
+        adapter.submit(intent)
+
+
+def test_the_dry_run_guard_is_a_refusal_not_an_unknown_outcome() -> None:
+    """DEFECT surfaced by the classifier change: the dry-run guard raised a
+    bare RuntimeError, which now correctly means UNKNOWN — so a dev guard
+    would have suspended trading. Nothing was sent, so it is a refusal."""
+    from qts.adapters.broker_outcome import BrokerRequestRejected
+    from qts.adapters.mt5_adapter import MT5Adapter
+    from tests.adversarial.test_mt5_boundary import _mock_mt5_for_spec
+
+    adapter = MT5Adapter(mt5_module=_mock_mt5_for_spec(), config={"dry_run": True})
+    from qts.domain.value_objects import Instrument, OrderIntent, OrderType
+
+    intent = OrderIntent(
+        instrument=Instrument(symbol="XAUUSD", venue="MT5"),
+        side=Side.BUY,
+        quantity=Decimal("0.01"),
+        order_type=OrderType.MARKET,
+        client_order_id="dryrun-1",
+        strategy_id="s",
+    )
+    with pytest.raises(BrokerRequestRejected, match="dry_run"):
+        adapter.submit(intent)
+
+
+def test_startup_health_sees_the_real_state_from_a_foreign_directory(tmp_path: Path) -> None:
+    """DEFECT: `check_state` existence-checked a cwd-relative `data/sqlite/qts.db`.
+
+    Launched from anywhere but the repo root, startup health found no file and
+    reported the reassuring "no durable state yet — first run will create it",
+    passing the check WITHOUT ever validating the state that actually exists.
+    The data check behaved the same way via `SqliteParquetDataStore(root="data")`,
+    which additionally mkdir'd `curated/`, `manifests/` and `sqlite/` into the
+    caller's directory.
+    """
+    import json
+    import subprocess
+    import sys
+
+    probe = (
+        "import json\n"
+        "from qts.desktop.health import startup_health_check\n"
+        "print(json.dumps(startup_health_check()['checks']))\n"
+    )
+    here = subprocess.run([sys.executable, "-c", probe], cwd=REPO, capture_output=True, text=True, check=False)
+    there = subprocess.run([sys.executable, "-c", probe], cwd=tmp_path, capture_output=True, text=True, check=False)
+    assert here.returncode == 0 and there.returncode == 0, (here.stderr, there.stderr)
+
+    def detail(out: str, name: str) -> str:
+        return next(c for c in json.loads(out.strip().splitlines()[-1]) if c["name"] == name)["detail"]
+
+    for check in ("load_durable_state", "verify_data"):
+        assert detail(here.stdout, check) == detail(there.stdout, check), (
+            f"startup health {check} disagrees with itself depending on the working directory"
+        )
+    assert sorted(p.name for p in tmp_path.iterdir()) == []

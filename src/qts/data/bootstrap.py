@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from qts.config.paths import resolve_state_path
 from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
 
@@ -109,7 +110,7 @@ def _stale_version_for(exc: ValueError, store: SqliteParquetDataStore) -> str | 
 
 
 def bootstrap_data(
-    root: Path | str = "data",
+    root: Path | str | None = None,
     fixture: Path | str | None = None,
     instrument: str = "XAUUSD",
     timeframe: str = "1H",
@@ -124,6 +125,7 @@ def bootstrap_data(
          verified usable before success is reported.
       3. Fixture missing/empty/invalid -> FAILED. Never fabricate bars.
     """
+    root = resolve_state_path("data" if root is None else root)
     store = store if store is not None else SqliteParquetDataStore(root=root)
     if fixture is None:
         fixture = Path(root) / FIXTURE_RELPATH

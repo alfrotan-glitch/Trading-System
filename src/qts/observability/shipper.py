@@ -19,6 +19,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from qts.config.paths import resolve_state_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,8 +35,8 @@ class Shipper(Protocol):
 class LocalShipper:
     """No-op shipper for dev/test — writes to local 'shipped/' dir for visibility."""
 
-    def __init__(self, root: Path | str = "data/shipped"):
-        self.root = Path(root)
+    def __init__(self, root: Path | str | None = None):
+        self.root = resolve_state_path("data/shipped" if root is None else root)
         self.root.mkdir(parents=True, exist_ok=True)
 
     def name(self) -> str:
@@ -133,6 +135,6 @@ def make_shipper_from_config(cfg: dict) -> Shipper:
         bucket = cfg.get("bucket") or cfg.get("s3_bucket")
         if not bucket:
             logger.warning("s3 shipper requested but bucket missing — falling back to local")
-            return LocalShipper(root=cfg.get("local_root", "data/shipped"))
+            return LocalShipper(root=cfg.get("local_root"))
         return S3Shipper(bucket=bucket, prefix=cfg.get("prefix", "qts/audit/"))
-    return LocalShipper(root=cfg.get("local_root", cfg.get("root", "data/shipped")))
+    return LocalShipper(root=cfg.get("local_root", cfg.get("root")))

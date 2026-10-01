@@ -418,7 +418,8 @@ def demo_close(payload: dict[str, Any]) -> Any:
         # A close that failed at the broker is a refusal with a named cause,
         # not an opaque 500: the operator must be able to tell "the venue
         # rejected this" from "the server broke".
-        blocked = ["broker_state_unavailable"]
+        blocked_id = "broker_state_unavailable"
+        blocked = [blocked_id]
         return JSONResponse(
             status_code=502,
             content={
@@ -427,7 +428,7 @@ def demo_close(payload: dict[str, Any]) -> Any:
                 "error": f"failed to close position {ticket_int}: {exc}",
                 "blocked_by": blocked,
                 "refusal": explain_refusal(
-                    reasons=[f"broker close failed: {exc}"], blocked_by=blocked, state="CLOSE_FAILED"
+                    reasons=[f"broker close failed: {exc}"], blocked_by=blocked_id, state="CLOSE_FAILED"
                 ),
             },
         )

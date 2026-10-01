@@ -427,3 +427,50 @@ def test_operator_facing_text_never_calls_a_demo_connection_real() -> None:
     body = "\n".join(ln for ln in health.splitlines() if not ln.lstrip().startswith("#"))
     assert "MT5 REAL connected" not in body
     assert "MT5 terminal attached" in body
+
+
+def test_a_failed_broker_close_explains_itself_instead_of_crashing() -> None:
+    """DEFECT (found by mypy, not by a test): the explainer failed OPEN.
+
+    `POST /api/demo/close` builds a 502 naming `broker_state_unavailable` so an
+    operator can tell "the venue rejected this" from "the server broke". It
+    passed `blocked_by` as a LIST, matching the response payload convention,
+    but the explainer uses that id as a dict key — so it raised
+    `TypeError: unhashable type: 'list'` and the deliberate, named 502 became
+    an opaque 500. The refusal explainer was the one component guaranteed to
+    break precisely when a close had already failed at the broker.
+    """
+    from qts.execution.demo_refusal import REFUSAL_EXPLANATIONS, explain_refusal
+
+    kwargs = {"reasons": ["broker close failed: terminal gone"], "state": "CLOSE_FAILED"}
+    listed = explain_refusal(blocked_by=["broker_state_unavailable"], **kwargs)  # type: ignore[arg-type]
+
+    assert listed["primary"]["id"] == "broker_state_unavailable"
+    assert listed["primary"]["explained"] is True
+    assert listed["primary"]["plain"] == REFUSAL_EXPLANATIONS["broker_state_unavailable"][0]
+    # A list of one must stay byte-identical to the scalar form.
+    assert listed == explain_refusal(blocked_by="broker_state_unavailable", **kwargs)  # type: ignore[arg-type]
+    # Every id in a multi-blocker refusal keeps its own explanation.
+    both = explain_refusal(blocked_by=["broker_state_unavailable", "stage_allows_order"], **kwargs)  # type: ignore[arg-type]
+    assert both["blocker_ids"] == ["broker_state_unavailable", "stage_allows_order"]
+    assert all(b["explained"] for b in both["blockers"])
+
+
+def test_the_close_route_passes_an_id_the_explainer_can_resolve() -> None:
+    """Pin the call site itself, not just the explainer's tolerance of it."""
+    import ast
+
+    source = (REPO / "src" / "qts" / "api" / "routes" / "demo.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "explain_refusal"
+    ]
+    assert calls, "close route no longer explains its refusals"
+    for call in calls:
+        for kw in call.keywords:
+            if kw.arg == "blocked_by":
+                assert not isinstance(kw.value, ast.List), (
+                    f"explain_refusal(blocked_by=[...]) at line {call.lineno}: pass the id, not the payload list"
+                )

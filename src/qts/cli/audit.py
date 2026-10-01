@@ -7,6 +7,7 @@ from pathlib import Path
 
 import click
 
+from qts.config.paths import artifact_path
 from qts.observability.audit import SqliteAuditLog
 
 
@@ -27,12 +28,13 @@ def audit_query(strategy: str | None, limit: int) -> None:
 
 
 @audit.command("ship")
-@click.option("--jsonl", default="logs/audit.jsonl")
+@click.option("--jsonl", default=None, help="audit JSONL path (default: the canonical logs/audit.jsonl)")
 @click.option("--shipper", default="local", type=click.Choice(["local", "s3"]))
 @click.option("--bucket", default=None, help="S3 bucket (required for s3)")
 @click.option("--prefix", default="qts/audit/")
-def audit_ship(jsonl: str, shipper: str, bucket: str | None, prefix: str) -> None:
+def audit_ship(jsonl: str | None, shipper: str, bucket: str | None, prefix: str) -> None:
 
+    jsonl = str(artifact_path("audit_jsonl")) if jsonl is None else jsonl
     from qts.observability.shipper import LocalShipper, S3Shipper, ship_audit_logs
 
     path = Path(jsonl)

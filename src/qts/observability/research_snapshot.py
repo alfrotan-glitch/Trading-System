@@ -34,6 +34,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from qts.config.paths import artifact_path, resolve_state_path
 from qts.db import connect as db_connect
 from qts.observability.lineage import code_version
 
@@ -154,7 +155,7 @@ def _row_digest(payload: dict[str, Any]) -> str:
 def export_research_snapshot(
     session_id: str,
     *,
-    db_path: Path | str = "data/sqlite/forward_observatory.db",
+    db_path: Path | str | None = None,
 ) -> dict[str, Any]:
     """Build the complete research snapshot for ONE session from the store.
 
@@ -162,6 +163,7 @@ def export_research_snapshot(
     is not an object, or a ledger that disagrees with the accepted rows all
     refuse the export rather than emitting a partial dataset.
     """
+    db_path = artifact_path("observatory_db") if db_path is None else db_path
     db_path = Path(db_path)
     _require(db_path.exists(), f"canonical observation store not found: {db_path}")
 
@@ -419,12 +421,13 @@ def _snapshot_manifest_hash(artifact: dict[str, Any]) -> str:
 def write_research_snapshot(
     session_id: str,
     *,
-    db_path: Path | str = "data/sqlite/forward_observatory.db",
+    db_path: Path | str | None = None,
     out_path: Path | str | None = None,
 ) -> tuple[dict[str, Any], Path]:
     """Export + persist the research snapshot. Returns (artifact, path)."""
+    db_path = artifact_path("observatory_db") if db_path is None else db_path
     artifact = export_research_snapshot(session_id, db_path=db_path)
-    path = Path(out_path) if out_path else Path("data/evidence/exports") / f"{session_id}.research_snapshot.json"
+    path = Path(out_path) if out_path else resolve_state_path("data/evidence/exports") / f"{session_id}.research_snapshot.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(artifact, indent=2, default=str) + "\n", encoding="utf-8")
     return artifact, path

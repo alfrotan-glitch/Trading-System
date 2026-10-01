@@ -68,6 +68,9 @@ RELATIVE_DEFAULTS: dict[str, str] = {
     "shadow_cli_idempotency_db": "data/sqlite/shadow_cli_idemp.db",
     "shadow_cli_risk_db": "data/sqlite/shadow_cli_risk.db",
     "logs_dir": "logs",
+    "audit_jsonl": "logs/audit.jsonl",
+    "execution_reality_db": "data/sqlite/execution_reality.db",
+    "regime_observatory_db": "data/sqlite/regime_observatory.db",
 }
 
 #: Environment override per artefact (highest precedence, used verbatim).
@@ -99,6 +102,9 @@ ENV_OVERRIDES: dict[str, str] = {
     "shadow_cli_idempotency_db": "QTS_SHADOW_CLI_IDEMP_DB",
     "shadow_cli_risk_db": "QTS_SHADOW_CLI_RISK_DB",
     "logs_dir": "QTS_LOGS_DIR",
+    "audit_jsonl": "QTS_AUDIT_JSONL",
+    "execution_reality_db": "QTS_EXECUTION_REALITY_DB",
+    "regime_observatory_db": "QTS_REGIME_OBSERVATORY_DB",
 }
 
 STATE_ROOT_ENV = "QTS_STATE_ROOT"

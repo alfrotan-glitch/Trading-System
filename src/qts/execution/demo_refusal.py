@@ -42,6 +42,7 @@ Contract
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 #: ``predicate id -> (plain language, condition that must become true)``.
@@ -253,7 +254,7 @@ def explain_refusal(
     *,
     verdict: dict[str, Any] | None = None,
     reasons: list[str] | None = None,
-    blocked_by: str | None = None,
+    blocked_by: str | Sequence[str] | None = None,
     state: str | None = None,
 ) -> dict[str, Any]:
     """Build the structured, user-facing refusal.
@@ -281,8 +282,18 @@ def explain_refusal(
         blockers.append(_entry(check_id, technical=f"{check_id}: {detail}" if detail else check_id, current=detail))
 
     if not blockers and blocked_by:
+        # Callers carry `blocked_by` as a scalar id here and as a list in the
+        # response payload, and one route passed the list in. An id is used as
+        # a dict key, so that raised `TypeError: unhashable type: 'list'` and
+        # turned a structured 502 refusal into an opaque 500 — the explainer
+        # failing open at exactly the moment it is needed. It now accepts
+        # either, because an explainer must never be the thing that breaks.
+        ids = [blocked_by] if isinstance(blocked_by, str) else [str(b) for b in blocked_by]
         detail = reasons[0] if reasons else ""
-        blockers.append(_entry(blocked_by, technical=detail or blocked_by, current=detail or None))
+        for index, blocker_id in enumerate(ids):
+            # Only the primary blocker owns the flat reason text.
+            text = (detail or blocker_id) if index == 0 else blocker_id
+            blockers.append(_entry(blocker_id, technical=text, current=(detail or None) if index == 0 else None))
 
     if not blockers and reasons:
         # No verdict and no id: keep the raw reason as the technical text and

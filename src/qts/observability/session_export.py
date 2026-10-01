@@ -44,6 +44,7 @@ from decimal import Decimal, DecimalException
 from pathlib import Path
 from typing import Any
 
+from qts.config.paths import artifact_path, resolve_state_path
 from qts.db import connect as db_connect
 from qts.observability.lineage import code_version
 
@@ -131,7 +132,7 @@ def _chain_root(session_id: str, row_digests: list[str]) -> str:
 def export_session_evidence(
     session_id: str,
     *,
-    db_path: Path | str = "data/sqlite/forward_observatory.db",
+    db_path: Path | str | None = None,
     samples_each_end: int = 5,
 ) -> dict[str, Any]:
     """Build the sanitized evidence artifact for ONE session from the store.
@@ -140,6 +141,7 @@ def export_session_evidence(
     Raises :class:`SessionExportError` (fail closed) when the session is
     unknown or any stored record fails integrity checks.
     """
+    db_path = artifact_path("observatory_db") if db_path is None else db_path
     db_path = Path(db_path)
     if not db_path.exists():
         raise SessionExportError(f"canonical observation store not found: {db_path}")
@@ -286,11 +288,12 @@ def export_session_evidence(
 def write_session_evidence(
     session_id: str,
     *,
-    db_path: Path | str = "data/sqlite/forward_observatory.db",
+    db_path: Path | str | None = None,
     out_path: Path | str | None = None,
 ) -> tuple[dict[str, Any], Path]:
+    db_path = artifact_path("observatory_db") if db_path is None else db_path
     art = export_session_evidence(session_id, db_path=db_path)
-    out = Path(out_path) if out_path else Path("data/evidence/exports") / f"{session_id}.session_evidence.json"
+    out = Path(out_path) if out_path else resolve_state_path("data/evidence/exports") / f"{session_id}.session_evidence.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(art, indent=2, default=str) + "\n", encoding="utf-8")
     return art, out

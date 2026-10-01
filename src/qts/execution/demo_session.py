@@ -492,9 +492,10 @@ class DemoSession:
         untouched.
         """
         try:
+            from qts.config.paths import resolve_state_path
             from qts.risk.engine import RiskEngine, RiskLimits
 
-            scratch = SELF_TEST_DB
+            scratch = resolve_state_path(SELF_TEST_DB)
             scratch.parent.mkdir(parents=True, exist_ok=True)
             engine = RiskEngine(RiskLimits(), db_path=scratch, persist_kill=True)
             if engine.is_killed():
@@ -671,6 +672,17 @@ class DemoSession:
             cid = str(row.get("client_order_id") or "")
             journal_id = row.get("journal_id")
             entry = {"client_order_id": cid, "journal_id": journal_id, "state": row.get("state")}
+            if journal_id is None:
+                # An unresolved row with no journal id cannot be marked, so it
+                # cannot be reported resolved. Previously `int(None)` threw
+                # inside the write's own try/except and was reported as a
+                # "journal write failed" — fail closed either way, but naming
+                # the wrong cause. Say what is actually wrong.
+                report["unverifiable"].append(
+                    {**entry, "detail": "journal row carries no journal_id — cannot record an outcome against it"}
+                )
+                report["all_resolved"] = False
+                continue
             if not broker_reachable:
                 report["unverifiable"].append(
                     {**entry, "detail": f"broker link unavailable — fail closed ({link_error})"}

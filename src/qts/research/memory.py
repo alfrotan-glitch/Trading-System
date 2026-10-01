@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from qts.config.paths import artifact_path
 from qts.db import connect as db_connect
 from qts.domain.value_objects import uuid7
 
@@ -30,7 +31,8 @@ class MemoryEntry(BaseModel):
 
 
 class ResearchMemory:
-    def __init__(self, db_path: Path | str = "data/sqlite/qts.db"):
+    def __init__(self, db_path: Path | str | None = None):
+        db_path = artifact_path("db") if db_path is None else db_path
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init()

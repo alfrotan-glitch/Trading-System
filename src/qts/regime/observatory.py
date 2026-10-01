@@ -11,6 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from qts.config.paths import artifact_path, resolve_state_path
 from qts.db import connect as db_connect
 from qts.domain.value_objects import uuid7
 
@@ -32,7 +33,8 @@ class RegimeObservation(BaseModel):
 
 
 class RegimeObservatory:
-    def __init__(self, db_path: Path | str = "data/sqlite/regime_observatory.db"):
+    def __init__(self, db_path: Path | str | None = None):
+        db_path = artifact_path("regime_observatory_db") if db_path is None else db_path
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init()
@@ -94,7 +96,8 @@ class RegimeObservatory:
             "question": "How did this strategy behave during each observed state? — join with forward_observatory signals by timestamp",
         }
 
-    def to_json(self, path: Path = Path("data/evidence/market_regime_observations.json")) -> dict[str, Any]:
+    def to_json(self, path: Path | None = None) -> dict[str, Any]:
+        path = resolve_state_path("data/evidence/market_regime_observations.json") if path is None else Path(path)
         s = self.summary()
         s["generated_at"] = datetime.now(UTC).isoformat()
         s["observations_sample"] = [o.model_dump(mode="json") for o in self.list(limit=5)]

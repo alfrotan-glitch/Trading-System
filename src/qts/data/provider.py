@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from qts.config.paths import resolve_state_path
 from qts.domain.value_objects import Bar, Instrument
 
 
@@ -230,12 +231,14 @@ def ingestion_pipeline(
     timeframe: str,
     start: datetime,
     end: datetime,
-    raw_dir: Path = Path("data/raw"),
-    store_dir: Path = Path("data"),
+    raw_dir: Path | None = None,
+    store_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Provider → Raw Storage → Validation → Normalization → Canonical Dataset → Manifest → Evidence.
     Preserves raw, never overwrites with processed, returns manifest metadata.
     """
+    raw_dir = resolve_state_path("data/raw") if raw_dir is None else Path(raw_dir)
+    store_dir = resolve_state_path("data") if store_dir is None else Path(store_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
     raw_path = (
         raw_dir

@@ -29,6 +29,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from qts.config.paths import artifact_path
 from qts.db import connect as db_connect
 
 _UNSET = object()
@@ -156,12 +157,13 @@ class DemoExecutionAuthority:
 
     def __init__(
         self,
-        db_path: Path | str = "data/sqlite/qts.db",
+        db_path: Path | str | None = None,
         *,
         audit: Any | None = None,
         mode: str | None = None,
         authorization: Any | None = _UNSET,
     ) -> None:
+        db_path = artifact_path("db") if db_path is None else db_path
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._audit = audit  # any qts.audit AuditLog (emit(DomainEvent))

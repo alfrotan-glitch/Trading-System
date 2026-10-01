@@ -11,6 +11,7 @@ from datetime import UTC
 from pathlib import Path
 from typing import Any
 
+from qts.config.paths import resolve_state_path
 from qts.data.bootstrap import classify_source
 from qts.data.quality import dataset_missing_stats, validate_bars
 from qts.data.store import SqliteParquetDataStore
@@ -48,8 +49,9 @@ def _availability(available: bool, measured_as: str, reason: str) -> dict[str, A
     return {"status": "UNAVAILABLE", "value": None, "reason": reason}
 
 
-def generate_inventory(root: Path = Path("data")) -> list[dict[str, Any]]:
+def generate_inventory(root: Path | None = None) -> list[dict[str, Any]]:
     """Return one honest inventory entry for every usable/registered dataset."""
+    root = resolve_state_path("data" if root is None else root)
     store = SqliteParquetDataStore(root=root)
     versions = store.list_versions()
     inventory: list[dict[str, Any]] = []
@@ -177,7 +179,8 @@ def generate_inventory(root: Path = Path("data")) -> list[dict[str, Any]]:
     return inventory
 
 
-def write_inventory_json(path: Path = Path("data/evidence/data_inventory.json")) -> list[dict[str, Any]]:
+def write_inventory_json(path: Path | None = None) -> list[dict[str, Any]]:
+    path = resolve_state_path("data/evidence/data_inventory.json") if path is None else Path(path)
     inv = generate_inventory()
     path.parent.mkdir(parents=True, exist_ok=True)
     import json

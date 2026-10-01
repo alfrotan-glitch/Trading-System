@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 
+from qts.config.paths import artifact_path
 from qts.db import connect as db_connect
 
 
@@ -77,7 +78,8 @@ class PromotionRecord:
 
 
 class PromotionLedger:
-    def __init__(self, db_path: Path | str = "data/sqlite/qts.db"):
+    def __init__(self, db_path: Path | str | None = None):
+        db_path = artifact_path("db") if db_path is None else db_path
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init()

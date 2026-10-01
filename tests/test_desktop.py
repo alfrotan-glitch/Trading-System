@@ -795,6 +795,12 @@ def test_validation_endpoint_does_not_present_unattributed_file_as_the_strategy(
 def test_strategy_list_does_not_copy_validation_by_symbol(tmp_path, monkeypatch):
     """A passing file for one strategy, or an unattributed file on the same
     symbol, must not mark a different registry record VALIDATED."""
+    # Isolate state EXPLICITLY. This used to rely on chdir alone: the registry
+    # defaulted to the cwd-relative "data/sqlite/qts.db" and its mkdir created
+    # tmp_path/data, which in turn made state_root() treat tmp_path as an
+    # isolated workspace. Isolation by side effect. State no longer follows the
+    # working directory, so a test that wants its own root now says so.
+    monkeypatch.setenv("QTS_STATE_ROOT", str(tmp_path))
     monkeypatch.chdir(tmp_path)
     from qts.research.registry import StrategyRecord, StrategyRegistry
 

@@ -11,6 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from qts.config.paths import artifact_path
 from qts.db import connect as db_connect
 from qts.domain.value_objects import Instrument, uuid7
 from qts.research.experiment import (
@@ -62,7 +63,8 @@ class CampaignResult(BaseModel):
 
 
 class ResearchCampaignStore:
-    def __init__(self, db_path: Path | str = "data/sqlite/qts.db"):
+    def __init__(self, db_path: Path | str | None = None):
+        db_path = artifact_path("db") if db_path is None else db_path
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init()
@@ -174,8 +176,8 @@ def _param_combinations(param_space: dict[str, list[Any]], max_combinations: int
 
 def run_campaign(
     config: CampaignConfig,
-    store_path: Path | str = "data/sqlite/qts.db",
-    registry_path: Path | str = "data/sqlite/qts.db",
+    store_path: Path | str | None = None,
+    registry_path: Path | str | None = None,
 ) -> dict[str, Any]:
     """Launch bounded research campaign.
 
@@ -185,6 +187,8 @@ def run_campaign(
     - Applies DSR accounting (trial count)
     - Ranks for inspection, never auto-promotes solely on high return
     """
+    store_path = artifact_path("db") if store_path is None else store_path
+    registry_path = artifact_path("db") if registry_path is None else registry_path
     import numpy as np
 
     from qts.backtest.engine import BacktestEngine

@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from qts.config.paths import artifact_path
 from qts.db import connect as db_connect
 
 
@@ -23,7 +24,7 @@ def _optional_row(con: Any, sql: str) -> tuple[Any, str | None]:
         return None, f"{type(exc).__name__}: {exc}"
 
 
-def restore_state(db_path: Path | str = "data/sqlite/qts.db") -> dict[str, Any]:
+def restore_state(db_path: Path | str | None = None) -> dict[str, Any]:
     """Read the durable safety rows. Does not claim preservation by itself.
 
     The previous implementation queried ``promotion_state`` and discarded the
@@ -32,6 +33,7 @@ def restore_state(db_path: Path | str = "data/sqlite/qts.db") -> dict[str, Any]:
     the audit log had been preserved. A missing table became ``audit_count=0``,
     so ``verify_no_state_loss`` passed without reading anything that matters.
     """
+    db_path = artifact_path("db") if db_path is None else db_path
     db_path = Path(db_path)
     if not db_path.exists():
         return {"restored": False, "reason": "no db yet", "read_error": None}

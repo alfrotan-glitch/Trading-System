@@ -21,6 +21,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from qts.config.paths import resolve_state_path
+
 
 def check_mt5_submission_implemented() -> tuple[bool, str]:
     try:
@@ -207,8 +209,8 @@ def _lineage_checked_evidence(candidates: list[Path], expected_mode: str, requir
 def check_paper_evidence() -> tuple[bool, str]:
     return _lineage_checked_evidence(
         [
-            Path("data/evidence/paper_trades.json"),
-            Path("data/paper_evidence.json"),
+            resolve_state_path("data/evidence/paper_trades.json"),
+            resolve_state_path("data/paper_evidence.json"),
         ],
         expected_mode="paper",
         required_list_key="fills",
@@ -218,8 +220,8 @@ def check_paper_evidence() -> tuple[bool, str]:
 def check_shadow_evidence() -> tuple[bool, str]:
     return _lineage_checked_evidence(
         [
-            Path("data/evidence/shadow_intents.json"),
-            Path("data/shadow_evidence.json"),
+            resolve_state_path("data/evidence/shadow_intents.json"),
+            resolve_state_path("data/shadow_evidence.json"),
         ],
         expected_mode="shadow",
         required_list_key="intents_sample",

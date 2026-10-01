@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
+from qts.config.paths import resolve_state_path
 from qts.data.audit import audit_data_sources
 from qts.research.campaign import CampaignConfig, run_campaign
 from qts.research.intelligence import IntelligenceOrchestrator
@@ -262,7 +262,7 @@ def run_autonomous_campaign(
         mem.remember(entry)
 
     # Write machine-readable
-    Path("data/evidence/autonomous_campaign.json").write_text(
+    resolve_state_path("data/evidence/autonomous_campaign.json").write_text(
         json.dumps(
             {
                 "summary": summary,

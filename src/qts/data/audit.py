@@ -10,11 +10,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from qts.config.paths import resolve_state_path
 from qts.data.inventory import generate_inventory
 
 
-def audit_data_sources(root: Path = Path("data")) -> dict[str, Any]:
+def audit_data_sources(root: Path | None = None) -> dict[str, Any]:
     """Inspect every registered dataset and report what is still unavailable."""
+    root = resolve_state_path("data" if root is None else root)
     inventory = generate_inventory(root)
     rows = [int(i["row_count"]) for i in inventory if isinstance(i.get("row_count"), int)]
     classes = sorted({str(i.get("data_class", "UNVERIFIED")) for i in inventory})

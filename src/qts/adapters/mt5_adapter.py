@@ -100,7 +100,7 @@ def mt5_safe_comment_text(text: str) -> str:
 #: Fields every MT5 trade request must carry, with the type the client library
 #: requires. A request that violates this contract is refused by the library
 #: itself — ``order_send`` returns ``None`` and nothing is transmitted.
-_REQUEST_FIELD_TYPES: dict[str, type | tuple[type, ...]] = {
+_REQUEST_FIELD_TYPES: dict[str, type] = {
     "action": int,
     "symbol": str,
     "volume": float,
@@ -1154,20 +1154,35 @@ class MT5Adapter(BrokerAdapter):
         actually be sent.
         """
         mt5 = self._require_mt5()
-        spec = self.get_symbol_spec(intent.instrument.symbol)
-        normalized_qty = self.validate_and_normalize_quantity(intent.quantity, spec)
-        limit_price = self.validate_price_precision(intent.limit_price, spec) if intent.limit_price else None
-        stop_price = self.validate_price_precision(intent.stop_price, spec) if intent.stop_price else None
 
-        # ONE construction, already validated against the broker request
-        # contract. A contract violation raises BrokerRequestRejected here —
-        # before any send — so it can never be mistaken for an unknown outcome.
-        request = self.build_broker_request(intent)
+        # Everything in this block happens BEFORE any byte reaches the
+        # terminal, so every failure in it is provably untransmitted. The
+        # adapter is the only component that knows this, so it states the fact
+        # in the exception type instead of leaving the engine to infer it from
+        # `ValueError`. (BrokerRequestRejected IS a ValueError, so the engine's
+        # own ValueError branch remains a correct safety net — it is simply no
+        # longer load-bearing.)
+        try:
+            spec = self.get_symbol_spec(intent.instrument.symbol)
+            normalized_qty = self.validate_and_normalize_quantity(intent.quantity, spec)
+            limit_price = self.validate_price_precision(intent.limit_price, spec) if intent.limit_price else None
+            stop_price = self.validate_price_precision(intent.stop_price, spec) if intent.stop_price else None
+            # ONE construction, already validated against the broker request
+            # contract. A contract violation raises BrokerRequestRejected here —
+            # before any send — so it can never be mistaken for an unknown outcome.
+            request = self.build_broker_request(intent)
+        except BrokerRequestRejected:
+            raise
+        except ValueError as e:
+            raise BrokerRequestRejected(
+                f"MT5 refused to build a valid request for {intent.client_order_id} — nothing was sent: {e}"
+            ) from e
 
-        # Dev guard: if config says dry_run, don't actually send
+        # Dev guard: if config says dry_run, don't actually send. This is a
+        # definitive local refusal, not an unknown outcome: no request left the
+        # process, so it must never suspend trading for reconciliation.
         if self.config.get("dry_run", False):
-            # Simulate success for testing without terminal
-            raise RuntimeError(f"MT5 dry_run enabled — would send {request}")
+            raise BrokerRequestRejected(f"MT5 dry_run enabled — would send {request}")
 
         # Send with timeout handling
         try:
