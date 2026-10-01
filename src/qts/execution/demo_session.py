@@ -1345,8 +1345,18 @@ class DemoSession:
         if matched:
             return total, "broker_deal_history"
         if snapshot is not None and snapshot.get("profit") not in (None, ""):
-            with contextlib.suppress(InvalidOperation, ValueError):
-                return Decimal(str(snapshot["profit"])), "pre_close_snapshot_unverified"
+            # The pre-close ``profit`` is still only an *unrealized* mark (see
+            # the docstring above) — it is a label for operator visibility,
+            # never a value to persist as the realized result. `_known_realized`
+            # and `daily_realized_pnl()`/`drawdown()` cannot tell a confirmed
+            # Decimal from a guessed one; they only check whether the cell is
+            # NULL. Returning the snapshot figure here once let an unconfirmed
+            # mark silently become "this trade's realized P&L is exactly
+            # $X" — the same class of fabricated-ground-truth defect as
+            # returning Decimal("0") below, just with a nonzero number
+            # instead of zero. The source label still distinguishes this case
+            # ("we had an unverified mark") from true unavailability.
+            return None, "pre_close_snapshot_unverified"
         # UNKNOWN is not zero. Returning Decimal("0") here recorded "this trade
         # made exactly nothing" in the journal, and daily_realized_pnl() sums
         # every non-NULL row, so a loss the broker could not be asked about

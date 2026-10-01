@@ -207,6 +207,13 @@ def test_realized_pnl_is_labelled_and_never_silently_the_pre_close_mark(
     session._adapter = type("A", (), {"history_deals": lambda self, *a, **k: []})()  # type: ignore[attr-defined]
     realized, source = session._realized_pnl_for_close(111, {}, {"profit": "99.0"})
     assert source == "pre_close_snapshot_unverified", "an unverified mark must say so"
+    assert realized is None, (
+        "an unverified pre-close mark must never be persisted as the realized "
+        "result — daily_realized_pnl()/drawdown() cannot distinguish a "
+        "confirmed Decimal from a guessed one, only a NULL cell from a filled "
+        "one, so passing the snapshot's 99.0 through here would silently "
+        "fabricate ground truth the broker never confirmed"
+    )
 
 
 def test_the_close_journal_match_requires_the_broker_position_id(monkeypatch: pytest.MonkeyPatch) -> None:
