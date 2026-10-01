@@ -18,7 +18,15 @@ def _is_trusted_origin(origin_or_url: str | None) -> bool:
     if not origin_or_url:
         return False
     val = origin_or_url.strip().lower()
-    if val in ("null", "tauri://localhost", "vscode-webview://"):
+    # "null" is NOT trusted here: a sandboxed iframe, a file:// document, or a
+    # redirected request all send a literal ``Origin: null`` header, and any
+    # of them could carry this value. Trusting it let a page with no origin
+    # at all drive this API's state-changing endpoints (order placement,
+    # position close, the kill switch) past the boundary this middleware
+    # exists to enforce. ``server.py``'s CORS configuration already documents
+    # this exact requirement and never lists "null" as an allowed origin —
+    # this function must agree with that, not silently reopen the hole.
+    if val in ("tauri://localhost", "vscode-webview://"):
         return True
     try:
         parsed = urlparse(val)

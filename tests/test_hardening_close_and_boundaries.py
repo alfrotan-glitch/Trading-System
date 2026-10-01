@@ -286,6 +286,30 @@ def test_cors_rejects_null_and_untrusted_origins() -> None:
     assert allowed.headers.get("access-control-allow-origin") == "http://localhost:5173"
 
 
+def test_origin_null_cannot_drive_a_state_mutating_endpoint() -> None:
+    """DEFECT: ``_is_trusted_origin`` trusted the literal string "null".
+
+    The CORS-header check above only proves the browser-visible preflight
+    response; it never exercises ``local_operator_boundary_middleware``, the
+    custom gate that actually blocks state-changing requests (POST/PUT/
+    PATCH/DELETE). A sandboxed iframe, a ``file://`` document, or a
+    redirected request all send a literal ``Origin: null`` header — trusting
+    it let any such page call the kill switch, place an order, or close a
+    position. A clearly untrusted origin is the control: it must still be
+    rejected the same way, proving the middleware itself (not just this one
+    value) is exercised.
+    """
+    from fastapi.testclient import TestClient
+
+    from qts.api.server import app
+
+    client = TestClient(app)
+    for origin in ("null", "https://evil.example"):
+        resp = client.post("/api/demo/kill", headers={"Origin": origin})
+        assert resp.status_code == 403, f"Origin {origin!r} must not reach the kill switch"
+        assert resp.json().get("error") == "FORBIDDEN_MUTATION"
+
+
 def test_there_is_no_cors_wildcard_escape_hatch() -> None:
     source = (REPO / "src" / "qts" / "api" / "server.py").read_text(encoding="utf-8")
     body = "\n".join(ln for ln in source.splitlines() if not ln.lstrip().startswith("#"))
