@@ -81,9 +81,10 @@ class AuditLog(Protocol):
 class Shipper(Protocol):
     def ship(self, local_path: Path, key: str|None) -> str|None: ...  # LocalShipper / S3Shipper(content-hash, prefix)
 
-class ResearchLoop(Protocol):
-    def propose(self, n:int) -> list[str]: ...
-    def run_experiment(self, hypothesis_id:str, strategy_id:str, params:dict, data_version:str) -> LoopResult: ...
+# Research orchestration is implemented by qts.research.campaign_engine
+# (run_campaign). A ResearchLoop protocol was sketched here and in a
+# qts.research.loop prototype that nothing ever called; the prototype was
+# removed so the campaign engine is the single research authority.
 ```
 
 ## 3.4 Plug Points

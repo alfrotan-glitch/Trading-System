@@ -105,13 +105,17 @@ Candidate `S-042 v1` → PAPER 8 weeks, Sharpe live/paper delta 0.2 → SHADOW 4
 
 If live drawdown > 2× expected → SUSPENDED, hypothesis re-opened.
 
-## 4.5 NO_TRADE Discipline — Explicit `NoTradeReason`
+## 4.5 NO_TRADE Discipline — one named reason per refusal
 
-Strategies return `[]` (no signal) → `NO_TRADE/EMPTY_SIGNAL`. All other uncertainty maps to explicit `NoTradeReason`:
+Strategies return `[]` (no signal) → `NO_TRADE`. All other uncertainty maps to a
+named refusal id in the canonical registry (`REFUSAL_EXPLANATIONS` in
+`qts.execution.demo_pretrade`), which covers risk vetoes, the kill switch,
+reconciliation suspension, stale or missing market data, invalid quantity and
+failed validation, and gives each a deterministic operator-facing explanation.
 
-- `RISK_VETO` (pre_trade veto), `KILL_SWITCH` (killed flag), `RECONCILE_SUSPEND` (`requires_suspend`), `DATA_GAP`, `DATA_QUALITY_FAIL` (validate_bars STRICT), `INVALID_QUANTITY` (lot step/min), `INSUFFICIENT_HISTORY`, `REGIME_FILTER`, `VALIDATION_FAIL`.
-
-Each emits `EventType.NO_TRADE` via `ExecutionEngine.submit_intent` or `BacktestEngine` (audit trail), not silent absence. Validation and dashboards aggregate reasons. `NO_TRADE` is success (capital preserved), not failure.
+A parallel `NoTradeReason` enum under `qts.domain` was prototyped for this and
+never wired to a caller; it was removed so that one vocabulary defines a
+refusal. Refusals are recorded, not silently absent. Validation and dashboards aggregate reasons. `NO_TRADE` is success (capital preserved), not failure.
 
 ## 4.6 Reconciliation Gate
 

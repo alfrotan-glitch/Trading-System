@@ -26,7 +26,7 @@ More search → stronger DSR requirement: `deflated_sharpe_ratio` with N includi
 
 ## Governance Controls
 - `FeatureStore` lineage, timestamp semantics, no future.
-- `PositionManager` joint hypothesis, exit policies documented.
+- Exit policy is governed by the registered research policy's `exit_conditions` (see `qts.lifecycle.demo_policy`), which is authoritative regardless of how a position was opened. A `PositionManager` exit taxonomy was prototyped under `qts.research.position_management`, never wired, and removed.
 - `ResearchMemory` prevents rediscovery.
 - `Novelty` clusters, reports distinct.
 - `PromotionLedger` one-way, no skip, no manual DB edit — only `transition` audited.

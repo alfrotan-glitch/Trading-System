@@ -66,8 +66,8 @@ OrderIntent --1:1--> Order --1:N--> Fill --1:1--> Position delta
 
 ## 2.6 NO_TRADE Explicit
 
-- `NoTradeReason` enum centralizes why system stays flat: `EMPTY_SIGNAL | RISK_VETO | KILL_SWITCH | RECONCILE_SUSPEND | DATA_GAP | DATA_QUALITY_FAIL | INVALID_QUANTITY | INSUFFICIENT_HISTORY | REGIME_FILTER | VALIDATION_FAIL`.
-- `NoTradeEvent` is emitted as `EventType.NO_TRADE` for every veto/kill/drift/empty-signal — dashboards aggregate reasons instead of inferring from missing fills.
+- Why the system stays flat is centralized in the pre-trade refusal registry (`REFUSAL_EXPLANATIONS` in `qts.execution.demo_pretrade`): one id per refusal predicate, each with a deterministic operator-facing explanation, shared by the gate, the API and the UI. Dashboards aggregate those ids instead of inferring from missing fills.
+- A `NoTradeReason` / `NoTradeEvent` pair under `qts.domain` was prototyped for this role and never wired to any caller. It was removed so that one vocabulary, not two, defines a refusal.
 
 ## 2.6 Anti-Corruption
 

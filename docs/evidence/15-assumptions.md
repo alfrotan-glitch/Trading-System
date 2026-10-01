@@ -48,7 +48,7 @@ Explicitly stating what we assume, what we don't know, and what experiments will
 | Fake validation placeholders | **Closed** — `NOT_IMPLEMENTED → BLOCKS`, real CPCV/PBO, PSR/DSR no heuristic, perturbation/stress re-runs |
 | Quantity semantics | **Closed** — lots×contract×price, micro vs std test, `MT5Adapter.lots_to_mt5_volume` quantized |
 | Kill/idempotency durability | **Closed** — SQLite persisted kill, placeholder survives restart |
-| NO_TRADE when uncertain | **Closed** — `NoTradeReason` + `EventType.NO_TRADE` emitted on every veto/kill/drift, auditable |
+| NO_TRADE when uncertain | **Closed** — every veto/kill/drift is refused with a named id from the canonical refusal registry (`REFUSAL_EXPLANATIONS`), each with a deterministic explanation, auditable. The unused `NoTradeReason` prototype was removed. |
 | Data integrity | **Closed** — `validate_bars` on write + `quality_reports` table, strict_quality fail-closed |
 | Audit durability | **Closed** — `Shipper` local+S3, content-hash key, CLI `qts audit ship` |
 

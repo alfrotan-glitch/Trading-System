@@ -39,7 +39,13 @@ Tools: read_hypothesis, propose_hypothesis, read_experiment, run_validation, rea
 No tool: submit_order, override_risk, promote_lifecycle (human-only)
 ```
 
-## 8.3 Hypothesis Generation Loop — Implemented `ResearchLoop` (Phase 1)
+## 8.3 Hypothesis Generation Loop — design sketch, NOT implemented as written
+
+The flow below was prototyped as `qts.research.loop.ResearchLoop` and never
+wired to a caller. It was removed; research orchestration that actually runs
+lives in `qts.research.campaign_engine.run_campaign`, which keeps the same
+gating property: validation and adversarial review decide promotion, and no
+agent output bypasses them.
 
 ```
 Human or Scheduler → ResearchAgent.propose(n=5) → Hypotheses
@@ -52,7 +58,7 @@ Human or Scheduler → ResearchAgent.propose(n=5) → Hypotheses
   → lineage stored `parent=hypothesis_id child=experiment_id` → next loop queries memory to avoid repeats
 ```
 
-Implemented: `src/qts/research/loop.py` `ResearchLoop` (NullAgent deterministic fallback) + `NullAgent`/`AdversarialAgent` in `agent.py`. No AI output bypasses gates; every decision audited via `ExperimentStore` and `audit`. Future `LLMAgent` swaps behind same `ResearchAgent` protocol.
+Implemented: `src/qts/research/campaign_engine.py` `run_campaign` + `NullAgent`/`AdversarialAgent` in `agent.py`. (The `src/qts/research/loop.py` `ResearchLoop` sketch was never called by anything and has been removed.) No AI output bypasses gates; every decision audited via `ExperimentStore` and `audit`. Future `LLMAgent` swaps behind same `ResearchAgent` protocol.
 
 AI ideas are hypotheses, not truth. Every AI hypothesis carries `generated_by: "ResearchAgent vX"` + prompt + lineage refs for audit.
 
@@ -79,7 +85,7 @@ Regime detectors (volatility quantile, HMM, clustering) are **empirical hypothes
 ## 8.7 Implementation
 
 - `src/qts/research/agent.py` — `ResearchAgent` protocol with `NullAgent` (5 templates) and `AdversarialAgent` (WFE/DSR/PBO/spread checks).
-- `src/qts/research/loop.py` — `ResearchLoop` orchestration (propose → experiment → backtest → validate → review → lineage).
+- `src/qts/research/campaign_engine.py` — campaign orchestration (propose → experiment → backtest → validate → review → lineage). This is the single research authority; the unused `loop.py` prototype was removed.
 - `src/qts/research/experiment.py` — `Hypothesis`/`Experiment`/`ExperimentStore` (SQLite hypotheses/experiments/rejections/lineage, `count_trials` for DSR).
 - Evaluation harness: `qts research evaluate --agent null vs llm --trials 20` compares validation pass rate.
 

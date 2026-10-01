@@ -143,6 +143,7 @@ Popularity ≠ quality. We inspected code, docs, issues, and institutional liter
 ## ADR-015: Durable Audit via Shipper + Explicit NO_TRADE (2026-09-16)
 
 - **Decision:** `observability/shipper.py` `Shipper` protocol with `LocalShipper` and `S3Shipper` (boto3, idempotent key `sha256`, prefix). Credentials via env/IAM not YAML. `DomainEvent.EventType.NO_TRADE` + `domain/no_trade.py` `NoTradeReason` enumerates all capital-preservation paths (empty signal, veto, kill, drift, gap, invalid qty). Every veto/kill/drift emits `NO_TRADE`. Failure when uncertain is now measured, not missing.
+- **Superseded (2026-10-01):** the `domain/no_trade.py` half of this decision was never wired to a caller and has been removed. The capital-preservation paths it enumerated are enforced by the canonical pre-trade refusal registry (`REFUSAL_EXPLANATIONS` in `qts.execution.demo_pretrade`). The decision above is kept as the dated record of what was decided.
 
 ## ADR-016: Data Quality Enforced at Write (2026-09-16)
 

@@ -128,8 +128,8 @@ Live trading requires explicit `--mode live --env live --confirm` and valid `Val
 
 | Situation | Default |
 |-----------|---------|
-| Data gap/duplicate | Halt strategy, emit `DataQualityAlert`, NO_TRADE (`NoTradeReason.DATA_QUALITY_FAIL`) |
-| Risk veto | NO_TRADE, log `RiskVeto` + `NoTrade` with `NoTradeReason.RISK_VETO` |
+| Data gap/duplicate | Halt strategy, emit `DataQualityAlert`, NO_TRADE |
+| Risk veto | NO_TRADE, log `RiskVeto` |
 | Broker drift detected | Pause trading, `ReconcileReport.requires_suspend=True` → NO_TRADE |
 | Validation inconclusive (NOT_IMPLEMENTED) | BLOCK — ValidationReport.passed=False, never promote |
 | Systems disagree | NO_TRADE |
@@ -143,5 +143,5 @@ Live trading requires explicit `--mode live --env live --confirm` and valid `Val
 - **Reconciliation gate:** `ReconcileReport.drift != NONE` → `requires_suspend=True` → ExecutionEngine must enforce NO_TRADE and alert; quantity mismatch is never auto-healed.
 - **Validation gates:** `ValidatorPipeline` requires real evidence: `walk_forward_folds`, `cpcv_folds>=5`, `perturbed_sharpes>=7`, `stress_results` from re-run `BacktestEngine.run_stress` (spread multiplier applied, not PF×factor). Missing → `NOT_IMPLEMENTED → BLOCKS` and `passed=False`.
 - **PSR/DSR/CPCV:** `probabilistic_sharpe_ratio`/`deflated_sharpe_ratio` Bailey & Lopez de Prado with `E[max] = (1-γ)Φ⁻¹(1-1/N)+γΦ⁻¹(1-1/(Ne))`, skew/kurtosis, n=obs. DSR==PSR when N=1, DSR ↓ as N↑. PBO via CPCV combinatorial.
-- **NO_TRADE explicit:** Empty signal, veto, kill, drift, gap, invalid qty all emit `EventType.NO_TRADE` with `NoTradeReason` — not absent log but auditable decision.
+- **NO_TRADE explicit:** Empty signal, veto, kill, drift, gap and invalid qty all produce a recorded NO_TRADE decision with a named reason — not an absent log. The implemented vocabulary is the pre-trade refusal registry (`REFUSAL_EXPLANATIONS` in `qts.execution.demo_pretrade`), which every gate, refusal explanation and UI surface shares. A `NoTradeReason` enum under `qts.domain` was prototyped and never wired; it was removed rather than left as a second vocabulary.
 - **Durability:** Audit JSONL shipped via `Shipper` (Local|S3). S3 key includes content hash for idempotency; boto3 if available else local fallback.

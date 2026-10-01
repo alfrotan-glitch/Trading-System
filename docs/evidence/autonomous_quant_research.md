@@ -28,7 +28,7 @@ real. The current campaign artifacts, not this catalogue, define how many
 trials actually ran.
 
 ## Invented Strategies
-Strategy families live in `src/qts/research/strategies.py`. Unreferenced toy heuristics are not part of the product. + regime-conditioned wrapper. New complexity → more trials → stronger DSR penalty (honest). `src/qts/research/position_management.py` 6 exit policies (fixed, volatility, trailing, time, breakeven, momentum-decay) — entry+exit joint hypothesis tested OOS.
+Strategy families live in `src/qts/research/strategies.py`. Unreferenced toy heuristics are not part of the product. + regime-conditioned wrapper. New complexity → more trials → stronger DSR penalty (honest). Exit policy is carried by the registered research policy's `exit_conditions` (`qts.lifecycle.demo_policy`), which is authoritative however a position was opened. A `position_management.py` taxonomy of 6 exit policies (fixed, volatility, trailing, time, breakeven, momentum-decay) was prototyped as an entry+exit joint hypothesis, never wired to a caller, and removed.
 
 ## Feature Discovery
 `src/qts/research/feature_discovery.py`: `FeatureSpec` with definition, source, timestamp semantics, lookback, data dependencies, version, lineage, code_hash. Controlled set 6 features (returns_1, range_5, volatility_20, spread_proxy, session_hour, range_compression) computed at `close_time` using only bars ≤ N, no future/post-trade/normalization leakage, no locked test contamination. `FeatureStore` registers, checks leakage string, tracks lineage.

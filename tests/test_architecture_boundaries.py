@@ -454,3 +454,50 @@ def test_startup_health_sees_the_real_state_from_a_foreign_directory(tmp_path: P
             f"startup health {check} disagrees with itself depending on the working directory"
         )
     assert sorted(p.name for p in tmp_path.iterdir()) == []
+
+
+def test_no_source_module_is_orphaned_from_every_import_path() -> None:
+    """An unwired module is not neutral — it is a second authority in waiting.
+
+    Three modules were reachable from nothing: `qts.domain.no_trade` (a second
+    vocabulary for "why we stayed flat", superseded by the canonical refusal
+    registry in `qts.execution.demo_pretrade`), `qts.research.loop` (a second
+    research orchestrator beside the live campaign engine) and
+    `qts.research.position_management` (an exit taxonomy never wired to the
+    policy that actually governs exits). Documentation described all three as
+    implemented, so the next reader would have adopted the dead one.
+
+    Import reachability is the cheapest honest definition of "this code is
+    part of the system". A module that nothing imports is either wired up or
+    deleted; it does not get to sit in src/ claiming authority.
+    """
+    src_root = SRC.parent
+    modules: dict[str, Path] = {}
+    for path in SRC.rglob("*.py"):
+        name = ".".join(path.relative_to(src_root).with_suffix("").parts)
+        modules[name.removesuffix(".__init__")] = path
+
+    imported: set[str] = set()
+    for root in (SRC, src_root.parent / "tests", src_root.parent / "scripts"):
+        if not root.exists():
+            continue
+        for path in root.rglob("*.py"):
+            with contextlib.suppress(SyntaxError):
+                for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                    if isinstance(node, ast.Import):
+                        imported.update(alias.name for alias in node.names)
+                    elif isinstance(node, ast.ImportFrom) and node.module:
+                        imported.add(node.module)
+                        imported.update(f"{node.module}.{alias.name}" for alias in node.names)
+
+    orphans = sorted(
+        name
+        for name in modules
+        if name not in ("qts",)
+        and not name.endswith("__main__")
+        and name not in imported
+        and not any(other.startswith(name + ".") for other in imported)
+    )
+    assert orphans == [], (
+        f"these modules are imported by nothing — wire them in or delete them: {orphans}"
+    )
