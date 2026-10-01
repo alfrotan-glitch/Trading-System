@@ -325,7 +325,22 @@ def check_mt5_connectivity() -> tuple[bool, str]:
         health = adapter.health_check()
         if health.get("connected"):
             login = (health.get("account") or {}).get("login")
-            return True, f"REAL MT5 terminal connected (login={login})"
+            # "REAL MT5 terminal connected" meant "a genuine terminal, not a
+            # mock" — but on a LIVE checklist an operator reads it as "a
+            # real-money account is connected", which is the exact confusion
+            # ARCH-027 removed from startup health. This check is about the IPC
+            # link and it passes with a DEMO account, so it must say which.
+            # The verdict is unchanged: the account class only names what is
+            # attached, and failing to read it degrades the wording, never the
+            # answer.
+            try:
+                identity = adapter.broker_identity()
+                account_class = (
+                    "DEMO account — no real money" if identity.is_demo else f"{identity.account_type} account"
+                )
+            except Exception as identity_error:  # noqa: BLE001 - wording only, never the verdict
+                account_class = f"account type unverified ({identity_error})"
+            return True, f"MT5 terminal attached (live IPC link, {account_class}): login={login}"
         return (
             False,
             f"MT5 terminal not connected: terminal_ok={health.get('terminal_ok')} "

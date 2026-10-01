@@ -494,11 +494,83 @@ def test_operator_docs_point_at_this_branch_not_a_stale_session_branch() -> None
 
     this_branch = "arena/01a0f151-trading-system"
     clone = re.compile(r"git clone\s+--branch\s+(\S+)")
+    fence = re.compile(r"^```", re.MULTILINE)
     checked = 0
     for name in ("README.md", "QTS_PROJECT_CONTROL.md"):
-        for match in clone.finditer((REPO / name).read_text(encoding="utf-8")):
-            checked += 1
-            assert match.group(1) == this_branch, (
-                f"{name} instructs cloning {match.group(1)}, not {this_branch}"
-            )
+        text = (REPO / name).read_text(encoding="utf-8")
+        # Only FENCED blocks are instructions. Prose that quotes an old command
+        # while explaining a past defect is historical evidence and must
+        # survive -- including this repository's own change log, which names
+        # the stale branch precisely because it records removing it.
+        blocks = text.split("```")[1::2]
+        assert fence.search(text), f"{name} has no code blocks to check"
+        for block in blocks:
+            for match in clone.finditer(block):
+                checked += 1
+                assert match.group(1) == this_branch, (
+                    f"{name} instructs cloning {match.group(1)}, not {this_branch}"
+                )
     assert checked >= 2, "the documented clone command disappeared"
+
+
+def test_no_status_line_calls_a_demo_terminal_REAL() -> None:
+    """DEFECT: the LIVE gate reported "REAL MT5 terminal connected".
+
+    It meant "a genuine terminal, not a mock", but on a LIVE checklist an
+    operator reads it as "a real-money account is connected" — and the check
+    passes with a DEMO account. ARCH-027 removed exactly this confusion from
+    startup health; the live gate kept it. Operator-facing status text must
+    never pair REAL with a connection that may be a demo account.
+    """
+    import re
+
+    offenders: list[str] = []
+    for module in sorted((REPO / "src" / "qts").rglob("*.py")):
+        for number, line in enumerate(module.read_text(encoding="utf-8").splitlines(), 1):
+            if line.lstrip().startswith("#"):
+                continue
+            for literal in re.findall(r'f?"([^"]{10,})"', line):
+                # The defect is narrow and specific: SHOUTED "REAL" asserting a
+                # live connection. Lowercase "a real terminal is required" is
+                # plain English about infrastructure and is not confusing;
+                # "REAL (attached terminal)" documents the QTS_MT5_MODE
+                # vocabulary. Neither claims an account is real-money.
+                if not re.search(r"\bREAL\b", literal):
+                    continue
+                if "real money" in literal.lower() or "REAL CAPITAL" in literal:
+                    continue  # naming the account class is the FIX
+                if re.search(r"\bconnect", literal, re.IGNORECASE):
+                    offenders.append(f"{module.relative_to(REPO)}:{number}: {literal[:70]}")
+    assert offenders == [], "operator-facing text conflates a REAL terminal with a real-money account:\n" + "\n".join(
+        offenders
+    )
+
+
+def test_the_live_gate_connectivity_detail_names_the_account_class() -> None:
+    """Connectivity passing on a DEMO account must SAY it is a demo account."""
+    import sys
+    import types
+    from unittest.mock import MagicMock, patch
+
+    import qts.lifecycle.live_gate as live_gate
+
+    fake_identity = types.SimpleNamespace(is_demo=True, account_type="DEMO", login=12345, server="Broker-Demo")
+    adapter = MagicMock()
+    adapter.health_check.return_value = {"connected": True, "account": {"login": 12345}}
+    adapter.broker_identity.return_value = fake_identity
+
+    stub = types.ModuleType("MetaTrader5")
+    saved = sys.modules.get("MetaTrader5")
+    sys.modules["MetaTrader5"] = stub
+    try:
+        with patch("qts.adapters.mt5_adapter.MT5Adapter", return_value=adapter):
+            ok, detail = live_gate.check_mt5_connectivity()
+    finally:
+        if saved is None:
+            sys.modules.pop("MetaTrader5", None)
+        else:
+            sys.modules["MetaTrader5"] = saved
+
+    assert ok is True, detail
+    assert "DEMO account" in detail and "no real money" in detail, detail
+    assert "REAL MT5 terminal" not in detail
