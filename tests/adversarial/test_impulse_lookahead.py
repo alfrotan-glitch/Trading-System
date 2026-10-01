@@ -60,17 +60,68 @@ def _corrupt_after(bars: list[Bar], i: int, seed: int = 99) -> list[Bar]:
     return out
 
 
+def _vol_burst(bars: list[Bar], burst_len: int = 7) -> list[Bar]:
+    """Calm bars with one short, sharp volatility episode near the end.
+
+    ``detect_vol_expansion`` compares the last ``short_win`` (6) returns with
+    the ``long_win`` (18) immediately before them, so only a BRIEF episode
+    moves the ratio: a gradual regime change fills both windows and the
+    quotient stays near 1. Plain GBM is homoscedastic, which is why IMP-VE-V
+    (k=3.0) produced no events at all and its causality went unverified while
+    the suite stayed green.
+
+    The episode is a fixed zig-zag with upward drift and no RNG, sized well
+    above the generator's own ~1.4% per-bar deviation so the ratio clears
+    k=3.0 by a wide margin: it fires on every seed both callers use, rather
+    than on the lucky ones.
+    """
+    steps = [0.10, -0.07, 0.10, -0.07, 0.10, -0.07, 0.10][:burst_len]
+    start = len(bars) - burst_len - 4
+    out = list(bars[:start])
+    price = float(bars[start - 1].close)
+    for offset, index in enumerate(range(start, len(bars))):
+        step = steps[offset] if offset < len(steps) else 0.0005
+        price *= 1 + step
+        half = abs(step)
+        out.append(
+            Bar(
+                instrument=bars[index].instrument,
+                open=Decimal(str(round(price * (1 - half / 3), 2))),
+                high=Decimal(str(round(price * (1 + half), 2))),
+                low=Decimal(str(round(price * (1 - half), 2))),
+                close=Decimal(str(round(price, 2))),
+                open_time=bars[index].open_time,
+                close_time=bars[index].close_time,
+            )
+        )
+    return out
+
+
+def _bars_with_events(fam, seeds: range, n: int) -> tuple[list[Bar], list[tuple[int, str]]]:
+    """Find a deterministic series this family actually fires on.
+
+    A pre-registered family that produces no events cannot have its causality
+    checked, and skipping says nothing while looking green — so this fails
+    instead. Both fixtures are tried before giving up.
+    """
+    for build in (lambda s: _gbm(n, seed=s), lambda s: _vol_burst(_gbm(n, seed=s))):
+        for seed in seeds:
+            bars = build(seed)
+            events = detect_events(bars, fam)
+            if events:
+                return bars, events
+    pytest.fail(
+        f"{fam.family_id}: no events under either fixture across seeds "
+        f"{seeds.start}..{seeds.stop - 1}, so prefix equivalence and future "
+        f"corruption cannot be exercised for it. Supply a series this family "
+        f"fires on rather than leaving its causality unverified."
+    )
+
+
 class TestPrefixEquivalence:
     @pytest.mark.parametrize("fam", PRE_REGISTERED_FAMILIES, ids=lambda f: f.family_id)
     def test_full_scan_matches_prefix_detection(self, fam):
-        events, bars = [], []
-        for seed in range(5, 15):
-            bars = _gbm(400, seed=seed)
-            events = detect_events(bars, fam)
-            if events:
-                break
-        if not events:
-            pytest.skip(f"{fam.family_id}: no events across seeds 5..14")
+        bars, events = _bars_with_events(fam, range(5, 15), 400)
         for i, direction in events[:10]:
             from qts.research.impulse.definitions import _DETECTORS
 
@@ -81,14 +132,7 @@ class TestPrefixEquivalence:
 class TestFutureCorruption:
     @pytest.mark.parametrize("fam", PRE_REGISTERED_FAMILIES, ids=lambda f: f.family_id)
     def test_mutating_future_bars_cannot_change_past_detections(self, fam):
-        events, bars = [], []
-        for seed in range(7, 17):
-            bars = _gbm(360, seed=seed)
-            events = detect_events(bars, fam)
-            if events:
-                break
-        if not events:
-            pytest.skip("no events across seeds for family")
+        bars, events = _bars_with_events(fam, range(7, 17), 360)
         cut = events[0][0]  # first event index
         corrupted = _corrupt_after(bars, cut)
         events_corrupt = detect_events(corrupted, fam)

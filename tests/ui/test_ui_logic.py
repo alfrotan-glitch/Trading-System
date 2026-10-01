@@ -1,8 +1,9 @@
 """Pytest wrapper for the Node-based UI tests.
 
 Runs, in order:
-  1. `node --test tests/ui/js/format.test.mjs status.test.mjs` — DOM-free
-     truthfulness logic (always, if node exists).
+  1. `node --test` over every DOM-free suite in tests/ui/js (discovered by
+     glob, so a new file cannot be left unrun) — truthfulness logic, always,
+     if node exists.
   2. `node --test tests/ui/js/shell.test.mjs` — full jsdom functional tour
      against a REAL uvicorn server (requires jsdom; best-effort install).
 
@@ -26,8 +27,14 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 JS_DIR = REPO / "tests" / "ui" / "js"
-LOGIC = [JS_DIR / "format.test.mjs", JS_DIR / "status.test.mjs"]
 SHELL = JS_DIR / "shell.test.mjs"
+# Every DOM-free suite in the directory, discovered rather than listed. The
+# hand-written list here named format and status only, so operations.test.mjs
+# and workstation.test.mjs — 22 passing assertions about the operations and
+# workstation views — were run by nothing: package.json's "npm test" script
+# mentions them, and neither CI nor any other script invokes npm test. A file
+# added to this directory is now run by virtue of existing.
+LOGIC = sorted(p for p in JS_DIR.glob("*.test.mjs") if p != SHELL)
 
 node = shutil.which("node")
 
@@ -50,7 +57,13 @@ def _jsdom_available() -> bool:
 def _try_install_jsdom() -> bool:
     if not shutil.which("npm"):
         return False
-    _run(["npm", "install", "--silent", "--no-fund", "--no-audit"], timeout=300)
+    # `npm ci` installs exactly what package-lock.json pins and never writes
+    # it back; `npm install` is free to re-resolve and rewrite the lockfile,
+    # which is a tracked file, so a resolution change would have surfaced as
+    # the whole session failing the "tests must not modify tracked files"
+    # guard rather than as a dependency change.
+    cmd = ["npm", "ci"] if (REPO / "package-lock.json").exists() else ["npm", "install"]
+    _run([*cmd, "--silent", "--no-fund", "--no-audit"], timeout=300)
     return _jsdom_available()
 
 
