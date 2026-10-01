@@ -56,12 +56,12 @@ Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating
 
 ### 2. Installation
 ```bash
-git clone --branch arena/01a0ce9f-trading-system https://github.com/alfrotan-glitch/Trading-System.git
+git clone --branch arena/01a0f151-trading-system https://github.com/alfrotan-glitch/Trading-System.git
 cd Trading-System
 
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
+pip install -e ".[dev]" -c constraints.txt   # pinned: same versions CI installs
 python -m qts data bootstrap
 ```
 

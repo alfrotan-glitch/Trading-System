@@ -675,6 +675,14 @@ def test_live_status_checklist_is_derived_not_hardcoded(tmp_path, monkeypatch):
 def test_live_status_risk_configuration_reflects_the_durable_kill_switch(tmp_path, monkeypatch):
     """An ACTIVE kill switch must fail the risk-configuration item even when the
     resolved limits carry an explicit operator approval."""
+    # This test needs its OWN kill-switch state: it asserts the ARMED -> ACTIVE
+    # transition and then arms the switch for real. `chdir` alone used to
+    # isolate it only by accident — a cwd-relative default's mkdir created
+    # `tmp_path/data`, which tripped state_root()'s isolated-workspace rule.
+    # With that defect fixed, `chdir` isolates nothing, so the requirement is
+    # now stated explicitly: without it this test reads AND writes the real
+    # durable kill switch.
+    monkeypatch.setenv("QTS_STATE_ROOT", str(tmp_path))
     monkeypatch.chdir(tmp_path)
     (tmp_path / "configs").mkdir(parents=True, exist_ok=True)
     (tmp_path / "configs" / "live.yaml").write_text(

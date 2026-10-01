@@ -361,6 +361,9 @@ def test_ci_covers_this_branch_and_pull_requests_with_least_privilege() -> None:
     assert "pytest" in steps
     assert "|| true" not in steps, "CI must report the real test state"
     assert "-c constraints.txt" in steps, "CI must install against pinned constraints"
+    # mypy reached zero errors for the first time in ARCH-030. Nothing enforced
+    # it, so it would have rotted straight back; CI now holds the line.
+    assert "mypy" in steps, "CI must enforce the type checker that is currently clean"
 
 
 def test_dependency_constraints_are_pinned_and_installable() -> None:
@@ -474,3 +477,28 @@ def test_the_close_route_passes_an_id_the_explainer_can_resolve() -> None:
                 assert not isinstance(kw.value, ast.List), (
                     f"explain_refusal(blocked_by=[...]) at line {call.lineno}: pass the id, not the payload list"
                 )
+
+
+def test_operator_docs_point_at_this_branch_not_a_stale_session_branch() -> None:
+    """DEFECT: the Quickstart told users to clone a DIFFERENT session branch.
+
+    `README.md` and the control document's DESKTOP CLONE section both said
+    `git clone --branch arena/01a0ce9f-trading-system`, the ancestor this
+    branch was cut from. Anyone following the documented install got a build
+    without any of the hardening committed here and had no way to tell.
+
+    Historical entries naming other branches are evidence and must survive;
+    only INSTRUCTIONS — the lines inside a clone command — are pinned.
+    """
+    import re
+
+    this_branch = "arena/01a0f151-trading-system"
+    clone = re.compile(r"git clone\s+--branch\s+(\S+)")
+    checked = 0
+    for name in ("README.md", "QTS_PROJECT_CONTROL.md"):
+        for match in clone.finditer((REPO / name).read_text(encoding="utf-8")):
+            checked += 1
+            assert match.group(1) == this_branch, (
+                f"{name} instructs cloning {match.group(1)}, not {this_branch}"
+            )
+    assert checked >= 2, "the documented clone command disappeared"

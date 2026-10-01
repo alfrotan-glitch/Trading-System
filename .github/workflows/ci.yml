@@ -50,6 +50,9 @@ jobs:
       - name: Lint
         run: python -m ruff check src/ tests/ scripts/
 
+      - name: Types
+        run: python -m mypy src/qts
+
       - name: Offline static safety validation
         run: python scripts/demo_static_validation.py
 
