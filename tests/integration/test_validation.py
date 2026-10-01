@@ -1,6 +1,5 @@
 import numpy as np
 
-from qts.validation.adversarial import check_parameter_fragility, check_spread_sensitivity
 from qts.validation.pipeline import ValidatorPipeline
 
 
@@ -106,12 +105,12 @@ def test_nonfinite_stress_is_an_explicit_blocking_measurement():
     assert "BLOCKS" in checks[0].details
 
 
-def test_adversarial_spread():
-    findings = check_spread_sensitivity(1.2, 0.9, 0.5)
-    assert len(findings) >= 1
-    assert any("spread" in f.check for f in findings)
-
-
-def test_parameter_fragility():
-    findings = check_parameter_fragility([1.5, 1.4, 1.0, 0.2, -0.5])
-    assert findings is not None
+# The two tests that used to live here exercised qts.validation.adversarial,
+# a module no production code imported. It re-declared research-integrity
+# thresholds that Settings.validation already owns (min_wfe 0.30, max_pbo
+# 0.50) and its check_lookahead() took "does this feature use the future?" as
+# an argument, so it could never detect lookahead. Adversarial review that
+# actually runs is qts.research.adversary.adversarial_attack (reached from
+# /api/research) and threshold enforcement is ValidatorPipeline, which the
+# four tests above cover. The module and its tests were removed together so
+# the configured thresholds have exactly one definition.
