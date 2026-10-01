@@ -574,3 +574,106 @@ def test_the_live_gate_connectivity_detail_names_the_account_class() -> None:
     assert ok is True, detail
     assert "DEMO account" in detail and "no real money" in detail, detail
     assert "REAL MT5 terminal" not in detail
+
+
+# ------------------------------- one classification, not two hand-made lists
+def _gate_predicate_ids() -> set[str]:
+    """Every registry id the pre-trade gate can actually record.
+
+    Derived, not hand-listed: the intersection of the canonical refusal
+    registry with the string literals in the gate module. Some predicates are
+    produced by helpers that RETURN ``(name, status, detail)`` rather than
+    calling ``record()``, so matching on call sites alone silently misses them
+    (it missed ``symbol_mapping_canonical``, which is a close-authority
+    predicate — exactly the kind of omission this test must not have).
+    """
+    import ast
+
+    from qts.execution.demo_refusal import REFUSAL_EXPLANATIONS
+
+    source = (REPO / "src" / "qts" / "execution" / "demo_pretrade.py").read_text(encoding="utf-8")
+    literals = {
+        node.value
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+    }
+    return set(REFUSAL_EXPLANATIONS) & literals
+
+
+def test_every_gate_predicate_is_classified_authority_or_entry_quality() -> None:
+    """A new predicate must be classified on purpose, not default to "entry".
+
+    DEFECT: the close path's authority subset was a tuple hand-copied into
+    `demo_session`, disconnected from the gate. Adding an authority predicate
+    to the gate would silently NOT apply it to closes, and a duplicate like
+    that can only ever drift toward permitting more.
+    """
+    from qts.execution.demo_pretrade import ENTRY_QUALITY_PREDICATES, MUTATION_AUTHORITY_PREDICATES
+
+    authority = set(MUTATION_AUTHORITY_PREDICATES)
+    entry = set(ENTRY_QUALITY_PREDICATES)
+    predicates = _gate_predicate_ids()
+
+    assert not (authority & entry), f"classified as both: {sorted(authority & entry)}"
+    unclassified = predicates - authority - entry
+    assert unclassified == set(), (
+        "new gate predicate(s) are unclassified — decide whether each governs CLOSES "
+        f"(MUTATION_AUTHORITY_PREDICATES) or only opening (ENTRY_QUALITY_PREDICATES): {sorted(unclassified)}"
+    )
+    stale = (authority | entry) - predicates
+    assert stale == set(), f"classified predicate(s) the gate no longer records: {sorted(stale)}"
+
+
+def test_the_close_path_uses_the_declared_authority_subset() -> None:
+    """One declaration, no second copy that could drift."""
+    from qts.execution.demo_pretrade import MUTATION_AUTHORITY_PREDICATES
+    from qts.execution.demo_session import DemoSession
+
+    assert DemoSession.CLOSE_AUTHORITY_PREDICATES is MUTATION_AUTHORITY_PREDICATES
+
+    source = (REPO / "src" / "qts" / "execution" / "demo_session.py").read_text(encoding="utf-8")
+    assert '"authorization_valid",' not in source, (
+        "the close-authority list is hand-copied again; derive it from the gate's declaration"
+    )
+
+
+def test_exposure_reducing_closes_are_not_blocked_by_entry_quality() -> None:
+    """The asymmetry IS the safety property, so pin it.
+
+    Refusing a close on a wide spread, a stale quote, an exhausted loss budget
+    or a closed session would trap the operator in a position exactly when
+    exiting matters most. Fail closed on the way in, never on the way out.
+    """
+    from qts.execution.demo_pretrade import MUTATION_AUTHORITY_PREDICATES
+
+    must_never_block_a_close = {
+        "market_data_fresh",
+        "spread_available",
+        "max_daily_loss",
+        "max_drawdown_within_policy",
+        "max_total_exposure",
+        "max_simultaneous_positions",
+        "trading_hours_allowed",
+        "stop_loss_present",
+        "order_frequency_within_policy",
+        "duplicate_order_protection",
+    }
+    overlap = must_never_block_a_close & set(MUTATION_AUTHORITY_PREDICATES)
+    assert overlap == set(), (
+        f"{sorted(overlap)} would refuse an exposure-REDUCING close and trap the operator in the position"
+    )
+
+
+def test_close_authority_still_demands_the_account_and_symbol_facts() -> None:
+    """The asymmetry must not become "closes check nothing"."""
+    from qts.execution.demo_pretrade import MUTATION_AUTHORITY_PREDICATES
+
+    for required in (
+        "authorization_valid",
+        "execution_permission",
+        "mode_is_demo_execution",
+        "account_is_demo",
+        "broker_identity_verified",
+        "broker_symbol_matches_registry",
+    ):
+        assert required in MUTATION_AUTHORITY_PREDICATES, f"{required} must gate every mutation, closes included"

@@ -69,6 +69,67 @@ from qts.lifecycle.demo_authorization import LoadedAuthorization
 from qts.lifecycle.demo_registry import StrategyRegistration
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStage
 
+#: Which gate predicates constitute MUTATION AUTHORITY — the right to touch
+#: this account, at this venue, for this symbol, at all. These apply to EVERY
+#: trading mutation, including closing a position.
+#:
+#: Everything else the gate evaluates is ENTRY QUALITY: it decides whether
+#: OPENING new exposure is a good idea. Entry quality is deliberately NOT
+#: applied to closes, and the asymmetry is the safety property, not an
+#: oversight. A close reduces exposure, so refusing one on a wide spread, a
+#: stale quote, an exhausted daily loss budget or a closed trading session
+#: would trap the operator in a position precisely when exiting matters most —
+#: fail-closed on the way in, never on the way out. Authority is different:
+#: closing the wrong account's position, or a symbol this authorization never
+#: covered, is not a safe failure in either direction.
+#:
+#: This lives next to the gate, and `test_every_gate_predicate_is_classified`
+#: asserts that every predicate the gate can record appears in exactly one of
+#: these two sets. Adding a predicate therefore forces a deliberate decision
+#: about whether it governs closes, instead of silently defaulting to "entry
+#: only" the way a hand-maintained tuple in another module did.
+MUTATION_AUTHORITY_PREDICATES: tuple[str, ...] = (
+    "authorization_valid",
+    "execution_permission",
+    "mode_is_demo_execution",
+    "account_is_demo",
+    "broker_identity_verified",
+    "symbol_mapping_canonical",
+    "symbol_allowed_by_policy",
+    "broker_symbol_matches_registry",
+)
+
+#: Gate predicates that judge whether opening new exposure is advisable. Listed
+#: explicitly so that classification is a decision, never a default.
+ENTRY_QUALITY_PREDICATES: tuple[str, ...] = (
+    "autonomous_allowed",
+    "broker_order_check",
+    "broker_reference_capture",
+    "duplicate_order_protection",
+    "execution_record_fields",
+    "kill_switch_functional",
+    "market_data_fresh",
+    "max_daily_loss",
+    "max_drawdown_within_policy",
+    "max_simultaneous_positions",
+    "max_total_exposure",
+    "no_unknown_checks",
+    "order_frequency_within_policy",
+    "order_size_within_hard_max",
+    "policy_complete",
+    "policy_execution_assumptions",
+    "reconciliation_ready",
+    "risk_limits_resolved",
+    "spread_available",
+    "stage_allows_order",
+    "stop_loss_present",
+    "stop_within_policy_distance",
+    "strategy_registered_frozen",
+    "symbol_provenance",
+    "trading_hours_allowed",
+)
+
+
 CHECK_PASS = "PASS"
 CHECK_FAIL = "FAIL"
 CHECK_UNKNOWN = "UNKNOWN"

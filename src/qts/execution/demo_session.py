@@ -39,6 +39,7 @@ from qts.execution.demo_journal import DemoOrderJournal
 from qts.execution.demo_pretrade import (
     CHECK_PASS,
     DEFAULT_MIN_ORDER_INTERVAL_S,
+    MUTATION_AUTHORITY_PREDICATES,
     DemoPretradeContext,
     run_pretrade_gate,
 )
@@ -1061,16 +1062,13 @@ class DemoSession:
     #: Closing the wrong ticket on the wrong account is unrecoverable, so these
     #: predicates are enforced on the close path exactly as they are on the
     #: order path, from the same gate and the same registry.
-    CLOSE_AUTHORITY_PREDICATES: tuple[str, ...] = (
-        "authorization_valid",
-        "execution_permission",
-        "mode_is_demo_execution",
-        "account_is_demo",
-        "broker_identity_verified",
-        "symbol_mapping_canonical",
-        "symbol_allowed_by_policy",
-        "broker_symbol_matches_registry",
-    )
+    #: Closes answer to the gate's MUTATION AUTHORITY subset, defined once
+    #: beside the gate itself. This used to be a hand-copied tuple here, which
+    #: meant a new authority predicate added to the gate would silently not
+    #: apply to closes — the duplicate could only ever drift toward permitting
+    #: more. See MUTATION_AUTHORITY_PREDICATES for why entry-quality checks are
+    #: deliberately excluded from closes.
+    CLOSE_AUTHORITY_PREDICATES: tuple[str, ...] = MUTATION_AUTHORITY_PREDICATES
 
     def authorize_close(self, *, symbol: str | None = None) -> tuple[bool, list[str], list[str]]:
         """Evaluate the mutation-authority subset of the canonical gate.
