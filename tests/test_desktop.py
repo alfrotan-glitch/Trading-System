@@ -349,11 +349,31 @@ def test_risk_veto_visibility(tmp_path, monkeypatch):
     assert "KILL_SWITCH_ACTIVE" not in j3["blocked_reasons"]
 
 
-def test_research_campaign_execution():
+def test_research_campaign_execution(tmp_path, monkeypatch):
+    """DEFECT: this test built ``SqliteParquetDataStore()`` with no isolation
+    and no bootstrap, then asserted ``store.list_versions()`` was non-empty —
+    which only ever passed because some OTHER test, earlier in pytest's
+    default collection order, had already registered a version into the
+    real repository's shared ``data/`` store. A hidden cross-test ordering
+    dependency, not a property of this test's own setup: running this file
+    on its own, or in a different order (e.g. under parallel/sharded
+    execution), failed with ``assert []``.
+
+    Self-contained via the same deterministic bootstrap other tests in this
+    suite already use (``bootstrap_data``), and isolated via
+    ``QTS_STATE_ROOT`` so ``run_campaign``'s own internal, path-less
+    ``SqliteParquetDataStore()`` resolves to the SAME tmp_path store this
+    test bootstraps, rather than the real repository's shared one.
+    """
+    from qts.data.bootstrap import bootstrap_data
     from qts.data.store import SqliteParquetDataStore
     from qts.research.campaign import CampaignConfig, run_campaign
 
+    monkeypatch.setenv("QTS_STATE_ROOT", str(tmp_path))
     store = SqliteParquetDataStore()
+    repo_fixture = Path(__file__).resolve().parents[1] / "data" / "fixtures" / "XAUUSD_1H_500.csv"
+    result = bootstrap_data(store=store, fixture=repo_fixture)
+    assert result.ok, f"data bootstrap failed (no fabricated fallback allowed): {result.messages}"
     versions = store.list_versions()
     assert versions
     cfg = CampaignConfig(

@@ -67,10 +67,23 @@ jobs:
       # directories. A red suite fails the job and the real counts are printed.
       # `-ra` prints the reason for every non-passing test, so the summary says
       # which tests failed and why rather than only "exit code 1".
+      # Parallelized across the runner's own CPU count (`-n auto`), grouped
+      # by file (`--dist loadscope`) so no two tests sharing a file's
+      # module-level state or fixtures ever land on different workers.
+      # Measured locally (2-core sandbox): 951s sequential -> ~100s with
+      # `-n 2 --dist loadscope`, same 1479 passed / 0 failed. Two real
+      # cross-test hazards were found and fixed to make this safe (a bare
+      # `RiskEngine(RiskLimits())` reading/writing the real repo's shared
+      # kill-switch DB, and a test asserting a data version was already
+      # registered — silently depending on default collection order); both
+      # the GitHub Actions runners' free, ephemeral server ports already
+      # being correct and no fixed ports/shared state remaining elsewhere
+      # was verified by running `--dist load` (unscoped, freest possible
+      # distribution) in addition to `loadscope` — both green.
       - name: Tests
         run: |
           set -o pipefail
-          python -m pytest tests/ -q -ra -p no:cacheprovider --durations=10 2>&1 \
+          python -m pytest tests/ -q -ra -p no:cacheprovider -n auto --dist loadscope --durations=10 2>&1 \
             | tee "$RUNNER_TEMP/pytest-output.txt"
 
       # A failure nobody can read is not a report. Log archives are not always

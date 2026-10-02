@@ -25,6 +25,7 @@ dependencies = [
 dev = [
   "pytest>=8",
   "pytest-cov>=4",
+  "pytest-xdist>=3.5",
   "hypothesis>=6.90",
   "mypy>=1.8",
   "ruff>=0.3",
@@ -68,6 +69,7 @@ addopts = "-q --strict-markers"
 pythonpath = ["."]
 markers = [
     "integration: integration tests requiring fixtures",
+    "slow: individually expensive tests (property-based/Hypothesis, long-running simulations) — excluded from the fast developer loop, always included in the full suite and in CI",
 ]
 
 [tool.coverage.run]

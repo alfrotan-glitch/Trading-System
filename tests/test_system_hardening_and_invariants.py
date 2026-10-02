@@ -274,9 +274,19 @@ def test_live_trading_is_locked_against_all_wizard_and_api_payloads():
             save_setup({"mode": forbidden})
 
 
-def test_kill_switch_vetoes_all_demo_orders():
-    """When kill switch is active, orders are immediately refused without reaching broker."""
+def test_kill_switch_vetoes_all_demo_orders(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """When kill switch is active, orders are immediately refused without reaching broker.
+
+    DEFECT: this test built ``RiskEngine(RiskLimits())`` with no isolation, so
+    it read and wrote the real repository's shared durable kill-switch store
+    (``data/sqlite/qts.db``) — not just an artifact on disk, but a race with
+    any other test asserting the switch is ARMED, and unsafe for parallel
+    test execution where this file's worker could run concurrently with
+    another touching the same default path.
+    """
     from qts.risk.engine import RiskEngine, RiskLimits
+
+    monkeypatch.setenv("QTS_STATE_ROOT", str(tmp_path))
 
     engine = RiskEngine(RiskLimits())
     engine.kill_switch(reason="invariant test halt")

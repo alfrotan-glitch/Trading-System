@@ -122,6 +122,20 @@ def _close_tracked_in_dir(dir_path: str) -> None:
             db = _get_db_path(obj)
             if db is not None and db.startswith(dir_path):
                 _close_obj(obj)
+                # This store's backing file lives inside the directory being
+                # torn down right now — nothing later in the session can
+                # still need to close it again. Without this, `_tracked_stores`
+                # only ever grows (every store construction in the whole
+                # session registers one, closing never discards one), so by
+                # the back half of a long run this loop — and the
+                # `_mkdtemp_dirs` loop below it, run on EVERY test's teardown
+                # — iterates thousands of already-closed, already-irrelevant
+                # objects per test. Measured: by test #1400 of 1479,
+                # `_tracked_stores` held 1461 entries and the per-test
+                # teardown hook alone (not fixture teardown, just this hook)
+                # had grown from 0.07s to 0.89s, with 147s of cumulative
+                # `gc.collect()` time across the run.
+                _tracked_stores.discard(obj)
         except Exception:
             pass
     # Also check nested om.idempotency
@@ -273,27 +287,61 @@ _patch_store_register()
 
 
 def pytest_runtest_teardown(item):
-    # Close any mkdtemp-tracked stores
+    # Close any mkdtemp-tracked stores whose owning directory is already gone
+    # (its `with TemporaryDirectory():` block exited, or `mkdtemp()` was
+    # cleaned up by hand, during the test's own `call` phase) — the second
+    # loop below only revisits directories that still exist, so a store
+    # outliving its now-deleted directory by one teardown cycle still needs
+    # a close pass here.
+    closed_anything = False
     try:
         for obj in list(_tracked_stores):
             try:
                 db = _get_db_path(obj)
-                if db is not None:
-                    for d in list(_mkdtemp_dirs):
-                        if db.startswith(d):
-                            _close_obj(obj)
+                if db is None:
+                    continue
+                for d in list(_mkdtemp_dirs):
+                    if db.startswith(d):
+                        _close_obj(obj)
+                        _tracked_stores.discard(obj)
+                        closed_anything = True
+                        break
             except Exception:
                 pass
     except Exception:
         pass
+    # Close stores whose directory still exists, then drop any `_mkdtemp_dirs`
+    # entry that is gone from disk (tempfile names are unique per call, so a
+    # removed path never needs rechecking). Without this prune, `_mkdtemp_dirs`
+    # and `_tracked_stores` only ever grow for the rest of the session — every
+    # `tempfile.mkdtemp()` / store construction adds an entry, nothing ever
+    # removed one — so this hook's cost became O(every tempdir/store EVER
+    # created) on every remaining test's teardown. Measured on the full
+    # suite before this fix: by test #1400 of 1479, `_mkdtemp_dirs` held 92
+    # entries and `_tracked_stores` held 1461, this hook alone (not fixture
+    # teardown) had grown from 0.07s to 0.89s per call, and the trailing
+    # unconditional `gc.collect()` below had cost 147s cumulatively — on a
+    # suite whose total measured teardown time was 810 of 945 seconds.
     for d in list(_mkdtemp_dirs):
         try:
             p = pathlib.Path(d)
             if p.exists():
                 _close_tracked_in_dir(d)
+                closed_anything = True
+            else:
+                _mkdtemp_dirs.discard(d)
         except Exception:
             pass
-    gc.collect()
+    # `gc.collect()` is the actual Windows-safety step (a store's `.close()`
+    # already releases its OS file handle deterministically per `qts.db.connect`;
+    # this is the belt-and-suspenders pass for anything still referencing a
+    # connection object via a Python-level cycle) — only needed when this
+    # teardown actually closed something, which `_close_tracked_in_dir` above
+    # already does for the live-directory case. Running it unconditionally,
+    # every test, regardless of whether anything was closed, was the
+    # dominant cost measured above.
+    if closed_anything:
+        gc.collect()
 
 
 DEMO_ENV_VARS = (

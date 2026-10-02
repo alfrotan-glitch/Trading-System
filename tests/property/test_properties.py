@@ -3,11 +3,19 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from qts.data.quality import validate_bars
 from qts.domain.value_objects import Bar, Instrument
+
+# Property-based (Hypothesis) tests run many generated examples per test by
+# design, so they cost more per-test than the rest of the suite even with
+# already-justified, modest `max_examples` (20-50, set per test below, not a
+# blanket reduction). Marked `slow` so the fast developer loop can exclude
+# them with `-m "not slow"` while the full suite and CI always run them.
+pytestmark = pytest.mark.slow
 
 
 @st.composite
