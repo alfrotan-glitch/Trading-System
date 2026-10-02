@@ -109,122 +109,16 @@ class SyntheticProvider(DataProvider):
         return CsvProvider().parse(raw_path, instrument, timeframe)
 
 
-# Candidate external providers (researched, not all implemented — catalog documents them)
-EXTERNAL_CATALOG: list[dict[str, Any]] = [
-    # These are acquisition plans, not measured datasets in this checkout.
-    # Keep that status explicit so a catalog row cannot be mistaken for
-    # evidence of installed history or broker-quality fields.
-    {
-        "provider_id": "dukascopy",
-        "availability_status": "PLANNED_NOT_INGESTED",
-        "measured_in_checkout": False,
-        "evidence_status": "CATALOG_PLAN_ONLY",
-        "description": "Dukascopy free FX tick/1m/1H history, deep",
-        "historical_depth": "2003+ for FX, 10+ years",
-        "granularity": "tick, 1m, 1H, 1D",
-        "bid_ask": True,
-        "tick": True,
-        "timezone": "UTC/Geneva",
-        "licensing": "Free for personal research, redistribution restrictions",
-        "api": "https://www.dukascopy.com/swiss/english/marketwatch/historical/ + dukascopy-node",
-        "reliability": "High, market standard for FX backtest",
-        "quality": "Good, but FX only, not XAUUSD spread realism",
-        "symbol_mapping": "XAUUSD as XAU/USD, need mapping",
-        "timestamp_behavior": "UTC, no broker-specific session",
-        "limitations": "FX only, no broker-specific MT5 spread, need XAUUSD verification",
-        "cost": "Free for 1m, tick via API",
-        "suitability_research": "High for FX/cross-market, medium for XAUUSD execution",
-        "suitability_execution": "Medium — not broker-specific spread",
-    },
-    {
-        "provider_id": "firstrate",
-        "availability_status": "PLANNED_NOT_INGESTED",
-        "measured_in_checkout": False,
-        "evidence_status": "CATALOG_PLAN_ONLY",
-        "description": "FirstRate Data — exchange-grade tick/1m for FX/metals/crypto",
-        "historical_depth": "2003+ 1m, tick from 2019",
-        "granularity": "tick, 1s, 1m, 1H, 1D",
-        "bid_ask": False,  # mid OHLC only for most
-        "tick": True,
-        "timezone": "UTC",
-        "licensing": "Paid, licensing for redistribution requires commercial",
-        "api": "https://firstratedata.com/ + bulk download",
-        "reliability": "High, institutional grade",
-        "quality": "Excellent for OHLCV, limited bid/ask",
-        "symbol_mapping": "XAUUSD standard",
-        "timestamp_behavior": "UTC, exchange time",
-        "limitations": "Cost $200-500 per symbol/timeframe/year, not broker-specific",
-        "cost": "$300/year for bundle",
-        "suitability_research": "High for multi-timeframe/microstructure proxy",
-        "suitability_execution": "Medium — mid only, need spread proxy labelled SYNTHETIC",
-    },
-    {
-        "provider_id": "mt5_history",
-        "availability_status": "PLANNED_NOT_INGESTED",
-        "measured_in_checkout": False,
-        "evidence_status": "CATALOG_PLAN_ONLY",
-        "description": "MT5 broker history export (real broker XAUUSD)",
-        "historical_depth": "Broker dependent, typically 1-2 years 1m, 5+ years 1H",
-        "granularity": "1m, 5m, 15m, 1H, tick if enabled",
-        "bid_ask": False,  # OHLC + tick volume only, no bid/ask in history center
-        "tick": False,
-        "timezone": "Broker server time (e.g., UTC+2), need conversion",
-        "licensing": "Broker terms, personal use",
-        "api": "MT5 terminal History Center export to CSV",
-        "reliability": "Broker-specific, best for execution realism if bid/ask via live capture",
-        "quality": "Best for XAUUSD execution if live tick captured forward",
-        "symbol_mapping": "XAUUSD as provided",
-        "timestamp_behavior": "Server time, convert to UTC, handle DST",
-        "limitations": "Limited depth, no historical bid/ask, need forward observatory for spread",
-        "cost": "Free with broker account",
-        "suitability_research": "High for XAUUSD regime, medium depth",
-        "suitability_execution": "High if combined with live forward capture for spread",
-    },
-    {
-        "provider_id": "binance",
-        "availability_status": "PLANNED_NOT_INGESTED",
-        "measured_in_checkout": False,
-        "evidence_status": "CATALOG_PLAN_ONLY",
-        "description": "Binance crypto spot/futures tick/aggs",
-        "historical_depth": "2017+ for BTC, 2020+ for many",
-        "granularity": "tick, 1s, 1m, 1H",
-        "bid_ask": False,  # mid + volume, need book ticker for bid/ask",
-        "tick": True,
-        "timezone": "UTC",
-        "licensing": "Public, CC BY",
-        "api": "https://api.binance.com/api/v3/klines + historical data zip",
-        "reliability": "High for crypto",
-        "quality": "Excellent for cross-asset research, not XAUUSD",
-        "symbol_mapping": "BTCUSDT, not applicable to XAUUSD",
-        "timestamp_behavior": "UTC ms",
-        "limitations": "Crypto only, not directly XAUUSD",
-        "cost": "Free",
-        "suitability_research": "High for cross-market regime diversity",
-        "suitability_execution": "Medium for crypto, not XAUUSD",
-    },
-    {
-        "provider_id": "truefx",
-        "availability_status": "PLANNED_NOT_INGESTED",
-        "measured_in_checkout": False,
-        "evidence_status": "CATALOG_PLAN_ONLY",
-        "description": "TrueFX free FX tick with bid/ask",
-        "historical_depth": "2009+ for majors",
-        "granularity": "tick bid/ask",
-        "bid_ask": True,
-        "tick": True,
-        "timezone": "UTC",
-        "licensing": "Free for personal, not redistribution",
-        "api": "https://www.truefx.com/?page=downloads",
-        "reliability": "Medium, community standard",
-        "quality": "Good for execution research FX, need XAUUSD check",
-        "symbol_mapping": "XAUUSD as XAU/USD",
-        "timestamp_behavior": "UTC ms",
-        "limitations": "FX only, XAUUSD availability to verify",
-        "cost": "Free",
-        "suitability_research": "Medium-High for FX execution",
-        "suitability_execution": "High for FX bid/ask research",
-    },
-]
+# The former ``EXTERNAL_CATALOG`` list (5 candidate-provider research entries)
+# was removed here (architecture audit, 2026-10-02): it had zero consumers —
+# not even this module's own tests referenced it by name — and it duplicated,
+# field-for-field, the catalog actually served to the product in
+# ``data/evidence/data_source_catalog.json`` (read by
+# ``qts.api.routes.research.research_data_source_catalog`` via
+# ``artifact_path("data_source_catalog")``). That JSON file is the one
+# catalog a production surface reads; keeping a second, unused Python copy of
+# the same five provider entries risked the two silently drifting apart with
+# nothing to notice. The JSON file is unchanged and remains canonical.
 
 
 def ingestion_pipeline(

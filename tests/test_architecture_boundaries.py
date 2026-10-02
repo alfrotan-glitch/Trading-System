@@ -512,9 +512,16 @@ def test_a_module_no_production_path_reaches_says_so() -> None:
     check above passed, but the only importer was a test of itself. It
     re-declared research-integrity thresholds that Settings already owned and
     offered a `check_lookahead()` that could not detect lookahead — a control
-    in name, reachable by nobody. Seven further modules are in the same
-    position (capital limits, emergency controls, a provider abstraction, a
-    regime observatory, placebo instruments, a restart-state diagnostic).
+    in name, reachable by nobody. Six further modules are in the same
+    position (emergency controls, a provider abstraction, a regime
+    observatory, placebo + null-control instruments, a restart-state
+    diagnostic). A seventh, `qts.risk.capital_policy`, was in this same
+    position and was deleted outright (architecture audit, 2026-10-02): its
+    default thresholds were a verbatim, unenforced copy of
+    `qts.risk.engine.RiskLimits`'s real numbers, with no structural guard —
+    unlike `qts.edge.emergency.EmergencyControls`, which raises at runtime if
+    used without a real `RiskEngine` — stopping a future developer from
+    mistaking it for an enforced gate.
 
     They are kept because real adversarial tests exercise them, so each one
     now states in its docstring that nothing in production reaches it and

@@ -24,7 +24,6 @@ from qts.edge.promotion import PromotionLedger, PromotionState
 from qts.edge.regime_stability import evaluate_regime_stability
 from qts.research.campaign import CampaignResult, ResearchCampaignStore
 from qts.research.experiment import Experiment, ExperimentStore, Hypothesis, ImmutableRecordError
-from qts.risk.capital_policy import CapitalPolicy
 
 
 def _bars(n=100, symbol="XAUUSD"):
@@ -400,20 +399,22 @@ def test_shadow_paper_consistency():
 
 
 # Phase 12: Capital survival policy — hard limits force NO_TRADE
-def test_capital_policy_hard_limits():
-    policy = CapitalPolicy(daily_loss_limit=200, max_drawdown=500)
-    ok, reason = policy.check({"daily_loss": -250, "drawdown": 100})
-    assert not ok
-    assert reason == "daily_loss"
-    ok2, _ = policy.check({"daily_loss": -50, "drawdown": 600})
-    assert not ok2
-    # Spread limit
-    ok3, reason3 = policy.check({"spread_bps": 150})
-    assert not ok3 and reason3 == "spread"
-    # No adaptive expansion
-    policy2 = CapitalPolicy(daily_loss_limit=200)
-    # Even after 5 losses, limit stays 200
-    assert policy2.daily_loss_limit == 200
+#
+# `qts.risk.capital_policy.CapitalPolicy` was deleted (architecture audit,
+# 2026-10-02): it was a NOT-WIRED, zero-consumer module whose default
+# thresholds (daily_loss_limit=200, max_drawdown=500, max_exposure_lots=2.0,
+# risk_per_trade_bps=50) were a verbatim, unenforced copy of
+# `qts.risk.engine.RiskLimits`'s real defaults, with no structural guard
+# (unlike `qts.edge.emergency.EmergencyControls`, which raises at runtime if
+# used without a real `RiskEngine`) preventing a future developer from
+# mistaking it for an enforced gate. This test exercised only the deleted
+# class's own isolated arithmetic — it never called into `RiskEngine` or the
+# pre-trade gate, so it proved nothing about the system's actual enforced
+# limits. The real daily-loss/drawdown/spread ceilings remain covered by
+# `tests/unit/test_risk.py`, `tests/adversarial/test_demo_pretrade_gate.py`
+# and `tests/test_system_hardening_and_invariants.py`, which exercise
+# `qts.risk.engine.RiskEngine` and `qts.execution.demo_pretrade.run_pretrade_gate`
+# directly.
 
 
 # Phase 15: One-way promotion — no skip, no manual edit, backwards on anomaly
