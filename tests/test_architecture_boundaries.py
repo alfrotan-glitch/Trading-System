@@ -563,3 +563,194 @@ def test_a_module_no_production_path_reaches_says_so() -> None:
             stale.append(f"{name} (production imports it, but it still claims NOT WIRED)")
     assert undeclared == [], undeclared
     assert stale == [], stale
+
+
+# ------------------------------------------- canonical safety authority
+def _kw(call: ast.Call, name: str) -> ast.expr | None:
+    return next((kw.value for kw in call.keywords if kw.arg == name), None)
+
+
+def _is_canonical_db_expr(node: ast.expr) -> bool:
+    """Accepted db_path forms on a production execution path.
+
+    Omitted/None resolves to ``artifact_path("db")`` inside RiskEngine /
+    ExecutionEngine themselves; ``self.db_path`` is the DEMO session's config
+    path, which maps its default through ``artifact_path("db")`` and any
+    explicit value through ``resolve_state_path`` (asserted at runtime below).
+    """
+    if isinstance(node, ast.Constant) and node.value is None:
+        return True
+    return (
+        isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "self"
+        and node.attr == "db_path"
+    )
+
+
+def _bound_names(target: ast.expr) -> list[str]:
+    if isinstance(target, ast.Name):
+        return [target.id]
+    if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "self":
+        return [f"self.{target.attr}"]
+    return []
+
+
+def _arg_name(node: ast.expr | None) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "self":
+        return f"self.{node.attr}"
+    return None
+
+
+def test_no_production_execution_path_bypasses_the_canonical_safety_authority() -> None:
+    """Risk #0 closure guard (canonical-architecture audit 2026-10-02).
+
+    DEFECT: `qts run --mode micro` — the one CLI path whose broker can be a
+    real MT5 terminal — wired its RiskEngine, idempotency ledger and durable
+    reconcile state to a `tempfile.mkstemp()` database "to isolate". An
+    engaged canonical kill switch and an unhealed reconciliation suspension
+    were therefore invisible exactly where they mattered most.
+
+    Structural guarantee, asserted over every module in src/qts: a production
+    execution path is an ExecutionEngine wired to a broker-capable adapter
+    (MT5Adapter, or the DEMO session's `self.adapter` which holds one). For
+    every such engine:
+
+    1. its RiskEngine is constructed on the canonical kill-switch database
+       (db_path omitted/None, or the session's canonical `self.db_path`) and
+       never with `persist_kill=False`;
+    2. the engine never redirects its durable `reconcile_state`
+       (db_path omitted or `self.db_path`; never `persist_reconcile_state=False`);
+    3. nowhere in src/qts does a function construct a RiskEngine or
+       ExecutionEngine AND call into `tempfile` — the exact shape of the
+       closed defect, so it cannot come back under a new name;
+    4. the guard is not vacuous: it must find both known broker-capable
+       engines (the micro CLI path and the DEMO session), and the canonical
+       default it relies on is asserted at runtime.
+
+    Research/simulation engines (backtest, paper, shadow) are deliberately
+    out of scope: their brokers cannot reach a venue, and their isolation
+    (persist_kill=False / separate artifact DBs) exists so a backtest cannot
+    clear a production kill switch — the opposite failure.
+    """
+    found: list[str] = []
+    problems: list[str] = []
+    tempfile_mixing: list[str] = []
+
+    for py in sorted(SRC.rglob("*.py")):
+        rel = py.relative_to(REPO).as_posix()
+        tree = ast.parse(py.read_text(encoding="utf-8"))
+
+        mt5_aliases: set[str] = set()
+        ee_aliases: set[str] = set()
+        re_aliases: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                for a in node.names:
+                    alias = a.asname or a.name
+                    if a.name == "MT5Adapter":
+                        mt5_aliases.add(alias)
+                    elif a.name == "ExecutionEngine":
+                        ee_aliases.add(alias)
+                    elif a.name == "RiskEngine":
+                        re_aliases.add(alias)
+
+        # name -> bound MT5Adapter construction / RiskEngine constructions
+        mt5_bound: set[str] = set()
+        risk_ctors: dict[str, list[ast.Call]] = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
+                fn = node.value.func
+                fname = fn.id if isinstance(fn, ast.Name) else None
+                for target in node.targets:
+                    for name in _bound_names(target):
+                        if fname in mt5_aliases:
+                            mt5_bound.add(name)
+                        if fname in re_aliases:
+                            risk_ctors.setdefault(name, []).append(node.value)
+
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ee_aliases):
+                continue
+            where = f"{rel}:{node.lineno}"
+            broker = node.args[2] if len(node.args) > 2 else _kw(node, "broker")
+            broker_name = _arg_name(broker)
+            broker_capable = (broker_name in mt5_bound) or broker_name == "self.adapter"
+            if not broker_capable:
+                continue
+            found.append(where)
+
+            db_kw = _kw(node, "db_path")
+            if db_kw is not None and not _is_canonical_db_expr(db_kw):
+                problems.append(f"{where}: broker-capable ExecutionEngine redirects its durable reconcile_state db")
+            prs = _kw(node, "persist_reconcile_state")
+            if prs is not None and not (isinstance(prs, ast.Constant) and prs.value is True):
+                problems.append(f"{where}: broker-capable ExecutionEngine disables persist_reconcile_state")
+
+            risk_arg = node.args[1] if len(node.args) > 1 else _kw(node, "risk_engine")
+            risk_name = _arg_name(risk_arg)
+            ctors = risk_ctors.get(risk_name or "", [])
+            if not ctors:
+                problems.append(
+                    f"{where}: risk engine '{risk_name}' has no visible RiskEngine construction in this module"
+                )
+            for ctor in ctors:
+                rdb = _kw(ctor, "db_path")
+                if rdb is not None and not _is_canonical_db_expr(rdb):
+                    problems.append(
+                        f"{where}: RiskEngine for a broker-capable engine is built on a non-canonical db_path"
+                    )
+                pk = _kw(ctor, "persist_kill")
+                if pk is not None and not (isinstance(pk, ast.Constant) and pk.value is True):
+                    problems.append(f"{where}: RiskEngine for a broker-capable engine disables persist_kill")
+
+        # (3) tempfile may never share a function with an engine construction.
+        for fn_node in ast.walk(tree):
+            if not isinstance(fn_node, ast.FunctionDef | ast.AsyncFunctionDef):
+                continue
+            tempfile_names: set[str] = set()
+            for sub in ast.walk(fn_node):
+                if isinstance(sub, ast.Import):
+                    tempfile_names.update(a.asname or a.name for a in sub.names if a.name == "tempfile")
+                elif isinstance(sub, ast.ImportFrom) and sub.module == "tempfile":
+                    tempfile_names.update(a.asname or a.name for a in sub.names)
+            if not tempfile_names:
+                continue
+            constructs_engine = any(
+                isinstance(sub, ast.Call)
+                and isinstance(sub.func, ast.Name)
+                and sub.func.id in (ee_aliases | re_aliases)
+                for sub in ast.walk(fn_node)
+            )
+            if constructs_engine:
+                tempfile_mixing.append(f"{rel}:{fn_node.lineno} ({fn_node.name})")
+
+    assert problems == [], problems
+    assert tempfile_mixing == [], (
+        "a function constructs a RiskEngine/ExecutionEngine AND uses tempfile — "
+        f"the closed Risk #0 defect shape: {tempfile_mixing}"
+    )
+    rels = {f.rsplit(":", 1)[0] for f in found}
+    assert "src/qts/cli/ops.py" in rels, f"guard went vacuous: micro CLI engine not found ({sorted(rels)})"
+    assert "src/qts/execution/demo_session.py" in rels, f"guard went vacuous: DEMO engine not found ({sorted(rels)})"
+
+
+def test_the_default_risk_engine_database_is_the_canonical_kill_switch_db(tmp_path: Path, monkeypatch) -> None:
+    """Runtime anchor for the structural guard above: db_path omitted/None IS
+    the canonical kill-switch database (`artifact_path("db")`), so a kill
+    engaged by `qts risk kill`, the API or the DEMO session is read by any
+    engine constructed without an explicit path — including the micro path.
+    """
+    monkeypatch.setenv("QTS_STATE_ROOT", str(tmp_path))
+    from qts.config.paths import artifact_path
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    writer = RiskEngine(RiskLimits())
+    assert writer.db_path == artifact_path("db")
+    writer.kill_switch("guard: one durable flag")
+    reader = RiskEngine(RiskLimits())
+    assert reader.killed is True, "a second default-constructed engine must read the same durable flag"
+    writer.reset_kill()
+    assert reader.killed is False

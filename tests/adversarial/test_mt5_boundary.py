@@ -1507,6 +1507,125 @@ def test_micro_rehearsal_evidence_is_labeled_simulated_and_not_fabricated(cli_wo
             live_yaml.unlink()
 
 
+def _micro_runnable_workspace(monkeypatch):
+    """Make micro RUNNABLE in the isolated cli_workspace, nothing more.
+
+    Identical setup to test_micro_rehearsal_evidence_is_labeled_simulated_and_
+    not_fabricated: only the two readiness checks the micro gate consults are
+    forced (no real terminal exists in CI), and the real terminal is never
+    attached. Every durable safety authority stays exactly as the workspace
+    has it — that is the point of the tests below.
+    """
+    import qts.lifecycle.live_gate as live_gate
+
+    live_yaml = Path("configs/live.yaml")
+    if not live_yaml.exists():
+        live_yaml.parent.mkdir(parents=True, exist_ok=True)
+        live_yaml.write_text("env: live\nexecution:\n  mode: live\nrisk:\n  approved: true\n", encoding="utf-8")
+
+    real_report = live_gate.live_readiness_report
+
+    def _rehearsal_gate():
+        rpt = dict(real_report())
+        rpt["mt5_connectivity"] = {"passed": True, "detail": "TEST-PATCHED: no real terminal was probed"}
+        rpt["symbol_spec"] = {"passed": True, "detail": "TEST-PATCHED"}
+        return rpt
+
+    monkeypatch.setattr(live_gate, "live_readiness_report", _rehearsal_gate)
+    monkeypatch.delenv("QTS_USE_REAL_MT5", raising=False)
+
+
+def _invoke_micro(version: str):
+    import contextlib
+
+    from click.testing import CliRunner
+
+    from qts.cli import main
+
+    runner = CliRunner()
+    with patch.dict(os.environ, {"QTS_MICRO_ENABLED": "true", "QTS_ENV": "live"}):
+        result = runner.invoke(main, ["run", "--mode", "micro", "--data-version", version, "--confirm", "live"])
+    combined = result.output or ""
+    with contextlib.suppress(Exception):
+        combined += result.stderr or ""
+    return result, combined
+
+
+def test_engaged_canonical_kill_switch_blocks_micro_execution(cli_workspace, monkeypatch):
+    """Risk #0 (canonical-architecture audit 2026-10-02) — closed.
+
+    `qts run --mode micro` used to wire its RiskEngine, idempotency ledger and
+    reconcile state to a tempfile database "to isolate", so an ENGAGED
+    canonical kill switch (`risk_state.killed` in RiskEngine's canonical
+    database — the row `qts risk kill`, the API and the DEMO session all
+    write) was invisible to the one CLI path whose broker can be a real MT5
+    terminal. The micro path now consumes that canonical database.
+
+    Deterministic proof: engage the canonical durable kill flag → micro
+    refuses with exit 2 before any broker is constructed, names the kill
+    switch, journals no order intent and writes no evidence artifact; clear
+    the SAME flag → the identical invocation runs, proving the kill switch
+    (and nothing else) was the blocker.
+    """
+    import contextlib as _ctx
+
+    from qts.execution.idempotency import IdempotencyStore
+    from qts.risk.engine import RiskEngine, RiskLimits
+
+    _micro_runnable_workspace(monkeypatch)
+    coid = f"micro:sma_breakout:{cli_workspace.version}:001"
+
+    canonical = RiskEngine(RiskLimits())  # default db_path == the canonical kill-switch DB
+    canonical.kill_switch("adversarial: operator halt before micro")
+    try:
+        blocked, out = _invoke_micro(cli_workspace.version)
+        assert blocked.exit_code == 2, f"an engaged canonical kill switch must block micro: {out}"
+        assert "kill switch engaged" in out, f"the refusal must name the canonical kill switch: {out}"
+        assert "operator halt before micro" in out, "the refusal must carry the recorded reason"
+        assert not Path("data/evidence/micro.json").exists(), "a blocked micro run must produce no evidence artifact"
+        assert not IdempotencyStore().seen(coid), "a blocked micro run must journal no order intent"
+
+        # Attributability: clearing the SAME durable flag unblocks the SAME invocation.
+        canonical.reset_kill()
+        unblocked, out2 = _invoke_micro(cli_workspace.version)
+        assert unblocked.exit_code == 0, f"with the kill switch cleared the rehearsal must run: {out2}"
+        assert Path("data/evidence/micro.json").exists()
+        assert IdempotencyStore().seen(coid), "the rehearsal order must land in the CANONICAL idempotency ledger"
+    finally:
+        with _ctx.suppress(Exception):
+            canonical.reset_kill()
+
+
+def test_durable_reconcile_suspension_blocks_micro_execution(cli_workspace, monkeypatch):
+    """The second durable safety record the temp-DB exception bypassed.
+
+    An unhealed `reconcile_state.suspended` row (written by ExecutionEngine,
+    read by the ONE reader `load_reconcile_suspension`) must refuse micro the
+    same way it refuses every other execution surface.
+    """
+    from qts.config.paths import artifact_path
+    from qts.db import connect as db_connect
+    from qts.execution.engine import RECONCILE_STATE_SCHEMA, load_reconcile_suspension
+
+    _micro_runnable_workspace(monkeypatch)
+
+    db = artifact_path("db")
+    db.parent.mkdir(parents=True, exist_ok=True)
+    with db_connect(db) as con:
+        con.execute(RECONCILE_STATE_SCHEMA)
+        con.execute(
+            "INSERT OR REPLACE INTO reconcile_state VALUES (1,1,?,?)",
+            ("drift: broker and QTS disagree about open positions", datetime.now(UTC).isoformat()),
+        )
+        con.commit()
+    assert load_reconcile_suspension(db).suspended, "the canonical reader must see the row this test wrote"
+
+    blocked, out = _invoke_micro(cli_workspace.version)
+    assert blocked.exit_code == 2, f"a durable reconciliation suspension must block micro: {out}"
+    assert "reconciliation suspension active" in out, f"the refusal must name the suspension: {out}"
+    assert not Path("data/evidence/micro.json").exists(), "a blocked micro run must produce no evidence artifact"
+
+
 # ---------- Restart recovery ----------
 
 

@@ -70,7 +70,12 @@ source and a stable `config_hash`).
 
 `resolve_risk_limits_from_settings(mode)` is the standard entry point: YAML
 `risk:` flows through the authority as the override layer — there is no
-parallel consumer path. `DEMO_FORWARD_DEFAULTS` (demo boundary) is DERIVED
+parallel consumer path. `engine_limits_from(snapshot)` is the ONE translation
+from a resolved snapshot to the risk engine's `RiskLimits`; the DEMO session
+and the micro CLI path both consume it, so a field cannot be dropped in one
+copy of the mapping and kept in another (it also forces
+`kill_switch_enabled=True` — no configuration layer may disable the engine's
+kill switch on an execution path). `DEMO_FORWARD_DEFAULTS` (demo boundary) is DERIVED
 from the shared demo-boundary risk resolution; the numbers live in exactly one
 place. They are descriptive safety metadata only while DEMO_EXECUTION is
 policy-disabled and do not authorize orders.
@@ -168,6 +173,23 @@ This is not a second kill switch (§11.2 of `QTS_PROJECT_CONTROL.md` stands):
 they answer different questions — "an operator stopped trading" versus "QTS
 and the broker disagree about open positions" — and neither is an in-memory
 mirror of the other.
+
+**No execution-path exception (Risk #0 — closed, ARCH-050).** `qts run --mode
+micro` (LIVE-family) consumes this same durable set: its `RiskEngine`,
+idempotency ledger and `reconcile_state` all live in the canonical
+`artifact_path("db")`, and it refuses with exit 2 — before constructing any
+broker — when either record is active, read through `RiskEngine.kill_state()`
+and `load_reconcile_suspension`. It previously wired all three stores to a
+`tempfile.mkstemp()` database, which made an engaged canonical kill switch
+invisible to the one CLI path whose broker can be a real terminal. The
+closure is pinned behaviourally (an engaged canonical kill switch blocks
+micro; clearing the same flag unblocks the identical invocation) and
+structurally (`test_no_production_execution_path_bypasses_the_canonical_safety_authority`:
+no broker-capable `ExecutionEngine` anywhere in `src/qts` may redirect its
+safety database, disable `persist_kill`/`persist_reconcile_state`, or share a
+function with `tempfile`). Research isolation is the opposite, deliberate
+direction and stands: a backtest must not *disturb* the durable state
+(`persist_kill=False`); an execution path must never stop *consuming* it.
 
 **One reader.** `qts.execution.engine.load_reconcile_suspension()` is the ONLY
 implementation that reads `reconcile_state`. `ExecutionEngine`, the LIVE gate
