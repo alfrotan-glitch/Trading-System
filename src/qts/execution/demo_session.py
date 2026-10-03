@@ -1413,30 +1413,18 @@ class DemoSession:
         from qts.execution.idempotency import IdempotencyStore
         from qts.observability.audit import SqliteAuditLog
         from qts.portfolio.portfolio import Portfolio
-        from qts.risk.engine import RiskEngine, RiskLimits
+        from qts.risk.engine import RiskEngine
 
         try:
             audit: Any = SqliteAuditLog()
         except Exception:
             audit = None
         self._idempotency = IdempotencyStore(db_path=self.db_path)
-        from qts.risk.authority import resolve_risk_limits
+        from qts.risk.authority import engine_limits_from, resolve_risk_limits
 
-        snapshot = resolve_risk_limits(ExecutionMode.DEMO_EXECUTION)
-        limits = RiskLimits(
-            max_quantity=snapshot.limits.max_quantity,
-            min_quantity=snapshot.limits.min_quantity,
-            quantity_step=snapshot.limits.quantity_step,
-            max_notional=snapshot.limits.max_notional,
-            max_exposure_lots=snapshot.limits.max_exposure_lots,
-            max_leverage=snapshot.limits.max_leverage,
-            max_correlated_exposure=snapshot.limits.max_correlated_exposure,
-            max_open_orders=snapshot.limits.max_open_orders,
-            daily_loss_limit=snapshot.limits.daily_loss_limit,
-            max_drawdown=snapshot.limits.max_drawdown,
-            kill_switch_enabled=True,
-            stop_loss_required=bool(snapshot.limits.stop_loss_required),
-        )
+        # ONE translation from the canonical authority to engine limits —
+        # shared with every other execution surface (see engine_limits_from).
+        limits = engine_limits_from(resolve_risk_limits(ExecutionMode.DEMO_EXECUTION))
         self._risk = RiskEngine(limits, db_path=self.db_path, persist_kill=True)
         portfolio = Portfolio(initial_balance=Decimal("0"))  # broker equity is authoritative
         self._engine = ExecutionEngine(

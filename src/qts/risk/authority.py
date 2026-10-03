@@ -28,11 +28,14 @@ import json
 import os
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from qts.domain.modes import ExecutionMode
+
+if TYPE_CHECKING:  # runtime import stays inside engine_limits_from (no cycle)
+    from qts.risk.engine import RiskLimits
 
 
 class CanonicalRiskLimits(BaseModel):
@@ -257,6 +260,40 @@ def resolve_risk_limits_from_settings(mode: ExecutionMode | str | None = None) -
         if k != "version" and v is not None and getattr(BASE_LIMITS, k, None) != v
     }
     return resolve_risk_limits(mode, config_overrides=overrides)
+
+
+def engine_limits_from(snapshot: ResolvedRiskSnapshot) -> RiskLimits:
+    """Map a resolved canonical snapshot onto the risk engine's ``RiskLimits``.
+
+    This is the ONE translation between the canonical authority and
+    ``qts.risk.engine.RiskEngine``. Every execution surface that constructs a
+    ``RiskEngine`` from a resolved snapshot (DEMO session, the micro CLI path)
+    uses this mapping, so a field cannot be silently dropped in one copy of
+    the translation and kept in another.
+
+    ``kill_switch_enabled`` is forced ``True``: no configuration layer may
+    disable the engine's kill switch on an execution path.
+    """
+    from qts.risk.engine import RiskLimits
+
+    lim = snapshot.limits
+    return RiskLimits(
+        max_quantity=lim.max_quantity,
+        min_quantity=lim.min_quantity,
+        quantity_step=lim.quantity_step,
+        max_notional=lim.max_notional,
+        max_risk_per_trade_bps=lim.max_risk_per_trade_bps,
+        stop_loss_required=bool(lim.stop_loss_required),
+        max_exposure_lots=lim.max_exposure_lots,
+        max_exposure_notional=lim.max_exposure_notional,
+        max_leverage=lim.max_leverage,
+        max_correlated_exposure=lim.max_correlated_exposure,
+        max_open_orders=lim.max_open_orders,
+        daily_loss_limit=lim.daily_loss_limit,
+        max_drawdown=lim.max_drawdown,
+        kill_switch_enabled=True,
+        approved=bool(lim.approved),
+    )
 
 
 # Backwards-compatible adapter: the demo boundary now derives from the one
