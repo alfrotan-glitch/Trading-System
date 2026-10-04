@@ -343,6 +343,50 @@ def test_stage_endpoint_starts_disabled(client):
     assert body["current"]["orders_permitted"] is False
 
 
+def test_positions_endpoint_fails_closed_when_broker_unreadable(client, api_env, monkeypatch):
+    """A broker read failure must answer 503 UNAVAILABLE — never 200 with an empty list.
+
+    Reporting "zero open positions" while the broker is unreadable would
+    fabricate a flat book; the UI must be able to distinguish "verified flat"
+    from "cannot know".
+    """
+    import fakes_demo_provider as provider_fixture
+    from fakes_mt5_demo import FakeTerminal
+
+    registry_path = Path(api_env) / "registry.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "schema": "qts.demo_forward_registry.v1",
+                "research_integrity": {"optimization_allowed": False, "no_forward_fitting": True},
+                "entries": [provider_fixture.registry_entry()],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+
+    import qts.api.server as server_module
+
+    monkeypatch.setattr(server_module, "_demo_session", lambda *args, **kwargs: session)
+
+    def broken_position_details():
+        raise ConnectionError("terminal link lost")
+
+    monkeypatch.setattr(session.adapter, "position_details", broken_position_details)
+
+    # Session-level contract: raises, never silently returns [].
+    with pytest.raises(RuntimeError, match="UNAVAILABLE"):
+        session.positions()
+
+    res = client.get("/api/demo/positions")
+    assert res.status_code == 503
+    assert "UNAVAILABLE" in res.json()["detail"]
+    assert "terminal link lost" in res.json()["detail"]
+
+
 def test_positions_and_close_endpoints_full_lifecycle(client, api_env, monkeypatch):
     """Prove GET /api/demo/positions and POST /api/demo/close complete the position lifecycle."""
     import fakes_demo_provider as provider_fixture

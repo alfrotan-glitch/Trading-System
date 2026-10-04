@@ -365,9 +365,16 @@ def demo_order(payload: dict[str, Any]) -> Any:
 
 @router.get("/api/demo/positions")
 def demo_positions() -> dict[str, Any]:
-    """List open DEMO positions on the connected MT5 venue."""
+    """List open DEMO positions on the connected MT5 venue.
+
+    If the broker cannot be read this answers 503 — never an empty list —
+    so the UI shows "Positions unavailable" instead of a fabricated flat book.
+    """
     session = _bind()._demo_session()
-    positions = session.positions()
+    try:
+        positions = session.positions()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     return {
         "positions": positions,
         "count": len(positions),

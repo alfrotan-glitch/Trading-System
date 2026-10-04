@@ -1015,8 +1015,12 @@ class DemoSession:
         """List open broker positions enriched with canonical symbol and journal correlation."""
         try:
             raw_positions = self.adapter.position_details()
-        except Exception:
-            return []
+        except Exception as exc:
+            # Fail closed and honest: a broker read failure must NEVER be
+            # reported as "zero open positions" — that would fabricate a flat
+            # book while real positions may exist at the broker. Callers must
+            # surface UNAVAILABLE, not an empty list.
+            raise RuntimeError(f"broker positions UNAVAILABLE: {exc}") from exc
 
         open_journal_orders: list[dict[str, Any]] = []
         with contextlib.suppress(Exception):

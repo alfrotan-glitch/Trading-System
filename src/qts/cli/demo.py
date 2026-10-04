@@ -747,7 +747,11 @@ def demo_run(
 def demo_positions(symbol: str | None, db: str) -> None:
     """Show open DEMO positions on the broker."""
     session = _demo_session(symbol or "", db)
-    positions = session.positions()
+    try:
+        positions = session.positions()
+    except Exception as exc:
+        click.echo(f"broker positions UNAVAILABLE — {exc} (this is NOT 'no positions')")
+        raise SystemExit(1) from exc
     if not positions:
         click.echo("no open positions on DEMO venue")
         return

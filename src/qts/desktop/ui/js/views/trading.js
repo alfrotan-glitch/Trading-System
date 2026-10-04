@@ -559,7 +559,7 @@ export async function renderDemo(root) {
     if (!into) return;
     const g = guide;
     if (!g?.connection?.connected) {
-      into.replaceChildren(emptyState({ icon: "layers", title: "No open positions", desc: "Positions appear here once your Demo account is connected and a trade is open. Nothing is invented here." }));
+      into.replaceChildren(emptyState({ icon: "layers", title: "Positions unknown — not connected", desc: "QTS cannot read positions until the Demo account is connected. It never claims a flat book it has not verified." }));
       return;
     }
     into.replaceChildren(h("div", { class: "skeleton skl-line", style: { width: "50%" } }));
