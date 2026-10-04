@@ -308,7 +308,127 @@ def test_no_cwd_relative_state_default_remains() -> None:
         io_call = r'(?<![.\w])Path\(\s*"(?:data|logs|docs)/[^"]*"\s*\)\s*(?:/[^\n]*)?\.\s*(?:mkdir|write_text|write_bytes|read_text|read_bytes|exists|open|unlink|touch|glob|rglob|iterdir)\('
         for match in re.finditer(io_call, body):
             offenders.append(f"{module.relative_to(SRC)} does IO on an unanchored {match.group(0)[:60]}")
+        # The same defect hiding behind an ALIAS. The regex above matches the
+        # NAME `Path(`, so `from pathlib import Path as _Path2` — and the
+        # dotted `pathlib.Path(...)` form — evaded it. One real site did
+        # exactly that: the micro evidence artifact (the published record of a
+        # LIVE-family execution rehearsal) was written through
+        # `_Path2("data/evidence/micro.json")`, escaping state_root() and
+        # fabricating a `<cwd>/data` marker tree in whatever directory the
+        # operator happened to invoke from — the exact ARCH-030 mechanism,
+        # surviving the ARCH-030 sweep behind the rename. Resolve the module's
+        # REAL pathlib bindings and flag IO chained over any of them.
+        offenders.extend(_aliased_cwd_relative_io(module))
     assert offenders == [], offenders
+
+
+_IO_METHODS = frozenset(
+    {
+        "mkdir",
+        "write_text",
+        "write_bytes",
+        "read_text",
+        "read_bytes",
+        "exists",
+        "open",
+        "unlink",
+        "touch",
+        "glob",
+        "rglob",
+        "iterdir",
+    }
+)
+
+
+def _aliased_cwd_relative_io(module: Path) -> list[str]:
+    """IO chained over `<any pathlib.Path binding>("data/..."|"logs/..."|"docs/...")`."""
+    tree = ast.parse(module.read_text(encoding="utf-8"))
+    path_names: set[str] = set()
+    pathlib_mods: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "pathlib":
+            path_names.update(a.asname or a.name for a in node.names if a.name == "Path")
+        elif isinstance(node, ast.Import):
+            pathlib_mods.update(a.asname or a.name for a in node.names if a.name == "pathlib")
+    if not path_names and not pathlib_mods:
+        return []
+
+    def is_relative_path_call(expr: ast.AST) -> bool:
+        if not (isinstance(expr, ast.Call) and expr.args):
+            return False
+        fn = expr.func
+        named = isinstance(fn, ast.Name) and fn.id in path_names
+        dotted = (
+            isinstance(fn, ast.Attribute)
+            and fn.attr == "Path"
+            and isinstance(fn.value, ast.Name)
+            and fn.value.id in pathlib_mods
+        )
+        if not (named or dotted):
+            return False
+        arg = expr.args[0]
+        if not (isinstance(arg, ast.Constant) and isinstance(arg.value, str)):
+            return False
+        return arg.value in ("data", "logs", "docs") or arg.value.startswith(("data/", "logs/", "docs/"))
+
+    found: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute) and node.attr in _IO_METHODS:
+            for sub in ast.walk(node.value):
+                if is_relative_path_call(sub):
+                    found.append(
+                        f"{module.relative_to(SRC)}:{node.lineno} does IO on an unanchored pathlib.Path "
+                        f"binding (.{node.attr} over a cwd-relative literal) — use qts.config.paths"
+                    )
+                    break
+    return found
+
+
+def test_micro_evidence_lands_in_the_state_root_never_the_cwd(tmp_path: Path, monkeypatch) -> None:
+    """Behavioural half of the alias finding (the guard above is the structural half).
+
+    DEFECT: `qts run --mode micro` wrote its evidence artifact to a
+    cwd-relative `data/evidence/micro.json` (through an aliased Path that the
+    name-based guard could not see). Invoked from any directory other than
+    the state root, the published record of a LIVE-family rehearsal landed
+    outside `state_root()` — and the mkdir fabricated a `<cwd>/data` marker
+    tree in the invoking directory.
+
+    Differential probe: with QTS_STATE_ROOT pinned elsewhere, run micro from
+    a foreign cwd. The evidence must land in the canonical state root and the
+    foreign cwd must stay free of fabricated state. (The `configs/` read is
+    deliberately cwd-relative — configuration ships with the install — and is
+    provided here; only `data/` state is under test.)
+    """
+    import shutil
+
+    from qts.data.bootstrap import bootstrap_data
+    from tests.adversarial.test_mt5_boundary import _invoke_micro, _micro_runnable_workspace
+
+    state = tmp_path / "state"
+    foreign = tmp_path / "somewhere-else"
+    state.mkdir()
+    foreign.mkdir()
+    monkeypatch.setenv("QTS_STATE_ROOT", str(state))
+
+    fixtures = state / "data" / "fixtures"
+    fixtures.mkdir(parents=True)
+    shutil.copy(REPO / "data" / "fixtures" / "XAUUSD_1H_500.csv", fixtures / "XAUUSD_1H_500.csv")
+    res = bootstrap_data(root=state / "data", fixture=fixtures / "XAUUSD_1H_500.csv")
+    assert res.ok, f"bootstrap into the state root failed: {res.messages}"
+
+    monkeypatch.chdir(foreign)
+    _micro_runnable_workspace(monkeypatch)
+    result, out = _invoke_micro(res.version)
+    assert result.exit_code == 0, f"the rehearsal should run from a foreign cwd: {out}"
+
+    assert (state / "data" / "evidence" / "micro.json").exists(), (
+        "micro evidence must land in the canonical state root"
+    )
+    assert not (foreign / "data").exists(), (
+        "a foreign invoking directory must stay free of fabricated state — "
+        "the cwd-relative write also created the marker tree state_root() reads"
+    )
 
 
 def test_the_upper_case_exemption_requires_an_actual_use_site() -> None:

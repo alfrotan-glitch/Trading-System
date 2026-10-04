@@ -651,7 +651,6 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         import os as _os
         from datetime import datetime as _dt
         from decimal import Decimal as _Decimal2
-        from pathlib import Path as _Path2
         from unittest.mock import MagicMock as _MM
 
         # Gate: micro requires explicit enable
@@ -906,8 +905,15 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "portfolio": {"equity": str(pf2.equity()), "positions": len(pf2.positions)},
             "audit_count": len(audit2.query(limit=100)) if hasattr(audit2, "query") else 0,
         }
-        _Path2("data/evidence").mkdir(parents=True, exist_ok=True)
-        _Path2("data/evidence/micro.json").write_text(_js.dumps(ev2, indent=2), encoding="utf-8")
+        # Canonical artifact location — same contract as dry_run.json. The
+        # previous cwd-relative write (through an ALIASED Path, which the
+        # structural cwd-IO guard's name-based regex could not see) both
+        # dropped the evidence outside state_root() when invoked from another
+        # directory AND fabricated a `<cwd>/data` marker tree there — the
+        # exact ARCH-030 mechanism, surviving behind the alias.
+        _micro_out = _artifact_path("micro")
+        _micro_out.parent.mkdir(parents=True, exist_ok=True)
+        _micro_out.write_text(_js.dumps(ev2, indent=2), encoding="utf-8")
         click.echo(
             f"micro result: broker={ev2['broker_source']} data_class={ev2['data_class']} order {ev2['order']} "
             f"fills {len(fills2)} poll {len(fills_poll)} reconcile {report2.drift} "
