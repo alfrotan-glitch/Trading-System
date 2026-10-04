@@ -321,9 +321,34 @@ def test_dst_boundary_2h_to_3h_shift(tmp_path: Path):
         assert tick.event_time == datetime.fromtimestamp(now - 1, tz=UTC)
 
 
-def test_offset_grid_exactness_across_zones(tmp_path: Path):
-    """All real-world offsets are multiples of 15min; grid recovers exactly."""
+def test_offset_grid_exactness_across_zones(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """All real-world offsets are multiples of 15min; grid recovers exactly.
+
+    The probe window is ``[bar_time - now, bar_time - now + 60)``, so with
+    ``bar_phase=59`` the true offset sits 1s from the window's edge. Against
+    the real wall clock that gives each iteration a <1s budget (the test's
+    ``int()`` truncation plus loop time), which flaked on a contended CI
+    runner (run 37225320579: "offset 3600 phase 59 got 0.0" — the window
+    slid past the grid point, the probe failed, and the never-measured
+    fallback answered 0.0). Freeze the adapter's clock at the instant the
+    fixtures are built from: the boundary phase is then tested exactly,
+    not just on hosts fast enough to win a race.
+    """
+    import qts.adapters.mt5_adapter as mt5_adapter_module
+
     now = float(int(time.time()))
+
+    class _FrozenClock:
+        """``time`` stand-in: frozen ``time()``, everything else delegated."""
+
+        @staticmethod
+        def time() -> float:
+            return now
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(time, name)
+
+    monkeypatch.setattr(mt5_adapter_module, "time", _FrozenClock())
     for offset in (0, 900, 1800, 3600, 7200, 10800, 19800, -18000, -14400, 50400):  # includes +14h max
         for bar_phase in (0, 15, 30, 59):
             fake = FakeMT5(RawTick(time_s=now), bar_time=now + offset - bar_phase)
