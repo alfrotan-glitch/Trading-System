@@ -41,7 +41,18 @@ The gate was executed literally on this host. It halted at **step 2** on a singl
 
 ## Hand-off: the identical procedure on the Windows host
 
-Run these as-is; each step's pass criterion is the product's own output.
+**Executable form:** `python scripts/demo_readiness_gate.py` runs steps 1–3 read-only;
+add `--execute --quantity ... --stop-loss ...` for steps 4–7. The runner is a pure
+sequencer over the canonical API — every PASS criterion is read from the product's
+responses, it halts at the first blocker with the server's reasons verbatim, writes a
+machine-readable record (`qts.demo_readiness_gate_record.v1`, timestamped under
+`data/evidence/`), and exits 2 on any block. Self-tested on this host: step 1 PASS
+under the approved configuration, step 2 HALT → ENVIRONMENT BLOCKED, exit 2 — the
+runner itself fails closed. Unit-pinned in `tests/test_demo_readiness_gate_runner.py`
+(halt-at-first-failure, 503-positions-is-a-halt-not-a-retry, missing broker IDs block
+an "allowed" order, verify mode touches no mutating endpoint).
+
+The manual equivalent, for auditing the runner against the procedure:
 
 ```
 # 0. Prereqs (once): install MetaTrader 5 terminal, log the approved DEMO
