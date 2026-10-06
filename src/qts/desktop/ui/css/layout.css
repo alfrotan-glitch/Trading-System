@@ -1,6 +1,5 @@
-/* QTS LAYOUT — header · sidebar · main
-   Neon layer: gradient hairlines carry chrome, active nav is a luminous
-   tab, global facts sit on glass chips over the ambient wash. */
+/* QTS LAYOUT — quiet institutional workstation.
+   Hierarchy, spacing, and status semantics carry meaning; decoration does not. */
 
 #app {
   display: grid;
@@ -21,20 +20,13 @@
   align-items: center;
   gap: var(--sp-4);
   padding: 0 var(--sp-4) 0 var(--sp-3);
-  background: linear-gradient(180deg, #0a1020 0%, #070c18 100%);
+  background: var(--bg-1);
   border-bottom: 1px solid var(--line);
   position: relative;
   z-index: 40;
   min-width: 0;
 }
-/* neon hairline under the chrome */
-.header::after {
-  content: "";
-  position: absolute; left: 0; right: 0; bottom: -1px;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(34, 211, 238, 0.6), rgba(167, 139, 250, 0.35) 45%, transparent 78%);
-  pointer-events: none;
-}
+/* Keep the header visually quiet; status chips provide the only emphasis. */
 
 .brand {
   display: flex; align-items: center; gap: 9px;
@@ -108,7 +100,7 @@
 .sidebar {
   grid-area: sidebar;
   width: var(--sidebar-w);
-  background: linear-gradient(180deg, #080c18 0%, #070b15 100%);
+  background: var(--bg-1);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -147,21 +139,21 @@
   cursor: pointer;
   text-align: left;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
 }
 .nav-item:hover {
   background: linear-gradient(90deg, rgba(148, 180, 255, 0.07), rgba(148, 180, 255, 0.02));
   color: var(--text-1);
-  transform: translateX(2px);
+  border-color: var(--line-strong);
 }
 .nav-item.active:hover { transform: none; }
 .nav-item.active {
-  background: linear-gradient(90deg, rgba(34, 211, 238, 0.16), rgba(34, 211, 238, 0.05) 70%, transparent);
+  background: var(--accent-soft);
   color: var(--text-1);
   border-left: 2px solid var(--accent);
   border-radius: 3px 7px 7px 3px;
   font-weight: 600;
-  box-shadow: inset 0 0 20px rgba(34, 211, 238, 0.06), 0 0 14px rgba(34, 211, 238, 0.1);
+  box-shadow: none;
 }
 .nav-item.active .icon { color: var(--accent-text); opacity: 1; }
 .nav-item.restricted { color: var(--locked-text); }
@@ -264,14 +256,13 @@
   font-weight: 650;
   background: linear-gradient(180deg, rgba(34, 211, 238, 0.13), rgba(34, 211, 238, 0.03));
 }
-/* luminous run-line under the active tab */
+/* simple active indicator */
 .subnav a.active::after {
   content: "";
   position: absolute; left: 10px; right: 10px; bottom: -1px;
   height: 2px;
   border-radius: 2px;
-  background: var(--grad-line);
-  box-shadow: 0 0 10px rgba(34, 211, 238, 0.75);
+  background: var(--accent);
 }
 
 /* responsive */
