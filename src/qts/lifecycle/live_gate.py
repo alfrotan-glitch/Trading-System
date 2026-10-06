@@ -390,7 +390,6 @@ def check_reconciliation_health() -> tuple[bool, str]:
     :func:`check_reconciliation`; this check is the durable-state probe.
     """
     import sqlite3
-    from pathlib import Path
 
     from qts.config.paths import artifact_path
 
