@@ -70,8 +70,9 @@ class ExecutionMode(StrEnum):
     def can_submit_broker_orders(self) -> bool:
         """Whether the mode has a broker-capable boundary in the capability model.
 
-        Capability is not permission. DEMO_EXECUTION is hard-disabled by the
-        shipped product authority/API, and LIVE remains separately locked.
+        Capability is not permission. DEMO_EXECUTION is the only broker-capable
+        mode permitted by the shipped demo authority; LIVE remains separately
+        and structurally locked behind the live gate.
         """
         return self in (ExecutionMode.DEMO_EXECUTION, ExecutionMode.LIVE)
 
