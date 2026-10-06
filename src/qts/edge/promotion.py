@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -150,11 +151,14 @@ class PromotionLedger:
     def suspend_on_anomaly(self, strategy_id: str, reason: str):
         cur = self.get_state(strategy_id)
         if cur not in (PromotionState.SUSPENDED, PromotionState.REJECTED):
+            anomaly_hash = hashlib.sha256(
+                f"system-anomaly:{strategy_id}:{reason}".encode("utf-8")
+            ).hexdigest()
             self.transition(
                 strategy_id,
                 PromotionState.SUSPENDED,
                 reason=reason,
-                evidence_hash="system-anomaly",
+                evidence_hash=anomaly_hash,
             )
 
     def scaling_protocol(
