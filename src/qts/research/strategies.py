@@ -41,11 +41,16 @@ class TrendFollowingStrategy:
         self.strategy_id = strategy_id
         self._closes: list[Decimal] = []
 
-    def _ma(self, n: int) -> Decimal:
+    def _ma(self, n: int, values: list[Decimal] | None = None) -> Decimal:
+        values = self._closes if values is None else values
+        window = values[-n:]
         if self.ma_type == "ema":
-            # simplified EMA approx as SMA for determinism
-            return sum(self._closes[-n:]) / Decimal(n)
-        return sum(self._closes[-n:]) / Decimal(n)
+            alpha = Decimal(2) / Decimal(n + 1)
+            ema = window[0]
+            for value in window[1:]:
+                ema = (alpha * value) + ((Decimal(1) - alpha) * ema)
+            return ema
+        return sum(window) / Decimal(n)
 
     def on_bar(self, bar: Bar) -> list[Signal]:
         self._closes.append(bar.close)
@@ -53,8 +58,9 @@ class TrendFollowingStrategy:
             return []
         fast = self._ma(self.fast)
         slow = self._ma(self.slow)
-        prev_fast = sum(self._closes[-self.fast - 1 : -1]) / Decimal(self.fast)
-        prev_slow = sum(self._closes[-self.slow - 1 : -1]) / Decimal(self.slow)
+        previous = self._closes[:-1]
+        prev_fast = self._ma(self.fast, previous)
+        prev_slow = self._ma(self.slow, previous)
         if prev_fast <= prev_slow and fast > slow:
             return [
                 Signal(
