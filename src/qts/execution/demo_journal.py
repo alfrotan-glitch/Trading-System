@@ -355,7 +355,19 @@ class DemoOrderJournal:
                         f"duplicate/rate guard: order {recent[0]} was already requested this cycle "
                         f"(min interval {min_interval_s:.0f}s)"
                     )
-                # 4. one submission in flight at a time (exposure is capped, and
+                # 4. Any unresolved broker outcome is a global submission barrier.
+                #    A different client id cannot be used to route around it.
+                ambiguous = con.execute(
+                    "SELECT client_order_id FROM demo_order_journal "
+                    "WHERE state='AMBIGUOUS' ORDER BY journal_id DESC LIMIT 1"
+                ).fetchone()
+                if ambiguous is not None:
+                    return None, (
+                        f"unresolved ambiguous order {ambiguous[0]} requires broker reconciliation "
+                        "before any new economic order"
+                    )
+
+                # 5. one submission in flight at a time (exposure is capped, and
                 #    two concurrent market orders would double it).
                 inflight = con.execute(
                     "SELECT client_order_id FROM demo_order_journal "
@@ -365,7 +377,7 @@ class DemoOrderJournal:
                     return None, (
                         f"another submission is in flight ({inflight[0]}) — refusing to send a concurrent order"
                     )
-                # 5. claim it.
+                # 6. claim it.
                 cur = con.execute(
                     "INSERT INTO demo_order_journal (label, authorization_id, client_order_id, strategy_id,"
                     " strategy_config_hash, hypothesis_id, registry_entry_hash, symbol, broker_symbol, side,"
