@@ -793,6 +793,8 @@ class DemoSession:
         kill_active = kill_state.get("killed") if kill_state.get("readable") else None
         self_test_ok, self_test_detail = self.kill_switch_self_test()
 
+        reconcile_drift: str | None = None
+
         # Reconciliation must have run at least once before an order: an
         # unreconciled internal state is not a known state (fail closed). The
         # probe is read-only (positions/orders vs internal) and is attempted at
@@ -805,7 +807,6 @@ class DemoSession:
                 reconcile_drift = f"RECONCILIATION_UNAVAILABLE: {exc}"
 
         reconcile_suspended: bool | None = None
-        reconcile_drift: str | None = None
         try:
             engine = self.engine
             reconcile_suspended = bool(getattr(engine, "is_suspended", False))
