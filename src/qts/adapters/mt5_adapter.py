@@ -1511,71 +1511,72 @@ class MT5Adapter(BrokerAdapter):
         return value
 
     def server_utc_offset(self, symbol: str) -> tuple[float, str]:
-        """Measured trade-server<->UTC offset in seconds (east positive) + basis.
+        """Measure the broker-server -> UTC offset without inventing precision.
 
-        MT5 stamps ticks in trade-server local time and the Python API exposes
-        no server-time/offset call. Measurement: offset lies in
-        [bar_time - utc_now, bar_time + 60 - utc_now) and must be a multiple
-        of 15 minutes — a 60s window holds at most one such grid point, so a
-        match is EXACT.
-
-        Authoritative clock basis: true UTC is ``time.time()`` (system clock);
-        broker stamps are server-local. The offset is server - UTC, measured
-        via the forming-M1-bar probe. Canonical normalization is
-        ``event_time = broker_stamp - offset`` -> true UTC, single application,
-        never double-applied.
-
-        Failure handling (fix for FS-c42bbd +3h future-tick storm):
-        - If the probe succeeds, the measured offset is cached and returned.
-        - If the probe fails (no bar, stale bar, no grid point), we MUST NOT
-          lose a previously measured offset by overwriting it with 0. That
-          caused 2396 good ticks then 30 consecutive ``tick from future``
-          failures when the 5-minute TTL expired and ``copy_rates`` was
-          intermittently unavailable, falling back to 0.0 while ticks were
-          still server-local (+3h).
-        - Contract: on probe failure, retain the last known good offset if
-          present (return it, refresh its timestamp to avoid hammering); only
-          if no offset was ever measured do we fall back to
-          ``(0.0, 'assumed-utc-fallback')``. The fallback still loudly fails
-          via MarketDataProvider's unchanged future/stale validation instead
-          of silently mis-dating.
-
-        Cached per broker symbol for _OFFSET_TTL_S.
+        A fresh tick is the primary calibration source because its timestamp is
+        close to the current server clock and can resolve offsets such as +02:59.
+        If no fresh tick is available, the forming M1 bar provides a conservative
+        minute-resolution fallback. Failed probes never replace a known-good
+        offset with zero.
         """
         now_epoch = time.time()
         cached = self._server_offset_cache.get(symbol)
         if cached is not None and (now_epoch - cached[2]) < self._OFFSET_TTL_S:
             return cached[0], cached[1]
 
-        # Attempt fresh measurement
         measured_offset: float | None = None
         measured_basis: str | None = None
-        bar_time = self._latest_bar_time(symbol)
-        if bar_time is not None:
-            lo = bar_time - now_epoch
-            hi = lo + 60.0
-            grid = math.ceil(lo / self._OFFSET_QUANTUM_S) * self._OFFSET_QUANTUM_S
-            if lo <= grid < hi and abs(grid) <= self._MAX_PLAUSIBLE_OFFSET_S:
-                measured_offset, measured_basis = float(grid), "measured-m1-bar"
+
+        # Primary calibration: fresh broker tick.  The timestamp is rounded to
+        # the nearest minute only for the offset estimate; the tick itself keeps
+        # its original millisecond timestamp downstream.
+        mt5 = self._mt5
+        try:
+            tick = mt5.symbol_info_tick(symbol) if mt5 is not None else None
+        except Exception:
+            tick = None
+        if tick is not None:
+            raw_msc = _numeric_or_none(getattr(tick, "time_msc", None))
+            raw_s = _numeric_or_none(getattr(tick, "time", None))
+            if raw_msc is not None and raw_msc > 1e12:
+                tick_epoch = raw_msc / 1000.0
+            elif raw_s is not None:
+                tick_epoch = raw_s / 1000.0 if raw_s > 1e12 else raw_s
+            else:
+                tick_epoch = None
+            if tick_epoch is not None and tick_epoch > 1e9:
+                candidate = round((tick_epoch - now_epoch) / 60.0) * 60.0
+                normalized_age = abs((tick_epoch - candidate) - now_epoch)
+                if (
+                    abs(candidate) <= self._MAX_PLAUSIBLE_OFFSET_S
+                    and normalized_age <= self._OFFSET_TICK_MAX_AGE_S
+                ):
+                    measured_offset = float(candidate)
+                    measured_basis = "measured-fresh-tick"
+
+        # Conservative fallback: forming M1 bar. The bar is minute-aligned, so
+        # minute resolution is the honest precision available from this probe.
+        if measured_offset is None:
+            bar_time = self._latest_bar_time(symbol)
+            if bar_time is not None:
+                lo = bar_time - now_epoch
+                hi = lo + 60.0
+                grid = math.ceil(lo / self._OFFSET_QUANTUM_S) * self._OFFSET_QUANTUM_S
+                if lo <= grid < hi and abs(grid) <= self._MAX_PLAUSIBLE_OFFSET_S:
+                    measured_offset, measured_basis = float(grid), "measured-m1-bar"
 
         if measured_offset is not None and measured_basis is not None:
             self._server_offset_cache[symbol] = (measured_offset, measured_basis, now_epoch)
             return measured_offset, measured_basis
 
-        # Measurement failed — retain previous good offset if any, do not lose it
+        # Measurement failed — retain the last good offset, but mark the cache
+        # refresh time so repeated failures do not hammer the terminal.
         if cached is not None:
             prev_offset, prev_basis, _ = cached
-            # Refresh timestamp to avoid tight retry loop, but keep offset/basis
             self._server_offset_cache[symbol] = (prev_offset, prev_basis, now_epoch)
             return prev_offset, prev_basis
 
-        # No previous offset ever measured — fallback for THIS call only, loudly
-        # rejected for server-basis stamps downstream. The fallback is deliberately
-        # NOT cached: caching it for the whole TTL meant one transient copy_rates
-        # failure poisoned every normalized tick until expiry — the readiness gate
-        # (server-clock contract) saw fresh quotes while the product quote probes
-        # starved on fabricated-future event times. Uncached, the next tick
-        # re-attempts the measurement; a retained measured offset is never lost.
+        # No measurement exists. Do not cache a fabricated UTC basis.
         return 0.0, "assumed-utc-fallback"
 
     def raw_tick_freshness(self, symbol: str, epoch_seconds: float | None) -> tuple[bool, str]:
