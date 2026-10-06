@@ -58,3 +58,28 @@ def test_claim_rejects_reused_client_order_id(tmp_path):
     second, reason = _claim(journal, "same-id")
     assert second is None
     assert "already exists" in reason
+
+
+def test_ambiguous_order_is_global_submission_barrier(tmp_path):
+    journal = DemoOrderJournal(tmp_path / "journal.db")
+    journal.open_order(
+        client_order_id="ambiguous-id",
+        strategy_id="test-strategy",
+        strategy_config_hash="hash",
+        symbol="XAUUSD",
+        side="BUY",
+        requested_lots="0.01",
+        order_request={"symbol": "XAUUSD@"},
+    )
+    from qts.db import connect
+
+    with connect(journal.db_path) as con:
+        con.execute(
+            "UPDATE demo_order_journal SET state='AMBIGUOUS', exit_reason='unknown' "
+            "WHERE client_order_id='ambiguous-id'"
+        )
+        con.commit()
+
+    claimed, reason = _claim(journal, "new-economic-id")
+    assert claimed is None
+    assert "ambiguous" in reason.lower()
