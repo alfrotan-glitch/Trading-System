@@ -119,16 +119,12 @@ class DemoSession:
         # An unresolved broker outcome is a durable global execution barrier.
         # Restore that barrier into the stage machine on every restart so a
         # fresh process cannot route around it with a different client id.
-        with contextlib.suppress(Exception):
-            ambiguous = [
-                row for row in self.journal.list_orders(limit=500)
-                if row.get("state") == "AMBIGUOUS"
-            ]
-            if ambiguous:
-                self.stage.halt(
-                    reason=f"unresolved broker outcome: {ambiguous[0].get('client_order_id')}",
-                    actor=config.actor,
-                )
+        ambiguous = self.journal.ambiguous_orders()
+        if ambiguous:
+            self.stage.halt(
+                reason=f"unresolved broker outcome: {ambiguous[0].get('client_order_id')}",
+                actor=config.actor,
+            )
         self._mt5: Any = config.mt5_module
         self._adapter: Any = None
         self._engine: Any = None
