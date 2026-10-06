@@ -557,11 +557,20 @@ class DemoOrderJournal:
         return [dict(r) for r in rows]
 
     def open_orders(self) -> list[dict[str, Any]]:
+        """Orders whose economic lifecycle is still unresolved.
+
+        AMBIGUOUS is intentionally included: an unknown broker outcome is
+        economically open until reconciliation proves otherwise.
+        """
         return [
             r
             for r in self.list_orders(limit=500)
-            if r.get("state") in ("NEW", "SUBMITTED", "ACCEPTED", "FILLED")
+            if r.get("state") in ("NEW", "SUBMITTED", "ACCEPTED", "FILLED", "AMBIGUOUS")
         ]
+
+    def ambiguous_orders(self) -> list[dict[str, Any]]:
+        """Return unresolved broker outcomes; these are a hard execution barrier."""
+        return [r for r in self.list_orders(limit=1000) if r.get("state") == "AMBIGUOUS"]
 
     def daily_realized_pnl(self, day: date | None = None) -> Decimal:
         """Realized P&L for the UTC day (negative = loss)."""
