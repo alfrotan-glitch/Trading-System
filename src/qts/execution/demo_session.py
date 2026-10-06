@@ -33,14 +33,13 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from qts.config.paths import artifact_path
 from qts.domain.modes import ExecutionMode
 from qts.execution.demo_journal import DemoOrderJournal
 from qts.execution.demo_pretrade import DEFAULT_MIN_ORDER_INTERVAL_S, DemoPretradeContext, run_pretrade_gate
 from qts.execution.order_truth import open_demo_journal
 from qts.lifecycle.demo_authorization import resolve_demo_execution_policy
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStageMachine
-
-from qts.config.paths import artifact_path
 
 DEFAULT_DB_PATH = artifact_path("db")
 SELF_TEST_DB = artifact_path("db").with_name("demo_killswitch_selftest.db")
