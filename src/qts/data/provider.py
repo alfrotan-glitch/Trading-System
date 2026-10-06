@@ -8,6 +8,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
 from qts.domain.value_objects import Bar, Instrument
 
 
