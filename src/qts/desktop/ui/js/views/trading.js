@@ -1,7 +1,7 @@
 /* Trading — Paper/Shadow · Demo Forward · Execution · Comparison
    Safety is primary: DEMO vs LIVE unmistakable, what blocked why what next explicit. */
 
-import { api, store, RESOURCES, syncResource } from "../api.js";
+import { api, store, RESOURCES, syncResource, poll } from "../api.js";
 import { operationalState, freshness, demoSentence } from "../operations.js";
 import { h, icon, clear } from "../dom.js";
 import {
@@ -144,6 +144,7 @@ export async function renderDemo(root) {
   root.appendChild(host);
   let guide = null;
   let acting = false;
+  let staleSince = null; // set when a background re-check fails — the screen must say so
 
   // ---- plain-language helpers ------------------------------------------------
   const toneFor = (g) => (g.status === "ready" ? "ok" : g.status === "stopped" ? "err" : "warn");
@@ -315,6 +316,9 @@ export async function renderDemo(root) {
     }, label === "BUY" ? "Buy" : "Sell");
 
     async function submit(dry) {
+      if (acting) return; // one submission at a time — also parks the background poll
+      acting = true;
+      try {
       const payload = { side, lots: size.value || undefined, stop_loss: stop.value || undefined, confirmed: true, risk_ack: true };
       if (dry) payload.dry_run = true;
       if (!dry) {
@@ -366,6 +370,9 @@ export async function renderDemo(root) {
             h("div", { class: "hint" }, `Failed check: ${r.primary?.id ?? "unidentified"} — ${r.primary?.technical ?? ""}`),
             tech(b, "Raw refusal")),
         );
+      }
+      } finally {
+        acting = false;
       }
     }
 
@@ -596,6 +603,13 @@ export async function renderDemo(root) {
     clear(host);
     const g = guide;
 
+    // Honesty about age: if the backend stopped answering, every number on
+    // this screen is a snapshot — never let it impersonate the present.
+    if (staleSince) {
+      host.appendChild(banner("err", "Connection to QTS lost — this screen may be out of date",
+        `The state below was last confirmed at ${new Date(staleSince).toLocaleTimeString()}. Nothing shown here is live until the connection returns.`, "alert"));
+    }
+
     // Unmistakable status headline.
     host.appendChild(h("section", { class: "operator-summary" },
       h("div", null,
@@ -664,6 +678,7 @@ export async function renderDemo(root) {
     try {
       const g = await api.get("/api/demo/guide");
       guide = g;
+      staleSince = null;
       render();
     } catch (e) {
       clear(host);
@@ -671,6 +686,29 @@ export async function renderDemo(root) {
       host.appendChild(h("div", { class: "mt-3" }, h("button", { class: "btn primary", onclick: () => load(true) }, icon("refresh", 14), "Retry")));
     }
   }
+
+  // Continuous readiness: re-measure the guide every 30s so a kill switch,
+  // a closed market session, or a dead terminal can never leave a stale
+  // "READY" on screen. The poll never steals the operator's work — it skips
+  // while an action or confirmation is running and while they are typing in
+  // the order ticket — and when the backend stops answering it says so
+  // instead of silently keeping the last snapshot.
+  const operatorBusy = () => {
+    if (acting || document.body.classList.contains("modal-open")) return true;
+    const el = document.activeElement;
+    return !!el && root.contains(el) && ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
+  };
+  const stopGuidePoll = poll(async () => {
+    if (operatorBusy()) return;
+    try {
+      guide = await api.get("/api/demo/guide");
+      staleSince = null;
+    } catch (_) {
+      if (!staleSince) staleSince = guide?.checked_at ? Date.parse(guide.checked_at) : Date.now();
+    }
+    render();
+  }, 30000);
+  onDispose(root, stopGuidePoll);
 
   await load();
 }
