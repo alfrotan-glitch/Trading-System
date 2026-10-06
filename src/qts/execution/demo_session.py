@@ -525,65 +525,118 @@ class DemoSession:
         comment: str | None = None,
         actor: str | None = None,
     ) -> dict[str, Any]:
-        """Close an open DEMO position by ticket, journal the outcome, and reconcile."""
+        """Close a DEMO position and confirm the venue state before marking it closed."""
         ticket_int = int(ticket)
-        matching_pos: dict[str, Any] | None = None
-        try:
-            for p in self.adapter.position_details():
-                if p.get("ticket") == ticket_int:
-                    matching_pos = p
-                    break
-        except Exception:
-            pass
 
-        close_comment = comment or f"close-{ticket_int}"[:31]
-        receipt = self.adapter.close_position(
-            ticket_int,
-            volume=volume,
-            comment=close_comment,
+        # Read the exact venue position first. A close is never speculative and
+        # never allowed to operate from stale local journal state.
+        positions = self.adapter.position_details()
+        matching_pos = next(
+            (p for p in positions if int(p.get("ticket")) == ticket_int),
+            None,
         )
+        if matching_pos is None:
+            raise ValueError(f"position {ticket_int} is not currently open at the venue")
 
-        matched_journal_row: dict[str, Any] | None = None
+        current_volume = Decimal(str(matching_pos.get("volume") or "0"))
+        close_volume = current_volume if volume is None else Decimal(str(volume))
+        if close_volume <= 0 or close_volume > current_volume:
+            raise ValueError(
+                f"close volume {close_volume} is invalid for position {ticket_int} "
+                f"(current volume {current_volume})"
+            )
+
+        close_comment = comment or f"close-{ticket_int}"
+        try:
+            receipt = self.adapter.close_position(
+                ticket_int,
+                volume=close_volume,
+                comment=close_comment,
+            )
+        except (TimeoutError, ConnectionError) as exc:
+            # The venue may have accepted the request even though transport
+            # failed. Never label the position closed and never retry blindly.
+            self.stage.halt(
+                reason=f"ambiguous close outcome for ticket {ticket_int}: {exc}",
+                actor=actor or self.config.actor,
+            )
+            return {
+                "success": False,
+                "state": "AMBIGUOUS",
+                "ticket": ticket_int,
+                "error": f"{type(exc).__name__}: {exc}",
+                "reconciliation": self.reconcile(),
+            }
+
+        retcode = receipt.get("retcode")
+        done_codes = {getattr(self.adapter, "RETCODE_DONE", 10009)}
+        partial_codes = {getattr(self.adapter, "RETCODE_DONE_PARTIAL", 10010)}
+        placed_codes = {getattr(self.adapter, "RETCODE_PLACED", 10008)}
+
+        if retcode in placed_codes:
+            self.stage.halt(
+                reason=f"close order for ticket {ticket_int} placed but outcome not yet confirmed",
+                actor=actor or self.config.actor,
+            )
+            reconciliation = self.reconcile()
+            return {
+                "success": False,
+                "state": "AMBIGUOUS",
+                "ticket": ticket_int,
+                "receipt": receipt,
+                "reconciliation": reconciliation,
+            }
+
+        if retcode not in done_codes | partial_codes:
+            raise RuntimeError(f"unexpected close receipt retcode {retcode}: {receipt}")
+
+        # A broker DONE receipt is not enough to declare the position lifecycle
+        # closed: verify the actual remaining venue position.
         with contextlib.suppress(Exception):
-            for row in self.journal.open_orders():
-                if row.get("broker_position_id") and str(row["broker_position_id"]) == str(ticket_int):
-                    matched_journal_row = row
-                    break
-                if matching_pos and row.get("broker_symbol") == matching_pos.get("symbol") and row.get("side") == matching_pos.get("side"):
-                    matched_journal_row = row
-                    break
+            self.sync_fills()
+        remaining = [
+            p for p in self.adapter.position_details()
+            if int(p.get("ticket")) == ticket_int
+        ]
+        fully_closed = not remaining
+        matched_journal_row: dict[str, Any] | None = None
+        for row in self.journal.open_orders():
+            if row.get("broker_position_id") and str(row["broker_position_id"]) == str(ticket_int):
+                matched_journal_row = row
+                break
 
-        profit = Decimal(str(matching_pos.get("profit") or "0")) if matching_pos else Decimal("0")
-        price_current = matching_pos.get("price_current") if matching_pos else None
-
-        if matched_journal_row is not None:
+        if fully_closed and matched_journal_row is not None:
+            profit = Decimal(str(matching_pos.get("profit") or "0"))
             self.journal.mark_outcome(
                 int(matched_journal_row["journal_id"]),
                 state="CLOSED",
                 exit_reason=reason,
                 realized_pnl=profit,
                 market_state_exit={
-                    "price_current": price_current,
+                    "price_current": matching_pos.get("price_current"),
                     "close_receipt": receipt,
                     "closed_by": actor or self.config.actor,
                 },
             )
 
-        with contextlib.suppress(Exception):
-            self.sync_fills()
-
         reconciliation = self.reconcile()
         if reconciliation.get("requires_suspend"):
             self.stage.halt(
-                reason=f"reconciliation drift after closing ticket {ticket_int}: {reconciliation.get('drift')} {reconciliation.get('details')}",
+                reason=(
+                    f"reconciliation drift after closing ticket {ticket_int}: "
+                    f"{reconciliation.get('drift')} {reconciliation.get('details')}"
+                ),
                 actor=actor or self.config.actor,
             )
 
         return {
-            "success": True,
+            "success": fully_closed and not reconciliation.get("requires_suspend"),
+            "state": "CLOSED" if fully_closed else "PARTIALLY_CLOSED",
             "ticket": ticket_int,
             "receipt": receipt,
-            "realized_pnl": str(profit),
+            "remaining_volume": (
+                str(Decimal(str(remaining[0].get("volume") or "0"))) if remaining else "0"
+            ),
             "journal_id": matched_journal_row.get("journal_id") if matched_journal_row else None,
             "reconciliation": reconciliation,
         }
