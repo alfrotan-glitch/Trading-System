@@ -668,11 +668,9 @@ class DemoSession:
         # so a legitimate broker position would look like drift
         # (UNKNOWN_POSITION) and block everything. Rebuild local state from the
         # broker's deal history FIRST, then compare like with like.
-        try:
-            if not engine.portfolio.positions and list(engine.broker.positions() or []):
-                self.sync_fills()
-        except Exception:
-            pass
+        broker_positions = list(engine.broker.positions() or [])
+        if not engine.portfolio.positions and broker_positions:
+            self.sync_fills()
         report = engine.reconcile()
         self._last_reconcile = report
         self._last_reconcile_at = datetime.now(UTC)
