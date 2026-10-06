@@ -123,6 +123,16 @@ class PromotionLedger:
             cur = PromotionState(row[0]) if row else PromotionState.RESEARCH
             if target is PromotionState.DEMO_EXECUTION:
                 raise ValueError("DEMO_EXECUTION is disabled by product policy; no promotion path is shipped")
+            evidence_required = {
+                PromotionState.VALIDATED,
+                PromotionState.PAPER_VERIFIED,
+                PromotionState.SHADOW_VERIFIED,
+                PromotionState.MICRO_ELIGIBLE,
+                PromotionState.MICRO_VALIDATED,
+                PromotionState.LIVE_ELIGIBLE,
+            }
+            if target in evidence_required and not str(evidence_hash).strip():
+                raise ValueError(f"promotion target {target} requires evidence_hash")
             if target not in _ALLOWED.get(cur, set()):
                 raise ValueError(f"transition {cur} -> {target} not allowed (one-way, no skip)")
             now = datetime.now(UTC).isoformat()
