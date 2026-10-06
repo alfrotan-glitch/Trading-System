@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
+from qts.db import connect
 from qts.execution.demo_journal import DemoOrderJournal
 
 
@@ -18,7 +19,7 @@ def _claim(journal: DemoOrderJournal, client_order_id: str):
     )
 
 
-def test_stale_inflight_becomes_ambiguous_not_rejected(tmp_path, monkeypatch):
+def test_stale_inflight_becomes_ambiguous_not_rejected(tmp_path):
     journal = DemoOrderJournal(tmp_path / "journal.db")
     journal.open_order(
         client_order_id="old-order",
@@ -30,10 +31,6 @@ def test_stale_inflight_becomes_ambiguous_not_rejected(tmp_path, monkeypatch):
         order_request={"symbol": "XAUUSD@"},
     )
     old = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
-    with journal.db_path.open("rb"):
-        pass
-    from qts.db import connect
-
     with connect(journal.db_path) as con:
         con.execute(
             "UPDATE demo_order_journal SET requested_at=?, updated_at=? WHERE client_order_id=?",
@@ -71,8 +68,6 @@ def test_ambiguous_order_is_global_submission_barrier(tmp_path):
         requested_lots="0.01",
         order_request={"symbol": "XAUUSD@"},
     )
-    from qts.db import connect
-
     with connect(journal.db_path) as con:
         con.execute(
             "UPDATE demo_order_journal SET state='AMBIGUOUS', exit_reason='unknown' "
