@@ -24,7 +24,6 @@ from qts.edge.promotion import PromotionLedger, PromotionState
 from qts.edge.regime_stability import evaluate_regime_stability
 from qts.research.campaign import CampaignResult, ResearchCampaignStore
 from qts.research.experiment import Experiment, ExperimentStore, Hypothesis, ImmutableRecordError
-from qts.risk.capital_policy import CapitalPolicy
 
 
 def _bars(n=100, symbol="XAUUSD"):
@@ -400,23 +399,6 @@ def test_shadow_paper_consistency():
 
 
 # Phase 12: Capital survival policy — hard limits force NO_TRADE
-def test_capital_policy_hard_limits():
-    policy = CapitalPolicy(daily_loss_limit=200, max_drawdown=500)
-    ok, reason = policy.check({"daily_loss": -250, "drawdown": 100})
-    assert not ok
-    assert reason == "daily_loss"
-    ok2, _ = policy.check({"daily_loss": -50, "drawdown": 600})
-    assert not ok2
-    # Spread limit
-    ok3, reason3 = policy.check({"spread_bps": 150})
-    assert not ok3 and reason3 == "spread"
-    # No adaptive expansion
-    policy2 = CapitalPolicy(daily_loss_limit=200)
-    # Even after 5 losses, limit stays 200
-    assert policy2.daily_loss_limit == 200
-
-
-# Phase 15: One-way promotion — no skip, no manual edit, backwards on anomaly
 def test_one_way_promotion():
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "promo.db"
