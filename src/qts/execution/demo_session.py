@@ -1358,8 +1358,32 @@ class DemoSession:
         # MT5 fill is a deal, and the portfolio only learns about it when the
         # deals are polled. Reconciling first would compare a stale empty
         # portfolio against a real venue position and suspend on phantom drift.
-        with contextlib.suppress(Exception):
+        # Fill polling is part of the execution truth chain. If it fails,
+        # the venue may have filled while local state is stale; never suppress
+        # that uncertainty and continue as if the order were reconciled.
+        try:
             self.engine.poll_live_fills()
+        except Exception as exc:
+            self.journal.mark_outcome(
+                journal_id,
+                state="AMBIGUOUS",
+                exit_reason=f"post-submit fill synchronization failed; reconciliation required: {exc}",
+            )
+            self.stage.halt(
+                reason=f"post-submit fill synchronization failed for {client_order_id}",
+                actor=self.config.actor,
+            )
+            reconciliation = self.reconcile()
+            return SubmissionResult(
+                allowed=False,
+                client_order_id=client_order_id,
+                journal_id=journal_id,
+                broker_order_id=broker_order_id or None,
+                broker_position_id=broker_position_id or None,
+                state="AMBIGUOUS",
+                reasons=[f"fill synchronization failed: {type(exc).__name__}: {exc}"],
+                verdict=verdict.as_dict(),
+            )
 
         # Reconciliation after EVERY submitted order (safeguard #13).
         reconciliation = self.reconcile()
