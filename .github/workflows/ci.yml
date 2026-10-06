@@ -15,6 +15,10 @@ concurrency:
 
 jobs:
   quality:
+    # A PR from this canonical branch is already verified by the push run.
+    # Skip the duplicate PR execution so one commit does not consume two full
+    # test runners.
+    if: github.event_name != 'pull_request' || github.head_ref != 'arena/01a0ce9f-trading-system'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
