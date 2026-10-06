@@ -9,6 +9,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from qts.db import connect as db_connect
+from qts.db import immediate as db_immediate
 
 
 class PromotionState(StrEnum):
@@ -112,25 +113,29 @@ class PromotionLedger:
     def transition(
         self, strategy_id: str, target: PromotionState, reason: str = "", evidence_hash: str = ""
     ) -> PromotionRecord:
-        cur = self.get_state(strategy_id)
-        ok, msg = self.can_transition(strategy_id, target)
-        if not ok:
-            raise ValueError(msg)
-        # No manual DB edit can promote — all via this method (audit logged)
-        with db_connect(self.db_path) as con:
-            con.execute(
-                "INSERT OR REPLACE INTO promotion_state VALUES (?,?,?)",
-                (strategy_id, target.value, datetime.now(UTC).isoformat()),
-            )
+        # State check and write must share one transaction. Two concurrent
+        # promotion callers must not both observe the same predecessor state
+        # and then create an invalid double transition.
+        with db_immediate(self.db_path) as con:
+            row = con.execute(
+                "SELECT state FROM promotion_state WHERE strategy_id=?", (strategy_id,)
+            ).fetchone()
+            cur = PromotionState(row[0]) if row else PromotionState.RESEARCH
+            if target is PromotionState.DEMO_EXECUTION:
+                raise ValueError("DEMO_EXECUTION is disabled by product policy; no promotion path is shipped")
+            if target not in _ALLOWED.get(cur, set()):
+                raise ValueError(f"transition {cur} -> {target} not allowed (one-way, no skip)")
+            now = datetime.now(UTC).isoformat()
             rec_id = f"{strategy_id}:{cur}->{target}:{datetime.now(UTC).timestamp()}"
             con.execute(
-                "INSERT INTO promotion_log VALUES (?,?,?,?,?,?,?)",
-                (rec_id, strategy_id, cur.value, target.value, datetime.now(UTC).isoformat(), reason, evidence_hash),
+                "INSERT OR REPLACE INTO promotion_state VALUES (?,?,?)",
+                (strategy_id, target.value, now),
             )
-            con.commit()
-        return PromotionRecord(
-            strategy_id, cur.value, target.value, datetime.now(UTC).isoformat(), reason, evidence_hash
-        )
+            con.execute(
+                "INSERT INTO promotion_log VALUES (?,?,?,?,?,?,?)",
+                (rec_id, strategy_id, cur.value, target.value, now, reason, evidence_hash),
+            )
+            return PromotionRecord(strategy_id, cur.value, target.value, now, reason, evidence_hash)
 
     def suspend_on_anomaly(self, strategy_id: str, reason: str):
         cur = self.get_state(strategy_id)
