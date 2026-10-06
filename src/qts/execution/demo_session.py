@@ -40,8 +40,10 @@ from qts.execution.order_truth import open_demo_journal
 from qts.lifecycle.demo_authorization import resolve_demo_execution_policy
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStageMachine
 
-DEFAULT_DB_PATH = Path("data/sqlite/qts.db")
-SELF_TEST_DB = Path("data/sqlite/demo_killswitch_selftest.db")
+from qts.config.paths import artifact_path
+
+DEFAULT_DB_PATH = artifact_path("db")
+SELF_TEST_DB = artifact_path("db").with_name("demo_killswitch_selftest.db")
 
 
 def new_client_order_id(prefix: str = "demo") -> str:
