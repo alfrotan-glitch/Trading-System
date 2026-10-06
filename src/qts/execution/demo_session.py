@@ -775,8 +775,10 @@ class DemoSession:
         permitted, authority_reasons = self.authority.is_execution_permitted()
 
         identity = None
-        with contextlib.suppress(Exception):
+        try:
             identity = self.adapter.broker_identity()
+        except Exception as exc:
+            raise RuntimeError(f"broker identity unavailable: {exc}") from exc
         pin, pin_reasons = load_pin()
 
         symbol_probe = self._symbol_probe()
