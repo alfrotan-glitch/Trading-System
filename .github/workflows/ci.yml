@@ -1,0 +1,42 @@
+name: QTS CI
+
+on:
+  push:
+    branches: ["arena/01a0ce9f-trading-system"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qts-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Python dependencies
+        run: pip install -e ".[dev]"
+      - name: Install UI test dependencies
+        run: npm ci
+      - name: Static checks
+        run: |
+          ruff check src/ tests/
+          mypy src
+          bandit -q -r src
+      - name: Fast Python suite
+        run: pytest -q
+      - name: Integration and research suites
+        run: pytest -q --run-integration --run-research
+      - name: UI tests
+        run: npm test
