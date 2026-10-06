@@ -413,6 +413,35 @@ def check_reconciliation_health() -> tuple[bool, str]:
         return False, f"reconcile health failed: {e}"
 
 
+def check_validated_edge() -> tuple[bool, str]:
+    """Require explicit, current after-cost edge evidence before any LIVE claim.
+
+    Software readiness is not a trading edge. A paper/shadow artifact or a
+    structurally valid promotion ledger cannot override a research conclusion
+    such as NO_VALIDATED_EDGE or BLOCKED_INSUFFICIENT_DATA.
+    """
+    try:
+        from qts.config.paths import artifact_path
+
+        path = artifact_path("edge_validation")
+        if not path.exists() or path.stat().st_size <= 10:
+            return False, "validated-edge evidence missing"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return False, "validated-edge evidence is not a JSON object"
+        conclusion = str(data.get("conclusion") or data.get("edge_survival", {}).get("conclusion") or "").upper()
+        survival = data.get("edge_survival") or {}
+        if survival.get("passed") is not True:
+            return False, f"validated edge blocked: edge_survival.passed={survival.get('passed')!r}"
+        if conclusion not in {"VALIDATED", "EDGE_VALIDATED"}:
+            return False, f"validated edge blocked: conclusion={conclusion or 'missing'}"
+        if (data.get("promotion") or {}).get("advanced") is not True:
+            return False, "validated edge blocked: promotion evidence is not advanced"
+        return True, f"validated after-cost edge proven by {path.name}"
+    except (OSError, ValueError, TypeError) as exc:
+        return False, f"validated-edge evidence unreadable — fail closed: {exc}"
+
+
 def check_validation_evidence() -> tuple[bool, str]:
     try:
         # Check that validation evidence exists (backtest + validation).
@@ -456,6 +485,7 @@ def live_readiness_report() -> dict[str, Any]:
         "shadow_evidence": check_shadow_evidence(),
         "audit_evidence": check_audit_evidence(),
         "validation_evidence": check_validation_evidence(),
+        "validated_edge": check_validated_edge(),
     }
     report: dict[str, Any] = {}
     all_pass = True
@@ -478,6 +508,7 @@ def live_readiness_report() -> dict[str, Any]:
         "shadow_evidence": "integration",
         "audit_evidence": "integration",
         "validation_evidence": "integration",
+        "validated_edge": "integration",
     }
     for k, (passed, detail) in checks.items():
         report[k] = {"passed": passed, "detail": detail, "proof_tier": PROOF_TIERS.get(k, "structural")}
