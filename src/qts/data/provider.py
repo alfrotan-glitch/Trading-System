@@ -5,12 +5,9 @@ Every dataset immutable: dataset ID, source ID, ingestion timestamp, checksum, s
 
 from __future__ import annotations
 
-import hashlib
 from abc import ABC, abstractmethod
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
-
 from qts.domain.value_objects import Bar, Instrument
 
 
@@ -34,11 +31,10 @@ class CsvProvider(DataProvider):
     description = "CSV file on disk — local synthetic or exported history"
 
     def fetch(self, instrument: str, timeframe: str, start: datetime, end: datetime, dest_raw: Path) -> Path:
-        # For local CSV, dest_raw is already the source; copy to raw storage for provenance
+        # For local CSV, dest_raw is already the source; copy to raw storage for provenance.
         return dest_raw
 
     def parse(self, raw_path: Path, instrument: str, timeframe: str) -> list[Bar]:
-        # Use ingest_csv parsing but without writing — replicate logic
         import csv
         from decimal import Decimal
 
@@ -63,8 +59,6 @@ class CsvProvider(DataProvider):
                 else:
                     tf_map = {"1m": 1, "5m": 5, "15m": 15, "1H": 60, "1D": 1440}
                     mins = tf_map.get(timeframe, 60)
-                    from datetime import timedelta
-
                     ct = ot + timedelta(minutes=mins)
                 bars.append(
                     Bar(
@@ -88,12 +82,10 @@ class SyntheticProvider(DataProvider):
     description = "Synthetic GBM for controlled simulations — must be labeled SYNTHETIC, never as real"
 
     def fetch(self, instrument: str, timeframe: str, start: datetime, end: datetime, dest_raw: Path) -> Path:
-        # Generate synthetic bars and write to dest_raw as CSV for raw preservation
         from qts.data.synthetic import generate_gbm_bars, write_csv
         from qts.domain.value_objects import AssetClass
 
         instr = Instrument(symbol=instrument, venue="MT5", asset_class=AssetClass.METAL)
-        # Estimate periods from start/end
         tf_map = {"1m": 1, "5m": 5, "15m": 15, "1H": 60, "1D": 1440}
         mins = tf_map.get(timeframe, 60)
         periods = max(1, int((end - start).total_seconds() // 60 // mins))
