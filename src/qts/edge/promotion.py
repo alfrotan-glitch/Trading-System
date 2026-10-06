@@ -150,8 +150,12 @@ class PromotionLedger:
     def suspend_on_anomaly(self, strategy_id: str, reason: str):
         cur = self.get_state(strategy_id)
         if cur not in (PromotionState.SUSPENDED, PromotionState.REJECTED):
-            with contextlib.suppress(Exception):
-                self.transition(strategy_id, PromotionState.SUSPENDED, reason=reason)
+            self.transition(
+                strategy_id,
+                PromotionState.SUSPENDED,
+                reason=reason,
+                evidence_hash="system-anomaly",
+            )
 
     def scaling_protocol(
         self,
