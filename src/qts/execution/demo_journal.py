@@ -332,7 +332,18 @@ class DemoOrderJournal:
                     "updated_at=? WHERE state IN ('NEW','SUBMITTED') AND requested_at < ?",
                     (now, stale_cutoff),
                 )
-                # 2. duplicate / rate guard on committed rows.
+                # 2. client_order_id is the economic idempotency key.
+                existing = con.execute(
+                    "SELECT state FROM demo_order_journal WHERE client_order_id=? "
+                    "ORDER BY journal_id DESC LIMIT 1",
+                    (client_order_id,),
+                ).fetchone()
+                if existing is not None:
+                    return None, (
+                        f"client_order_id {client_order_id} already exists in state {existing[0]} — refusing duplicate"
+                    )
+
+                # 3. duplicate / rate guard on committed rows.
                 recent = con.execute(
                     "SELECT client_order_id, requested_at FROM demo_order_journal "
                     "WHERE strategy_id IS ? AND symbol IS ? AND side IS ? AND state NOT IN ('REJECTED') "
@@ -344,7 +355,7 @@ class DemoOrderJournal:
                         f"duplicate/rate guard: order {recent[0]} was already requested this cycle "
                         f"(min interval {min_interval_s:.0f}s)"
                     )
-                # 3. one submission in flight at a time (exposure is capped, and
+                # 4. one submission in flight at a time (exposure is capped, and
                 #    two concurrent market orders would double it).
                 inflight = con.execute(
                     "SELECT client_order_id FROM demo_order_journal "
@@ -354,7 +365,7 @@ class DemoOrderJournal:
                     return None, (
                         f"another submission is in flight ({inflight[0]}) — refusing to send a concurrent order"
                     )
-                # 4. claim it.
+                # 5. claim it.
                 cur = con.execute(
                     "INSERT INTO demo_order_journal (label, authorization_id, client_order_id, strategy_id,"
                     " strategy_config_hash, hypothesis_id, registry_entry_hash, symbol, broker_symbol, side,"
