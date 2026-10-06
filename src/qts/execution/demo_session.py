@@ -1369,23 +1369,43 @@ class DemoSession:
             )
 
         executed_price = receipt.get("executed_price") or ""
-        self.journal.mark_submitted(
-            journal_id,
-            submitted_at=submitted_at.isoformat(),
-            broker_order_id=broker_order_id or None,
-            broker_position_id=broker_position_id or None,
-            broker_retcode=str(receipt.get("retcode") or ""),
-            latency_ms=latency_ms,
-        )
-        if executed_price:
-            self.journal.mark_fill(
+        try:
+            self.journal.mark_submitted(
                 journal_id,
-                filled_lots=Decimal(str(receipt.get("executed_volume") or size)),
-                executed_price=Decimal(str(executed_price)),
-                requested_price=requested_price,
-                spread_bps=quote.get("spread_bps"),
-                market_state_entry=quote,
+                submitted_at=submitted_at.isoformat(),
+                broker_order_id=broker_order_id or None,
                 broker_position_id=broker_position_id or None,
+                broker_retcode=str(receipt.get("retcode") or ""),
+                latency_ms=latency_ms,
+            )
+            if executed_price:
+                self.journal.mark_fill(
+                    journal_id,
+                    filled_lots=Decimal(str(receipt.get("executed_volume") or size)),
+                    executed_price=Decimal(str(executed_price)),
+                    requested_price=requested_price,
+                    spread_bps=quote.get("spread_bps"),
+                    market_state_entry=quote,
+                    broker_position_id=broker_position_id or None,
+                )
+        except Exception as exc:
+            # The broker has already returned an outcome. A local persistence
+            # failure therefore cannot be treated as a broker rejection: the
+            # economic outcome may exist while our journal is incomplete.
+            self.stage.halt(
+                reason=f"local execution journal persistence failed for {client_order_id}",
+                actor=self.config.actor,
+            )
+            reconciliation = self.reconcile()
+            return SubmissionResult(
+                allowed=False,
+                client_order_id=client_order_id,
+                journal_id=journal_id,
+                broker_order_id=broker_order_id or None,
+                broker_position_id=broker_position_id or None,
+                state="AMBIGUOUS",
+                reasons=[f"local execution persistence failed: {type(exc).__name__}: {exc}"],
+                verdict=verdict.as_dict(),
             )
 
         # Bring local state up to date with the broker BEFORE reconciling: an
