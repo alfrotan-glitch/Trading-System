@@ -104,7 +104,7 @@ qts demo verify
 │   ├── evidence/       # Preregistration artifacts, validation registries, order journals
 │   └── setup/          # Machine-local wizard setup (symbol maps, terminal paths)
 ├── docs/               # 10 Canonical product documentation guides
-├── scripts/            # History acquisition, discovery audit, and setup tools
+├── scripts/            # History acquisition, diagnostics, and setup tools
 ├── src/qts/
 │   ├── adapters/       # MT5 broker adapter and IPC bridges
 │   ├── api/            # FastAPI app and route modules under api/routes/
@@ -142,10 +142,11 @@ find src/qts/desktop/ui/js -name '*.js' -print0 | xargs -0 -n1 node --check
 npm test
 
 # 3. Python tests
-# Default pytest runs tests/integration as well.
-# --run-integration is only required for an explicit @pytest.mark.integration marker.
+# Fast developer suite (integration + research are intentionally opt-in)
 pytest
-pytest tests/integration --run-integration
+
+# Full verification
+pytest --run-integration --run-research
 ```
 
 ---
