@@ -285,8 +285,10 @@ class DemoSession:
 
         pin, reasons = load_pin()
         identity = None
-        with contextlib.suppress(Exception):
+        try:
             identity = self.adapter.broker_identity()
+        except Exception as exc:
+            raise RuntimeError(f"broker identity unavailable: {exc}") from exc
         verified: bool | None = None
         detail: list[str] = []
         if identity is not None and pin is not None:
@@ -782,15 +784,12 @@ class DemoSession:
         bid = Decimal(quote["bid"]) if quote.get("bid") else None
         ask = Decimal(quote["ask"]) if quote.get("ask") else None
 
-        account = None
-        with contextlib.suppress(Exception):
+        try:
             account = self.adapter.account()
-        positions: list[Any] = []
-        open_orders: list[Any] = []
-        with contextlib.suppress(Exception):
             positions = list(self.adapter.positions())
-        with contextlib.suppress(Exception):
             open_orders = list(self.adapter.orders())
+        except Exception as exc:
+            raise RuntimeError(f"broker state unavailable: {exc}") from exc
 
         kill_state = self.kill_switch_state()
         kill_active = kill_state.get("killed") if kill_state.get("readable") else None
