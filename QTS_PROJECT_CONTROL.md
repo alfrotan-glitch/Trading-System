@@ -16,6 +16,21 @@ QTS (Quantitative Trading System) is an autonomous quantitative research, risk-g
 
 ---
 
+## 1A. STANDARDIZATION BASELINE (2026-10-06)
+
+The repository is being treated as one product, not as a collection of historical experiments.
+
+- Canonical branch: `arena/01a0ce9f-trading-system`.
+- Runtime authority remains singular: domain → governance/gates → risk → execution → broker adapter.
+- Proven-unused runtime abstractions removed: legacy `risk.capital_policy`, unused `qts.security` secrets layer, and the unused external-provider catalog embedded in the runtime provider.
+- Sixteen obsolete XAUUSD research workflows that targeted historical branches were removed. Research scripts remain available; research execution is no longer mixed into the product's CI control plane.
+- One canonical GitHub CI workflow now owns quality checks.
+- Local verification is tiered: `pytest` is the fast developer suite; `pytest --run-integration --run-research` is the full verification suite.
+- No strategy has been promoted by this cleanup. `NO_VALIDATED_EDGE` remains authoritative.
+- Deletion is evidence-driven: a module is removed only when it is unused or superseded; useful research, safety, and execution components are retained even if they are not on the hot path.
+
+This is a standardization pass, not a cosmetic file-count target. The objective is a smaller, clearer system without weakening execution safety or research integrity.
+
 ## 2. CURRENT PRODUCT STATE
 
 * **Operational Status**: Hardened research and DEMO execution workstation.
