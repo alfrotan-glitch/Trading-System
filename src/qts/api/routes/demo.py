@@ -392,9 +392,17 @@ def demo_close(payload: dict[str, Any]) -> dict[str, Any]:
 
     session = _bind()._demo_session(payload.get("symbol"))
     try:
-        return session.close_position(ticket_int, volume=volume, reason=reason, actor="api:demo-close")
+        result = session.close_position(ticket_int, volume=volume, reason=reason, actor="api:demo-close")
+        state = str(result.get("state") or "")
+        if state == "AMBIGUOUS":
+            raise HTTPException(409, result.get("error") or "close outcome is ambiguous; reconciliation required")
+        return result
+    except HTTPException:
+        raise
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(500, f"failed to close position {ticket_int}: {exc}") from exc
+        raise HTTPException(503, f"close unavailable: {exc}") from exc
 
 
 
