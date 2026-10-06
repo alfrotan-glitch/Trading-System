@@ -676,16 +676,13 @@ class DemoSession:
         }
 
     def sync_fills(self) -> int:
-        """Fold broker deals into local state (best effort, idempotent).
+        """Fold broker deals into local state; failure is an execution barrier.
 
-        An MT5 fill is a *deal*: the portfolio only learns about it when the
-        deals are polled. Closing a position through :meth:`MT5Adapter.
-        close_position` therefore leaves local state stale until this runs.
+        An MT5 fill is a deal: the portfolio only learns about it when the
+        deals are polled. A failed poll leaves venue/local truth uncertain, so
+        callers must not continue as though synchronization succeeded.
         """
-        try:
-            return len(self.engine.poll_live_fills() or [])
-        except Exception:
-            return 0
+        return len(self.engine.poll_live_fills() or [])
 
     def reconcile(self) -> dict[str, Any]:
         engine = self.engine
@@ -805,8 +802,10 @@ class DemoSession:
         # most once per session so a broken link cannot spin.
         if self._last_reconcile is None and not self._reconcile_attempted:
             self._reconcile_attempted = True
-            with contextlib.suppress(Exception):
+            try:
                 self.reconcile()
+            except Exception as exc:
+                reconcile_drift = f"RECONCILIATION_UNAVAILABLE: {exc}"
 
         reconcile_suspended: bool | None = None
         reconcile_drift: str | None = None
