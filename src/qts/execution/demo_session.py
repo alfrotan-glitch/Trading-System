@@ -608,7 +608,19 @@ class DemoSession:
             }
 
         if retcode not in done_codes | partial_codes:
-            raise RuntimeError(f"unexpected close receipt retcode {retcode}: {receipt}")
+            self.stage.halt(
+                reason=f"unknown close receipt retcode for ticket {ticket_int}: {retcode}",
+                actor=actor or self.config.actor,
+            )
+            reconciliation = self.reconcile()
+            return {
+                "success": False,
+                "state": "AMBIGUOUS",
+                "ticket": ticket_int,
+                "receipt": receipt,
+                "error": f"unknown close receipt retcode {retcode}",
+                "reconciliation": reconciliation,
+            }
 
         # A broker DONE receipt is not enough to declare the position lifecycle
         # closed: verify the actual remaining venue position.
