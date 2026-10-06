@@ -331,26 +331,35 @@ def pytest_addoption(parser):
         "--run-integration",
         action="store_true",
         default=False,
-        help="Opt in to tests explicitly marked integration. Tests under tests/integration "
-        "run in the default suite. This flag keeps `pytest tests/integration --run-integration` "
-        "valid and also runs any test marked `@pytest.mark.integration`.",
+        help="Include integration tests in the suite.",
+    )
+    parser.addoption(
+        "--run-research",
+        action="store_true",
+        default=False,
+        help="Include research/validation experiments in the suite.",
     )
 
 
 def pytest_collection_modifyitems(config, items):
-    """Skip only an explicit ``@pytest.mark.integration``.
+    """Keep the default developer loop fast without reducing CI coverage.
 
-    Pytest 9 puts every parent directory name into ``item.keywords``. Matching
-    the word ``integration`` therefore skipped the entire ``tests/integration``
-    tree in the default suite (119 tests) even though those files are not
-    marked. That was an accidental coverage loss, not an intentional skip.
+    Directory membership is classified explicitly here instead of relying on
+    pytest's parent-directory keywords. Integration and research suites remain
+    available on demand and CI can run them explicitly.
     """
-    if config.getoption("--run-integration"):
-        return
     skip_integration = pytest.mark.skip(reason="needs --run-integration")
+    skip_research = pytest.mark.skip(reason="needs --run-research")
     for item in items:
-        if item.get_closest_marker("integration") is not None:
+        path = pathlib.Path(str(item.fspath)).resolve()
+        try:
+            parts = set(path.relative_to(_REPO_ROOT).parts)
+        except ValueError:
+            continue
+        if "integration" in parts and not config.getoption("--run-integration"):
             item.add_marker(skip_integration)
+        if "research" in parts and not config.getoption("--run-research"):
+            item.add_marker(skip_research)
 
 
 # ---------------------------------------------------------------------------
