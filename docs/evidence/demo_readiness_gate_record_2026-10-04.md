@@ -52,6 +52,14 @@ runner itself fails closed. Unit-pinned in `tests/test_demo_readiness_gate_runne
 (halt-at-first-failure, 503-positions-is-a-halt-not-a-retry, missing broker IDs block
 an "allowed" order, verify mode touches no mutating endpoint).
 
+Residual behaviors proven live on this host: QTS unreachable → exit 3 with
+"step 1 could not even be probed" (no verdict is invented for a server that
+never answered); a full `--execute` run with complete order intent still
+halted at step 2 having issued only four GETs — the server access log shows
+**zero mutating requests** (`/api/demo/config`, `/api/mt5`,
+`/api/demo/readiness`, `/api/demo/guide` and nothing else). Operator intent
+flags grant the runner nothing: the backend gates decide, in order, every time.
+
 The manual equivalent, for auditing the runner against the procedure:
 
 ```
