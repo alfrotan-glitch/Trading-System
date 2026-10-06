@@ -1231,12 +1231,27 @@ class ExecutionEngine:
         return report
 
     def heal_reconcile(self, reason: str = "manual") -> None:
-        """Explicit reactivation after drift healed — required (no auto-heal)."""
+        """Clear reconciliation suspension only after a clean broker comparison.
+
+        The operator may acknowledge the repair, but acknowledgement alone is
+        not evidence that venue and local state agree. Re-run the canonical
+        reconciliation first; any remaining drift keeps the engine suspended.
+        """
+        report = self.reconcile()
+        if report.requires_suspend:
+            raise RuntimeError(
+                f"cannot heal reconciliation suspension: {report.drift}: {report.details}"
+            )
         self._suspended = False
         self._suspend_reason = None
         self._persist_reconcile_suspend(False, None)
         if self.audit:
-            self.audit.emit(DomainEvent(event_type=EventType.RECONCILE, payload={"drift": "HEALED", "details": reason}))
+            self.audit.emit(
+                DomainEvent(
+                    event_type=EventType.RECONCILE,
+                    payload={"drift": "HEALED", "details": reason},
+                )
+            )
 
     @property
     def is_suspended(self) -> bool:
