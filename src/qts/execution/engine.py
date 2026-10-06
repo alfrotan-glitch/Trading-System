@@ -195,7 +195,14 @@ class ExecutionEngine:
         self.peak_equity = portfolio.equity()
         self.drawdown = Decimal("0")
         self._day_start_equity = portfolio.equity()
-        self._db_path = Path(db_path) if db_path else Path(getattr(risk_engine, "db_path", "data/sqlite/qts.db"))
+        if db_path is not None:
+            self._db_path = Path(db_path)
+        else:
+            self._db_path = Path(getattr(risk_engine, "db_path", ""))
+            if not str(self._db_path):
+                from qts.config.paths import artifact_path
+
+                self._db_path = artifact_path("db")
         self.persist_reconcile_state = persist_reconcile_state
         self.market_data = market_data
         # stable fill ids already applied this process — poll dedupe (never apply the
