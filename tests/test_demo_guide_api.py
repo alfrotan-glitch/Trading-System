@@ -57,6 +57,7 @@ PRODUCT_KEYS = (
     "headline",
     "reason",
     "next",
+    "execution_readiness",
 )
 
 
@@ -597,12 +598,14 @@ def _decay_authority_evidence(session, seconds: float = 284.0) -> None:
         )
 
 
-def test_order_refuses_on_decayed_readiness_evidence(client, api_env, monkeypatch):
-    """Field defect 2026-10-06, part 1: 284s-old evidence must refuse the order.
+def test_order_auto_reproves_decayed_evidence_inside_the_request(client, api_env, monkeypatch):
+    """Canonical workflow: evidence decay is never the operator's problem.
 
-    The refusal must name the decay and the remedy — never submit on evidence
-    older than the reverify TTL, no matter how recently a read-only
-    verification (GET readiness/guide) happened to pass.
+    284s-old durable evidence + an order request (which IS explicit
+    confirmed+risk_ack operator intent) ⇒ the backend re-proves readiness
+    itself — a fresh live-terminal probe, durably recorded through the same
+    authority gates — and the order is judged on evidence measured in this
+    very request. No client refresh call, no manual TTL management.
     """
     from fakes_mt5_demo import FakeTerminal
 
@@ -612,27 +615,65 @@ def test_order_refuses_on_decayed_readiness_evidence(client, api_env, monkeypatc
     _inject(session, monkeypatch)
 
     _decay_authority_evidence(session, seconds=284.0)
+    assert session.authority.current().readiness_expired is True
 
     res = client.post(
         "/api/demo/order",
         json={"side": "BUY", "stop_loss": "1995.00", "confirmed": True, "risk_ack": True, "rationale": "decay probe"},
     )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["allowed"] is True
+    assert body["broker_order_id"] is not None
+    assert len(terminal.requests) == 1, "exactly one broker order, judged on fresh evidence"
+
+    renewed = session.authority.current()
+    assert renewed.execution_permitted is True
+    assert renewed.readiness_expired is False, "the re-proof must be durably recorded, not transient"
+
+
+def test_order_fails_closed_when_the_fresh_reproof_fails(client, api_env, monkeypatch):
+    """Nothing weakened: the auto-re-proof can refuse, and then the order refuses.
+
+    Decayed evidence + a terminal that no longer passes the readiness probe
+    ⇒ the in-request re-verification fails, permission stays refused, the
+    order is 409 and no broker request is ever sent. The TTL still forbids
+    trading on stale evidence — it is renewable only by a PASSING fresh probe.
+    """
+    from fakes_mt5_demo import FakeTerminal
+    from test_demo_api import _readiness
+
+    _register_plan(api_env)
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+    _inject(session, monkeypatch)
+
+    _decay_authority_evidence(session, seconds=284.0)
+    # The terminal degrades AFTER arming: the fresh probe now fails.
+    monkeypatch.setattr(
+        "qts.lifecycle.demo_gate.demo_forward_readiness_report", lambda **kwargs: _readiness(False)
+    )
+
+    res = client.post(
+        "/api/demo/order",
+        json={"side": "BUY", "stop_loss": "1995.00", "confirmed": True, "risk_ack": True, "rationale": "degraded probe"},
+    )
     assert res.status_code == 409, res.text
     body = res.json()
     assert body["allowed"] is False
-    joined = " ".join(body["reasons"])
-    assert "readiness evidence expired" in joined
-    assert "re-verify required" in joined
-    assert terminal.requests == [], "no broker order may be submitted on decayed evidence"
+    assert body["reasons"], "the refusal must carry the actual reasons"
+    assert terminal.requests == [], "no broker order may be submitted when the fresh re-proof fails"
+    assert session.authority.current().execution_permitted is False
 
 
 def test_guide_refresh_renews_decayed_evidence_and_the_order_consumes_it(client, api_env, monkeypatch):
-    """Field defect 2026-10-06, part 2: the canonical handoff renews evidence.
+    """The explicit refresh remains a valid operator action (not a requirement).
 
     Decayed durable evidence -> POST /api/demo/guide/refresh (fresh
     live-terminal probe, durably recorded with explicit confirmation) ->
     the order is judged on evidence measured seconds ago and proceeds.
-    This is the exact sequence the gate runner now performs in --execute.
+    Since the order path re-proves decayed evidence itself, this endpoint
+    is a convenience for the UI, never a prerequisite.
     """
     from fakes_mt5_demo import FakeTerminal
 
@@ -657,3 +698,141 @@ def test_guide_refresh_renews_decayed_evidence_and_the_order_consumes_it(client,
     assert body["broker_order_id"] is not None
     assert body["broker_position_id"] is not None
     assert len(terminal.requests) == 1, "exactly one broker order, on fresh evidence only"
+
+
+# ------------------------------------- continuous execution-readiness state
+
+
+def test_execution_readiness_classifies_a_bare_system_as_environment_not_ready(client):
+    """No terminal, no plan, no arming ⇒ ENVIRONMENT_NOT_READY, each blocker named."""
+    er = client.get("/api/demo/guide").json()["execution_readiness"]
+    assert er["state"] == "ENVIRONMENT_NOT_READY"
+    assert er["blockers"], "a bare system must name its blockers"
+    ids = {b["id"] for b in er["blockers"]}
+    assert "connection" in ids
+    for b in er["blockers"]:
+        assert b["category"] in ("environment", "market", "policy")
+        assert b["plain"].strip(), f"blocker {b['id']} must carry plain language"
+    assert er["last_execution"] is None
+
+
+def test_execution_readiness_is_system_ready_when_armed(client, api_env, monkeypatch):
+    from fakes_mt5_demo import FakeTerminal
+
+    _register_plan(api_env)
+    session = _armed_session(api_env, FakeTerminal(), monkeypatch)
+    _inject(session, monkeypatch)
+
+    er = client.get("/api/demo/guide").json()["execution_readiness"]
+    assert er["state"] == "SYSTEM_READY", er
+    assert er["blockers"] == []
+
+
+def test_execution_readiness_full_transition_ready_blocked_ready(client, api_env, monkeypatch, passing_readiness):
+    """READY → kill (policy block) → resume (environment: re-prepare) → prepare → READY.
+
+    The classification tracks the durable state at every step and never
+    misnames the cause: a halted stage during a kill is reported as the
+    policy stop, not as a configuration defect.
+    """
+    from fakes_mt5_demo import FakeTerminal
+
+    _register_plan(api_env)
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+    _inject(session, monkeypatch)
+
+    assert client.get("/api/demo/guide").json()["execution_readiness"]["state"] == "SYSTEM_READY"
+
+    assert client.post("/api/demo/kill", json={"reason": "transition test"}).json()["killed"] is True
+    er = client.get("/api/demo/guide").json()["execution_readiness"]
+    assert er["state"] == "BLOCKED_MARKET_POLICY", er
+    kill_blockers = [b for b in er["blockers"] if b["id"] == "kill_switch"]
+    assert kill_blockers and kill_blockers[0]["category"] == "policy"
+    assert "kill switch" in kill_blockers[0]["plain"]
+    assert not any(b["category"] == "environment" for b in er["blockers"]), (
+        "a halted stage during a kill is a consequence of the stop, not an environment defect"
+    )
+
+    assert client.post("/api/demo/guide/resume", json={"confirmed": True, "reason": "reviewed"}).status_code == 200
+    er = client.get("/api/demo/guide").json()["execution_readiness"]
+    assert er["state"] == "ENVIRONMENT_NOT_READY", er
+    assert any(b["id"] == "stage" for b in er["blockers"]), "after resume, re-preparation is the honest next step"
+
+    assert client.post("/api/demo/guide/prepare", json={"confirmed": True, "risk_ack": True}).status_code == 200
+    er = client.get("/api/demo/guide").json()["execution_readiness"]
+    assert er["state"] == "SYSTEM_READY", er
+
+
+def test_execution_readiness_reports_the_last_execution_and_decay_note(client, api_env, monkeypatch):
+    """After a fill: SYSTEM_READY again, last_execution carries broker evidence,
+    and pure evidence decay is a note (auto-renewed at order), never a blocker."""
+    from fakes_mt5_demo import FakeTerminal
+
+    _register_plan(api_env)
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+    _inject(session, monkeypatch)
+
+    res = client.post(
+        "/api/demo/order",
+        json={"side": "BUY", "stop_loss": "1995.00", "confirmed": True, "risk_ack": True, "rationale": "readiness evidence"},
+    )
+    assert res.status_code == 200, res.text
+    placed = res.json()
+
+    _decay_authority_evidence(session, seconds=284.0)
+
+    body = client.get("/api/demo/guide").json()
+    er = body["execution_readiness"]
+    assert er["state"] == "SYSTEM_READY", er
+    assert all(b["id"] != "permission" for b in er["blockers"])
+    assert any("re-proven automatically" in n for n in er["notes"])
+    assert body["can_trade"] is True, "pure decay must not demand manual TTL management"
+    assert er["last_execution"] is not None
+    assert er["last_execution"]["broker_order_id"] == placed["broker_order_id"]
+
+
+# --------------------------------------------- engine refusal must be named
+
+
+def test_engine_refusal_surfaces_the_recorded_reason_not_a_generic_label(client, api_env, monkeypatch):
+    """The broker's/engine's verbatim answer reaches the operator.
+
+    The session already journals the real refusal detail; the API response
+    must surface the SAME detail — never only a generic
+    ``execution_engine_refused`` label.
+    """
+    from types import SimpleNamespace
+
+    from fakes_mt5_demo import FakeTerminal
+
+    _register_plan(api_env)
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+    _inject(session, monkeypatch)
+
+    broker_answer = "broker rejected order: retcode 10019 (TRADE_RETCODE_NO_MONEY)"
+    monkeypatch.setattr(session.engine, "submit_intent", lambda intent, tick=None: (None, []))
+    monkeypatch.setattr(
+        session.engine.om,
+        "get",
+        lambda cid: SimpleNamespace(state="REJECTED", reject_reason=broker_answer),
+    )
+
+    res = client.post(
+        "/api/demo/order",
+        json={"side": "BUY", "stop_loss": "1995.00", "confirmed": True, "risk_ack": True, "rationale": "refusal detail"},
+    )
+    assert res.status_code == 409, res.text
+    body = res.json()
+    assert body["allowed"] is False
+    assert body["reasons"], "the refusal must carry reasons"
+    assert broker_answer in body["reasons"][0]
+    assert body["reasons"] != ["execution_engine_refused"]
+
+    # The surfaced reason IS the journaled reason — one truth, two surfaces.
+    orders = client.get("/api/demo/journal").json()["orders"]
+    row = next(o for o in orders if o["client_order_id"] == body["client_order_id"])
+    assert row["exit_reason"] == body["reasons"][0]
+    assert row["broker_retcode"] == "10019"

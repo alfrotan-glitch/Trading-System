@@ -69,13 +69,6 @@ GREEN: dict[tuple[str, str], tuple[int, Any]] = {
         {"success": True, "ticket": 222, "realized_pnl": "-0.10", "reconciliation": {"requires_suspend": False}},
     ),
     ("GET", "/api/demo/journal"): (200, {"orders": [{"journal_id": 7, "state": "CLOSED"}]}),
-    ("POST", "/api/demo/guide/refresh"): (
-        200,
-        {
-            "result": {"ok": True, "headline": "Connection refreshed.", "detail": "The terminal was re-checked and demo trading stays prepared."},
-            "guide": {},
-        },
-    ),
 }
 
 
@@ -241,16 +234,14 @@ def test_full_green_run_is_demo_ready_with_broker_evidence(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Readiness-evidence handoff (field defect 2026-10-06: VERIFY PASS at
-# 12:18:14, --execute at 12:18:23, step 4 still refused with "readiness
-# evidence 284s old > 120s" — the runner never invoked the canonical
-# re-verification, so the order consumed the stale record of the last
-# preparation instead of evidence measured at order time)
+# Readiness-evidence renewal is canonical product behavior (the backend
+# re-proves decayed evidence inside the order request itself). The runner is
+# a pure sequencer: it must NOT perform any client-side refresh bookkeeping.
 # ---------------------------------------------------------------------------
 
 
-def test_execute_reverifies_through_the_canonical_path_before_the_order():
-    """The refresh POST must land strictly before the order POST."""
+def test_execute_makes_no_client_side_refresh_call():
+    """The runner never manages readiness evidence — the backend does."""
     fetch = make_fetch(
         sequences={
             ("GET", "/api/demo/positions"): [
@@ -261,45 +252,31 @@ def test_execute_reverifies_through_the_canonical_path_before_the_order():
     )
     verdict, results = runner.run_gate(fetch, args(execute=True))
     assert verdict == "DEMO READY"
-    assert ("POST", "/api/demo/guide/refresh") in fetch.calls
-    assert fetch.calls.index(("POST", "/api/demo/guide/refresh")) < fetch.calls.index(("POST", "/api/demo/order"))
+    assert ("POST", "/api/demo/guide/refresh") not in fetch.calls
     order = results[3]
-    assert order.evidence["reverified"] == {
-        "headline": "Connection refreshed.",
-        "detail": "The terminal was re-checked and demo trading stays prepared.",
-    }
+    assert "reverified" not in order.evidence
 
 
 def test_verify_pass_then_immediate_execute_uses_fresh_evidence():
     """The literal field sequence: VERIFY PASS, then --execute seconds later.
 
-    The fake backend models the real authority: its stored readiness evidence
-    is STALE (last preparation 284s ago), so any order NOT preceded by the
-    canonical re-verification refuses with the field's exact reason. Only the
-    refresh — a fresh probe durably recorded with explicit confirmation —
-    renews it. The runner must therefore pass end-to-end, and must pass
-    BECAUSE it re-verified, not because the backend was lenient.
+    The fake backend models the canonical authority: its stored readiness
+    evidence is STALE (last preparation 284s ago), and the ORDER request
+    itself — explicit confirmed+risk_ack operator intent — is what renews
+    it, backend-side, through a fresh durably-recorded probe. The runner
+    passes end-to-end without ever calling a client-side refresh.
     """
     state = {"evidence_fresh": False}
 
     def fetch(method: str, path: str, payload: dict[str, Any] | None = None):
-        if (method, path) == ("POST", "/api/demo/guide/refresh"):
-            assert payload == {"confirmed": True, "risk_ack": True}
-            state["evidence_fresh"] = True
-            return GREEN[("POST", "/api/demo/guide/refresh")]
+        assert (method, path) != ("POST", "/api/demo/guide/refresh"), (
+            "the runner must not manage readiness evidence client-side"
+        )
         if (method, path) == ("POST", "/api/demo/order"):
-            if not state["evidence_fresh"]:
-                return (
-                    409,
-                    {
-                        "allowed": False,
-                        "state": "NO_TRADE",
-                        "reasons": [
-                            "execution_permission: durable DEMO authority refuses execution: "
-                            "readiness evidence expired (284s old > 120s) — re-verify required"
-                        ],
-                    },
-                )
+            # Canonical backend behavior: the order request re-proves
+            # decayed evidence itself before any gate judges.
+            assert payload and payload.get("confirmed") is True and payload.get("risk_ack") is True
+            state["evidence_fresh"] = True
             return GREEN[("POST", "/api/demo/order")]
         if (method, path) == ("GET", "/api/demo/positions") and state.get("closed"):
             return (200, {"positions": [], "count": 0})
@@ -313,25 +290,26 @@ def test_verify_pass_then_immediate_execute_uses_fresh_evidence():
     assert verdict == "VERIFY PASS"
     assert state["evidence_fresh"] is False
 
-    # 2. Immediate --execute: passes end-to-end on evidence measured at order time.
+    # 2. Immediate --execute: the backend renews evidence inside the order.
     verdict, results = runner.run_gate(fetch, args(execute=True))
     assert verdict == "DEMO READY"
     assert [r.step for r in results] == [1, 2, 3, 4, 5, 6, 7]
 
 
-def test_refused_reverification_halts_step4_before_any_order():
-    """If the fresh probe fails, the refresh refuses — and no order may follow."""
+def test_failed_backend_reproof_refuses_the_order_with_its_reasons():
+    """Fail-closed: when the backend's fresh re-proof fails, the order
+    refuses with the probe's own reasons and the runner halts at step 4."""
     fetch = make_fetch(
         {
-            ("POST", "/api/demo/guide/refresh"): (
+            ("POST", "/api/demo/order"): (
                 409,
                 {
-                    "result": {
-                        "ok": False,
-                        "headline": "The connection could not be refreshed.",
-                        "detail": "fresh readiness failed: Market data not fresh",
-                    },
-                    "guide": {},
+                    "allowed": False,
+                    "state": "NO_TRADE",
+                    "reasons": [
+                        "execution_permission: durable DEMO authority refuses execution: "
+                        "fresh readiness failed: Market data not fresh"
+                    ],
                 },
             )
         }
@@ -339,8 +317,8 @@ def test_refused_reverification_halts_step4_before_any_order():
     verdict, results = runner.run_gate(fetch, args(execute=True))
     assert verdict == "GATE BLOCKED"
     assert results[-1].step == 4
-    assert "fresh readiness failed: Market data not fresh" in results[-1].failures[0]
-    assert ("POST", "/api/demo/order") not in fetch.calls
+    assert "Market data not fresh" in " ".join(results[-1].failures)
+    assert ("POST", "/api/demo/guide/refresh") not in fetch.calls
 
 
 def test_main_requires_explicit_size_for_execute(capsys):

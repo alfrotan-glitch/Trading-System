@@ -1849,6 +1849,29 @@ class DemoSession:
 
             entry, _entry_reasons = resolve_entry(load_registry())
 
+        # Canonical readiness-evidence renewal (product workflow, not client
+        # bookkeeping): an order request IS explicit operator intent — every
+        # caller of submit() has already asserted confirmed+risk_ack (API
+        # route, CLI) or acts under the recorded autonomous authorization
+        # (autopilot), which is exactly what `reverify_authority` requires.
+        # So when the durable evidence has merely decayed past the reverify
+        # TTL, re-prove it HERE through the same authority path (fresh
+        # live-terminal probe, durably recorded) instead of bouncing the
+        # order back for manual TTL management. Nothing is weakened: the TTL
+        # still forbids trading on stale evidence — the order is now judged
+        # on evidence measured in this very request — and if the fresh probe
+        # fails, the authority refuses and the gate below refuses with those
+        # reasons. Only decay is renewable; a disabled authority still
+        # requires the explicit enablement ceremony.
+        with contextlib.suppress(Exception):
+            decision = self.authority.current()
+            if decision.enabled and decision.readiness_expired:
+                self.reverify_authority(
+                    confirmed=True,
+                    risk_ack=True,
+                    actor=f"{self.config.actor}:auto-reverify-on-order",
+                )
+
         params = self.resolve_order_parameters(side=side, lots=lots, stop_loss=stop_loss, entry=entry)
         size = params["lots"]
         if stop_loss is None and params["stop_loss"] is not None:
@@ -2022,12 +2045,20 @@ class DemoSession:
                 broker_retcode=refusal["retcode"],
             )
             self.reconcile()
+            # The SAME detail just journaled is the operator-facing reason:
+            # a refusal that only says "see audit log" is not actionable,
+            # and the broker's/engine's verbatim answer is already in hand.
+            surfaced = (
+                refusal["reason"]
+                or "; ".join(verdict.reasons)
+                or "execution engine refused the intent and recorded no detail — fail closed"
+            )
             return SubmissionResult(
                 allowed=False,
                 client_order_id=client_order_id,
                 journal_id=journal_id,
                 state="NO_TRADE",
-                reasons=["execution engine refused the intent — see audit log (risk veto / kill / suspend)"],
+                reasons=[surfaced],
                 blocked_by="execution_engine_refused",
                 verdict=verdict.as_dict(),
             )

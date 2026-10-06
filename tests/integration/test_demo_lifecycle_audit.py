@@ -231,7 +231,13 @@ def test_required_stop_cannot_reach_the_broker_without_a_value(env):
 
 
 def test_stage_2_authority_refresh_after_readiness_ttl_expiry(env):
-    """Defect: expired evidence at Stage 2 with no legal way to refresh it."""
+    """Expired evidence at Stage 2 is renewed canonically inside the order.
+
+    The TTL still forbids trading on stale evidence: the order that proceeds
+    is judged on a FRESH probe made and durably recorded inside the request
+    itself. The stage never moves, the TTL constant never changes, and
+    permission returns only because the live terminal passed again.
+    """
     terminal = FakeTerminal()
     session = _session(env["tmp"], terminal)
     _arm_to_stage_2(session, terminal)
@@ -239,15 +245,18 @@ def test_stage_2_authority_refresh_after_readiness_ttl_expiry(env):
 
     assert session.authority.current().execution_permitted is False
     result = session.submit(side="BUY")
-    assert result.allowed is False
-    assert "execution_permission" in (result.verdict or {}).get("failed", [])
+    assert result.allowed is True, result.reasons
+    renewed = session.authority.current()
+    assert renewed.execution_permitted is True
+    assert renewed.readiness_expired is False  # durably recorded, not transient
+    assert session.stage.current().stage == DemoStage.STAGE_2_MIN_SIZE_ORDER.value  # unchanged
 
+    # The explicit reverify path remains legal at the current stage.
     outcome = session.reverify_authority(confirmed=True, risk_ack=True, actor="audit")
     assert outcome["reverified"] is True
     assert outcome["stage"]["stage"] == DemoStage.STAGE_2_MIN_SIZE_ORDER.value  # unchanged
-    assert session.authority.current().execution_permitted is True
 
-    # The TTL was NOT changed: only a fresh probe can re-grant permission.
+    # The TTL was NOT changed: only a fresh PASSING probe re-grants permission.
     from qts.lifecycle.demo_authority import REVERIFY_TTL_S
 
     assert REVERIFY_TTL_S == 120.0
@@ -359,7 +368,14 @@ def test_verify_suggests_a_command_that_actually_works(env):
 
 
 def test_fresh_process_does_not_inherit_stale_authority(env):
-    """A new process must re-prove permission; it never inherits an old enablement."""
+    """A new process never trades on inherited evidence — it re-proves.
+
+    Permission reads as refused until a fresh probe passes; the order that
+    does proceed does so ONLY because the canonical in-request re-proof ran
+    against the live terminal and was durably recorded — never because the
+    old enablement leaked through. And a DISABLED authority is NOT decay:
+    no order may renew it — only the explicit enablement ceremony.
+    """
     terminal = FakeTerminal()
     session = _session(env["tmp"], terminal)
     _arm_to_stage_2(session, terminal)
@@ -369,9 +385,18 @@ def test_fresh_process_does_not_inherit_stale_authority(env):
     assert fresh.authority.current().execution_permitted is False
     assert fresh.stage.current().stage == DemoStage.STAGE_2_MIN_SIZE_ORDER.value  # the stage persisted
     result = fresh.submit(side="BUY")
-    assert result.allowed is False
-    assert "execution_permission" in (result.verdict or {}).get("failed", [])
-    assert terminal.requests == []
+    assert result.allowed is True, result.reasons
+    renewed = fresh.authority.current()
+    assert renewed.execution_permitted is True
+    assert renewed.readiness_expired is False
+    assert len(terminal.requests) == 1
+
+    # Disablement is a decision, not decay — an order must never undo it.
+    fresh.authority.disable(reason="audit: explicit disable", actor="audit")
+    refused = fresh.submit(side="BUY")
+    assert refused.allowed is False
+    assert "execution_permission" in (refused.verdict or {}).get("failed", [])
+    assert len(terminal.requests) == 1, "no broker order on a disabled authority"
 
 
 def test_identity_mismatch_blocks_orders(env):

@@ -326,7 +326,7 @@ export async function renderDemo(root) {
               ["Direction", side === "BUY" ? "Buy" : "Sell"],
               ["Instrument", g.instrument || "Gold (XAUUSD)"],
               ["Amount", `${size.value || "—"} lot`],
-              ["Stop loss", stop.value || "—"],
+              ["Stop loss", stop.value || "Policy stop — derived from the live price at execution"],
               ["Account", "Demo — no real money"],
             ]),
             banner("info", "This trade is placed on a Demo account.", "No real money is at risk. Live trading stays locked.", "lock")),
@@ -378,7 +378,7 @@ export async function renderDemo(root) {
         h("div", { class: "row", style: { flexWrap: "wrap", gap: "10px", alignItems: "flex-end" } },
           h("div", { class: "field" }, h("label", { class: "small" }, "Direction"), h("div", { class: "row" }, sideBtn("BUY"), sideBtn("SELL"))),
           h("div", { class: "field" }, h("label", { class: "small" }, "Amount (lots)"), size),
-          h("div", { class: "field" }, h("label", { class: "small" }, `Stop loss ${g.order_defaults?.stop_required === false ? "(optional)" : "(required)"}`), stop, h("div", { class: "hint" }, g.order_defaults?.stop_required === false ? "A protective stop is optional for this plan." : "The demo plan requires a protective stop on every order. Set the price where this trade must close if it moves against you.")),
+          h("div", { class: "field" }, h("label", { class: "small" }, `Stop loss ${g.order_defaults?.stop_required === false ? "(optional)" : "(automatic — policy-derived)"}`), stop, h("div", { class: "hint" }, g.order_defaults?.stop_required === false ? "A protective stop is optional for this plan." : "Leave empty (recommended): QTS derives the protective stop from the live price at execution, exactly at the registered plan's distance. Enter a price only to choose a TIGHTER stop — anything wider than the plan allows is refused.")),
         ),
         h("div", { class: "row" },
           h("button", { class: "btn", disabled: acting, onclick: () => submit(true) }, icon("eye", 14), "Preview (no order)"),
@@ -611,6 +611,31 @@ export async function renderDemo(root) {
     host.appendChild(banner(toneFor(g), g.status === "ready" ? "Ready for demo trading" : g.status === "stopped" ? "Trading is stopped" : "Not ready yet",
       `Live trading is locked. Real-capital exposure is $0. ${g.reason ? g.reason : (g.status === "ready" ? "Every order still passes the full pre-trade safety gate." : "Follow the next step — QTS runs the checks for you.")}`,
       headlineIcon(g)));
+
+    // Continuous execution-readiness classification (backend-computed, pure
+    // reporting): SYSTEM READY / temporarily blocked by market or policy /
+    // environment not ready — with each actual blocker in plain language.
+    const er = g.execution_readiness;
+    if (er) {
+      const erLabel = er.state === "SYSTEM_READY" ? "SYSTEM READY"
+        : er.state === "BLOCKED_MARKET_POLICY" ? "TEMPORARILY BLOCKED — MARKET / POLICY"
+        : "ENVIRONMENT NOT READY";
+      const erTone = er.state === "SYSTEM_READY" ? "ok" : er.state === "BLOCKED_MARKET_POLICY" ? "warn" : "err";
+      host.appendChild(card({
+        title: "Execution readiness", icon: "activity",
+        sub: "Updated on every check — blockers are named, never generic",
+        body: h("div", { class: "stack" },
+          h("div", null, h("span", { class: `badge ${erTone}` }, erLabel)),
+          ...(er.blockers || []).map((b) => h("p", { class: "small" },
+            h("span", { class: `badge ${b.category === "environment" ? "err" : "warn"}` }, b.category),
+            " ", b.plain)),
+          ...(er.notes || []).map((n) => h("p", { class: "small text-dim" }, n)),
+          er.last_execution ? h("p", { class: "small" },
+            h("span", { class: "badge ok" }, "LAST EXECUTION"),
+            ` Order ${er.last_execution.client_order_id ?? "—"} · broker ref ${er.last_execution.broker_order_id ?? "—"} · ${er.last_execution.state} · ${er.last_execution.at ?? ""}`) : null,
+        ),
+      }));
+    }
 
     host.appendChild(h("div", { class: "grid-2" },
       connectionCard(g),

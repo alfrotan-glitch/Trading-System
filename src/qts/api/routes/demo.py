@@ -675,6 +675,19 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
     )
     guide["steps"] = steps
 
+    # Pure evidence decay is NOT an operator problem: the order path
+    # re-proves readiness through the canonical authority (fresh probe,
+    # durably recorded) inside the order request itself. Only when decay is
+    # the SOLE permission blocker may it be treated as self-renewing —
+    # any other refusal reason still blocks, and the re-proof can refuse.
+    perm_reasons = [str(r) for r in (guide["permission"].get("reasons") or [])]
+    decay_only = (
+        not guide["permission"]["permitted"]
+        and bool(getattr(authority, "readiness_expired", False))
+        and bool(perm_reasons)
+        and all("readiness evidence expired" in r for r in perm_reasons)
+    )
+
     can_trade = (
         guide["mode_ok"]
         and guide["authorization_ok"]
@@ -685,7 +698,7 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
         and not guide["kill_switch"]["active"]
         and guide["reconciliation"]["clean"]
         and stage in ORDER_STAGES
-        and guide["permission"]["permitted"]
+        and (guide["permission"]["permitted"] or decay_only)
         and entry is not None
     )
     guide["can_trade"] = can_trade
@@ -792,7 +805,7 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
             "description": "QTS runs the full safety checks, confirms your risk acknowledgement and prepares the demo account. No real money is involved.",
             "requires_confirmation": True,
         }
-    elif not guide["permission"]["permitted"]:
+    elif not guide["permission"]["permitted"] and not decay_only:
         headline, reason = "Connection needs to be refreshed", "The proof that the terminal is healthy has expired."
         next_action = {
             "action": "refresh",
@@ -821,6 +834,112 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
     guide["headline"] = headline
     guide["reason"] = reason
     guide["next"] = next_action
+
+    # ----------------------------------------------------- product state
+    # Continuous, machine-readable execution-readiness classification.
+    # PURE REPORTING derived from the facts above — every gate still
+    # decides each order; this block only states, in one place, whether
+    # the product is executable right now and, if not, whether that is an
+    # environment/configuration problem (needs setup work) or a transient
+    # market/policy condition (needs waiting or a recorded operator
+    # recovery). It never invents a state: every blocker below maps 1:1 to
+    # a fact already probed in this request.
+    import contextlib as _contextlib
+
+    er_blockers: list[dict[str, str]] = []
+    er_notes: list[str] = []
+
+    def _blocker(bid: str, category: str, plain: str) -> None:
+        er_blockers.append({"id": bid, "category": category, "plain": plain})
+
+    _MARKET_READINESS = ("Market data not fresh", "Bid/ask invalid", "Spread unacceptable")
+
+    if not guide["mode_ok"]:
+        _blocker("mode", "environment", "QTS is not running in demo-trading mode.")
+    if not guide["authorization_ok"]:
+        _blocker("authorization", "environment", "Demo trading has no recorded owner approval on this machine.")
+    if not conn["connected"]:
+        _blocker("connection", "environment", "MetaTrader 5 is not connected.")
+    elif conn["account_type"] != "Demo":
+        _blocker("account_type", "environment", "The connected account is not a demo account.")
+    if conn["connected"] and not pin["verified"]:
+        _blocker("identity", "environment", str(pin.get("detail") or "The account identity is not confirmed."))
+    if not readiness_passed:
+        for blocked in readiness.get("blocked_reasons") or ["The safety checks did not pass."]:
+            text = str(blocked)
+            category = "market" if any(m in text for m in _MARKET_READINESS) else "environment"
+            _blocker("readiness", category, text)
+    if entry is None:
+        _blocker("plan", "environment", "No approved trading plan is registered.")
+    if (
+        stage not in ORDER_STAGES
+        and not guide["kill_switch"]["active"]
+        and not guide["reconciliation"]["suspended"]
+    ):
+        # A HALTED stage while the kill switch / a suspension is active is a
+        # consequence of that stop, not an independent environment problem.
+        _blocker("stage", "environment", "Demo trading has not been prepared (staged arming required).")
+
+    if guide["kill_switch"]["active"]:
+        _blocker("kill_switch", "policy", "Trading is stopped by the kill switch — review and resume with a recorded reason.")
+    if guide["reconciliation"]["suspended"]:
+        _blocker("reconciliation", "policy", "Trading is stopped: QTS and the broker disagreed about open positions.")
+    elif not guide["reconciliation"]["clean"]:
+        _blocker("reconciliation", "policy", "QTS and the broker disagree about open positions.")
+    if not guide["permission"]["permitted"] and not decay_only and guide["mode_ok"] and guide["authorization_ok"]:
+        _blocker("permission", "policy", "; ".join(perm_reasons) or "Execution permission is refused.")
+    if decay_only:
+        er_notes.append(
+            "Safety evidence is re-proven automatically against the live terminal when you place an order — no manual refresh is needed."
+        )
+
+    plan_policy = getattr(entry, "policy", None)
+    if plan_policy is not None:
+        with _contextlib.suppress(Exception):
+            if not plan_policy.within_trading_hours():
+                hours = (plan_policy.raw.get("allowed_trading_hours") or {})
+                sessions = hours.get("sessions") or []
+                window = "; ".join(
+                    f"{'/'.join(s.get('days') or [])} {s.get('start')}–{s.get('end')} {hours.get('timezone', 'UTC')}"
+                    for s in sessions
+                ) or "the registered policy's sessions"
+                _blocker("trading_hours", "market", f"Outside the policy's trading sessions ({window}). Orders resume automatically in-session.")
+        with _contextlib.suppress(Exception):
+            spread_bps = guide["quote"].get("spread_bps")
+            cap = float(plan_policy.max_spread_bps)
+            if guide["quote"].get("fresh") and spread_bps is not None and float(spread_bps) > cap:
+                _blocker("spread", "market", f"The live spread ({float(spread_bps):.1f} bps) is wider than the policy cap ({cap:.1f} bps). Orders resume when the market tightens.")
+    if conn["connected"] and readiness_passed and not guide["quote"]["fresh"]:
+        _blocker("quote", "market", "No fresh market price is available right now.")
+
+    er_env = [b for b in er_blockers if b["category"] == "environment"]
+    er_state = (
+        "ENVIRONMENT_NOT_READY"
+        if er_env
+        else ("BLOCKED_MARKET_POLICY" if er_blockers else "SYSTEM_READY")
+    )
+
+    last_execution: dict[str, Any] | None = None
+    with _contextlib.suppress(Exception):
+        for row in session.journal.list_orders(limit=50):
+            if row.get("broker_order_id") and str(row.get("state")) in ("FILLED", "CLOSED", "SUBMITTED", "ACCEPTED"):
+                last_execution = {
+                    "journal_id": row.get("journal_id"),
+                    "client_order_id": row.get("client_order_id"),
+                    "broker_order_id": row.get("broker_order_id"),
+                    "broker_position_id": row.get("broker_position_id"),
+                    "state": row.get("state"),
+                    "at": row.get("submitted_at") or row.get("requested_at"),
+                }
+                break
+
+    guide["execution_readiness"] = {
+        "state": er_state,
+        "blockers": er_blockers,
+        "notes": er_notes,
+        "last_execution": last_execution,
+        "checked_at": now,
+    }
 
     guide["technical"] = {
         "stage": stage_record.as_dict(),
