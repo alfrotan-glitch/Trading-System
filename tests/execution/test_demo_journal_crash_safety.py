@@ -78,3 +78,24 @@ def test_ambiguous_order_is_global_submission_barrier(tmp_path):
     claimed, reason = _claim(journal, "new-economic-id")
     assert claimed is None
     assert "ambiguous" in reason.lower()
+
+
+def test_ambiguous_order_counts_as_open_until_reconciled(tmp_path):
+    journal = DemoOrderJournal(tmp_path / "journal.db")
+    journal.open_order(
+        client_order_id="ambiguous-open",
+        strategy_id="test-strategy",
+        strategy_config_hash="hash",
+        symbol="XAUUSD",
+        side="BUY",
+        requested_lots="0.01",
+        order_request={"symbol": "XAUUSD@"},
+    )
+    with connect(journal.db_path) as con:
+        con.execute(
+            "UPDATE demo_order_journal SET state='AMBIGUOUS' WHERE client_order_id='ambiguous-open'"
+        )
+        con.commit()
+
+    assert any(r["client_order_id"] == "ambiguous-open" for r in journal.open_orders())
+    assert journal.ambiguous_orders()[0]["client_order_id"] == "ambiguous-open"
