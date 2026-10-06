@@ -207,10 +207,12 @@ def _lineage_checked_evidence(candidates: list[Path], expected_mode: str, requir
 
 
 def check_paper_evidence() -> tuple[bool, str]:
+    from qts.config.paths import artifact_path
+
     return _lineage_checked_evidence(
         [
-            Path("data/evidence/paper_trades.json"),
-            Path("data/paper_evidence.json"),
+            artifact_path("paper_trades"),
+            artifact_path("paper_trades").with_name("paper_evidence.json"),
         ],
         expected_mode="paper",
         required_list_key="fills",
@@ -218,10 +220,12 @@ def check_paper_evidence() -> tuple[bool, str]:
 
 
 def check_shadow_evidence() -> tuple[bool, str]:
+    from qts.config.paths import artifact_path
+
     return _lineage_checked_evidence(
         [
-            Path("data/evidence/shadow_intents.json"),
-            Path("data/shadow_evidence.json"),
+            artifact_path("shadow_intents"),
+            artifact_path("shadow_intents").with_name("shadow_evidence.json"),
         ],
         expected_mode="shadow",
         required_list_key="intents_sample",
@@ -389,7 +393,9 @@ def check_reconciliation_health() -> tuple[bool, str]:
     import sqlite3
     from pathlib import Path
 
-    db = Path("data/sqlite/qts.db")
+    from qts.config.paths import artifact_path
+
+    db = artifact_path("db")
     if not db.exists():
         return True, "reconciliation health OK — no qts.db, so no recorded suspension"
     try:
