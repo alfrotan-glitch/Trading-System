@@ -24,8 +24,10 @@ Usage (on the Windows host, with QTS started under QTS_MODE=demo_execution):
 
     python scripts/demo_readiness_gate.py                 # steps 1-3
     python scripts/demo_readiness_gate.py --execute \\
-        --side BUY --quantity 0.01 --stop-loss 1995.00 \\
+        --side BUY --quantity 0.01 \\
         --rationale "demo readiness gate step 4"          # steps 1-7
+    # (no --stop-loss: the product derives the registered policy's stop at
+    #  order time — the canonical path; pass one only to go TIGHTER)
 
 Exit codes: 0 = gate passed (DEMO READY, or VERIFY PASS for steps 1-3),
 2 = blocked (record names the blocker), 3 = QTS unreachable.
@@ -221,11 +223,21 @@ def step4_order(fetch: Fetch, args: argparse.Namespace) -> StepResult:
     payload = {
         "side": args.side,
         "quantity": args.quantity,
-        "stop_loss": args.stop_loss,
         "confirmed": True,
         "risk_ack": True,
         "rationale": args.rationale,
     }
+    # Stop-loss: the CANONICAL source is the registered policy — when the
+    # operator supplies none, the product derives the stop at order time at
+    # exactly the policy distance (fixed_price_distance from the executable
+    # quote side, rounded away from entry) and the gate enforces that
+    # distance as a cap (equal-or-tighter passes, wider refuses). A manual
+    # stop computed from an earlier quote races a moving market and lands
+    # wider than the policy allows — so the runner only forwards a stop the
+    # operator EXPLICITLY chose (a deliberate tighter-than-policy stop) and
+    # otherwise lets the policy derivation decide.
+    if args.stop_loss is not None:
+        payload["stop_loss"] = args.stop_loss
     status, out = fetch("POST", "/api/demo/order", payload)
     if not isinstance(out, dict):
         r.fail(f"POST /api/demo/order answered {status} with a non-JSON body")
@@ -383,13 +395,22 @@ def main(argv: list[str] | None = None, fetch: Fetch | None = None) -> int:
     parser.add_argument("--execute", action="store_true", help="run steps 4-7 (order, ack, close, reconcile)")
     parser.add_argument("--side", choices=("BUY", "SELL"), default="BUY")
     parser.add_argument("--quantity", default=None, help="order size in lots (required with --execute)")
-    parser.add_argument("--stop-loss", default=None, help="stop-loss price (required with --execute)")
+    parser.add_argument(
+        "--stop-loss",
+        default=None,
+        help=(
+            "OPTIONAL explicit stop price — only to choose a TIGHTER stop than the "
+            "registered policy. Omit it (recommended) and the product derives the "
+            "stop at order time at exactly the policy distance; the gate refuses "
+            "any stop wider than the policy cap."
+        ),
+    )
     parser.add_argument("--rationale", default="demo readiness gate step 4 — controlled order")
     parser.add_argument("--record", default=None, help="record JSON path (default data/evidence/, timestamped)")
     args = parser.parse_args(argv)
 
-    if args.execute and (args.quantity is None or args.stop_loss is None):
-        parser.error("--execute requires explicit --quantity and --stop-loss")
+    if args.execute and args.quantity is None:
+        parser.error("--execute requires an explicit --quantity")
 
     fetch = fetch or http_fetcher(args.base_url)
     try:

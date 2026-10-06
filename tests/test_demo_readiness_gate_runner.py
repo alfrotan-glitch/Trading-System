@@ -343,10 +343,39 @@ def test_refused_reverification_halts_step4_before_any_order():
     assert ("POST", "/api/demo/order") not in fetch.calls
 
 
-def test_main_requires_explicit_size_and_stop_for_execute(capsys):
+def test_main_requires_explicit_size_for_execute(capsys):
     import pytest
 
     with pytest.raises(SystemExit) as exc:
         runner.main(["--execute"])
     assert exc.value.code == 2
-    assert "--quantity and --stop-loss" in capsys.readouterr().err
+    assert "--quantity" in capsys.readouterr().err
+
+
+def test_omitted_stop_loss_defers_to_the_canonical_policy_derivation():
+    """No --stop-loss ⇒ the order payload carries NO stop_loss key at all.
+
+    The registered policy derives the stop at order time at exactly its
+    declared distance; a runner-injected stale price would race the quote
+    and land wider than the policy cap. The runner must therefore forward a
+    stop ONLY when the operator explicitly chose one.
+    """
+    def run(stop_loss: str | None) -> dict[str, Any]:
+        seen: dict[str, Any] = {}
+
+        def fetch(method: str, path: str, payload: dict[str, Any] | None = None):
+            if (method, path) == ("POST", "/api/demo/order"):
+                seen["order_payload"] = payload
+            if (method, path) == ("GET", "/api/demo/positions") and seen.get("closed"):
+                return (200, {"positions": [], "count": 0})
+            if (method, path) == ("POST", "/api/demo/close"):
+                seen["closed"] = True
+            return GREEN[(method, path)]
+
+        verdict, _ = runner.run_gate(fetch, args(execute=True, stop_loss=stop_loss))
+        assert verdict == "DEMO READY"
+        return seen["order_payload"]
+
+    assert "stop_loss" not in run(None)
+    # And an explicit operator stop IS forwarded verbatim.
+    assert run("1995.00")["stop_loss"] == "1995.00"
