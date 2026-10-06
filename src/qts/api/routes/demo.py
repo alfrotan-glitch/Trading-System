@@ -561,6 +561,24 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
         "drift": reconciliation.get("drift"),
         "details": reconciliation.get("details"),
     }
+    ambiguous_orders = [
+        row for row in session.journal.list_orders(limit=500)
+        if row.get("state") == "AMBIGUOUS"
+    ]
+    guide["execution_barrier"] = {
+        "active": bool(ambiguous_orders) or bool(reconciliation.get("requires_suspend")),
+        "reason": (
+            f"Broker outcome for {ambiguous_orders[0].get('client_order_id')} is unresolved."
+            if ambiguous_orders
+            else reconciliation.get("details") if reconciliation.get("requires_suspend")
+            else None
+        ),
+        "action": (
+            "Reconcile the broker state before sending any new order."
+            if ambiguous_orders or reconciliation.get("requires_suspend")
+            else None
+        ),
+    }
 
     stage_record = session.stage.current()
     stage = stage_record.stage
