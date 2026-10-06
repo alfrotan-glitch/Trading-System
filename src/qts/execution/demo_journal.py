@@ -323,9 +323,12 @@ class DemoOrderJournal:
             with db_immediate(self.db_path, timeout=timeout_s) as con:
                 # 1. crash recovery: unfinished submissions older than the
                 #    in-flight budget cannot still be running.
+                # A crashed process does NOT prove the broker rejected the order.
+                # Reclassify stale in-flight work as AMBIGUOUS so the venue must be
+                # reconciled before any new economic order can be sent.
                 con.execute(
-                    "UPDATE demo_order_journal SET state='REJECTED', "
-                    "exit_reason='in-flight submission abandoned (outcome unknown — verify with the broker)', "
+                    "UPDATE demo_order_journal SET state='AMBIGUOUS', "
+                    "exit_reason='in-flight submission abandoned; broker outcome unknown — reconciliation required', "
                     "updated_at=? WHERE state IN ('NEW','SUBMITTED') AND requested_at < ?",
                     (now, stale_cutoff),
                 )
