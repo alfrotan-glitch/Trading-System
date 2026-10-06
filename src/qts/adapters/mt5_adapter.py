@@ -333,11 +333,13 @@ class MT5Adapter(BrokerAdapter):
     AMBIGUOUS_RETCODES = {10012, 10011}  # TIMEOUT, etc.
 
     # --- Canonical timestamp contract (server-basis MT5 stamps -> true UTC) ---
-    # All real-world UTC offsets are multiples of 15 minutes; the forming-M1-bar
-    # probe window is 60s wide, so it contains at most one grid point and the
-    # offset is recovered EXACTLY (no guessing, no clamping).
-    _OFFSET_QUANTUM_S = 900.0
+    # Prefer a fresh raw tick for calibration: its server timestamp carries
+    # second/millisecond precision, so broker offsets such as UTC+2:59 are not
+    # rounded to a false UTC+3. The forming-M1 bar remains the conservative
+    # fallback and is only used as a minute-resolution calibration.
+    _OFFSET_QUANTUM_S = 60.0
     _OFFSET_TTL_S = 300.0  # re-measure cadence; offsets only shift on DST changes
+    _OFFSET_TICK_MAX_AGE_S = 120.0
     _MAX_PLAUSIBLE_OFFSET_S = 14 * 3600.0
 
     def __init__(
