@@ -152,7 +152,7 @@ class PromotionLedger:
         cur = self.get_state(strategy_id)
         if cur not in (PromotionState.SUSPENDED, PromotionState.REJECTED):
             anomaly_hash = hashlib.sha256(
-                f"system-anomaly:{strategy_id}:{reason}".encode("utf-8")
+                f"system-anomaly:{strategy_id}:{reason}".encode()
             ).hexdigest()
             self.transition(
                 strategy_id,
