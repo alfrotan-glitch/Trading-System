@@ -537,6 +537,19 @@ class DemoSession:
         """Close a DEMO position and confirm the venue state before marking it closed."""
         ticket_int = int(ticket)
 
+        # Close is an execution operation, so it inherits the same canonical
+        # authority as opening an order. API confirmation is a separate
+        # operator-intent control; it must not be possible to reach the broker
+        # from a non-DEMO or non-authorized session by calling this method.
+        if self.mode is not ExecutionMode.DEMO_EXECUTION:
+            raise PermissionError(f"close refused: execution mode is {self.mode.value}")
+        permitted, authority_reasons = self.authority.is_execution_permitted()
+        if not permitted:
+            raise PermissionError(
+                "close refused by DEMO execution authority: "
+                + "; ".join(str(r) for r in authority_reasons)
+            )
+
         # Read the exact venue position first. A close is never speculative and
         # never allowed to operate from stale local journal state.
         positions = self.adapter.position_details()
