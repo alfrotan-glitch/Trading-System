@@ -257,18 +257,16 @@ class DemoOrderJournal:
     # ------------------------------------------------------------ claiming
 
     def expire_inflight_rows(self, *, max_age_s: float = 120.0) -> int:
-        """Fail a submission that never completed (process died mid-order).
+        """Mark abandoned in-flight submissions AMBIGUOUS, never rejected.
 
-        A row in ``NEW``/``SUBMITTED`` means "the broker call is in progress or
-        its outcome was never recorded". If it is older than ``max_age_s`` the
-        process that started it is gone, and the only honest state is
-        ``REJECTED`` with an unknown-fill caveat — never "it probably worked".
+        Process death or transport timeout cannot prove broker rejection. The
+        durable outcome therefore becomes a hard reconciliation barrier.
         """
         cutoff = (datetime.now(UTC) - timedelta(seconds=max_age_s)).isoformat()
         with db_connect(self.db_path) as con:
             cur = con.execute(
-                "UPDATE demo_order_journal SET state='REJECTED', "
-                "exit_reason='in-flight submission abandoned (outcome unknown — verify with the broker)', "
+                "UPDATE demo_order_journal SET state='AMBIGUOUS', "
+                "exit_reason='in-flight submission abandoned; broker outcome unknown — reconciliation required', "
                 "updated_at=? WHERE state IN ('NEW','SUBMITTED') AND requested_at < ?",
                 (_now(), cutoff),
             )
