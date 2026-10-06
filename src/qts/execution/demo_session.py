@@ -823,6 +823,8 @@ class DemoSession:
         if self._last_reconcile is not None:
             drift = str(getattr(self._last_reconcile, "drift", "") or "")
             reconcile_drift = drift if drift and drift.upper() not in ("OK", "NONE", "") else None
+        elif self._reconcile_attempted:
+            reconcile_drift = reconcile_drift or "RECONCILIATION_UNAVAILABLE"
 
         registry = load_registry()
         entry, _entry_reasons = resolve_entry(registry, entry.strategy_id if entry else None)
