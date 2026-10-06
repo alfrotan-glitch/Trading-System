@@ -358,7 +358,10 @@ def demo_order(payload: dict[str, Any]) -> Any:
 def demo_positions() -> dict[str, Any]:
     """List open DEMO positions on the connected MT5 venue."""
     session = _bind()._demo_session()
-    positions = session.positions()
+    try:
+        positions = session.positions()
+    except Exception as exc:
+        raise HTTPException(503, f"positions unavailable: {exc}") from exc
     return {
         "positions": positions,
         "count": len(positions),
