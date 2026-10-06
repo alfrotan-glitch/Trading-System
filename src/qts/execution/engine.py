@@ -198,11 +198,12 @@ class ExecutionEngine:
         if db_path is not None:
             self._db_path = Path(db_path)
         else:
-            self._db_path = Path(getattr(risk_engine, "db_path", ""))
-            if not str(self._db_path):
+            configured_db = getattr(risk_engine, "db_path", None)
+            if configured_db is None:
                 from qts.config.paths import artifact_path
 
-                self._db_path = artifact_path("db")
+                configured_db = artifact_path("db")
+            self._db_path = Path(configured_db)
         self.persist_reconcile_state = persist_reconcile_state
         self.market_data = market_data
         # stable fill ids already applied this process — poll dedupe (never apply the
