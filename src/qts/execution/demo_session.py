@@ -490,15 +490,12 @@ class DemoSession:
         return {"killed": True, "reason": reason, "stage": record.as_dict()}
 
     def positions(self) -> list[dict[str, Any]]:
-        """List open broker positions enriched with canonical symbol and journal correlation."""
+        """List open broker positions; broker failure is never represented as empty."""
         try:
             raw_positions = self.adapter.position_details()
-        except Exception:
-            return []
-
-        open_journal_orders: list[dict[str, Any]] = []
-        with contextlib.suppress(Exception):
             open_journal_orders = list(self.journal.open_orders())
+        except Exception as exc:
+            raise RuntimeError(f"positions unavailable: {exc}") from exc
 
         from qts.adapters.mt5_adapter import canonical_symbol
 
