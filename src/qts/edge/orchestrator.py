@@ -237,7 +237,9 @@ depth/span, quality, costs, controls, and forward evidence.
 
     # Forward evidence is read only from the canonical observation store when
     # it exists; locked historical rows are not counted as forward observations.
-    forward_path = Path("data/sqlite/forward_observatory.db")
+    from qts.config.paths import artifact_path
+
+    forward_path = artifact_path("observatory_db")
     if forward_path.exists():
         from qts.observability.forward_observatory import ForwardObservatory
 
