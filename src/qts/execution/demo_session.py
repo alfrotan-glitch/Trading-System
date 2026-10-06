@@ -1216,14 +1216,35 @@ class DemoSession:
         try:
             order, _fills = self.engine.submit_intent(intent, tick=None)
         except Exception as exc:
-            self.journal.mark_outcome(journal_id, state="REJECTED", exit_reason=f"submit error: {exc}")
-            self.reconcile()
+            # A transport/runtime exception does not prove venue rejection.
+            # Preserve the reconciliation barrier instead of converting an
+            # unknown broker outcome into a terminal REJECTED record.
+            ambiguous = isinstance(exc, (TimeoutError, ConnectionError)) or any(
+                token in str(exc).lower()
+                for token in ("timeout", "connection", "network", "disconnected", "ambiguous", "unknown")
+            )
+            state = "AMBIGUOUS" if ambiguous else "REJECTED"
+            self.journal.mark_outcome(
+                journal_id,
+                state=state,
+                exit_reason=(
+                    f"submit outcome unknown — reconciliation required: {exc}"
+                    if ambiguous
+                    else f"submit error: {exc}"
+                ),
+            )
+            reconciliation = self.reconcile()
+            if ambiguous:
+                self.stage.halt(reason=f"ambiguous submission {client_order_id}", actor=self.config.actor)
             return SubmissionResult(
                 allowed=False,
                 client_order_id=client_order_id,
                 journal_id=journal_id,
-                state="REJECTED",
-                reasons=[f"submission error: {type(exc).__name__}: {exc}"],
+                state=state,
+                reasons=[
+                    f"{'ambiguous broker outcome' if ambiguous else 'submission error'}: "
+                    f"{type(exc).__name__}: {exc}"
+                ],
                 verdict=verdict.as_dict(),
             )
 
@@ -1238,12 +1259,20 @@ class DemoSession:
             # retcode, ambiguous transport, risk veto) is far more useful than a
             # generic "veto", and safeguard #15 asks for the broker response.
             refusal = _engine_refusal_detail(self.engine, client_order_id)
+            refusal_state = refusal["state"]
+            refusal_is_ambiguous = refusal_state == "AMBIGUOUS"
             self.journal.mark_outcome(
                 journal_id,
-                state="REJECTED",
-                exit_reason=refusal["reason"] or "; ".join(verdict.reasons) or "risk/engine veto (see audit log)",
+                state="AMBIGUOUS" if refusal_is_ambiguous else "REJECTED",
+                exit_reason=(
+                    refusal["reason"]
+                    or "; ".join(verdict.reasons)
+                    or "risk/engine veto (see audit log)"
+                ),
                 broker_retcode=refusal["retcode"],
             )
+            if refusal_is_ambiguous:
+                self.stage.halt(reason=f"ambiguous submission {client_order_id}", actor=self.config.actor)
             self.reconcile()
             return SubmissionResult(
                 allowed=False,
