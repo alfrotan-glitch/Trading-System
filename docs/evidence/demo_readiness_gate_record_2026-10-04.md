@@ -85,6 +85,15 @@ POST /api/demo/guide/resume    PASS only when recovery_checks.reconciliation_ver
                                stage advanced to STAGE_2_MIN_SIZE_ORDER by the guide
 
 # 4. One controlled order (canonical path, minimum size, stop-loss required)
+#    4a. FIRST: renew the readiness evidence through the canonical path —
+#        permission decays after the authority's 120s reverify TTL BY DESIGN
+#        and no read-only verification renews it (field run 2026-10-06:
+#        "readiness evidence 284s old > 120s" nine seconds after VERIFY PASS).
+#        The runner now performs this automatically before the order.
+POST /api/demo/guide/refresh {confirmed:true, risk_ack:true}
+                        PASS: result.ok=true ("Connection refreshed.") — a fresh
+                              live-terminal probe durably recorded; refusal here
+                              is a halt with the probe's reasons
 POST /api/demo/order {side, quantity=min, stop_loss, confirmed:true, risk_ack:true, rationale}
                         PASS: HTTP 200, allowed=true, broker_order_id AND
                               broker_position_id captured (never null on success)

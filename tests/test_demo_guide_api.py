@@ -573,3 +573,87 @@ def test_resume_on_an_unsuspended_system_is_an_honest_no_op(client, api_env, mon
     assert recovery["cleared"] == []
     assert recovery["recovery_checks"]["no_active_suspension"]["satisfied"] is True
     assert terminal.requests == []
+
+
+# ------------------------------------------- readiness-evidence decay handoff
+
+
+def _decay_authority_evidence(session, seconds: float = 284.0) -> None:
+    """Time-travel the durable authority row: last transition `seconds` ago.
+
+    This does NOT weaken the 120s reverify TTL — it exercises it, simulating
+    the field sequence (prepared at T, order attempted at T+284s).
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from qts.db import connect as db_connect
+
+    stale = (datetime.now(UTC) - timedelta(seconds=seconds)).isoformat()
+    with db_connect(session.authority.db_path) as con:
+        con.execute(
+            "UPDATE demo_execution_state SET decided_at = ? WHERE seq = "
+            "(SELECT MAX(seq) FROM demo_execution_state)",
+            (stale,),
+        )
+
+
+def test_order_refuses_on_decayed_readiness_evidence(client, api_env, monkeypatch):
+    """Field defect 2026-10-06, part 1: 284s-old evidence must refuse the order.
+
+    The refusal must name the decay and the remedy — never submit on evidence
+    older than the reverify TTL, no matter how recently a read-only
+    verification (GET readiness/guide) happened to pass.
+    """
+    from fakes_mt5_demo import FakeTerminal
+
+    _register_plan(api_env)
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+    _inject(session, monkeypatch)
+
+    _decay_authority_evidence(session, seconds=284.0)
+
+    res = client.post(
+        "/api/demo/order",
+        json={"side": "BUY", "stop_loss": "1995.00", "confirmed": True, "risk_ack": True, "rationale": "decay probe"},
+    )
+    assert res.status_code == 409, res.text
+    body = res.json()
+    assert body["allowed"] is False
+    joined = " ".join(body["reasons"])
+    assert "readiness evidence expired" in joined
+    assert "re-verify required" in joined
+    assert terminal.requests == [], "no broker order may be submitted on decayed evidence"
+
+
+def test_guide_refresh_renews_decayed_evidence_and_the_order_consumes_it(client, api_env, monkeypatch):
+    """Field defect 2026-10-06, part 2: the canonical handoff renews evidence.
+
+    Decayed durable evidence -> POST /api/demo/guide/refresh (fresh
+    live-terminal probe, durably recorded with explicit confirmation) ->
+    the order is judged on evidence measured seconds ago and proceeds.
+    This is the exact sequence the gate runner now performs in --execute.
+    """
+    from fakes_mt5_demo import FakeTerminal
+
+    _register_plan(api_env)
+    terminal = FakeTerminal()
+    session = _armed_session(api_env, terminal, monkeypatch)
+    _inject(session, monkeypatch)
+
+    _decay_authority_evidence(session, seconds=284.0)
+
+    refreshed = client.post("/api/demo/guide/refresh", json={"confirmed": True, "risk_ack": True})
+    assert refreshed.status_code == 200, refreshed.text
+    assert refreshed.json()["result"]["ok"] is True
+
+    res = client.post(
+        "/api/demo/order",
+        json={"side": "BUY", "stop_loss": "1995.00", "confirmed": True, "risk_ack": True, "rationale": "fresh evidence order"},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["allowed"] is True
+    assert body["broker_order_id"] is not None
+    assert body["broker_position_id"] is not None
+    assert len(terminal.requests) == 1, "exactly one broker order, on fresh evidence only"

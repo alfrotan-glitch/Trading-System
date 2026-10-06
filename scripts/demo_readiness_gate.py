@@ -187,6 +187,37 @@ def step3_safety(fetch: Fetch) -> StepResult:
 
 def step4_order(fetch: Fetch, args: argparse.Namespace) -> StepResult:
     r = StepResult(4, "One controlled DEMO order through the canonical path")
+    # Canonical readiness-evidence handoff (field defect, 2026-10-06): the
+    # execution authority's permission decays after its reverify TTL (120s)
+    # BY DESIGN, and steps 1-3 are read-only — a GET must never renew
+    # permission, and this runner's own record file is a log, not evidence
+    # the product reads. The product's one renewal path is the guided
+    # re-verification: a FRESH live-terminal readiness probe recorded
+    # durably with explicit operator confirmation (the same gates as first
+    # enablement, stage unchanged). Run it immediately before the order so
+    # step 4 consumes evidence measured seconds ago — not the stale record
+    # of the last preparation ("readiness evidence 284s old > 120s").
+    # The backend still decides: if the terminal is not actually ready RIGHT
+    # NOW, the refresh itself refuses and this step halts with its reasons.
+    status, refreshed = fetch(
+        "POST",
+        "/api/demo/guide/refresh",
+        {"confirmed": True, "risk_ack": True},
+    )
+    refresh_result = refreshed.get("result") or {} if isinstance(refreshed, dict) else {}
+    if status != 200 or not refresh_result.get("ok"):
+        detail = (
+            refresh_result.get("detail")
+            or refresh_result.get("headline")
+            or (refreshed.get("detail") if isinstance(refreshed, dict) else None)
+        )
+        r.fail(f"readiness re-verification refused (HTTP {status}): {detail or refreshed}")
+        return r
+    r.evidence["reverified"] = {
+        "headline": refresh_result.get("headline"),
+        "detail": refresh_result.get("detail"),
+    }
+
     payload = {
         "side": args.side,
         "quantity": args.quantity,
