@@ -58,7 +58,7 @@ check_untyped_defs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --strict-markers"
+addopts = "-q --strict-markers -n auto --dist loadscope"
 # `scripts/` is a plain directory (no package install), so the repository root
 # must be importable for `from scripts.<module> import ...` in the test suite.
 # Without this, the README-documented `pytest -q` entry point fails collection
