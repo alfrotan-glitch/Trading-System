@@ -32,7 +32,11 @@ BLOCKING_STATUSES = {"PENDING", "ACCEPTED", "PARTIALLY_FILLED", "FILLED", "AMBIG
 class IdempotencyStore:
     """Stores client_order_id -> status to prevent duplicate economic orders."""
 
-    def __init__(self, db_path: Path | str = "data/sqlite/qts.db"):
+    def __init__(self, db_path: Path | str | None = None):
+        if db_path is None:
+            from qts.config.paths import artifact_path
+
+            db_path = artifact_path("db")
         self.db_path = Path(db_path) if str(db_path) != ":memory:" else Path(":memory:")
         if str(db_path) != ":memory:":
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
