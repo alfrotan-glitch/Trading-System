@@ -601,8 +601,20 @@ class DemoSession:
 
         # A broker DONE receipt is not enough to declare the position lifecycle
         # closed: verify the actual remaining venue position.
-        with contextlib.suppress(Exception):
+        try:
             self.sync_fills()
+        except Exception as exc:
+            self.stage.halt(
+                reason=f"close fill synchronization failed for ticket {ticket_int}",
+                actor=actor or self.config.actor,
+            )
+            return {
+                "success": False,
+                "state": "AMBIGUOUS",
+                "ticket": ticket_int,
+                "error": f"close fill synchronization failed: {exc}",
+                "reconciliation": self.reconcile(),
+            }
         remaining = [
             p for p in self.adapter.position_details()
             if int(p.get("ticket")) == ticket_int
