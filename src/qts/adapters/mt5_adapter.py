@@ -1179,13 +1179,13 @@ class MT5Adapter(BrokerAdapter):
             # place the raw result exists.
             position_identifier = ""
             if intent.order_type == OrderType.MARKET:
-                deal_ticket = int(getattr(result, "deal", 0) or 0)
-                if deal_ticket <= 0:
+                order_ticket = int(getattr(result, "order", 0) or 0)
+                if order_ticket <= 0:
                     raise TimeoutError(
-                        f"MT5 market order {intent.client_order_id} completed without a broker deal ticket"
+                        f"MT5 market order {intent.client_order_id} completed without a broker order ticket"
                     )
                 try:
-                    deal_rows = mt5.history_deals_get(ticket=deal_ticket)
+                    deal_rows = mt5.history_deals_get(ticket=order_ticket)
                 except Exception as exc:
                     raise TimeoutError(
                         f"MT5 market order {intent.client_order_id} position identity lookup failed: {exc}"
