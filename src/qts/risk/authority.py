@@ -267,7 +267,6 @@ def demo_forward_limits_from(snapshot: ResolvedRiskSnapshot | None = None) -> di
         "max_orders_per_minute": lim.max_orders_per_minute,
         "max_daily_loss_usd": float(lim.daily_loss_limit),
         "max_drawdown_usd": float(lim.max_drawdown),
-        "max_drawdown_pct": float(lim.max_drawdown_pct),
         "max_spread_bps": float(lim.max_spread_bps),
         "max_slippage_bps": float(lim.max_slippage_bps),
         "kill_switch_enabled": lim.kill_switch_enabled,
