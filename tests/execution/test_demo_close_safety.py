@@ -4,9 +4,21 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from qts.domain.modes import ExecutionMode
 from qts.execution.demo_session import DemoSession
 
+
+
+
+
+@pytest.fixture(autouse=True)
+def demo_readiness_pass(monkeypatch):
+    monkeypatch.setattr(
+        "qts.lifecycle.demo_gate.demo_forward_readiness_report",
+        lambda **kwargs: {"passed": True, "blocked_reasons": [], "checks": {}, "required_checks": []},
+    )
 
 class _Harness(DemoSession):
     @property
