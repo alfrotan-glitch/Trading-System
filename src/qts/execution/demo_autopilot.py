@@ -322,16 +322,19 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
                     )
                     note("dry_run", {"passed": pre["verdict"]["passed"], "failed": pre["verdict"]["failed"]})
                 else:
-                    result = session.submit(
-                        side=signal.side,
-                        lots=signal.lots,
-                        stop_loss=signal.stop_loss,
-                        take_profit=signal.take_profit,
-                        rationale=signal.rationale,
-                        entry=entry,
-                        signal_id=signal.signal_id,
-                        autonomous=True,
-                    )
+                    try:
+                        result = session.submit(
+                            side=signal.side,
+                            lots=signal.lots,
+                            stop_loss=signal.stop_loss,
+                            take_profit=signal.take_profit,
+                            rationale=signal.rationale,
+                            entry=entry,
+                            signal_id=signal.signal_id,
+                            autonomous=True,
+                        )
+                    except Exception as exc:
+                        halt(f"execution submission unavailable: {type(exc).__name__}: {exc}")
                     if result.allowed:
                         report.orders_submitted += 1
                         note("order", result.as_dict())
