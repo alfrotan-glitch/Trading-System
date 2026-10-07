@@ -26,6 +26,7 @@ DEFAULT_PARAMS: dict[str, Any] = {
     "stop_distance_price": 3.0,
     "max_hold_seconds": 14400,
     "max_tick_age_s": 5.0,
+    "bar_timeframe_minutes": 15,
     "lots": 0.01,
     "require_spread_within_policy": True,
     "comment": "RESEARCH_DEMO_ORDER trend benchmark",
