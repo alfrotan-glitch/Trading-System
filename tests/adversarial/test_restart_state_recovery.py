@@ -74,6 +74,8 @@ def test_duplicate_after_restart_restores_persisted_state_not_a_new_pending(pers
     om1, _ = _order_manager(db)
     order1 = om1.submit(_intent(cid))
     assert order1.state is OrderState.PENDING
+    if persisted is not "PENDING":
+        om1.update_state(cid, OrderState.ACCEPTED)
     om1.update_state(cid, OrderState(persisted))
     assert om1.idempotency.get_status(cid) == persisted
     order_id_1 = order1.order_id
