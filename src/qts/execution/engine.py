@@ -873,10 +873,28 @@ class ExecutionEngine:
         if is_paper and bar is not None:
             fills = self.matching.match(intent, bar, tick)
             cumulative_qty = Decimal("0")
-            for idx, fill in enumerate(fills):
-                # portfolio is authoritative
+            weighted_value = Decimal("0")
+            for fill in fills:
+                # Apply the economic fill first, then make the order state
+                # reflect that same fill before post-trade risk can kill/cancel
+                # pending orders. This prevents a filled order from being
+                # cancelled by the kill switch and then illegally transitioned
+                # back to FILLED.
                 self.portfolio.apply_fill(fill)
                 cumulative_qty += fill.quantity
+                weighted_value += fill.price * fill.quantity
+                avg_fill_price = weighted_value / cumulative_qty
+                new_state = (
+                    OrderState.FILLED
+                    if cumulative_qty == intent.quantity
+                    else OrderState.PARTIALLY_FILLED
+                )
+                self.om.update_state(
+                    intent.client_order_id,
+                    new_state,
+                    filled_quantity=cumulative_qty,
+                    avg_fill_price=avg_fill_price,
+                )
                 self._update_drawdown()
                 if self.audit:
                     self.audit.emit(
@@ -892,7 +910,9 @@ class ExecutionEngine:
                             },
                         )
                     )
-                # post-trade risk (check kill) — reference price is fill price
+                # Post-trade risk runs after local order state reflects the
+                # broker/paper economic event. A kill may cancel other pending
+                # orders, but it must never rewrite this completed fill.
                 try:
                     ctx2 = self._risk_ctx(reference_prices={fill.instrument.symbol: fill.price})
                 except Exception as e:
@@ -915,28 +935,11 @@ class ExecutionEngine:
                     self.risk.post_trade(fill, ctx2)
                 if self.risk.killed:
                     self.handle_kill(f"post-trade kill: {fill.fill_id}")
-                # keep broker mirror for reconciliation (is_paper above guarantees
-                # the adapter exposes apply_fill; getattr keeps the protocol honest)
+                # Keep the broker mirror for reconciliation.
                 _apply = getattr(self.broker, "apply_fill", None)
                 if _apply is not None:
                     _apply(fill)
-                # Real partial-fill state (G11): emit PARTIALLY_FILLED until fully filled
-                if idx < len(fills) - 1 or cumulative_qty < intent.quantity:
-                    # Not yet fully filled
-                    self.om.update_state(
-                        intent.client_order_id,
-                        OrderState.PARTIALLY_FILLED,
-                        filled_quantity=cumulative_qty,
-                        avg_fill_price=fill.price,
-                    )
-                else:
-                    self.om.update_state(
-                        intent.client_order_id,
-                        OrderState.FILLED,
-                        filled_quantity=cumulative_qty,
-                        avg_fill_price=fills[0].price if fills else None,
-                    )
-            # If fills empty, keep as ACCEPTED? But matching always returns at least one if called
+
             if not fills:
                 self.om.update_state(
                     intent.client_order_id,
