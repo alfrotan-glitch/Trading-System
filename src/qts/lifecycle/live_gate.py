@@ -125,6 +125,7 @@ def check_reconciliation() -> tuple[bool, str]:
             "MISSING_POSITION",
             "QUANTITY_MISMATCH",
             "PRICE_MISMATCH",
+            "PRICE_CHECK_ERROR",
             "STATUS_MISMATCH",
             "UNKNOWN_ORDER",
             "MISSING_ORDER",
@@ -133,7 +134,7 @@ def check_reconciliation() -> tuple[bool, str]:
         for n in needed:
             if n not in src:
                 return False, f"Reconcile missing {n}"
-        return True, "Reconciliation detects missing/unknown/quantity/price/status disconnect, suspends"
+        return True, "Reconciliation detects missing/unknown/quantity/price/check-error/status disconnect, suspends"
     except Exception as e:
         return False, f"reconcile check failed: {e}"
 
