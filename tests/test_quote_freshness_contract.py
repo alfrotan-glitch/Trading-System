@@ -158,14 +158,14 @@ def test_quote_probe_is_fresh_despite_transient_probe_failure(tmp_path: Path) ->
     quote = session._quote_probe()
     assert quote["ok"] is True, quote
     assert quote["fresh"] is True, quote
-    assert quote["offset_basis"] == "measured-fresh-tick"
+    assert quote["offset_basis"] == "measured-m1-bar"
     assert float(quote["bid"]) > 0 and float(quote["ask"]) > 0
 
     # The provider certification under the fallback basis went through the
     # readiness gate's contract — not through the poisoned event_time. The
     # NEXT probe re-measures the offset (fallback is not cached) and recovers.
     got = session.market_data.get_tick(INSTR)
-    assert got.provenance["offset_basis"] == "measured-fresh-tick"
+    assert got.provenance["offset_basis"] == "measured-m1-bar"
 
 
 def test_quote_probe_starves_closed_when_quote_is_stale(tmp_path: Path) -> None:
@@ -198,7 +198,7 @@ def test_connectivity_quote_and_readiness_share_one_contract(tmp_path: Path) -> 
 
     quote = session._quote_probe()
     assert quote["fresh"] is True
-    assert quote["offset_basis"] == "measured-fresh-tick"
+    assert quote["offset_basis"] == "measured-m1-bar"
 
     report = session.connectivity_report()
     assert report["quote"]["fresh"] is True
