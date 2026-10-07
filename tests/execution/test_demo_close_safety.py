@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -80,6 +81,13 @@ class _Adapter:
             "net_realized_pnl": "0.83",
             "deal_tickets": ["deal-open", "deal-close"],
         }
+
+    def get_symbol_spec(self, symbol):
+        return SimpleNamespace(
+            contract_size=Decimal("100"),
+            volume_step=Decimal("0.01"),
+            tick_size=Decimal("0.01"),
+        )
 
     def close_position(self, ticket, *, volume, comment):
         self.close_calls += 1
