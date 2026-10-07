@@ -474,7 +474,7 @@ class DemoSession:
         untouched.
         """
         try:
-            from qts.risk.engine import RiskEngine, RiskLimits
+            from qts.risk.engine import RiskEngine
 
             scratch = SELF_TEST_DB
             scratch.parent.mkdir(parents=True, exist_ok=True)
