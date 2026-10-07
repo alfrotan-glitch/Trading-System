@@ -331,10 +331,17 @@ class RiskEngine:
                 price_source=price_source if "price_source" in locals() else None,
             )
 
-        # exposure lots: net quantity + new delta
-        current_qty = sum((p.quantity for p in ctx.positions.values()), Decimal("0"))
-        delta = intent.quantity if intent.side.value == "BUY" else -intent.quantity
-        new_exposure_lots = abs(current_qty + delta)
+        # Exposure is the sum of absolute signed positions. Netting across
+        # unrelated symbols can hide real capital exposure (e.g. +1 XAUUSD
+        # and -1 EURUSD incorrectly becoming zero).
+        current_exposure_lots = sum((abs(p.quantity) for p in ctx.positions.values()), Decimal("0"))
+        new_qty = Decimal("0")
+        current_position = ctx.positions.get(sym)
+        if current_position is not None:
+            delta = intent.quantity if intent.side.value == "BUY" else -intent.quantity
+            new_qty = current_position.quantity + delta
+            current_exposure_lots -= abs(current_position.quantity)
+        new_exposure_lots = current_exposure_lots + abs(new_qty)
         if new_exposure_lots > self.limits.max_exposure_lots:
             return RiskDecision(
                 allowed=False,
