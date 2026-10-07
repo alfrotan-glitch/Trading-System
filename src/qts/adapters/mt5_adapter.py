@@ -950,41 +950,24 @@ class MT5Adapter(BrokerAdapter):
 
     # ---------- Validation & normalization ----------
 
-    @staticmethod
-    def _quantize_to_step(quantity: Decimal, step: Decimal) -> Decimal:
-        steps = (quantity / step).to_integral_value(rounding=ROUND_HALF_UP)
-        return steps * step
-
     def validate_and_normalize_quantity(self, quantity: Decimal, spec: SymbolSpec) -> Decimal:
-        """Validate quantity against broker constraints, quantize to step, fail closed."""
+        """Validate quantity against broker constraints without implicit rounding."""
         if quantity <= 0:
             raise ValueError(f"quantity must be >0, got {quantity}")
-        # Check min/max before quantize
         if quantity < spec.volume_min - Decimal("0.0000001"):
             raise ValueError(f"quantity {quantity} < broker min {spec.volume_min} for {spec.symbol}")
         if quantity > spec.volume_max + Decimal("0.0000001"):
             raise ValueError(f"quantity {quantity} > broker max {spec.volume_max} for {spec.symbol}")
-        # Quantize to step
-        normalized = self._quantize_to_step(quantity, spec.volume_step)
-        # Check that quantization didn't move outside bounds
+        remainder = quantity % spec.volume_step
+        if remainder != 0 and abs(remainder) > Decimal("0.0000001") and abs(spec.volume_step - remainder) > Decimal("0.0000001"):
+            raise ValueError(
+                f"quantity {quantity} is not a multiple of broker step {spec.volume_step} for {spec.symbol}"
+            )
+        normalized = quantity.quantize(spec.volume_step)
         if normalized < spec.volume_min - Decimal("0.0000001") or normalized > spec.volume_max + Decimal("0.0000001"):
             raise ValueError(
-                f"quantized quantity {normalized} out of bounds [{spec.volume_min}, {spec.volume_max}] for {spec.symbol}"
+                f"quantity {normalized} out of bounds [{spec.volume_min}, {spec.volume_max}] for {spec.symbol}"
             )
-        # Check that original quantity is already a multiple of step within tolerance
-        # If caller passed 0.015 with step 0.01, normalized is 0.02 but we should reject unless close
-        diff = abs(quantity - normalized)
-        # Allow small epsilon due to Decimal
-        if diff > spec.volume_step * Decimal("0.49"):
-            # Quantity is not on step; we could either reject or normalize — we reject for safety unless caller explicitly wants normalization
-            # For MT5, we normalize but audit the diff; for strict, we reject if diff > 0.0001
-            # We choose to normalize and return normalized, but caller must be aware
-            # To be fail-closed, we will raise if diff > 1e-9 and not exactly on step
-            remainder = (quantity / spec.volume_step) % 1
-            if remainder != 0 and abs(remainder) > Decimal("0.0000001") and abs(1 - remainder) > Decimal("0.0000001"):
-                raise ValueError(
-                    f"quantity {quantity} not multiple of broker step {spec.volume_step} for {spec.symbol} (normalized {normalized})"
-                )
         return normalized
 
     def validate_price_precision(self, price: Decimal | None, spec: SymbolSpec) -> Decimal | None:
