@@ -21,6 +21,12 @@ def _ensure_utc(dt: datetime) -> datetime:
     return dt.astimezone(UTC)
 
 
+def _ensure_finite(value: Decimal, field: str) -> Decimal:
+    if not value.is_finite():
+        raise ValueError(f"{field} must be finite")
+    return value
+
+
 def uuid7() -> str:
     """Return a random 128-bit identifier as 32 lowercase hex characters.
 
@@ -112,6 +118,7 @@ class Instrument(BaseModel):
     @field_validator("tick_size", "lot_size", "contract_size")
     @classmethod
     def _positive(cls, v: Decimal) -> Decimal:
+        _ensure_finite(v, "instrument value")
         if v <= 0:
             raise ValueError("must be >0")
         return v
@@ -274,6 +281,7 @@ class OrderIntent(BaseModel):
     @field_validator("quantity")
     @classmethod
     def _qty_pos(cls, v: Decimal) -> Decimal:
+        _ensure_finite(v, "quantity")
         if v <= 0:
             raise ValueError("quantity must be >0")
         return v
@@ -341,6 +349,7 @@ class Fill(BaseModel):
     @field_validator("quantity")
     @classmethod
     def _pos(cls, v: Decimal) -> Decimal:
+        _ensure_finite(v, "fill quantity")
         if v <= 0:
             raise ValueError("fill quantity >0")
         return v
