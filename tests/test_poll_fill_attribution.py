@@ -206,3 +206,20 @@ def test_poll_fills_dicts_carry_attribution_and_stable_ids():
         # stable across polls
         raw2 = broker.poll_fills("")
         assert raw2[0]["fill_id"] == item["fill_id"]
+
+
+def test_deal_without_ticket_is_not_given_a_synthetic_fill_id():
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td)
+        mock = _mock_mt5()
+        eng, broker, om, pf, audit = _engine(tmp, mock)
+        intent, _order = _submit(eng, qty="0.01")
+        comment = broker._load_comment_map(intent.client_order_id)
+        deal = _deal(5001, comment, volume=0.01)
+        deal.ticket = None
+        mock.history_deals_get.return_value = [deal]
+
+        fills = eng.poll_live_fills()
+        assert fills == []
+        assert pf.positions.get("XAUUSD") is None or pf.positions["XAUUSD"].quantity == Decimal("0")
+        assert eng.is_suspended
