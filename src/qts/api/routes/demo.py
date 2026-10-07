@@ -1035,8 +1035,8 @@ def demo_guide_resume(payload: dict[str, Any] | None = None) -> Any:
                 },
             )
         )
-    except Exception:
-        pass  # audit best effort — the kill flag itself is authoritative
+    except Exception:  # nosec B110 — audit emission is intentionally best-effort; kill state is authoritative
+        return _guide_response(
     guide = _build_guide(session)
     return _guide_response(
         guide,
