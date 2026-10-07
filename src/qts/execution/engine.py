@@ -271,15 +271,14 @@ class ExecutionEngine:
             )
             con.commit()
 
-    def _update_drawdown(self) -> None:
-        eq = self.portfolio.equity()
+    def _update_drawdown(self, equity: Decimal | None = None) -> None:
+        """Update drawdown from the authoritative equity source."""
+        eq = self.portfolio.equity() if equity is None else equity
         if eq > self.peak_equity:
             self.peak_equity = eq
-        # drawdown in USD (peak - current)
         self.drawdown = self.peak_equity - eq if eq < self.peak_equity else Decimal("0")
 
     def _risk_ctx(self, reference_prices: dict[str, Decimal] | None = None) -> RiskContext:
-        self._update_drawdown()
         # Determine broker type: live (MT5), realistic paper, or legacy paper/shadow
         # Use is_live flag if present, else fallback to class name check
         is_live = bool(getattr(self.broker, "is_live", False))
@@ -321,10 +320,19 @@ class ExecutionEngine:
                 if account.free_margin and account.free_margin < Decimal("-1000"):
                     raise ValueError(f"account free_margin {account.free_margin} too negative")
                 equity = account.equity
+                # MT5 account equity is the venue authority. DemoSession starts
+                # its local portfolio at zero, so using portfolio equity here would
+                # disable meaningful drawdown protection until the local mirror
+                # happened to catch up. The first valid broker equity establishes
+                # the session baseline; subsequent checks use the broker directly.
+                if self._day_start_equity <= Decimal("0"):
+                    self._day_start_equity = equity
+                self._update_drawdown(equity)
             except Exception as e:
                 raise RuntimeError(f"account unavailable: {e}") from e
         else:
             equity = self.portfolio.equity()
+            self._update_drawdown(equity)
             account = Account(
                 balance=self.portfolio.balance,
                 equity=equity,
