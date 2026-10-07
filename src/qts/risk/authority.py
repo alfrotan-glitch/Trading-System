@@ -259,7 +259,7 @@ def resolve_risk_limits_from_settings(mode: ExecutionMode | str | None = None) -
     return resolve_risk_limits(mode, config_overrides=overrides)
 
 
-def engine_limits_from(snapshot: ResolvedRiskSnapshot) -> "RiskLimits":
+def engine_limits_from(snapshot: ResolvedRiskSnapshot) -> RiskLimits:
     """Translate one resolved authority snapshot into the engine limits.
 
     This is the only snapshot-to-engine mapping used by broker-capable
