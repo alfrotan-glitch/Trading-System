@@ -203,7 +203,7 @@ def _resolve_symbol_map(symbol_map: dict[str, str] | None) -> dict[str, str]:
         saved = load_setup().get("symbol_map")
         if isinstance(saved, dict) and saved:
             return {str(k): str(v) for k, v in saved.items()}
-    except Exception:
+    except Exception:  # nosec B110 — saved wizard config is optional; env fallback is authoritative
         pass
     env_map = os.getenv("QTS_MT5_SYMBOL_MAP", "")
     out: dict[str, str] = {}
