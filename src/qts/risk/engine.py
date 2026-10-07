@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import ROUND_FLOOR, Decimal
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -468,7 +468,9 @@ class RiskEngine:
             factor = target / ctx.realized_vol
             factor = max(Decimal("0.25"), min(Decimal("1.0"), factor))
             if factor < Decimal("0.99"):
-                resized = (intent.quantity * factor).quantize(Decimal("0.01"))
+                step = intent.instrument.lot_size
+                resized_steps = (intent.quantity * factor / step).to_integral_value(rounding=ROUND_FLOOR)
+                resized = resized_steps * step
                 if resized < self.limits.min_quantity:
                     resized = self.limits.min_quantity
                 return RiskDecision(
