@@ -6,9 +6,12 @@ Every dataset immutable: dataset ID, source ID, ingestion timestamp, checksum, s
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import hashlib
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from qts.data.quality import validate_bars
+from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Bar, Instrument
 
 
