@@ -15,6 +15,7 @@ broker is contacted; every durable side effect lands in ``tmp_path``.
 
 from __future__ import annotations
 
+import ast
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -445,3 +446,55 @@ def test_positions_and_close_commands_lifecycle(run_cli, operator_env):
     assert "state=CLOSED" in journal.output
     assert "cli-test-close" in journal.output
 
+# ------------------------------------------------------ canonical micro safety
+
+
+def test_micro_run_path_cannot_redirect_the_canonical_safety_database() -> None:
+    """The broker-capable micro path must consume durable canonical safety state."""
+    source_path = Path(__file__).parents[2] / "src" / "qts" / "cli" / "ops.py"
+    tree = ast.parse(source_path.read_text(encoding="utf-8"))
+    run_fn = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "run_cmd")
+    micro = next(
+        node
+        for node in ast.walk(run_fn)
+        if isinstance(node, ast.If)
+        and isinstance(node.test, ast.Compare)
+        and isinstance(node.test.left, ast.Name)
+        and node.test.left.id == "mode"
+        and any(isinstance(op, ast.Eq) for op in node.test.ops)
+        and any(isinstance(v, ast.Constant) and v.value == "micro" for v in node.test.comparators)
+    )
+
+    imported_tempfile = any(
+        isinstance(node, (ast.Import, ast.ImportFrom))
+        and ((isinstance(node, ast.Import) and any(a.name == "tempfile" for a in node.names))
+             or (isinstance(node, ast.ImportFrom) and node.module == "tempfile"))
+        for node in ast.walk(micro)
+    )
+    assert not imported_tempfile, "micro execution must never create an isolated tempfile safety database"
+
+    engine_calls = [
+        node for node in ast.walk(micro)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in {"_RiskEngine", "_EE", "_IS"}
+    ]
+    assert engine_calls, "micro safety guard became vacuous: no canonical engine/store construction found"
+    for call in engine_calls:
+        assert not any(kw.arg == "db_path" for kw in call.keywords), (
+            "micro execution must inherit the canonical artifact database, not redirect it"
+        )
+
+
+def test_engine_limits_mapping_preserves_canonical_safety_fields() -> None:
+    from qts.risk.authority import engine_limits_from, resolve_risk_limits
+
+    snapshot = resolve_risk_limits("DEMO_EXECUTION")
+    limits = engine_limits_from(snapshot)
+    assert limits.max_quantity == snapshot.limits.max_quantity
+    assert limits.max_exposure_lots == snapshot.limits.max_exposure_lots
+    assert limits.max_risk_per_trade_bps == snapshot.limits.max_risk_per_trade_bps
+    assert limits.max_exposure_notional == snapshot.limits.max_exposure_notional
+    assert limits.volatility_target == snapshot.limits.volatility_target
+    assert limits.kill_switch_enabled is True
+\n
