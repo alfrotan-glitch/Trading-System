@@ -29,7 +29,7 @@ import math
 import os
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
@@ -1394,55 +1394,26 @@ class MT5Adapter(BrokerAdapter):
     def position_realized_result(self, ticket: int) -> dict[str, Any]:
         """Return broker-authoritative realized P&L and charges for one MT5 position.
 
-        MT5 exposes the economic result on deals, not on the post-close order
-        receipt. The position id is therefore the only reliable key for a
-        round-trip result. This method is intentionally fail-closed: an empty
-        or unreadable deal history is not treated as zero P&L.
+        MT5 exposes the economic result on deals. The Python API can query all
+        deals for a specific position directly, so there is no arbitrary
+        time-window or whole-history scan.
         """
         mt5 = self._require_mt5()
-        now = datetime.now(UTC)
-
-        def fetch_deals(start: datetime) -> list[Any]:
-            try:
-                raw = mt5.history_deals_get(start, now)
-            except Exception as exc:
-                raise ConnectionError(f"MT5 deal history unavailable for position {ticket}: {exc}") from exc
-            if raw is None:
-                raise ConnectionError(f"MT5 deal history unavailable for position {ticket}")
-            return list(raw)
-
-        def deal_position_id(deal: Any) -> int:
-            try:
-                return int(getattr(deal, "position_id", 0) or 0)
-            except (TypeError, ValueError):
-                return 0
-
-        # Normal positions are resolved from a bounded recent window first.
-        # If the position predates that window, fall back to the terminal's
-        # complete available history rather than falsely declaring zero/unknown
-        # P&L. The fallback is correctness-first; it is used only when the
-        # bounded query cannot prove the position's economic lifecycle.
-        deals = fetch_deals(now - timedelta(days=30))
-        matched = [
-            deal
-            for deal in deals
-            if deal_position_id(deal) == int(ticket)
-        ]
-        if not matched:
-            deals = fetch_deals(datetime(1970, 1, 1, tzinfo=UTC))
-            matched = [
-                deal
-                for deal in deals
-                if _safe_int(getattr(deal, "position_id", 0)) == int(ticket)
-            ]
+        try:
+            raw = mt5.history_deals_get(position=int(ticket))
+        except Exception as exc:
+            raise ConnectionError(f"MT5 deal history unavailable for position {ticket}: {exc}") from exc
+        if raw is None:
+            raise ConnectionError(f"MT5 deal history unavailable for position {ticket}: {mt5.last_error()}")
+        matched = list(raw)
         if not matched:
             raise RuntimeError(f"no MT5 deals found for closed position {ticket}; realized P&L is unproven")
 
         def dec(deal: Any, name: str) -> Decimal:
-            raw = getattr(deal, name, 0) or 0
-            value = Decimal(str(raw))
+            raw_value = getattr(deal, name, 0) or 0
+            value = Decimal(str(raw_value))
             if not value.is_finite():
-                raise ValueError(f"non-finite MT5 deal {name} for position {ticket}: {raw}")
+                raise ValueError(f"non-finite MT5 deal {name} for position {ticket}: {raw_value}")
             return value
 
         profit = sum((dec(d, "profit") for d in matched), Decimal("0"))
@@ -1458,7 +1429,11 @@ class MT5Adapter(BrokerAdapter):
             "swap": swap,
             "fee": fee,
             "net_realized_pnl": net,
-            "deal_tickets": [str(getattr(d, "ticket", "")) for d in matched if getattr(d, "ticket", None) is not None],
+            "deal_tickets": [
+                str(getattr(d, "ticket", ""))
+                for d in matched
+                if getattr(d, "ticket", None) is not None
+            ],
         }
 
     def orders(self) -> list[Order]:
