@@ -464,6 +464,8 @@ def _manage_open_positions(
                         f"reconciliation drift after closing ticket {ticket}: {after_close.get('drift')} "
                         f"{after_close.get('details')}"
                     )
+        except AutopilotHalt:
+            raise
         except Exception as exc:
             note("manage_error", f"position {ticket}: {type(exc).__name__}: {exc}")
 
