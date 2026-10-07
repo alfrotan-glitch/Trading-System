@@ -620,6 +620,18 @@ class DemoSession:
             if row.get("broker_symbol") == matching_pos.get("symbol") and row.get("side") == matching_pos.get("side"):
                 matched_journal_row = row
                 break
+        if matched_journal_row is None:
+            # The broker model is net-position scoped and reconciliation rejects
+            # duplicate positions per canonical symbol. Therefore exactly one
+            # open journal row for this broker symbol is an unambiguous fallback
+            # when an older row lacks the position identifier.
+            candidates = [
+                row for row in self.journal.open_orders()
+                if row.get("broker_symbol") == matching_pos.get("symbol")
+                and row.get("side") == matching_pos.get("side")
+            ]
+            if len(candidates) == 1:
+                matched_journal_row = candidates[0]
 
         current_volume = Decimal(str(matching_pos.get("volume") or "0"))
         close_volume = current_volume if volume is None else Decimal(str(volume))
