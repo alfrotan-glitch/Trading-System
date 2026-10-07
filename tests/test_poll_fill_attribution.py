@@ -26,7 +26,6 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock
 
-
 from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.adapters.mt5_adapter import MT5Adapter
 from qts.domain.value_objects import Instrument, OrderIntent, OrderState, OrderType, Side
