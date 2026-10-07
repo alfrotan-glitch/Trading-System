@@ -1,8 +1,8 @@
 {
   "schema": "qts.demo_forward_registry.v2",
-  "updated_at": "2026-09-24T00:00:00+00:00",
+  "updated_at": "2026-10-07T00:00:00+00:00",
   "current_status": "TRADING_ELIGIBLE_DIAGNOSTIC",
-  "status_note": "One registered DEMO_FORWARD_RESEARCH_POLICY (H-EXEC-01, execution-cost probe) with status ELIGIBLE_DIAGNOSTIC: it may trade on the DEMO account to MEASURE execution cost and control behaviour, and it carries no validated edge. No strategy is registered as ELIGIBLE because no hypothesis has passed validation (reports/research_cycle_closure_2026-09-23.json: NO_VALIDATED_EDGE). DEMO_EXECUTION is authorized; LIVE remains locked; real capital exposure 0.",
+  "status_note": "One frozen public trend-following DEMO research policy is registered as ELIGIBLE_DIAGNOSTIC. It may trade only on the DEMO account to measure forward behaviour; it makes no validated-edge claim. LIVE remains locked.",
   "research_integrity": {
     "optimization_allowed": false,
     "no_forward_fitting": true,
@@ -10,65 +10,36 @@
     "demo_results_are_not_edge_evidence": true,
     "forward_observations_never_reused_as_research": true
   },
-  "entry_template": {
-    "strategy_id": "EXAMPLE-XAUUSD-v1",
-    "status": "ELIGIBLE|NO_TRADE|HALTED",
-    "hypothesis_id": "H-...-NN",
-    "preregistration_artifact": "docs/preregistration_....json",
-    "signal_provider": "qts.research.<module>:<ProviderClass>",
-    "params": {
-      "example": 1
-    },
-    "params_hash": "sha256 of canonical params JSON \u2014 recomputed and compared at runtime",
-    "size_policy": {
-      "mode": "broker_minimum|fixed",
-      "lots": 0.01
-    },
-    "stop_policy": {
-      "required": true,
-      "justification": ""
-    },
-    "exit_policy": {
-      "max_hold_seconds": 0,
-      "close_on_registry_expiry": false
-    },
-    "allowed_symbols": [
-      "XAUUSD"
-    ],
-    "max_orders_per_day": 1,
-    "notes": ""
-  },
   "entries": [
     {
-      "strategy_id": "DEMO-EXECPROBE-XAUUSD-V1",
+      "strategy_id": "DEMO-XAUUSD-TREND-TSMOM-V1",
       "status": "ELIGIBLE_DIAGNOSTIC",
-      "hypothesis_id": "H-EXEC-01",
-      "preregistration_artifact": "docs/preregistration_demo_execution_probe_2026-09-24.md",
-      "signal_provider": "qts.research.demo_execution_probe:ExecutionCostProbe",
+      "hypothesis_id": "H-TSMOM-01",
+      "preregistration_artifact": "docs/preregistration_demo_tsmom_xauusd_2026-10-07.md",
+      "signal_provider": "qts.research.demo_trend_tsmom:TrendTimeSeriesMomentum",
       "params": {
-        "sample_interval_minutes": 60,
-        "side_rule": "utc_hour_parity",
-        "stop_distance_price": 2.0,
-        "take_profit": null,
-        "max_hold_seconds": 900,
-        "require_spread_within_policy": true,
-        "require_fresh_quote": true,
-        "max_tick_age_s": 5.0,
+        "fast_ema": 12,
+        "slow_ema": 48,
+        "min_cross_gap_bps": 0,
+        "stop_distance_price": 3,
+        "max_hold_seconds": 14400,
+        "max_tick_age_s": 5,
         "lots": 0.01,
-        "comment": "RESEARCH_DEMO_ORDER execution-cost probe"
+        "require_spread_within_policy": true,
+        "comment": "RESEARCH_DEMO_ORDER trend benchmark"
       },
-      "params_hash": "e15333b925020a7e1d0a5b7e70e480bea74a84ffb2d76a1ad12dcf367cd817c0",
+      "params_hash": "4c13e1a2315828b406e83cd6656c3c71c94b13899a03e3030fd2b9784a6fa7a8",
       "size_policy": {
-        "mode": "broker_minimum",
+        "mode": "fixed",
         "lots": 0.01
       },
       "stop_policy": {
         "required": true,
         "type": "fixed_price_distance",
-        "distance_price": 2.0
+        "distance_price": 3
       },
       "exit_policy": {
-        "max_hold_seconds": 900.0,
+        "max_hold_seconds": 14400,
         "close_at_session_end": true
       },
       "allowed_symbols": [
@@ -76,56 +47,57 @@
       ],
       "broker_symbol": "XAUUSD@",
       "max_orders_per_day": 2,
-      "notes": "DEMO_FORWARD_RESEARCH_POLICY \u2014 execution-cost probe for the DEMO account. Not a validated strategy; see docs/preregistration_demo_execution_probe_2026-09-24.md.",
+      "notes": "Publicly documented trend-following/time-series-momentum benchmark. DEMO only; not a validated edge.",
       "policy": {
         "schema": "qts.demo_forward_research_policy.v1",
-        "policy_id": "DEMOPOL-EXEC-COST-XAUUSD-2026-09-24-V1",
-        "strategy_id": "DEMO-EXECPROBE-XAUUSD-V1",
+        "policy_id": "DEMOPOL-TSMOM-XAUUSD-2026-10-07-V1",
+        "strategy_id": "DEMO-XAUUSD-TREND-TSMOM-V1",
         "policy_class": "DEMO_FORWARD_RESEARCH_POLICY",
         "version": "1.0.0",
-        "created_at": "2026-09-24T00:00:00+00:00",
-        "preregistration_artifact": "docs/preregistration_demo_execution_probe_2026-09-24.md",
-        "hypothesis_id": "H-EXEC-01",
-        "purpose": "Measure the DEMO venue's execution cost and control behaviour \u2014 spread at entry, slippage between requested and executed price, submission latency, protective-stop behaviour, time-exit behaviour, round-turn cost and reconciliation agreement \u2014 so that any future hypothesis can be judged against a known cost base. No directional or predictive claim.",
+        "created_at": "2026-10-07T00:00:00+00:00",
+        "preregistration_artifact": "docs/preregistration_demo_tsmom_xauusd_2026-10-07.md",
+        "hypothesis_id": "H-TSMOM-01",
+        "purpose": "Measure whether a simple public time-series-momentum trend benchmark has useful forward DEMO behaviour on XAUUSD while preserving a strict non-validated-edge status.",
         "validated_edge": false,
-        "edge_statement": "This policy does not establish a validated edge and must not be read as one: it is a DEMO forward measurement instrument. Entries are scheduled and direction-neutral, so any P&L reflects venue cost plus noise. DEMO performance does not constitute evidence of a durable, live-tradeable edge, and observations recorded under this policy may never be used to re-fit it or to select another strategy.",
+        "edge_statement": "This policy does not establish a validated edge: it is a DEMO forward research policy inspired by publicly documented trend-following practice. DEMO performance does not constitute evidence of a durable live-tradeable edge, and forward observations may not be used to re-fit or select this policy.",
         "signal_logic": {
-          "type": "scheduled_sampling",
-          "description": "At most one entry per UTC hour, gated only on cost and data quality: a two-sided quote must exist, its age must be within max_tick_age_s, and the spread must be measurable (and within max_spread_bps before the provider requests an order).",
-          "indicators": [],
-          "prediction": "none \u2014 this policy makes no directional claim"
+          "type": "ema_crossover",
+          "description": "12-quote EMA crosses 48-quote EMA using live two-sided XAUUSD quotes; the first confirmed crossover emits one directional signal.",
+          "indicators": [
+            "EMA12",
+            "EMA48"
+          ],
+          "prediction": "Directional persistence is measured only; no claim of guaranteed profitability."
         },
         "entry_conditions": {
-          "sample_interval_minutes": 60,
-          "side_rule": "utc_hour_parity",
-          "side_rule_detail": "BUY when the UTC hour is even, SELL when odd \u2014 deterministic and direction-neutral across samples",
+          "fast_ema": 12,
+          "slow_ema": 48,
           "require_two_sided_quote": true,
-          "require_spread_measurable": true,
-          "require_spread_within_max_spread_bps": true,
+          "require_fresh_quote": true,
           "max_positions_open": 1
         },
         "exit_conditions": {
-          "max_hold_seconds": 900,
+          "max_hold_seconds": 14400,
           "take_profit": null,
           "close_at_session_end": true,
-          "detail": "Close at 900 s, or earlier if the venue protective stop is hit. Exit reason and the venue's realized P&L are recorded either way; no discretionary exit."
+          "detail": "Close at the deterministic time limit or protective stop; no discretionary exit."
         },
         "stop_loss_logic": {
           "required": true,
           "type": "fixed_price_distance",
-          "distance_price": 2.0,
-          "detail": "Protective stop 2.00 USD from the entry reference (ask for BUY, bid for SELL), attached to the order itself."
+          "distance_price": 3,
+          "detail": "Protective stop 3.00 USD from the entry reference."
         },
         "position_sizing": {
-          "mode": "broker_minimum",
+          "mode": "fixed",
           "lots": 0.01,
-          "detail": "Broker minimum regardless of equity \u2014 deterministic exposure, no equity-dependent sizing."
+          "detail": "Fixed minimum DEMO size; no equity scaling."
         },
         "max_simultaneous_exposure_lots": 0.01,
-        "max_daily_loss": 5.0,
-        "max_drawdown": 10.0,
+        "max_daily_loss": 5,
+        "max_drawdown": 10,
         "max_orders_per_day": 2,
-        "min_order_interval_s": 900,
+        "min_order_interval_s": 1800,
         "allowed_symbols": [
           "XAUUSD"
         ],
@@ -143,33 +115,11 @@
               "start": "08:00",
               "end": "16:00"
             }
-          ],
-          "detail": "London\u2013New York overlap for XAUUSD: the liquid window in which a spread measurement is representative rather than a rollover artefact. No weekend or rollover sampling."
+          ]
         },
-        "max_spread_bps": 3.0,
-        "max_slippage_bps": 2.0,
+        "max_spread_bps": 3,
+        "max_slippage_bps": 2,
         "execution_delay_assumption_ms": 1500,
-        "min_data_requirements": {
-          "requires_historical_dataset": false,
-          "required_checks": [
-            "market_data_fresh",
-            "spread_available",
-            "broker_order_check",
-            "symbol_mapping_canonical",
-            "risk_limits_resolved",
-            "kill_switch_functional",
-            "reconciliation_ready"
-          ],
-          "detail": "Signal generation uses live venue quotes only; no historical dataset is consumed."
-        },
-        "stale_data_protection": {
-          "max_tick_age_s": 5.0,
-          "on_stale": "NO_TRADE"
-        },
-        "duplicate_order_protection": {
-          "idempotency_required": true,
-          "min_order_interval_s": 900
-        },
         "kill_conditions": [
           "daily_loss_limit",
           "max_drawdown",
@@ -186,23 +136,37 @@
         "reconciliation_requirements": {
           "after_every_order": true,
           "after_every_close": true,
-          "max_age_s": 120.0,
+          "max_age_s": 120,
           "on_drift": "HALT"
         },
-        "code_hash": "d61b54454815f18ae9799b9795b1570a6d3a7c032e9753a412d6eefac603788a",
-        "config_hash": "e15333b925020a7e1d0a5b7e70e480bea74a84ffb2d76a1ad12dcf367cd817c0",
+        "min_data_requirements": {
+          "requires_historical_dataset": false,
+          "required_checks": [
+            "market_data_fresh",
+            "spread_available",
+            "broker_order_check",
+            "symbol_mapping_canonical",
+            "risk_limits_resolved",
+            "kill_switch_functional",
+            "reconciliation_ready"
+          ],
+          "detail": "Signal generation uses live DEMO quotes; no historical dataset is consumed by the provider."
+        },
+        "stale_data_protection": {
+          "max_tick_age_s": 5,
+          "on_stale": "NO_TRADE"
+        },
+        "duplicate_order_protection": {
+          "idempotency_required": true,
+          "min_order_interval_s": 1800
+        },
+        "code_hash": "533fad99f333458252a761d5d786bee8d9454ea6e4ca9b437a2627324e01c41e",
+        "config_hash": "4c13e1a2315828b406e83cd6656c3c71c94b13899a03e3030fd2b9784a6fa7a8",
         "data_hash": null,
-        "data_hash_note": "No historical dataset is consumed: requires_historical_dataset=false. The only data input is the pinned DEMO venue's live quote stream, whose provenance is the identity pin at data/evidence/demo_broker_identity_pin.json \u2014 there is no static dataset to hash.",
-        "code_source": "src/qts/research/demo_execution_probe.py",
-        "policy_hash": "c157931e92af4792654a28654550787427584309c40198515118e4102d922fd1"
+        "data_hash_note": "No historical dataset is consumed; the provider uses only the pinned DEMO quote stream.",
+        "code_source": "src/qts/research/demo_trend_tsmom.py",
+        "policy_hash": "1b4a0abaf1a8f4ad0173a4b3f5951858ffe9411888d0c211b13953ef2e9d59e7"
       }
-    }
-  ],
-  "status_history": [
-    {
-      "at": "2026-09-23T14:57:17+00:00",
-      "current_status": "NO_TRADE",
-      "status_note": "No strategy has passed the required research gates on 2026-09-23: every preregistered XAUUSD family (H-DIR-02, H-DIR-03, H-TEMP-01, H-ST-02WF, H-XF-01, H-XF-02, H-MM-01, H-MM-02, H-1M-01, 15m impulse) is REJECTED or INCONCLUSIVE and strategy_promoted=false in reports/xauusd_*_state.json. DEMO_EXECUTION is therefore ENABLED (authorized) while the trading state remains NO_TRADE until a hypothesis is preregistered and registered here with status ELIGIBLE."
     }
   ]
 }
