@@ -1026,9 +1026,61 @@ class ExecutionEngine:
                         f.fill_id == fill.fill_id for f in self.portfolio.fills
                     ):
                         continue
-                    self._applied_fill_ids.add(fill.fill_id)
+
+                    existing = self.om.get(fill.client_order_id)
+                    if existing is None:
+                        raise RuntimeError(
+                            f"broker fill {fill.fill_id} has no local order for {fill.client_order_id}"
+                        )
+                    if fill.client_order_id != existing.client_order_id:
+                        raise RuntimeError(
+                            f"broker fill {fill.fill_id} client_order_id mismatch: "
+                            f"{fill.client_order_id!r} != {existing.client_order_id!r}"
+                        )
+                    if fill.side != existing.side:
+                        raise RuntimeError(
+                            f"broker fill {fill.fill_id} side mismatch: "
+                            f"{fill.side} != order {existing.side}"
+                        )
+                    if fill.instrument.symbol != existing.instrument.symbol:
+                        raise RuntimeError(
+                            f"broker fill {fill.fill_id} symbol mismatch: "
+                            f"{fill.instrument.symbol!r} != order {existing.instrument.symbol!r}"
+                        )
+                    if not fill.quantity.is_finite() or fill.quantity <= 0:
+                        raise RuntimeError(f"broker fill {fill.fill_id} has invalid quantity {fill.quantity}")
+                    if not fill.price.is_finite() or fill.price <= 0:
+                        raise RuntimeError(f"broker fill {fill.fill_id} has invalid price {fill.price}")
+                    if not fill.fee.is_finite():
+                        raise RuntimeError(f"broker fill {fill.fill_id} has invalid fee {fill.fee}")
+
+                    new_filled = existing.filled_quantity + fill.quantity
+                    if new_filled > existing.quantity:
+                        raise RuntimeError(
+                            f"broker overfill {fill.fill_id}: cumulative {new_filled} "
+                            f"> order quantity {existing.quantity}"
+                        )
+                    new_state = OrderState.FILLED if new_filled == existing.quantity else OrderState.PARTIALLY_FILLED
+                    if existing.avg_fill_price is None or existing.filled_quantity == 0:
+                        avg_fill_price = fill.price
+                    else:
+                        avg_fill_price = (
+                            existing.avg_fill_price * existing.filled_quantity
+                            + fill.price * fill.quantity
+                        ) / new_filled
+
+                    # Validate the entire fill before changing portfolio state.
+                    # A malformed or unowned broker fill must suspend execution,
+                    # not partially mutate the local economic record.
                     self.portfolio.apply_fill(fill)
-                    self._update_drawdown()
+                    self.om.update_state(
+                        fill.client_order_id,
+                        new_state,
+                        filled_quantity=new_filled,
+                        avg_fill_price=avg_fill_price,
+                    )
+                    self._applied_fill_ids.add(fill.fill_id)
+
                     if self.audit:
                         self.audit.emit(
                             DomainEvent(
@@ -1041,39 +1093,6 @@ class ExecutionEngine:
                                     "fee": str(fill.fee),
                                 },
                             )
-                        )
-
-                    existing = self.om.get(fill.client_order_id)
-                    if existing is not None:
-                        if fill.client_order_id != existing.client_order_id:
-                            raise RuntimeError(
-                                f"broker fill {fill.fill_id} client_order_id mismatch: "
-                                f"{fill.client_order_id!r} != {existing.client_order_id!r}"
-                            )
-                        if fill.side != existing.side:
-                            raise RuntimeError(
-                                f"broker fill {fill.fill_id} side mismatch: "
-                                f"{fill.side} != order {existing.side}"
-                            )
-                        new_filled = existing.filled_quantity + fill.quantity
-                        if new_filled > existing.quantity:
-                            raise RuntimeError(
-                                f"broker overfill {fill.fill_id}: cumulative {new_filled} "
-                                f"> order quantity {existing.quantity}"
-                            )
-                        new_state = OrderState.FILLED if new_filled == existing.quantity else OrderState.PARTIALLY_FILLED
-                        if existing.avg_fill_price is None or existing.filled_quantity == 0:
-                            avg_fill_price = fill.price
-                        else:
-                            avg_fill_price = (
-                                existing.avg_fill_price * existing.filled_quantity
-                                + fill.price * fill.quantity
-                            ) / new_filled
-                        self.om.update_state(
-                            fill.client_order_id,
-                            new_state,
-                            filled_quantity=new_filled,
-                            avg_fill_price=avg_fill_price,
                         )
 
                     try:
