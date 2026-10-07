@@ -1,5 +1,7 @@
+import hashlib
+from pathlib import Path
+
+
 def test_probe():
-    import hashlib
-    from pathlib import Path
-    print('PROBE_CODE_HASH='+hashlib.sha256(Path('src/qts/research/demo_trend_tsmom.py').read_bytes()).hexdigest())
-    assert False, 'PROBE_HASH'
+    digest = hashlib.sha256(Path("src/qts/research/demo_trend_tsmom.py").read_bytes()).hexdigest()
+    raise AssertionError(f"PROBE_CODE_HASH={digest}")
