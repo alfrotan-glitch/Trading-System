@@ -673,6 +673,21 @@ class MT5Adapter(BrokerAdapter):
         self._spec_cache[symbol] = spec
         return spec
 
+    def _order_send(self, mt5: Any, request: dict[str, Any], *, operation: str) -> Any:
+        """Single broker-send primitive for every MT5 trade operation.
+
+        Keeping the raw MT5 call here makes broker submission auditable: entry,
+        cancel, and close may build different requests, but none may bypass the
+        adapter's one send authority.
+        """
+        try:
+            result = mt5.order_send(request)
+        except Exception as exc:
+            raise TimeoutError(f"MT5 {operation} transport failure: {exc}") from exc
+        if result is None:
+            raise TimeoutError(f"MT5 {operation} returned None: {mt5.last_error()}")
+        return result
+
     # ---------- Phase 1: Connectivity & health ----------
 
     def validate_prerequisites(self, symbol: str | None = None) -> dict[str, Any]:
@@ -1130,16 +1145,8 @@ class MT5Adapter(BrokerAdapter):
             # Simulate success for testing without terminal
             raise RuntimeError(f"MT5 dry_run enabled — would send {request}")
 
-        # Send with timeout handling
-        try:
-            result = mt5.order_send(request)
-        except Exception as e:
-            # Transport failure — ambiguous
-            raise TimeoutError(f"MT5 order_send transport failure for {intent.client_order_id}: {e}") from e
-
-        if result is None:
-            err = mt5.last_error()
-            raise TimeoutError(f"MT5 order_send returned None for {intent.client_order_id}: {err}")
+        # All broker sends pass through the single MT5 send authority.
+        result = self._order_send(mt5, request, operation=f"order {intent.client_order_id}")
 
         # Classify result
         retcode = getattr(result, "retcode", None)
@@ -1222,8 +1229,8 @@ class MT5Adapter(BrokerAdapter):
             "action": mt5.TRADE_ACTION_REMOVE,
             "order": int(ticket),
         }
-        result = mt5.order_send(request)
-        if result is None or getattr(result, "retcode", None) not in (
+        result = self._order_send(mt5, request, operation=f"cancel {client_order_id}")
+        if getattr(result, "retcode", None) not in (
             self.RETCODE_DONE,
             self.RETCODE_PLACED,
             self.RETCODE_CANCEL,
@@ -1368,9 +1375,7 @@ class MT5Adapter(BrokerAdapter):
         with contextlib.suppress(Exception):
             self._store_comment_map(f"close-{int(ticket)}", str(request["comment"]))
 
-        result = mt5.order_send(request)
-        if result is None:
-            raise TimeoutError(f"MT5 close returned None for position {ticket}: {mt5.last_error()}")
+        result = self._order_send(mt5, request, operation=f"close position {ticket}")
         retcode = getattr(result, "retcode", None)
         receipt = {
             "retcode": retcode,
