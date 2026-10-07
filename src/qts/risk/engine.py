@@ -239,21 +239,25 @@ class RiskEngine:
                 reason_detail=f"{intent.quantity} < min {self.limits.min_quantity}",
                 symbol=sym,
             )
-        # step: quantity must be multiple of step (within tolerance)
-        # check (quantity / step) is integer
-        step = self.limits.quantity_step
-        # use quantize check
-        remainder = (intent.quantity / step) % 1
-        # tolerate 1e-9
-        if remainder != 0 and abs(remainder) > Decimal("0.0000001") and abs(1 - remainder) > Decimal("0.0000001"):
-            # also allow instrument's lot_size as step? Use instrument.lot_size as ground truth if stricter
-            instr_step = intent.instrument.lot_size
-            rem2 = (intent.quantity / instr_step) % 1
-            if rem2 != 0 and abs(rem2) > Decimal("0.0000001") and abs(1 - rem2) > Decimal("0.0000001"):
+        # Broker symbol geometry is authoritative. The configured risk step
+        # may be stricter, but it must never permit a quantity the broker cannot
+        # represent.
+        configured_step = self.limits.quantity_step
+        broker_step = intent.instrument.lot_size
+        if configured_step <= 0 or broker_step <= 0:
+            return RiskDecision(
+                allowed=False,
+                veto_reason=RiskVetoReason.QUANTITY_STEP_VIOLATION,
+                reason_detail="invalid quantity step",
+                symbol=sym,
+            )
+        for step_name, step_value in (("risk", configured_step), ("broker", broker_step)):
+            remainder = intent.quantity % step_value
+            if remainder != 0 and abs(remainder) > Decimal("0.0000001") and abs(step_value - remainder) > Decimal("0.0000001"):
                 return RiskDecision(
                     allowed=False,
                     veto_reason=RiskVetoReason.QUANTITY_STEP_VIOLATION,
-                    reason_detail=f"{intent.quantity} not multiple of {instr_step}",
+                    reason_detail=f"{intent.quantity} is not a multiple of {step_name} step {step_value}",
                     symbol=sym,
                 )
 
@@ -351,12 +355,13 @@ class RiskEngine:
         # unrelated symbols can hide real capital exposure (e.g. +1 XAUUSD
         # and -1 EURUSD incorrectly becoming zero).
         current_exposure_lots = sum((abs(p.quantity) for p in ctx.positions.values()), Decimal("0"))
-        new_qty = Decimal("0")
+        delta = intent.quantity if intent.side.value == "BUY" else -intent.quantity
         current_position = ctx.positions.get(sym)
         if current_position is not None:
-            delta = intent.quantity if intent.side.value == "BUY" else -intent.quantity
             new_qty = current_position.quantity + delta
             current_exposure_lots -= abs(current_position.quantity)
+        else:
+            new_qty = delta
         new_exposure_lots = current_exposure_lots + abs(new_qty)
         if new_exposure_lots > self.limits.max_exposure_lots:
             return RiskDecision(
