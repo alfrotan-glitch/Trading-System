@@ -238,7 +238,37 @@ class ExecutionEngine:
                 "CREATE TABLE IF NOT EXISTS risk_day_state "
                 "(k INTEGER PRIMARY KEY, utc_date TEXT NOT NULL, equity TEXT NOT NULL)"
             )
+            con.execute(
+                "CREATE TABLE IF NOT EXISTS risk_peak_state "
+                "(k INTEGER PRIMARY KEY, peak_equity TEXT NOT NULL)"
+            )
             con.commit()
+
+    def _load_peak_equity(self, equity: Decimal) -> Decimal:
+        """Load and advance the durable drawdown peak; never reset on restart."""
+        if not self.persist_reconcile_state:
+            if equity > self.peak_equity:
+                self.peak_equity = equity
+            return self.peak_equity
+        try:
+            with db_connect(self._db_path) as con:
+                row = con.execute("SELECT peak_equity FROM risk_peak_state WHERE k=1").fetchone()
+                if row is None:
+                    peak = equity
+                    con.execute("INSERT INTO risk_peak_state VALUES (1,?)", (str(peak),))
+                    con.commit()
+                else:
+                    peak = Decimal(str(row[0]))
+                    if not peak.is_finite() or peak <= 0:
+                        raise ValueError(f"invalid persisted peak equity {row[0]!r}")
+                    if equity > peak:
+                        peak = equity
+                        con.execute("UPDATE risk_peak_state SET peak_equity=? WHERE k=1", (str(peak),))
+                        con.commit()
+            self.peak_equity = peak
+            return peak
+        except Exception as exc:
+            raise RuntimeError(f"drawdown peak unavailable: {exc}") from exc
 
     def _load_day_start_equity(self, equity: Decimal) -> Decimal:
         """Load a durable UTC-day equity baseline; never reset it on restart."""
@@ -356,6 +386,7 @@ class ExecutionEngine:
                 # happened to catch up. The first valid broker equity establishes
                 # the session baseline; subsequent checks use the broker directly.
                 self._day_start_equity = self._load_day_start_equity(equity)
+                self._load_peak_equity(equity)
                 self._update_drawdown(equity)
             except Exception as e:
                 raise RuntimeError(f"account unavailable: {e}") from e
