@@ -16,7 +16,7 @@ class NullControl:
         self.seed = seed
         # Keep control randomness local. Seeding process-global RNGs makes a
         # null control alter unrelated research results in the same process.
-        self._rng = random.Random(seed)
+        self._rng = random.Random(seed)  # nosec B311 — deterministic research null control, never used for secrets
         self._np_rng = np.random.default_rng(seed)
 
     def randomized_timing(self, bars: list[Bar]) -> list[Signal]:
