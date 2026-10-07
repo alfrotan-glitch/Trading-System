@@ -901,7 +901,6 @@ class DemoSession:
             max_exposure_lots=snapshot.limits.max_exposure_lots,
             max_exposure_notional=snapshot.limits.max_exposure_notional,
             max_leverage=snapshot.limits.max_leverage,
-            max_correlated_exposure=snapshot.limits.max_correlated_exposure,
             max_open_orders=snapshot.limits.max_open_orders,
             daily_loss_limit=snapshot.limits.daily_loss_limit,
             max_drawdown=snapshot.limits.max_drawdown,
