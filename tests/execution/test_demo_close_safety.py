@@ -8,6 +8,12 @@ from qts.domain.modes import ExecutionMode
 from qts.execution.demo_session import DemoSession
 
 
+class _Harness(DemoSession):
+    @property
+    def mode(self):
+        return ExecutionMode.DEMO_EXECUTION
+
+
 class _Stage:
     def __init__(self) -> None:
         self.halts: list[str] = []
@@ -57,8 +63,7 @@ class _Adapter:
 
 
 def _session(adapter: _Adapter, *, journal=None):
-    obj = DemoSession.__new__(DemoSession)
-    obj.mode = ExecutionMode.DEMO_EXECUTION
+    obj = object.__new__(_Harness)
     obj.authority = _Authority()
     obj.adapter = adapter
     obj.stage = _Stage()
