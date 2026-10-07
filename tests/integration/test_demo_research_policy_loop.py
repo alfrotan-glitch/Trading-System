@@ -20,6 +20,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from fakes_demo_provider import STRATEGY_ID, registry_entry
 from fakes_mt5_demo import FakeTerminal
 
 from qts.execution.demo_autopilot import AutopilotConfig, run_autopilot
@@ -30,7 +31,6 @@ from qts.lifecycle.demo_authorization import document_fingerprint
 from qts.lifecycle.demo_gate import demo_forward_readiness_report
 from qts.lifecycle.demo_policy import policy_fingerprint
 from qts.lifecycle.demo_registry import load_registry, resolve_entry
-from fakes_demo_provider import STRATEGY_ID, registry_entry
 from qts.lifecycle.demo_stage import DemoStage
 
 
