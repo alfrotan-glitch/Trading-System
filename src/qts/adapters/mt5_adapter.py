@@ -1391,6 +1391,57 @@ class MT5Adapter(BrokerAdapter):
         self.last_submission = receipt
         return receipt
 
+    def position_realized_result(self, ticket: int) -> dict[str, Any]:
+        """Return broker-authoritative realized P&L and charges for one MT5 position.
+
+        MT5 exposes the economic result on deals, not on the post-close order
+        receipt. The position id is therefore the only reliable key for a
+        round-trip result. This method is intentionally fail-closed: an empty
+        or unreadable deal history is not treated as zero P&L.
+        """
+        mt5 = self._require_mt5()
+        now = datetime.now(UTC)
+        start = now - timedelta(days=30)
+        try:
+            deals = mt5.history_deals_get(start, now)
+        except Exception as exc:
+            raise ConnectionError(f"MT5 deal history unavailable for position {ticket}: {exc}") from exc
+        if deals is None:
+            raise ConnectionError(f"MT5 deal history unavailable for position {ticket}")
+
+        matched = []
+        for deal in deals:
+            try:
+                if int(getattr(deal, "position_id", 0) or 0) == int(ticket):
+                    matched.append(deal)
+            except (TypeError, ValueError):
+                continue
+        if not matched:
+            raise RuntimeError(f"no MT5 deals found for closed position {ticket}; realized P&L is unproven")
+
+        def dec(deal: Any, name: str) -> Decimal:
+            raw = getattr(deal, name, 0) or 0
+            value = Decimal(str(raw))
+            if not value.is_finite():
+                raise ValueError(f"non-finite MT5 deal {name} for position {ticket}: {raw}")
+            return value
+
+        profit = sum((dec(d, "profit") for d in matched), Decimal("0"))
+        commission = sum((dec(d, "commission") for d in matched), Decimal("0"))
+        swap = sum((dec(d, "swap") for d in matched), Decimal("0"))
+        fee = sum((dec(d, "fee") for d in matched), Decimal("0"))
+        net = profit + commission + swap + fee
+        return {
+            "position_ticket": int(ticket),
+            "deal_count": len(matched),
+            "profit": profit,
+            "commission": commission,
+            "swap": swap,
+            "fee": fee,
+            "net_realized_pnl": net,
+            "deal_tickets": [str(getattr(d, "ticket", "")) for d in matched if getattr(d, "ticket", None) is not None],
+        }
+
     def orders(self) -> list[Order]:
         mt5 = self._require_mt5()
         raw = mt5.orders_get()
