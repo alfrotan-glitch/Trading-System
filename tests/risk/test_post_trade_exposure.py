@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from qts.domain.value_objects import Account, Instrument, OrderIntent, Position, Side
-from qts.risk.engine import RiskEngine, RiskLimits, RiskVetoReason, RiskContext
+from qts.risk.engine import RiskContext, RiskEngine, RiskLimits, RiskVetoReason
 
 
 def _instrument() -> Instrument:
@@ -57,7 +57,6 @@ def test_leverage_uses_post_trade_gross_exposure_for_reduction(tmp_path):
 
 
 def test_existing_position_without_reference_price_blocks_leverage(tmp_path):
-    instrument = _instrument()
     other = Instrument(symbol="EURUSD", contract_size=Decimal("100000"), lot_size=Decimal("0.01"))
     position = Position(instrument=other, quantity=Decimal("0.1"), avg_price=Decimal("1.1"))
     engine = RiskEngine(
@@ -115,7 +114,6 @@ def test_first_position_counts_toward_exposure_limit(tmp_path):
 
 
 def test_quantity_must_match_broker_step(tmp_path):
-    instrument = _instrument()
     engine = RiskEngine(
         RiskLimits(max_exposure_lots=Decimal("2")),
         db_path=tmp_path / "risk.db",
