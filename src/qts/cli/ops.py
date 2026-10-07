@@ -696,7 +696,7 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         if _kill2["killed"]:
             click.echo(
                 "micro blocked (fail closed): canonical kill switch engaged — "
-                f"{_kill2["reason"] or "no reason recorded"}",
+                f"{_kill2['reason'] or 'no reason recorded'}",
                 err=True,
             )
             sys.exit(2)
@@ -704,7 +704,7 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         if _susp2.suspended:
             click.echo(
                 "micro blocked (fail closed): durable reconciliation suspension active — "
-                f"{_susp2.reason or "no reason recorded"}",
+                f"{_susp2.reason or 'no reason recorded'}",
                 err=True,
             )
             sys.exit(2)
