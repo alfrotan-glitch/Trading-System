@@ -163,12 +163,12 @@
           "idempotency_required": true,
           "min_order_interval_s": 1800
         },
-        "code_hash": "d2451d06f2ef4c552d3ce90f2b97c09c2ac1f264e56f6fb7f87d2912f60c476d",
+        "code_hash": "72593ae46a5d8238d3a9da5de1fbeb133a49a35fddbcdf7431e6c587ad2f28ba",
         "config_hash": "1a190fc118f970a6591294c1753b673fbf2b493ec4e2563be1e45d13326917c3",
         "data_hash": null,
         "data_hash_note": "No historical dataset is consumed; the provider uses only the pinned DEMO quote stream.",
         "code_source": "src/qts/research/demo_trend_tsmom.py",
-        "policy_hash": "6cba12c92f192894096e7e7d6d14e5a5aac70527a546be6a403d6d1c85c08bdb"
+        "policy_hash": "7252e23879c24b9ab53550580cc63b7f1db1ca80b309f781a511ae6efb38c119"
       }
     }
   ]
