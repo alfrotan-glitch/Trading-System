@@ -256,7 +256,7 @@ class OrderIntent(BaseModel):
 
     instrument: Instrument
     side: Side
-    quantity: Decimal  # in units (oz for XAUUSD); adapter converts to lots
+    quantity: Decimal  # broker lots; for XAUUSD, 1 lot represents the broker-defined contract size
     order_type: OrderType = OrderType.MARKET
     limit_price: Decimal | None = None
     stop_price: Decimal | None = None
