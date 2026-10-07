@@ -1,0 +1,56 @@
+{
+  "report_id": "cycle-2026-09-23-xauusd-edge",
+  "generated_at": "2026-09-23T07:40:00Z",
+  "decision": "INCONCLUSIVE",
+  "decision_reason": "The canonical zip checksum matched and 139930971 rows were inventoried. No hypothesis was tested. No edge is claimed.",
+  "safety": {
+    "confirm_live": false,
+    "execution_mode": "backtest",
+    "demo_forward_enabled": false,
+    "DEMO_EXECUTION": "DISABLED BY POLICY",
+    "LIVE": "LOCKED",
+    "real_money": false
+  },
+  "data": {
+    "canonical_release": "dataset-xauusd-730d-20260919",
+    "canonical_asset": "XAUUSD_730d_20260919T114013Z.zip",
+    "expected_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+    "verified_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+    "checksum_match": true,
+    "bytes_in_this_runtime": 0,
+    "bytes_measured_on_runner": 1019727380,
+    "row_count": 139930971,
+    "dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789",
+    "inventory_report": "reports/canonical_zip_inventory.json",
+    "inventory_commit": "dc7d36c",
+    "timezone": "UNAVAILABLE",
+    "session_calendar": "UNAVAILABLE",
+    "exact_spread_median": "UNAVAILABLE",
+    "defects": ["ZIP_PATH_SEPARATOR", "TIMESTAMP_BASIS_UNVERIFIED"],
+    "repairs_applied": [],
+    "edge_claim": "NOT ESTABLISHED",
+    "access_record": "reports/dataset_access_xauusd_730d.json"
+  },
+  "discovery": {
+    "status": "NOT STARTED",
+    "hypotheses_tested": [],
+    "rejections": [],
+    "survivors": [],
+    "preregistered_not_tested": ["H-MS-01", "H-MS-02", "H-TOD-01"],
+    "H-TOD-01": "BLOCKED — timestamp basis is not confirmed"
+  },
+  "validation": {
+    "status": "NOT RUN",
+    "costs": "UNAVAILABLE",
+    "out_of_sample": "UNAVAILABLE"
+  },
+  "execution": {
+    "status": "NOT ENTERED",
+    "demo_readiness": "NOT ESTABLISHED",
+    "execution_assumptions": "UNAVAILABLE — no candidate reached execution testing"
+  },
+  "engineering": {
+    "uuid7": "unchanged; uuid.uuid4().hex; not RFC 9562",
+    "full_suite_claim": false
+  }
+}

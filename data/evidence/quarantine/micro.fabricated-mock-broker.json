@@ -1,0 +1,33 @@
+{
+  "mode": "micro",
+  "strategy": "sma_breakout",
+  "data_version": "20260916-010-572728d9",
+  "symbol_spec": {
+    "volume_min": "0.01",
+    "volume_max": "100",
+    "volume_step": "0.01"
+  },
+  "quantity": "0.01",
+  "order": {
+    "client_order_id": "micro:sma_breakout:20260916-010-572728d9:001",
+    "state": "FILLED",
+    "exchange_id": "123456"
+  },
+  "fills": [
+    {
+      "price": "2000.5",
+      "qty": "0.01"
+    }
+  ],
+  "poll_fills": 1,
+  "reconcile": {
+    "drift": "NONE",
+    "details": "ok",
+    "suspended": false
+  },
+  "portfolio": {
+    "equity": "10000",
+    "positions": 1
+  },
+  "audit_count": 100
+}

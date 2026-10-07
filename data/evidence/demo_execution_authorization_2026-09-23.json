@@ -1,0 +1,53 @@
+{
+  "schema": "qts.demo_execution_authorization.v1",
+  "authorization_id": "DEMO-AUTH-2026-09-23-01",
+  "authorized_at": "2026-09-23T14:57:17+00:00",
+  "authorized_by": "project owner \u2014 written authorization dated 2026-09-23 (verbatim instruction recorded in docs/demo_execution_authorization_and_safety_2026-09-23.md \u00a72)",
+  "statement": "The project owner authorizes QTS to perform real order submission on the configured MT5 DEMO account for research and forward-validation purposes only. REAL/LIVE trading remains completely disabled. No real-money account may be used. No transfer of funds is permitted. No broker account other than the explicitly configured DEMO account may be used. Authentication, broker safeguards and application safety controls must not be bypassed, and risk controls must not be weakened to obtain trades. LIVE = LOCKED remains true and real capital exposure remains zero.",
+  "scope": {
+    "account_type": "demo",
+    "modes_allowed": [
+      "DEMO_EXECUTION"
+    ],
+    "symbols_allowed": [
+      "XAUUSD"
+    ],
+    "live_locked": true,
+    "real_capital_exposure_usd": 0,
+    "funds_transfer_permitted": false,
+    "broker_switch_permitted": false,
+    "autonomous_order_management": true
+  },
+  "risk_ceiling": {
+    "max_quantity": 0.1,
+    "max_exposure_lots": 0.3,
+    "max_open_orders": 3,
+    "max_orders_per_minute": 4,
+    "daily_loss_limit": 50,
+    "max_drawdown": 100,
+    "max_drawdown_pct": 5,
+    "max_spread_bps": 30,
+    "max_slippage_bps": 20
+  },
+  "research_integrity": {
+    "no_forward_optimization": true,
+    "strategy_registry_required": true,
+    "parameters_frozen": true,
+    "no_strategy_search_on_forward_results": true,
+    "historical_research_separate": true,
+    "demo_pnl_is_not_proof_of_edge": true,
+    "no_parameter_change_after_losing_trade": true
+  },
+  "evidence": {
+    "document": "docs/demo_execution_authorization_and_safety_2026-09-23.md",
+    "owner_instruction_date": "2026-09-23",
+    "branch": "arena/01a0ce9f-trading-system",
+    "revocation_procedure": "qts demo revoke --reason ... (writes <artifact>.revocation.json; the artifact itself is never edited)",
+    "previous_policy": "DEMO_EXECUTION = DISABLED BY POLICY (qts.lifecycle.demo_authority.DEMO_EXECUTION_DISABLED)"
+  },
+  "expires_at": null,
+  "integrity": {
+    "content_sha256": "424a5435cebe189a9cf56cdad98379cbfb756eb783f68eeb9eee92c5d9adb111",
+    "algorithm": "sha256-canonical-json-v1"
+  }
+}

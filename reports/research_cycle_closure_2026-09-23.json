@@ -1,0 +1,142 @@
+{
+    "schema": "qts.research_cycle_closure.v1",
+    "generated_at_utc": "2026-09-23T12:25:00Z",
+    "branch": "arena/01a0cdf1-trading-system",
+    "closure_commit": "PENDING",
+    "prior_head": "869db8d",
+    "canonical_dataset": {
+        "release": "dataset-xauusd-730d-20260919",
+        "asset": "XAUUSD_730d_20260919T114013Z.zip",
+        "zip_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
+        "manifest_sha256": "d9a61ad583002c6e24f2ad04aee6399e6ec00a9a47928712a7c3f4418e15972f",
+        "dataset_sha256": "26aee827802066266fc5ef2f4ef30f874b0a7139666caf46f3bcfbec840e3789",
+        "rows_total": 139930971,
+        "rows_discovery": 70834426,
+        "rows_held_out": 69096545,
+        "time_msc_min": 1726746013452,
+        "time_msc_max": 1789775939790,
+        "cutoff_time_msc_exclusive": 1764563969254,
+        "boundary_straddling_part": {
+            "part": "part-000441.parquet",
+            "global_rows": "[70,783,710, 70,916,415)",
+            "rows": 132705,
+            "discovery_rows_within_part": 50716,
+            "held_out_rows_within_part": 81989
+        },
+        "previous_complete_part": {
+            "part": "part-000440.parquet",
+            "rows": 0
+        }
+    },
+    "boundary_audit": {
+        "report": "reports/xauusd_discovery_boundary_audit.json",
+        "actions_run": "35856015114",
+        "code_sha": "90a16333e83c60803dc48a111e11c176cc5b9cdb",
+        "commit": "de95a87ece1a7ad9847c8aee67bcb79acc21b3a4",
+        "file_sha256": "f2864545873f98adac4f6b0bd37a806810bca580f006641e3e854efaf3df1153",
+        "disposition": "NO_SAFE_DISCOVERY_VIEW_FROM_IMMUTABLE_PARTS",
+        "held_out_quote_members_opened": 0,
+        "quote_rows_decoded": 0,
+        "scope": "SHA-256 of opaque compressed ZIP bytes; ZIP central-directory metadata; manifest.json only"
+    },
+    "source_search": {
+        "report": "reports/xauusd_discovery_only_source_search_2026-09-23.md",
+        "commit": "869db8d",
+        "disposition": "BLOCKED \u2014 NO AUTHENTICATED DISCOVERY-ONLY VIEW",
+        "surfaces_inspected_without_quote_access": [
+            "local git ls-files/find",
+            "61 ancestors + 12 branch-tip Git tree metadata",
+            "Releases (1 asset)",
+            "ZIP central-directory inventory (734 parts + manifest)",
+            "9 Actions runs / 2 artifacts / 0 caches",
+            "published manifests/reports",
+            "alternative feeds/caches"
+        ],
+        "view_authority_present": false,
+        "discovery_view_present": false
+    },
+    "decision": "NO_VALIDATED_EDGE",
+    "safety": {
+        "DEMO_EXECUTION": "DISABLED BY POLICY",
+        "LIVE": "LOCKED",
+        "confirm_live": false,
+        "orders_submitted": 0,
+        "strategy_promoted": false,
+        "held_out_span_opened": false
+    },
+    "established": {
+        "process_structure_tested": [
+            "H-ST-02 (ratio 1.476, lift 7.0pp)",
+            "H-VL-01 (lift 7.54pp, median wait 17 vs 29)",
+            "H-VL-02 (ratio 1.364)",
+            "H-VL-03 (ratio 1.335, gap $0.2226)",
+            "H-VL-04 (ratio 1.447)",
+            "H-SP-01 (spread persistence)"
+        ],
+        "note": "All magnitude survivors are process structure, not directional trades; mean signed move ~0.8 cent, P(up)~0.506 at 256q; not executable (no volatility instrument, no side)."
+    },
+    "falsified": [
+        "H-MS-01 (rev 0.49941, residual -0.803bps)",
+        "H-MS-02 (wide-narrow -0.0447)",
+        "H-QD-01",
+        "H-QD-02",
+        "H-INT-01 (lift negative)",
+        "H-MV-01",
+        "H-VOL-01",
+        "H-SPR-01",
+        "H-ST-01 (1.197 < 1.25)",
+        "H-ST-03 (fade 49.4% <52%, residual -0.91bps)",
+        "H-ST-04 (1.069 <1.15)",
+        "10x 15m impulse families (all p_holm=1.0, net ~0, DSR<=0.07) => REGIME_DEPENDENT/BLOCK"
+    ],
+    "not_tested_blocked": [
+        "H-DIR-01 (PREREGISTERED, NOT RUN \u2014 mixed part; 50,716 missing rows)",
+        "H-TOD-01 / session/weekday (clock UNCONFIRMED)",
+        "trade-print studies (volume=last=0)"
+    ],
+    "hypothesis_generators_not_tested": {
+        "state_scan": 33,
+        "volatility": 18
+    },
+    "remains_uncertain": [
+        "H-DIR-01 directional effect (T1/T2 floors and 99% CI)",
+        "magnitude clustering reproducibility on new acquisition",
+        "panel sign drift (4096q drift +9.6c)",
+        "temporal structure",
+        "15m impulse with complete + measured-cost data",
+        "trade-print behavior",
+        "execution reality beyond spread+2c/delay stresses"
+    ],
+    "real_15m_mid_campaign": {
+        "version": "20260918-010+8f120133-1ba57af7",
+        "checksum": "sha256:1ba57af7d9d034d9",
+        "rows": 26038,
+        "span": "2025-08-06 \u2192 2026-09-16 (407d)",
+        "source_commit": "4d6f15543e6285fad91fd57fe42f716bc7273075",
+        "quality_gate": "FAIL (1493 legacy 5.42%; 1785 conservative 6.42% vs 2% gate)",
+        "recovery_candidate": "20260918-recovery-140-e563c57e +140 bars, still FAIL 1645/5.91%",
+        "impulse_result": "REGIME_DEPENDENT / BLOCK (frozen, not rerun)",
+        "R5_execution_data": "FAIL / non-blocking"
+    },
+    "evidence_chain": [
+        "reports/canonical_zip_inventory.json (dc7d36c)",
+        "reports/dataset_access_xauusd_730d.json",
+        "reports/xauusd_discovery_state.json (35834431066)",
+        "reports/xauusd_microstructure_state.json (35837520722)",
+        "reports/xauusd_state_scan.json (35844031516)",
+        "reports/xauusd_volatility_state.json (35850795793)",
+        "reports/cycle_2026-09-23_*.md",
+        "data/evidence/xauusd_completeness_disposition.json",
+        "research/impulse_continuation_report_xauusd_dukascopy_15m.md"
+    ],
+    "next_highest_value_action": {
+        "decision": "Do not run another discovery search on any currently available real dataset in this sandbox.",
+        "action": "Operator-executed certified Discovery-only re-acquisition with cutoff as explicit chunk boundary + independent authority pin + separate-runner preflight, plus clock-basis measurement.",
+        "protocol": "docs/preregistration_reacquisition_730d_discovery_2026-09-23.md",
+        "why_highest": "Only missing artifact that can make H-DIR-01 falsifiable without leaking held-out; magnitude clustering is exhausted; 15m history is completeness/R5-blocked; further search on same 60% adds DSR penalty without mechanism.",
+        "hard_external_constraint": "Requires Windows + running WM Markets DEMO terminal + MetaTrader5 package (MT5_PACKAGE_UNAVAILABLE in Linux sandbox).",
+        "stop_rule": "If retention no longer returns full Discovery span or view fails preflight, remain NO VALIDATED EDGE (not a silent substitution)."
+    },
+    "validated_edge_definition": "independently reproducible + statistically defensible + economically meaningful (floors and 99% lower bounds >0) + robust to cost/delay/degradation + survives untouched out-of-sample + passes all QTS integrity/safety gates",
+    "closure_document": "docs/research_cycle_closure_2026-09-23.md"
+}

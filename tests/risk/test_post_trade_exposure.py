@@ -1,0 +1,134 @@
+from decimal import Decimal
+
+from qts.domain.value_objects import Account, Instrument, OrderIntent, Position, Side
+from qts.risk.engine import RiskContext, RiskEngine, RiskLimits, RiskVetoReason
+
+
+def _instrument() -> Instrument:
+    return Instrument(symbol="XAUUSD", contract_size=Decimal("100"), lot_size=Decimal("0.01"))
+
+
+def _intent(side: Side, quantity: str) -> OrderIntent:
+    return OrderIntent(
+        instrument=_instrument(),
+        side=side,
+        quantity=Decimal(quantity),
+        client_order_id=f"risk-{side.value.lower()}-{quantity}",
+        strategy_id="test",
+    )
+
+
+def _ctx(position: Position | None, equity: str = "1000") -> RiskContext:
+    return RiskContext(
+        account=Account(
+            balance=Decimal(equity),
+            equity=Decimal(equity),
+            currency="USD",
+            source="PAPER_SIMULATION",
+        ),
+        positions={position.instrument.symbol: position} if position else {},
+        open_orders_count=0,
+        daily_pnl=Decimal("0"),
+        drawdown=Decimal("0"),
+        instrument_suspended=set(),
+        reference_prices={"XAUUSD": Decimal("3000")},
+    )
+
+
+def test_leverage_uses_post_trade_gross_exposure_for_reduction(tmp_path):
+    instrument = _instrument()
+    position = Position(
+        instrument=instrument,
+        quantity=Decimal("1"),
+        avg_price=Decimal("3000"),
+    )
+    engine = RiskEngine(
+        RiskLimits(
+            max_quantity=Decimal("2"),
+            max_exposure_lots=Decimal("2"),
+            max_leverage=Decimal("2"),
+            max_notional=Decimal("500000"),
+        ),
+        db_path=tmp_path / "risk.db",
+    )
+
+    decision = engine.pre_trade(_intent(Side.SELL, "0.9"), _ctx(position, equity="20000"))
+
+    assert decision.allowed is True
+
+
+def test_existing_position_without_reference_price_blocks_leverage(tmp_path):
+    other = Instrument(symbol="EURUSD", contract_size=Decimal("100000"), lot_size=Decimal("0.01"))
+    position = Position(instrument=other, quantity=Decimal("0.1"), avg_price=Decimal("1.1"))
+    engine = RiskEngine(
+        RiskLimits(max_leverage=Decimal("100")),
+        db_path=tmp_path / "risk.db",
+    )
+    ctx = _ctx(None)
+    ctx = RiskContext(
+        account=ctx.account,
+        positions={"EURUSD": position},
+        open_orders_count=ctx.open_orders_count,
+        daily_pnl=ctx.daily_pnl,
+        drawdown=ctx.drawdown,
+        instrument_suspended=ctx.instrument_suspended,
+        realized_vol=ctx.realized_vol,
+        reference_prices=ctx.reference_prices,
+    )
+
+    decision = engine.pre_trade(_intent(Side.BUY, "0.01"), ctx)
+
+    assert decision.allowed is False
+    assert decision.veto_reason is RiskVetoReason.MISSING_MARKET_PRICE
+
+
+def test_market_order_uses_reference_price_not_stop_trigger(tmp_path):
+    engine = RiskEngine(
+        RiskLimits(max_notional=Decimal("10000")),
+        db_path=tmp_path / "risk.db",
+    )
+    intent = _intent(Side.BUY, "0.01").model_copy(
+        update={"stop_price": Decimal("1")}
+    )
+
+    decision = engine.pre_trade(intent, _ctx(None))
+
+    assert decision.allowed is True
+    assert decision.price == Decimal("3000")
+    assert decision.price_source == "reference_prices"
+
+
+def test_required_protection_uses_stop_loss_not_stop_trigger(tmp_path):
+    engine = RiskEngine(
+        RiskLimits(stop_loss_required=True, max_risk_per_trade_bps=Decimal("0")),
+        db_path=tmp_path / "risk.db",
+    )
+    intent = _intent(Side.BUY, "0.01").model_copy(
+        update={"stop_loss": Decimal("2900")}
+    )
+
+    decision = engine.pre_trade(intent, _ctx(None))
+
+    assert decision.allowed is True
+
+
+def test_first_position_counts_toward_exposure_limit(tmp_path):
+    engine = RiskEngine(
+        RiskLimits(max_quantity=Decimal("2"), max_notional=Decimal("500000"), max_exposure_lots=Decimal("1")),
+        db_path=tmp_path / "risk.db",
+    )
+    decision = engine.pre_trade(_intent(Side.BUY, "1.01"), _ctx(None))
+
+    assert decision.allowed is False
+    assert decision.veto_reason is RiskVetoReason.EXCEEDS_EXPOSURE
+
+
+def test_quantity_must_match_broker_step(tmp_path):
+    engine = RiskEngine(
+        RiskLimits(max_exposure_lots=Decimal("2")),
+        db_path=tmp_path / "risk.db",
+    )
+    decision = engine.pre_trade(_intent(Side.BUY, "0.015"), _ctx(None))
+
+    assert decision.allowed is False
+    assert decision.veto_reason is RiskVetoReason.QUANTITY_STEP_VIOLATION

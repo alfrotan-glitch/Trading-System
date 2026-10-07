@@ -1,0 +1,18 @@
+# Example only. The loader reads configs/live.yaml, which is gitignored.
+# Copying this file does not unlock LIVE. risk.approved stays false here.
+env: live
+data:
+  root: data
+execution:
+  mode: live
+  reconcile_interval_s: 30
+  order_timeout_s: 10
+risk:
+  max_quantity: 0.2
+  max_notional: 2000
+  max_exposure: 0.5
+  daily_loss_limit: 50
+  max_drawdown: 150
+  approved: false
+  kill_switch_enabled: true
+  flatten_on_kill: false

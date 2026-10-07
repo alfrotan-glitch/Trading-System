@@ -1,0 +1,83 @@
+"""Run lineage identity — binds evidence to the exact code that produced it.
+
+Every session/evidence record should carry this string (finding #21/#42):
+results that cannot be traced to a code version are not promotion-grade.
+Resolution order: QTS_GIT_COMMIT env (set by launchers) > git rev-parse >
+package version > "unknown" (never fabricated).
+"""
+
+from __future__ import annotations
+
+import contextlib
+import os
+
+# Only used for the fixed-argv `git rev-parse` probe below (no shell, no user input).
+import subprocess  # nosec B404
+from functools import lru_cache
+from pathlib import Path
+
+
+@lru_cache(maxsize=1)
+def git_commit() -> str | None:
+    env_commit = os.getenv("QTS_GIT_COMMIT")
+    if env_commit:
+        return env_commit
+    for candidate in (Path.cwd(), Path(__file__).resolve().parent):
+        git_dir = candidate / ".git"
+        if git_dir.exists():
+            with contextlib.suppress(Exception):
+                # Fixed argv ("git -C <repo> rev-parse HEAD"), no shell, no
+                # untrusted input: candidate is this process's cwd/package
+                # dir, never user-controlled data.
+                out = subprocess.run(  # nosec B603 B607
+                    ["git", "-C", str(candidate), "rev-parse", "HEAD"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    check=True,
+                )
+                commit = out.stdout.strip()
+                if commit:
+                    # Evidence must distinguish the committed revision from
+                    # a working tree whose source/configuration has changed.
+                    # Generated evidence and local logs are intentionally not
+                    # included in this source-dirty check.
+                    dirty = subprocess.run(  # nosec B603 B607
+                        [
+                            "git",
+                            "-C",
+                            str(candidate),
+                            "status",
+                            "--porcelain",
+                            "--untracked-files=all",
+                            "--",
+                            "src",
+                            "tests",
+                            "pyproject.toml",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                        check=True,
+                    ).stdout.strip()
+                    return f"{commit}-dirty" if dirty else commit
+    return None
+
+
+def code_version() -> str:
+    """Human-auditable code identity, e.g. ``0.1.0+1b7fbed`` or ``0.1.0+unknown``."""
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+
+        try:
+            base = version("qts")
+        except PackageNotFoundError:
+            base = "0.0.0-dev"
+    except Exception:
+        base = "0.0.0-dev"
+    commit = git_commit()
+    dirty_suffix = "-dirty" if commit and commit.endswith("-dirty") else ""
+    commit_value = commit or ""
+    commit_id = commit_value[:-6] if dirty_suffix else commit_value
+    short = (commit_id or "unknown")[:12]
+    return f"{base}+{short}{dirty_suffix}"

@@ -1,0 +1,101 @@
+{
+  "schema": "qts.data_acquisition.v1",
+  "acquired_at": "2026-09-19T17:31:29.501879+00:00",
+  "source": {
+    "repository": "vudo805/forex-price-simulator",
+    "commit": "4d6f15543e6285fad91fd57fe42f716bc7273075",
+    "commit_date": "2026-09-18T08:05:21+00:00",
+    "instrument": "XAUUSD",
+    "feed": "Dukascopy XAU/USD tick feed fetched by the upstream project's downloader (datafeed.dukascopy.com, 20-byte '>iiiff' tick records, POINT_VALUE 1000); exported bars are 15-minute MID-price OHLC (mid = (bid + ask) / 2) with per-bar tick counts",
+    "license": "The upstream repository ships NO LICENSE file and states none: treat the data as unlicensed upstream content, internal research use only, no redistribution",
+    "files": {
+      "XAUUSD_2025-08.parquet": {
+        "sha256": "e650d23cc05194ecb72bf7a748a96823e495850a6b94fac517c29031139c9e37",
+        "rows": 1632
+      },
+      "XAUUSD_2025-09.parquet": {
+        "sha256": "48f7e1d2f5fd2f943580628f736898238b9a998fa4752cbe703ef32779ad345e",
+        "rows": 2002
+      },
+      "XAUUSD_2025-10.parquet": {
+        "sha256": "4533939d9c7ae6e979575e753938f71661ffbe9096e61172040ba1230d9781dc",
+        "rows": 2088
+      },
+      "XAUUSD_2025-11.parquet": {
+        "sha256": "016517904b326a5348795254a7559606d8ae1c882691c399374658a511390cd8",
+        "rows": 1825
+      },
+      "XAUUSD_2025-12.parquet": {
+        "sha256": "e8ad92ba1b1bba37c7fa82577fd27b4faa836ea7f669581ce80f42ca830533a2",
+        "rows": 1979
+      },
+      "XAUUSD_2026-01.parquet": {
+        "sha256": "de17f9c5316678125a9a272fed203b45f52cfe071633b66c548ebf5db826437a",
+        "rows": 1914
+      },
+      "XAUUSD_2026-02.parquet": {
+        "sha256": "1978ce53545f31fd1f6adc5ab33bd447a7a174aa8b71485edf6bd13b792b7954",
+        "rows": 1826
+      },
+      "XAUUSD_2026-03.parquet": {
+        "sha256": "8fba205494b4a068c8803192733d022d81feff082b9668e2a310e23f98ac969e",
+        "rows": 2020
+      },
+      "XAUUSD_2026-04.parquet": {
+        "sha256": "f1b48a9c7c3b9deca60ff2f3856619cd672ebcc2e2d91741fd304cdee18f1486",
+        "rows": 1932
+      },
+      "XAUUSD_2026-05.parquet": {
+        "sha256": "f8ddcae5e23ce1dd0553ada5526bfe6185b5ffc87ace7721acb1cbe0ad517f3b",
+        "rows": 1894
+      },
+      "XAUUSD_2026-06.parquet": {
+        "sha256": "6a404b415cb921943b8419893db3361725180d86ef2c5ed67555b5b1e0d3ce37",
+        "rows": 1988
+      },
+      "XAUUSD_2026-07.parquet": {
+        "sha256": "2f7751b028f183839ec4d3d23a94e5b6de571d00ff14978d73290ae850c6f854",
+        "rows": 2080
+      },
+      "XAUUSD_2026-08.parquet": {
+        "sha256": "5645380ddd0c1a4b0e3cfefbcc283fd3670ea05267978023b7faa590e3c67a3a",
+        "rows": 1820
+      },
+      "XAUUSD_2026-09.parquet": {
+        "sha256": "6b51ceb0fa34f12353a75859ff33179b901138db9d18183ff4db415cabd97da8",
+        "rows": 1038
+      }
+    }
+  },
+  "coverage": {
+    "start": "2025-08-06T00:00:00+00:00",
+    "end": "2026-09-16T23:45:00+00:00",
+    "rows_15m": 26038,
+    "span_days": 406.99,
+    "gaps_are_absent_not_filled": true
+  },
+  "exports": {
+    "15m": {
+      "path": "data/raw/xauusd_dukascopy_15m_mid_20250806_20260916.csv",
+      "sha256": "7271892fa9bacf2a4ad20655d6a019020a4aaf057510e769bb42c5ba59d0a074",
+      "rows": 26038,
+      "header": "time,open,high,low,close,volume",
+      "first_data_row": "2025-08-06T00:00:00+00:00,3383.31,3383.6915,3381.6115,3383.0065,1108",
+      "last_data_row": "2026-09-16T23:45:00+00:00,4273.79,4275.915,4271.485000000001,4271.805,1683"
+    },
+    "1h": {
+      "path": "data/raw/xauusd_dukascopy_1h_mid_agg_20250806_20260916.csv",
+      "sha256": "97b457d6ac42743613a6ee48cf6a02c5fe4475e648fc4c1575003ca5e6c624b0",
+      "rows": 6513,
+      "header": "time,open,high,low,close,volume",
+      "first_data_row": "2025-08-06T00:00:00+00:00,3383.31,3385.3464999999997,3380.8950000000004,3383.515,4192",
+      "last_data_row": "2026-09-16T23:00:00+00:00,4266.6849999999995,4275.915,4258.9,4271.805,4666"
+    },
+    "aggregation_1h": "1H bars are deterministic aggregations of the exported 15m bars on UTC hour boundaries: open = first 15m open, high = max, low = min, close = last 15m close, volume = sum of 15m tick counts. Hours with fewer than four underlying 15m bars (session edges and market closures) are retained as-is; empty hours are absent",
+    "hours_15m_bar_counts": {
+      "2": 6,
+      "3": 2,
+      "4": 6505
+    }
+  }
+}

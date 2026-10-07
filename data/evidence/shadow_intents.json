@@ -1,0 +1,86 @@
+{
+  "mode": "shadow",
+  "strategy": "sma_breakout",
+  "data_version": "20260916-010-572728d9",
+  "bars": 500,
+  "intents": 29,
+  "would_be_fills": [
+    {
+      "client_order_id": "sma_breakout:2020-01-01T21:00:00+00:00:0",
+      "price": "1975.89",
+      "quantity": "0.1"
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-03T14:00:00+00:00:1",
+      "price": "2054.02",
+      "quantity": "0.1"
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-04T01:00:00+00:00:2",
+      "price": "2032.04",
+      "quantity": "0.1"
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-04T04:00:00+00:00:3",
+      "price": "2022.84",
+      "quantity": "0.1"
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-06T08:00:00+00:00:4",
+      "price": "1860.77",
+      "quantity": "0.1"
+    }
+  ],
+  "intents_sample": [
+    {
+      "client_order_id": "sma_breakout:2020-01-01T21:00:00+00:00:0",
+      "price": "1975.89",
+      "would_be": true
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-03T14:00:00+00:00:1",
+      "price": "2054.02",
+      "would_be": true
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-04T01:00:00+00:00:2",
+      "price": "2032.04",
+      "would_be": true
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-04T04:00:00+00:00:3",
+      "price": "2022.84",
+      "would_be": true
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-06T08:00:00+00:00:4",
+      "price": "1860.77",
+      "would_be": true
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-06T18:00:00+00:00:5",
+      "price": "1691.54",
+      "would_be": true
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-07T03:00:00+00:00:6",
+      "price": "1743.41",
+      "would_be": true
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-07T09:00:00+00:00:7",
+      "price": "1723.41",
+      "would_be": true
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-08T05:00:00+00:00:8",
+      "price": "1705.27",
+      "would_be": true
+    },
+    {
+      "client_order_id": "sma_breakout:2020-01-08T08:00:00+00:00:9",
+      "price": "1630.7",
+      "would_be": true
+    }
+  ]
+}

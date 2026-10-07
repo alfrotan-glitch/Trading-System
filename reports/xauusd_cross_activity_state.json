@@ -1,0 +1,135 @@
+{
+  "schema": "qts.xauusd_cross_activity.v1",
+  "preregistration": "docs/xauusd_cross_next_step_H-XF-02_2026-09-23.md",
+  "window": {
+    "time_msc_min": 1726746013452,
+    "cutoff_time_msc": 1764563969254,
+    "discovery_rows_read": 70783710,
+    "held_out_rows_read": 0
+  },
+  "measured": {
+    "256": {
+      "n_A": 26075,
+      "n_B": 14870,
+      "mean_A": 1.1332026845637584,
+      "mean_B": 0.9830211835911231,
+      "ratio": 1.152775447243161,
+      "gap_dollars": 0.15018150097263527,
+      "p_A": 0.8017641418983701,
+      "p_B": 0.7765299260255548,
+      "lift": 0.02523421587281527
+    },
+    "1024": {
+      "n_A": 6456,
+      "n_B": 3749,
+      "mean_A": 2.1973621437422555,
+      "mean_B": 2.0131981861829824,
+      "ratio": 1.0914783049295547,
+      "gap_dollars": 0.18416395755927306,
+      "p_A": 0.9008674101610905,
+      "p_B": 0.8874366497732729,
+      "lift": 0.013430760387817653
+    },
+    "terciles": [
+      {
+        "n_A": 4838,
+        "n_B": 2466,
+        "mean_A": 0.6471589499793303,
+        "mean_B": 0.5953406326034064,
+        "ratio": 1.0870397794777151,
+        "gap_dollars": 0.051818317375923906,
+        "p_A": 0.7139313766019016,
+        "p_B": 0.6686942416869425,
+        "lift": 0.045237134914959176,
+        "tercile": 0,
+        "blocks": 90
+      },
+      {
+        "n_A": 9067,
+        "n_B": 6230,
+        "mean_A": 1.133426160802912,
+        "mean_B": 1.0169606741573032,
+        "ratio": 1.1145230977020002,
+        "gap_dollars": 0.11646548664560874,
+        "p_A": 0.8184625565236572,
+        "p_B": 0.7948635634028892,
+        "lift": 0.023598993120767964,
+        "tercile": 1,
+        "blocks": 86
+      },
+      {
+        "n_A": 12170,
+        "n_B": 6174,
+        "mean_A": 1.326255546425637,
+        "mean_B": 1.103620019436346,
+        "ratio": 1.2017320482306928,
+        "gap_dollars": 0.222635526989291,
+        "p_A": 0.8242399342645851,
+        "p_B": 0.8011013929381277,
+        "lift": 0.02313854132645743,
+        "tercile": 2,
+        "blocks": 95
+      }
+    ],
+    "gap_under_one_hour": {
+      "n_A": 26056,
+      "n_B": 14828,
+      "mean_A": 1.1321885554190974,
+      "mean_B": 0.9744658753709198,
+      "ratio": 1.1618555190433346,
+      "gap_dollars": 0.15772268004817758,
+      "p_A": 0.801734725207246,
+      "p_B": 0.7765713514971675,
+      "lift": 0.025163373710078485
+    },
+    "delay": {
+      "n_A": 26075,
+      "n_B": 14870,
+      "mean_A": 1.1331050814956856,
+      "mean_B": 0.9810208473436449,
+      "ratio": 1.1550265058727816,
+      "gap_dollars": 0.15208423415204064,
+      "p_A": 0.8017641418983701,
+      "p_B": 0.7765299260255548,
+      "lift": 0.02523421587281527
+    },
+    "blocks_per_tercile": {
+      "0": 90,
+      "1": 86,
+      "2": 95
+    },
+    "exclusions": {
+      "note": "non-High or Normal/0 gap ignored"
+    },
+    "gates": {
+      "identity_and_minimums": true,
+      "material_ratio_gap_lift": false,
+      "mirrors_terciles_1024_gap_delay": true,
+      "bootstrap_required": "pending"
+    }
+  },
+  "hypotheses": {
+    "H-XF-02": {
+      "status": "REJECTED",
+      "reasons": [
+        "floor miss: ratio 1.153 < 1.25 or gap $0.150 < $0.1 or lift 0.025 < 0.05"
+      ],
+      "not_a_strategy": true,
+      "validated": false
+    }
+  },
+  "decision": "REJECTED",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "held_out_span_opened": false,
+  "safety": {
+    "DEMO_EXECUTION": "DISABLED",
+    "confirm_live": false,
+    "orders_submitted": 0
+  },
+  "view": {
+    "view_manifest_sha256": "0b163b30bb70dbd5265656b1c90c682908e3df69542bd7ec41647c291c461435",
+    "discovery_rows": 70783710,
+    "cutoff_time_msc": 1764563969254
+  }
+}

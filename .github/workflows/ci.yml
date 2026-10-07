@@ -1,0 +1,58 @@
+name: QTS CI
+
+on:
+  push:
+    branches: ["arena/01a0ce9f-trading-system"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qts-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    # A PR from this canonical branch is already verified by the push run.
+    # Skip the duplicate PR execution so one commit does not consume two full
+    # test runners.
+    if: github.event_name != 'pull_request' || github.head_ref != 'arena/01a0ce9f-trading-system'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+      - name: Install Python dependencies
+        run: pip install -e ".[dev]"
+      - name: Install UI test dependencies
+        run: npm ci
+      - name: Static checks
+        run: |
+          ruff check src/ tests/
+          mypy src
+          bandit -q -r src
+      - name: Fast Python suite (non-extended tests only)
+        run: pytest -q --ignore=tests/integration --ignore=tests/research
+      - name: UI tests
+        run: npm test
+
+  extended:
+    if: github.event_name != 'pull_request' || github.head_ref != 'arena/01a0ce9f-trading-system'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install Python dependencies
+        run: pip install -e ".[dev]"
+      - name: Integration + research only
+        run: pytest -q --run-integration --run-research tests/integration tests/research

@@ -1,0 +1,5 @@
+{
+  "artifact_type": "DERIVED_ALIAS",
+  "canonical_artifact": "data/evidence/autonomous_campaign.json",
+  "note": "Historical autonomous_research export retired; use the current campaign-bound artifact."
+}

@@ -1,0 +1,76 @@
+{
+  "mode": "dry_run",
+  "strategy": "sma_breakout",
+  "data_version": "20260916-010-572728d9",
+  "is_mock": true,
+  "health": {
+    "timestamp": "2026-09-16T14:27:29.806058+00:00",
+    "connected": true,
+    "terminal_ok": true,
+    "account_ok": true,
+    "last_error": "(1, 'ok')",
+    "terminal_info": {
+      "connected": true,
+      "trade_allowed": true
+    },
+    "account": {
+      "balance": "10000",
+      "login": 12345
+    }
+  },
+  "prereq_ok": true,
+  "prereq_errors": [],
+  "symbol_spec": {
+    "symbol": "XAUUSD",
+    "contract_size": "100",
+    "volume_min": "0.01",
+    "volume_max": "100",
+    "volume_step": "0.01",
+    "digits": 2,
+    "point": "0.01",
+    "stops_level": 10,
+    "freeze_level": 0,
+    "filling_mode": 1,
+    "execution_mode": 0
+  },
+  "discovered_symbols": [
+    "XAUUSD",
+    "EURUSD"
+  ],
+  "market_data": {
+    "ok": true,
+    "error": null,
+    "bid": "1999.5",
+    "ask": "2000.5",
+    "buy_price": "2000.5",
+    "sell_price": "1999.5",
+    "mid": "2000.0"
+  },
+  "account": {
+    "ok": true,
+    "error": null,
+    "balance": "10000",
+    "equity": "10000",
+    "leverage": "100"
+  },
+  "risk": {
+    "allowed": true,
+    "veto": null,
+    "price": "2000.5",
+    "price_source": "reference_prices"
+  },
+  "normalized_quantity": "0.01",
+  "broker_request": {
+    "action": "<MagicMock name='mock.TRADE_ACTION_DEAL' id='139800046693776'>",
+    "symbol": "XAUUSD",
+    "volume": 0.01,
+    "type": "<MagicMock name='mock.ORDER_TYPE_BUY' id='139800046688528'>",
+    "type_filling": "<MagicMock name='mock.ORDER_FILLING_IOC' id='139800062454928'>",
+    "type_time": "<MagicMock name='mock.ORDER_TIME_GTC' id='139800046703888'>",
+    "comment": "dryrun:sma_breakout:2026_ea62cd",
+    "magic": 20250916
+  },
+  "request_ok": true,
+  "request_error": null,
+  "audit_emitted": true
+}
