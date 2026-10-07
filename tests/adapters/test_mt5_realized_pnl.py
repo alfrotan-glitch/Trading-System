@@ -35,9 +35,8 @@ class _MT5:
 
 
 def test_position_realized_result_uses_position_filtered_history():
-    adapter = object.__new__(MT5Adapter)
     fake = _MT5()
-    adapter._mt5 = fake
+    adapter = MT5Adapter(mt5_module=fake)
 
     result = adapter.position_realized_result(77)
 
