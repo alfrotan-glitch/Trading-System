@@ -556,7 +556,30 @@ class DemoSession:
         # from a non-DEMO or non-authorized session by calling this method.
         if self.mode is not ExecutionMode.DEMO_EXECUTION:
             raise PermissionError(f"close refused: execution mode is {self.mode.value}")
-        permitted, authority_reasons = self.authority.is_execution_permitted()
+        # Closing an already-open DEMO position is risk-reducing, but it still
+        # requires a fresh proof of the SAME broker/account/symbol boundary.
+        # Entry authority intentionally expires; an expired entry permission
+        # must never strand an existing position at the venue.
+        from qts.lifecycle.demo_gate import demo_forward_readiness_report
+
+        readiness = demo_forward_readiness_report(
+            mt5_module=self.config.mt5_module,
+            terminal_path=self.config.terminal_path,
+            symbol=self.canonical_symbol,
+            symbol_map=dict(self.config.symbol_map or {}) or None,
+        )
+        if not readiness.get("passed"):
+            blocked = readiness.get("blocked_reasons") or ["DEMO readiness did not pass"]
+            raise PermissionError("close refused by fresh DEMO readiness: " + "; ".join(str(r) for r in blocked))
+
+        identity = self._identity_probe()
+        if identity.get("is_demo") is not True:
+            raise PermissionError("close refused: current broker account is not provably DEMO")
+        pin = self._pin_probe()
+        if pin.get("verified") is not True:
+            raise PermissionError("close refused: current broker identity does not match the confirmed DEMO pin")
+
+        permitted, authority_reasons = self.authority.is_execution_permitted(fresh_readiness=readiness)
         if not permitted:
             raise PermissionError(
                 "close refused by DEMO execution authority: "
@@ -700,16 +723,43 @@ class DemoSession:
             }
 
         if fully_closed and matched_journal_row is not None:
-            profit = Decimal(str(matching_pos.get("profit") or "0"))
+            # A pre-close MT5 position profit is UNREALIZED. It is not the
+            # realized result of the closing deal and can differ materially
+            # once the close executes. Read the broker's completed deal history
+            # by position_id and include profit + commission + swap + fee.
+            try:
+                realized = self.adapter.position_realized_result(ticket_int)
+                realized_pnl = Decimal(str(realized["net_realized_pnl"]))
+                fees = (
+                    Decimal(str(realized["commission"]))
+                    + Decimal(str(realized["swap"]))
+                    + Decimal(str(realized["fee"]))
+                )
+            except Exception as exc:
+                self.stage.halt(
+                    reason=f"broker realized P&L could not be proven for ticket {ticket_int}",
+                    actor=actor or self.config.actor,
+                )
+                reconciliation = self.reconcile()
+                return {
+                    "success": False,
+                    "state": "AMBIGUOUS",
+                    "ticket": ticket_int,
+                    "receipt": receipt,
+                    "error": f"broker realized P&L unavailable: {type(exc).__name__}: {exc}",
+                    "reconciliation": reconciliation,
+                }
             try:
                 self.journal.mark_outcome(
                     int(matched_journal_row["journal_id"]),
                     state="CLOSED",
                     exit_reason=reason,
-                    realized_pnl=profit,
+                    realized_pnl=realized_pnl,
+                    fees=fees,
                     market_state_exit={
                         "price_current": matching_pos.get("price_current"),
                         "close_receipt": receipt,
+                        "broker_realized": realized,
                         "closed_by": actor or self.config.actor,
                     },
                 )
