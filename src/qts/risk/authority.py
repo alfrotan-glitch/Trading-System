@@ -55,7 +55,6 @@ class CanonicalRiskLimits(BaseModel):
     # Loss control
     daily_loss_limit: Decimal = Decimal("200")
     max_drawdown: Decimal = Decimal("500")
-    max_drawdown_pct: Decimal = Decimal("10")  # % of starting equity
 
     # Market-condition limits
     max_spread_bps: Decimal = Decimal("100")
@@ -91,7 +90,6 @@ MODE_RESTRICTIONS: dict[ExecutionMode, dict[str, Any]] = {
         "max_orders_per_minute": 4,
         "daily_loss_limit": Decimal("50"),
         "max_drawdown": Decimal("100"),
-        "max_drawdown_pct": Decimal("5"),
         "max_spread_bps": Decimal("30"),
         "max_slippage_bps": Decimal("20"),
         "kill_switch_enabled": True,
@@ -111,7 +109,6 @@ _CAP_FIELDS = frozenset(
         "max_orders_per_minute",
         "daily_loss_limit",
         "max_drawdown",
-        "max_drawdown_pct",
         "max_spread_bps",
         "max_slippage_bps",
     }
