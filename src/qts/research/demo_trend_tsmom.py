@@ -270,10 +270,14 @@ class TrendTimeSeriesMomentum:
         return ema
 
     # ------------------------------------------------------------- signals
-    def _complete_previous_bar(self, boundary: datetime) -> str | None:
-        """Append one completed bar and report a crossing side, if any."""
-        assert self._bar_close is not None  # narrowed by the caller
-        self._closes.append(self._bar_close)
+    def _complete_previous_bar(self, boundary: datetime, close: Decimal) -> str | None:
+        """Append one completed bar and report a crossing side, if any.
+
+        The close is passed in rather than read back from the instance: the
+        caller owns the only state that can be trusted here, and an invariant
+        that is checked with ``assert`` would disappear under ``python -O``.
+        """
+        self._closes.append(close)
         self._last_completed_bar = self._bar_start
         if len(self._closes) < self._slow_n + 1:
             self._last_rationale = (
@@ -394,12 +398,15 @@ class TrendTimeSeriesMomentum:
             return None
 
         # A new bar began: the previous bar is now complete, exactly once.
+        if self._bar_start is None or self._bar_close is None:  # pragma: no cover - unreachable
+            self._last_rationale = "no open bar to complete"
+            return None
         expected = self._bar_start + timedelta(minutes=self._timeframe_minutes)
         if bucket > expected:
             # Unobserved bars are counted, never fabricated: the EMA history
             # simply continues from the last bar that was actually observed.
             self._bar_gaps += 1
-        side = self._complete_previous_bar(bucket)
+        side = self._complete_previous_bar(bucket, self._bar_close)
         self._bar_start = bucket
         self._bar_close = mid
         if side is None:
