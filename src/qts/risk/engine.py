@@ -426,11 +426,14 @@ class RiskEngine:
                         symbol=sym,
                     )
                 total_notional_for_lev += abs(p.quantity) * p.instrument.contract_size * p_price
+            new_symbol_notional_for_lev = (
+                abs(new_qty) * intent.instrument.contract_size * est_price
+            )
             total_notional_for_lev = total_notional_for_lev - (
                 abs(current_position.quantity) * current_position.instrument.contract_size * est_price
                 if current_position is not None
                 else Decimal("0")
-            ) + new_symbol_notional
+            ) + new_symbol_notional_for_lev
         lev = total_notional_for_lev / equity
         if lev > self.limits.max_leverage:
             return RiskDecision(
