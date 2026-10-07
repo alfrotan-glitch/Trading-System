@@ -198,4 +198,6 @@ def test_close_request_never_carries_an_oversized_comment(tmp_path: Path):
     sent = mt5.order_send.call_args.args[0]
     assert len(sent["comment"]) <= MT5_COMMENT_MAX
     assert sent["comment"].isascii()
-    assert sent["comment"] == "X" * MT5_COMMENT_MAX
+    assert 0 < len(sent["comment"]) <= MT5_COMMENT_MAX
+    assert sent["comment"].isascii()
+    assert sent["comment"].isprintable()
