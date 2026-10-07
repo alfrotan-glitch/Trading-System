@@ -669,8 +669,22 @@ class DemoSession:
 
         # A broker DONE receipt is not enough to declare the position lifecycle
         # closed: verify the actual remaining venue position.
+        close_client_id = str(receipt.get("client_order_id") or "")
+        if not close_client_id:
+            self.stage.halt(
+                reason=f"close receipt for ticket {ticket_int} has no correlation id",
+                actor=actor or self.config.actor,
+            )
+            return {
+                "success": False,
+                "state": "AMBIGUOUS",
+                "ticket": ticket_int,
+                "receipt": receipt,
+                "error": "close receipt missing correlation id",
+                "reconciliation": self.reconcile(),
+            }
         try:
-            self.sync_fills()
+            self.sync_fills(client_order_id=close_client_id)
         except Exception as exc:
             self.stage.halt(
                 reason=f"close fill synchronization failed for ticket {ticket_int}",
@@ -806,14 +820,15 @@ class DemoSession:
             "reconciliation": reconciliation,
         }
 
-    def sync_fills(self) -> int:
-        """Fold broker deals into local state; failure is an execution barrier.
+    def sync_fills(self, client_order_id: str | None = None) -> int:
+        """Fold correlated broker deals into local state; failure is an execution barrier.
 
         An MT5 fill is a deal: the portfolio only learns about it when the
         deals are polled. A failed poll leaves venue/local truth uncertain, so
         callers must not continue as though synchronization succeeded.
         """
-        return len(self.engine.poll_live_fills() or [])
+        ids = [client_order_id] if client_order_id else None
+        return len(self.engine.poll_live_fills(ids) or [])
 
     def reconcile(self) -> dict[str, Any]:
         engine = self.engine
