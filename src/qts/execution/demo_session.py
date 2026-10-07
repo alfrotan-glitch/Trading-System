@@ -1664,7 +1664,10 @@ class DemoSession:
         # the venue may have filled while local state is stale; never suppress
         # that uncertainty and continue as if the order were reconciled.
         try:
-            self.engine.poll_live_fills()
+            # Correlate the exact submission we just sent. Do not rely on a broad
+            # state scan: the broker may already report a terminal order state while
+            # the local Portfolio still needs the correlated deal applied.
+            self.engine.poll_live_fills([client_order_id])
         except Exception as exc:
             self.journal.mark_outcome(
                 journal_id,
