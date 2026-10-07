@@ -350,10 +350,9 @@ def test_risk_veto_visibility(tmp_path, monkeypatch):
 
 
 def test_research_campaign_execution(tmp_path):
+    from qts.data.bootstrap import bootstrap_data
     from qts.data.store import SqliteParquetDataStore
     from qts.research.campaign import CampaignConfig, run_campaign
-
-    from qts.data.bootstrap import bootstrap_data
 
     fixture = Path(__file__).resolve().parents[1] / "data" / "fixtures" / "XAUUSD_1H_500.csv"
     data_root = tmp_path / "data"
