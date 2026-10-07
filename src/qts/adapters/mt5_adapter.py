@@ -1177,10 +1177,38 @@ class MT5Adapter(BrokerAdapter):
             # Full broker receipt for the DEMO journal (order id, position/deal
             # id, executed price/volume). Captured here because this is the only
             # place the raw result exists.
+            position_identifier = ""
+            if intent.order_type == OrderType.MARKET:
+                deal_ticket = int(getattr(result, "deal", 0) or 0)
+                if deal_ticket <= 0:
+                    raise TimeoutError(
+                        f"MT5 market order {intent.client_order_id} completed without a broker deal ticket"
+                    )
+                try:
+                    deal_rows = mt5.history_deals_get(ticket=deal_ticket)
+                except Exception as exc:
+                    raise TimeoutError(
+                        f"MT5 market order {intent.client_order_id} position identity lookup failed: {exc}"
+                    ) from exc
+                if not deal_rows:
+                    raise TimeoutError(
+                        f"MT5 market order {intent.client_order_id} completed but its deal is not readable"
+                    )
+                position_ids = {
+                    int(getattr(deal, "position_id", 0) or 0)
+                    for deal in deal_rows
+                    if int(getattr(deal, "position_id", 0) or 0) > 0
+                }
+                if len(position_ids) != 1:
+                    raise TimeoutError(
+                        f"MT5 market order {intent.client_order_id} has no unique position identifier: {position_ids}"
+                    )
+                position_identifier = str(next(iter(position_ids)))
+
             self.last_submission = {
                 "retcode": retcode,
                 "broker_order_id": str(getattr(result, "order", "") or ""),
-                "broker_position_id": str(getattr(result, "deal", "") or getattr(result, "position_id", "") or ""),
+                "broker_position_id": position_identifier,
                 "executed_price": str(getattr(result, "price", "") or ""),
                 "executed_volume": str(getattr(result, "volume", "") or ""),
                 "comment": str(getattr(result, "comment", "") or ""),
@@ -1362,6 +1390,7 @@ class MT5Adapter(BrokerAdapter):
             out.append(
                 {
                     "ticket": getattr(p, "ticket", None),
+                    "position_id": getattr(p, "identifier", getattr(p, "position_id", None)),
                     "symbol": getattr(p, "symbol", None),
                     "broker_symbol": getattr(p, "symbol", None),
                     "volume": str(getattr(p, "volume", 0)),
@@ -1449,10 +1478,16 @@ class MT5Adapter(BrokerAdapter):
 
         result = self._order_send(mt5, request, operation=f"close position {ticket}")
         retcode = getattr(result, "retcode", None)
+        position_identifier = getattr(pos, "identifier", getattr(pos, "position_id", None))
+        if position_identifier is None or int(position_identifier) <= 0:
+            raise RuntimeError(
+                f"MT5 position {ticket} has no valid POSITION_IDENTIFIER — refusing a close "
+                "whose realized P&L cannot be correlated"
+            )
         receipt = {
             "retcode": retcode,
             "broker_order_id": str(getattr(result, "order", "") or ""),
-            "broker_position_id": str(getattr(result, "deal", "") or ""),
+            "broker_position_id": str(int(position_identifier)),
             "client_order_id": close_client_id,
             "executed_price": str(getattr(result, "price", "") or ""),
             "executed_volume": str(getattr(result, "volume", "") or ""),
