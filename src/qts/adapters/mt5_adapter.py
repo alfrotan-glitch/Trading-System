@@ -1401,21 +1401,34 @@ class MT5Adapter(BrokerAdapter):
         """
         mt5 = self._require_mt5()
         now = datetime.now(UTC)
-        start = now - timedelta(days=30)
-        try:
-            deals = mt5.history_deals_get(start, now)
-        except Exception as exc:
-            raise ConnectionError(f"MT5 deal history unavailable for position {ticket}: {exc}") from exc
-        if deals is None:
-            raise ConnectionError(f"MT5 deal history unavailable for position {ticket}")
 
-        matched = []
-        for deal in deals:
+        def fetch_deals(start: datetime) -> list[Any]:
             try:
-                if int(getattr(deal, "position_id", 0) or 0) == int(ticket):
-                    matched.append(deal)
-            except (TypeError, ValueError):
-                continue
+                raw = mt5.history_deals_get(start, now)
+            except Exception as exc:
+                raise ConnectionError(f"MT5 deal history unavailable for position {ticket}: {exc}") from exc
+            if raw is None:
+                raise ConnectionError(f"MT5 deal history unavailable for position {ticket}")
+            return list(raw)
+
+        # Normal positions are resolved from a bounded recent window first.
+        # If the position predates that window, fall back to the terminal's
+        # complete available history rather than falsely declaring zero/unknown
+        # P&L. The fallback is correctness-first; it is used only when the
+        # bounded query cannot prove the position's economic lifecycle.
+        deals = fetch_deals(now - timedelta(days=30))
+        matched = [
+            deal
+            for deal in deals
+            if _safe_int(getattr(deal, "position_id", 0)) == int(ticket)
+        ]
+        if not matched:
+            deals = fetch_deals(datetime(1970, 1, 1, tzinfo=UTC))
+            matched = [
+                deal
+                for deal in deals
+                if _safe_int(getattr(deal, "position_id", 0)) == int(ticket)
+            ]
         if not matched:
             raise RuntimeError(f"no MT5 deals found for closed position {ticket}; realized P&L is unproven")
 
