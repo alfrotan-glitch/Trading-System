@@ -797,6 +797,12 @@ class DemoSession:
                 str(Decimal(str(remaining[0].get("volume") or "0"))) if remaining else "0"
             ),
             "journal_id": matched_journal_row.get("journal_id") if matched_journal_row else None,
+            "realized_pnl": (
+                str(realized_pnl)
+                if fully_closed and matched_journal_row is not None
+                else None
+            ),
+            "fees": str(fees) if fully_closed and matched_journal_row is not None else None,
             "reconciliation": reconciliation,
         }
 
