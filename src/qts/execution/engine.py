@@ -57,6 +57,12 @@ class OrderManager:
         # as, e.g., FILLED. It is now restored from the persisted status and
         # returned without any new submission path.
         if self.idempotency and not self.idempotency.claim(intent.client_order_id, "PENDING"):
+            # A same-process concurrent caller may have created the in-memory
+            # order between the initial lookup and the durable claim. Preserve
+            # that object; never replace it with a restart placeholder.
+            existing = self.orders.get(intent.client_order_id)
+            if existing is not None:
+                return existing
             return self._restore_persisted_duplicate(intent)
         order = Order(
             order_id=uuid7(),
@@ -809,7 +815,7 @@ class ExecutionEngine:
                         )
                     )
                 return cancelled, []
-    
+
             try:
                 broker_order = self.broker.submit(intent)
                 self.om.update_state(
