@@ -36,7 +36,7 @@ class RiskConfig(BaseModel):
     stop_loss_required: bool = False
     max_exposure: float = 2.0
     max_leverage: float = 5.0
-    max_correlated_exposure: float = 1.5
+
     max_open_orders: int = 5
     daily_loss_limit: float = 200.0
     max_drawdown: float = 500.0
