@@ -357,11 +357,26 @@ class RiskEngine:
             # estimate total notional after trade: sum of abs(qty)*contract*price
             # approximate using est_price for new position
             current_notional = sum(
-                (abs(p.quantity) * p.instrument.contract_size * est_price for p in ctx.positions.values()),
+                (
+                    abs(p.quantity)
+                    * p.instrument.contract_size
+                    * (est_price if p.instrument.symbol == sym else (
+                        ctx.reference_price_for(p.instrument.symbol) or Decimal("0")
+                    ))
+                    for p in ctx.positions.values()
+                ),
                 Decimal("0"),
             )
-            # new notional approx
-            new_notional = current_notional + notional  # overestimates but safe
+            # The new position notional replaces the current symbol's notional
+            # rather than blindly adding it, so reducing/reversing a position
+            # is not charged twice.
+            old_symbol_notional = (
+                abs(current_position.quantity) * current_position.instrument.contract_size * est_price
+                if current_position is not None
+                else Decimal("0")
+            )
+            new_symbol_notional = abs(new_qty) * intent.instrument.contract_size * est_price
+            new_notional = current_notional - old_symbol_notional + new_symbol_notional
             if new_notional > self.limits.max_exposure_notional:
                 return RiskDecision(
                     allowed=False,
