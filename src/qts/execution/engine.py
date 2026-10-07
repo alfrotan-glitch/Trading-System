@@ -1148,9 +1148,9 @@ class ExecutionEngine:
                         )
                     )
                 return report
-            # avg price mismatch — if significant (>0.5% or > 10 points), suspend (G5)
+            # Average-price drift is safety-critical: tolerate only one broker price increment.
             if venue.avg_price != local.avg_price:
-                # Use relative diff: abs(diff)/price > 0.005 (0.5%) or absolute > 10*point
+                # Never hide material execution drift behind a broad percentage tolerance.
                 try:
                     diff = abs(venue.avg_price - local.avg_price)
                     # Get point from broker spec if available
