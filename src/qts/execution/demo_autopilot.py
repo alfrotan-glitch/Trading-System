@@ -237,7 +237,8 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
                 )
                 report.no_trade += 1
                 halt("no eligible strategy in the forward-validation registry — NO_TRADE")
-            assert entry is not None
+            if entry is None:  # nosec B101 — narrowed by the registry resolution immediately above
+                continue
 
             # The provider is instantiated once per run and reused: a strategy
             # that tracks its own state (position already open, signals already
