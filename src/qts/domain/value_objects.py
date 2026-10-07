@@ -324,6 +324,28 @@ class Order(BaseModel):
         return _ensure_utc(v)
 
     def with_state(self, state: OrderState, **kwargs: Any) -> Order:
+        allowed: dict[OrderState, frozenset[OrderState]] = {
+            OrderState.PENDING: frozenset(
+                {OrderState.ACCEPTED, OrderState.REJECTED, OrderState.AMBIGUOUS, OrderState.CANCELLED}
+            ),
+            OrderState.ACCEPTED: frozenset(
+                {
+                    OrderState.PARTIALLY_FILLED,
+                    OrderState.FILLED,
+                    OrderState.AMBIGUOUS,
+                    OrderState.CANCELLED,
+                }
+            ),
+            OrderState.PARTIALLY_FILLED: frozenset(
+                {OrderState.PARTIALLY_FILLED, OrderState.FILLED, OrderState.AMBIGUOUS, OrderState.CANCELLED}
+            ),
+            OrderState.REJECTED: frozenset(),
+            OrderState.AMBIGUOUS: frozenset(),
+            OrderState.FILLED: frozenset(),
+            OrderState.CANCELLED: frozenset(),
+        }
+        if state is not self.state and state not in allowed[self.state]:
+            raise ValueError(f"invalid order state transition {self.state.value} -> {state.value}")
         return self.model_copy(update={"state": state, "updated_at": _utc_now(), **kwargs})
 
 
