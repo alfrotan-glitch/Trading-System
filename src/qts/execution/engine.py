@@ -932,15 +932,31 @@ class ExecutionEngine:
                         cid = str(item.get("client_order_id") or client_order_id)
                         if cid != str(client_order_id):
                             continue
-                        from qts.domain.value_objects import uuid7 as _uuid7
-
-                        fill_id = item.get("fill_id") or _uuid7()
+                        fill_id = item.get("fill_id")
+                        if not fill_id:
+                            raise RuntimeError(
+                                f"broker fill for {cid} has no stable fill_id; refusing to apply an unidentifiable fill"
+                            )
                         known = self.om.get(cid)
+                        symbol = str(item.get("symbol", ""))
+                        if not symbol:
+                            raise RuntimeError(f"broker fill {fill_id} has no symbol")
+                        try:
+                            spec = self.broker.get_symbol_spec(symbol)
+                            instrument = Instrument(
+                                symbol=symbol,
+                                venue="MT5",
+                                contract_size=spec.contract_size,
+                                lot_size=spec.volume_step,
+                                tick_size=spec.tick_size,
+                            )
+                        except Exception as exc:
+                            raise RuntimeError(f"broker fill {fill_id} symbol spec unavailable: {exc}") from exc
                         fill = Fill(
-                            fill_id=fill_id,
+                            fill_id=str(fill_id),
                             order_id=known.order_id if known is not None else cid,
                             client_order_id=cid,
-                            instrument=Instrument(symbol=item.get("symbol", "XAUUSD")),
+                            instrument=instrument,
                             side=item.get("side", Side.BUY),
                             quantity=item.get("volume", Decimal("0")),
                             price=item.get("price", Decimal("0")),
