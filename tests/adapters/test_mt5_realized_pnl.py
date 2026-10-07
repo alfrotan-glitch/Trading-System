@@ -48,3 +48,34 @@ def test_position_realized_result_uses_position_filtered_history():
     assert result["fee"] == Decimal("-0.03")
     assert result["net_realized_pnl"] == Decimal("2.12")
     assert fake.calls == [{"position": 77}]
+
+
+def test_correlated_history_uses_persisted_creation_time(tmp_path):
+    from datetime import UTC, datetime, timedelta
+    from types import SimpleNamespace
+
+    class HistoryMT5:
+        def __init__(self):
+            self.calls = []
+
+        def history_deals_get(self, start, end):
+            self.calls.append((start, end))
+            return [SimpleNamespace(comment="qts-test")]
+
+        def last_error(self):
+            return (1, "ok")
+
+    adapter = MT5Adapter(mt5_module=HistoryMT5(), db_path=tmp_path / "qts.db")
+    client_order_id = "order-history-window"
+    adapter._store_comment_map(client_order_id, "qts-test")
+
+    before = datetime.now(UTC) - timedelta(seconds=2)
+    deals = adapter.history_deals(client_order_id)
+    after = datetime.now(UTC) + timedelta(seconds=2)
+
+    assert len(deals) == 1
+    assert len(adapter._mt5.calls) == 1
+    start, end = adapter._mt5.calls[0]
+    assert before <= start <= after
+    assert start < end
+    assert (end - start).total_seconds() < 10
