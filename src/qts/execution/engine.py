@@ -40,6 +40,37 @@ except ImportError:
     MarketDataError = RuntimeError  # type: ignore
 
 
+@dataclass(frozen=True)
+class ReconcileSuspension:
+    suspended: bool
+    reason: str | None = None
+
+
+def load_reconcile_suspension(db_path: Path | str) -> ReconcileSuspension:
+    """Read the durable reconciliation blocker without creating the store."""
+    path = Path(db_path)
+    if not path.exists():
+        return ReconcileSuspension(False, None)
+    try:
+        with db_connect(path) as con:
+            row = con.execute("SELECT suspended, reason FROM reconcile_state WHERE k=1").fetchone()
+    except sqlite3.OperationalError as exc:
+        if "no such table" in str(exc).lower():
+            return ReconcileSuspension(False, None)
+        return ReconcileSuspension(
+            True,
+            f"reconcile suspend state unreadable — fail closed ({type(exc).__name__}: {exc})",
+        )
+    except Exception as exc:
+        return ReconcileSuspension(
+            True,
+            f"reconcile suspend state unreadable — fail closed ({type(exc).__name__}: {exc})",
+        )
+    if row is None:
+        return ReconcileSuspension(False, None)
+    return ReconcileSuspension(bool(row[0]), row[1] or None)
+
+
 class OrderManager:
     def __init__(self, audit: AuditLog | None = None, idempotency: IdempotencyStore | None = None):
         self.orders: dict[str, Order] = {}  # client_order_id -> Order
@@ -341,18 +372,8 @@ class ExecutionEngine:
         * "no such table" honestly means no suspension was ever persisted;
         * any other read failure is treated as SUSPENDED.
         """
-        try:
-            with db_connect(self._db_path) as con:
-                row = con.execute("SELECT suspended, reason FROM reconcile_state WHERE k=1").fetchone()
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e).lower():
-                return False, None
-            return True, f"reconcile suspend state unreadable — fail closed ({type(e).__name__}: {e})"
-        except Exception as e:
-            return True, f"reconcile suspend state unreadable — fail closed ({type(e).__name__}: {e})"
-        if row:
-            return bool(row[0]), row[1]
-        return False, None
+        state = load_reconcile_suspension(self._db_path)
+        return state.suspended, state.reason
 
     def _persist_reconcile_suspend(self, suspended: bool, reason: str | None) -> None:
         if not self.persist_reconcile_state:
