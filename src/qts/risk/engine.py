@@ -295,6 +295,31 @@ class RiskEngine:
                 notional=None,
                 symbol=sym,
             )
+        # Decimal NaN/Infinity can otherwise bypass ordinary comparisons.
+        # Every execution price/level must be finite before arithmetic.
+        for price_name, price_value in (
+            ("estimated price", est_price),
+            ("limit price", intent.limit_price),
+            ("stop price", intent.stop_price),
+            ("protective stop", intent.stop_loss),
+            ("take profit", intent.take_profit),
+        ):
+            if price_value is not None and not price_value.is_finite():
+                return RiskDecision(
+                    allowed=False,
+                    veto_reason=RiskVetoReason.MISSING_MARKET_PRICE,
+                    reason_detail=f"{price_name} is non-finite",
+                    symbol=sym,
+                    price=None,
+                    price_source="invalid",
+                )
+        if not intent.quantity.is_finite():
+            return RiskDecision(
+                allowed=False,
+                veto_reason=RiskVetoReason.QUANTITY_STEP_VIOLATION,
+                reason_detail="quantity is non-finite",
+                symbol=sym,
+            )
         notional = self._notional_for(intent, est_price)
         # audit detail includes price_source for traceability
         if notional > self.limits.max_notional:
