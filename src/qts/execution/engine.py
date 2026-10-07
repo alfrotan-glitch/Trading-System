@@ -1098,10 +1098,35 @@ class ExecutionEngine:
                             )
                         return report
                 except Exception as e:
-                    # If price check itself fails, log but don't block unless it's suspend case above
-                    if "PRICE_MISMATCH" in str(e):
-                        raise
-                    pass
+                    # A failed price-consistency check leaves local-vs-venue state
+                    # uncertain. Do not continue with a healthy execution state just
+                    # because the comparison itself could not be completed.
+                    report = ReconcileReport(
+                        "PRICE_CHECK_ERROR",
+                        f"{sym} price consistency check unavailable: {type(e).__name__}: {e}",
+                        requires_suspend=True,
+                    )
+                    self._suspended = True
+                    self._suspend_reason = report.details
+                    self._persist_reconcile_suspend(True, self._suspend_reason)
+                    if self.audit:
+                        self.audit.emit(
+                            DomainEvent(
+                                event_type=EventType.RECONCILE,
+                                payload={
+                                    "drift": report.drift,
+                                    "details": report.details,
+                                    "requires_suspend": True,
+                                },
+                            )
+                        )
+                        self.audit.emit(
+                            DomainEvent(
+                                event_type=EventType.NO_TRADE,
+                                payload={"reason": report.drift, "detail": report.details},
+                            )
+                        )
+                    return report
 
         for sym, venue in venue_positions.items():
             if venue.quantity != Decimal("0") and sym not in self.portfolio.positions:
