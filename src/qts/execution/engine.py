@@ -846,44 +846,33 @@ class ExecutionEngine:
             )
         return self.om.get(intent.client_order_id), fills
 
-    def poll_live_fills(self) -> list[Fill]:
-        """Poll live broker for new fills (deals) and apply to portfolio.
-
-        For MT5, fills are deals; for paper, this is no-op (fills already applied synchronously).
-        Must be called periodically in live mode. Each fill is applied to portfolio
-        and audited. Returns list of new fills.
-        """
+    def poll_live_fills(self, client_order_ids: list[str] | None = None) -> list[Fill]:
+        """Poll only correlated live orders; never replay arbitrary broker history."""
         if not bool(getattr(self.broker, "is_live", False)) and self.broker.__class__.__name__ != "MT5Adapter":
             return []
+        if client_order_ids is None:
+            client_order_ids = [
+                cid for cid, order in self.om.orders.items()
+                if order.state in (
+                    OrderState.PENDING,
+                    OrderState.ACCEPTED,
+                    OrderState.PARTIALLY_FILLED,
+                )
+            ]
+        ids = list(dict.fromkeys(str(cid) for cid in client_order_ids if cid))
+        if not ids:
+            return []
+
         new_fills: list[Fill] = []
-        # For MT5, use history_deals or positions diff
-        # We need to track which deals have been applied — for now, poll all and deduplicate via fill_id?
-        # Simplify: if broker has poll_fills or history_deals, use it
         try:
-            if hasattr(self.broker, "poll_fills"):
-                # poll_fills may return dicts or fills
-                raw = self.broker.poll_fills("")  # empty means all
+            for client_order_id in ids:
+                raw = self.broker.poll_fills(client_order_id) if hasattr(self.broker, "poll_fills") else []
                 for item in raw or []:
-                    # If item is already Fill, use it
                     if isinstance(item, Fill):
                         fill = item
                     elif isinstance(item, dict):
-                        # dict from MT5Adapter.poll_fills — attribution is mandatory:
-                        # a fill we cannot tie to a known order is NEVER applied to the
-                        # portfolio (fail closed); it is audited for reconciliation.
-                        cid = item.get("client_order_id")
-                        if not cid:
-                            if self.audit:
-                                self.audit.emit(
-                                    DomainEvent(
-                                        event_type=EventType.RECONCILE,
-                                        payload={
-                                            "drift": "UNATTRIBUTED_FILL",
-                                            "details": f"deal {item.get('fill_id')} could not be mapped to a client_order_id — not applied",
-                                            "requires_suspend": False,
-                                        },
-                                    )
-                                )
+                        cid = str(item.get("client_order_id") or client_order_id)
+                        if cid != str(client_order_id):
                             continue
                         from qts.domain.value_objects import uuid7 as _uuid7
 
@@ -897,11 +886,12 @@ class ExecutionEngine:
                             side=item.get("side", Side.BUY),
                             quantity=item.get("volume", Decimal("0")),
                             price=item.get("price", Decimal("0")),
+                            fee=item.get("fee", Decimal("0")),
                             event_time=item.get("time", datetime.now(UTC)),
                         )
                     else:
                         continue
-                    # Deduplicate by STABLE fill_id (deal ticket) across polls
+
                     if fill.fill_id in self._applied_fill_ids or any(
                         f.fill_id == fill.fill_id for f in self.portfolio.fills
                     ):
@@ -918,54 +908,37 @@ class ExecutionEngine:
                                     "client_order_id": fill.client_order_id,
                                     "price": str(fill.price),
                                     "quantity": str(fill.quantity),
+                                    "fee": str(fill.fee),
                                 },
                             )
                         )
-                    # Update order state to FILLED or PARTIALLY_FILLED — a submitted
-                    # order is never assumed filled; state follows observed fill quantity.
+
                     existing = self.om.get(fill.client_order_id)
                     if existing is not None:
                         new_filled = existing.filled_quantity + fill.quantity
-                        new_state = (
-                            OrderState.FILLED if new_filled >= existing.quantity else OrderState.PARTIALLY_FILLED
-                        )
+                        new_state = OrderState.FILLED if new_filled >= existing.quantity else OrderState.PARTIALLY_FILLED
                         self.om.update_state(
-                            fill.client_order_id, new_state, filled_quantity=new_filled, avg_fill_price=fill.price
+                            fill.client_order_id,
+                            new_state,
+                            filled_quantity=new_filled,
+                            avg_fill_price=fill.price,
                         )
-                    elif self.audit:
-                        self.audit.emit(
-                            DomainEvent(
-                                event_type=EventType.RECONCILE,
-                                payload={
-                                    "drift": "UNATTRIBUTED_FILL",
-                                    "details": f"fill {fill.fill_id} references unknown order {fill.client_order_id} — not applied to order state",
-                                    "requires_suspend": False,
-                                },
-                            )
-                        )
-                    # Also update broker mirror if needed
-                    if hasattr(self.broker, "apply_fill"):
-                        with contextlib.suppress(Exception):
-                            self.broker.apply_fill(fill)
-                    new_fills.append(fill)
-                    # post-trade risk
+
                     try:
                         ctx2 = self._risk_ctx(reference_prices={fill.instrument.symbol: fill.price})
-                    except Exception as e:
+                    except Exception as exc:
                         self._suspended = True
-                        self._suspend_reason = f"account unavailable post-trade poll: {e}"
+                        self._suspend_reason = f"account unavailable post-trade poll: {exc}"
                         self._persist_reconcile_suspend(True, self._suspend_reason)
                         ctx2 = None
                     if ctx2 is not None:
                         self.risk.post_trade(fill, ctx2)
                         if self.risk.killed:
                             self.handle_kill(f"poll post-trade kill: {fill.fill_id}")
-        except Exception as e:
-            # A failed fill poll leaves venue/local outcome uncertain. Swallowing
-            # the exception would let callers continue as though state were known.
-            # Persist suspension and re-raise so every execution caller fails closed.
+                    new_fills.append(fill)
+        except Exception as exc:
             self._suspended = True
-            self._suspend_reason = f"fill polling unavailable: {e}"
+            self._suspend_reason = f"fill polling unavailable: {exc}"
             self._persist_reconcile_suspend(True, self._suspend_reason)
             if self.audit:
                 self.audit.emit(
@@ -973,18 +946,15 @@ class ExecutionEngine:
                         event_type=EventType.RECONCILE,
                         payload={
                             "drift": "POLL_ERROR",
-                            "details": str(e),
+                            "details": str(exc),
                             "requires_suspend": True,
                         },
                     )
                 )
                 self.audit.emit(
-                    DomainEvent(
-                        event_type=EventType.NO_TRADE,
-                        payload={"reason": "POLL_ERROR", "detail": str(e)},
-                    )
+                    DomainEvent(event_type=EventType.NO_TRADE, payload={"reason": "POLL_ERROR", "detail": str(exc)})
                 )
-            raise RuntimeError(f"fill polling unavailable — execution suspended: {e}") from e
+            raise RuntimeError(f"fill polling unavailable — execution suspended: {exc}") from exc
         return new_fills
 
     def reconcile(self) -> ReconcileReport:
