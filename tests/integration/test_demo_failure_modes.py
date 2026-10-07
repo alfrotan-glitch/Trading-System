@@ -33,9 +33,10 @@ from qts.execution.demo_session import DemoSession, DemoSessionConfig
 def test_ambiguous_retcode_suspends_and_sends_no_second_order(demo_env):
     """A broker timeout is an UNKNOWN state: refuse, record, never retry blindly."""
 
+    write_registry(demo_env["registry"], provider_fixture.registry_entry())
     terminal = FakeTerminal()
     terminal.order_send_retcode = 10012  # TRADE_RETCODE_TIMEOUT — ambiguous
-    session = armed_session(demo_env["tmp"], terminal)
+    session = armed_session(demo_env["tmp"], terminal, register_strategy=True)
 
     result = session.submit(side="BUY", stop_loss=Decimal("1995.00"), rationale="failure-mode test")
     assert result.allowed is False
