@@ -193,7 +193,13 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
             kill_state = session.kill_switch_state()
             if not kill_state.get("readable") or kill_state.get("killed"):
                 halt(f"kill switch {'unreadable' if not kill_state.get('readable') else 'ACTIVE'}: {kill_state.get('reason')}")
-            reconciliation = session.reconcile()
+            try:
+                reconciliation = session.reconcile()
+            except Exception as exc:
+                # Reconciliation is a hard safety boundary. If a wrapper or
+                # adapter cannot establish authoritative venue state, the loop
+                # must halt rather than interpreting the exception as clean.
+                halt(f"reconciliation unavailable: {type(exc).__name__}: {exc}")
             if reconciliation.get("requires_suspend"):
                 halt(
                     f"reconciliation requires suspension: {reconciliation.get('drift')} "
