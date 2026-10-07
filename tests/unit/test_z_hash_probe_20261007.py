@@ -2,7 +2,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from qts.lifecycle.demo_registry import policy_fingerprint
+from qts.lifecycle.demo_policy import policy_fingerprint
 
 
 def test_probe_hash():
