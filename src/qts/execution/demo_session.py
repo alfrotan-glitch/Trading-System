@@ -812,14 +812,14 @@ class DemoSession:
                     )
                 )
             except AttributeError as exc:
-                if "get_symbol_spec" in str(exc):
-                    # Minimal adapters used by narrow failure-path tests do not
-                    # expose broker SymbolSpec. Never invent one; continue so
-                    # the intended broker/venue failure path remains testable.
-                    pass
-                else:
-                    self.stage.halt(
-                        reason=f"local journal position state could not be restored for ticket {ticket_int}",
+                if "get_symbol_spec" not in str(exc):
+                    raise
+                # Minimal adapters without broker SymbolSpec cannot safely
+                # reconstruct an instrument; continue and let reconciliation
+                # fail closed rather than inventing contract geometry.
+            except Exception as exc:
+                self.stage.halt(
+                    reason=f"local journal position state could not be restored for ticket {ticket_int}",
                     actor=actor or self.config.actor,
                 )
                 return {
