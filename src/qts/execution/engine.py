@@ -1068,8 +1068,21 @@ class ExecutionEngine:
         """
         # Check broker connectivity first — fail closed on disconnect
         try:
-            venue_positions = {p.instrument.symbol: p for p in self.broker.positions()}
-            venue_orders = {o.client_order_id: o for o in self.broker.orders()}
+            raw_positions = self.broker.positions()
+            position_symbols = [p.instrument.symbol for p in raw_positions]
+            if len(position_symbols) != len(set(position_symbols)):
+                raise RuntimeError(
+                    f"broker returned duplicate canonical positions: {position_symbols}"
+                )
+            venue_positions = {p.instrument.symbol: p for p in raw_positions}
+
+            raw_orders = self.broker.orders()
+            order_ids = [str(o.client_order_id) for o in raw_orders]
+            if len(order_ids) != len(set(order_ids)):
+                raise RuntimeError(
+                    f"broker returned duplicate client order identities: {order_ids}"
+                )
+            venue_orders = {str(o.client_order_id): o for o in raw_orders}
         except Exception as e:
             report = ReconcileReport("BROKER_DISCONNECT", f"broker positions/orders failed: {e}", requires_suspend=True)
             self._suspended = True
