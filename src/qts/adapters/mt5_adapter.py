@@ -1762,7 +1762,7 @@ class MT5Adapter(BrokerAdapter):
                     and bar_time <= tick_epoch <= bar_time + 60.0 + 5.0
                 )
                 if tick_is_current_bar:
-                    candidate = round((tick_epoch - now_epoch) / 60.0) * 60.0
+                    candidate = float(round(tick_epoch - now_epoch))
                     if abs(candidate) <= self._MAX_PLAUSIBLE_OFFSET_S:
                         measured_offset = float(candidate)
                         # If the tick agrees with the forming M1 bar's minute
