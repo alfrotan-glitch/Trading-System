@@ -1,6 +1,7 @@
 # DEMO Execution — Authorization and Safety Contract (2026-09-23)
 
-**Status:** `DEMO_EXECUTION = ENABLED_AUTHORIZED` · `LIVE = LOCKED` · `REAL_CAPITAL_EXPOSURE = 0` ·
+**Status:** `DEMO_EXECUTION = ENABLED_AUTHORIZED` when the owner artifact validates (the shipped
+artifact is currently refused — §2.5) · `LIVE = LOCKED` · `REAL_CAPITAL_EXPOSURE = 0` ·
 **Trading state: `TRADING_ELIGIBLE_DIAGNOSTIC`** (2026-09-24) — a registered, **non-validated** DEMO
 forward research policy may trade to *measure*; no strategy has a validated edge.
 **Branch:** `arena/01a0ce9f-trading-system`
@@ -107,6 +108,48 @@ resolve_demo_execution_policy(mode=…)
   mode=DEMO_FORWARD/PAPER/SHADOW/DEV   -> DISABLED BY POLICY for orders + explicit reason
 ```
 
+### 2.5 Re-issuing the artifact after a canonical limit change (owner action)
+
+`risk_ceiling` may only name limits that exist in the canonical DEMO risk authority and may only
+tighten them. The percentage drawdown (`max_drawdown_pct`) was **removed from the authority because it
+was never enforced**, so an artifact that still names it is refused as an unknown key. That is the state
+of the shipped artifact today:
+
+```
+$ qts demo authorization
+{ ... "valid": false,
+  "reasons": ["risk_ceiling contains unknown key 'max_drawdown_pct' — fail closed"] }
+$ python scripts/demo_static_validation.py
+authorization (DEMO_EXECUTION)   FAIL   DISABLED BY POLICY — no valid artifact
+```
+
+`DEMO_EXECUTION` therefore resolves to `DISABLED BY POLICY` until the **owner** re-issues the artifact
+without the removed key (this is deliberately not something any code path, test or script may do for
+you — only a deliberate, reviewed commit changes policy):
+
+1. edit `data/evidence/demo_execution_authorization_2026-09-23.json`: delete
+   `risk_ceiling.max_drawdown_pct` (keep `max_drawdown`), leave the statement, scope, risk ceiling and
+   research-integrity blocks otherwise byte-identical;
+2. recompute the integrity hash with the same canonical fingerprint the validator uses:
+
+   ```bash
+   python - <<'PY'
+   import json, pathlib, sys
+   sys.path.insert(0, "src")
+   from qts.lifecycle.demo_authorization import document_fingerprint
+   path = pathlib.Path("data/evidence/demo_execution_authorization_2026-09-23.json")
+   doc = json.loads(path.read_text(encoding="utf-8"))
+   doc["integrity"]["content_sha256"] = document_fingerprint(doc)
+   path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+   PY
+   ```
+
+3. re-run `qts demo authorization` (must report `valid: true`) and
+   `python scripts/demo_static_validation.py` before the first order.
+
+Everything else about the artifact is unchanged: it still cannot widen a limit, cannot enable LIVE, and
+is still revocable without editing it.
+
 ---
 
 ## 3. Account verification (safeguard #1)
@@ -189,7 +232,7 @@ authorization's `risk_ceiling` may only tighten them:
 | max simultaneous positions / orders | 3 |
 | max orders per minute | 4 |
 | daily loss limit | $50 |
-| max drawdown | $100 / 5 % |
+| max drawdown | $100 USD, peak-equity drawdown (`max_drawdown`). There is **no** percentage form — see §2.5. |
 | max spread | 30 bps |
 | max slippage | 20 bps |
 | kill switch | always armed (`flatten_on_kill=false` — halts new orders, no forced flattening) |
@@ -260,7 +303,8 @@ through the existing audit sink; every authority transition emits
 
 ## 11. First-order conditions (what must be true before the first DEMO order)
 
-1. Valid, un-revoked authorization artifact → `ENABLED_AUTHORIZED` (✔ in this checkout).
+1. Valid, un-revoked authorization artifact → `ENABLED_AUTHORIZED` (✘ in this checkout: the shipped
+   artifact names the removed `max_drawdown_pct` key and is refused — see §2.5).
 2. Process running in `QTS_MODE=demo_execution` (a `DEMO_FORWARD` process can never hold permission).
 3. Stage advanced to `STAGE_2_MIN_SIZE_ORDER` (requires pinned + confirmed identity and a fresh
    readiness pass) — **not yet done**.
@@ -660,7 +704,8 @@ New/updated tests (all passing in this checkout):
 Invariants stated by this document and pinned by tests:
 
 ```
-DEMO_EXECUTION = ENABLED_AUTHORIZED   (with the recorded artifact)
+DEMO_EXECUTION = ENABLED_AUTHORIZED   (only while the artifact validates; §2.5 explains the
+                                       current refusal and the owner re-issue step)
 LIVE = LOCKED                         (no artifact, mode, or request can change it)
 REAL_CAPITAL_EXPOSURE = 0
 orders_submitted = 0                  (as of 2026-09-23, NO_TRADE)
