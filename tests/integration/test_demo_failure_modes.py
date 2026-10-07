@@ -25,18 +25,33 @@ from demo_harness import armed_session, write_registry
 from fakes_mt5_demo import FakeTerminal
 
 from qts.execution.demo_autopilot import AutopilotConfig, run_autopilot
+from qts.execution import demo_session as demo_session_module
 from qts.execution.demo_session import DemoSession, DemoSessionConfig
 
 # --------------------------------------------------------------- broker faults
 
 
-def test_ambiguous_retcode_suspends_and_sends_no_second_order(demo_env):
+def test_ambiguous_retcode_suspends_and_sends_no_second_order(demo_env, monkeypatch):
     """A broker timeout is an UNKNOWN state: refuse, record, never retry blindly."""
 
     write_registry(demo_env["registry"], provider_fixture.registry_entry())
     terminal = FakeTerminal()
     terminal.order_send_retcode = 10012  # TRADE_RETCODE_TIMEOUT — ambiguous
     session = armed_session(demo_env["tmp"], terminal, register_strategy=True)
+
+    # Isolate the broker-outcome branch: the full pre-trade gate has its own
+    # dedicated suite. Here we prove that once the gate permits an order, an
+    # ambiguous broker response is never converted into a rejection/retry.
+    from types import SimpleNamespace
+
+    verdict = SimpleNamespace(
+        passed=True,
+        failed=(),
+        unknown=(),
+        reasons=(),
+        as_dict=lambda: {"passed": True, "failed": [], "unknown": [], "reasons": []},
+    )
+    monkeypatch.setattr(demo_session_module, "run_pretrade_gate", lambda _ctx: verdict)
 
     result = session.submit(side="BUY", stop_loss=Decimal("1995.00"), rationale="failure-mode test")
     assert result.allowed is False
