@@ -8,6 +8,7 @@ def _engine(db_path):
     engine._db_path = db_path
     engine.persist_reconcile_state = True
     engine._day_start_equity = Decimal("0")
+    engine.broker = type("FixtureBroker", (), {"is_live": False})()
     engine._init_reconcile_db()
     return engine
 
