@@ -434,7 +434,7 @@ def test_positions_and_close_commands_lifecycle(run_cli, operator_env):
     )
     assert ok_close.exit_code == 0
     close_json = json.loads(ok_close.output)
-    assert close_json["success"] is True, close_json
+    assert close_json["success"] is True, close_json.get("reconciliation")
     assert close_json["ticket"] == ticket
 
     # Positions are now empty
