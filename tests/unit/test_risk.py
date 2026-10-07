@@ -1,4 +1,6 @@
 import tempfile
+
+import pytest
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -193,3 +195,13 @@ def test_risk_allows_stop_within_per_trade_limit():
         )
         decision = eng.pre_trade(intent, _ctx(price=Decimal("2000")))
         assert decision.allowed
+
+
+def test_risk_limits_reject_non_positive_caps():
+    with pytest.raises(ValueError):
+        RiskLimits(max_leverage=Decimal("0"))
+
+
+def test_risk_limits_reject_non_finite_values():
+    with pytest.raises(ValueError):
+        RiskLimits(max_notional=Decimal("NaN"))
