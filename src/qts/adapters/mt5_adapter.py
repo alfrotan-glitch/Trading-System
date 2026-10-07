@@ -35,7 +35,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
-from qts.adapters.base import BrokerAdapter
+from qts.adapters.base import MEASURED_SERVER_OFFSET_BASES, BrokerAdapter
 from qts.db import connect as db_connect
 from qts.domain.value_objects import (
     Account,
@@ -118,6 +118,14 @@ class SymbolSpec:
     session_close: str | None = None
     # raw mt5 info for audit
     raw: dict[str, Any] | None = None
+
+
+def _bar_field(bar: Any, name: str) -> Any:
+    """Read one field from an MT5 rate entry (structured array or object)."""
+    try:
+        return bar[name]
+    except (TypeError, KeyError, IndexError, ValueError):
+        return getattr(bar, name, None)
 
 
 def _numeric_or_none(raw: Any) -> float | None:
@@ -1803,6 +1811,125 @@ class MT5Adapter(BrokerAdapter):
 
         # No measurement exists. Do not cache a fabricated UTC basis.
         return 0.0, "assumed-utc-fallback"
+
+    #: Hard bound on a startup warmup window. Enough for any registered EMA
+    #: period, small enough that a DEMO restart costs one bounded M15 read.
+    MAX_WARMUP_BARS = 512
+
+    def recent_closed_bars(
+        self,
+        symbol: str,
+        *,
+        timeframe_minutes: int,
+        count: int,
+    ) -> dict[str, Any]:
+        """Bounded window of **completed** bars from the terminal (fail closed).
+
+        This is the restart-warmup source for a bar-based strategy: a DEMO
+        process may be restarted at any time, and rebuilding bar history from
+        live quotes alone would cost hours of ``NO_TRADE``.
+
+        Contract:
+        * only bars whose normalized boundary plus the timeframe is already in
+          the past are returned — the forming bar is always excluded;
+        * timestamps are normalized with the measured server→UTC offset, and an
+          unmeasured clock refuses the whole window (a mislabelled bar boundary
+          would silently corrupt every later signal);
+        * duplicates are removed, the result is ascending by boundary and capped
+          at ``count`` bars;
+        * nothing is fabricated: an unreadable/empty/late rate window returns a
+          failure record, never synthesized bars.
+
+        Returns ``{"ok": True, "bars": [(utc_boundary, close), ...], "basis",
+        "server_utc_offset_s", "symbol", "forming_bar_excluded"}`` or
+        ``{"ok": False, "error": ...}``.
+        """
+        try:
+            want = int(count)
+            minutes = int(timeframe_minutes)
+        except (TypeError, ValueError) as exc:
+            return {"ok": False, "error": f"invalid warmup request: {exc}"}
+        if want < 1 or minutes < 1 or 60 % minutes != 0:
+            return {"ok": False, "error": f"invalid warmup request: count={count} timeframe={timeframe_minutes}"}
+        want = min(want, self.MAX_WARMUP_BARS)
+
+        mt5 = self._mt5 or _optional_mt5_module()
+        if mt5 is None:
+            return {"ok": False, "error": "MetaTrader5 module is unavailable"}
+        broker_sym = self._map_symbol(symbol)
+        tf_const = getattr(mt5, f"TIMEFRAME_M{minutes}", None)
+        if tf_const is None:
+            return {"ok": False, "error": f"terminal exposes no M{minutes} timeframe constant"}
+
+        offset, basis = self.server_utc_offset(symbol)
+        if basis not in MEASURED_SERVER_OFFSET_BASES:
+            return {
+                "ok": False,
+                "error": (
+                    f"server clock offset for {broker_sym} is not measured (basis={basis}) — "
+                    "refusing to label bar history"
+                ),
+            }
+        try:
+            rates = mt5.copy_rates_from_pos(broker_sym, tf_const, 0, want + 2)
+        except Exception as exc:
+            return {"ok": False, "error": f"terminal rate request failed: {type(exc).__name__}: {exc}"}
+        if rates is None or len(rates) == 0:
+            detail = ""
+            with contextlib.suppress(Exception):
+                detail = f" ({mt5.last_error()})"
+            return {"ok": False, "error": f"terminal returned no M{minutes} rates for {broker_sym}{detail}"}
+
+        # Same clock the offset measurement uses: a bar is complete when its
+        # end is not later than "now" on this UTC basis.
+        now_epoch = time.time()
+        span_s = minutes * 60.0
+        bars: list[tuple[datetime, Decimal]] = []
+        seen: set[datetime] = set()
+        future_dated = 0
+        malformed = 0
+        for bar in rates:
+            raw_time = _numeric_or_none(_bar_field(bar, "time"))
+            raw_close = _numeric_or_none(_bar_field(bar, "close"))
+            if raw_time is None or raw_close is None or raw_close <= 0:
+                malformed += 1
+                continue
+            if raw_time > 1e12:  # milliseconds
+                raw_time /= 1000.0
+            if raw_time <= 1e9:
+                malformed += 1
+                continue
+            boundary = datetime.fromtimestamp(raw_time - offset, tz=UTC).replace(second=0, microsecond=0)
+            if raw_time - offset + span_s > now_epoch:
+                future_dated += 1  # includes the currently forming bar
+                continue
+            if boundary in seen:
+                continue
+            seen.add(boundary)
+            bars.append((boundary, Decimal(str(raw_close))))
+
+        bars.sort(key=lambda item: item[0])
+        bars = bars[-want:]
+        if not bars:
+            return {
+                "ok": False,
+                "error": (
+                    f"no completed M{minutes} bars for {broker_sym} "
+                    f"(dropped {future_dated} uncompleted/future, {malformed} malformed)"
+                ),
+            }
+        return {
+            "ok": True,
+            "symbol": broker_sym,
+            "timeframe_minutes": minutes,
+            "bars": bars,
+            "basis": basis,
+            "server_utc_offset_s": float(offset),
+            "forming_bar_excluded": True,
+            "dropped_uncompleted": future_dated,
+            "dropped_malformed": malformed,
+            "requested_bars": want,
+        }
 
     def raw_tick_freshness(self, symbol: str, epoch_seconds: float | None) -> tuple[bool, str]:
         """Judge a RAW broker stamp with the readiness gate's server-clock contract.

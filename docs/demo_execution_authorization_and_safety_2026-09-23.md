@@ -1,6 +1,7 @@
 # DEMO Execution — Authorization and Safety Contract (2026-09-23)
 
-**Status:** `DEMO_EXECUTION = ENABLED_AUTHORIZED` · `LIVE = LOCKED` · `REAL_CAPITAL_EXPOSURE = 0` ·
+**Status:** `DEMO_EXECUTION = ENABLED_AUTHORIZED` when the owner artifact validates (the shipped
+artifact is currently refused — §2.5) · `LIVE = LOCKED` · `REAL_CAPITAL_EXPOSURE = 0` ·
 **Trading state: `TRADING_ELIGIBLE_DIAGNOSTIC`** (2026-09-24) — a registered, **non-validated** DEMO
 forward research policy may trade to *measure*; no strategy has a validated edge.
 **Branch:** `arena/01a0ce9f-trading-system`
@@ -107,6 +108,48 @@ resolve_demo_execution_policy(mode=…)
   mode=DEMO_FORWARD/PAPER/SHADOW/DEV   -> DISABLED BY POLICY for orders + explicit reason
 ```
 
+### 2.5 Re-issuing the artifact after a canonical limit change (owner action)
+
+`risk_ceiling` may only name limits that exist in the canonical DEMO risk authority and may only
+tighten them. The percentage drawdown (`max_drawdown_pct`) was **removed from the authority because it
+was never enforced**, so an artifact that still names it is refused as an unknown key. That is the state
+of the shipped artifact today:
+
+```
+$ qts demo authorization
+{ ... "valid": false,
+  "reasons": ["risk_ceiling contains unknown key 'max_drawdown_pct' — fail closed"] }
+$ python scripts/demo_static_validation.py
+authorization (DEMO_EXECUTION)   FAIL   DISABLED BY POLICY — no valid artifact
+```
+
+`DEMO_EXECUTION` therefore resolves to `DISABLED BY POLICY` until the **owner** re-issues the artifact
+without the removed key (this is deliberately not something any code path, test or script may do for
+you — only a deliberate, reviewed commit changes policy):
+
+1. edit `data/evidence/demo_execution_authorization_2026-09-23.json`: delete
+   `risk_ceiling.max_drawdown_pct` (keep `max_drawdown`), leave the statement, scope, risk ceiling and
+   research-integrity blocks otherwise byte-identical;
+2. recompute the integrity hash with the same canonical fingerprint the validator uses:
+
+   ```bash
+   python - <<'PY'
+   import json, pathlib, sys
+   sys.path.insert(0, "src")
+   from qts.lifecycle.demo_authorization import document_fingerprint
+   path = pathlib.Path("data/evidence/demo_execution_authorization_2026-09-23.json")
+   doc = json.loads(path.read_text(encoding="utf-8"))
+   doc["integrity"]["content_sha256"] = document_fingerprint(doc)
+   path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+   PY
+   ```
+
+3. re-run `qts demo authorization` (must report `valid: true`) and
+   `python scripts/demo_static_validation.py` before the first order.
+
+Everything else about the artifact is unchanged: it still cannot widen a limit, cannot enable LIVE, and
+is still revocable without editing it.
+
 ---
 
 ## 3. Account verification (safeguard #1)
@@ -189,7 +232,7 @@ authorization's `risk_ceiling` may only tighten them:
 | max simultaneous positions / orders | 3 |
 | max orders per minute | 4 |
 | daily loss limit | $50 |
-| max drawdown | $100 / 5 % |
+| max drawdown | $100 USD, peak-equity drawdown (`max_drawdown`). There is **no** percentage form — see §2.5. |
 | max spread | 30 bps |
 | max slippage | 20 bps |
 | kill switch | always armed (`flatten_on_kill=false` — halts new orders, no forced flattening) |
@@ -260,7 +303,8 @@ through the existing audit sink; every authority transition emits
 
 ## 11. First-order conditions (what must be true before the first DEMO order)
 
-1. Valid, un-revoked authorization artifact → `ENABLED_AUTHORIZED` (✔ in this checkout).
+1. Valid, un-revoked authorization artifact → `ENABLED_AUTHORIZED` (✘ in this checkout: the shipped
+   artifact names the removed `max_drawdown_pct` key and is refused — see §2.5).
 2. Process running in `QTS_MODE=demo_execution` (a `DEMO_FORWARD` process can never hold permission).
 3. Stage advanced to `STAGE_2_MIN_SIZE_ORDER` (requires pinned + confirmed identity and a fresh
    readiness pass) — **not yet done**.
@@ -498,7 +542,7 @@ reports the honest residual blockers instead of a green light:
 
 ### 16.2 Autonomous loop (simulated terminal + registered test strategy)
 
-`tests/integration/test_demo_autopilot_loop.py` (8 tests, `--run-integration`) registers an eligible,
+`tests/integration/test_demo_autopilot_loop.py` (11 tests, `--run-integration`) registers an eligible,
 parameter-frozen test provider (`tests/fakes_demo_provider.py`) and drives the real loop against a
 stateful fake terminal. Verified end to end:
 
@@ -513,7 +557,12 @@ stateful fake terminal. Verified end to end:
 * the daily order cap stops new orders without halting the loop;
 * a provider exposing an `optimize` hook is **refused** ("optimization hooks") with zero orders;
 * **parameter drift** (runtime `config_hash` != registered hash) halts the loop with zero orders;
-* once the DEMO daily-loss limit is consumed, `max_daily_loss` fails and no order is sent.
+* once the DEMO daily-loss limit is consumed, `max_daily_loss` fails and no order is sent;
+* **restart warmup** is bounded and recorded: a bar-based provider declares its window, the loop loads
+  it once per run from the venue's own completed bars (the forming bar is excluded), and the report
+  carries a `warmup` event with the source, accepted bar count and first/last boundary. A venue that
+  cannot supply the window yields `warmup_skipped` with the reason and the provider simply warms up
+  live — warmup is an availability feature, never a safety gate, and it cannot emit a signal.
 
 None of that traded real capital: the terminal is a fake, and the same code path is refused
 outright in any non-DEMO mode.
@@ -638,8 +687,10 @@ New/updated tests (all passing in this checkout):
   slippage/P&L accounting, export.
 * `tests/integration/test_demo_session_wiring.py` — 9 tests (`--run-integration`): the full session
   against a simulated DEMO terminal (see §16.1).
-* `tests/integration/test_demo_autopilot_loop.py` — 8 tests (`--run-integration`): autonomous loop,
-  position lifecycle and research-integrity refusals (see §16.2/§16.3).
+* `tests/integration/test_demo_autopilot_loop.py` — 11 tests (`--run-integration`): autonomous loop,
+  position lifecycle, restart warmup and research-integrity refusals (see §16.2/§16.3).
+* `tests/execution/test_demo_close_safety.py` — 8 tests: the DEMO close path against the real order
+  journal and engine (see §16.11).
 * `tests/integration/test_demo_cli.py` — 9 tests (`--run-integration`): the operator CLI procedure (§16.5).
 * `tests/integration/test_demo_failure_modes.py` — 10 tests (`--run-integration`): broker faults,
   restart/concurrency and kill-switch propagation (see §16.7).
@@ -653,7 +704,8 @@ New/updated tests (all passing in this checkout):
 Invariants stated by this document and pinned by tests:
 
 ```
-DEMO_EXECUTION = ENABLED_AUTHORIZED   (with the recorded artifact)
+DEMO_EXECUTION = ENABLED_AUTHORIZED   (only while the artifact validates; §2.5 explains the
+                                       current refusal and the owner re-issue step)
 LIVE = LOCKED                         (no artifact, mode, or request can change it)
 REAL_CAPITAL_EXPOSURE = 0
 orders_submitted = 0                  (as of 2026-09-23, NO_TRADE)
@@ -745,3 +797,34 @@ Re-verified after the fixes: `qts demo reverify --confirm --risk-ack` at Stage 2
 restores permission with the stage unchanged; a subsequent `qts demo verify`
 reports `READY: True`; a fresh process never inherits stale authority; and no
 path in the test suite can reach a real MetaTrader5 module.
+
+### 16.11 Close-path safety and completed-bar semantics (2026-10-07)
+
+Two surfaces were rebuilt and pinned by tests.
+
+**Closing a position** (`tests/execution/test_demo_close_safety.py`, 8 tests) is the one operation that
+cannot be idempotently retried, so every uncertainty must end in an ambiguous, reconciled state rather
+than a success. The suite drives `DemoSession.close_position` against the **real** `DemoOrderJournal`
+(an actual open row carrying the broker's order and position ids) and the real execution engine:
+
+| Injected condition | Required behaviour |
+|---|---|
+| unknown close retcode | record ambiguous, halt the loop, never claim CLOSED |
+| venue re-read fails after the close | ambiguous + halt ("post-close venue verification failed") |
+| transport exception during the close | ambiguous + halt |
+| venue reports the position closed with no matching journal row | ambiguous ("local journal lifecycle could not be matched") |
+| the journal write itself fails | ambiguous ("journal persistence failed") |
+| close succeeded with broker P&L | the journal records the **broker's realized** result (0.83 net of 0.12 fees over 2 deals), never the pre-close unrealized figure |
+| close succeeded | the correlated local execution record is registered (state ACCEPTED) |
+| reconciliation drift after the close | success is blocked and the session halts |
+
+**Completed-bar semantics** (`tests/unit/test_demo_trend_time_semantics.py`,
+`tests/adapters/test_mt5_closed_bars.py`) pin the strategy clock:
+
+* the first quote opens a bar; later quotes in the same bucket only move the current close;
+* the first quote of a new bucket completes exactly one prior bar — partial bars never signal;
+* a signal is bound to the completed-bar boundary and its id derives from that boundary, so a restart
+  or replay cannot repeat it;
+* out-of-order quotes are refused, gaps are counted rather than filled, and only completed closes
+  enter the EMA history;
+* the restart window is bounded, completed-only, clock-basis-checked and never fabricated.

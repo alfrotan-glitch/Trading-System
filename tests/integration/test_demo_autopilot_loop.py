@@ -13,6 +13,7 @@ this file covers the *trading* half of the contract that
 from __future__ import annotations
 
 import json
+import time
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -295,3 +296,127 @@ def test_daily_loss_limit_blocks_further_orders(tmp_path: Path, authorized):
     assert terminal.requests == []
     verdict = session.preflight(side="BUY", stop_loss=Decimal("1995.00"))["verdict"]
     assert "max_daily_loss" in verdict["failed"]
+
+# ------------------------------------------------------------- restart warmup
+
+
+class WarmupTerminal(FakeTerminal):
+    """Fake terminal that also serves a bounded, *completed* M15 history.
+
+    Its clock is UTC (offset 0), so the adapter measures the server offset from
+    the forming M1 bar and the returned bar boundaries are plain UTC quarter
+    hours. The bar that is still forming is deliberately included so the test
+    proves the loader — not the fixture — excludes it.
+    """
+
+    TIMEFRAME_M15 = 15
+
+    def __init__(self, *, completed_bars: int = 60, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        edge = int(time.time() // 900) * 900
+        # One forming bar (the current quarter hour) + `completed_bars` finished ones.
+        self.m15: list[dict] = [
+            {"time": edge - 900 * (completed_bars - i), "close": 2000.0 + i}
+            for i in range(completed_bars)
+        ]
+        self.m15.append({"time": edge, "close": 2000.0 + completed_bars})  # forming
+
+    def copy_rates_from_pos(self, name, timeframe, start, count):
+        if timeframe == self.TIMEFRAME_M15:
+            return list(self.m15[-count:])
+        return super().copy_rates_from_pos(name, timeframe, start, count)
+
+
+class BarlessTerminal(WarmupTerminal):
+    """A terminal whose M15 history is unavailable (late window / no rates)."""
+
+    def copy_rates_from_pos(self, name, timeframe, start, count):
+        if timeframe == self.TIMEFRAME_M15:
+            return []
+        return super().copy_rates_from_pos(name, timeframe, start, count)
+
+
+def _warmup_entry() -> dict:
+    return provider_fixture.registry_entry(provider="fakes_demo_provider:WarmupAwareProvider")
+
+
+def test_restart_warmup_seeds_completed_bars_once(tmp_path: Path, authorized):
+    """A restarted process gets a bounded completed-bar window, exactly once."""
+    _write_registry(tmp_path, _warmup_entry())
+    terminal = WarmupTerminal(completed_bars=60)
+    session = _armed_session(tmp_path, terminal)
+
+    report = run_autopilot(
+        session, AutopilotConfig(symbol="XAUUSD", max_iterations=3, poll_interval_s=0, actor="test")
+    )
+    assert report.halted is False, report.halt_reason
+
+    warmups = [e for e in report.events if e["kind"] == "warmup"]
+    assert len(warmups) == 1, "seeding must happen once per run, not once per cycle"
+    detail = warmups[0]["detail"]
+    assert detail["accepted"] is True
+    assert detail["accepted_bars"] == provider_fixture.WarmupAwareProvider.WARMUP_BARS
+    assert detail["offered_bars"] == provider_fixture.WarmupAwareProvider.WARMUP_BARS
+    assert detail["forming_bar_excluded"] is True
+    assert detail["source"].startswith("mt5-m15-rates/")
+    assert detail["last_bar"] >= detail["first_bar"]
+
+    # Warmup is not a trade, and it does not bypass the normal NO_TRADE record.
+    assert report.orders_submitted == 0
+    assert terminal.requests == []
+    assert report.no_trade == 3
+
+
+def test_unavailable_bar_history_is_recorded_and_never_fabricated(tmp_path: Path, authorized):
+    """A provider that cannot be warmed up stays live-only; the reason is recorded."""
+    _write_registry(tmp_path, _warmup_entry())
+    terminal = BarlessTerminal(completed_bars=0)
+    session = _armed_session(tmp_path, terminal)
+
+    report = run_autopilot(
+        session, AutopilotConfig(symbol="XAUUSD", max_iterations=1, poll_interval_s=0, actor="test")
+    )
+
+    # Availability, not safety: the loop continues (and does not trade blindly).
+    assert report.halted is False
+    assert report.orders_submitted == 0
+    assert not [e for e in report.events if e["kind"] == "warmup"]
+    skipped = [e for e in report.events if e["kind"] == "warmup_skipped"]
+    assert len(skipped) == 1
+    assert "no M15 rates" in skipped[0]["detail"]["reason"]
+
+
+def test_real_tsmom_strategy_is_seeded_from_the_venue_window(tmp_path: Path, authorized):
+    """The shipped strategy reconstructs its full window from completed bars only."""
+    from qts.research.demo_trend_tsmom import TrendTimeSeriesMomentum
+
+    terminal = WarmupTerminal(completed_bars=60)
+    session = DemoSession(
+        DemoSessionConfig(
+            symbol="XAUUSD",
+            symbol_map={"XAUUSD": "XAUUSD@"},
+            db_path=tmp_path / "qts.db",
+            actor="warmup-test",
+            mt5_module=terminal,
+        )
+    )
+    provider = TrendTimeSeriesMomentum()
+    plan = provider.warmup_plan()
+
+    window = session.recent_completed_bars(timeframe_minutes=plan["timeframe_minutes"], count=plan["bars"])
+
+    assert window["ok"] is True, window
+    assert window["forming_bar_excluded"] is True
+    assert window["dropped_uncompleted"] >= 1, "the forming bar must be dropped by the loader"
+    assert len(window["bars"]) == plan["bars"] == 49
+
+    outcome = provider.seed_completed_bars(window["bars"], source="integration-test")
+
+    assert outcome["accepted"] is True
+    assert outcome["bars"] == 49
+    assert provider.completed_bars == 49
+    provenance = provider.history_provenance()
+    assert provenance["completed_only"] is True
+    assert provenance["source"] == "integration-test"
+    assert provenance["bar_gaps"] == 0
+    assert provenance["last_bar"] == window["bars"][-1][0].isoformat()

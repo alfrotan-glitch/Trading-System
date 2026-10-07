@@ -6,6 +6,13 @@ from typing import Any
 
 from qts.domain.value_objects import Account, Instrument, Order, OrderIntent, Position, Tick
 
+#: Broker-clock bases that a *measurement* proved, versus the
+#: ``assumed-utc-fallback`` basis that merely states "no measurement exists".
+#: The distinction is safety-relevant: a normalized timestamp may be consumed
+#: freely, while an unmeasured one may not be used to label stored history.
+MEASURED_SERVER_OFFSET_BASES = frozenset({"measured-fresh-tick", "measured-m1-bar"})
+ASSUMED_UTC_OFFSET_BASIS = "assumed-utc-fallback"
+
 
 class ReconcileReport:
     """Outcome of a broker-vs-portfolio reconciliation check."""

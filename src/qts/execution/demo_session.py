@@ -378,6 +378,21 @@ class DemoSession:
             "event_time": tick.event_time.isoformat(),
         }
 
+    def recent_completed_bars(self, *, timeframe_minutes: int, count: int) -> dict[str, Any]:
+        """Bounded completed-bar window from the venue (restart warmup source).
+
+        Delegates to the broker adapter's own closed-bar loader, which knows how
+        to normalize the broker clock. An adapter without such a loader refuses
+        the request rather than inventing bars.
+        """
+        loader = getattr(self.adapter, "recent_closed_bars", None)
+        if not callable(loader):
+            return {
+                "ok": False,
+                "error": f"adapter {type(self.adapter).__name__} exposes no completed-bar source",
+            }
+        return loader(self.canonical_symbol, timeframe_minutes=timeframe_minutes, count=count)
+
     def _account_probe(self) -> dict[str, Any]:
         try:
             account = self.adapter.account()
