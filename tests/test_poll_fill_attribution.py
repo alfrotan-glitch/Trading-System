@@ -224,7 +224,7 @@ def test_deal_without_ticket_is_not_given_a_synthetic_fill_id():
         deal.ticket = None
         mock.history_deals_get.return_value = [deal]
 
-        fills = eng.poll_live_fills()
-        assert fills == []
+        with pytest.raises(RuntimeError, match="fill polling unavailable"):
+            eng.poll_live_fills()
         assert pf.positions.get("XAUUSD") is None or pf.positions["XAUUSD"].quantity == Decimal("0")
         assert eng.is_suspended
