@@ -18,9 +18,9 @@ class FakeMT5:
         return [{"time": self._bar_time}]
 
 
-def test_server_offset_prefers_fresh_tick_with_non_quarter_hour_offset(tmp_path, monkeypatch):
+def test_server_offset_rounds_fresh_tick_to_minute_grid(tmp_path, monkeypatch):
     now = 1_800_000_123.4
-    offset = 3 * 3600
+    offset = 2 * 3600 + 59 * 60
     tick = SimpleNamespace(time=now + offset)
     mt5 = FakeMT5(tick, now + 3 * 3600)
 
@@ -29,8 +29,8 @@ def test_server_offset_prefers_fresh_tick_with_non_quarter_hour_offset(tmp_path,
 
     measured, basis = adapter.server_utc_offset("XAUUSD")
 
-    assert measured == offset
-    assert basis == "measured-fresh-tick"
+    assert measured == 3 * 3600
+    assert basis == "measured-m1-bar"
 
 
 def test_server_offset_rejects_stale_tick_and_uses_m1_bar(tmp_path, monkeypatch):
