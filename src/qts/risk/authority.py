@@ -28,11 +28,14 @@ import json
 import os
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from qts.domain.modes import ExecutionMode
+
+if TYPE_CHECKING:
+    from qts.risk.engine import RiskLimits
 
 
 class CanonicalRiskLimits(BaseModel):
