@@ -635,7 +635,7 @@ def terminal_identity(mt5: Any) -> dict[str, Any]:
 def software_identity(mt5: Any | None = None) -> dict[str, Any]:
     """Best-effort software/probe version identity for provenance."""
     import platform
-    import subprocess
+    import subprocess  # nosec B404 — fixed git argv is provenance-only and never handles user input
 
     from qts import __version__ as qts_version
 
