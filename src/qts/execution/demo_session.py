@@ -474,7 +474,7 @@ class DemoSession:
         untouched.
         """
         try:
-            from qts.risk.engine import RiskEngine
+            from qts.risk.engine import RiskEngine, RiskLimits
 
             scratch = SELF_TEST_DB
             scratch.parent.mkdir(parents=True, exist_ok=True)
@@ -904,7 +904,7 @@ class DemoSession:
         from qts.execution.idempotency import IdempotencyStore
         from qts.observability.audit import SqliteAuditLog
         from qts.portfolio.portfolio import Portfolio
-        from qts.risk.engine import RiskEngine, RiskLimits
+        from qts.risk.engine import RiskEngine
 
         try:
             audit: Any = SqliteAuditLog()
