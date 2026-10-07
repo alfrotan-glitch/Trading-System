@@ -1268,8 +1268,16 @@ class MT5Adapter(BrokerAdapter):
             seen_symbols.add(canonical)
             vol = Decimal(str(getattr(p, "volume", 0)))
             price_open = Decimal(str(getattr(p, "price_open", 0)))
-            # Broker alias → canonical, so reconciliation compares like with like.
-            instr = Instrument(symbol=canonical, venue="MT5")
+            # Broker metadata is authoritative for risk/notional math;
+            # never project an open position with the domain default contract size.
+            spec = self.get_symbol_spec(canonical)
+            instr = Instrument(
+                symbol=canonical,
+                venue="MT5",
+                contract_size=spec.contract_size,
+                lot_size=spec.volume_step,
+                tick_size=spec.tick_size,
+            )
             # Quantity signed: BUY positive, SELL negative
             # MT5 position type 0 = BUY, 1 = SELL
             pos_type = getattr(p, "type", 0)
@@ -1459,7 +1467,15 @@ class MT5Adapter(BrokerAdapter):
             comment = getattr(o, "comment", "")
             client_id = self._reverse_comment_map(comment) or comment
             sym = getattr(o, "symbol", "UNKNOWN")
-            instr = Instrument(symbol=self._canonical_symbol(sym), venue="MT5")
+            canonical = self._canonical_symbol(sym)
+            spec = self.get_symbol_spec(canonical)
+            instr = Instrument(
+                symbol=canonical,
+                venue="MT5",
+                contract_size=spec.contract_size,
+                lot_size=spec.volume_step,
+                tick_size=spec.tick_size,
+            )
             vol = Decimal(str(getattr(o, "volume_current", getattr(o, "volume_initial", 0))))
             # MT5 order type to side
             o_type = getattr(o, "type", 0)
