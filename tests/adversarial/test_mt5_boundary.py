@@ -1133,6 +1133,10 @@ def test_reconciliation_suspended_persists_across_restart():
         portfolio2 = Portfolio(initial_balance=Decimal("10000"))
         eng2 = ExecutionEngine(om2, risk2, broker, MatchingEngine(), portfolio2, audit=audit2, db_path=db)
         assert eng2.is_suspended
+        # Repair the venue/local drift before asking the safety gate to heal.
+        portfolio2.positions["XAUUSD"] = Position(
+            instrument=instr, quantity=Decimal("0.5"), avg_price=Decimal("2000")
+        )
         # Heal
         eng2.heal_reconcile("fixed")
         assert not eng2.is_suspended
