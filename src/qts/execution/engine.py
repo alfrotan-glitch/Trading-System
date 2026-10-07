@@ -979,38 +979,6 @@ class ExecutionEngine:
             raise RuntimeError(f"fill polling unavailable — execution suspended: {e}") from e
         return new_fills
 
-    def bootstrap_broker_positions(self) -> int:
-        """Hydrate an empty portfolio from current broker positions.
-
-        Deal history is intentionally not the only recovery source: an open
-        position may predate the adapter's recent history window. This method
-        uses the broker's current position projection only and is allowed only
-        when the local portfolio has no non-zero positions.
-        """
-        if any(p.quantity != Decimal("0") for p in self.portfolio.positions.values()):
-            return 0
-        broker_positions = list(self.broker.positions() or [])
-        if not broker_positions:
-            return 0
-
-        # Establish the poll baseline before hydrating the position. Otherwise
-        # the next fill poll could replay a recent opening/add deal into the
-        # already-restored broker position and double-count exposure.
-        baseline_ids: set[str] = set()
-        poll_fills = getattr(self.broker, "poll_fills", None)
-        if poll_fills is not None:
-            try:
-                for item in poll_fills("") or []:
-                    if isinstance(item, dict) and item.get("fill_id"):
-                        baseline_ids.add(str(item["fill_id"]))
-                    elif isinstance(item, Fill) and item.fill_id:
-                        baseline_ids.add(str(item.fill_id))
-            except Exception as exc:
-                raise RuntimeError(f"broker fill baseline unavailable during cold-start recovery: {exc}") from exc
-        self.portfolio.restore_open_positions(broker_positions)
-        self._applied_fill_ids.update(baseline_ids)
-        return sum(1 for p in broker_positions if p.quantity != Decimal("0"))
-
     def reconcile(self) -> ReconcileReport:
         """Compare local Portfolio vs venue truth.
 
