@@ -133,7 +133,7 @@ def test_acquired_dataset_roundtrip_counts_defects_and_does_not_rewrite(tmp_path
     assert dataset["content"]["timezone"] .startswith("UNAVAILABLE")
     assert dataset["content"]["session_calendar"].startswith("UNAVAILABLE")
     assert any(item["code"] == "INVERTED_OR_NEGATIVE_SPREAD" for item in dataset["defects"])
-    extracted_part = next((work / "parts").glob("*.parquet"))
+    extracted_part = work / "parts" / part.name
     assert extracted_part.read_bytes() == (mutated_dir / "parts" / part.name).read_bytes()
     assert part.read_bytes() == before
 
