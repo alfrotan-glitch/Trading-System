@@ -385,69 +385,74 @@ def pytest_collection_modifyitems(config, items):
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-def _guard_tracked_files() -> list[pathlib.Path]:
-    """Git-tracked files to protect, or [] when this is not a usable checkout."""
+def _git_status_paths() -> set[str]:
+    """Return the working-tree paths already reported by Git.
+
+    Git already knows which tracked files are dirty; hashing every tracked
+    evidence/data file at suite start/end was needlessly expensive. We only
+    snapshot the pre-existing dirty set, then detect any new dirty/untracked
+    paths after the suite. Pre-existing dirty files are hashed so tests cannot
+    silently alter an operator's existing work.
+    """
     try:
-        proc = subprocess.run(  # noqa: S603 - fixed argv, no shell
-            ["git", "ls-files", "-z"],
+        proc = subprocess.run(
+            ["git", "status", "--porcelain=v1", "-z"],
             cwd=_REPO_ROOT,
             capture_output=True,
-            timeout=120,
+            timeout=30,
             check=False,
         )
     except (OSError, subprocess.SubprocessError):
-        return []
+        return set()
     if proc.returncode != 0:
-        return []
-    names = proc.stdout.decode("utf-8", "replace").split("\0")
-    out: list[pathlib.Path] = []
-    for name in names:
-        if not name:
+        return set()
+    paths: set[str] = set()
+    for raw in proc.stdout.split(b"\\0"):
+        if len(raw) < 4:
             continue
-        p = _REPO_ROOT / name
-        # only files that exist right now can be part of the baseline
-        if p.is_file():
-            out.append(p)
-    return out
+        entry = raw.decode("utf-8", "replace")
+        path = entry[3:]
+        if " -> " in path:
+            path = path.rsplit(" -> ", 1)[-1]
+        if path:
+            paths.add(path.replace("\\", "/"))
+    return paths
 
 
-def _guard_digest(path: pathlib.Path) -> str | None:
+def _digest_if_file(rel_path: str) -> str | None:
     try:
-        return hashlib.sha256(path.read_bytes()).hexdigest()
+        path = _REPO_ROOT / rel_path
+        return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
     except OSError:
         return None
 
 
 @pytest.fixture(scope="session", autouse=True)
 def repository_tracked_files_must_not_be_modified_by_tests():
-    """Fail the session if the test run mutated or deleted tracked files."""
-    baseline: dict[pathlib.Path, str] = {}
-    for path in _guard_tracked_files():
-        digest = _guard_digest(path)
-        if digest is not None:
-            baseline[path] = digest
+    """Fail the session if tests create new worktree changes or alter pre-existing ones."""
+    baseline_dirty = _git_status_paths()
+    baseline_hashes = {
+        path: _digest_if_file(path)
+        for path in baseline_dirty
+        if _digest_if_file(path) is not None
+    }
     yield
-    if not baseline:
-        return  # not a usable git checkout — nothing to compare against
 
-    mutated: list[str] = []
-    deleted: list[str] = []
-    for path, want in baseline.items():
-        got = _guard_digest(path)
-        rel = path.relative_to(_REPO_ROOT).as_posix()
-        if got is None:
-            deleted.append(rel)
-        elif got != want:
-            mutated.append(rel)
-    if mutated or deleted:
+    after = _git_status_paths()
+    new_changes = sorted(after - baseline_dirty)
+    altered_baseline = sorted(
+        path for path, digest in baseline_hashes.items()
+        if _digest_if_file(path) != digest
+    )
+    if new_changes or altered_baseline:
         lines = [
             "the test suite modified the repository working tree; tests must be",
             "side-effect-free on tracked files (committed data/evidence/*.json is",
             "the audit trail and is NOT regenerable once its gitignored canonical",
             "store is absent). Point derived exports at tmp_path instead.",
         ]
-        if mutated:
-            lines.append("modified: " + ", ".join(sorted(mutated)))
-        if deleted:
-            lines.append("deleted: " + ", ".join(sorted(deleted)))
+        if new_changes:
+            lines.append("new changes: " + ", ".join(new_changes))
+        if altered_baseline:
+            lines.append("altered pre-existing changes: " + ", ".join(altered_baseline))
         pytest.fail("\n".join(lines), pytrace=False)
