@@ -26,6 +26,8 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
 from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.adapters.mt5_adapter import MT5Adapter
 from qts.domain.value_objects import Instrument, OrderIntent, OrderState, OrderType, Side
@@ -90,6 +92,9 @@ def _deal(ticket, comment, volume=0.01, price=2000.5, deal_type=0):
     d.price = price
     d.type = deal_type
     d.time = datetime.now(UTC).timestamp()
+    d.commission = 0.0
+    d.swap = 0.0
+    d.fee = 0.0
     return d
 
 
@@ -221,7 +226,7 @@ def test_deal_without_ticket_is_not_given_a_synthetic_fill_id():
         deal.ticket = None
         mock.history_deals_get.return_value = [deal]
 
-        fills = eng.poll_live_fills()
-        assert fills == []
+        with pytest.raises(RuntimeError, match="fill polling unavailable"):
+            eng.poll_live_fills()
         assert pf.positions.get("XAUUSD") is None or pf.positions["XAUUSD"].quantity == Decimal("0")
         assert eng.is_suspended

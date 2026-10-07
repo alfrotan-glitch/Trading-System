@@ -26,9 +26,10 @@
         "max_tick_age_s": 5,
         "lots": 0.01,
         "require_spread_within_policy": true,
-        "comment": "RESEARCH_DEMO_ORDER trend benchmark"
+        "comment": "RESEARCH_DEMO_ORDER trend benchmark",
+        "bar_timeframe_minutes": 15
       },
-      "params_hash": "4c13e1a2315828b406e83cd6656c3c71c94b13899a03e3030fd2b9784a6fa7a8",
+      "params_hash": "1a190fc118f970a6591294c1753b673fbf2b493ec4e2563be1e45d13326917c3",
       "size_policy": {
         "mode": "fixed",
         "lots": 0.01
@@ -62,19 +63,21 @@
         "edge_statement": "This policy does not establish a validated edge: it is a DEMO forward research policy inspired by publicly documented trend-following practice. DEMO performance does not constitute evidence of a durable live-tradeable edge, and forward observations may not be used to re-fit or select this policy.",
         "signal_logic": {
           "type": "ema_crossover",
-          "description": "12-quote EMA crosses 48-quote EMA using live two-sided XAUUSD quotes; the first confirmed crossover emits one directional signal.",
+          "description": "12/48 EMA crossover on completed 15-minute XAUUSD mid-price bars; quotes build the current bar and partial bars are never evaluated.",
           "indicators": [
             "EMA12",
             "EMA48"
           ],
-          "prediction": "Directional persistence is measured only; no claim of guaranteed profitability."
+          "prediction": "Directional persistence is measured only; no claim of guaranteed profitability.",
+          "bar_timeframe_minutes": 15
         },
         "entry_conditions": {
           "fast_ema": 12,
           "slow_ema": 48,
           "require_two_sided_quote": true,
           "require_fresh_quote": true,
-          "max_positions_open": 1
+          "max_positions_open": 1,
+          "bar_timeframe_minutes": 15
         },
         "exit_conditions": {
           "max_hold_seconds": 14400,
@@ -150,7 +153,7 @@
             "kill_switch_functional",
             "reconciliation_ready"
           ],
-          "detail": "Signal generation uses live DEMO quotes; no historical dataset is consumed by the provider."
+          "detail": "Signal generation uses live DEMO quotes aggregated into completed 15-minute bars; the provider never evaluates a partial bar."
         },
         "stale_data_protection": {
           "max_tick_age_s": 5,
@@ -160,12 +163,12 @@
           "idempotency_required": true,
           "min_order_interval_s": 1800
         },
-        "code_hash": "533fad99f333458252a761d5d786bee8d9454ea6e4ca9b437a2627324e01c41e",
-        "config_hash": "4c13e1a2315828b406e83cd6656c3c71c94b13899a03e3030fd2b9784a6fa7a8",
+        "code_hash": "72593ae46a5d8238d3a9da5de1fbeb133a49a35fddbcdf7431e6c587ad2f28ba",
+        "config_hash": "1a190fc118f970a6591294c1753b673fbf2b493ec4e2563be1e45d13326917c3",
         "data_hash": null,
         "data_hash_note": "No historical dataset is consumed; the provider uses only the pinned DEMO quote stream.",
         "code_source": "src/qts/research/demo_trend_tsmom.py",
-        "policy_hash": "1b4a0abaf1a8f4ad0173a4b3f5951858ffe9411888d0c211b13953ef2e9d59e7"
+        "policy_hash": "7252e23879c24b9ab53550580cc63b7f1db1ca80b309f781a511ae6efb38c119"
       }
     }
   ]

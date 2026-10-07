@@ -8,7 +8,7 @@ Date: 2026-10-07
 
 This is a DEMO-only forward measurement policy inspired by publicly documented
 time-series momentum / trend-following practice. It is intentionally simple:
-a frozen fast/slow EMA trend signal, fixed minimum size, protective stop, and
+a frozen 15-minute-bar fast/slow EMA trend signal, fixed minimum size, protective stop, and
 deterministic time exit.
 
 Public evidence supports time-series momentum as a broad research mechanism;
@@ -18,8 +18,9 @@ research gates pass.
 
 ## Frozen parameters
 
-- EMA fast: 12 quotes
-- EMA slow: 48 quotes
+- Bar timeframe: 15 minutes
+- EMA fast: 12 completed bars
+- EMA slow: 48 completed bars
 - Stop distance: 3.00 USD
 - Size: 0.01 lots
 - Maximum hold: 4 hours
@@ -30,7 +31,7 @@ research gates pass.
 
 ## Entry
 
-BUY when EMA12 crosses above EMA48; SELL when EMA12 crosses below EMA48.
+BUY when EMA12 crosses above EMA48 on a newly completed 15-minute bar; SELL when EMA12 crosses below EMA48. Partial bars are never evaluated.
 No discretionary filtering or parameter changes are permitted during forward
 observation.
 

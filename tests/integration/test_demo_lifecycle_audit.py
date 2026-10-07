@@ -28,6 +28,7 @@ from pathlib import Path
 
 import pytest
 from demo_harness import authorization_doc
+from fakes_demo_provider import registry_entry
 from fakes_mt5_demo import FakeTerminal
 
 from qts.db import connect as db_connect
@@ -40,16 +41,12 @@ from qts.lifecycle.demo_registry import load_registry, resolve_entry
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStage
 
 SYMBOL_MAP = {"XAUUSD": "XAUUSD@"}
-PROVIDER_SOURCE = Path(__file__).resolve().parents[2] / "src/qts/research/demo_execution_probe.py"
+PROVIDER_SOURCE = Path(__file__).resolve().parents[2] / "tests/fakes_demo_provider.py"
 
 
 def _shipped_entry() -> dict:
-    doc = json.loads(
-        (Path(__file__).resolve().parents[2] / "data/evidence/demo_forward_validation_registry_2026-09-23.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    return next(e for e in doc["entries"] if e["strategy_id"] == "DEMO-EXECPROBE-XAUUSD-V1")
+    """Use the canonical deterministic DEMO fixture for lifecycle plumbing tests."""
+    return json.loads(json.dumps(registry_entry()))
 
 
 def _registry_doc(entry_overrides: dict | None = None, policy_overrides: dict | None = None) -> dict:
@@ -201,10 +198,10 @@ def test_required_stop_loss_is_derived_from_the_registered_policy(env):
 
     params = session.resolve_order_parameters(side="BUY")
     assert params["stop_derived_from_policy"] is True
-    assert params["stop_loss"] == Decimal("1998.20")  # ask 2000.20 − 2.00 (policy distance)
+    assert params["stop_loss"] == Decimal("1995.20")  # ask 2000.20 − 5.00 (fixture policy distance)
 
     sell = session.resolve_order_parameters(side="SELL")
-    assert sell["stop_loss"] == Decimal("2002.00")  # bid 2000.00 + 2.00
+    assert sell["stop_loss"] == Decimal("2005.00")  # bid 2000.00 + 5.00
 
     out = session.preflight(side="BUY")
     assert out["verdict"]["passed"], out["verdict"]["failed"]

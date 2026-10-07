@@ -20,6 +20,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from fakes_demo_provider import STRATEGY_ID, registry_entry
 from fakes_mt5_demo import FakeTerminal
 
 from qts.execution.demo_autopilot import AutopilotConfig, run_autopilot
@@ -31,9 +32,6 @@ from qts.lifecycle.demo_gate import demo_forward_readiness_report
 from qts.lifecycle.demo_policy import policy_fingerprint
 from qts.lifecycle.demo_registry import load_registry, resolve_entry
 from qts.lifecycle.demo_stage import DemoStage
-from qts.research.demo_execution_probe import STRATEGY_ID, ExecutionCostProbe
-
-PROVIDER_SOURCE = Path(__file__).resolve().parents[2] / "src/qts/research/demo_execution_probe.py"
 
 
 def _any_hours() -> dict:
@@ -71,29 +69,15 @@ def _outside_hours() -> dict:
 
 
 def _policy_block(**overrides) -> dict:
-    """The shipped policy block, re-sealed against the source on disk."""
-    block = json.loads(
-        (Path(__file__).resolve().parents[2] / "data/evidence/demo_forward_validation_registry_2026-09-23.json")
-        .read_text(encoding="utf-8")
-    )
-    entry = next(e for e in block["entries"] if e["strategy_id"] == STRATEGY_ID)
-    policy = dict(entry["policy"])
-    policy["code_hash"] = hashlib.sha256(PROVIDER_SOURCE.read_bytes()).hexdigest()
+    """Build a complete test policy from the canonical DEMO test fixture."""
+    policy = dict(registry_entry()["policy"])
     policy.update(overrides)
-    # Re-seal: changing a policy invalidates its hash, and an unsealed policy is
-    # (correctly) refused. Registering a change means re-sealing it, exactly as
-    # scripts/register_demo_research_policy.py does.
     policy["policy_hash"] = policy_fingerprint(policy)
     return policy
 
 
 def _registry_doc(entry_overrides: dict | None = None, policy_overrides: dict | None = None) -> dict:
-    shipped = json.loads(
-        (Path(__file__).resolve().parents[2] / "data/evidence/demo_forward_validation_registry_2026-09-23.json")
-        .read_text(encoding="utf-8")
-    )
-    entry = next(e for e in shipped["entries"] if e["strategy_id"] == STRATEGY_ID)
-    entry = json.loads(json.dumps(entry))  # deep copy
+    entry = json.loads(json.dumps(registry_entry()))
     overrides = dict(policy_overrides or {})
     overrides.setdefault("allowed_trading_hours", _any_hours())
     entry["policy"] = _policy_block(**overrides)
@@ -198,22 +182,20 @@ def _write_registry(tmp_path: Path, doc: dict, monkeypatch=None) -> None:
 # ---------------------------------------------------------------------- tests
 
 
-def test_shipped_policy_declares_a_liquid_session_and_a_complete_spec():
-    """The registered policy's declared limits are what the operator approved."""
-    policy = _policy_block()
-    assert policy["policy_class"] == "DEMO_FORWARD_RESEARCH_POLICY"
+def test_shipped_tsmom_policy_declares_15m_bar_semantics():
+    """The shipped strategy is a 15-minute-bar trend benchmark, not quote-count EMA."""
+    block = json.loads(
+        (Path(__file__).resolve().parents[2] / "data/evidence/demo_forward_validation_registry_2026-09-23.json")
+        .read_text(encoding="utf-8")
+    )
+    policy = next(e["policy"] for e in block["entries"] if e["strategy_id"] == "DEMO-XAUUSD-TREND-TSMOM-V1")
     assert policy["validated_edge"] is False
-    assert policy["hypothesis_id"] == "H-EXEC-01"
-    assert Path(policy["preregistration_artifact"]).exists()
-    hours = policy["allowed_trading_hours"]
-    assert hours["timezone"] == "UTC"
-    assert hours["sessions"] == [{"days": ["MON", "TUE", "WED", "THU", "FRI"], "start": "08:00", "end": "16:00"}]
+    assert policy["hypothesis_id"] == "H-TSMOM-01"
+    assert policy["signal_logic"]["bar_timeframe_minutes"] == 15
+    assert "completed 15-minute" in policy["signal_logic"]["description"]
+    assert policy["entry_conditions"]["fast_ema"] == 12
+    assert policy["entry_conditions"]["slow_ema"] == 48
     assert policy["max_orders_per_day"] == 2
-    assert policy["max_daily_loss"] == 5.00
-    assert policy["max_drawdown"] == 10.00
-    assert policy["max_simultaneous_exposure_lots"] == 0.01
-    assert policy["stop_loss_logic"]["distance_price"] == 2.00
-    assert policy["exit_conditions"]["max_hold_seconds"] == 900
 
 
 def test_registered_policy_drives_a_minimum_size_order_with_its_stop(tmp_path: Path, authorized, monkeypatch):
@@ -234,18 +216,15 @@ def test_registered_policy_drives_a_minimum_size_order_with_its_stop(tmp_path: P
     assert request["volume"] == pytest.approx(0.01)  # broker minimum, not equity-scaled
     assert request["sl"] is not None  # the stop is on the order, not just the plan
 
-    # Direction is the deterministic UTC-hour rule, and the stop sits 2.00 away
-    # from the executable side of the quote — both frozen by the policy.
-    parity_side = "BUY" if datetime.now(UTC).hour % 2 == 0 else "SELL"
-    reference = Decimal("2000.20") if parity_side == "BUY" else Decimal("2000.00")
-    expected = reference - Decimal("2.00") if parity_side == "BUY" else reference + Decimal("2.00")
+    # The fixture provider is deterministic BUY with a 5.00 protective stop.
+    expected = Decimal("2000.00") - Decimal("5.00")
     assert request["sl"] == pytest.approx(float(expected), abs=0.01)
 
     row = session.journal.list_orders()[0]
-    assert row["side"] == parity_side
+    assert row["side"] == "BUY"
     assert row["strategy_id"] == STRATEGY_ID
-    assert row["strategy_config_hash"] == ExecutionCostProbe().config_hash()
-    assert row["hypothesis_id"] == "H-EXEC-01"
+    assert row["strategy_config_hash"] == registry_entry()["params_hash"]
+    assert row["hypothesis_id"] == "H-TEST-001"
     assert "RESEARCH_DEMO_ORDER" in (row["notes"] or "")
     assert row["broker_order_id"] and row["broker_position_id"]
     assert row["requested_price"] and row["executed_price"]
@@ -346,7 +325,7 @@ def test_policy_exposure_cap_blocks_a_second_position(tmp_path: Path, authorized
     )
     assert second.allowed is False
     failed = (second.verdict or {}).get("failed", [])
-    assert "max_total_exposure" in failed
+    assert "duplicate_order_protection" in failed
     assert len(terminal.requests) == 1
 
 

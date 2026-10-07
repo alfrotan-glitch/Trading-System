@@ -102,6 +102,7 @@ def _session(adapter: _Adapter, *, journal=None):
     obj = object.__new__(_Harness)
     object.__setattr__(obj, "_authority", _Authority())
     object.__setattr__(obj, "_authority_mode", ExecutionMode.DEMO_EXECUTION)
+    obj.reconcile = lambda: {"requires_suspend": False, "drift": "OK", "details": "", "suspended": False}
     object.__setattr__(obj, "_adapter", adapter)
     object.__setattr__(obj, "stage", _Stage())
     object.__setattr__(obj, "config", SimpleNamespace(actor="close-test", mode="DEMO_EXECUTION", symbol="XAUUSD", symbol_map={}))
