@@ -39,10 +39,10 @@ def test_ambiguous_retcode_suspends_and_sends_no_second_order(demo_env):
 
     result = session.submit(side="BUY", stop_loss=Decimal("1995.00"), rationale="failure-mode test")
     assert result.allowed is False
-    assert result.state in ("REJECTED", "NO_TRADE")
+    assert result.state == "AMBIGUOUS"
 
     row = session.journal.list_orders()[0]
-    assert row["state"] == "REJECTED"
+    assert row["state"] == "AMBIGUOUS"
     assert "10012" in (row["broker_retcode"] or "") or "timeout" in (row["exit_reason"] or "").lower()
 
     # The engine suspended on the ambiguous state — the next attempt is refused
@@ -175,13 +175,14 @@ def test_stale_inflight_row_is_failed_not_blocking_forever(demo_env):
         )
     )
     rows = [r for r in session.journal.list_orders() if r["client_order_id"] == "demo-stale-1"]
-    assert rows and rows[0]["state"] == "REJECTED"
+    assert rows and rows[0]["state"] == "AMBIGUOUS"
     assert "abandoned" in (rows[0]["exit_reason"] or "")
 
-    # And the session can still trade: the abandoned row no longer holds the slot.
+    # Unknown broker outcome is a global economic-order barrier until a
+    # reconciliation/manual resolution establishes the venue truth.
     result = session.submit(side="BUY", stop_loss=Decimal("1995.00"), rationale="after recovery")
-    assert result.allowed is True, result.reasons
-    assert len(terminal.requests) == 1
+    assert result.allowed is False, result.reasons
+    assert terminal.requests == []
 
 
 # ---------------------------------------------------------------- concurrency
