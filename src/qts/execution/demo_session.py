@@ -397,7 +397,7 @@ class DemoSession:
         """Dry-run of an order request — proves the plumbing without sending."""
         try:
             from qts.adapters.order_check import mt5_order_check
-            from qts.domain.value_objects import Instrument, OrderIntent, OrderState, OrderType, Side
+            from qts.domain.value_objects import Instrument, OrderIntent, OrderType, Side
 
             spec = self.adapter.get_symbol_spec(self.canonical_symbol)
             size = lots if lots is not None else Decimal(str(spec.volume_min))
@@ -733,7 +733,7 @@ class DemoSession:
         # reject the unowned fill. This local record is bookkeeping only; it
         # never calls the broker.
         try:
-            from qts.domain.value_objects import Instrument, OrderIntent, OrderType, Side
+            from qts.domain.value_objects import Instrument, OrderIntent, OrderState, OrderType, Side
 
             spec = self.adapter.get_symbol_spec(self.canonical_symbol)
             close_side = Side.SELL if str(matching_pos.get("side")) == "BUY" else Side.BUY
@@ -1526,7 +1526,7 @@ class DemoSession:
                 allowed=False,
                 client_order_id=client_order_id,
                 journal_id=journal_id,
-                state="AMBIGUOUS" if refusal_is_ambiguous else "NO_TRADE",
+                state="NO_TRADE",
                 reasons=["registered policy requires a stop-loss and none could be derived — refused"],
                 verdict=verdict.as_dict(),
             )
@@ -1596,7 +1596,7 @@ class DemoSession:
                 allowed=False,
                 client_order_id=client_order_id,
                 journal_id=journal_id,
-                state="NO_TRADE",
+                state="AMBIGUOUS" if refusal_is_ambiguous else "NO_TRADE",
                 reasons=[
                     refusal["reason"]
                     or "execution engine refused the intent — see audit log (risk veto / kill / suspend)"
