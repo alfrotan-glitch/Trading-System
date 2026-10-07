@@ -55,11 +55,8 @@ class OrderManager:
         # new order_id — a duplicate economic order for an id already recorded
         # as, e.g., FILLED. It is now restored from the persisted status and
         # returned without any new submission path.
-        if self.idempotency:
-            # Atomically reserve the business id. A read-then-write sequence is
-            # unsafe when two execution processes submit the same intent at once.
-            if not self.idempotency.claim(intent.client_order_id, "PENDING"):
-                return self._restore_persisted_duplicate(intent)
+        if self.idempotency and not self.idempotency.claim(intent.client_order_id, "PENDING"):
+            return self._restore_persisted_duplicate(intent)
         order = Order(
             order_id=uuid7(),
             client_order_id=intent.client_order_id,
