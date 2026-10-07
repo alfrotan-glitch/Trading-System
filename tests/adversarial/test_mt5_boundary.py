@@ -220,7 +220,7 @@ def test_mt5_reconnect_recovery():
     mock2.initialize.return_value = False
     mock2.shutdown.return_value = True
     adapter2 = MT5Adapter(mt5_module=mock2)
-    assert adapter2.reconnect(max_attempts=1) is False
+    assert adapter2.reconnect() is False
 
 
 def test_mt5_prerequisites_blocks_submission():
