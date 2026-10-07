@@ -1809,6 +1809,11 @@ class MT5Adapter(BrokerAdapter):
                         "symbol": sym,
                         "volume": vol,
                         "price": price,
+                        "fee": (
+                            Decimal(str(getattr(d, "commission", 0) or 0))
+                            + Decimal(str(getattr(d, "swap", 0) or 0))
+                            + Decimal(str(getattr(d, "fee", 0) or 0))
+                        ),
                         "side": side,
                         "time": deal_time,
                         "deal": d,
