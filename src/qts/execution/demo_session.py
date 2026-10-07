@@ -726,6 +726,52 @@ class DemoSession:
                 "error": "close receipt missing correlation id",
                 "reconciliation": self.reconcile(),
             }
+        # Register the already-sent broker close as a local order before
+        # consuming its correlated deal. Close is executed directly by the
+        # broker adapter, so the generic fill poller otherwise has no local
+        # OrderManager owner for the close client_order_id and must correctly
+        # reject the unowned fill. This local record is bookkeeping only; it
+        # never calls the broker.
+        try:
+            from qts.domain.value_objects import Instrument, OrderIntent, OrderType, Side
+
+            spec = self.adapter.get_symbol_spec(self.canonical_symbol)
+            close_side = Side.SELL if str(matching_pos.get("side")) == "BUY" else Side.BUY
+            close_intent = OrderIntent(
+                instrument=Instrument(
+                    symbol=self.canonical_symbol,
+                    venue="MT5",
+                    contract_size=spec.contract_size,
+                    lot_size=spec.volume_step,
+                    tick_size=spec.tick_size,
+                ),
+                side=close_side,
+                quantity=close_volume,
+                order_type=OrderType.MARKET,
+                client_order_id=close_client_id,
+                strategy_id="position-close",
+            )
+            close_order = self.engine.om.submit(close_intent)
+            if close_order.state is OrderState.PENDING:
+                self.engine.om.update_state(
+                    close_client_id,
+                    OrderState.ACCEPTED,
+                    exchange_order_id=str(receipt.get("broker_order_id") or receipt.get("order_id") or ""),
+                )
+        except Exception as exc:
+            self.stage.halt(
+                reason=f"local close execution record failed for ticket {ticket_int}",
+                actor=actor or self.config.actor,
+            )
+            return {
+                "success": False,
+                "state": "AMBIGUOUS",
+                "ticket": ticket_int,
+                "receipt": receipt,
+                "error": f"local close execution record failed: {type(exc).__name__}: {exc}",
+                "reconciliation": self.reconcile(),
+            }
+
         try:
             self.sync_fills(client_order_id=close_client_id)
         except Exception as exc:
