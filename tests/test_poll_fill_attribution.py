@@ -90,6 +90,9 @@ def _deal(ticket, comment, volume=0.01, price=2000.5, deal_type=0):
     d.price = price
     d.type = deal_type
     d.time = datetime.now(UTC).timestamp()
+    d.commission = 0.0
+    d.swap = 0.0
+    d.fee = 0.0
     return d
 
 
