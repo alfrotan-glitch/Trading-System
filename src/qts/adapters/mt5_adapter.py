@@ -28,6 +28,7 @@ import contextlib
 import math
 import os
 import time
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -1363,6 +1364,8 @@ class MT5Adapter(BrokerAdapter):
             filling = mt5.ORDER_FILLING_FOK
         else:
             filling = mt5.ORDER_FILLING_RETURN
+        close_client_id = f"close-{int(ticket)}-{uuid.uuid4().hex[:10]}"
+        close_comment = mt5_comment_for(close_client_id)
         request: dict[str, Any] = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
@@ -1372,18 +1375,14 @@ class MT5Adapter(BrokerAdapter):
             "price": price,
             "deviation": int(self.config.get("deviation", 20)),
             "magic": int(self.config.get("magic", 20250916)),
-            # Same MT5 comment constraint as order submission — a long or
-            # non-ASCII close marker would make order_send return None too.
-            "comment": mt5_safe_comment_text(comment) or "qts-close",
+            # Use the same deterministic, short comment mapping as entries.
+            # A unique close id prevents an old partial-close deal from being
+            # replayed into a later close of the same position ticket.
+            "comment": close_comment,
             "type_time": getattr(mt5, "ORDER_TIME_GTC", 0),
             "type_filling": filling,
         }
-        # Attribute the closing deal before it can come back: without a comment
-        # → order mapping the broker's close deal is unattributable, and the
-        # engine is required to discard unattributed fills — which would leave
-        # the local portfolio holding a position the venue has already closed.
-        with contextlib.suppress(Exception):
-            self._store_comment_map(f"close-{int(ticket)}", str(request["comment"]))
+        self._store_comment_map(close_client_id, close_comment)
 
         result = self._order_send(mt5, request, operation=f"close position {ticket}")
         retcode = getattr(result, "retcode", None)
@@ -1391,6 +1390,7 @@ class MT5Adapter(BrokerAdapter):
             "retcode": retcode,
             "broker_order_id": str(getattr(result, "order", "") or ""),
             "broker_position_id": str(getattr(result, "deal", "") or ""),
+            "client_order_id": close_client_id,
             "executed_price": str(getattr(result, "price", "") or ""),
             "executed_volume": str(getattr(result, "volume", "") or ""),
             "comment": str(getattr(result, "comment", "") or ""),
