@@ -56,7 +56,7 @@ class RiskLimits(BaseModel):
     version: int = 1
 
     @model_validator(mode="after")
-    def _validate_limits(self) -> "RiskLimits":
+    def _validate_limits(self) -> RiskLimits:
         positive = (
             ("max_quantity", self.max_quantity),
             ("min_quantity", self.min_quantity),
