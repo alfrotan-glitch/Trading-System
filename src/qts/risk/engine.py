@@ -306,10 +306,18 @@ class RiskEngine:
 
         if (
             self.limits.stop_loss_required
-            and intent.stop_price is None
+            and intent.stop_loss is None
             and intent.order_type.value not in ("STOP", "STOP_LIMIT")
         ):
-            return RiskDecision(allowed=False, veto_reason=RiskVetoReason.MISSING_STOP)
+            return RiskDecision(
+                allowed=False,
+                veto_reason=RiskVetoReason.MISSING_STOP,
+                reason_detail="protective stop_loss is required",
+                symbol=sym,
+                price=est_price,
+                price_source=price_source,
+                notional=notional,
+            )
 
         if ctx.open_orders_count >= self.limits.max_open_orders:
             return RiskDecision(
