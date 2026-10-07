@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
+from types import SimpleNamespace
 
 from qts.domain.modes import ExecutionMode
 from qts.execution.demo_session import DemoSession
