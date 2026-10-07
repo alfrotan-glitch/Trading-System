@@ -431,11 +431,11 @@ def _digest_if_file(rel_path: str) -> str | None:
 def repository_tracked_files_must_not_be_modified_by_tests():
     """Fail the session if tests create new worktree changes or alter pre-existing ones."""
     baseline_dirty = _git_status_paths()
-    baseline_hashes = {
-        path: _digest_if_file(path)
-        for path in baseline_dirty
-        if _digest_if_file(path) is not None
-    }
+    baseline_hashes: dict[str, str] = {}
+    for path in baseline_dirty:
+        digest = _digest_if_file(path)
+        if digest is not None:
+            baseline_hashes[path] = digest
     yield
 
     after = _git_status_paths()
