@@ -125,24 +125,6 @@ class Portfolio:
             )
         self._last_price[sym] = fill.price
 
-    def restore_open_positions(self, positions: list[Position]) -> None:
-        """Restore broker positions after a process restart."""
-        if any(p.quantity != Decimal("0") for p in self.positions.values()):
-            raise RuntimeError("cannot restore into a non-empty local portfolio")
-        restored: dict[str, Position] = {}
-        for position in positions:
-            if position.quantity == Decimal("0"):
-                continue
-            symbol = position.instrument.symbol
-            if symbol in restored:
-                raise RuntimeError(f"multiple broker positions for {symbol} are unsupported")
-            if position.avg_price <= Decimal("0"):
-                raise ValueError(f"invalid broker average price for {symbol}: {position.avg_price}")
-            restored[symbol] = position.model_copy(update={"unrealized_pnl": Decimal("0")})
-        self.positions = restored
-        for symbol, position in restored.items():
-            self._last_price[symbol] = position.avg_price
-
     def mark_to_market(self, symbol: str, price: Decimal) -> None:
         """Update unrealized PnL for symbol at given price (mid/close)."""
         self._last_price[symbol] = price
