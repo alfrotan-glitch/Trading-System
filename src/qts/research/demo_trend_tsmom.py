@@ -43,9 +43,10 @@ reconstructs the *exact* state a continuously running strategy would hold.
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from typing import Any, Iterable
+from typing import Any
 
 from qts.adapters.base import MEASURED_SERVER_OFFSET_BASES
 from qts.execution.demo_autopilot import Signal
@@ -223,7 +224,7 @@ class TrendTimeSeriesMomentum:
             )
         else:
             self._last_rationale = f"history seeded from {source}: {len(self._closes)} completed bars"
-        return {"accepted": True, "bars": len(self._closes), **{k: v for k, v in self._provenance.items()}}
+        return {"accepted": True, "bars": len(self._closes), **self._provenance}
 
     # --------------------------------------------------------------- bars
     def _valid_timeframe(self, raw: Any) -> int:
