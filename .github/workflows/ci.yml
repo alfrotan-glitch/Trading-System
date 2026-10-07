@@ -39,7 +39,7 @@ jobs:
           mypy src
           bandit -q -r src
       - name: Fast Python suite (non-extended tests only)
-        run: pytest -q
+        run: pytest -q --ignore=tests/integration --ignore=tests/research
       - name: UI tests
         run: npm test
 
