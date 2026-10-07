@@ -325,12 +325,16 @@ class MT5Adapter(BrokerAdapter):
     RETCODE_INVALID = 10013
     RETCODE_INVALID_VOLUME = 10014
     RETCODE_INVALID_PRICE = 10015
+    RETCODE_INVALID_STOPS = 10016
     RETCODE_TIMEOUT = 10012
     RETCODE_ERROR = 10011
     RETCODE_CANCEL = 10007
     RETCODE_MARKET_CLOSED = 10018
     RETCODE_PRICE_CHANGED = 10020
+    RETCODE_PRICE_OFF = 10021
+    RETCODE_INVALID_EXPIRATION = 10022
     RETCODE_TOO_MANY_REQUESTS = 10024
+    RETCODE_NO_CHANGES = 10025
     RETCODE_SERVER_DISABLES = 10026
     RETCODE_CLIENT_DISABLES = 10027
     RETCODE_FROZEN = 10029
@@ -343,10 +347,15 @@ class MT5Adapter(BrokerAdapter):
     RETCODE_INVALID_CLOSE_VOLUME = 10038
     RETCODE_CLOSE_ORDER_EXIST = 10039
     RETCODE_LIMIT_POSITIONS = 10040
+    RETCODE_REJECT_CANCEL = 10041
+    RETCODE_LONG_ONLY = 10042
+    RETCODE_SHORT_ONLY = 10043
+    RETCODE_CLOSE_ONLY = 10044
+    RETCODE_FIFO_CLOSE = 10045
+    RETCODE_HEDGE_PROHIBITED = 10046
     RETCODE_CONNECTION = 10031
     RETCODE_LOCKED = 10028
     RETCODE_NO_MONEY = 10019
-    RETCODE_PRICE_OFF = 10018
     RETCODE_TRADE_DISABLED = 10017
 
     # Ambiguous retcodes that imply unknown broker state
@@ -1201,17 +1210,21 @@ class MT5Adapter(BrokerAdapter):
             comment = getattr(result, "comment", f"retcode {retcode}")
             # Classify known rejection codes
             if retcode in {
+                self.RETCODE_REQUOTE,
+                self.RETCODE_REJECT,
                 self.RETCODE_CANCEL,
                 self.RETCODE_INVALID,
                 self.RETCODE_INVALID_VOLUME,
                 self.RETCODE_INVALID_PRICE,
-                self.RETCODE_REJECT,
-                self.RETCODE_NO_MONEY,
-                self.RETCODE_PRICE_OFF,
+                self.RETCODE_INVALID_STOPS,
                 self.RETCODE_TRADE_DISABLED,
                 self.RETCODE_MARKET_CLOSED,
+                self.RETCODE_NO_MONEY,
                 self.RETCODE_PRICE_CHANGED,
+                self.RETCODE_PRICE_OFF,
+                self.RETCODE_INVALID_EXPIRATION,
                 self.RETCODE_TOO_MANY_REQUESTS,
+                self.RETCODE_NO_CHANGES,
                 self.RETCODE_SERVER_DISABLES,
                 self.RETCODE_CLIENT_DISABLES,
                 self.RETCODE_FROZEN,
@@ -1224,6 +1237,12 @@ class MT5Adapter(BrokerAdapter):
                 self.RETCODE_INVALID_CLOSE_VOLUME,
                 self.RETCODE_CLOSE_ORDER_EXIST,
                 self.RETCODE_LIMIT_POSITIONS,
+                self.RETCODE_REJECT_CANCEL,
+                self.RETCODE_LONG_ONLY,
+                self.RETCODE_SHORT_ONLY,
+                self.RETCODE_CLOSE_ONLY,
+                self.RETCODE_FIFO_CLOSE,
+                self.RETCODE_HEDGE_PROHIBITED,
             }:
                 raise ValueError(f"MT5 rejected {intent.client_order_id} retcode {retcode}: {comment}")
             # An unrecognized server code is not safe to interpret as a
