@@ -1561,8 +1561,7 @@ class MT5Adapter(BrokerAdapter):
 
         # Conservative fallback: forming M1 bar. The bar is minute-aligned, so
         # minute resolution is the honest precision available from this probe.
-        if measured_offset is None:
-            if bar_time is not None:
+        if measured_offset is None and bar_time is not None:
                 lo = bar_time - now_epoch
                 hi = lo + 60.0
                 grid = math.ceil(lo / self._OFFSET_QUANTUM_S) * self._OFFSET_QUANTUM_S
