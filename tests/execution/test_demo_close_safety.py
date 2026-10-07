@@ -72,7 +72,7 @@ class _Adapter:
             return self._post_close
         return list(self._positions)
 
-    def position_realized_result(self, ticket):
+    def position_realized_result(self, ticket, *, client_order_id=None):
         return {
             "position_ticket": ticket,
             "deal_count": 2,
