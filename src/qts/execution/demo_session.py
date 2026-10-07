@@ -889,9 +889,9 @@ class DemoSession:
         except Exception:
             audit = None
         self._idempotency = IdempotencyStore(db_path=self.db_path)
-        from qts.risk.authority import resolve_risk_limits
+        from qts.risk.authority import resolve_risk_limits_from_settings
 
-        snapshot = resolve_risk_limits(ExecutionMode.DEMO_EXECUTION)
+        snapshot = resolve_risk_limits_from_settings(ExecutionMode.DEMO_EXECUTION)
         limits = RiskLimits(
             max_quantity=snapshot.limits.max_quantity,
             min_quantity=snapshot.limits.min_quantity,
