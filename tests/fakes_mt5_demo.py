@@ -58,6 +58,17 @@ class FakeTerminal:
         )
 
     # -- market data ---------------------------------------------------------
+    TIMEFRAME_M1 = 1
+
+    def copy_rates_from_pos(self, name, timeframe, start, count):
+        return [{"time": int(time.time() // 60 * 60)}]
+
+    def account_info(self):
+        return self.account
+
+    def terminal_info(self):
+        return SimpleNamespace(connected=True, trade_allowed=True)
+
     def symbol_info_tick(self, name):
         now = time.time()
         return SimpleNamespace(
