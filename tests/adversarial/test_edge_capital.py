@@ -411,7 +411,7 @@ def test_one_way_promotion():
         # Correct path
         ledger.transition(sid, PromotionState.CANDIDATE)
         assert ledger.get_state(sid) == PromotionState.CANDIDATE
-        ledger.transition(sid, PromotionState.VALIDATED)
+        ledger.transition(sid, PromotionState.VALIDATED, evidence_hash="sha256:validated-evidence")
         assert ledger.get_state(sid) == PromotionState.VALIDATED
         # Anomaly -> SUSPENDED
         ledger.suspend_on_anomaly(sid, reason="drawdown breach")
