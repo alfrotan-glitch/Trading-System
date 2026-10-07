@@ -327,6 +327,22 @@ class MT5Adapter(BrokerAdapter):
     RETCODE_INVALID_PRICE = 10015
     RETCODE_TIMEOUT = 10012
     RETCODE_ERROR = 10011
+    RETCODE_CANCEL = 10007
+    RETCODE_MARKET_CLOSED = 10018
+    RETCODE_PRICE_CHANGED = 10020
+    RETCODE_TOO_MANY_REQUESTS = 10024
+    RETCODE_SERVER_DISABLES = 10026
+    RETCODE_CLIENT_DISABLES = 10027
+    RETCODE_FROZEN = 10029
+    RETCODE_INVALID_FILL = 10030
+    RETCODE_ONLY_REAL = 10032
+    RETCODE_LIMIT_ORDERS = 10033
+    RETCODE_LIMIT_VOLUME = 10034
+    RETCODE_INVALID_ORDER = 10035
+    RETCODE_POSITION_CLOSED = 10036
+    RETCODE_INVALID_CLOSE_VOLUME = 10038
+    RETCODE_CLOSE_ORDER_EXIST = 10039
+    RETCODE_LIMIT_POSITIONS = 10040
     RETCODE_CONNECTION = 10031
     RETCODE_LOCKED = 10028
     RETCODE_NO_MONEY = 10019
@@ -1184,7 +1200,8 @@ class MT5Adapter(BrokerAdapter):
             # Definitive rejection — map retcode to reason
             comment = getattr(result, "comment", f"retcode {retcode}")
             # Classify known rejection codes
-            if retcode in (
+            if retcode in {
+                self.RETCODE_CANCEL,
                 self.RETCODE_INVALID,
                 self.RETCODE_INVALID_VOLUME,
                 self.RETCODE_INVALID_PRICE,
@@ -1192,7 +1209,22 @@ class MT5Adapter(BrokerAdapter):
                 self.RETCODE_NO_MONEY,
                 self.RETCODE_PRICE_OFF,
                 self.RETCODE_TRADE_DISABLED,
-            ):
+                self.RETCODE_MARKET_CLOSED,
+                self.RETCODE_PRICE_CHANGED,
+                self.RETCODE_TOO_MANY_REQUESTS,
+                self.RETCODE_SERVER_DISABLES,
+                self.RETCODE_CLIENT_DISABLES,
+                self.RETCODE_FROZEN,
+                self.RETCODE_INVALID_FILL,
+                self.RETCODE_ONLY_REAL,
+                self.RETCODE_LIMIT_ORDERS,
+                self.RETCODE_LIMIT_VOLUME,
+                self.RETCODE_INVALID_ORDER,
+                self.RETCODE_POSITION_CLOSED,
+                self.RETCODE_INVALID_CLOSE_VOLUME,
+                self.RETCODE_CLOSE_ORDER_EXIST,
+                self.RETCODE_LIMIT_POSITIONS,
+            }:
                 raise ValueError(f"MT5 rejected {intent.client_order_id} retcode {retcode}: {comment}")
             # An unrecognized server code is not safe to interpret as a
             # definitive rejection. MT5 can add return codes, and some codes
