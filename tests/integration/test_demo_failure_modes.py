@@ -42,8 +42,6 @@ def test_ambiguous_retcode_suspends_and_sends_no_second_order(demo_env, monkeypa
     # Isolate the broker-outcome branch: the full pre-trade gate has its own
     # dedicated suite. Here we prove that once the gate permits an order, an
     # ambiguous broker response is never converted into a rejection/retry.
-    from types import SimpleNamespace
-
     verdict = SimpleNamespace(
         passed=True,
         failed=(),
