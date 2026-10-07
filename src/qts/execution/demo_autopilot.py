@@ -435,31 +435,30 @@ def _manage_open_positions(
             if policy.get("close_on_registry_expiry") and not reason:
                 reason = None  # registry expiry is checked by the caller loop
             if reason:
-                if hasattr(session, "close_position"):
-                    res = session.close_position(
-                        int(ticket),
-                        reason=reason,
-                        comment=RESEARCH_DEMO_ORDER[:31],
-                        actor="autopilot",
-                    )
-                    receipt = res.get("receipt")
-                    after_close = res.get("reconciliation") or {}
-                else:
-                    receipt = session.adapter.close_position(int(ticket), comment=RESEARCH_DEMO_ORDER[:31])
-                    if row is not None:
-                        journal.mark_outcome(
-                            int(row["journal_id"]),
-                            state="CLOSED",
-                            exit_reason=reason,
-                            realized_pnl=profit,
-                            market_state_exit={"price_current": pos.get("price_current"), "close_receipt": receipt},
+                # An ambiguous close is an execution barrier, not a transient
+                # error. Never let the autonomous loop blindly submit another
+                # close against the same ticket.
+                stage_record = session.stage.current() if hasattr(session, "stage") else None
+                if stage_record is not None and stage_record.stage == DemoStage.HALTED.value:
+                    halt_reason = str(stage_record.reason or "").lower()
+                    if any(token in halt_reason for token in ("ambiguous", "unresolved broker", "reconciliation drift")):
+                        raise AutopilotHalt(
+                            f"automatic close blocked by execution barrier for ticket {ticket}: {stage_record.reason}"
                         )
-                    with contextlib.suppress(Exception):
-                        session.sync_fills()
-                    after_close = session.reconcile()
+                res = session.close_position(
+                    int(ticket),
+                    reason=reason,
+                    comment=RESEARCH_DEMO_ORDER[:31],
+                    actor="autopilot",
+                )
+                state = str(res.get("state") or "")
+                if state == "AMBIGUOUS":
+                    raise AutopilotHalt(
+                        f"close outcome for ticket {ticket} is ambiguous; reconciliation is required"
+                    )
+                receipt = res.get("receipt")
+                after_close = res.get("reconciliation") or {}
 
-                note("close", {"ticket": ticket, "reason": reason, "profit": str(profit), "receipt": receipt})
-                note("reconcile_after_close", after_close)
                 if after_close.get("requires_suspend"):
                     raise AutopilotHalt(
                         f"reconciliation drift after closing ticket {ticket}: {after_close.get('drift')} "
