@@ -1,7 +1,7 @@
 import hashlib
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from decimal import Decimal
+from pathlib import Path
 
 from qts.research.demo_trend_tsmom import TrendTimeSeriesMomentum
 
