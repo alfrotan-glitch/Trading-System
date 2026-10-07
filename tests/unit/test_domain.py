@@ -84,7 +84,7 @@ def test_instrument_symbol_upper():
     assert instr.symbol == "XAUUSD"
 
 
-def _order() -> Order:
+def _order(state: OrderState = OrderState.PENDING) -> Order:
     now = datetime.now(UTC)
     return Order(
         order_id="order-1",
@@ -93,6 +93,7 @@ def _order() -> Order:
         side=Side.BUY,
         quantity=Decimal("0.1"),
         order_type=OrderType.MARKET,
+        state=state,
         strategy_id="test",
         created_at=now,
         updated_at=now,
@@ -117,6 +118,6 @@ def test_order_state_machine_allows_valid_execution_lifecycle():
     ],
 )
 def test_order_state_machine_rejects_invalid_transition(start: OrderState, target: OrderState):
-    order = _order().with_state(start) if start is not OrderState.PENDING else _order()
+    order = _order(start)
     with pytest.raises(ValueError, match="invalid order state transition"):
         order.with_state(target)
