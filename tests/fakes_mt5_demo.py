@@ -130,6 +130,7 @@ class FakeTerminal:
             price_current=2000.10,
             sl=request.get("sl", 0.0),
             tp=request.get("tp", 0.0),
+            identifier=self._next_deal,
             profit=-1.00,
             swap=0.0,
             comment=request.get("comment", ""),
