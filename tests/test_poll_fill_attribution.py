@@ -26,6 +26,8 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
 from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.adapters.mt5_adapter import MT5Adapter
 from qts.domain.value_objects import Instrument, OrderIntent, OrderState, OrderType, Side
@@ -75,7 +77,11 @@ def _mock_mt5(deals=None, positions=None):
     m.order_send.return_value = res
     m.positions_get.return_value = positions or []
     m.orders_get.return_value = []
-    m.history_deals_get.return_value = deals or []
+    def _history_deals(*args, **kwargs):
+        if kwargs.get("ticket") == 654321:
+            return [type("OpeningDeal", (), {"order": 123456, "position_id": 654321, "ticket": 654321})()]
+        return deals or []
+    m.history_deals_get.side_effect = _history_deals
     return m
 
 
@@ -198,13 +204,13 @@ def test_poll_fills_dicts_carry_attribution_and_stable_ids():
         cid = "attribution-check-0001"
         comment = broker._build_comment(cid)  # persists mapping
         mock.history_deals_get.return_value = [_deal(4001, comment, volume=0.01)]
-        raw = broker.poll_fills("")
+        raw = broker.poll_fills(cid)
         assert len(raw) == 1
         item = raw[0]
         assert item["client_order_id"] == cid
         assert item["fill_id"] == "mt5-deal-4001"
         # stable across polls
-        raw2 = broker.poll_fills("")
+        raw2 = broker.poll_fills(cid)
         assert raw2[0]["fill_id"] == item["fill_id"]
 
 
