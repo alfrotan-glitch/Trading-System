@@ -480,6 +480,37 @@ class RiskEngine:
                 if current_position is not None
                 else Decimal("0")
             ) + new_symbol_notional_for_lev
+        if self.limits.max_risk_per_trade_bps > 0 and intent.stop_loss is not None:
+            if (
+                (intent.side.value == "BUY" and intent.stop_loss >= est_price)
+                or (intent.side.value == "SELL" and intent.stop_loss <= est_price)
+            ):
+                return RiskDecision(
+                    allowed=False,
+                    veto_reason=RiskVetoReason.EXCEEDS_RISK_PER_TRADE,
+                    reason_detail="protective stop is on the wrong side of entry",
+                    price=est_price,
+                    price_source=price_source,
+                    notional=notional,
+                    symbol=sym,
+                )
+            exposure_at_stop = (
+                abs(est_price - intent.stop_loss)
+                * intent.quantity
+                * intent.instrument.contract_size
+            )
+            risk_bps = (exposure_at_stop / equity) * Decimal("10000")
+            if risk_bps > self.limits.max_risk_per_trade_bps:
+                return RiskDecision(
+                    allowed=False,
+                    veto_reason=RiskVetoReason.EXCEEDS_RISK_PER_TRADE,
+                    reason_detail=f"protective-stop risk {risk_bps:.2f} bps exceeds limit",
+                    price=est_price,
+                    price_source=price_source,
+                    notional=notional,
+                    symbol=sym,
+                )
+
         lev = total_notional_for_lev / equity
         if lev > self.limits.max_leverage:
             return RiskDecision(
