@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import sqlite3
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -245,6 +246,31 @@ class ExecutionEngine:
             )
             con.commit()
 
+    def _risk_state_key(self) -> int:
+        """Return a stable per-account key for persisted risk baselines.
+
+        Risk baselines must never leak across broker accounts or servers. Live
+        MT5 execution therefore requires the broker identity fingerprint; paper
+        engines use a stable broker-class key.
+        """
+        cached = getattr(self, "_risk_state_key_cached", None)
+        if cached is not None:
+            return cached
+
+        identity_fn = getattr(self.broker, "broker_identity", None)
+        if callable(identity_fn) and bool(getattr(self.broker, "is_live", False)):
+            identity = identity_fn()
+            from qts.adapters.identity import identity_fingerprint
+
+            scope = f"live:{identity_fingerprint(identity)}"
+        else:
+            scope = f"broker:{self.broker.__class__.__module__}.{self.broker.__class__.__qualname__}"
+
+        digest = hashlib.sha256(scope.encode("utf-8")).digest()
+        key = int.from_bytes(digest[:8], "big") & 0x7FFF_FFFF_FFFF_FFFF
+        self._risk_state_key_cached = key or 2
+        return self._risk_state_key_cached
+
     def _load_peak_equity(self, equity: Decimal) -> Decimal:
         """Load and advance the durable drawdown peak; never reset on restart."""
         if not self.persist_reconcile_state:
@@ -253,10 +279,10 @@ class ExecutionEngine:
             return self.peak_equity
         try:
             with db_connect(self._db_path) as con:
-                row = con.execute("SELECT peak_equity FROM risk_peak_state WHERE k=1").fetchone()
+                row = con.execute("SELECT peak_equity FROM risk_peak_state WHERE k=?", (self._risk_state_key(),)).fetchone()
                 if row is None:
                     peak = equity
-                    con.execute("INSERT INTO risk_peak_state VALUES (1,?)", (str(peak),))
+                    con.execute("INSERT INTO risk_peak_state VALUES (?,?)", (self._risk_state_key(), str(peak)))
                     con.commit()
                 else:
                     peak = Decimal(str(row[0]))
@@ -264,7 +290,7 @@ class ExecutionEngine:
                         raise ValueError(f"invalid persisted peak equity {row[0]!r}")
                     if equity > peak:
                         peak = equity
-                        con.execute("UPDATE risk_peak_state SET peak_equity=? WHERE k=1", (str(peak),))
+                        con.execute("UPDATE risk_peak_state SET peak_equity=? WHERE k=?", (str(peak), self._risk_state_key()))
                         con.commit()
             self.peak_equity = peak
             return peak
@@ -281,12 +307,13 @@ class ExecutionEngine:
         try:
             with db_connect(self._db_path) as con:
                 row = con.execute(
-                    "SELECT utc_date, equity FROM risk_day_state WHERE k=1"
+                    "SELECT utc_date, equity FROM risk_day_state WHERE k=?",
+                    (self._risk_state_key(),),
                 ).fetchone()
                 if row is None or row[0] != day:
                     con.execute(
-                        "INSERT OR REPLACE INTO risk_day_state VALUES (1,?,?)",
-                        (day, str(equity)),
+                        "INSERT OR REPLACE INTO risk_day_state VALUES (?,?,?)",
+                        (self._risk_state_key(), day, str(equity)),
                     )
                     con.commit()
                     return equity
