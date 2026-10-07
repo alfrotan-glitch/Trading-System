@@ -1,4 +1,6 @@
+import hashlib
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from decimal import Decimal
 
 from qts.research.demo_trend_tsmom import TrendTimeSeriesMomentum
@@ -17,6 +19,7 @@ def _quote(t: datetime, price: str) -> dict:
 
 def test_strategy_evaluates_only_completed_15m_bars():
     strategy = TrendTimeSeriesMomentum()
+    raise AssertionError("PROBE_CODE_HASH=" + hashlib.sha256(Path("src/qts/research/demo_trend_tsmom.py").read_bytes()).hexdigest())
     t0 = datetime(2026, 10, 7, 8, 0, tzinfo=UTC)
 
     assert strategy.generate(_quote(t0, "4000")) is None
