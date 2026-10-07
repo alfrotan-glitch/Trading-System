@@ -307,7 +307,7 @@ def demo_preflight(side: str = "BUY", lots: str | None = None, stop_loss: str | 
                     },
                     "reasons": list(entry_reasons),
                 },
-                "intended_order": {"symbol": symbol if "symbol" in locals() else None, "side": side},
+                "intended_order": {"side": side},
                 "order_check": {"ok": False, "reason": "no eligible registered strategy"},
                 "stage": {"allowed": False, "reason": "NO_TRADE"},
             },
