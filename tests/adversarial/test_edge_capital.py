@@ -407,7 +407,7 @@ def test_one_way_promotion():
         assert ledger.get_state(sid) == PromotionState.RESEARCH
         # Cannot skip RESEARCH -> VALIDATED (must go via CANDIDATE)
         with pytest.raises(ValueError, match="not allowed"):
-            ledger.transition(sid, PromotionState.VALIDATED)
+            ledger.transition(sid, PromotionState.VALIDATED, evidence_hash="sha256:skip-attempt")
         # Correct path
         ledger.transition(sid, PromotionState.CANDIDATE)
         assert ledger.get_state(sid) == PromotionState.CANDIDATE
