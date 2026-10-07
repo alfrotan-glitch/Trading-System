@@ -48,7 +48,6 @@ class RiskLimits(BaseModel):
     max_exposure_lots: Decimal = Decimal("2.0")  # lots net abs
     max_exposure_notional: Decimal | None = None  # optional USD
     max_leverage: Decimal = Decimal("5")  # notional/equity
-    max_correlated_exposure: Decimal = Decimal("1.5")
     max_open_orders: int = 5
     daily_loss_limit: Decimal = Decimal("200")  # USD loss (positive = max loss allowed)
     max_drawdown: Decimal = Decimal("500")  # USD drawdown
