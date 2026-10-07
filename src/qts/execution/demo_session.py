@@ -839,7 +839,10 @@ class DemoSession:
                 "at": self._last_reconcile_at.isoformat(),
             }
         if not engine.portfolio.positions and broker_positions:
-            self.sync_fills()
+            # Current broker positions are authoritative for cold-start
+            # recovery. Do not depend on the recent deal-history window to
+            # reconstruct a position that may have been open for weeks.
+            engine.bootstrap_broker_positions()
         report = engine.reconcile()
         self._last_reconcile = report
         self._last_reconcile_at = datetime.now(UTC)
