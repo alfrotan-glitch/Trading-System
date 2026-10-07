@@ -765,7 +765,23 @@ class DemoSession:
         # so a legitimate broker position would look like drift
         # (UNKNOWN_POSITION) and block everything. Rebuild local state from the
         # broker's deal history FIRST, then compare like with like.
-        broker_positions = list(engine.broker.positions() or [])
+        try:
+            broker_positions = list(engine.broker.positions() or [])
+        except Exception:
+            # ExecutionEngine.reconcile owns the canonical disconnect handling:
+            # it persists suspension, emits NO_TRADE evidence, and returns a
+            # BROKER_DISCONNECT report. Do not leak a broker exception through
+            # the session-level reconciliation contract.
+            report = engine.reconcile()
+            self._last_reconcile = report
+            self._last_reconcile_at = datetime.now(UTC)
+            return {
+                "drift": str(getattr(report, "drift", "")),
+                "details": str(getattr(report, "details", "")),
+                "requires_suspend": bool(getattr(report, "requires_suspend", False)),
+                "suspended": bool(engine.is_suspended),
+                "at": self._last_reconcile_at.isoformat(),
+            }
         if not engine.portfolio.positions and broker_positions:
             self.sync_fills()
         report = engine.reconcile()
