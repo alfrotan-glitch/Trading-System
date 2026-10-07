@@ -236,6 +236,32 @@ class ExecutionEngine:
             )
             con.commit()
 
+    def _load_day_start_equity(self, equity: Decimal) -> Decimal:
+        """Load a durable UTC-day equity baseline; never reset it on restart."""
+        day = datetime.now(UTC).date().isoformat()
+        try:
+            with db_connect(self._db_path) as con:
+                con.execute(
+                    "CREATE TABLE IF NOT EXISTS risk_day_state "
+                    "(k INTEGER PRIMARY KEY, utc_date TEXT NOT NULL, equity TEXT NOT NULL)"
+                )
+                row = con.execute(
+                    "SELECT utc_date, equity FROM risk_day_state WHERE k=1"
+                ).fetchone()
+                if row is None or row[0] != day:
+                    con.execute(
+                        "INSERT OR REPLACE INTO risk_day_state VALUES (1,?,?)",
+                        (day, str(equity)),
+                    )
+                    con.commit()
+                    return equity
+                baseline = Decimal(str(row[1]))
+                if not baseline.is_finite() or baseline <= 0:
+                    raise ValueError(f"invalid persisted day-start equity {row[1]!r}")
+                return baseline
+        except Exception as exc:
+            raise RuntimeError(f"daily risk baseline unavailable: {exc}") from exc
+
     def _load_reconcile_suspend(self) -> tuple[bool, str | None]:
         """Restore the durable suspension flag — FAIL CLOSED on a read error.
 
@@ -325,8 +351,7 @@ class ExecutionEngine:
                 # disable meaningful drawdown protection until the local mirror
                 # happened to catch up. The first valid broker equity establishes
                 # the session baseline; subsequent checks use the broker directly.
-                if self._day_start_equity <= Decimal("0"):
-                    self._day_start_equity = equity
+                self._day_start_equity = self._load_day_start_equity(equity)
                 self._update_drawdown(equity)
             except Exception as e:
                 raise RuntimeError(f"account unavailable: {e}") from e
