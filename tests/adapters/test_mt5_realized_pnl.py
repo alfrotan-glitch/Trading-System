@@ -20,6 +20,7 @@ class _MT5:
                 swap=Decimal("-0.05"),
                 fee=Decimal("-0.03"),
                 ticket=1001,
+                comment="close-comment",
             ),
             SimpleNamespace(
                 position_id=77,
@@ -28,6 +29,7 @@ class _MT5:
                 swap=Decimal("0.00"),
                 fee=Decimal("0.00"),
                 ticket=1002,
+                comment="older-entry",
             ),
         ]
 
