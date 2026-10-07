@@ -51,7 +51,7 @@ class _Adapter:
     RETCODE_PLACED = 10008
 
     def __init__(self, *, close_result=None, close_exc=None, post_close=None) -> None:
-        self._close_result = close_result or {"retcode": self.RETCODE_DONE, "deal": "deal-1"}
+        self._close_result = close_result or {"retcode": self.RETCODE_DONE, "deal": "deal-1", "client_order_id": "close-123-test"}
         self._close_exc = close_exc
         self._positions = [
             {
@@ -102,7 +102,7 @@ def _session(adapter: _Adapter, *, journal=None):
     obj.journal = journal or SimpleNamespace(open_orders=lambda: [])
     obj.config.terminal_path = None
     obj.config.mt5_module = object()
-    obj.sync_fills = lambda: 0
+    obj.sync_fills = lambda client_order_id=None: 0
     obj.reconcile = lambda: {"requires_suspend": False, "drift": "OK", "details": ""}
     return obj
 
