@@ -19,7 +19,7 @@ class PlaceboStrategies:
     def __init__(self, instrument: Instrument, seed: int = 42):
         self.instrument = instrument
         self.seed = seed
-        self._rng = random.Random(seed)
+        self._rng = random.Random(seed)  # nosec B311 — deterministic research placebo, never used for secrets
 
     def random_entry(self, bar: Bar) -> list[Signal]:
         if self._rng.random() < 0.05:
