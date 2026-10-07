@@ -811,35 +811,30 @@ class MT5Adapter(BrokerAdapter):
         except Exception:
             return False
 
-    def reconnect(self, max_attempts: int = 3) -> bool:
-        """Clean shutdown then reconnect — recovery behavior."""
-        self._session = None  # the shutdown below invalidates any cached link
+    def reconnect(self) -> bool:
+        """Perform one explicit reconnect attempt and verify the session."""
         mt5 = self._module()
-        for _attempt in range(max_attempts):
-            try:
-                import contextlib
-
-                with contextlib.suppress(Exception):
-                    mt5.shutdown()
-                self._session = None
-                kwargs: dict[str, Any] = {}
-                path = normalize_terminal_path(self.config.get("path"))
-                if path:
-                    kwargs["path"] = path
-                if not mt5.initialize(**kwargs):
-                    continue
-                login = self.config.get("login")
-                password = self.config.get("password")
-                server = self.config.get("server")
-                if login and password and server and not mt5.login(login, password, server):
-                    continue
-                if self.is_connected():
-                    self._session = None  # re-verify through the normal path
-                    return True
-            # B112: reconnect retry loop: failed attempt retries until max_attempts
-            except Exception:  # nosec B112
-                continue
-        return False
+        with contextlib.suppress(Exception):
+            mt5.shutdown()
+        self._session = None
+        kwargs: dict[str, Any] = {}
+        path = normalize_terminal_path(self.config.get("path"))
+        if path:
+            kwargs["path"] = path
+        try:
+            if not mt5.initialize(**kwargs):
+                return False
+            login = self.config.get("login")
+            password = self.config.get("password")
+            server = self.config.get("server")
+            if login and password and server and not mt5.login(login, password, server):
+                return False
+            self._session = None
+            self.ensure_session()
+            return self.is_connected()
+        except Exception:
+            self._session = None
+            return False
 
     def build_broker_request(self, intent: OrderIntent) -> dict[str, Any]:
         """Construct exact broker request without submitting — dry-run (Phase 9)."""
