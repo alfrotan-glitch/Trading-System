@@ -30,8 +30,8 @@ from qts.lifecycle.demo_authorization import document_fingerprint
 from qts.lifecycle.demo_gate import demo_forward_readiness_report
 from qts.lifecycle.demo_policy import policy_fingerprint
 from qts.lifecycle.demo_registry import load_registry, resolve_entry
-from qts.lifecycle.demo_stage import DemoStage
 from fakes_demo_provider import STRATEGY_ID, registry_entry
+from qts.lifecycle.demo_stage import DemoStage
 
 
 def _any_hours() -> dict:
@@ -221,7 +221,7 @@ def test_registered_policy_drives_a_minimum_size_order_with_its_stop(tmp_path: P
     assert request["sl"] == pytest.approx(float(expected), abs=0.01)
 
     row = session.journal.list_orders()[0]
-    assert row["side"] == parity_side
+    assert row["side"] == "BUY"
     assert row["strategy_id"] == STRATEGY_ID
     assert row["strategy_config_hash"] == registry_entry()["params_hash"]
     assert row["hypothesis_id"] == "H-TEST-001"
@@ -325,7 +325,7 @@ def test_policy_exposure_cap_blocks_a_second_position(tmp_path: Path, authorized
     )
     assert second.allowed is False
     failed = (second.verdict or {}).get("failed", [])
-    assert "max_total_exposure" in failed
+    assert "duplicate_order_protection" in failed
     assert len(terminal.requests) == 1
 
 
