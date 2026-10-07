@@ -1334,9 +1334,14 @@ class MT5Adapter(BrokerAdapter):
         symbol = getattr(pos, "symbol", None)
         if not symbol:
             raise ValueError(f"position {ticket} has no symbol — close refused")
-        volume_dec = Decimal(str(volume)) if volume is not None else Decimal(str(getattr(pos, "volume", 0)))
-        if volume_dec <= 0:
+        broker_volume = Decimal(str(getattr(pos, "volume", 0)))
+        volume_dec = broker_volume if volume is None else Decimal(str(volume))
+        if broker_volume <= 0 or volume_dec <= 0:
             raise ValueError(f"close volume {volume_dec} must be > 0")
+        if volume_dec != broker_volume:
+            raise ValueError(
+                f"partial closes are unsupported: requested {volume_dec}, broker position is {broker_volume}"
+            )
         pos_type = getattr(pos, "type", 0)
         close_type = mt5.ORDER_TYPE_SELL if pos_type == 0 else mt5.ORDER_TYPE_BUY
         tick = mt5.symbol_info_tick(symbol)
@@ -1387,6 +1392,10 @@ class MT5Adapter(BrokerAdapter):
             "comment": str(getattr(result, "comment", "") or ""),
             "request": dict(request),
         }
+        if retcode in self.AMBIGUOUS_RETCODES:
+            raise TimeoutError(
+                f"MT5 close of position {ticket} has ambiguous retcode {retcode}: {receipt['comment']}"
+            )
         if retcode not in (self.RETCODE_DONE, self.RETCODE_PLACED, self.RETCODE_DONE_PARTIAL):
             raise ValueError(f"MT5 close of position {ticket} failed retcode {retcode}: {receipt['comment']}")
         self.last_submission = receipt
