@@ -201,7 +201,7 @@ def test_required_stop_loss_is_derived_from_the_registered_policy(env):
     assert params["stop_loss"] == Decimal("1995.20")  # ask 2000.20 − 5.00 (fixture policy distance)
 
     sell = session.resolve_order_parameters(side="SELL")
-    assert sell["stop_loss"] == Decimal("2002.00")  # bid 2000.00 + 2.00
+    assert sell["stop_loss"] == Decimal("2005.00")  # bid 2000.00 + 5.00
 
     out = session.preflight(side="BUY")
     assert out["verdict"]["passed"], out["verdict"]["failed"]
