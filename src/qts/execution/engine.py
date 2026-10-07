@@ -695,15 +695,13 @@ class ExecutionEngine:
                 exchange_order_id=broker_order.exchange_order_id or broker_order.order_id,
             )
         except Exception as e:
-            # Classify: definitive rejection vs ambiguous transport failure
-            err_msg = str(e).lower()
-            # Heuristic: timeout, connection, network, ambiguous -> AMBIGUOUS
-            is_ambiguous = any(
-                k in err_msg for k in ["timeout", "connection", "network", "ambiguous", "unknown", "disconnected"]
+            # Classify from the exception contract, never from human-readable
+            # error text. Broker adapters must raise TimeoutError/ConnectionError
+            # (or explicitly mark an exception) when venue outcome is unknown;
+            # ordinary ValueError/RuntimeError rejections stay definitive.
+            is_ambiguous = isinstance(e, (TimeoutError, ConnectionError)) or bool(
+                getattr(e, "ambiguous", False)
             )
-            # Also check exception type
-            if isinstance(e, (TimeoutError, ConnectionError)):
-                is_ambiguous = True
             state = OrderState.AMBIGUOUS if is_ambiguous else OrderState.REJECTED
             self.om.update_state(intent.client_order_id, state, reject_reason=str(e))
             if self.audit:
