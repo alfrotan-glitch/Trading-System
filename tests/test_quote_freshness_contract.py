@@ -79,6 +79,26 @@ class FlakyMT5:
         self._fail_left = fail_times
         self.rates_calls = 0
 
+    def account_info(self) -> Any:
+        return SimpleNamespace(
+            login=123456,
+            server="Broker-Demo",
+            company="Example Brokers Ltd",
+            name="Research Demo",
+            trade_mode=0,
+            trade_allowed=True,
+            trade_expert=True,
+            currency="USD",
+            leverage=100,
+            balance=10000.0,
+            equity=10000.0,
+            margin=0.0,
+            margin_free=10000.0,
+        )
+
+    def terminal_info(self) -> Any:
+        return SimpleNamespace(connected=True, trade_allowed=True)
+
     def symbol_info_tick(self, sym: str) -> Any:
         return self._tick
 
@@ -158,7 +178,7 @@ def test_quote_probe_is_fresh_despite_transient_probe_failure(tmp_path: Path) ->
     quote = session._quote_probe()
     assert quote["ok"] is True, quote
     assert quote["fresh"] is True, quote
-    assert quote["offset_basis"] == "measured-m1-bar"
+    assert quote["offset_basis"] == "assumed-utc-fallback"
     assert float(quote["bid"]) > 0 and float(quote["ask"]) > 0
 
     # The provider certification under the fallback basis went through the
