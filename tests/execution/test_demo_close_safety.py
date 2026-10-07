@@ -9,7 +9,6 @@ from qts.domain.modes import ExecutionMode
 from qts.execution.demo_session import DemoSession
 
 
-
 @pytest.fixture(autouse=True)
 def demo_readiness_pass(monkeypatch):
     monkeypatch.setattr(
