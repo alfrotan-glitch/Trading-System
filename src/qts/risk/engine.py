@@ -356,17 +356,20 @@ class RiskEngine:
         if self.limits.max_exposure_notional is not None:
             # estimate total notional after trade: sum of abs(qty)*contract*price
             # approximate using est_price for new position
-            current_notional = sum(
-                (
-                    abs(p.quantity)
-                    * p.instrument.contract_size
-                    * (est_price if p.instrument.symbol == sym else (
-                        ctx.reference_price_for(p.instrument.symbol) or Decimal("0")
-                    ))
-                    for p in ctx.positions.values()
-                ),
-                Decimal("0"),
-            )
+            current_notional = Decimal("0")
+            for p in ctx.positions.values():
+                p_price = est_price if p.instrument.symbol == sym else ctx.reference_price_for(p.instrument.symbol)
+                if p_price is None or not p_price.is_finite() or p_price <= 0:
+                    return RiskDecision(
+                        allowed=False,
+                        veto_reason=RiskVetoReason.MISSING_MARKET_PRICE,
+                        reason_detail=f"no valid reference price for existing position {p.instrument.symbol}",
+                        price=est_price,
+                        price_source=price_source,
+                        notional=notional,
+                        symbol=sym,
+                    )
+                current_notional += abs(p.quantity) * p.instrument.contract_size * p_price
             # The new position notional replaces the current symbol's notional
             # rather than blindly adding it, so reducing/reversing a position
             # is not charged twice.
@@ -403,19 +406,32 @@ class RiskEngine:
                 notional=notional,
                 symbol=sym,
             )
-        # total notional for leverage: exposure notional
-        total_notional_for_lev = (
-            sum(
-                (abs(p.quantity) * p.instrument.contract_size * est_price for p in ctx.positions.values()),
-                Decimal("0"),
-            )
-            + notional
-        )
-        # if flat, leverage is just new notional/equity
-        if total_notional_for_lev == notional and not ctx.positions:
-            lev = notional / equity
+        # Leverage must use the same post-trade gross exposure model as
+        # max_exposure_notional: replace the target symbol's old notional with
+        # its post-trade notional; never blindly add a reduction/reversal.
+        if self.limits.max_exposure_notional is not None:
+            total_notional_for_lev = new_notional
         else:
-            lev = total_notional_for_lev / equity
+            total_notional_for_lev = Decimal("0")
+            for p in ctx.positions.values():
+                p_price = est_price if p.instrument.symbol == sym else ctx.reference_price_for(p.instrument.symbol)
+                if p_price is None or not p_price.is_finite() or p_price <= 0:
+                    return RiskDecision(
+                        allowed=False,
+                        veto_reason=RiskVetoReason.MISSING_MARKET_PRICE,
+                        reason_detail=f"no valid reference price for existing position {p.instrument.symbol}",
+                        price=est_price,
+                        price_source=price_source,
+                        notional=notional,
+                        symbol=sym,
+                    )
+                total_notional_for_lev += abs(p.quantity) * p.instrument.contract_size * p_price
+            total_notional_for_lev = total_notional_for_lev - (
+                abs(current_position.quantity) * current_position.instrument.contract_size * est_price
+                if current_position is not None
+                else Decimal("0")
+            ) + new_symbol_notional
+        lev = total_notional_for_lev / equity
         if lev > self.limits.max_leverage:
             return RiskDecision(
                 allowed=False,
