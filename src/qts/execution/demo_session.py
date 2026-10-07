@@ -342,21 +342,36 @@ class DemoSession:
         provenance = getattr(tick, "provenance", None) or {}
         basis = provenance.get("offset_basis")
         if basis == "assumed-utc-fallback":
-            # No measured server→UTC offset means event time is not comparable
-            # to the local clock. Never promote an unmeasured timestamp to a
-            # trade-authorizing "fresh" quote.
+            # The normalized event_time is not authoritative without a measured
+            # offset, but the raw broker timestamp can still be certified by the
+            # same server-clock/M1-bar contract used by readiness and MarketDataProvider.
+            raw_msc = provenance.get("mt5_time_msc")
+            raw_s = provenance.get("mt5_time")
+            raw_epoch = (
+                float(raw_msc) / 1000.0
+                if raw_msc is not None and float(raw_msc) > 1e12
+                else (float(raw_s) if raw_s is not None else None)
+            )
+            try:
+                fresh, detail = self.adapter.raw_tick_freshness(self.canonical_symbol, raw_epoch)
+            except Exception as exc:
+                fresh, detail = False, f"raw freshness probe failed: {type(exc).__name__}: {exc}"
             age = None
-            fresh = False
+            age_basis = "server-clock contract"
+            freshness_detail = detail
         else:
             age = self._tick_age(tick)
             fresh = bool(age is not None and age <= self.config.max_tick_age_s)
+            age_basis = "normalized-utc"
+            freshness_detail = None
         spread = self._spread_bps(tick.bid, tick.ask)
         return {
             "ok": True,
             "fresh": fresh,
             "age_s": age,
             "offset_basis": basis,
-            "age_basis": "unmeasured — blocked" if basis == "assumed-utc-fallback" else "normalized-utc",
+            "age_basis": age_basis,
+            "freshness_detail": freshness_detail,
             "bid": str(tick.bid),
             "ask": str(tick.ask),
             "spread_bps": spread,
