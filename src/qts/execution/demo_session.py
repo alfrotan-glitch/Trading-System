@@ -831,30 +831,12 @@ class DemoSession:
         return len(self.engine.poll_live_fills(ids) or [])
 
     def reconcile(self) -> dict[str, Any]:
+        # Reconciliation is deliberately broker-vs-local comparison only.
+        # A fresh process must never rebuild portfolio lifecycle state from
+        # broker history: that can invent local fills/journal rows without
+        # proving their original intent. Unknown broker state therefore remains
+        # a hard execution barrier until explicitly resolved.
         engine = self.engine
-        # Cold-start recovery: a fresh process has an empty in-memory portfolio,
-        # so a legitimate broker position would look like drift
-        # (UNKNOWN_POSITION) and block everything. Rebuild local state from the
-        # broker's deal history FIRST, then compare like with like.
-        try:
-            broker_positions = list(engine.broker.positions() or [])
-        except Exception:
-            # ExecutionEngine.reconcile owns the canonical disconnect handling:
-            # it persists suspension, emits NO_TRADE evidence, and returns a
-            # BROKER_DISCONNECT report. Do not leak a broker exception through
-            # the session-level reconciliation contract.
-            report = engine.reconcile()
-            self._last_reconcile = report
-            self._last_reconcile_at = datetime.now(UTC)
-            return {
-                "drift": str(getattr(report, "drift", "")),
-                "details": str(getattr(report, "details", "")),
-                "requires_suspend": bool(getattr(report, "requires_suspend", False)),
-                "suspended": bool(engine.is_suspended),
-                "at": self._last_reconcile_at.isoformat(),
-            }
-        if not engine.portfolio.positions and broker_positions:
-            self.sync_fills()
         report = engine.reconcile()
         self._last_reconcile = report
         self._last_reconcile_at = datetime.now(UTC)
