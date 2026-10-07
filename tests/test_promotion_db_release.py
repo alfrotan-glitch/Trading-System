@@ -67,7 +67,7 @@ def test_promotion_workflow_releases_promo_db_before_tempdir_cleanup():
         # one-way ladder, mirroring test_one_way_promotion exactly
         assert ledger.get_state(sid) == PromotionState.RESEARCH
         with pytest.raises(ValueError, match="not allowed"):
-            ledger.transition(sid, PromotionState.VALIDATED)  # no skip
+            ledger.transition(sid, PromotionState.VALIDATED, evidence_hash="sha256:validated-evidence")  # no skip
         ledger.transition(sid, PromotionState.CANDIDATE)
         assert ledger.get_state(sid) == PromotionState.CANDIDATE
         ledger.transition(sid, PromotionState.VALIDATED)
