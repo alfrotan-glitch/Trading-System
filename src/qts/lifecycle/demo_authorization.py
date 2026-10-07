@@ -72,7 +72,6 @@ _RISK_CEILING_FIELDS: frozenset[str] = frozenset(
         "max_orders_per_minute",
         "daily_loss_limit",
         "max_drawdown",
-        "max_drawdown_pct",
         "max_spread_bps",
         "max_slippage_bps",
     }
