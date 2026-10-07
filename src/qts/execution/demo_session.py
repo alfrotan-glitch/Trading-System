@@ -605,6 +605,22 @@ class DemoSession:
         if matching_pos is None:
             raise ValueError(f"position {ticket_int} is not currently open at the venue")
 
+        # Capture the local lifecycle row before any close/fill synchronization.
+        # The close operation may update broker/local execution state; journal
+        # identity must remain anchored to the position that was actually closed.
+        position_identifier = str(matching_pos.get("position_id") or "")
+        matched_journal_row: dict[str, Any] | None = None
+        for row in self.journal.open_orders():
+            if row.get("broker_position_id") and str(row["broker_position_id"]) in {
+                str(ticket_int),
+                position_identifier,
+            }:
+                matched_journal_row = row
+                break
+            if row.get("broker_symbol") == matching_pos.get("symbol") and row.get("side") == matching_pos.get("side"):
+                matched_journal_row = row
+                break
+
         current_volume = Decimal(str(matching_pos.get("volume") or "0"))
         close_volume = current_volume if volume is None else Decimal(str(volume))
         if close_volume <= 0 or close_volume != current_volume:
@@ -742,7 +758,6 @@ class DemoSession:
                 "reconciliation": self.reconcile(),
             }
         fully_closed = not remaining
-        position_identifier = str(matching_pos.get("position_id") or "")
         if not position_identifier or int(position_identifier) <= 0:
             self.stage.halt(
                 reason=f"venue position {ticket_int} has no valid POSITION_IDENTIFIER",
@@ -757,15 +772,6 @@ class DemoSession:
                 "error": "venue position identifier unavailable",
                 "reconciliation": reconciliation,
             }
-
-        matched_journal_row: dict[str, Any] | None = None
-        for row in self.journal.open_orders():
-            if row.get("broker_position_id") and str(row["broker_position_id"]) in {
-                str(ticket_int),
-                position_identifier,
-            }:
-                matched_journal_row = row
-                break
 
         if fully_closed and matched_journal_row is None:
             self.stage.halt(
