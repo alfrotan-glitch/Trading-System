@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import contextlib
-from dataclasses import dataclass
 import hashlib
 import sqlite3
 import threading
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
