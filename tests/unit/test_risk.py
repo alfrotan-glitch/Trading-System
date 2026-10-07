@@ -144,3 +144,52 @@ def test_exposure_veto():
         d = eng.pre_trade(intent, ctx)
         assert not d.allowed
         assert d.veto_reason.value == "EXCEEDS_EXPOSURE"
+
+
+def test_risk_veto_stop_based_per_trade_limit():
+    with tempfile.TemporaryDirectory() as tmp:
+        eng = RiskEngine(
+            RiskLimits(
+                max_risk_per_trade_bps=Decimal("10"),
+                max_quantity=Decimal("1"),
+                max_notional=Decimal("50000"),
+            ),
+            db_path=Path(tmp) / "db.sqlite",
+        )
+        instr = Instrument(symbol="XAUUSD")
+        intent = OrderIntent(
+            instrument=instr,
+            side=Side.BUY,
+            quantity=Decimal("0.1"),
+            order_type=OrderType.MARKET,
+            stop_loss=Decimal("1990"),
+            client_order_id="risk-stop",
+            strategy_id="s",
+        )
+        decision = eng.pre_trade(intent, _ctx(price=Decimal("2000")))
+        assert not decision.allowed
+        assert decision.veto_reason.value == "EXCEEDS_RISK_PER_TRADE"
+
+
+def test_risk_allows_stop_within_per_trade_limit():
+    with tempfile.TemporaryDirectory() as tmp:
+        eng = RiskEngine(
+            RiskLimits(
+                max_risk_per_trade_bps=Decimal("100"),
+                max_quantity=Decimal("1"),
+                max_notional=Decimal("50000"),
+            ),
+            db_path=Path(tmp) / "db.sqlite",
+        )
+        instr = Instrument(symbol="XAUUSD")
+        intent = OrderIntent(
+            instrument=instr,
+            side=Side.BUY,
+            quantity=Decimal("0.01"),
+            order_type=OrderType.MARKET,
+            stop_loss=Decimal("1999"),
+            client_order_id="risk-stop-ok",
+            strategy_id="s",
+        )
+        decision = eng.pre_trade(intent, _ctx(price=Decimal("2000")))
+        assert decision.allowed
