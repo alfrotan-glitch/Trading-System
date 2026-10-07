@@ -1527,10 +1527,14 @@ class MT5Adapter(BrokerAdapter):
         measured_offset: float | None = None
         measured_basis: str | None = None
 
-        # Primary calibration: fresh broker tick.  The timestamp is rounded to
-        # the nearest minute only for the offset estimate; the tick itself keeps
-        # its original millisecond timestamp downstream.
+        # Primary calibration: a fresh broker tick, but only after it is
+        # cross-checked against the forming M1 bar. A tick alone cannot reveal
+        # the server offset: subtracting an arbitrary tick from UTC simply
+        # turns an old tick into a plausible-looking "offset" (e.g. +02:55
+        # for a tick five minutes stale). The bar and tick share the broker
+        # clock, so their same-basis relationship is the authoritative guard.
         mt5 = self._mt5
+        bar_time = self._latest_bar_time(symbol)
         try:
             tick = mt5.symbol_info_tick(symbol) if mt5 is not None else None
         except Exception:
@@ -1545,19 +1549,19 @@ class MT5Adapter(BrokerAdapter):
             else:
                 tick_epoch = None
             if tick_epoch is not None and tick_epoch > 1e9:
-                candidate = round((tick_epoch - now_epoch) / 60.0) * 60.0
-                normalized_age = abs((tick_epoch - candidate) - now_epoch)
-                if (
-                    abs(candidate) <= self._MAX_PLAUSIBLE_OFFSET_S
-                    and normalized_age <= self._OFFSET_TICK_MAX_AGE_S
-                ):
-                    measured_offset = float(candidate)
-                    measured_basis = "measured-fresh-tick"
+                tick_is_current_bar = (
+                    bar_time is not None
+                    and bar_time <= tick_epoch <= bar_time + 60.0 + 5.0
+                )
+                if tick_is_current_bar:
+                    candidate = round((tick_epoch - now_epoch) / 60.0) * 60.0
+                    if abs(candidate) <= self._MAX_PLAUSIBLE_OFFSET_S:
+                        measured_offset = float(candidate)
+                        measured_basis = "measured-fresh-tick"
 
         # Conservative fallback: forming M1 bar. The bar is minute-aligned, so
         # minute resolution is the honest precision available from this probe.
         if measured_offset is None:
-            bar_time = self._latest_bar_time(symbol)
             if bar_time is not None:
                 lo = bar_time - now_epoch
                 hi = lo + 60.0
