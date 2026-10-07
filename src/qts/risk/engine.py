@@ -10,7 +10,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from qts.db import connect as db_connect
 from qts.domain.value_objects import Account, Fill, OrderIntent, Position
@@ -55,6 +55,35 @@ class RiskLimits(BaseModel):
     kill_switch_enabled: bool = True
     approved: bool = False
     version: int = 1
+
+    @model_validator(mode="after")
+    def _validate_limits(self) -> "RiskLimits":
+        positive = (
+            ("max_quantity", self.max_quantity),
+            ("min_quantity", self.min_quantity),
+            ("quantity_step", self.quantity_step),
+            ("max_notional", self.max_notional),
+            ("max_exposure_lots", self.max_exposure_lots),
+            ("max_leverage", self.max_leverage),
+            ("daily_loss_limit", self.daily_loss_limit),
+            ("max_drawdown", self.max_drawdown),
+        )
+        for name, value in positive:
+            if not value.is_finite() or value <= 0:
+                raise ValueError(f"{name} must be finite and > 0")
+        if not self.max_risk_per_trade_bps.is_finite() or self.max_risk_per_trade_bps < 0:
+            raise ValueError("max_risk_per_trade_bps must be finite and >= 0")
+        if self.max_exposure_notional is not None and (
+            not self.max_exposure_notional.is_finite() or self.max_exposure_notional <= 0
+        ):
+            raise ValueError("max_exposure_notional must be finite and > 0 when set")
+        if self.max_open_orders < 0:
+            raise ValueError("max_open_orders must be >= 0")
+        if self.volatility_target is not None and (
+            not self.volatility_target.is_finite() or self.volatility_target <= 0
+        ):
+            raise ValueError("volatility_target must be finite and > 0 when set")
+        return self
 
     # legacy alias
     @property
