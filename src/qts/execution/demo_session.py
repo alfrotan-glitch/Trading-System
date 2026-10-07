@@ -784,6 +784,47 @@ class DemoSession:
                 "reconciliation": self.reconcile(),
             }
 
+        # A CLI close may run in a fresh process. Restore only the previously
+        # persisted local journal position before applying the correlated close deal.
+        # This is local lifecycle recovery, not broker-position reconstruction.
+        if matched_journal_row is not None:
+            try:
+                from qts.domain.value_objects import Instrument, Position, Side
+
+                restored_side = Side(str(matched_journal_row.get("side") or "").upper())
+                restored_lots = Decimal(str(matched_journal_row.get("filled_lots") or ""))
+                restored_price = Decimal(str(matched_journal_row.get("executed_price") or ""))
+                spec = self.adapter.get_symbol_spec(self.canonical_symbol)
+                signed_lots = restored_lots if restored_side is Side.BUY else -restored_lots
+                self.engine.portfolio.restore_position(
+                    Position(
+                        instrument=Instrument(
+                            symbol=self.canonical_symbol,
+                            venue="MT5",
+                            contract_size=spec.contract_size,
+                            lot_size=spec.volume_step,
+                            tick_size=spec.tick_size,
+                        ),
+                        quantity=signed_lots,
+                        avg_price=restored_price,
+                        unrealized_pnl=Decimal("0"),
+                        realized_pnl=Decimal("0"),
+                    )
+                )
+            except Exception as exc:
+                self.stage.halt(
+                    reason=f"local journal position state could not be restored for ticket {ticket_int}",
+                    actor=actor or self.config.actor,
+                )
+                return {
+                    "success": False,
+                    "state": "AMBIGUOUS",
+                    "ticket": ticket_int,
+                    "receipt": receipt,
+                    "error": f"local journal position restore failed: {type(exc).__name__}: {exc}",
+                    "reconciliation": self.reconcile(),
+                }
+
         try:
             self.sync_fills(client_order_id=close_client_id)
         except Exception as exc:
