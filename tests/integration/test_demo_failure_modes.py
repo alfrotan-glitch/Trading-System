@@ -24,8 +24,8 @@ import fakes_demo_provider as provider_fixture
 from demo_harness import armed_session, write_registry
 from fakes_mt5_demo import FakeTerminal
 
-from qts.execution.demo_autopilot import AutopilotConfig, run_autopilot
 from qts.execution import demo_session as demo_session_module
+from qts.execution.demo_autopilot import AutopilotConfig, run_autopilot
 from qts.execution.demo_session import DemoSession, DemoSessionConfig
 
 # --------------------------------------------------------------- broker faults
