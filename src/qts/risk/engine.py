@@ -23,7 +23,6 @@ class RiskVetoReason(StrEnum):
     MISSING_STOP = "MISSING_STOP"
     EXCEEDS_LEVERAGE = "EXCEEDS_LEVERAGE"
     EXCEEDS_EXPOSURE = "EXCEEDS_EXPOSURE"
-    EXCEEDS_CORRELATED = "EXCEEDS_CORRELATED"
     TOO_MANY_ORDERS = "TOO_MANY_ORDERS"
     DAILY_LOSS_BREACH = "DAILY_LOSS_BREACH"
     DRAWDOWN_BREACH = "DRAWDOWN_BREACH"
@@ -45,7 +44,7 @@ class RiskLimits(BaseModel):
     max_notional: Decimal = Decimal("50000")  # USD
     max_risk_per_trade_bps: Decimal = Decimal("50")
     stop_loss_required: bool = False
-    max_exposure_lots: Decimal = Decimal("2.0")  # lots net abs
+    max_exposure_lots: Decimal = Decimal("2.0")  # gross absolute lots across symbols
     max_exposure_notional: Decimal | None = None  # optional USD
     max_leverage: Decimal = Decimal("5")  # notional/equity
     max_open_orders: int = 5
