@@ -421,7 +421,7 @@ class DemoOrderJournal:
         assignments = ", ".join(f"{k}=?" for k in fields)
         values = list(fields.values()) + [journal_id]
         with db_connect(self.db_path) as con:
-            con.execute(f"UPDATE demo_order_journal SET {assignments} WHERE journal_id=?", values)
+            con.execute(f"UPDATE demo_order_journal SET {assignments} WHERE journal_id=?", values)  # nosec B608 — assignments come only from internal keyword field names
             con.commit()
 
     def mark_submitted(
