@@ -174,8 +174,8 @@ def _param_combinations(param_space: dict[str, list[Any]], max_combinations: int
 
 def run_campaign(
     config: CampaignConfig,
-    store_path: Path | str = "data/sqlite/qts.db",
-    registry_path: Path | str = "data/sqlite/qts.db",
+    store_path: Path | str | None = None,
+    registry_path: Path | str | None = None,
 ) -> dict[str, Any]:
     """Launch bounded research campaign.
 
@@ -194,6 +194,12 @@ def run_campaign(
     from qts.research.strategies import BOUNDED_PARAM_SPACE, StrategyFamily, describe_features
     from qts.validation.pipeline import ValidatorPipeline
 
+    if store_path is None or registry_path is None:
+        from qts.config.paths import artifact_path
+
+        canonical_db = artifact_path("db")
+        store_path = canonical_db if store_path is None else store_path
+        registry_path = canonical_db if registry_path is None else registry_path
     campaign_store = ResearchCampaignStore(db_path=store_path)
     exp_store = ExperimentStore(db_path=store_path)
     registry = StrategyRegistry(db_path=registry_path)
@@ -221,7 +227,7 @@ def run_campaign(
     # campaign may still record blocked trials for a synthetic fixture (that
     # preserves the search ledger), but it must not turn those numbers into a
     # real-market claim.
-    research_data_store = SqliteParquetDataStore()
+    research_data_store = SqliteParquetDataStore(db_path=store_path.parent / "qts.db" if isinstance(store_path, Path) else store_path)
     readiness = assess_dataset(
         research_data_store,
         config.data_version,
