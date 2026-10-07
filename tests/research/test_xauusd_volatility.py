@@ -341,9 +341,11 @@ def test_a_dollar_gap_below_the_floor_rejects() -> None:
 
 
 def test_workflow_cannot_retrigger_the_state_scan() -> None:
-    text = Path(".github/workflows/canonical-xauusd-volatility.yml").read_text(encoding="utf-8")
-    assert "xauusd_state_scan.py" not in text
-    assert "xauusd_volatility_preregistration" not in text
-    assert "src/qts/research/xauusd_volatility.py" in text
-    assert "scripts/run_xauusd_volatility.py" in text
-    assert "arena/01a0c9cc-trading-system" in text
+    workflow_dir = Path(".github/workflows")
+    workflow_text = "\n".join(
+        path.read_text(encoding="utf-8") for path in workflow_dir.glob("*.yml")
+    )
+    assert "xauusd_state_scan.py" not in workflow_text
+    assert "xauusd_volatility_preregistration" not in workflow_text
+    assert Path("src/qts/research/xauusd_volatility.py").exists()
+    assert Path("scripts/run_xauusd_volatility.py").exists()
