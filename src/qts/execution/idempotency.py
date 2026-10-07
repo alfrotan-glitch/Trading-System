@@ -108,6 +108,31 @@ class IdempotencyStore:
     def is_ambiguous(self, client_order_id: str) -> bool:
         return self.get_status(client_order_id) == "AMBIGUOUS"
 
+    def claim(self, client_order_id: str, status: str = "PENDING") -> bool:
+        """Atomically claim a client order id across concurrent processes.
+
+        INSERT is the serialization point. A separate seen()->record() sequence
+        has a race window where two processes can both observe "unseen" and
+        submit the same economic order.
+        """
+        from datetime import datetime
+
+        created_at = datetime.now(UTC).isoformat()
+        if self._memory_con is not None:
+            cur = self._memory_con.execute(
+                "INSERT OR IGNORE INTO idempotency VALUES (?,?,?)",
+                (client_order_id, status, created_at),
+            )
+            self._memory_con.commit()
+            return cur.rowcount == 1
+        with db_connect(self.db_path) as con:
+            cur = con.execute(
+                "INSERT OR IGNORE INTO idempotency VALUES (?,?,?)",
+                (client_order_id, status, created_at),
+            )
+            con.commit()
+            return cur.rowcount == 1
+
     def record(self, client_order_id: str, status: str = "PENDING") -> None:
         from datetime import datetime
 
