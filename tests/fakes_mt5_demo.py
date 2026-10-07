@@ -195,7 +195,7 @@ class FakeTerminal:
     def history_deals_get(self, *args, **kwargs):
         if "ticket" in kwargs:
             ticket = int(kwargs["ticket"])
-            return [deal for deal in self.deals if int(getattr(deal, "order", 0)) == ticket]
+            return [deal for deal in self.deals if int(getattr(deal, "ticket", 0)) == ticket]
         if "position" in kwargs:
             position = int(kwargs["position"])
             return [deal for deal in self.deals if int(getattr(deal, "position_id", 0)) == position]
