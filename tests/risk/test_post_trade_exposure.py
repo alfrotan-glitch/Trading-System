@@ -71,3 +71,19 @@ def test_existing_position_without_reference_price_blocks_leverage(tmp_path):
 
     assert decision.allowed is False
     assert decision.veto_reason is RiskVetoReason.MISSING_MARKET_PRICE
+
+
+def test_market_order_uses_reference_price_not_stop_trigger(tmp_path):
+    engine = RiskEngine(
+        RiskLimits(max_notional=Decimal("10000")),
+        db_path=tmp_path / "risk.db",
+    )
+    intent = _intent(Side.BUY, "0.01").model_copy(
+        update={"stop_price": Decimal("1")}
+    )
+
+    decision = engine.pre_trade(intent, _ctx(None))
+
+    assert decision.allowed is True
+    assert decision.price == Decimal("3000")
+    assert decision.price_source == "reference_prices"
