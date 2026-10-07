@@ -361,7 +361,8 @@ def test_partial_fill():
         strategy_id="s1",
     )
     assert order.filled_quantity == Decimal("0")
-    partial = order.with_state(OrderState.PARTIALLY_FILLED, filled_quantity=Decimal("0.1"))
+    accepted = order.with_state(OrderState.ACCEPTED)
+    partial = accepted.with_state(OrderState.PARTIALLY_FILLED, filled_quantity=Decimal("0.1"))
     assert partial.state == "PARTIALLY_FILLED" or partial.filled_quantity == Decimal("0.1")
 
 
