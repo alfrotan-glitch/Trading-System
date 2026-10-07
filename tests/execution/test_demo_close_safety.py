@@ -64,11 +64,11 @@ class _Adapter:
 
 def _session(adapter: _Adapter, *, journal=None):
     obj = object.__new__(_Harness)
-    obj._authority = _Authority()
-    obj._authority_mode = ExecutionMode.DEMO_EXECUTION
-    obj._adapter = adapter
-    obj.stage = _Stage()
-    obj.config = SimpleNamespace(actor="close-test")
+    object.__setattr__(obj, "_authority", _Authority())
+    object.__setattr__(obj, "_authority_mode", ExecutionMode.DEMO_EXECUTION)
+    object.__setattr__(obj, "_adapter", adapter)
+    object.__setattr__(obj, "stage", _Stage())
+    object.__setattr__(obj, "config", SimpleNamespace(actor="close-test", mode="DEMO_EXECUTION", symbol="XAUUSD", symbol_map={}))
     obj.journal = journal or SimpleNamespace(open_orders=lambda: [])
     obj.sync_fills = lambda: 0
     obj.reconcile = lambda: {"requires_suspend": False, "drift": "OK", "details": ""}
