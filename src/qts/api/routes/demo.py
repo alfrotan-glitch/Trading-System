@@ -288,13 +288,55 @@ def demo_preflight(side: str = "BUY", lots: str | None = None, stop_loss: str | 
     """Run the DEMO pre-trade gate for a would-be order — submits nothing."""
     from decimal import Decimal
 
-    session = _bind()._demo_session()
-    out = session.preflight(
-        side=side,
-        lots=Decimal(lots) if lots else None,
-        stop_loss=Decimal(stop_loss) if stop_loss else None,
-        entry=getattr(session, "_entry", None),
-    )
+    # Resolve the research registry before touching the broker session. A
+    # preflight with no eligible strategy is a deterministic NO_TRADE result and
+    # must remain a useful HTTP response even when MT5 is unavailable.
+    from qts.lifecycle.demo_registry import load_registry, resolve_entry
+
+    entry, entry_reasons = resolve_entry(load_registry())
+    if entry is None:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "verdict": {
+                    "passed": False,
+                    "failed": ["strategy_registered_frozen"],
+                    "checks": {
+                        "strategy_registered_frozen": {"status": "FAIL", "detail": "no eligible registered strategy"},
+                        "no_unknown_checks": {"status": "FAIL", "detail": "broker-dependent checks were not evaluated"},
+                    },
+                    "reasons": list(entry_reasons),
+                },
+                "intended_order": {"symbol": symbol if "symbol" in locals() else None, "side": side},
+                "order_check": {"ok": False, "reason": "no eligible registered strategy"},
+                "stage": {"allowed": False, "reason": "NO_TRADE"},
+            },
+        )
+
+    try:
+        session = _bind()._demo_session()
+        out = session.preflight(
+            side=side,
+            lots=Decimal(lots) if lots else None,
+            stop_loss=Decimal(stop_loss) if stop_loss else None,
+            entry=entry,
+        )
+    except Exception as exc:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "verdict": {
+                    "passed": False,
+                    "failed": ["broker_state_available"],
+                    "checks": {
+                        "broker_state_available": {"status": "FAIL", "detail": f"{type(exc).__name__}: {exc}"},
+                        "no_unknown_checks": {"status": "FAIL", "detail": "preflight could not establish authoritative broker state"},
+                    },
+                    "reasons": [f"preflight unavailable: {type(exc).__name__}: {exc}"],
+                },
+                "order_check": {"ok": False, "reason": "broker state unavailable"},
+            },
+        )
     return JSONResponse(
         status_code=200 if out["verdict"]["passed"] else 409,
         content=out,
