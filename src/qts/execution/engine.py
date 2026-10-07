@@ -1017,13 +1017,35 @@ class ExecutionEngine:
 
                     existing = self.om.get(fill.client_order_id)
                     if existing is not None:
+                        if fill.client_order_id != existing.client_order_id:
+                            raise RuntimeError(
+                                f"broker fill {fill.fill_id} client_order_id mismatch: "
+                                f"{fill.client_order_id!r} != {existing.client_order_id!r}"
+                            )
+                        if fill.side != existing.side:
+                            raise RuntimeError(
+                                f"broker fill {fill.fill_id} side mismatch: "
+                                f"{fill.side} != order {existing.side}"
+                            )
                         new_filled = existing.filled_quantity + fill.quantity
-                        new_state = OrderState.FILLED if new_filled >= existing.quantity else OrderState.PARTIALLY_FILLED
+                        if new_filled > existing.quantity:
+                            raise RuntimeError(
+                                f"broker overfill {fill.fill_id}: cumulative {new_filled} "
+                                f"> order quantity {existing.quantity}"
+                            )
+                        new_state = OrderState.FILLED if new_filled == existing.quantity else OrderState.PARTIALLY_FILLED
+                        if existing.avg_fill_price is None or existing.filled_quantity == 0:
+                            avg_fill_price = fill.price
+                        else:
+                            avg_fill_price = (
+                                existing.avg_fill_price * existing.filled_quantity
+                                + fill.price * fill.quantity
+                            ) / new_filled
                         self.om.update_state(
                             fill.client_order_id,
                             new_state,
                             filled_quantity=new_filled,
-                            avg_fill_price=fill.price,
+                            avg_fill_price=avg_fill_price,
                         )
 
                     try:
