@@ -1411,6 +1411,12 @@ class MT5Adapter(BrokerAdapter):
                 raise ConnectionError(f"MT5 deal history unavailable for position {ticket}")
             return list(raw)
 
+        def deal_position_id(deal: Any) -> int:
+            try:
+                return int(getattr(deal, "position_id", 0) or 0)
+            except (TypeError, ValueError):
+                return 0
+
         # Normal positions are resolved from a bounded recent window first.
         # If the position predates that window, fall back to the terminal's
         # complete available history rather than falsely declaring zero/unknown
@@ -1420,7 +1426,7 @@ class MT5Adapter(BrokerAdapter):
         matched = [
             deal
             for deal in deals
-            if _safe_int(getattr(deal, "position_id", 0)) == int(ticket)
+            if deal_position_id(deal) == int(ticket)
         ]
         if not matched:
             deals = fetch_deals(datetime(1970, 1, 1, tzinfo=UTC))
