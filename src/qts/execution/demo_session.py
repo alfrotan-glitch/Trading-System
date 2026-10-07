@@ -621,9 +621,12 @@ class DemoSession:
             # The venue may have accepted the request even though transport or
             # adapter handling failed. Never label the position closed and never
             # retry blindly when the outcome may be unknown.
-            ambiguous = isinstance(exc, (TimeoutError, ConnectionError)) or any(
-                token in str(exc).lower()
-                for token in ("timeout", "connection", "network", "disconnected", "ambiguous", "unknown")
+            # Only typed transport/ambiguous errors may produce an
+            # unknown broker outcome. Human-readable error text is not a
+            # safety contract and must never turn a definitive rejection into
+            # AMBIGUOUS.
+            ambiguous = isinstance(exc, (TimeoutError, ConnectionError)) or bool(
+                getattr(exc, "ambiguous", False)
             )
             if not ambiguous:
                 raise
