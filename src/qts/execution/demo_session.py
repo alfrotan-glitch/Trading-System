@@ -527,9 +527,12 @@ class DemoSession:
 
             matched_row = None
             for row in open_journal_orders:
-                if ticket is not None and row.get("broker_position_id") and str(row["broker_position_id"]) == str(ticket):
-                    matched_row = row
-                    break
+                if ticket is not None and row.get("broker_position_id"):
+                    broker_position_id = str(row["broker_position_id"])
+                    current_position_id = str(pos.get("position_id") or "")
+                    if broker_position_id in {str(ticket), current_position_id}:
+                        matched_row = row
+                        break
                 if row.get("broker_symbol") == raw_sym and row.get("side") == pos.get("side"):
                     matched_row = row
                     break
@@ -739,9 +742,28 @@ class DemoSession:
                 "reconciliation": self.reconcile(),
             }
         fully_closed = not remaining
+        position_identifier = str(matching_pos.get("position_id") or "")
+        if not position_identifier or int(position_identifier) <= 0:
+            self.stage.halt(
+                reason=f"venue position {ticket_int} has no valid POSITION_IDENTIFIER",
+                actor=actor or self.config.actor,
+            )
+            reconciliation = self.reconcile()
+            return {
+                "success": False,
+                "state": "AMBIGUOUS",
+                "ticket": ticket_int,
+                "receipt": receipt,
+                "error": "venue position identifier unavailable",
+                "reconciliation": reconciliation,
+            }
+
         matched_journal_row: dict[str, Any] | None = None
         for row in self.journal.open_orders():
-            if row.get("broker_position_id") and str(row["broker_position_id"]) == str(ticket_int):
+            if row.get("broker_position_id") and str(row["broker_position_id"]) in {
+                str(ticket_int),
+                position_identifier,
+            }:
                 matched_journal_row = row
                 break
 
@@ -766,7 +788,7 @@ class DemoSession:
             # once the close executes. Read the broker's completed deal history
             # by position_id and include profit + commission + swap + fee.
             try:
-                realized = self.adapter.position_realized_result(ticket_int)
+                realized = self.adapter.position_realized_result(int(position_identifier))
                 realized_pnl = Decimal(str(realized["net_realized_pnl"]))
                 fees = (
                     Decimal(str(realized["commission"]))
