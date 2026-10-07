@@ -68,7 +68,7 @@ from qts.lifecycle.demo_authorization import LoadedAuthorization
 from qts.lifecycle.demo_registry import StrategyRegistration
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStage
 
-CHECK_PASS = "PASS"
+CHECK_PASS = "PASS"  # nosec B105 — status token, not a credential
 CHECK_FAIL = "FAIL"
 CHECK_UNKNOWN = "UNKNOWN"
 
