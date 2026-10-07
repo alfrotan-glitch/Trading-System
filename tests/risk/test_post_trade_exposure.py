@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from decimal import Decimal
 
 from qts.domain.value_objects import Account, Instrument, OrderIntent, Position, Side
