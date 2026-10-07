@@ -979,6 +979,22 @@ class ExecutionEngine:
             raise RuntimeError(f"fill polling unavailable — execution suspended: {e}") from e
         return new_fills
 
+    def bootstrap_broker_positions(self) -> int:
+        """Hydrate an empty portfolio from current broker positions.
+
+        Deal history is intentionally not the only recovery source: an open
+        position may predate the adapter's recent history window. This method
+        uses the broker's current position projection only and is allowed only
+        when the local portfolio has no non-zero positions.
+        """
+        if any(p.quantity != Decimal("0") for p in self.portfolio.positions.values()):
+            return 0
+        broker_positions = list(self.broker.positions() or [])
+        if not broker_positions:
+            return 0
+        self.portfolio.restore_open_positions(broker_positions)
+        return sum(1 for p in broker_positions if p.quantity != Decimal("0"))
+
     def reconcile(self) -> ReconcileReport:
         """Compare local Portfolio vs venue truth.
 
