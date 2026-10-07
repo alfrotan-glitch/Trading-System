@@ -411,13 +411,13 @@ def test_strategy_promotion_lifecycle():
     ledger.transition(sid, PromotionState.CANDIDATE)
     # VALIDATING step
     ledger.transition(sid, PromotionState.VALIDATING)
-    ledger.transition(sid, PromotionState.VALIDATED)
+    ledger.transition(sid, PromotionState.VALIDATED, evidence_hash="sha256:validated")
     ledger.transition(sid, PromotionState.FORWARD_OBSERVATION)
-    ledger.transition(sid, PromotionState.PAPER_VERIFIED)
-    ledger.transition(sid, PromotionState.SHADOW_VERIFIED)
-    ledger.transition(sid, PromotionState.MICRO_ELIGIBLE)
-    ledger.transition(sid, PromotionState.MICRO_VALIDATED)
-    ledger.transition(sid, PromotionState.LIVE_ELIGIBLE)
+    ledger.transition(sid, PromotionState.PAPER_VERIFIED, evidence_hash="sha256:paper")
+    ledger.transition(sid, PromotionState.SHADOW_VERIFIED, evidence_hash="sha256:shadow")
+    ledger.transition(sid, PromotionState.MICRO_ELIGIBLE, evidence_hash="sha256:micro-eligible")
+    ledger.transition(sid, PromotionState.MICRO_VALIDATED, evidence_hash="sha256:micro-validated")
+    ledger.transition(sid, PromotionState.LIVE_ELIGIBLE, evidence_hash="sha256:live-eligible")
     assert ledger.get_state(sid) == PromotionState.LIVE_ELIGIBLE
     # No manual edit promoted: verify log exists
     with ledger.db_path.open("rb") as _f:
