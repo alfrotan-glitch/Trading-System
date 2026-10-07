@@ -20,3 +20,13 @@ def test_daily_equity_baseline_survives_restart(tmp_path):
 
     restarted = _engine(db)
     assert restarted._load_day_start_equity(Decimal("800")) == Decimal("1000")
+
+
+def test_drawdown_peak_survives_restart(tmp_path):
+    db = tmp_path / "risk.db"
+
+    first = _engine(db)
+    assert first._load_peak_equity(Decimal("1200")) == Decimal("1200")
+
+    restarted = _engine(db)
+    assert restarted._load_peak_equity(Decimal("900")) == Decimal("1200")
