@@ -681,6 +681,34 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         except Exception as e:
             click.echo(f"micro gate check failed: {e}", err=True)
             sys.exit(2)
+
+        # Broker-capable micro execution consumes the canonical durable safety
+        # authority. Research isolation is intentionally the opposite boundary:
+        # simulation may not disturb production safety state, while execution
+        # must never stop consuming it. Refuse before constructing any broker.
+        from qts.execution.engine import load_reconcile_suspension as _load_reconcile_suspension
+        from qts.risk.authority import engine_limits_from as _engine_limits_from
+        from qts.risk.authority import resolve_risk_limits_from_settings as _resolve_risk_limits
+        from qts.risk.engine import RiskEngine as _RiskEngine
+
+        _risk2 = _RiskEngine(_engine_limits_from(_resolve_risk_limits("LIVE")))
+        _kill2 = _risk2.kill_state()
+        if _kill2["killed"]:
+            click.echo(
+                "micro blocked (fail closed): canonical kill switch engaged — "
+                f"{_kill2["reason"] or "no reason recorded"}",
+                err=True,
+            )
+            sys.exit(2)
+        _susp2 = _load_reconcile_suspension(_risk2.db_path)
+        if _susp2.suspended:
+            click.echo(
+                "micro blocked (fail closed): durable reconciliation suspension active — "
+                f"{_susp2.reason or "no reason recorded"}",
+                err=True,
+            )
+            sys.exit(2)
+
         click.echo(f"running mode={mode} strategy={strategy} version={data_version} (micro, minimal quantity)")
         # Setup broker with mock that simulates micro fill (or real if available)
         from qts.adapters.market_data import MarketDataProvider as _MDP2
@@ -696,8 +724,7 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         from qts.execution.idempotency import IdempotencyStore as _IS
         from qts.observability.audit import SqliteAuditLog as _AL2
         from qts.portfolio.portfolio import Portfolio as _PF
-        from qts.risk.engine import RiskEngine as _RE2
-        from qts.risk.engine import RiskLimits as _RL2
+
 
         # Mock MT5 that simulates successful micro execution
         _mock = _MM()
@@ -765,16 +792,11 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
                     broker_is_mock = False
         md2 = _MDP2(broker)
         audit2 = _AL2()
-        # Use temp DB for micro to isolate, but also ensure durable for restart test
-        import tempfile as _tf
-
-        _fd, _tmpname = _tf.mkstemp(suffix=".db")  # secure: mktemp is racy
-        _os.close(_fd)
-        _tmp = _Path2(_tmpname)
-        om2 = _OM(audit=audit2, idempotency=_IS(db_path=_tmp))
+        # Canonical durable stores: idempotency and reconciliation share the
+        # same database as the risk engine and every other execution surface.
+        om2 = _OM(audit=audit2, idempotency=_IS())
         pf2 = _PF(initial_balance=_Decimal2("10000"))
-        risk2 = _RE2(_RL2(), db_path=_tmp)
-        eng2 = _EE(om2, risk2, broker, _ME(_MC()), pf2, audit=audit2, db_path=_tmp, market_data=md2)
+        eng2 = _EE(om2, _risk2, broker, _ME(_MC()), pf2, audit=audit2, market_data=md2)
         instr2 = _Instr(symbol="XAUUSD", venue="MT5")
         # Minimal quantity = spec volume_min
         spec2 = broker.get_symbol_spec("XAUUSD")
