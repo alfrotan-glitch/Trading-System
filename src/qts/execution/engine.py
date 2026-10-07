@@ -1119,10 +1119,11 @@ class ExecutionEngine:
                         if hasattr(self.broker, "get_symbol_spec"):
                             spec = self.broker.get_symbol_spec(sym)
                             point = spec.point
-                    # Threshold: max(10*point, 0.5% of price)
-                    thresh = max(
-                        point * Decimal("10"), local.avg_price * Decimal("0.005") if local.avg_price else point
-                    )
+                    # Use the broker tick size as the reconciliation tolerance.
+                    # A broad percentage tolerance could hide real execution drift.
+                    if not point.is_finite() or point <= 0:
+                        raise ValueError(f"invalid broker price increment {point}")
+                    thresh = point
                     if diff > thresh:
                         report = ReconcileReport(
                             "PRICE_MISMATCH",
