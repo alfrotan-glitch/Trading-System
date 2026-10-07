@@ -1480,7 +1480,7 @@ class DemoSession:
                 allowed=False,
                 client_order_id=client_order_id,
                 journal_id=journal_id,
-                state="NO_TRADE",
+                state="AMBIGUOUS" if refusal_is_ambiguous else "NO_TRADE",
                 reasons=["registered policy requires a stop-loss and none could be derived — refused"],
                 verdict=verdict.as_dict(),
             )
