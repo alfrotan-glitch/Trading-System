@@ -50,7 +50,6 @@ class CanonicalRiskLimits(BaseModel):
     max_exposure_lots: Decimal = Decimal("2.0")
     max_exposure_notional: Decimal | None = None
     max_leverage: Decimal = Decimal("5")
-    max_correlated_exposure: Decimal = Decimal("1.5")
     max_open_orders: int = 5
 
     # Loss control
