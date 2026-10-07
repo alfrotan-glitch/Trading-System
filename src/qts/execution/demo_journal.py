@@ -646,7 +646,7 @@ class DemoOrderJournal:
                 continue
             try:
                 unrealized += Decimal(str(unrealized_val))
-            except Exception:
+            except (ArithmeticError, ValueError, TypeError):  # nosec B112 — malformed legacy P&L row is skipped, not security-sensitive
                 continue
         current = current + unrealized
         return {
