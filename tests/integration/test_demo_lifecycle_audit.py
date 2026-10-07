@@ -28,6 +28,7 @@ from pathlib import Path
 
 import pytest
 from demo_harness import authorization_doc
+from fakes_demo_provider import registry_entry
 from fakes_mt5_demo import FakeTerminal
 
 from qts.db import connect as db_connect
@@ -38,7 +39,6 @@ from qts.lifecycle.demo_gate import demo_forward_readiness_report
 from qts.lifecycle.demo_policy import policy_fingerprint
 from qts.lifecycle.demo_registry import load_registry, resolve_entry
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStage
-from fakes_demo_provider import registry_entry
 
 SYMBOL_MAP = {"XAUUSD": "XAUUSD@"}
 PROVIDER_SOURCE = Path(__file__).resolve().parents[2] / "tests/fakes_demo_provider.py"
