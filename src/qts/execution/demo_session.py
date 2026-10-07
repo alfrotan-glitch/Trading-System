@@ -406,7 +406,13 @@ class DemoSession:
                 return {"ok": False, "error": quote.get("error", "quote unavailable")}
             price = Decimal(quote["ask"])
             intent = OrderIntent(
-                instrument=Instrument(symbol=self.canonical_symbol, venue="MT5"),
+                instrument=Instrument(
+                    symbol=self.canonical_symbol,
+                    venue="MT5",
+                    contract_size=spec.contract_size,
+                    lot_size=spec.volume_step,
+                    tick_size=spec.tick_size,
+                ),
                 side=Side.BUY,
                 quantity=size,
                 order_type=OrderType.MARKET,
@@ -1357,8 +1363,22 @@ class DemoSession:
         requested_at = datetime.now(UTC)
         quote = self._quote_probe()
         requested_price = Decimal(quote["ask"] if side.upper() == "BUY" else quote["bid"]) if quote.get("ok") else None
+        if ctx.spec is None:
+            return SubmissionResult(
+                allowed=False,
+                client_order_id=client_order_id,
+                state="NO_TRADE",
+                reasons=["authoritative broker symbol specification unavailable"],
+                verdict=verdict.as_dict(),
+            )
         intent = OrderIntent(
-            instrument=Instrument(symbol=self.canonical_symbol, venue="MT5"),
+            instrument=Instrument(
+                symbol=self.canonical_symbol,
+                venue="MT5",
+                contract_size=ctx.spec.contract_size,
+                lot_size=ctx.spec.volume_step,
+                tick_size=ctx.spec.tick_size,
+            ),
             side=Side.BUY if side.upper() == "BUY" else Side.SELL,
             quantity=size,
             order_type=OrderType.MARKET,
