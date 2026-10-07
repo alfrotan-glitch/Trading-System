@@ -5,8 +5,6 @@ from __future__ import annotations
 from decimal import Decimal
 from types import SimpleNamespace
 
-import pytest
-
 from qts.domain.modes import ExecutionMode
 from qts.execution.demo_session import DemoSession
 
