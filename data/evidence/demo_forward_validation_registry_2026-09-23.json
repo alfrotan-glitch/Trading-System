@@ -168,7 +168,7 @@
         "data_hash": null,
         "data_hash_note": "No historical dataset is consumed; the provider uses only the pinned DEMO quote stream.",
         "code_source": "src/qts/research/demo_trend_tsmom.py",
-        "policy_hash": "6263cdb5504dd5977c74e54adb0b13207f0acd47ab26bb9aa3201b9e7a555a56"
+        "policy_hash": "6cba12c92f192894096e7e7d6d14e5a5aac70527a546be6a403d6d1c85c08bdb"
       }
     }
   ]
