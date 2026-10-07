@@ -29,6 +29,20 @@ class Portfolio:
     def _instrument_for_fill(self, fill: Fill) -> Instrument:
         return fill.instrument
 
+    def restore_position(self, position: Position) -> None:
+        """Restore a locally persisted position without inventing a broker fill.
+
+        This is intentionally limited to trusted local lifecycle state such as
+        the DEMO order journal. It never reads broker positions and never adds a
+        synthetic Fill to the economic history.
+        """
+        if position.quantity == Decimal("0"):
+            raise ValueError("cannot restore a zero-quantity position")
+        if not position.quantity.is_finite() or not position.avg_price.is_finite() or position.avg_price <= 0:
+            raise ValueError("restored position must have finite positive price and non-zero quantity")
+        self.positions[position.instrument.symbol] = position
+        self._last_price[position.instrument.symbol] = position.avg_price
+
     def apply_fill(self, fill: Fill) -> None:
         """Apply fill to portfolio, updating realized/unrealized and balance.
 
