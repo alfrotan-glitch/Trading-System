@@ -326,12 +326,15 @@ class MT5Adapter(BrokerAdapter):
     RETCODE_INVALID_VOLUME = 10014
     RETCODE_INVALID_PRICE = 10015
     RETCODE_TIMEOUT = 10012
+    RETCODE_ERROR = 10011
+    RETCODE_CONNECTION = 10031
+    RETCODE_LOCKED = 10028
     RETCODE_NO_MONEY = 10019
     RETCODE_PRICE_OFF = 10018
     RETCODE_TRADE_DISABLED = 10017
 
     # Ambiguous retcodes that imply unknown broker state
-    AMBIGUOUS_RETCODES = {10012, 10011}  # TIMEOUT, etc.
+    AMBIGUOUS_RETCODES = {10011, 10012, 10028, 10031}
 
     # --- Canonical timestamp contract (server-basis MT5 stamps -> true UTC) ---
     # Prefer a fresh raw tick for calibration: its server timestamp carries
@@ -1183,8 +1186,13 @@ class MT5Adapter(BrokerAdapter):
                 self.RETCODE_TRADE_DISABLED,
             ):
                 raise ValueError(f"MT5 rejected {intent.client_order_id} retcode {retcode}: {comment}")
-            # Unknown retcode — treat as reject if not timeout
-            raise ValueError(f"MT5 rejected {intent.client_order_id} retcode {retcode}: {comment}")
+            # An unrecognized server code is not safe to interpret as a
+            # definitive rejection. MT5 can add return codes, and some codes
+            # indicate processing/connection uncertainty. Reconcile before any
+            # retry so an unknown outcome can never become a duplicate trade.
+            raise TimeoutError(
+                f"MT5 unknown/uncertain retcode {retcode} for {intent.client_order_id}: {comment}"
+            )
 
     def cancel(self, client_order_id: str) -> None:
         mt5 = self._require_mt5()
