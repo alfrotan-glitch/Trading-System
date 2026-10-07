@@ -1800,13 +1800,12 @@ class MT5Adapter(BrokerAdapter):
                     expected = self._load_comment_map(client_order_id) or mt5_comment_for(client_order_id)
                     if comment == expected:
                         attributed = client_order_id
-                if ticket is not None:
-                    fill_id = f"mt5-deal-{ticket}"
-                else:
-                    import hashlib
-
-                    key = f"{attributed or comment}|{sym}|{deal_time.isoformat()}|{price}|{vol}"
-                    fill_id = "mt5-deal-" + hashlib.sha256(key.encode()).hexdigest()[:16]
+                if ticket is None:
+                    # A broker deal without its stable ticket cannot be safely
+                    # deduplicated across polls/restarts. Never synthesize an
+                    # identity from mutable fields such as time/price/volume.
+                    raise ValueError(f"MT5 deal for {sym} has no stable ticket")
+                fill_id = f"mt5-deal-{int(ticket)}"
                 fills.append(
                     {
                         "fill_id": fill_id,
