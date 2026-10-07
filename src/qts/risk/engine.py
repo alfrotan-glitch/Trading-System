@@ -504,7 +504,7 @@ class RiskEngine:
                 if resized < self.limits.min_quantity:
                     return RiskDecision(
                         allowed=False,
-                        veto_reason=RiskVetoReason.QUANTITY_BELOW_MIN,
+                        veto_reason=RiskVetoReason.MIN_QUANTITY_VIOLATION,
                         reason_detail=f"volatility resize would produce {resized}, below minimum {self.limits.min_quantity}",
                         price=est_price,
                         price_source=price_source,
