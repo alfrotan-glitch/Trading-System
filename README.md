@@ -56,7 +56,7 @@ Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating
 
 ### 2. Installation
 ```bash
-git clone --branch arena/01a0ce9f-trading-system https://github.com/alfrotan-glitch/Trading-System.git
+git clone https://github.com/alfrotan-glitch/Trading-System.git
 cd Trading-System
 
 python -m venv .venv
@@ -72,7 +72,7 @@ idempotent (re-running reuses an already usable version). On Windows the
 `scripts\setup_windows.bat` / `scripts\run_qts.bat` path below runs it for
 you automatically.
 
-Do not clone `main`. That branch is the initial commit and does not contain this desktop build.
+`main` is the canonical product branch. Do not use historical `arena/*` branches.
 
 Windows, from the cloned folder:
 
