@@ -13,6 +13,12 @@ class _Harness(DemoSession):
     def mode(self):
         return ExecutionMode.DEMO_EXECUTION
 
+    def _identity_probe(self):
+        return {"is_demo": True}
+
+    def _pin_probe(self):
+        return {"verified": True}
+
 
 class _Stage:
     def __init__(self) -> None:
@@ -23,7 +29,7 @@ class _Stage:
 
 
 class _Authority:
-    def is_execution_permitted(self):
+    def is_execution_permitted(self, fresh_readiness=None):
         return True, []
 
 
@@ -53,6 +59,18 @@ class _Adapter:
             return self._post_close
         return list(self._positions)
 
+    def position_realized_result(self, ticket):
+        return {
+            "position_ticket": ticket,
+            "deal_count": 2,
+            "profit": "0.95",
+            "commission": "-0.10",
+            "swap": "0.00",
+            "fee": "-0.02",
+            "net_realized_pnl": "0.83",
+            "deal_tickets": ["deal-open", "deal-close"],
+        }
+
     def close_position(self, ticket, *, volume, comment):
         self.close_calls += 1
         if self._close_exc is not None:
@@ -70,6 +88,8 @@ def _session(adapter: _Adapter, *, journal=None):
     object.__setattr__(obj, "stage", _Stage())
     object.__setattr__(obj, "config", SimpleNamespace(actor="close-test", mode="DEMO_EXECUTION", symbol="XAUUSD", symbol_map={}))
     obj.journal = journal or SimpleNamespace(open_orders=lambda: [])
+    obj.config.terminal_path = None
+    obj.config.mt5_module = object()
     obj.sync_fills = lambda: 0
     obj.reconcile = lambda: {"requires_suspend": False, "drift": "OK", "details": ""}
     return obj
@@ -134,3 +154,21 @@ def test_local_close_journal_failure_is_ambiguous_and_halts():
     assert result["state"] == "AMBIGUOUS"
     assert "journal persistence failed" in result["error"]
     assert session.stage.halts
+
+
+def test_closed_position_journals_broker_realized_pnl_not_preclose_unrealized_profit():
+    adapter = _Adapter(post_close=[])
+    captured = {}
+    journal = SimpleNamespace(
+        open_orders=lambda: [{"journal_id": 7, "broker_position_id": "123"}],
+        mark_outcome=lambda *args, **kwargs: captured.update(kwargs),
+    )
+    session = _session(adapter, journal=journal)
+
+    result = DemoSession.close_position(session, 123)
+
+    assert result["state"] == "CLOSED"
+    assert result["success"] is True
+    assert captured["realized_pnl"] == "0.83"
+    assert captured["fees"] == "-0.12"
+    assert captured["market_state_exit"]["broker_realized"]["deal_count"] == 2
