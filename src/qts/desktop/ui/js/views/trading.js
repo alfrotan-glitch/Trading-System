@@ -1,7 +1,7 @@
 /* Trading — Paper/Shadow · Demo Forward · Execution · Comparison
    Safety is primary: DEMO vs LIVE unmistakable, what blocked why what next explicit. */
 
-import { api, store, RESOURCES, syncResource } from "../api.js";
+import { api, store, RESOURCES, syncResource, poll } from "../api.js";
 import { operationalState, freshness, demoSentence } from "../operations.js";
 import { h, icon, clear } from "../dom.js";
 import {
@@ -120,6 +120,7 @@ export async function renderDemo(root) {
   root.appendChild(host);
   let guide = null;
   let acting = false;
+  let staleSince = null;
 
   // ---- plain-language helpers ------------------------------------------------
   const toneFor = (g) => (g.status === "ready" ? "ok" : g.status === "stopped" ? "err" : "warn");
@@ -286,6 +287,9 @@ export async function renderDemo(root) {
     }, label === "BUY" ? "Buy" : "Sell");
 
     async function submit(dry) {
+      if (acting) return;
+      acting = true;
+      try {
       const payload = { side, lots: size.value || undefined, stop_loss: stop.value || undefined, confirmed: true, risk_ack: true };
       if (dry) payload.dry_run = true;
       if (!dry) {
@@ -321,6 +325,9 @@ export async function renderDemo(root) {
           banner("warn", "Demo trade could not be placed", humanRefusal(reasons), "alert"),
           h("details", null, h("summary", null, "Technical details"), tech(b, "Raw refusal")),
         );
+      }
+      } finally {
+        acting = false;
       }
     }
 
@@ -551,6 +558,11 @@ export async function renderDemo(root) {
     clear(host);
     const g = guide;
 
+    if (staleSince) {
+      host.appendChild(banner("err", "Connection to QTS lost — this screen may be out of date",
+        `The state below was last confirmed at ${new Date(staleSince).toLocaleTimeString()}. Nothing shown here is live until the connection returns.`, "alert"));
+    }
+
     // Unmistakable status headline.
     host.appendChild(h("section", { class: "operator-summary" },
       h("div", null,
@@ -594,6 +606,7 @@ export async function renderDemo(root) {
     try {
       const g = await api.get("/api/demo/guide");
       guide = g;
+      staleSince = null;
       render();
     } catch (e) {
       clear(host);
@@ -601,6 +614,23 @@ export async function renderDemo(root) {
       host.appendChild(h("div", { class: "mt-3" }, h("button", { class: "btn primary", onclick: () => load(true) }, icon("refresh", 14), "Retry")));
     }
   }
+
+  const operatorBusy = () => {
+    if (acting || document.body.classList.contains("modal-open")) return true;
+    const el = document.activeElement;
+    return !!el && root.contains(el) && ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
+  };
+  const stopGuidePoll = poll(async () => {
+    if (operatorBusy()) return;
+    try {
+      guide = await api.get("/api/demo/guide");
+      staleSince = null;
+    } catch (_) {
+      if (!staleSince) staleSince = guide?.checked_at ? Date.parse(guide.checked_at) : Date.now();
+    }
+    render();
+  }, 30000);
+  onDispose(root, stopGuidePoll);
 
   await load();
 }
