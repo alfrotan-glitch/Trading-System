@@ -265,10 +265,18 @@ class RiskEngine:
                 symbol=sym,
             )
 
-        # notional — must use authoritative market price, not hard-coded fallback (Blocker 5)
-        # Priority: limit/stop price if set (explicit), else reference_prices[symbol] from market snapshot
-        est_price = intent.limit_price or intent.stop_price
-        price_source = "limit/stop"
+        # Notional price must match the order's execution semantics:
+        # LIMIT/STOP orders use their explicit trigger/limit price; MARKET
+        # orders use the current authoritative reference price. Never let an
+        # unrelated stop/trigger field become a fake market price.
+        est_price: Decimal | None = None
+        price_source = "missing"
+        if intent.order_type.value == "LIMIT":
+            est_price = intent.limit_price
+            price_source = "limit_price"
+        elif intent.order_type.value in ("STOP", "STOP_LIMIT"):
+            est_price = intent.stop_price or intent.limit_price
+            price_source = "stop/limit_price"
         if est_price is None:
             est_price = ctx.reference_price_for(sym) if ctx.reference_prices else None
             price_source = "reference_prices"
