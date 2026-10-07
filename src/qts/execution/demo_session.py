@@ -604,10 +604,10 @@ class DemoSession:
 
         current_volume = Decimal(str(matching_pos.get("volume") or "0"))
         close_volume = current_volume if volume is None else Decimal(str(volume))
-        if close_volume <= 0 or close_volume > current_volume:
+        if close_volume <= 0 or close_volume != current_volume:
             raise ValueError(
-                f"close volume {close_volume} is invalid for position {ticket_int} "
-                f"(current volume {current_volume})"
+                f"partial closes are unsupported: requested {close_volume}, "
+                f"position {ticket_int} is {current_volume}"
             )
 
         close_comment = comment or f"close-{ticket_int}"
@@ -646,6 +646,21 @@ class DemoSession:
         done_codes = {getattr(self.adapter, "RETCODE_DONE", 10009)}
         partial_codes = {getattr(self.adapter, "RETCODE_DONE_PARTIAL", 10010)}
         placed_codes = {getattr(self.adapter, "RETCODE_PLACED", 10008)}
+
+        if retcode in partial_codes:
+            self.stage.halt(
+                reason=f"broker partially closed ticket {ticket_int}; full-close-only lifecycle is now uncertain",
+                actor=actor or self.config.actor,
+            )
+            reconciliation = self.reconcile()
+            return {
+                "success": False,
+                "state": "AMBIGUOUS",
+                "ticket": ticket_int,
+                "receipt": receipt,
+                "error": "partial close is unsupported",
+                "reconciliation": reconciliation,
+            }
 
         if retcode in placed_codes:
             self.stage.halt(
