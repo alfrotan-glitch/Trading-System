@@ -47,7 +47,7 @@ def test_leverage_uses_post_trade_gross_exposure_for_reduction(tmp_path):
             max_quantity=Decimal("2"),
             max_exposure_lots=Decimal("2"),
             max_leverage=Decimal("2"),
-            max_notional=Decimal("50000"),
+            max_notional=Decimal("500000"),
         ),
         db_path=tmp_path / "risk.db",
     )
@@ -114,7 +114,7 @@ def test_required_protection_uses_stop_loss_not_stop_trigger(tmp_path):
 
 def test_first_position_counts_toward_exposure_limit(tmp_path):
     engine = RiskEngine(
-        RiskLimits(max_quantity=Decimal("2"), max_exposure_lots=Decimal("1")),
+        RiskLimits(max_quantity=Decimal("2"), max_notional=Decimal("500000"), max_exposure_lots=Decimal("1")),
         db_path=tmp_path / "risk.db",
     )
     decision = engine.pre_trade(_intent(Side.BUY, "1.01"), _ctx(None))
