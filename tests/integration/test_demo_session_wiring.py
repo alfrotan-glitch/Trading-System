@@ -94,7 +94,7 @@ def _fake_mt5(*, trade_mode: int = 0, symbol: str = "XAUUSD@", tick_age_s: float
         symbol_info=lambda name: symbol_info if name == symbol else None,
         symbol_select=lambda name, enable: name == symbol,
         symbol_info_tick=lambda name: _tick() if name == symbol else None,
-        copy_rates_from_pos=lambda name, tf, start, count: None,
+        copy_rates_from_pos=lambda name, tf, start, count: [{"time": int(time.time() // 60 * 60)}],
         order_check=_order_check,
         order_send=_order_send,
         positions_get=lambda **kwargs: (),
