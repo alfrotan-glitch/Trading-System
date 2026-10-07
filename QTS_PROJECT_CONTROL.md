@@ -7,6 +7,8 @@ Repository       : alfrotan-glitch/Trading-System
 Target Symbol    : XAUUSD (Gold / US Dollar Spot)
 Target Broker    : MetaTrader 5 (MT5)
 ```
+| **ARCH-050** | 2026-10-07 | Canonical execution safety | Closed the micro execution-path database exception: broker-capable `qts run --mode micro` now consumes the same durable risk/idempotency/reconciliation database and the one snapshot-to-engine risk translation. It refuses before broker construction when the canonical kill switch or durable reconciliation suspension is active. | APPROVED pending CI on the canonical branch |
+
 
 ---
 
