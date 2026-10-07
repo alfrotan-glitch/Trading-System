@@ -33,7 +33,6 @@ Every cycle writes a signal record — including the ``NO_TRADE`` decisions — 
 
 from __future__ import annotations
 
-import contextlib
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -456,7 +455,6 @@ def _manage_open_positions(
                     raise AutopilotHalt(
                         f"close outcome for ticket {ticket} is ambiguous; reconciliation is required"
                     )
-                receipt = res.get("receipt")
                 after_close = res.get("reconciliation") or {}
 
                 if after_close.get("requires_suspend"):
