@@ -1557,7 +1557,21 @@ class MT5Adapter(BrokerAdapter):
                     candidate = round((tick_epoch - now_epoch) / 60.0) * 60.0
                     if abs(candidate) <= self._MAX_PLAUSIBLE_OFFSET_S:
                         measured_offset = float(candidate)
-                        measured_basis = "measured-fresh-tick"
+                        # If the tick agrees with the forming M1 bar's minute
+                        # offset, the bar is already sufficient evidence. Use
+                        # the tick basis only when it resolves a finer/different
+                        # offset such as a broker's +02:59 clock.
+                        bar_basis_offset: float | None = None
+                        if bar_time is not None:
+                            bar_lo = bar_time - now_epoch
+                            bar_grid = math.ceil(bar_lo / self._OFFSET_QUANTUM_S) * self._OFFSET_QUANTUM_S
+                            if bar_lo <= bar_grid < bar_lo + 60.0 and abs(bar_grid) <= self._MAX_PLAUSIBLE_OFFSET_S:
+                                bar_basis_offset = float(bar_grid)
+                        measured_basis = (
+                            "measured-m1-bar"
+                            if bar_basis_offset is not None and candidate == bar_basis_offset
+                            else "measured-fresh-tick"
+                        )
 
         # Conservative fallback: forming M1 bar. The bar is minute-aligned, so
         # minute resolution is the honest precision available from this probe.
