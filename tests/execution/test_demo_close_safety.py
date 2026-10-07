@@ -64,8 +64,9 @@ class _Adapter:
 
 def _session(adapter: _Adapter, *, journal=None):
     obj = object.__new__(_Harness)
-    obj.authority = _Authority()
-    obj.adapter = adapter
+    obj._authority = _Authority()
+    obj._authority_mode = ExecutionMode.DEMO_EXECUTION
+    obj._adapter = adapter
     obj.stage = _Stage()
     obj.config = SimpleNamespace(actor="close-test")
     obj.journal = journal or SimpleNamespace(open_orders=lambda: [])
