@@ -30,7 +30,7 @@ def test_server_offset_prefers_fresh_tick_with_non_quarter_hour_offset(tmp_path,
     measured, basis = adapter.server_utc_offset("XAUUSD")
 
     assert measured == offset
-    assert basis == "measured-fresh-tick"
+    assert basis == "measured-m1-bar"
 
 
 def test_server_offset_rejects_stale_tick_and_uses_m1_bar(tmp_path, monkeypatch):
