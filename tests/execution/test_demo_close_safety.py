@@ -56,6 +56,7 @@ class _Adapter:
         self._positions = [
             {
                 "ticket": 123,
+                "position_id": 123,
                 "volume": "0.01",
                 "profit": "1.25",
                 "price_current": "2001.00",
