@@ -91,7 +91,6 @@ def risk_center() -> dict[str, Any]:
             "max_orders_per_minute": lim.max_orders_per_minute,
             "daily_loss_limit_usd": str(lim.daily_loss_limit),
             "max_drawdown_usd": str(lim.max_drawdown),
-            "max_drawdown_pct": str(lim.max_drawdown_pct),
             "spread_limit_bps": str(lim.max_spread_bps),
             "slippage_limit_bps": str(lim.max_slippage_bps),
             "stale_data_limit_s": str(lim.stale_data_limit_s),
