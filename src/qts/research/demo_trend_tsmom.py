@@ -12,6 +12,7 @@ No proprietary code or private fund parameters are copied.
 from __future__ import annotations
 
 from collections import deque
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -47,7 +48,9 @@ class TrendTimeSeriesMomentum:
         self._last_fast: Decimal | None = None
         self._last_slow: Decimal | None = None
         self._last_signal_bucket: str | None = None
-        self._last_rationale = "waiting for enough price history"
+        self._bar_start: datetime | None = None
+        self._bar_close: Decimal | None = None
+        self._last_rationale = "waiting for enough completed bars"
 
     @property
     def strategy_id(self) -> str:
@@ -67,6 +70,29 @@ class TrendTimeSeriesMomentum:
             ema = alpha * value + (Decimal("1") - alpha) * ema
         return ema
 
+    def _bar_bucket(self, event_time: datetime) -> datetime:
+        minutes = int(self.params["bar_timeframe_minutes"])
+        if minutes <= 0 or 60 % minutes != 0:
+            raise ValueError("bar_timeframe_minutes must be a positive divisor of one hour")
+        event_time = event_time.astimezone(UTC)
+        minute = (event_time.minute // minutes) * minutes
+        return event_time.replace(minute=minute, second=0, microsecond=0)
+
+    def _consume_quote(self, event_time: datetime, mid: Decimal) -> Decimal | None:
+        """Return the prior bar close exactly once when a new bar begins."""
+        start = self._bar_bucket(event_time)
+        if self._bar_start is None:
+            self._bar_start = start
+            self._bar_close = mid
+            return None
+        if start == self._bar_start:
+            self._bar_close = mid
+            return None
+        completed = self._bar_close
+        self._bar_start = start
+        self._bar_close = mid
+        return completed
+
     def generate(self, market_state: dict[str, Any]) -> Signal | None:
         bid = market_state.get("bid")
         ask = market_state.get("ask")
@@ -83,12 +109,28 @@ class TrendTimeSeriesMomentum:
             self._last_rationale = "spread unavailable"
             return None
 
+        event_time = market_state.get("event_time") or market_state.get("at")
+        if not event_time:
+            self._last_rationale = "quote timestamp unavailable"
+            return None
+        if isinstance(event_time, str):
+            event_time = datetime.fromisoformat(event_time.replace("Z", "+00:00"))
+        if event_time.tzinfo is None:
+            self._last_rationale = "quote timestamp is not timezone-aware"
+            return None
+        event_time = event_time.astimezone(UTC)
+
         mid = (Decimal(str(bid)) + Decimal(str(ask))) / Decimal("2")
-        self._prices.append(mid)
+        completed_close = self._consume_quote(event_time, mid)
+        if completed_close is None:
+            self._last_rationale = "waiting for completed bar"
+            return None
+
+        self._prices.append(completed_close)
         slow_n = int(self.params["slow_ema"])
         fast_n = int(self.params["fast_ema"])
         if len(self._prices) < slow_n + 1:
-            self._last_rationale = f"warming up: {len(self._prices)}/{slow_n + 1} quotes"
+            self._last_rationale = f"warming up: {len(self._prices)}/{slow_n + 1} completed bars"
             return None
 
         values = list(self._prices)
@@ -105,11 +147,12 @@ class TrendTimeSeriesMomentum:
             side = "SELL"
 
         self._last_fast, self._last_slow = fast, slow
+        bar_time = self._bar_start or event_time
         if side is None:
-            self._last_rationale = f"no crossover: fast={fast:.5f}, slow={slow:.5f}"
+            self._last_rationale = f"no crossover: EMA{fast_n}={fast:.5f}, EMA{slow_n}={slow:.5f}"
             return None
 
-        bucket = f"{market_state.get('event_time') or market_state.get('at')}:{side}"
+        bucket = f"{bar_time.isoformat()}:{side}"
         if bucket == self._last_signal_bucket:
             return None
         self._last_signal_bucket = bucket
@@ -119,9 +162,8 @@ class TrendTimeSeriesMomentum:
         stop = reference - distance if side == "BUY" else reference + distance
         lots = Decimal(str(self.params["lots"]))
         self._last_rationale = (
-            f"public trend-following benchmark crossover: {side}; "
-            f"EMA{fast_n} crossed EMA{slow_n}; fixed DEMO size={lots}; "
-            f"protective stop distance={distance}; no validated-edge claim"
+            f"15m trend-following benchmark crossover: {side}; EMA{fast_n} crossed EMA{slow_n}; "
+            f"fixed DEMO size={lots}; protective stop distance={distance}; no validated-edge claim"
         )
         return Signal(
             side=side,
@@ -129,5 +171,6 @@ class TrendTimeSeriesMomentum:
             stop_loss=stop,
             take_profit=None,
             rationale=self._last_rationale,
-            signal_id=f"tsmom-{side.lower()}-{market_state.get('event_time') or market_state.get('at')}",
+            signal_id=f"tsmom-{side.lower()}-{bar_time.isoformat()}",
         )
+
