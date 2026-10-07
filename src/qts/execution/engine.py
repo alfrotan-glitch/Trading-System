@@ -708,8 +708,12 @@ class ExecutionEngine:
         if decision.resized_quantity is not None:
             intent = intent.model_copy(update={"quantity": decision.resized_quantity})
 
-        # check again idempotency after resize (quantity change would be new intent, but keep same id)
-        self.om.submit(intent)
+        # Claim the economic order only after the final risk decision. If a
+        # concurrent caller already owns this client id, OrderManager restores
+        # the durable order instead of creating a second economic attempt.
+        prepared = self.om.submit(intent)
+        if prepared.order_id == intent.client_order_id:
+            return prepared, []
 
         # Shadow mode: do not actually submit to broker, just record would-be
         is_shadow = bool(getattr(self.broker, "is_shadow", False))
