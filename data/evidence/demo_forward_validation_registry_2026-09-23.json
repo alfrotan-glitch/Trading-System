@@ -163,7 +163,7 @@
           "idempotency_required": true,
           "min_order_interval_s": 1800
         },
-        "code_hash": "53d0c2de4776fad20f378bce403c9a8d1e663df2c73e04b9f19aae9f82c7e85b",
+        "code_hash": "d2451d06f2ef4c552d3ce90f2b97c09c2ac1f264e56f6fb7f87d2912f60c476d",
         "config_hash": "1a190fc118f970a6591294c1753b673fbf2b493ec4e2563be1e45d13326917c3",
         "data_hash": null,
         "data_hash_note": "No historical dataset is consumed; the provider uses only the pinned DEMO quote stream.",
