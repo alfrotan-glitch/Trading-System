@@ -1,0 +1,64 @@
+name: UI diagnostic (temporary)
+
+# TEMPORARY. The `fast` job's UI step has failed on every recorded run of this
+# repository while `npm ci && npm test` passes locally, and the Actions log
+# endpoint is not reachable from the sandbox that needs the evidence. This
+# workflow therefore re-runs the step on the CI image and posts its raw output
+# as a PR comment, so the failure can be read (and fixed or classified with
+# evidence) instead of guessed at. Delete this file once that is done.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["arena/fd6fbd1d-trading-system"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+      - name: Show the toolchain
+        run: |
+          node --version
+          npm --version
+      - name: Install UI test dependencies
+        run: npm ci
+      - name: Run the UI suite and capture everything
+        id: ui
+        continue-on-error: true
+        run: |
+          set +e
+          npm test > /tmp/ui.out 2>&1
+          status=$?
+          echo "npm test exit status: ${status}" >> /tmp/ui.out
+          tail -n 400 /tmp/ui.out > /tmp/ui.tail
+          cat /tmp/ui.tail
+          {
+            echo "### UI suite output (Node $(node --version))"
+            echo '```'
+            cat /tmp/ui.tail
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+      - name: Post the captured output to the pull request
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          {
+            echo "Temporary UI diagnostic for \`${HEAD_SHA:0:8}\` (Node $(node --version))."
+            echo
+            echo '```'
+            cat /tmp/ui.tail
+            echo '```'
+          } > /tmp/comment.md
+          gh pr comment 9 --body-file /tmp/comment.md
