@@ -1783,65 +1783,83 @@ class MT5Adapter(BrokerAdapter):
         return list(deals)
 
     def poll_fills(self, client_order_id: str) -> list[Any]:
-        """Poll for fills (deals) — used by ExecutionEngine live path.
+        """Return only fully attributable, stable broker deals for one client order.
 
-        Each returned dict carries:
-        * ``fill_id`` — STABLE id derived from the deal ticket, so repeated polls
-          deduplicate instead of re-applying the same economic fill.
-        * ``client_order_id`` — the attributed order via the persisted comment map,
-          or None when the deal comment cannot be mapped. Callers MUST fail closed
-          on unattributed fills (never apply them to a portfolio blindly).
+        A malformed or unattributable deal is an execution safety failure, not a
+        deal to skip. The caller must suspend and reconcile rather than silently
+        pretending the broker history was empty.
         """
-        deals = self.history_deals(client_order_id or None)
+        if not client_order_id:
+            raise ValueError("client_order_id is required for correlated fill polling")
+        deals = self.history_deals(client_order_id)
         fills = []
+        expected_comment = self._load_comment_map(client_order_id) or mt5_comment_for(client_order_id)
+
         for d in deals:
-            # Deal fields: ticket, order, symbol, volume, price, profit, type, time
+            sym = self._canonical_symbol(getattr(d, "symbol", ""))
+            if not sym or sym == "UNKNOWN":
+                raise RuntimeError(f"MT5 deal for {client_order_id} has no valid symbol")
+            ticket = getattr(d, "ticket", None)
+            if ticket is None:
+                raise RuntimeError(f"MT5 deal for {client_order_id} has no stable ticket")
             try:
-                # Broker alias → canonical: the portfolio is keyed by canonical
-                # symbol, so a fill reported as ``XAUUSD@`` would create a
-                # phantom position that reconciliation can never match.
-                sym = self._canonical_symbol(getattr(d, "symbol", "UNKNOWN"))
-                vol = Decimal(str(getattr(d, "volume", 0)))
-                price = Decimal(str(getattr(d, "price", 0)))
-                # type 0 BUY, 1 SELL
-                deal_type = getattr(d, "type", 0)
-                side = Side.BUY if deal_type == 0 else Side.SELL
-                deal_time = datetime.fromtimestamp(getattr(d, "time", datetime.now(UTC).timestamp()), tz=UTC)
-                ticket = getattr(d, "ticket", None)
-                comment = getattr(d, "comment", "") or ""
-                attributed = self._reverse_comment_map(comment)
-                if attributed is None and client_order_id:
-                    # history_deals already filtered by this order's comment —
-                    # accept the match when the comment equals the mapped/expected one
-                    expected = self._load_comment_map(client_order_id) or mt5_comment_for(client_order_id)
-                    if comment == expected:
-                        attributed = client_order_id
-                if ticket is None:
-                    # A broker deal without its stable ticket cannot be safely
-                    # deduplicated across polls/restarts. Never synthesize an
-                    # identity from mutable fields such as time/price/volume.
-                    raise ValueError(f"MT5 deal for {sym} has no stable ticket")
-                fill_id = f"mt5-deal-{int(ticket)}"
-                fills.append(
-                    {
-                        "fill_id": fill_id,
-                        "client_order_id": attributed,
-                        "symbol": sym,
-                        "volume": vol,
-                        "price": price,
-                        "fee": (
-                            Decimal(str(getattr(d, "commission", 0) or 0))
-                            + Decimal(str(getattr(d, "swap", 0) or 0))
-                            + Decimal(str(getattr(d, "fee", 0) or 0))
-                        ),
-                        "side": side,
-                        "time": deal_time,
-                        "deal": d,
-                    }
-                )
-            # B112: skip unprocessable deal; reconcile fail-closes on venue drift
-            except Exception:  # nosec B112
-                continue
+                ticket_int = int(ticket)
+            except (TypeError, ValueError) as exc:
+                raise RuntimeError(
+                    f"MT5 deal for {client_order_id} has invalid ticket {ticket!r}"
+                ) from exc
+            if ticket_int <= 0:
+                raise RuntimeError(f"MT5 deal for {client_order_id} has invalid ticket {ticket_int}")
+            comment = getattr(d, "comment", "") or ""
+            attributed = self._reverse_comment_map(comment)
+            if attributed != client_order_id:
+                if comment != expected_comment:
+                    raise RuntimeError(
+                        f"MT5 deal {ticket_int} for {client_order_id} has unexpected comment {comment!r}"
+                    )
+                attributed = client_order_id
+
+            vol = Decimal(str(getattr(d, "volume", 0)))
+            price = Decimal(str(getattr(d, "price", 0)))
+            if not vol.is_finite() or vol <= 0:
+                raise RuntimeError(f"MT5 deal {ticket_int} has invalid volume {vol!r}")
+            if not price.is_finite() or price <= 0:
+                raise RuntimeError(f"MT5 deal {ticket_int} has invalid price {price!r}")
+
+            deal_type = getattr(d, "type", None)
+            if deal_type == 0:
+                side = Side.BUY
+            elif deal_type == 1:
+                side = Side.SELL
+            else:
+                raise RuntimeError(f"MT5 deal {ticket_int} has unsupported deal type {deal_type!r}")
+
+            raw_time = getattr(d, "time", None)
+            if raw_time is None:
+                raise RuntimeError(f"MT5 deal {ticket_int} has no timestamp")
+            deal_time = datetime.fromtimestamp(float(raw_time), tz=UTC)
+
+            fee = (
+                Decimal(str(getattr(d, "commission", 0) or 0))
+                + Decimal(str(getattr(d, "swap", 0) or 0))
+                + Decimal(str(getattr(d, "fee", 0) or 0))
+            )
+            if not fee.is_finite():
+                raise RuntimeError(f"MT5 deal {ticket_int} has non-finite charges")
+
+            fills.append(
+                {
+                    "fill_id": f"mt5-deal-{ticket_int}",
+                    "client_order_id": attributed,
+                    "symbol": sym,
+                    "volume": vol,
+                    "price": price,
+                    "fee": fee,
+                    "side": side,
+                    "time": deal_time,
+                    "deal": d,
+                }
+            )
         return fills
 
     def close(self) -> None:
