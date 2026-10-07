@@ -536,22 +536,27 @@ class MT5Adapter(BrokerAdapter):
     def connect(
         self, login: int | None = None, password: str | None = None, server: str | None = None, path: str | None = None
     ) -> None:
+        """Establish the terminal session once, then authenticate if configured."""
         if path:
             self.config["path"] = path
-            self._session = None  # a different terminal invalidates the link
-        mt5 = self._require_mt5()
-        # Use config or params
+            self._session = None
+        mt5 = self._module()
         login = login or self.config.get("login")
         password = password or self.config.get("password")
         server = server or self.config.get("server")
         path = path or self.config.get("path")
         kwargs: dict[str, Any] = {}
-        if path:
-            kwargs["path"] = path
+        normalized_path = normalize_terminal_path(path)
+        if normalized_path:
+            kwargs["path"] = normalized_path
         if not mt5.initialize(**kwargs):
-            raise RuntimeError(f"MT5 initialize failed: {mt5.last_error()}")
+            raise MT5SessionError(_session_diagnosis(mt5.last_error(), normalized_path))
         if login and password and server and not mt5.login(login, password, server):
+            with contextlib.suppress(Exception):
+                mt5.shutdown()
             raise RuntimeError(f"MT5 login failed: {mt5.last_error()}")
+        self._session = None
+        self.ensure_session()
 
     def disconnect(self) -> None:
         # The link is per process: after an explicit shutdown this process has
