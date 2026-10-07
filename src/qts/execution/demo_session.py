@@ -1545,7 +1545,10 @@ class DemoSession:
                 client_order_id=client_order_id,
                 journal_id=journal_id,
                 state="NO_TRADE",
-                reasons=["execution engine refused the intent — see audit log (risk veto / kill / suspend)"],
+                reasons=[
+                    refusal["reason"]
+                    or "execution engine refused the intent — see audit log (risk veto / kill / suspend)"
+                ],
                 verdict=verdict.as_dict(),
             )
 
