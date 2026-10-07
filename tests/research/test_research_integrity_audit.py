@@ -139,7 +139,36 @@ def test_forward_manifest_path_has_two_exporters_with_incompatible_schemas():
     )
 
 
-def test_audit_projection_exposes_roles_and_gap_semantics_for_registered_inventory():
+def test_audit_projection_exposes_roles_and_gap_semantics_for_registered_inventory(monkeypatch):
+    monkeypatch.setattr(
+        "qts.data.audit.generate_inventory",
+        lambda _root: [
+            {
+                "version": "fixture-1",
+                "instrument": "XAUUSD",
+                "venue": "legacy",
+                "timeframe": "15m",
+                "row_count": 10,
+                "date_range": ["2025-01-01", "2025-01-02"],
+                "checksum": "abc",
+                "source": "fixture",
+                "data_class": "SYNTHETIC",
+                "source_provider": None,
+                "source_feed": None,
+                "source_venue": None,
+                "execution_target": None,
+                "execution_venue": None,
+                "venue_semantics": "legacy_dataset_namespace_only",
+                "bid_availability": False,
+                "spread_availability": False,
+                "tick_count": 0,
+                "timezone": "UTC",
+                "timestamp_resolution": "15m",
+                "missingness": 0.0,
+                "gaps": {"gap_semantics": "known"},
+            }
+        ],
+    )
     result = audit_data_sources()
     row = result["available_sources"][0]
 
