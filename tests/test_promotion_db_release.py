@@ -70,7 +70,7 @@ def test_promotion_workflow_releases_promo_db_before_tempdir_cleanup():
             ledger.transition(sid, PromotionState.VALIDATED, evidence_hash="sha256:validated-evidence")  # no skip
         ledger.transition(sid, PromotionState.CANDIDATE)
         assert ledger.get_state(sid) == PromotionState.CANDIDATE
-        ledger.transition(sid, PromotionState.VALIDATED)
+        ledger.transition(sid, PromotionState.VALIDATED, evidence_hash="sha256:validated-evidence")
         assert ledger.get_state(sid) == PromotionState.VALIDATED
         ledger.suspend_on_anomaly(sid, reason="drawdown breach")
         assert ledger.get_state(sid) == PromotionState.SUSPENDED
