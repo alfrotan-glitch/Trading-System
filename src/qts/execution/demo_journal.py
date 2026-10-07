@@ -708,7 +708,7 @@ def summarize(journal: DemoOrderJournal) -> JournalSummary:
         if row.get("realized_pnl"):
             try:
                 realized += Decimal(str(row["realized_pnl"]))
-            except Exception:
+            except (ArithmeticError, ValueError, TypeError):  # nosec B112 — malformed legacy P&L row is skipped, not security-sensitive
                 continue
     return JournalSummary(
         orders=len(orders),
