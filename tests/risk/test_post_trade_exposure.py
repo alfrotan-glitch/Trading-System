@@ -47,11 +47,12 @@ def test_leverage_uses_post_trade_gross_exposure_for_reduction(tmp_path):
             max_quantity=Decimal("2"),
             max_exposure_lots=Decimal("2"),
             max_leverage=Decimal("2"),
+            max_notional=Decimal("50000"),
         ),
         db_path=tmp_path / "risk.db",
     )
 
-    decision = engine.pre_trade(_intent(Side.SELL, "0.9"), _ctx(position))
+    decision = engine.pre_trade(_intent(Side.SELL, "0.9"), _ctx(position, equity="20000"))
 
     assert decision.allowed is True
 
@@ -64,7 +65,16 @@ def test_existing_position_without_reference_price_blocks_leverage(tmp_path):
         db_path=tmp_path / "risk.db",
     )
     ctx = _ctx(None)
-    ctx = ctx.model_copy(update={"positions": {"EURUSD": position}})
+    ctx = RiskContext(
+        account=ctx.account,
+        positions={"EURUSD": position},
+        open_orders_count=ctx.open_orders_count,
+        daily_pnl=ctx.daily_pnl,
+        drawdown=ctx.drawdown,
+        instrument_suspended=ctx.instrument_suspended,
+        realized_vol=ctx.realized_vol,
+        reference_prices=ctx.reference_prices,
+    )
 
     decision = engine.pre_trade(_intent(Side.BUY, "0.01"), ctx)
 
@@ -90,7 +100,7 @@ def test_market_order_uses_reference_price_not_stop_trigger(tmp_path):
 
 def test_required_protection_uses_stop_loss_not_stop_trigger(tmp_path):
     engine = RiskEngine(
-        RiskLimits(stop_loss_required=True),
+        RiskLimits(stop_loss_required=True, max_risk_per_trade_bps=Decimal("0")),
         db_path=tmp_path / "risk.db",
     )
     intent = _intent(Side.BUY, "0.01").model_copy(
@@ -104,7 +114,7 @@ def test_required_protection_uses_stop_loss_not_stop_trigger(tmp_path):
 
 def test_first_position_counts_toward_exposure_limit(tmp_path):
     engine = RiskEngine(
-        RiskLimits(max_exposure_lots=Decimal("1")),
+        RiskLimits(max_quantity=Decimal("2"), max_exposure_lots=Decimal("1")),
         db_path=tmp_path / "risk.db",
     )
     decision = engine.pre_trade(_intent(Side.BUY, "1.01"), _ctx(None))
