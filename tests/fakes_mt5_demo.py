@@ -66,9 +66,6 @@ class FakeTerminal:
     def account_info(self):
         return self.account
 
-    def terminal_info(self):
-        return SimpleNamespace(connected=True, trade_allowed=True)
-
     def symbol_info_tick(self, name):
         now = time.time()
         return SimpleNamespace(
@@ -193,9 +190,6 @@ class FakeTerminal:
 
     def symbol_select(self, name, enable):
         return name == "XAUUSD@"
-
-    def copy_rates_from_pos(self, *args, **kwargs):
-        return None
 
     def orders_get(self, **kwargs):
         return ()
