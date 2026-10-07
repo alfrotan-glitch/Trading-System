@@ -22,7 +22,7 @@ def test_server_offset_prefers_fresh_tick_with_non_quarter_hour_offset(tmp_path,
     now = 1_800_000_123.4
     offset = 2 * 3600 + 59 * 60
     tick = SimpleNamespace(time=now + offset)
-    mt5 = FakeMT5(tick, now + offset - 30.0)
+    mt5 = FakeMT5(tick, now + 3 * 3600)
 
     monkeypatch.setattr(mt5_adapter.time, "time", lambda: now)
     adapter = MT5Adapter(mt5_module=mt5, db_path=tmp_path / "qts.db")
@@ -30,7 +30,7 @@ def test_server_offset_prefers_fresh_tick_with_non_quarter_hour_offset(tmp_path,
     measured, basis = adapter.server_utc_offset("XAUUSD")
 
     assert measured == offset
-    assert basis == "measured-m1-bar"
+    assert basis == "measured-fresh-tick"
 
 
 def test_server_offset_rejects_stale_tick_and_uses_m1_bar(tmp_path, monkeypatch):
