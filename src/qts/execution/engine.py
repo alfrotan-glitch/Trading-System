@@ -242,6 +242,10 @@ class ExecutionEngine:
 
     def _load_day_start_equity(self, equity: Decimal) -> Decimal:
         """Load a durable UTC-day equity baseline; never reset it on restart."""
+        if not self.persist_reconcile_state:
+            if self._day_start_equity <= Decimal("0"):
+                self._day_start_equity = equity
+            return self._day_start_equity
         day = datetime.now(UTC).date().isoformat()
         try:
             with db_connect(self._db_path) as con:
