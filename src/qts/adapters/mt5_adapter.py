@@ -1252,13 +1252,23 @@ class MT5Adapter(BrokerAdapter):
                 raise ConnectionError(f"MT5 positions_get failed: {err}")
             return []
         out: list[Position] = []
+        seen_symbols: set[str] = set()
         for p in raw:
-            # p.symbol, p.volume, p.price_open, p.price_current, p.profit, p.type (0 buy, 1 sell)
+            # This execution model is net-position based: one broker position
+            # per canonical symbol. Never collapse multiple MT5 positions into
+            # one dict entry, because that would hide real exposure.
             sym = getattr(p, "symbol", "UNKNOWN")
+            canonical = self._canonical_symbol(sym)
+            if canonical in seen_symbols:
+                raise RuntimeError(
+                    f"multiple broker positions for canonical symbol {canonical} "
+                    "are unsupported by the net-position execution model"
+                )
+            seen_symbols.add(canonical)
             vol = Decimal(str(getattr(p, "volume", 0)))
             price_open = Decimal(str(getattr(p, "price_open", 0)))
             # Broker alias → canonical, so reconciliation compares like with like.
-            instr = Instrument(symbol=self._canonical_symbol(sym), venue="MT5")
+            instr = Instrument(symbol=canonical, venue="MT5")
             # Quantity signed: BUY positive, SELL negative
             # MT5 position type 0 = BUY, 1 = SELL
             pos_type = getattr(p, "type", 0)
