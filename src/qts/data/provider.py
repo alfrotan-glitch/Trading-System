@@ -5,8 +5,8 @@ Every dataset immutable: dataset ID, source ID, ingestion timestamp, checksum, s
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import hashlib
+from abc import ABC, abstractmethod
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
