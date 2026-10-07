@@ -1503,7 +1503,7 @@ class MT5Adapter(BrokerAdapter):
         self.last_submission = receipt
         return receipt
 
-    def position_realized_result(self, ticket: int) -> dict[str, Any]:
+    def position_realized_result(self, ticket: int, *, client_order_id: str | None = None) -> dict[str, Any]:
         """Return broker-authoritative realized P&L and charges for one MT5 position.
 
         MT5 exposes the economic result on deals. The Python API can query all
@@ -1518,6 +1518,13 @@ class MT5Adapter(BrokerAdapter):
         if raw is None:
             raise ConnectionError(f"MT5 deal history unavailable for position {ticket}: {mt5.last_error()}")
         matched = list(raw)
+        if client_order_id:
+            comment = self._load_comment_map(client_order_id)
+            if not comment:
+                raise RuntimeError(
+                    f"no persisted MT5 comment mapping for close client order {client_order_id}"
+                )
+            matched = [deal for deal in matched if str(getattr(deal, "comment", "") or "") == comment]
         if not matched:
             raise RuntimeError(f"no MT5 deals found for closed position {ticket}; realized P&L is unproven")
 
