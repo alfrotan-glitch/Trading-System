@@ -12,7 +12,7 @@ No proprietary code or private fund parameters are copied.
 from __future__ import annotations
 
 from collections import deque
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
