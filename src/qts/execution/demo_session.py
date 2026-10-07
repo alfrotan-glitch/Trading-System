@@ -397,7 +397,7 @@ class DemoSession:
         """Dry-run of an order request — proves the plumbing without sending."""
         try:
             from qts.adapters.order_check import mt5_order_check
-            from qts.domain.value_objects import Instrument, OrderIntent, OrderType, Side
+            from qts.domain.value_objects import Instrument, OrderIntent, OrderState, OrderType, Side
 
             spec = self.adapter.get_symbol_spec(self.canonical_symbol)
             size = lots if lots is not None else Decimal(str(spec.volume_min))
