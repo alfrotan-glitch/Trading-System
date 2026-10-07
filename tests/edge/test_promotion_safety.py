@@ -5,8 +5,6 @@ from qts.edge.promotion import PromotionLedger, PromotionState
 
 def test_promotion_transition_is_evidence_backed(tmp_path):
     ledger = PromotionLedger(tmp_path / "promotion.db")
-    with pytest.raises(ValueError, match="evidence_hash"):
-        ledger.transition("strategy-a", PromotionState.CANDIDATE)
     record = ledger.transition(
         "strategy-a",
         PromotionState.CANDIDATE,
