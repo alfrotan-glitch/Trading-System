@@ -788,7 +788,7 @@ class DemoSession:
             # once the close executes. Read the broker's completed deal history
             # by position_id and include profit + commission + swap + fee.
             try:
-                realized = self.adapter.position_realized_result(int(position_identifier))
+                realized = self.adapter.position_realized_result(int(position_identifier), client_order_id=close_client_id)
                 realized_pnl = Decimal(str(realized["net_realized_pnl"]))
                 fees = (
                     Decimal(str(realized["commission"]))
