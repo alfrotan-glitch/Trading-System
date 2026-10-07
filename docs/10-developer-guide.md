@@ -78,12 +78,31 @@ find src/qts/desktop/ui/js -name '*.js' -print0 | xargs -0 -n1 node --check
 # 4. JavaScript Unit Tests
 npm test
 
-# 5. Python tests
-# Default pytest includes tests/integration. The 119 integration tests do not need a flag.
-# The two default skips are tests/adversarial/test_impulse_lookahead.py for family IMP-VE-V
-# when the fixed seed window has no events.
-# Playwright browser tests skip at import when playwright is not installed. They are outside that count.
-# `--run-integration` still runs tests/integration explicitly.
-pytest
-pytest tests/integration --run-integration
+# 5. Python tests — the three gates
+#
+# FAST GATE (default; this is what CI's `fast` job runs). tests/integration and
+# tests/research are skipped unless --run-integration / --run-research is passed.
+pytest -q --ignore=tests/integration --ignore=tests/research
+pytest                      # equivalent, minus the explicit ignores
+#
+# EXTENDED GATE (CI's `extended` job): integration + research in full.
+pytest -q --run-integration --run-research tests/integration tests/research
+#
+# DEMO GATE: every DEMO execution safety surface — the session wiring, the
+# autonomous loop, close safety, failure modes, the operator CLI, authority and
+# pre-trade adversarial tests. Run this before and after touching the DEMO path.
+pytest -q --run-integration \
+  tests/integration/test_demo_session_wiring.py \
+  tests/integration/test_demo_autopilot_loop.py \
+  tests/integration/test_demo_failure_modes.py \
+  tests/integration/test_demo_cli.py \
+  tests/integration/test_demo_research_policy_loop.py \
+  tests/integration/test_demo_lifecycle_audit.py \
+  tests/execution/test_demo_close_safety.py \
+  tests/execution/test_demo_journal_crash_safety.py \
+  tests/adversarial/test_demo_execution_authorization.py \
+  tests/adversarial/test_demo_pretrade_gate.py
 ```
+
+Static checks, mypy and bandit (CI's `fast` job) are the first three commands above;
+formatting (`ruff format`) is *not* enforced repository-wide.

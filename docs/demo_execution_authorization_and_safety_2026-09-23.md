@@ -498,7 +498,7 @@ reports the honest residual blockers instead of a green light:
 
 ### 16.2 Autonomous loop (simulated terminal + registered test strategy)
 
-`tests/integration/test_demo_autopilot_loop.py` (8 tests, `--run-integration`) registers an eligible,
+`tests/integration/test_demo_autopilot_loop.py` (11 tests, `--run-integration`) registers an eligible,
 parameter-frozen test provider (`tests/fakes_demo_provider.py`) and drives the real loop against a
 stateful fake terminal. Verified end to end:
 
@@ -513,7 +513,12 @@ stateful fake terminal. Verified end to end:
 * the daily order cap stops new orders without halting the loop;
 * a provider exposing an `optimize` hook is **refused** ("optimization hooks") with zero orders;
 * **parameter drift** (runtime `config_hash` != registered hash) halts the loop with zero orders;
-* once the DEMO daily-loss limit is consumed, `max_daily_loss` fails and no order is sent.
+* once the DEMO daily-loss limit is consumed, `max_daily_loss` fails and no order is sent;
+* **restart warmup** is bounded and recorded: a bar-based provider declares its window, the loop loads
+  it once per run from the venue's own completed bars (the forming bar is excluded), and the report
+  carries a `warmup` event with the source, accepted bar count and first/last boundary. A venue that
+  cannot supply the window yields `warmup_skipped` with the reason and the provider simply warms up
+  live — warmup is an availability feature, never a safety gate, and it cannot emit a signal.
 
 None of that traded real capital: the terminal is a fake, and the same code path is refused
 outright in any non-DEMO mode.
@@ -638,8 +643,10 @@ New/updated tests (all passing in this checkout):
   slippage/P&L accounting, export.
 * `tests/integration/test_demo_session_wiring.py` — 9 tests (`--run-integration`): the full session
   against a simulated DEMO terminal (see §16.1).
-* `tests/integration/test_demo_autopilot_loop.py` — 8 tests (`--run-integration`): autonomous loop,
-  position lifecycle and research-integrity refusals (see §16.2/§16.3).
+* `tests/integration/test_demo_autopilot_loop.py` — 11 tests (`--run-integration`): autonomous loop,
+  position lifecycle, restart warmup and research-integrity refusals (see §16.2/§16.3).
+* `tests/execution/test_demo_close_safety.py` — 8 tests: the DEMO close path against the real order
+  journal and engine (see §16.11).
 * `tests/integration/test_demo_cli.py` — 9 tests (`--run-integration`): the operator CLI procedure (§16.5).
 * `tests/integration/test_demo_failure_modes.py` — 10 tests (`--run-integration`): broker faults,
   restart/concurrency and kill-switch propagation (see §16.7).
@@ -745,3 +752,34 @@ Re-verified after the fixes: `qts demo reverify --confirm --risk-ack` at Stage 2
 restores permission with the stage unchanged; a subsequent `qts demo verify`
 reports `READY: True`; a fresh process never inherits stale authority; and no
 path in the test suite can reach a real MetaTrader5 module.
+
+### 16.11 Close-path safety and completed-bar semantics (2026-10-07)
+
+Two surfaces were rebuilt and pinned by tests.
+
+**Closing a position** (`tests/execution/test_demo_close_safety.py`, 8 tests) is the one operation that
+cannot be idempotently retried, so every uncertainty must end in an ambiguous, reconciled state rather
+than a success. The suite drives `DemoSession.close_position` against the **real** `DemoOrderJournal`
+(an actual open row carrying the broker's order and position ids) and the real execution engine:
+
+| Injected condition | Required behaviour |
+|---|---|
+| unknown close retcode | record ambiguous, halt the loop, never claim CLOSED |
+| venue re-read fails after the close | ambiguous + halt ("post-close venue verification failed") |
+| transport exception during the close | ambiguous + halt |
+| venue reports the position closed with no matching journal row | ambiguous ("local journal lifecycle could not be matched") |
+| the journal write itself fails | ambiguous ("journal persistence failed") |
+| close succeeded with broker P&L | the journal records the **broker's realized** result (0.83 net of 0.12 fees over 2 deals), never the pre-close unrealized figure |
+| close succeeded | the correlated local execution record is registered (state ACCEPTED) |
+| reconciliation drift after the close | success is blocked and the session halts |
+
+**Completed-bar semantics** (`tests/unit/test_demo_trend_time_semantics.py`,
+`tests/adapters/test_mt5_closed_bars.py`) pin the strategy clock:
+
+* the first quote opens a bar; later quotes in the same bucket only move the current close;
+* the first quote of a new bucket completes exactly one prior bar — partial bars never signal;
+* a signal is bound to the completed-bar boundary and its id derives from that boundary, so a restart
+  or replay cannot repeat it;
+* out-of-order quotes are refused, gaps are counted rather than filled, and only completed closes
+  enter the EMA history;
+* the restart window is bounded, completed-only, clock-basis-checked and never fabricated.
