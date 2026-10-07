@@ -627,7 +627,7 @@ class DemoSession:
             # when an older row lacks the position identifier.
             candidates = [
                 row for row in self.journal.open_orders()
-                if row.get("broker_symbol") == matching_pos.get("symbol")
+                if (row.get("broker_symbol") == matching_pos.get("symbol") or row.get("symbol") == self.canonical_symbol)
                 and row.get("side") == matching_pos.get("side")
             ]
             if len(candidates) == 1:
