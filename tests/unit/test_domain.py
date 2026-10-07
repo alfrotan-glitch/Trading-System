@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from qts.domain.value_objects import Bar, Instrument, OrderIntent, OrderType, Side, Tick
+from qts.domain.value_objects import Bar, Instrument, Order, OrderIntent, OrderState, OrderType, Side, Tick
 
 
 def test_bar_invariants():
@@ -82,3 +82,41 @@ def test_order_intent_requires_price_for_limit():
 def test_instrument_symbol_upper():
     instr = Instrument(symbol="xauusd")
     assert instr.symbol == "XAUUSD"
+
+
+def _order() -> Order:
+    now = datetime.now(UTC)
+    return Order(
+        order_id="order-1",
+        client_order_id="client-1",
+        instrument=Instrument(symbol="XAUUSD"),
+        side=Side.BUY,
+        quantity=Decimal("0.1"),
+        order_type=OrderType.MARKET,
+        strategy_id="test",
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def test_order_state_machine_allows_valid_execution_lifecycle():
+    order = _order()
+    order = order.with_state(OrderState.ACCEPTED)
+    order = order.with_state(OrderState.PARTIALLY_FILLED, filled_quantity=Decimal("0.05"))
+    order = order.with_state(OrderState.FILLED, filled_quantity=Decimal("0.1"))
+    assert order.state is OrderState.FILLED
+
+
+@pytest.mark.parametrize(
+    ("start", "target"),
+    [
+        (OrderState.PENDING, OrderState.FILLED),
+        (OrderState.FILLED, OrderState.PENDING),
+        (OrderState.CANCELLED, OrderState.ACCEPTED),
+        (OrderState.AMBIGUOUS, OrderState.ACCEPTED),
+    ],
+)
+def test_order_state_machine_rejects_invalid_transition(start: OrderState, target: OrderState):
+    order = _order().with_state(start) if start is not OrderState.PENDING else _order()
+    with pytest.raises(ValueError, match="invalid order state transition"):
+        order.with_state(target)
