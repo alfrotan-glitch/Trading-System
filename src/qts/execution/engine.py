@@ -953,13 +953,30 @@ class ExecutionEngine:
                         if self.risk.killed:
                             self.handle_kill(f"poll post-trade kill: {fill.fill_id}")
         except Exception as e:
+            # A failed fill poll leaves venue/local outcome uncertain. Swallowing
+            # the exception would let callers continue as though state were known.
+            # Persist suspension and re-raise so every execution caller fails closed.
+            self._suspended = True
+            self._suspend_reason = f"fill polling unavailable: {e}"
+            self._persist_reconcile_suspend(True, self._suspend_reason)
             if self.audit:
                 self.audit.emit(
                     DomainEvent(
                         event_type=EventType.RECONCILE,
-                        payload={"drift": "POLL_ERROR", "details": str(e), "requires_suspend": False},
+                        payload={
+                            "drift": "POLL_ERROR",
+                            "details": str(e),
+                            "requires_suspend": True,
+                        },
                     )
                 )
+                self.audit.emit(
+                    DomainEvent(
+                        event_type=EventType.NO_TRADE,
+                        payload={"reason": "POLL_ERROR", "detail": str(e)},
+                    )
+                )
+            raise RuntimeError(f"fill polling unavailable — execution suspended: {e}") from e
         return new_fills
 
     def reconcile(self) -> ReconcileReport:
