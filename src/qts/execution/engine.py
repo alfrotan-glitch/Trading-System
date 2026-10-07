@@ -234,6 +234,10 @@ class ExecutionEngine:
             con.execute(
                 "CREATE TABLE IF NOT EXISTS reconcile_state (k INTEGER PRIMARY KEY, suspended INTEGER NOT NULL, reason TEXT, updated_at TEXT)"
             )
+            con.execute(
+                "CREATE TABLE IF NOT EXISTS risk_day_state "
+                "(k INTEGER PRIMARY KEY, utc_date TEXT NOT NULL, equity TEXT NOT NULL)"
+            )
             con.commit()
 
     def _load_day_start_equity(self, equity: Decimal) -> Decimal:
@@ -241,10 +245,6 @@ class ExecutionEngine:
         day = datetime.now(UTC).date().isoformat()
         try:
             with db_connect(self._db_path) as con:
-                con.execute(
-                    "CREATE TABLE IF NOT EXISTS risk_day_state "
-                    "(k INTEGER PRIMARY KEY, utc_date TEXT NOT NULL, equity TEXT NOT NULL)"
-                )
                 row = con.execute(
                     "SELECT utc_date, equity FROM risk_day_state WHERE k=1"
                 ).fetchone()
