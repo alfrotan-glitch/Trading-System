@@ -349,11 +349,17 @@ def test_risk_veto_visibility(tmp_path, monkeypatch):
     assert "KILL_SWITCH_ACTIVE" not in j3["blocked_reasons"]
 
 
-def test_research_campaign_execution():
+def test_research_campaign_execution(tmp_path):
     from qts.data.store import SqliteParquetDataStore
     from qts.research.campaign import CampaignConfig, run_campaign
 
-    store = SqliteParquetDataStore()
+    from qts.data.bootstrap import bootstrap_data
+
+    fixture = Path(__file__).resolve().parents[1] / "data" / "fixtures" / "XAUUSD_1H_500.csv"
+    data_root = tmp_path / "data"
+    boot = bootstrap_data(root=data_root, fixture=fixture)
+    assert boot.ok, boot.messages
+    store = SqliteParquetDataStore(root=data_root)
     versions = store.list_versions()
     assert versions
     cfg = CampaignConfig(
@@ -367,7 +373,11 @@ def test_research_campaign_execution():
         max_param_combinations=3,
         seed=123,
     )
-    summary = run_campaign(cfg)
+    summary = run_campaign(
+        cfg,
+        store_path=data_root / "sqlite" / "qts.db",
+        registry_path=data_root / "sqlite" / "qts.db",
+    )
     assert summary["total_trials"] == 3
     assert summary["status"] == "COMPLETED"
     # never auto-promote solely high return: even if OOS high, passed should be 0
