@@ -182,9 +182,6 @@ class FakeTerminal:
     def terminal_info(self):
         return SimpleNamespace(connected=True, company="Example Brokers Ltd", build=4000)
 
-    def account_info(self):
-        return self.account
-
     def symbol_info(self, name):
         return self.symbol_spec if name == "XAUUSD@" else None
 
