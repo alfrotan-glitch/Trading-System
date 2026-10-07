@@ -621,7 +621,7 @@ class DemoOrderJournal:
         for row in rows:
             try:
                 running += Decimal(str(row_dict(row).get("realized_pnl")))
-            except Exception:
+            except (ArithmeticError, ValueError, TypeError):  # nosec B112 — malformed legacy P&L row is skipped, not security-sensitive
                 continue
             curve.append(running)
         return curve
