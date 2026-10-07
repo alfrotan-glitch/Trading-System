@@ -101,3 +101,26 @@ def test_required_protection_uses_stop_loss_not_stop_trigger(tmp_path):
     decision = engine.pre_trade(intent, _ctx(None))
 
     assert decision.allowed is True
+
+
+def test_first_position_counts_toward_exposure_limit(tmp_path):
+    engine = RiskEngine(
+        RiskLimits(max_exposure_lots=Decimal("1")),
+        db_path=tmp_path / "risk.db",
+    )
+    decision = engine.pre_trade(_intent(Side.BUY, "1.01"), _ctx(None))
+
+    assert decision.allowed is False
+    assert decision.veto_reason is RiskVetoReason.EXCEEDS_EXPOSURE
+
+
+def test_quantity_must_match_broker_step(tmp_path):
+    instrument = _instrument()
+    engine = RiskEngine(
+        RiskLimits(max_exposure_lots=Decimal("2")),
+        db_path=tmp_path / "risk.db",
+    )
+    decision = engine.pre_trade(_intent(Side.BUY, "0.015"), _ctx(None))
+
+    assert decision.allowed is False
+    assert decision.veto_reason is RiskVetoReason.QUANTITY_STEP_VIOLATION
