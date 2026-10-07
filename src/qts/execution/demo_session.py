@@ -911,25 +911,10 @@ class DemoSession:
         except Exception:
             audit = None
         self._idempotency = IdempotencyStore(db_path=self.db_path)
-        from qts.risk.authority import resolve_risk_limits_from_settings
+        from qts.risk.authority import engine_limits_from, resolve_risk_limits_from_settings
 
         snapshot = resolve_risk_limits_from_settings(ExecutionMode.DEMO_EXECUTION)
-        limits = RiskLimits(
-            max_quantity=snapshot.limits.max_quantity,
-            min_quantity=snapshot.limits.min_quantity,
-            quantity_step=snapshot.limits.quantity_step,
-            max_notional=snapshot.limits.max_notional,
-            max_risk_per_trade_bps=snapshot.limits.max_risk_per_trade_bps,
-            max_exposure_lots=snapshot.limits.max_exposure_lots,
-            max_exposure_notional=snapshot.limits.max_exposure_notional,
-            max_leverage=snapshot.limits.max_leverage,
-            max_open_orders=snapshot.limits.max_open_orders,
-            daily_loss_limit=snapshot.limits.daily_loss_limit,
-            max_drawdown=snapshot.limits.max_drawdown,
-            volatility_target=snapshot.limits.volatility_target,
-            kill_switch_enabled=True,
-            stop_loss_required=bool(snapshot.limits.stop_loss_required),
-        )
+        limits = engine_limits_from(snapshot)
         self._risk = RiskEngine(limits, db_path=self.db_path, persist_kill=True)
         portfolio = Portfolio(initial_balance=Decimal("0"))  # broker equity is authoritative
         self._engine = ExecutionEngine(
