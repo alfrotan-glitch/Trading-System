@@ -460,6 +460,27 @@ class MT5Adapter(BrokerAdapter):
             ).fetchone()
             return row[0] if row else None
 
+    def _load_comment_created_at(self, client_order_id: str) -> datetime | None:
+        """Return the persisted broker-attribution start time for one client order."""
+        with db_connect(self._db_path) as con:
+            row = con.execute(
+                "SELECT created_at FROM mt5_comment_map WHERE client_order_id=?",
+                (client_order_id,),
+            ).fetchone()
+        if not row or not row[0]:
+            return None
+        try:
+            value = datetime.fromisoformat(str(row[0]))
+        except ValueError as exc:
+            raise RuntimeError(
+                f"invalid persisted MT5 comment timestamp for {client_order_id}: {row[0]!r}"
+            ) from exc
+        if value.tzinfo is None:
+            raise RuntimeError(
+                f"persisted MT5 comment timestamp is naive for {client_order_id}: {row[0]!r}"
+            )
+        return value.astimezone(UTC)
+
     def _reverse_comment_map(self, comment: str) -> str | None:
         with db_connect(self._db_path) as con:
             row = con.execute("SELECT client_order_id FROM mt5_comment_map WHERE mt5_comment=?", (comment,)).fetchone()
@@ -1871,10 +1892,21 @@ class MT5Adapter(BrokerAdapter):
         """Fetch recent broker deals; history errors are execution-unsafe."""
         mt5 = self._require_mt5()
         try:
-            from datetime import timedelta
-
             now = datetime.now(UTC)
-            start = now - timedelta(days=30)
+            if client_order_id:
+                start = self._load_comment_created_at(client_order_id)
+                if start is None:
+                    raise RuntimeError(
+                        f"no persisted creation time for correlated client order {client_order_id}"
+                    )
+            else:
+                # Uncorrelated history is intentionally bounded. Execution paths
+                # must always provide a client_order_id; this branch is retained
+                # only for diagnostics/legacy callers and must never drive fill
+                # attribution.
+                from datetime import timedelta
+
+                start = now - timedelta(days=30)
             deals = mt5.history_deals_get(start, now)
         except Exception as exc:
             raise ConnectionError(f"MT5 deal history unavailable: {exc}") from exc
