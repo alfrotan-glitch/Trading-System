@@ -477,7 +477,15 @@ class RiskEngine:
                 resized_steps = (intent.quantity * factor / step).to_integral_value(rounding=ROUND_FLOOR)
                 resized = resized_steps * step
                 if resized < self.limits.min_quantity:
-                    resized = self.limits.min_quantity
+                    return RiskDecision(
+                        allowed=False,
+                        veto_reason=RiskVetoReason.QUANTITY_BELOW_MIN,
+                        reason_detail=f"volatility resize would produce {resized}, below minimum {self.limits.min_quantity}",
+                        price=est_price,
+                        price_source=price_source,
+                        notional=notional,
+                        symbol=sym,
+                    )
                 return RiskDecision(
                     allowed=True,
                     resized_quantity=resized,
