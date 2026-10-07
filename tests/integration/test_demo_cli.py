@@ -497,4 +497,4 @@ def test_engine_limits_mapping_preserves_canonical_safety_fields() -> None:
     assert limits.max_exposure_notional == snapshot.limits.max_exposure_notional
     assert limits.volatility_target == snapshot.limits.volatility_target
     assert limits.kill_switch_enabled is True
-\n
+
