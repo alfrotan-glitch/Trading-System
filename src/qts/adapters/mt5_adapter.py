@@ -1741,25 +1741,22 @@ class MT5Adapter(BrokerAdapter):
         )
 
     def history_deals(self, client_order_id: str | None = None) -> list[Any]:
-        """Fetch deals for reconciliation — deals are fills."""
+        """Fetch recent broker deals; history errors are execution-unsafe."""
         mt5 = self._require_mt5()
-        # Use history_deals_get with date range — for now last 30 days
         try:
-            # Need to ensure history is selected
-            from datetime import datetime, timedelta
+            from datetime import timedelta
 
             now = datetime.now(UTC)
             start = now - timedelta(days=30)
             deals = mt5.history_deals_get(start, now)
-            if deals is None:
-                return []
-            if client_order_id:
-                comment = self._load_comment_map(client_order_id) or mt5_comment_for(client_order_id)
-                # Filter by comment
-                return [d for d in deals if getattr(d, "comment", "") == comment]
-            return list(deals)
-        except Exception:
-            return []
+        except Exception as exc:
+            raise ConnectionError(f"MT5 deal history unavailable: {exc}") from exc
+        if deals is None:
+            raise ConnectionError(f"MT5 deal history unavailable: {mt5.last_error()}")
+        if client_order_id:
+            comment = self._load_comment_map(client_order_id) or mt5_comment_for(client_order_id)
+            return [d for d in deals if getattr(d, "comment", "") == comment]
+        return list(deals)
 
     def poll_fills(self, client_order_id: str) -> list[Any]:
         """Poll for fills (deals) — used by ExecutionEngine live path.
