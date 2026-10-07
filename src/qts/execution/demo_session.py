@@ -573,9 +573,16 @@ class DemoSession:
                 volume=close_volume,
                 comment=close_comment,
             )
-        except (TimeoutError, ConnectionError) as exc:
-            # The venue may have accepted the request even though transport
-            # failed. Never label the position closed and never retry blindly.
+        except Exception as exc:
+            # The venue may have accepted the request even though transport or
+            # adapter handling failed. Never label the position closed and never
+            # retry blindly when the outcome may be unknown.
+            ambiguous = isinstance(exc, (TimeoutError, ConnectionError)) or any(
+                token in str(exc).lower()
+                for token in ("timeout", "connection", "network", "disconnected", "ambiguous", "unknown")
+            )
+            if not ambiguous:
+                raise
             self.stage.halt(
                 reason=f"ambiguous close outcome for ticket {ticket_int}: {exc}",
                 actor=actor or self.config.actor,
@@ -638,10 +645,23 @@ class DemoSession:
                 "error": f"close fill synchronization failed: {exc}",
                 "reconciliation": self.reconcile(),
             }
-        remaining = [
-            p for p in self.adapter.position_details()
-            if int(p.get("ticket")) == ticket_int
-        ]
+        try:
+            remaining = [
+                p for p in self.adapter.position_details()
+                if int(p.get("ticket")) == ticket_int
+            ]
+        except Exception as exc:
+            self.stage.halt(
+                reason=f"post-close venue position verification failed for ticket {ticket_int}",
+                actor=actor or self.config.actor,
+            )
+            return {
+                "success": False,
+                "state": "AMBIGUOUS",
+                "ticket": ticket_int,
+                "error": f"post-close venue verification failed: {type(exc).__name__}: {exc}",
+                "reconciliation": self.reconcile(),
+            }
         fully_closed = not remaining
         matched_journal_row: dict[str, Any] | None = None
         for row in self.journal.open_orders():
@@ -649,19 +669,49 @@ class DemoSession:
                 matched_journal_row = row
                 break
 
+        if fully_closed and matched_journal_row is None:
+            self.stage.halt(
+                reason=f"venue position {ticket_int} closed but no matching local journal row was found",
+                actor=actor or self.config.actor,
+            )
+            reconciliation = self.reconcile()
+            return {
+                "success": False,
+                "state": "AMBIGUOUS",
+                "ticket": ticket_int,
+                "receipt": receipt,
+                "error": "venue closed but local journal lifecycle could not be matched",
+                "reconciliation": reconciliation,
+            }
+
         if fully_closed and matched_journal_row is not None:
             profit = Decimal(str(matching_pos.get("profit") or "0"))
-            self.journal.mark_outcome(
-                int(matched_journal_row["journal_id"]),
-                state="CLOSED",
-                exit_reason=reason,
-                realized_pnl=profit,
-                market_state_exit={
-                    "price_current": matching_pos.get("price_current"),
-                    "close_receipt": receipt,
-                    "closed_by": actor or self.config.actor,
-                },
-            )
+            try:
+                self.journal.mark_outcome(
+                    int(matched_journal_row["journal_id"]),
+                    state="CLOSED",
+                    exit_reason=reason,
+                    realized_pnl=profit,
+                    market_state_exit={
+                        "price_current": matching_pos.get("price_current"),
+                        "close_receipt": receipt,
+                        "closed_by": actor or self.config.actor,
+                    },
+                )
+            except Exception as exc:
+                self.stage.halt(
+                    reason=f"local close journal persistence failed for ticket {ticket_int}",
+                    actor=actor or self.config.actor,
+                )
+                reconciliation = self.reconcile()
+                return {
+                    "success": False,
+                    "state": "AMBIGUOUS",
+                    "ticket": ticket_int,
+                    "receipt": receipt,
+                    "error": f"local close journal persistence failed: {type(exc).__name__}: {exc}",
+                    "reconciliation": reconciliation,
+                }
 
         reconciliation = self.reconcile()
         if reconciliation.get("requires_suspend"):
