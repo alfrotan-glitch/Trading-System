@@ -27,6 +27,87 @@ class DataProvider(ABC):
         ...
 
 
+def ingestion_pipeline(
+    provider: DataProvider,
+    instrument: str,
+    timeframe: str,
+    start: datetime,
+    end: datetime,
+    *,
+    raw_dir: Path,
+    store_dir: Path,
+) -> dict[str, object]:
+    """Run one immutable provider-to-raw-to-parse-to-validated-store ingestion.
+
+    The raw provider response is written once and never repaired or overwritten.
+    The curated dataset is produced only through SqliteParquetDataStore's
+    validation gate, and the returned evidence binds the raw checksum to the
+    immutable dataset version and quality result.
+    """
+    if start.tzinfo is None or end.tzinfo is None:
+        raise ValueError("ingestion window must be timezone-aware")
+    if end <= start:
+        raise ValueError("ingestion end must be after start")
+
+    raw_dir = Path(raw_dir)
+    store_dir = Path(store_dir)
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    store = SqliteParquetDataStore(root=store_dir)
+
+    start_tag = start.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
+    end_tag = end.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
+    provider_tag = str(provider.provider_id).replace("/", "_")
+    raw_path = raw_dir / f"{instrument}_{timeframe}_{start_tag}_{end_tag}_{provider_tag}.raw"
+    if raw_path.exists():
+        raise FileExistsError(
+            f"raw ingestion target already exists: {raw_path} — refusing to overwrite immutable source bytes"
+        )
+
+    fetched = Path(provider.fetch(instrument, timeframe, start, end, raw_path))
+    if not fetched.is_file():
+        raise FileNotFoundError(f"provider returned no raw file: {fetched}")
+    raw_bytes = fetched.read_bytes()
+    if not raw_bytes:
+        raise ValueError(f"provider returned an empty raw file: {fetched}")
+    raw_checksum = "sha256:" + hashlib.sha256(raw_bytes).hexdigest()
+
+    bars = provider.parse(fetched, instrument, timeframe)
+    if not bars:
+        raise ValueError("provider parsed zero bars — refusing to create a dataset version")
+
+    manifest = store.write_bars(
+        bars,
+        source_file=str(fetched),
+        source=f"{provider.provider_id}:{instrument}:{timeframe}",
+        source_provider=provider.provider_id,
+        source_feed=provider.provider_id,
+        source_venue=bars[0].instrument.venue if bars else None,
+    )
+    quality = validate_bars(bars, timeframe)
+    return {
+        "schema": "qts.provider_ingestion_evidence.v1",
+        "dataset_id": manifest.version,
+        "raw_path": str(fetched),
+        "raw_checksum": raw_checksum,
+        "raw_bytes": len(raw_bytes),
+        "provider": provider.provider_id,
+        "instrument": instrument,
+        "timeframe": timeframe,
+        "start": start.astimezone(UTC).isoformat(),
+        "end": end.astimezone(UTC).isoformat(),
+        "ingestion_timestamp": datetime.now(UTC).isoformat(),
+        "never_overwritten": True,
+        "rows": len(bars),
+        "quality_report": {
+            "passed": bool(quality.passed),
+            "checks": [
+                {"name": check.name, "passed": bool(check.passed), "details": check.details}
+                for check in quality.checks
+            ],
+        },
+    }
+
+
 class CsvProvider(DataProvider):
     provider_id = "csv"
     description = "CSV file on disk — local synthetic or exported history"
