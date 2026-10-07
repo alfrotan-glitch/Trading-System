@@ -397,7 +397,8 @@ def evaluate_temporal(scan: TemporalScan, *, complete_rows: int = DISCOVERY_ROWS
         status = "INCONCLUSIVE"
     elif not floor_pass:
         status = "REJECTED"
-        assert primary_stats is not None
+        if primary_stats is None:  # nosec B101 — guarded by the floor gate above
+            raise RuntimeError("primary statistics unexpectedly unavailable")
         reasons.append(f"floor miss: ratio {primary_stats['ratio']:.3f} < {MIN_RATIO} or gap ${primary_stats['gap_dollars']:.3f} < ${MIN_GAP_DOLLARS} or lift {primary_stats['lift']:.3f} < {MIN_LIFT}")
     elif not artifact_pass:
         status = "REJECTED"
