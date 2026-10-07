@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 from qts.config.paths import artifact_path
 
-DEFAULT_TRUSTED_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "testserver"})
+DEFAULT_TRUSTED_HOSTS = frozenset({"localhost", "127.0.0.1", "testserver"})
 
 
 def _is_trusted_origin(origin_or_url: str | None) -> bool:
