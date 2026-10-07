@@ -117,7 +117,7 @@ def test_venue_closed_without_matching_journal_row_is_ambiguous():
     result = DemoSession.close_position(session, 123)
 
     assert result["state"] == "AMBIGUOUS"
-    assert "no matching local journal row" in result["error"]
+    assert "local journal lifecycle could not be matched" in result["error"]
     assert session.stage.halts
 
 
