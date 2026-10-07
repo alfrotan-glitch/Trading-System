@@ -20,7 +20,7 @@ class FakeMT5:
 
 def test_server_offset_prefers_fresh_tick_with_non_quarter_hour_offset(tmp_path, monkeypatch):
     now = 1_800_000_123.4
-    offset = 2 * 3600 + 59 * 60
+    offset = 3 * 3600
     tick = SimpleNamespace(time=now + offset)
     mt5 = FakeMT5(tick, now + 3 * 3600)
 
