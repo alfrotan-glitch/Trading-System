@@ -157,6 +157,7 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
     """Run the controlled loop until a stop condition fires (never on LIVE)."""
     report = AutopilotReport(started_at=datetime.now(UTC).isoformat())
     providers: dict[str, Any] = {}
+    warmed_up: set[str] = set()
     journal: DemoOrderJournal = session.journal
     stage_machine: DemoStageMachine = session.stage
     started = time.monotonic()
@@ -273,6 +274,17 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
                 if not code_ok:
                     halt(f"code drift: {code_detail}")
 
+            # ---- 2b. bounded restart warmup --------------------------------
+            # A restarted process would otherwise need ~12h of live bars before
+            # a bar-based strategy can cross over. Seed the provider ONCE per
+            # run from a bounded window of *completed* bars (never the forming
+            # bar, never fabricated). Warmup is an availability feature, not a
+            # safety gate: an unavailable or short window leaves the provider
+            # warming up live and is recorded.
+            if entry.strategy_id not in warmed_up:
+                warmed_up.add(entry.strategy_id)
+                _seed_provider_history(session, provider, note)
+
             # ---- 3. market state -------------------------------------------
             quote = session._quote_probe()
             if not quote.get("ok"):
@@ -286,6 +298,7 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
                 "spread_bps": quote.get("spread_bps"),
                 "age_s": quote.get("age_s"),
                 "event_time": quote.get("event_time"),
+                "timestamp_basis": quote.get("offset_basis"),
                 "at": datetime.now(UTC).isoformat(),
             }
 
@@ -358,6 +371,63 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
     finally:
         report.finished_at = datetime.now(UTC).isoformat()
     return report
+
+
+def _seed_provider_history(session: Any, provider: Any, note: Any) -> None:
+    """Seed a bar-based provider with bounded completed history (best effort).
+
+    The provider declares what it needs (``warmup_plan``); the canonical
+    terminal source answers with completed bars only. Every outcome is recorded
+    in the report so a warmup that silently did nothing is visible.
+    """
+    plan_fn = getattr(provider, "warmup_plan", None)
+    seed_fn = getattr(provider, "seed_completed_bars", None)
+    if not callable(plan_fn) or not callable(seed_fn):
+        return  # provider needs no history
+    loader = getattr(session, "recent_completed_bars", None)
+    if not callable(loader):
+        note("warmup_skipped", {"reason": "session exposes no completed-bar source"})
+        return
+    try:
+        plan = dict(plan_fn() or {})
+    except Exception as exc:
+        note("warmup_failed", {"stage": "plan", "error": f"{type(exc).__name__}: {exc}"})
+        return
+    try:
+        window = loader(
+            timeframe_minutes=int(plan.get("timeframe_minutes") or 0),
+            count=int(plan.get("bars") or 0),
+        )
+    except Exception as exc:
+        note("warmup_failed", {"stage": "load", "error": f"{type(exc).__name__}: {exc}"})
+        return
+    if not isinstance(window, dict) or not window.get("ok"):
+        note("warmup_skipped", {"reason": str((window or {}).get("error") or "no completed-bar window")})
+        return
+    bars = list(window.get("bars") or [])
+    source = (
+        f"mt5-m{int(window.get('timeframe_minutes') or plan.get('timeframe_minutes') or 0)}-rates"
+        f"/{window.get('basis')}"
+    )
+    try:
+        outcome = seed_fn(bars, source=source)
+    except Exception as exc:
+        note("warmup_failed", {"stage": "seed", "error": f"{type(exc).__name__}: {exc}"})
+        return
+    note(
+        "warmup",
+        {
+            "provider": str(getattr(provider, "strategy_id", "")),
+            "source": source,
+            "offered_bars": len(bars),
+            "accepted_bars": int((outcome or {}).get("bars") or 0),
+            "accepted": bool((outcome or {}).get("accepted")),
+            "reason": (outcome or {}).get("reason"),
+            "first_bar": (outcome or {}).get("first_bar"),
+            "last_bar": (outcome or {}).get("last_bar"),
+            "forming_bar_excluded": bool(window.get("forming_bar_excluded")),
+        },
+    )
 
 
 def _verify_code_hash(policy: Any, provider: Any) -> tuple[bool, str]:

@@ -87,6 +87,43 @@ class NoSignalProvider(FakeSignalProvider):
         return None
 
 
+class WarmupAwareProvider(NoSignalProvider):
+    """Bar-based fixture provider that declares a bounded warmup plan.
+
+    Its purpose is to prove the *seeding* contract: the loop asks the provider
+    what it needs, loads exactly that from the venue, hands it over once, and
+    records what happened. It never trades, so the test can assert warmup
+    without depending on the order path.
+    """
+
+    TIMEFRAME_MINUTES = 15
+    WARMUP_BARS = 3
+
+    def __init__(self, params: dict[str, Any] | None = None) -> None:
+        super().__init__(params)
+        self.seed_calls = 0
+        self.seeded: list[tuple[Any, Any]] = []
+        self.sources: list[str] = []
+
+    def warmup_plan(self) -> dict[str, Any]:
+        return {"timeframe_minutes": self.TIMEFRAME_MINUTES, "bars": self.WARMUP_BARS, "completed_only": True}
+
+    def seed_completed_bars(self, bars: list[tuple[Any, Any]], *, source: str = "") -> dict[str, Any]:
+        self.seed_calls += 1
+        self.seeded = list(bars)
+        self.sources.append(source)
+        return {
+            "accepted": True,
+            "bars": len(self.seeded),
+            "supplied_bars": len(bars),
+            "truncated": False,
+            "source": source,
+            "first_bar": self.seeded[0][0] if self.seeded else None,
+            "last_bar": self.seeded[-1][0] if self.seeded else None,
+            "completed_only": True,
+        }
+
+
 class DriftingSignalProvider(FakeSignalProvider):
     """Provider whose runtime parameters no longer match the registration."""
 
@@ -260,5 +297,6 @@ __all__ = [
     "FakeSignalProvider",
     "NoSignalProvider",
     "SelfOptimizingProvider",
+    "WarmupAwareProvider",
     "registry_entry",
 ]
