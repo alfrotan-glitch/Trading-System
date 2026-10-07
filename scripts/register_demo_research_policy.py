@@ -1,24 +1,30 @@
-"""Register (or re-seal) the DEMO forward research policy in the registry.
+"""Re-seal the shipped DEMO forward research policy in the registry.
 
 Why this is a script and not a hand-written JSON edit
-----------------------------------------------------
-The registry entry pins three hashes:
+-----------------------------------------------------
+The registry entry pins four hashes:
 
-* ``config_hash`` — the fingerprint of the frozen parameter set;
-* ``code_hash``   — the sha256 of the signal-provider source file;
-* ``params_hash`` — the registry's own fingerprint of ``params``.
+* ``params_hash`` — registry fingerprint of the frozen parameter set;
+* ``config_hash`` — the same fingerprint inside the policy document;
+* ``code_hash``   — sha256 of the signal-provider source file on disk;
+* ``policy_hash`` — fingerprint of the policy document itself.
 
-Hand-editing those into a JSON file is how a registry entry comes to *claim* a
-hash it does not have. This script recomputes all three from the files on disk,
-validates the complete policy with :func:`qts.lifecycle.demo_policy.validate_policy`,
-and only then writes the registry. Re-running it after a legitimate,
-preregistered change re-seals the entry; running it after an unpreregistered
-edit will still seal it, which is exactly why the change-control rule in
-``docs/preregistration_demo_execution_probe_2026-09-24.md`` §6 exists and why
-the run is auditable in git.
+Hand-editing them is how a registry comes to *claim* a hash it does not have —
+which is exactly the state this repository shipped once (the entry's ``params``
+block and its declared ``params_hash`` disagreed, so the registry was invalid
+and the strategy ineligible). This script recomputes every hash from the files
+on disk, proves that each quantity registered twice (parsed parameters vs the
+policy's mirrored limits) still agrees, validates the complete policy, and only
+then writes the registry.
 
-Usage:  python scripts/register_demo_research_policy.py [--check]
-        --check  validate the current registry without writing it.
+The frozen parameters are read from the provider module's ``DEFAULT_PARAMS`` —
+the single source of truth — never from a copy kept inside this script, so a
+parameter cannot drift without the runtime ``config_hash()`` drifting with it.
+
+Usage::
+
+    python scripts/register_demo_research_policy.py            # re-seal
+    python scripts/register_demo_research_policy.py --check    # validate only
 """
 
 from __future__ import annotations
@@ -32,285 +38,230 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
-from qts.lifecycle.demo_policy import (  # noqa: E402
-    POLICY_CLASS,
-    POLICY_SCHEMA,
-    policy_fingerprint,
-    validate_policy,
-)
+from qts.adapters.mt5_adapter import MT5Adapter  # noqa: E402
+from qts.lifecycle.demo_policy import policy_fingerprint  # noqa: E402
 from qts.lifecycle.demo_registry import (  # noqa: E402
-    DEFAULT_REGISTRY_PATH,
-    REGISTRY_SCHEMA_V2,
+    DIAGNOSTIC_STATUSES,
     load_registry,
     params_fingerprint,
     resolve_entry,
 )
-from qts.research.demo_execution_probe import DEFAULT_PARAMS, STRATEGY_ID  # noqa: E402
+from qts.research import demo_trend_tsmom  # noqa: E402
 
-POLICY_ID = "DEMOPOL-EXEC-COST-XAUUSD-2026-09-24-V1"
-HYPOTHESIS_ID = "H-EXEC-01"
-PREREGISTRATION = "docs/preregistration_demo_execution_probe_2026-09-24.md"
-PROVIDER_SOURCE = REPO / "src/qts/research/demo_execution_probe.py"
-
-#: Mapping to the broker symbol the DEMO venue actually exposes.
-BROKER_SYMBOL = "XAUUSD@"
+#: The registry file is the shipped evidence document; this script edits it in place.
+REGISTRY_PATH = REPO / "data/evidence/demo_forward_validation_registry_2026-09-23.json"
+PROVIDER_SOURCE = Path(demo_trend_tsmom.__file__).resolve()
 
 
-def build_policy(params: dict, code_hash: str, config_hash: str) -> dict:
-    """The complete, frozen specification of the forward experiment."""
-    return {
-        "schema": POLICY_SCHEMA,
-        "policy_id": POLICY_ID,
-        "strategy_id": STRATEGY_ID,
-        "policy_class": POLICY_CLASS,
-        "version": "1.0.0",
-        "created_at": "2026-09-24T00:00:00+00:00",
-        "preregistration_artifact": PREREGISTRATION,
-        "hypothesis_id": HYPOTHESIS_ID,
-        "purpose": (
-            "Measure the DEMO venue's execution cost and control behaviour — spread at entry, slippage "
-            "between requested and executed price, submission latency, protective-stop behaviour, "
-            "time-exit behaviour, round-turn cost and reconciliation agreement — so that any future "
-            "hypothesis can be judged against a known cost base. No directional or predictive claim."
-        ),
-        # ---------------------------------------------------------- honesty
-        "validated_edge": False,
-        "edge_statement": (
-            "This policy does not establish a validated edge and must not be read as one: it is a "
-            "DEMO forward measurement instrument. Entries are scheduled and direction-neutral, so any "
-            "P&L reflects venue cost plus noise. DEMO performance does not constitute evidence of a "
-            "durable, live-tradeable edge, and observations recorded under this policy may never be "
-            "used to re-fit it or to select another strategy."
-        ),
-        # ----------------------------------------------------------- logic
-        "signal_logic": {
-            "type": "scheduled_sampling",
-            "description": (
-                "At most one entry per UTC hour, gated only on cost and data quality: a two-sided "
-                "quote must exist, its age must be within max_tick_age_s, and the spread must be "
-                "measurable (and within max_spread_bps before the provider requests an order)."
-            ),
-            "indicators": [],
-            "prediction": "none — this policy makes no directional claim",
-        },
-        "entry_conditions": {
-            "sample_interval_minutes": 60,
-            "side_rule": "utc_hour_parity",
-            "side_rule_detail": "BUY when the UTC hour is even, SELL when odd — deterministic and direction-neutral across samples",
-            "require_two_sided_quote": True,
-            "require_spread_measurable": True,
-            "require_spread_within_max_spread_bps": True,
-            "max_positions_open": 1,
-        },
-        "exit_conditions": {
-            "max_hold_seconds": 900,
-            "take_profit": None,
-            "close_at_session_end": True,
-            "detail": (
-                "Close at 900 s, or earlier if the venue protective stop is hit. Exit reason and the "
-                "venue's realized P&L are recorded either way; no discretionary exit."
-            ),
-        },
-        "stop_loss_logic": {
-            "required": True,
-            "type": "fixed_price_distance",
-            "distance_price": 2.00,
-            "detail": "Protective stop 2.00 USD from the entry reference (ask for BUY, bid for SELL), attached to the order itself.",
-        },
-        "position_sizing": {
-            "mode": "broker_minimum",
-            "lots": 0.01,
-            "detail": "Broker minimum regardless of equity — deterministic exposure, no equity-dependent sizing.",
-        },
-        # ---------------------------------------------------------- limits
-        "max_simultaneous_exposure_lots": 0.01,
-        "max_daily_loss": 5.00,
-        "max_drawdown": 10.00,
-        "max_orders_per_day": 2,
-        "min_order_interval_s": 900,
-        # ---------------------------------------------------------- market
-        "allowed_symbols": ["XAUUSD"],
-        "allowed_trading_hours": {
-            "timezone": "UTC",
-            "sessions": [
-                {
-                    "days": ["MON", "TUE", "WED", "THU", "FRI"],
-                    "start": "08:00",
-                    "end": "16:00",
-                }
-            ],
-            "detail": (
-                "London–New York overlap for XAUUSD: the liquid window in which a spread measurement is "
-                "representative rather than a rollover artefact. No weekend or rollover sampling."
-            ),
-        },
-        "max_spread_bps": 3.0,
-        "max_slippage_bps": 2.0,
-        # ------------------------------------------------------- execution
-        "execution_delay_assumption_ms": 1500,
-        "min_data_requirements": {
-            "requires_historical_dataset": False,
-            "required_checks": [
-                "market_data_fresh",
-                "spread_available",
-                "broker_order_check",
-                "symbol_mapping_canonical",
-                "risk_limits_resolved",
-                "kill_switch_functional",
-                "reconciliation_ready",
-            ],
-            "detail": "Signal generation uses live venue quotes only; no historical dataset is consumed.",
-        },
-        "stale_data_protection": {
-            "max_tick_age_s": 5.0,
-            "on_stale": "NO_TRADE",
-        },
-        "duplicate_order_protection": {
-            "idempotency_required": True,
-            "min_order_interval_s": 900,
-        },
-        # -------------------------------------------------------- controls
-        "kill_conditions": [
-            "daily_loss_limit",
-            "max_drawdown",
-            "kill_switch",
-            "reconciliation_suspension",
-            "reconciliation_drift",
-            "parameter_drift",
-            "code_drift",
-            "identity_mismatch",
-            "authorization_revoked",
-            "stage_not_order_permitted",
-            "market_data_stale",
-        ],
-        "reconciliation_requirements": {
-            "after_every_order": True,
-            "after_every_close": True,
-            "max_age_s": 120.0,
-            "on_drift": "HALT",
-        },
-        # -------------------------------------------------------- provenance
-        "code_hash": code_hash,
-        "config_hash": config_hash,
-        "data_hash": None,
-        "data_hash_note": (
-            "No historical dataset is consumed: requires_historical_dataset=false. The only data input "
-            "is the pinned DEMO venue's live quote stream, whose provenance is the identity pin at "
-            "data/evidence/demo_broker_identity_pin.json — there is no static dataset to hash."
-        ),
-        "code_source": str(PROVIDER_SOURCE.relative_to(REPO).as_posix()),
+def _mirrors(entry: dict, params: dict) -> list[str]:
+    """Every quantity that is registered twice must still agree.
+
+    A parsed parameter drives the signal; the policy's copy is what the gate
+    enforces. Two declarations of the same number that are never compared is how
+    an order comes to carry a stop nobody registered.
+    """
+    policy = dict(entry.get("policy") or {})
+    entry_conditions = dict(policy.get("entry_conditions") or {})
+    problems: list[str] = []
+
+    def compare(label: str, left, right) -> None:
+        if left is None or right is None:
+            problems.append(f"{label}: one side is missing ({left!r} vs {right!r})")
+            return
+        try:
+            if abs(float(left) - float(right)) > 1e-9:
+                problems.append(f"{label}: {left!r} != {right!r}")
+        except (TypeError, ValueError):
+            if left != right:
+                problems.append(f"{label}: {left!r} != {right!r}")
+
+    compare("entry_conditions.fast_ema", entry_conditions.get("fast_ema"), params.get("fast_ema"))
+    compare("entry_conditions.slow_ema", entry_conditions.get("slow_ema"), params.get("slow_ema"))
+    compare(
+        "signal_logic.bar_timeframe_minutes",
+        (policy.get("signal_logic") or {}).get("bar_timeframe_minutes"),
+        params.get("bar_timeframe_minutes"),
+    )
+    compare(
+        "entry_conditions.bar_timeframe_minutes",
+        entry_conditions.get("bar_timeframe_minutes"),
+        params.get("bar_timeframe_minutes"),
+    )
+    compare(
+        "stop_loss_logic.distance_price",
+        (policy.get("stop_loss_logic") or {}).get("distance_price"),
+        params.get("stop_distance_price"),
+    )
+    compare(
+        "exit_conditions.max_hold_seconds",
+        (policy.get("exit_conditions") or {}).get("max_hold_seconds"),
+        params.get("max_hold_seconds"),
+    )
+    compare(
+        "stale_data_protection.max_tick_age_s",
+        (policy.get("stale_data_protection") or {}).get("max_tick_age_s"),
+        params.get("max_tick_age_s"),
+    )
+    compare("position_sizing.lots", (policy.get("position_sizing") or {}).get("lots"), params.get("lots"))
+    compare("size_policy.lots", (entry.get("size_policy") or {}).get("lots"), params.get("lots"))
+    compare(
+        "stop_policy.distance_price",
+        (entry.get("stop_policy") or {}).get("distance_price"),
+        params.get("stop_distance_price"),
+    )
+    compare(
+        "exit_policy.max_hold_seconds",
+        (entry.get("exit_policy") or {}).get("max_hold_seconds"),
+        params.get("max_hold_seconds"),
+    )
+    compare("max_orders_per_day", policy.get("max_orders_per_day"), entry.get("max_orders_per_day"))
+    return problems
+
+
+def _provider_instance():
+    """A provider instance used only to read its declared warmup plan."""
+    return demo_trend_tsmom.TrendTimeSeriesMomentum()
+
+
+def reseal(doc: dict) -> tuple[dict, list[str]]:
+    """Return the registry document with every hash recomputed from disk."""
+    problems: list[str] = []
+    doc = json.loads(json.dumps(doc))  # never mutate the caller's document
+    params = json.loads(json.dumps(demo_trend_tsmom.DEFAULT_PARAMS))  # JSON types, verbatim
+    strategy_id = demo_trend_tsmom.STRATEGY_ID
+
+    entries = [e for e in (doc.get("entries") or []) if isinstance(e, dict)]
+    target = next((e for e in entries if e.get("strategy_id") == strategy_id), None)
+    if target is None:
+        return doc, [
+            f"refusing to register: {strategy_id} is not the shipped registry entry "
+            f"(found {[e.get('strategy_id') for e in entries]})"
+        ]
+
+    status = str(target.get("status") or "").upper()
+    if status not in DIAGNOSTIC_STATUSES:
+        problems.append(f"entry {strategy_id}: status {status!r} is not a DEMO diagnostic status — fail closed")
+    if str(target.get("signal_provider") or "") != (
+        f"{demo_trend_tsmom.__name__}:{demo_trend_tsmom.TrendTimeSeriesMomentum.__name__}"
+    ):
+        problems.append(
+            f"entry {strategy_id}: signal_provider {target.get('signal_provider')!r} does not point at the provider"
+        )
+    preregistration = str(target.get("preregistration_artifact") or "")
+    if not preregistration or not (REPO / preregistration).exists():
+        problems.append(f"entry {strategy_id}: preregistration_artifact {preregistration!r} does not exist")
+
+    policy = target.get("policy")
+    if not isinstance(policy, dict):
+        return doc, problems + [f"entry {strategy_id}: no policy block — an unspecified experiment may not trade"]
+
+    problems.extend(f"entry {strategy_id}: {p}" for p in _mirrors(target, params))
+    if policy.get("validated_edge") is not False:
+        problems.append(f"entry {strategy_id}: validated_edge must be false — no validated edge is claimed")
+
+    # The bounded restart window is a *registered* quantity, not an implementation
+    # detail: it decides how much history a restarted process consults before it
+    # is allowed to trade.
+    data_requirements = dict(policy.get("min_data_requirements") or {})
+    if data_requirements.get("requires_historical_dataset") is not False:
+        problems.append(
+            f"entry {strategy_id}: min_data_requirements.requires_historical_dataset must be false — "
+            "warmup reads a bounded restart window, not a backtest dataset"
+        )
+    plan = demo_trend_tsmom.TrendTimeSeriesMomentum.warmup_plan(_provider_instance())
+    data_requirements["restart_warmup"] = {
+        "timeframe_minutes": int(plan["timeframe_minutes"]),
+        "bars": int(plan["bars"]),
+        "completed_only": bool(plan["completed_only"]),
+        "max_bars": int(MT5Adapter.MAX_WARMUP_BARS),
+        "source": "broker completed M15 bars (forming bar excluded)",
+        "on_unavailable": "start cold and warm up live; never fabricate history",
     }
+    policy["min_data_requirements"] = data_requirements
 
-
-def build_entry(params: dict, code_hash: str, config_hash: str) -> dict:
-    return {
-        "strategy_id": STRATEGY_ID,
-        # ELIGIBLE_DIAGNOSTIC, not ELIGIBLE: this may trade to MEASURE, and it
-        # carries no validated edge. Only a strategy with a validation artifact
-        # may be registered as ELIGIBLE.
-        "status": "ELIGIBLE_DIAGNOSTIC",
-        "hypothesis_id": HYPOTHESIS_ID,
-        "preregistration_artifact": PREREGISTRATION,
-        "signal_provider": "qts.research.demo_execution_probe:ExecutionCostProbe",
-        "params": params,
-        "params_hash": params_fingerprint(params),
-        "size_policy": {"mode": "broker_minimum", "lots": 0.01},
-        "stop_policy": {"required": True, "type": "fixed_price_distance", "distance_price": 2.00},
-        "exit_policy": {"max_hold_seconds": 900.0, "close_at_session_end": True},
-        "allowed_symbols": ["XAUUSD"],
-        "broker_symbol": BROKER_SYMBOL,
-        "max_orders_per_day": 2,
-        "notes": (
-            "DEMO_FORWARD_RESEARCH_POLICY — execution-cost probe for the DEMO account. Not a validated "
-            "strategy; see " + PREREGISTRATION + "."
-        ),
-        "policy": build_policy(params, code_hash, config_hash),
-    }
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="validate the registry without writing")
-    parser.add_argument("--registry", default=str(REPO / DEFAULT_REGISTRY_PATH))
-    args = parser.parse_args()
-
-    params = dict(DEFAULT_PARAMS)
     code_hash = hashlib.sha256(PROVIDER_SOURCE.read_bytes()).hexdigest()
-    config_hash = params_fingerprint(params)
+    params_hash = params_fingerprint(params)
 
-    if args.check:
-        registry = load_registry(args.registry)
-        entry, reasons = resolve_entry(registry)
-        print(json.dumps(registry.as_dict(), indent=2, sort_keys=True, default=str))
-        if entry is None:
-            print("RESOLVED: none — NO_TRADE")
-            print("reasons:")
-            for r in reasons:
-                print("  -", r)
-            return 1
-        print(f"RESOLVED: {entry.strategy_id} status={entry.status} policy={entry.policy_id}")
-        return 0
+    if problems:
+        return doc, problems
 
-    entry = build_entry(params, code_hash, config_hash)
-    # Pin the policy document itself: config_hash covers the parameters, this
-    # covers the limits, hours, kill conditions and symbol binding — an edit to
-    # any of them after registration must be detectable.
-    entry["policy"]["policy_hash"] = policy_fingerprint(entry["policy"])
-    pol, problems = validate_policy(entry["policy"], params)
-    if pol is None:
-        print("policy refused:")
-        for p in problems:
-            print("  -", p)
+    target["params"] = params
+    target["params_hash"] = params_hash
+    policy["config_hash"] = params_hash
+    policy["code_hash"] = code_hash
+    policy["code_source"] = str(PROVIDER_SOURCE.relative_to(REPO)).replace("\\", "/")
+    policy["policy_hash"] = policy_fingerprint(policy)
+    return doc, []
+
+
+def _stale_fields(on_disk: dict, sealed: dict) -> list[str]:
+    """Which registered quantities no longer match the files on disk."""
+    stale: list[str] = []
+
+    def entry_of(doc: dict):
+        return next((e for e in (doc.get("entries") or []) if e.get("strategy_id") == demo_trend_tsmom.STRATEGY_ID), None)
+
+    before, after = entry_of(on_disk), entry_of(sealed)
+    if after is None or before is None:
+        return [f"{demo_trend_tsmom.STRATEGY_ID} is not a registry entry"]
+    if before.get("params") != after.get("params"):
+        stale.append("params")
+    for field in ("params_hash",):
+        if before.get(field) != after.get(field):
+            stale.append(field)
+    for field in ("code_hash", "config_hash", "policy_hash"):
+        if (before.get("policy") or {}).get(field) != (after.get("policy") or {}).get(field):
+            stale.append(f"policy.{field}")
+    return stale
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="validate without writing the registry")
+    args = parser.parse_args(argv)
+
+    on_disk = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    sealed, problems = reseal(on_disk)
+    if problems:
+        print("policy NOT sealed:")
+        for problem in problems:
+            print(f"  - {problem}")
         return 2
 
-    path = Path(args.registry)
-    doc = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-    doc.setdefault("updated_at", "2026-09-23T14:57:17+00:00")
-    previous_status = doc.get("current_status")
-    if previous_status and previous_status != "TRADING_ELIGIBLE_DIAGNOSTIC":
-        history = list(doc.get("status_history") or [])
-        history.append(
-            {
-                "at": str(doc.get("updated_at")),
-                "current_status": previous_status,
-                "status_note": doc.get("status_note", ""),
-            }
-        )
-        doc["status_history"] = history
-    doc["schema"] = REGISTRY_SCHEMA_V2
-    doc["updated_at"] = "2026-09-24T00:00:00+00:00"
-    doc["current_status"] = "TRADING_ELIGIBLE_DIAGNOSTIC"
-    doc["status_note"] = (
-        "One registered DEMO_FORWARD_RESEARCH_POLICY (H-EXEC-01, execution-cost probe) with status "
-        "ELIGIBLE_DIAGNOSTIC: it may trade on the DEMO account to MEASURE execution cost and control "
-        "behaviour, and it carries no validated edge. No strategy is registered as ELIGIBLE because no "
-        "hypothesis has passed validation (reports/research_cycle_closure_2026-09-23.json: "
-        "NO_VALIDATED_EDGE). DEMO_EXECUTION is authorized; LIVE remains locked; real capital exposure 0."
-    )
-    doc.setdefault(
-        "research_integrity",
-        {
-            "optimization_allowed": False,
-            "no_forward_fitting": True,
-            "parameters_frozen": True,
-            "demo_results_are_not_edge_evidence": True,
-            "forward_observations_never_reused_as_research": True,
-        },
-    )
-    entries = [e for e in (doc.get("entries") or []) if e.get("strategy_id") != STRATEGY_ID]
-    entries.append(entry)
-    doc["entries"] = entries
-    path.write_text(json.dumps(doc, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+    stale = _stale_fields(on_disk, sealed)
+    if args.check:
+        if stale:
+            print(f"registry STALE — {REGISTRY_PATH.relative_to(REPO)} does not match the files on disk:")
+            for field in stale:
+                print(f"  - {field}")
+            print("run: python scripts/register_demo_research_policy.py")
+            return 1
+        print(f"registry up to date: {', '.join(stale) or 'all registered hashes match the files on disk'}")
+        return 0
 
-    registry = load_registry(path)
-    resolved, reasons = resolve_entry(registry)
-    print(f"wrote {path}")
-    print(f"registry valid: {registry.valid}")
-    print(f"resolved: {resolved.strategy_id if resolved else None} status={resolved.status if resolved else '-'}"
-          f" policy={resolved.policy_id if resolved else '-'}")
-    for r in reasons:
-        print("  -", r)
-    return 0 if resolved is not None else 2
+    stale = _stale_fields(on_disk, sealed)
+    REGISTRY_PATH.write_text(json.dumps(sealed, indent=2) + "\n", encoding="utf-8")
+    if stale:
+        print(f"re-sealed {REGISTRY_PATH.relative_to(REPO)} ({len(stale)} field(s) updated: {', '.join(stale)})")
+    else:
+        print(f"re-sealed {REGISTRY_PATH.relative_to(REPO)} (already up to date)")
+
+    registry = load_registry(REGISTRY_PATH)
+    entry, reasons = resolve_entry(registry, demo_trend_tsmom.STRATEGY_ID)
+    if not registry.valid or entry is None:
+        print("registry INVALID after seal:")
+        for reason in registry.reasons or reasons:
+            print(f"  - {reason}")
+        return 3
+    if _stale_fields(json.loads(REGISTRY_PATH.read_text(encoding="utf-8")), sealed):
+        print("seal did not persist — refusing to report success")
+        return 3
+
+    print(f"registry valid: {entry.strategy_id} [{entry.status}] policy={entry.policy_id}")
+    print(f"  params_hash/config_hash = {entry.params_hash}")
+    print(f"  code_hash               = {entry.policy.code_hash}")
+    print(f"  policy_hash             = {entry.policy.raw.get('policy_hash')}")
+    return 0
 
 
 if __name__ == "__main__":

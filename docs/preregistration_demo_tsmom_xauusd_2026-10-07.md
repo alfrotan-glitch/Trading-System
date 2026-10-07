@@ -35,6 +35,23 @@ BUY when EMA12 crosses above EMA48 on a newly completed 15-minute bar; SELL when
 No discretionary filtering or parameter changes are permitted during forward
 observation.
 
+## Restart warmup (registered)
+
+The signal needs 49 completed bars, so a restarted DEMO process may be seeded
+once at startup with a bounded window of the most recent **completed** 15-minute
+bars taken from the same venue history used for pricing (requested window:
+49 bars, hard cap 512; the forming bar is always excluded). Seeding:
+
+- accepts completed bars only, never fabricates or interpolates a bar;
+- never evaluates a boundary, so seeding alone can never emit a signal;
+- is startup-only and refused once live quotes have been consumed;
+- if the window is short, unavailable, or fails validation, the strategy simply
+  stays in its normal warming-up state and rebuilds from live quotes.
+
+The registered window is part of the experiment definition, not an
+implementation detail; see the registry entry's
+``min_data_requirements.restart_warmup`` block.
+
 ## Exit and safety
 
 Every order carries a protective stop. Positions are closed at the deterministic

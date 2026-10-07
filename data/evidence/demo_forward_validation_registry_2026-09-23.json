@@ -20,16 +20,15 @@
       "params": {
         "fast_ema": 12,
         "slow_ema": 48,
-        "min_cross_gap_bps": 0,
-        "stop_distance_price": 3,
+        "stop_distance_price": 3.0,
         "max_hold_seconds": 14400,
-        "max_tick_age_s": 5,
+        "max_tick_age_s": 5.0,
+        "bar_timeframe_minutes": 15,
         "lots": 0.01,
         "require_spread_within_policy": true,
-        "comment": "RESEARCH_DEMO_ORDER trend benchmark",
-        "bar_timeframe_minutes": 15
+        "comment": "RESEARCH_DEMO_ORDER trend benchmark"
       },
-      "params_hash": "1a190fc118f970a6591294c1753b673fbf2b493ec4e2563be1e45d13326917c3",
+      "params_hash": "0d033c26ccdc0c7c6e00de0e8559b761ab6451627ddc03b14ccbfd6ce7ff8ad1",
       "size_policy": {
         "mode": "fixed",
         "lots": 0.01
@@ -153,7 +152,15 @@
             "kill_switch_functional",
             "reconciliation_ready"
           ],
-          "detail": "Signal generation uses live DEMO quotes aggregated into completed 15-minute bars; the provider never evaluates a partial bar."
+          "detail": "Signal generation uses live DEMO quotes aggregated into completed 15-minute bars; the provider never evaluates a partial bar.",
+          "restart_warmup": {
+            "timeframe_minutes": 15,
+            "bars": 49,
+            "completed_only": true,
+            "max_bars": 512,
+            "source": "broker completed M15 bars (forming bar excluded)",
+            "on_unavailable": "start cold and warm up live; never fabricate history"
+          }
         },
         "stale_data_protection": {
           "max_tick_age_s": 5,
@@ -163,12 +170,12 @@
           "idempotency_required": true,
           "min_order_interval_s": 1800
         },
-        "code_hash": "72593ae46a5d8238d3a9da5de1fbeb133a49a35fddbcdf7431e6c587ad2f28ba",
-        "config_hash": "1a190fc118f970a6591294c1753b673fbf2b493ec4e2563be1e45d13326917c3",
+        "code_hash": "0ee6a985af9ce9e4aaefe3eefcf3fa2f84c32672d9ceef2c408c0f184182005d",
+        "config_hash": "0d033c26ccdc0c7c6e00de0e8559b761ab6451627ddc03b14ccbfd6ce7ff8ad1",
         "data_hash": null,
         "data_hash_note": "No historical dataset is consumed; the provider uses only the pinned DEMO quote stream.",
         "code_source": "src/qts/research/demo_trend_tsmom.py",
-        "policy_hash": "7252e23879c24b9ab53550580cc63b7f1db1ca80b309f781a511ae6efb38c119"
+        "policy_hash": "4b5b6c71696e047c31aaa56bbd82809ebaada8c5db03012e3a435030115e392e"
       }
     }
   ]
