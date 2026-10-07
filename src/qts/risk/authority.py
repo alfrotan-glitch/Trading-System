@@ -59,6 +59,7 @@ class CanonicalRiskLimits(BaseModel):
     # Market-condition limits
     max_spread_bps: Decimal = Decimal("100")
     max_slippage_bps: Decimal = Decimal("50")
+    volatility_target: Decimal | None = None
     stale_data_limit_s: Decimal = Decimal("60")
 
     # Order rate (research modes may simulate faster; DEMO_EXECUTION tightens to 4)
