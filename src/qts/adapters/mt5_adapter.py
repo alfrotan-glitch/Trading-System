@@ -414,6 +414,14 @@ class MT5Adapter(BrokerAdapter):
 
     def _store_comment_map(self, client_order_id: str, comment: str) -> None:
         with db_connect(self._db_path) as con:
+            existing = con.execute(
+                "SELECT client_order_id FROM mt5_comment_map WHERE mt5_comment=?",
+                (comment,),
+            ).fetchone()
+            if existing is not None and existing[0] != client_order_id:
+                raise RuntimeError(
+                    f"MT5 comment collision: {comment!r} already belongs to {existing[0]!r}"
+                )
             con.execute(
                 "INSERT OR REPLACE INTO mt5_comment_map VALUES (?,?,?)",
                 (client_order_id, comment, datetime.now(UTC).isoformat()),
