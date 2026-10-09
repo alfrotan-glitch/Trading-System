@@ -25,6 +25,24 @@ Nothing below will work and nothing below will fake it.
 Open the MetaTrader 5 DEMO terminal and confirm it is connected and logged in.
 QTS does not start the terminal for you.
 
+### The one command that tells you where you stand
+
+```bat
+qts demo verify
+```
+
+This is read-only and safe to run at any time, including on a machine where
+nothing works yet. It reports mode, authorization, terminal reachability,
+identity pin, symbol mapping, quote freshness, registry, policy, stage,
+pre-trade gate result, kill switch and reconciliation state, then prints:
+
+* `READY: True/False`
+* one `BLOCKED:` line per blocking condition, with the reason
+* `NEXT:` — the single command that unblocks the most important one
+
+If something is wrong, run this first. It is the fastest path from "it isn't
+working" to "here is the specific thing that is wrong".
+
 ---
 
 ## 1. Measure the history depth — the question the 15m audit is blocked on
@@ -179,6 +197,7 @@ all. Export summaries, not the log.
 | Message | Meaning | Action |
 |:---|:---|:---|
 | `MT5_PACKAGE_UNAVAILABLE` | not on Windows, or no terminal | run on the Windows machine |
+| `terminal unreachable: BrokerIdentityError: MetaTrader5 package not installed` | the package is missing or the terminal is not running | `pip install MetaTrader5`, then open the terminal and log in — `qts demo verify` reports this as a blocking condition, not a crash |
 | `MT5 initialize failed` | terminal not connected | open the terminal and log in |
 | `account-is-demo: is_demo=None` | identity UNKNOWN | fails closed by design; do not proceed |
 | `deposit-currency-known: currency unavailable` | `account_info().currency` unreadable | do not treat amounts as USD |
@@ -259,5 +278,22 @@ verdict changes. In this repository it did: 4 folds said EDGE_CANDIDATE and
 
 `docs/research/walkforward_findings_2026-10-09.md` records what the frozen
 candidates and five strategy families actually do on 407 days of real history.
-The short version: **nothing passed.** Do not re-run hoping for a different
-answer without new data or measured costs.
+The short version: **nothing passed.** Eleven of twelve corrected runs report
+`NO_EDGE_ESTABLISHED`, and the single `EDGE_CANDIDATE` was withdrawn by its own
+8-fold and 2× cost stress tests. Do not re-run hoping for a different answer
+without new data or measured costs.
+
+Two traps that cost this repository real time, both now guarded in code:
+
+* **Check `coverage` before believing any number.** The pipeline prints
+  `coverage: X% of the series traded (halted folds: N)`. For a long time every
+  run silently reported ~18% because the risk engine's kill switch stopped
+  trading at the first 5% drawdown and nothing said so. A halted run describes
+  part of the series, not the strategy. Anything below 100% is not a result.
+* **Never trust one fold count.** Run at more than one granularity; this is
+  what 7.3 is for.
+
+The most useful single number in the findings is the cost column: trend and
+breakout consume 91% and 95% of their own gross in assumed costs. Until costs
+are measured on your broker (step 3 of this runbook), no verdict can be more
+than provisional.

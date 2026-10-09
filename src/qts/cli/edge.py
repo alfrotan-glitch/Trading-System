@@ -268,7 +268,27 @@ def edge_readiness(
                 if not versions:
                     click.echo("no dataset versions available — run `qts data bootstrap`", err=True)
                     raise SystemExit(2)
-                version = str(versions[-1])
+                # Ingesting one instrument at several timeframes creates one
+                # version per timeframe. Taking the last one and then applying
+                # --timeframe as a LABEL assessed the wrong dataset: the 1H
+                # manifest's 6,513 rows and 1H provenance were reported under a
+                # "timeframe=15m" verdict. Resolve the version BY timeframe
+                # instead, defaulting to the timeframe the frozen candidates
+                # are actually defined on.
+                wanted = str(timeframe or status["minimums"]["timeframe"])
+                matched = None
+                for candidate in reversed(versions):
+                    m = store.manifest(str(candidate))
+                    if m is not None and str(m.timeframe) == wanted:
+                        matched = str(candidate)
+                        break
+                if matched is None:
+                    # Nothing on the wanted timeframe: assess what exists
+                    # rather than refusing to say anything. The report still
+                    # states the timeframe it actually assessed, so a 1H
+                    # dataset is never reported under a 15m verdict.
+                    matched = str(versions[-1])
+                version = matched
             manifest = store.manifest(version)
             if manifest is None:
                 click.echo(f"no manifest for version {version}", err=True)

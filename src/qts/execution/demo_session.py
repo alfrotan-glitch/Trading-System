@@ -482,19 +482,29 @@ class DemoSession:
 
         pin, reasons = load_pin()
         identity = None
+        error: str | None = None
         try:
             identity = self.adapter.broker_identity()
         except Exception as exc:
-            raise RuntimeError(f"broker identity unavailable: {exc}") from exc
+            # Every sibling probe (_identity/_symbol/_quote/_account) reports an
+            # unavailable terminal as a structured blocking condition. Raising
+            # here instead turned `qts demo verify` - the first command a user
+            # runs to find out what is blocking them - into a raw traceback on
+            # exactly the machine that most needs the diagnosis.
+            error = f"{type(exc).__name__}: {exc}"
         verified: bool | None = None
         detail: list[str] = []
-        if identity is not None and pin is not None:
+        if error is not None:
+            detail = [error]
+        elif identity is not None and pin is not None:
             verified, detail = verify_pin(identity, pin)
         return {
             "pinned": pin is not None,
             "status": (pin or {}).get("status"),
             "fingerprint": (pin or {}).get("fingerprint"),
             "verified": verified,
+            "ok": error is None,
+            "error": error,
             "detail": detail or reasons,
             "identity": (pin or {}).get("identity"),
         }
@@ -1284,12 +1294,21 @@ class DemoSession:
         policy = self.policy
         permitted, authority_reasons = self.authority.is_execution_permitted()
 
+        # This method's contract is "missing fact => UNKNOWN", and the gate is
+        # built for it: identity=None yields CHECK_UNKNOWN ("DEMO status
+        # unprovable") and denies. Raising instead made `qts demo verify` and
+        # `qts demo preflight` crash with a traceback on the one machine that
+        # most needs the diagnosis - the one without a working terminal.
+        broker_state_error: str | None = None
         identity = None
+        identity_error: str | None = None
         try:
             identity = self.adapter.broker_identity()
         except Exception as exc:
-            raise RuntimeError(f"broker identity unavailable: {exc}") from exc
+            identity_error = f"{type(exc).__name__}: {exc}"
         pin, pin_reasons = load_pin()
+        if identity_error:
+            pin_reasons = list(pin_reasons or []) + [f"broker identity unavailable: {identity_error}"]
 
         symbol_probe = self._symbol_probe()
         quote = self._quote_probe()
@@ -1301,13 +1320,21 @@ class DemoSession:
             positions = list(self.adapter.positions())
             open_orders = list(self.adapter.orders())
         except Exception as exc:
-            raise RuntimeError(f"broker state unavailable: {exc}") from exc
+            # Same contract: unreadable broker state is UNKNOWN, not fatal.
+            # The gate denies on UNKNOWN; a traceback denies the operator the
+            # diagnosis instead. The reason is surfaced as broker-state drift.
+            broker_state_error = f"BROKER_STATE_UNAVAILABLE: {type(exc).__name__}: {exc}"
+            account = None
+            positions = []
+            open_orders = []
 
         kill_state = self.kill_switch_state()
         kill_active = kill_state.get("killed") if kill_state.get("readable") else None
         self_test_ok, self_test_detail = self.kill_switch_self_test()
 
         reconcile_drift: str | None = None
+        if broker_state_error:
+            reconcile_drift = broker_state_error
 
         # Reconciliation must have run at least once before an order: an
         # unreconciled internal state is not a known state (fail closed). The

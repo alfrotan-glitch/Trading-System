@@ -101,3 +101,88 @@ def test_the_verdict_is_parseable_json(runner: CliRunner) -> None:
     payload = json.loads(tail[: tail.rindex("}") + 1])
     assert payload["ready_for_claims"] is False
     assert "B3-DEPTH" in payload["unmet_blocking_requirements"]
+
+
+def _fifteen_min_csv(path) -> None:
+    """A small 15m series. The 1H fixture cannot be reused as 15m: its cadence
+    fails the quality gate, and a test that cannot build its own premise would
+    end up asserting whatever the gate happens to reject."""
+    from datetime import UTC, datetime, timedelta
+
+    start = datetime(2026, 1, 5, 0, 0, tzinfo=UTC)
+    lines = ["time,open,high,low,close,volume"]
+    for i in range(600):
+        t = start + timedelta(minutes=15 * i)
+        px = 2000.0 + (i % 40)
+        lines.append(
+            f"{t.isoformat()},{px},{px + 1.5},{px - 1.5},{px + 0.5},100"
+        )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _ingest(store, path, timeframe: str, source: str) -> None:
+    from qts.data.ingest import ingest_csv
+
+    ingest_csv(
+        path,
+        instrument="XAUUSD",
+        timeframe=timeframe,
+        venue="MT5",
+        store=store,
+        source=source,
+    )
+
+
+def test_the_timeframe_selects_the_dataset_it_reports_on(runner, tmp_path, monkeypatch):
+    """`--timeframe` must choose a dataset, never relabel whichever is last.
+
+    Ingesting one instrument at several timeframes registers one version per
+    timeframe. Taking the newest version and overriding only the timeframe
+    label reported a 6,513-bar 1H dataset under a "timeframe=15m" verdict —
+    a confident report about the wrong data, which is worse than no report.
+    """
+    from qts.data.store import SqliteParquetDataStore
+
+    store = SqliteParquetDataStore(root=tmp_path / "data")
+    fifteen = tmp_path / "15m.csv"
+    _fifteen_min_csv(fifteen)
+    _ingest(store, fifteen, "15m", "SYNTHETIC:fixture:15m")
+    _ingest(store, "data/fixtures/XAUUSD_1H_500.csv", "1H", "SYNTHETIC:fixture:1H")
+    monkeypatch.setattr("qts.data.store.SqliteParquetDataStore", lambda *a, **kw: store)
+
+    result = runner.invoke(edge, ["readiness", "--timeframe", "15m"])
+    assert result.exit_code in (0, 1), result.output
+    assert "15m" in result.output
+    # The provenance quoted must be the 15m ingest, not the 1H one.
+    assert "SYNTHETIC:fixture:15m" in result.output
+    assert "SYNTHETIC:fixture:1H" not in result.output
+
+
+def test_without_a_timeframe_the_candidate_timeframe_is_preferred(runner, tmp_path, monkeypatch):
+    """The frozen candidates are defined on 15m; that is the sensible default."""
+    from qts.data.store import SqliteParquetDataStore
+
+    store = SqliteParquetDataStore(root=tmp_path / "data")
+    fifteen = tmp_path / "15m.csv"
+    _fifteen_min_csv(fifteen)
+    _ingest(store, fifteen, "15m", "SYNTHETIC:fixture:15m")
+    _ingest(store, "data/fixtures/XAUUSD_1H_500.csv", "1H", "SYNTHETIC:fixture:1H")
+    monkeypatch.setattr("qts.data.store.SqliteParquetDataStore", lambda *a, **kw: store)
+
+    result = runner.invoke(edge, ["readiness"])
+    assert result.exit_code in (0, 1), result.output
+    assert "SYNTHETIC:fixture:15m" in result.output
+
+
+def test_a_single_dataset_is_still_assessed_on_its_own_timeframe(runner, tmp_path, monkeypatch):
+    """No match on the wanted timeframe must not become 'no answer'."""
+    from qts.data.store import SqliteParquetDataStore
+
+    store = SqliteParquetDataStore(root=tmp_path / "data")
+    _ingest(store, "data/fixtures/XAUUSD_1H_500.csv", "1H", "SYNTHETIC:fixture:1H")
+    monkeypatch.setattr("qts.data.store.SqliteParquetDataStore", lambda *a, **kw: store)
+
+    result = runner.invoke(edge, ["readiness"])
+    assert result.exit_code == 1, result.output
+    assert "SYNTHETIC" in result.output
+    assert "1H" in result.output
