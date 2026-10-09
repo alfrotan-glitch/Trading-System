@@ -1,0 +1,236 @@
+{
+  "schema": "qts.benchmark_candidates.v1",
+  "generated_at": "2026-10-09T12:51:04.774216+00:00",
+  "data_version": "20261009-010+2b024334-1ba57af7",
+  "dataset_provenance": "REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks",
+  "dataset_claim_eligible": false,
+  "timeframe": "15m",
+  "frozen_verified": true,
+  "frozen_problems": [],
+  "cost_model": {
+    "instrument": "XAUUSD",
+    "contract_size": 100.0,
+    "description": "Retail MT5 XAUUSD round-turn cost model (spread + commission + slippage + financing)",
+    "claim_eligible": false,
+    "components": [
+      {
+        "name": "spread",
+        "basis": "ASSUMED",
+        "source": "qts.research.costs.xauusd_default (assumed retail MT5 gold conditions)",
+        "price_units_per_lot": 0.3,
+        "usd_per_lot": 0.0,
+        "usd_per_lot_per_night": 0.0,
+        "fills": 1,
+        "note": "quoted bid/ask width \u2014 crossed once per round turn",
+        "zero_is_known": true
+      },
+      {
+        "name": "commission",
+        "basis": "ASSUMED",
+        "source": "qts.research.costs.xauusd_default (assumed retail MT5 gold conditions)",
+        "price_units_per_lot": 0.0,
+        "usd_per_lot": 0.0,
+        "usd_per_lot_per_night": 0.0,
+        "fills": 2,
+        "note": "commission charged per fill (entry and exit) \u2014 0 is a real spread-only account",
+        "zero_is_known": true
+      },
+      {
+        "name": "slippage",
+        "basis": "ASSUMED",
+        "source": "qts.research.costs.xauusd_default (assumed retail MT5 gold conditions)",
+        "price_units_per_lot": 0.1,
+        "usd_per_lot": 0.0,
+        "usd_per_lot_per_night": 0.0,
+        "fills": 2,
+        "note": "realized-vs-expected fill distance, charged per fill",
+        "zero_is_known": true
+      },
+      {
+        "name": "financing",
+        "basis": "UNKNOWN",
+        "source": "qts.research.costs.xauusd_default (assumed retail MT5 gold conditions)",
+        "price_units_per_lot": 0.0,
+        "usd_per_lot": 0.0,
+        "usd_per_lot_per_night": 0.0,
+        "fills": 1,
+        "note": "overnight swap/financing NOT SUPPLIED \u2014 UNKNOWN, not claim-eligible",
+        "zero_is_known": true
+      }
+    ]
+  },
+  "observations": [
+    {
+      "benchmark_id": "BENCH-A-TREND-EMA-12-48",
+      "role": "CANDIDATE",
+      "spec_hash": "d6d5dccd5b0cbb2cfcf47b1092eaedd5960721d70034029611afb636c45f2036",
+      "timeframe_requested": "15m",
+      "timeframe_measured": "15m",
+      "timeframe_matches": true,
+      "bars": 26038,
+      "round_turns": 912,
+      "gross_pnl_usd": -125.7677332250023,
+      "cost_usd": 456.0,
+      "measured_cost_usd": 2763.9315238949575,
+      "net_pnl_usd": -581.7677332250023,
+      "net_expectancy_per_trade": -0.637903216255485,
+      "break_even_cost_multiple": -0.27580643251097,
+      "win_rate": 0.09758771929824561,
+      "profit_factor": 0.8975217532316738,
+      "exits": {
+        "exit_stop": 813,
+        "exit_time": 51
+      },
+      "sharpe": -5.425199490975722,
+      "max_drawdown": 0.2895416318905104,
+      "walk_forward_folds": 6,
+      "walk_forward_wfe": 0.9687933691368967,
+      "claim_eligible": false,
+      "mechanism_only": true,
+      "reasons": [
+        "cost components are not MEASURED \u2014 not claim-eligible",
+        "cost component(s) with UNKNOWN basis: financing \u2014 not claim-eligible",
+        "dataset provenance 'REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks' is not claim-eligible \u2014 mechanism evidence only"
+      ]
+    },
+    {
+      "benchmark_id": "BENCH-B-BREAKOUT-DONCHIAN-20",
+      "role": "CANDIDATE",
+      "spec_hash": "f44be6d02e28d0696334251978022d267614d3b3d2302e403394f87172373c5e",
+      "timeframe_requested": "15m",
+      "timeframe_measured": "15m",
+      "timeframe_matches": true,
+      "bars": 26038,
+      "round_turns": 4999,
+      "gross_pnl_usd": -735.3947455500023,
+      "cost_usd": 1422.0,
+      "measured_cost_usd": 8579.933202623168,
+      "net_pnl_usd": -2157.3947455500024,
+      "net_expectancy_per_trade": -0.43156526216243296,
+      "break_even_cost_multiple": -0.5171552359704658,
+      "win_rate": 0.3290658131626325,
+      "profit_factor": 0.8671150374091585,
+      "exits": {
+        "exit_stop": 2105,
+        "exit_time": 53
+      },
+      "sharpe": -5.229605034064542,
+      "max_drawdown": 0.9315660299254973,
+      "walk_forward_folds": 6,
+      "walk_forward_wfe": 1.1517644705806862,
+      "claim_eligible": false,
+      "mechanism_only": true,
+      "reasons": [
+        "cost components are not MEASURED \u2014 not claim-eligible",
+        "cost component(s) with UNKNOWN basis: financing \u2014 not claim-eligible",
+        "dataset provenance 'REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks' is not claim-eligible \u2014 mechanism evidence only"
+      ]
+    },
+    {
+      "benchmark_id": "BENCH-C-MEANREV-BOLLINGER-20-2.0",
+      "role": "CONTROL",
+      "spec_hash": "7704e9b18617d5b97024eafdd083ba5fc55c184b0b182c3083453593b01a48cf",
+      "timeframe_requested": "15m",
+      "timeframe_measured": "15m",
+      "timeframe_matches": true,
+      "bars": 26038,
+      "round_turns": 6289,
+      "gross_pnl_usd": 81.84898635000124,
+      "cost_usd": 1609.0,
+      "measured_cost_usd": 9754.729862781143,
+      "net_pnl_usd": -1527.1510136499987,
+      "net_expectancy_per_trade": -0.24282890978692936,
+      "break_even_cost_multiple": 0.050869475668117614,
+      "win_rate": 0.2833518842423279,
+      "profit_factor": 1.017530663891538,
+      "exits": {
+        "exit_stop": 2871,
+        "exit_time": 114
+      },
+      "sharpe": -5.528082773073636,
+      "max_drawdown": 0.9672984880213771,
+      "walk_forward_folds": 6,
+      "walk_forward_wfe": 0.9446143084206393,
+      "claim_eligible": false,
+      "mechanism_only": true,
+      "reasons": [
+        "registered as a falsification CONTROL \u2014 failure is the expected result",
+        "cost components are not MEASURED \u2014 not claim-eligible",
+        "cost component(s) with UNKNOWN basis: financing \u2014 not claim-eligible",
+        "dataset provenance 'REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks' is not claim-eligible \u2014 mechanism evidence only"
+      ]
+    }
+  ],
+  "conclusion": "NO_EDGE_ESTABLISHED \u2014 mechanism evidence only",
+  "reasons": [
+    "no hypothesis was promoted \u2014 this report measures, it does not authorise",
+    "the dataset cannot support an edge claim, so these numbers are mechanism evidence only"
+  ],
+  "preregistered_at": "2026-10-09",
+  "specs": [
+    {
+      "benchmark_id": "BENCH-A-TREND-EMA-12-48",
+      "hypothesis_id": "H-BENCH-A",
+      "role": "CANDIDATE",
+      "params": {
+        "fast": 12,
+        "slow": 48,
+        "ma_type": "ema"
+      },
+      "timeframe": "15m",
+      "quantity_lots": 0.01,
+      "stop_distance_usd": 3.0,
+      "max_hold_bars": 16,
+      "rationale": "The trend rule already registered as the DEMO forward benchmark (DEMO-XAUUSD-TREND-TSMOM-V1). Included unchanged so that the DEMO measurement and the historical measurement describe the same strategy.",
+      "basis": "Moskowitz, Ooi & Pedersen (2012), Time Series Momentum \u2014 a broad, publicly documented phenomenon across liquid futures. It does NOT establish that this exact intraday XAUUSD rule is profitable.",
+      "family": "trend",
+      "exit_rules": {
+        "stop_distance_usd": 3.0,
+        "max_hold_bars": 16
+      },
+      "spec_hash": "d6d5dccd5b0cbb2cfcf47b1092eaedd5960721d70034029611afb636c45f2036"
+    },
+    {
+      "benchmark_id": "BENCH-B-BREAKOUT-DONCHIAN-20",
+      "hypothesis_id": "H-BENCH-B",
+      "role": "CANDIDATE",
+      "params": {
+        "period": 20
+      },
+      "timeframe": "15m",
+      "quantity_lots": 0.01,
+      "stop_distance_usd": 3.0,
+      "max_hold_bars": 16,
+      "rationale": "A volatility-normalized breakout: the channel is the realized high-low range, so the entry threshold widens and narrows with volatility instead of firing on a fixed price distance. Identical stop and time exit to A, so A and B differ in entry logic only.",
+      "basis": "Donchian channel / turtle breakout practice, publicly documented for decades. Chosen for the hypothesis, not for a result.",
+      "family": "breakout",
+      "exit_rules": {
+        "stop_distance_usd": 3.0,
+        "max_hold_bars": 16
+      },
+      "spec_hash": "f44be6d02e28d0696334251978022d267614d3b3d2302e403394f87172373c5e"
+    },
+    {
+      "benchmark_id": "BENCH-C-MEANREV-BOLLINGER-20-2.0",
+      "hypothesis_id": "H-BENCH-C",
+      "role": "CONTROL",
+      "params": {
+        "period": 20,
+        "k": 2.0
+      },
+      "timeframe": "15m",
+      "quantity_lots": 0.01,
+      "stop_distance_usd": 3.0,
+      "max_hold_bars": 16,
+      "rationale": "Falsification control. Intraday gold does mean-revert at some horizons, which is exactly why this is here: a control that could plausibly pass is the only kind worth having. If BOTH a trend rule and its opposite survive the same gates, the gates are measuring something other than an edge.",
+      "basis": "Bollinger-band reversion, standard textbook construction. Included because microstructure makes it plausible, not because it is expected to win.",
+      "family": "mean_reversion",
+      "exit_rules": {
+        "stop_distance_usd": 3.0,
+        "max_hold_bars": 16
+      },
+      "spec_hash": "7704e9b18617d5b97024eafdd083ba5fc55c184b0b182c3083453593b01a48cf"
+    }
+  ],
+  "cost_basis": "ASSUMED"
+}
