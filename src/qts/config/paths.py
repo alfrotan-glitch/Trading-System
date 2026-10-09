@@ -46,12 +46,21 @@ RELATIVE_DEFAULTS: dict[str, str] = {
     "authorization": "data/evidence/demo_execution_authorization_2026-09-23.json",
     "registry": "data/evidence/demo_forward_validation_registry_2026-09-23.json",
     "db": "data/sqlite/qts.db",
+    "audit_jsonl": "logs/audit.jsonl",
     "journal_db": "data/sqlite/qts.db",
     "stage_db": "data/sqlite/qts.db",
     "observatory_db": "data/sqlite/forward_observatory.db",
     "edge_validation": "data/evidence/edge_validation.json",
+    "dry_run": "data/evidence/dry_run.json",
+    "micro": "data/evidence/micro.json",
     "paper_trades": "data/evidence/paper_trades.json",
     "shadow_intents": "data/evidence/shadow_intents.json",
+    "paper_cli_db": "data/sqlite/paper_cli.db",
+    "paper_cli_idemp_db": "data/sqlite/paper_cli_idemp.db",
+    "paper_cli_risk_db": "data/sqlite/paper_cli_risk.db",
+    "shadow_cli_db": "data/sqlite/shadow_cli.db",
+    "shadow_cli_idemp_db": "data/sqlite/shadow_cli_idemp.db",
+    "shadow_cli_risk_db": "data/sqlite/shadow_cli_risk.db",
     "data_inventory": "data/evidence/data_inventory.json",
     "data_source_catalog": "data/evidence/data_source_catalog.json",
     "data_quality_summary": "data/evidence/data_quality_summary.json",
@@ -69,12 +78,21 @@ ENV_OVERRIDES: dict[str, str] = {
     "authorization": "QTS_DEMO_AUTHORIZATION",
     "registry": "QTS_DEMO_REGISTRY",
     "db": "QTS_DB_PATH",
+    "audit_jsonl": "QTS_AUDIT_JSONL_PATH",
     "journal_db": "QTS_DEMO_JOURNAL_DB",
     "stage_db": "QTS_DEMO_STAGE_DB",
     "observatory_db": "QTS_OBSERVATORY_DB",
     "edge_validation": "QTS_EDGE_VALIDATION_PATH",
+    "dry_run": "QTS_DRY_RUN_EVIDENCE_PATH",
+    "micro": "QTS_MICRO_EVIDENCE_PATH",
     "paper_trades": "QTS_PAPER_TRADES_PATH",
     "shadow_intents": "QTS_SHADOW_INTENTS_PATH",
+    "paper_cli_db": "QTS_PAPER_CLI_DB_PATH",
+    "paper_cli_idemp_db": "QTS_PAPER_CLI_IDEMP_DB_PATH",
+    "paper_cli_risk_db": "QTS_PAPER_CLI_RISK_DB_PATH",
+    "shadow_cli_db": "QTS_SHADOW_CLI_DB_PATH",
+    "shadow_cli_idemp_db": "QTS_SHADOW_CLI_IDEMP_DB_PATH",
+    "shadow_cli_risk_db": "QTS_SHADOW_CLI_RISK_DB_PATH",
     "data_inventory": "QTS_DATA_INVENTORY_PATH",
     "data_source_catalog": "QTS_DATA_CATALOG_PATH",
     "data_quality_summary": "QTS_DATA_QUALITY_PATH",
@@ -112,8 +130,11 @@ def state_root() -> Path:
         return Path(env).expanduser()
     cwd = Path.cwd()
     detected = _detect_repo_root()
-    # If the process explicitly changed directory into an isolated test/fixture
-    # directory containing its own data/ tree, honour that isolated root:
+    # A caller that has deliberately entered an isolated workspace with its
+    # own data/ tree (notably tests and portable workspaces) may use that tree.
+    # Production launchers that need a single invariant location across cwd
+    # changes MUST set QTS_STATE_ROOT explicitly; the desktop/CLI launchers do
+    # so from their canonical installation root.
     if detected is not None and cwd != detected and (cwd / "data").is_dir():
         return cwd
     if detected is not None:
@@ -175,11 +196,17 @@ def paths_report() -> dict[str, Any]:
     same state" checkable instead of hoped for.
     """
     root = state_root()
+    cwd = Path.cwd()
+    detected = _detect_repo_root()
+    explicit_root = bool((os.getenv(STATE_ROOT_ENV) or "").strip())
+    cwd_fallback_active = (
+        not explicit_root and detected is not None and cwd != detected and (cwd / "data").is_dir()
+    )
     out: dict[str, Any] = {
         "state_root": str(root),
         "state_root_source": state_root_source(),
-        "working_directory": str(Path.cwd()),
-        "cwd_independent": True,
+        "working_directory": str(cwd),
+        "cwd_independent": not cwd_fallback_active,
         "artifacts": {},
     }
     for name, relative in RELATIVE_DEFAULTS.items():
