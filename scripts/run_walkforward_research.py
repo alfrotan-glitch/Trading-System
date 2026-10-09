@@ -112,6 +112,56 @@ def make_runner(
     return runner
 
 
+def buy_and_hold_baseline(
+    bars: list,
+    folds: list,
+    *,
+    quantity: float,
+    contract_size: float,
+    spread_bps: float,
+    slippage_bps: float,
+    commission_per_lot: float,
+) -> RunOutcome:
+    """What simply holding the instrument over the same windows would have done.
+
+    This is the baseline that decides whether a strategy is worth its costs.
+    Gold rose 26% across the acquired history; a rule that makes less than
+    holding the metal has not earned its spread, slippage and commission — it
+    has just been busy.
+
+    Priced with the same friction as any other trade: half-spread plus
+    slippage on the way in and again on the way out, plus commission.
+    """
+    net = 0.0
+    cost = 0.0
+    returns: list[float] = []
+    trades = 0
+    for fold in folds:
+        window = [b for b in bars if fold.test_start <= b.open_time < fold.test_end]
+        if len(window) < 2:
+            continue
+        entry = float(window[0].open)
+        exit_ = float(window[-1].close)
+        friction_bps = (spread_bps / 2.0 + slippage_bps) / 10000.0
+        entry_cost = entry * friction_bps
+        exit_cost = exit_ * friction_bps
+        notional = quantity * contract_size
+        leg_cost = (entry_cost + exit_cost) * notional + 2.0 * commission_per_lot * quantity
+        pnl = (exit_ - entry) * notional
+        net += pnl - leg_cost
+        cost += leg_cost
+        returns.append((pnl - leg_cost) / 10000.0)
+        trades += 1
+    return RunOutcome(
+        trades=trades,
+        net_return=net,
+        gross_return=net + cost,
+        cost=cost,
+        equity_curve=[],
+        returns=returns,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--data-version", required=True)
@@ -198,10 +248,21 @@ def main(argv: list[str] | None = None) -> int:
         k: list(v) for k, v in BOUNDED_PARAM_SPACE[StrategyFamily(args.family)].items()
     }
 
+    baseline = buy_and_hold_baseline(
+        bars,
+        folds,
+        quantity=args.quantity,
+        contract_size=float(instrument.contract_size),
+        spread_bps=args.spread_bps,
+        slippage_bps=args.slippage_bps,
+        commission_per_lot=args.commission_per_lot,
+    )
+
     result = run_walk_forward(
         runner,
         param_space,
         folds,
+        baseline_outcomes={"buy_and_hold": baseline},
         periods_per_year=PERIODS_PER_YEAR,
         cost_basis=args.cost_basis,
         cost_source=args.cost_source,
@@ -226,6 +287,12 @@ def main(argv: list[str] | None = None) -> int:
     of = result.overfitting
     print(f"deflated Sharpe p = {of['deflated_sharpe_pvalue']:.4f} "
           f"({'survives' if of['survives_multiple_testing'] else 'FAILS'} multiple testing)")
+    bh = result.baselines.get("buy_and_hold", {})
+    if bh:
+        print(
+            f"baseline buy&hold: {bh['net_return']:+.2f} USD over the same windows "
+            f"({'strategy beats it' if bh.get('beats_strategy') else 'STRATEGY DOES NOT BEAT HOLDING'})"
+        )
     print(f"\nVERDICT: {result.verdict}")
     for r in result.reasons:
         print(f"  - {r}")

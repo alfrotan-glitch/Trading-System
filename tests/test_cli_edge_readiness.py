@@ -60,16 +60,38 @@ def test_synthetic_data_is_refused_wherever_it_is_declared(runner: CliRunner) ->
 
 
 def test_an_existing_dataset_can_be_assessed(runner: CliRunner, tmp_path, monkeypatch) -> None:
-    """Assesses the repository's own dataset — and refuses it."""
-    monkeypatch.setenv("QTS_STATE_ROOT", str(tmp_path))
+    """The repository's synthetic fixture is assessed — and refused.
+
+    The store is built inside ``tmp_path`` rather than read from the
+    repository. Reading the ambient store made this test assert whatever
+    happened to have been ingested last, which is why ingesting real history
+    broke it: "latest" resolved to a real 1H dataset, the output no longer
+    said SYNTHETIC, and a test about refusing synthetic data failed for
+    having no synthetic data. Building the fixture here makes the assertion
+    about the actual contract again — synthetic history must be refused.
+    """
+    from pathlib import Path
+
+    from qts.data.ingest import ingest_csv
+    from qts.data.store import SqliteParquetDataStore
+
+    store = SqliteParquetDataStore(root=tmp_path / "data")
+    ingest_csv(
+        Path("data/fixtures/XAUUSD_1H_500.csv"),
+        instrument="XAUUSD",
+        timeframe="1H",
+        venue="MT5",
+        store=store,
+        source="SYNTHETIC:fixture:XAUUSD_1H_500.csv",
+    )
+    # The CLI imports the store class inside the command, so patching the
+    # module attribute is what redirects it.
+    monkeypatch.setattr("qts.data.store.SqliteParquetDataStore", lambda *a, **kw: store)
+
     result = runner.invoke(edge, ["readiness"])
-    # Either the store has a version to assess, or it says so plainly; neither
-    # may report readiness on the synthetic fixture.
-    if "no dataset versions available" in result.output:
-        assert result.exit_code == 2
-    else:
-        assert result.exit_code == 1
-        assert "SYNTHETIC" in result.output
+    assert result.exit_code == 1, result.output
+    assert "NOT READY FOR CLAIMS" in result.output
+    assert "SYNTHETIC" in result.output
 
 
 def test_the_verdict_is_parseable_json(runner: CliRunner) -> None:

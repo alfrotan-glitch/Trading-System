@@ -1,0 +1,136 @@
+{
+  "schema": "qts.research_pipeline.v1",
+  "generated_at": "2026-10-09T14:01:58.590861+00:00",
+  "data_version": "20261009-010+2b024334-1ba57af7",
+  "instrument": "XAUUSD",
+  "timeframe": "15m",
+  "cost_basis": "ASSUMED",
+  "cost_source": "",
+  "total_configurations_tried": 12,
+  "folds": [
+    {
+      "params": {
+        "period": 20
+      },
+      "trades": 26,
+      "net_return": 1350.9283486689474,
+      "gross_return": 1481.6430985,
+      "cost": 130.71474983105264,
+      "sharpe": 5.186190189113758,
+      "max_drawdown": 0.02599236245840904,
+      "profit_factor": 1.6895322733710054,
+      "expectancy_per_trade": 51.95878264111336,
+      "selected_from_n": 3,
+      "fold": {
+        "index": 0,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-01-13T19:12:00+00:00",
+        "test_start": "2026-01-15T19:12:00+00:00",
+        "test_end": "2026-03-17T20:24:00+00:00"
+      }
+    },
+    {
+      "params": {
+        "period": 20
+      },
+      "trades": 15,
+      "net_return": 2669.6372890000002,
+      "gross_return": 2753.2499999999986,
+      "cost": 83.61271099999827,
+      "sharpe": 6.350072939904384,
+      "max_drawdown": 0.05087193000309785,
+      "profit_factor": 2.1787273795281785,
+      "expectancy_per_trade": 177.9758192666667,
+      "selected_from_n": 3,
+      "fold": {
+        "index": 1,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-03-15T20:24:00+00:00",
+        "test_start": "2026-03-17T20:24:00+00:00",
+        "test_end": "2026-05-17T21:36:00+00:00"
+      }
+    },
+    {
+      "params": {
+        "period": 20
+      },
+      "trades": 178,
+      "net_return": 740.8837330871847,
+      "gross_return": 1534.4844349916787,
+      "cost": 793.6007019044939,
+      "sharpe": 1.339906330059899,
+      "max_drawdown": 0.12266193958999068,
+      "profit_factor": 1.0510349131325298,
+      "expectancy_per_trade": 4.1622681634111505,
+      "selected_from_n": 3,
+      "fold": {
+        "index": 2,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-05-15T21:36:00+00:00",
+        "test_start": "2026-05-17T21:36:00+00:00",
+        "test_end": "2026-07-17T22:48:00+00:00"
+      }
+    },
+    {
+      "params": {
+        "period": 20
+      },
+      "trades": 135,
+      "net_return": 1107.8301795388543,
+      "gross_return": 1671.3457510000007,
+      "cost": 563.5155714611464,
+      "sharpe": 2.53043125914346,
+      "max_drawdown": 0.07467433161209866,
+      "profit_factor": 1.1154462962648628,
+      "expectancy_per_trade": 8.206149478065587,
+      "selected_from_n": 3,
+      "fold": {
+        "index": 3,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-07-15T22:48:00+00:00",
+        "test_start": "2026-07-17T22:48:00+00:00",
+        "test_end": "2026-09-17T00:00:00+00:00"
+      }
+    }
+  ],
+  "aggregate": {
+    "folds_evaluated": 4,
+    "total_trades": 354,
+    "oos_net_return": 5869.279550294987,
+    "oos_gross_return": 7440.723284491678,
+    "oos_cost": 1571.4437341966914,
+    "expectancy_per_trade": 16.57988573529657,
+    "profit_factor": 4.73496003870308,
+    "max_drawdown": 0.12266193958999068,
+    "sharpe": 3.8516501795553753,
+    "profitable_folds": 4,
+    "worst_fold": 740.8837330871847,
+    "cost_fraction_of_gross": 0.21119502420846262
+  },
+  "baselines": {
+    "buy_and_hold": {
+      "net_return": -354.165926,
+      "trades": 4,
+      "sharpe": -28.394782954025754,
+      "beats_strategy": true
+    }
+  },
+  "overfitting": {
+    "oos_observations": 15599,
+    "oos_sharpe": 3.2090797197207688,
+    "configurations_tried": 12,
+    "deflated_sharpe_pvalue": 0.0,
+    "survives_multiple_testing": true,
+    "permutation_test": {
+      "observed_sharpe": 1.6390500414824454,
+      "p_value": 0.654,
+      "purpose": "Permutation \u2014 is Sharpe just random ordering?",
+      "n_perm": 1000
+    },
+    "note": "deflated Sharpe accounts for the number of configurations tried; trying more makes the bar higher, not lower"
+  },
+  "verdict": "EDGE_CANDIDATE",
+  "reasons": [
+    "cost basis is ASSUMED, not MEASURED \u2014 mechanism evidence only, no claim is decidable"
+  ]
+}
