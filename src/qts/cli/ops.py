@@ -265,7 +265,7 @@ def validate_cmd(strategy: str, data_version: str, instrument: str, timeframe: s
         from qts.domain.events import DomainEvent, EventType
         from qts.observability.audit import SqliteAuditLog
 
-        audit_log = SqliteAuditLog()
+        audit_log = SqliteAuditLog(db_path=artifact_path("db"), jsonl_path=artifact_path("audit_jsonl"))
         # Emit VALIDATION event with passed flag and reasons
         audit_log.emit(
             DomainEvent(
@@ -568,7 +568,7 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             req_ok = False
             req_err = str(e)
         # Audit dry-run
-        audit = _Audit()
+        audit = _Audit(db_path=artifact_path("db"), jsonl_path=artifact_path("audit_jsonl"))
         audit.emit(
             _DE(
                 event_type=_ET.NO_TRADE,
@@ -930,9 +930,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
 
         # Clean persistent state for deterministic evidence (kill/idempotency would block re-run)
         for _p in [
-            Path("data/sqlite/paper_cli.db"),
-            Path("data/sqlite/paper_cli_idemp.db"),
-            Path("data/sqlite/paper_cli_risk.db"),
+            artifact_path("paper_cli_db"),
+            artifact_path("paper_cli_idemp_db"),
+            artifact_path("paper_cli_risk_db"),
         ]:
             with contextlib.suppress(Exception):
                 if _p.exists():
@@ -943,12 +943,12 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         # Use same strategy
         strat = SmaBreakoutStrategy(instr, fast=10, slow=20, strategy_id=strategy)
         matching = MatchingEngine(MatchingConfig())
-        audit = SqliteAuditLog()
-        idemp = IdempotencyStore(db_path=Path("data/sqlite/paper_cli_idemp.db"))
+        audit = SqliteAuditLog(db_path=artifact_path("db"), jsonl_path=artifact_path("audit_jsonl"))
+        idemp = IdempotencyStore(db_path=artifact_path("paper_cli_idemp_db"))
         om = OrderManager(audit=audit, idempotency=idemp)
-        paper_broker = RealisticPaperBroker(matching=matching, db_path=Path("data/sqlite/paper_cli.db"))
+        paper_broker = RealisticPaperBroker(matching=matching, db_path=artifact_path("paper_cli_db"))
         portfolio = Portfolio(initial_balance=Decimal("10000"))
-        risk = RiskEngine(RiskLimits(), db_path=Path("data/sqlite/paper_cli_risk.db"))
+        risk = RiskEngine(RiskLimits(), db_path=artifact_path("paper_cli_risk_db"))
         paper_engine = ExecutionEngine(om, risk, paper_broker, matching, portfolio, audit=audit)
         # Run paper loop: next-bar execution, same as backtest but via ExecutionEngine
         pending: list = []
@@ -1012,7 +1012,6 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         paper_trades_path.parent.mkdir(parents=True, exist_ok=True)
         paper_trades_path.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
         # Also write audit evidence
-        Path("logs").mkdir(parents=True, exist_ok=True)
         click.echo(
             f"paper result: equity={float(portfolio.equity()):.2f} trades={len(fills_out)} (realistic paper, evidence written)"
         )
@@ -1036,9 +1035,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         from qts.risk.engine import RiskEngine, RiskLimits
 
         for _p in [
-            Path("data/sqlite/shadow_cli.db"),
-            Path("data/sqlite/shadow_cli_idemp.db"),
-            Path("data/sqlite/shadow_cli_risk.db"),
+            artifact_path("shadow_cli_db"),
+            artifact_path("shadow_cli_idemp_db"),
+            artifact_path("shadow_cli_risk_db"),
         ]:
             with contextlib.suppress(Exception):
                 if _p.exists():
@@ -1047,12 +1046,12 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
         bars = sorted(bars, key=lambda b: b.open_time)
         strat = SmaBreakoutStrategy(instr, fast=10, slow=20, strategy_id=strategy)
         matching = MatchingEngine(MatchingConfig())
-        audit = SqliteAuditLog()
-        idemp = IdempotencyStore(db_path=Path("data/sqlite/shadow_cli_idemp.db"))
+        audit = SqliteAuditLog(db_path=artifact_path("db"), jsonl_path=artifact_path("audit_jsonl"))
+        idemp = IdempotencyStore(db_path=artifact_path("shadow_cli_idemp_db"))
         om = OrderManager(audit=audit, idempotency=idemp)
-        shadow_broker = ShadowBroker(db_path=Path("data/sqlite/shadow_cli.db"))
+        shadow_broker = ShadowBroker(db_path=artifact_path("shadow_cli_db"))
         portfolio = Portfolio(initial_balance=Decimal("10000"))
-        risk = RiskEngine(RiskLimits(), db_path=Path("data/sqlite/shadow_cli_risk.db"))
+        risk = RiskEngine(RiskLimits(), db_path=artifact_path("shadow_cli_risk_db"))
         shadow_engine = ExecutionEngine(om, risk, shadow_broker, matching, portfolio, audit=audit)
         pending = []
         shadow_intents = []
