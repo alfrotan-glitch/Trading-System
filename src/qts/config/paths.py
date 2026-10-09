@@ -128,7 +128,15 @@ def state_root() -> Path:
     env = (os.getenv(STATE_ROOT_ENV) or "").strip()
     if env:
         return Path(env).expanduser()
+    cwd = Path.cwd()
     detected = _detect_repo_root()
+    # A caller that has deliberately entered an isolated workspace with its
+    # own data/ tree (notably tests and portable workspaces) may use that tree.
+    # Production launchers that need a single invariant location across cwd
+    # changes MUST set QTS_STATE_ROOT explicitly; the desktop/CLI launchers do
+    # so from their canonical installation root.
+    if detected is not None and cwd != detected and (cwd / "data").is_dir():
+        return cwd
     if detected is not None:
         return detected
     return _USER_ROOT
