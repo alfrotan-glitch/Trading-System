@@ -37,3 +37,35 @@ def test_cli_evidence_artifact_environment_overrides_are_honoured(
     monkeypatch.setenv("QTS_MICRO_EVIDENCE_PATH", str(override))
 
     assert artifact_path("micro") == override
+
+
+
+def test_cli_durable_writers_use_registered_artifact_paths() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    source = (repo_root / "src/qts/cli/ops.py").read_text(encoding="utf-8")
+
+    for artifact in (
+        "dry_run",
+        "micro",
+        "paper_trades",
+        "shadow_intents",
+        "paper_cli_db",
+        "paper_cli_idemp_db",
+        "paper_cli_risk_db",
+        "shadow_cli_db",
+        "shadow_cli_idemp_db",
+        "shadow_cli_risk_db",
+        "db",
+        "audit_jsonl",
+    ):
+        assert f'artifact_path("{artifact}")' in source
+
+    for relative_write in (
+        'Path("data/evidence/dry_run.json")',
+        'Path("data/evidence/micro.json")',
+        'Path("data/evidence/paper_trades.json")',
+        'Path("data/evidence/shadow_intents.json")',
+        'Path("data/sqlite/paper_cli.db")',
+        'Path("data/sqlite/shadow_cli.db")',
+    ):
+        assert relative_write not in source
