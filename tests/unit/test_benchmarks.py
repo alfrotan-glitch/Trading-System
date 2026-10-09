@@ -17,16 +17,15 @@ from __future__ import annotations
 import pytest
 
 from qts.research.benchmarks import (
-    BENCHMARKS,
     BENCHMARK_A,
     BENCHMARK_B,
     BENCHMARK_C,
-    BenchmarkRole,
+    BENCHMARKS,
     FROZEN_SPEC_HASHES,
+    BenchmarkRole,
     verify_frozen,
 )
 from qts.research.strategies import StrategyFamily
-
 
 # ------------------------------------------------------------------ the set
 
@@ -113,19 +112,6 @@ def test_spec_hash_is_stable_across_processes():
 # --------------------------------------------------- engine contract (no lie)
 
 
-def test_the_engine_refuses_to_substitute_a_different_strategy():
-    """An explicit family that cannot be built must raise, not fall back."""
-    from qts.backtest.engine import BacktestEngine
-
-    engine = BacktestEngine.__new__(BacktestEngine)
-    # The contract is enforced inside run(); assert the refusal exists by
-    # driving the resolution path with a deliberately impossible parameter.
-    import inspect
-
-    source = inspect.getsource(BacktestEngine.run)
-    assert "refusing to silently run a different strategy" in source
-
-
 def test_harness_params_are_not_forwarded_to_a_strategy_constructor():
     """``quantity`` sizes the order; it is not a signal parameter."""
     from qts.backtest.engine import _HARNESS_PARAM_KEYS
@@ -196,6 +182,38 @@ def test_benchmarks_produce_distinct_mechanism_evidence_on_the_bootstrap_set(tmp
         assert obs.mechanism_only is True
         assert obs.claim_eligible is False
         assert any("not claim-eligible" in r for r in obs.reasons)
+
+
+@pytest.mark.integration
+def test_the_engine_refuses_to_substitute_a_different_strategy(tmp_path, monkeypatch):
+    """An explicit family that cannot be built must raise, not fall back.
+
+    Before this fix, a constructor TypeError was swallowed and the engine ran a
+    default strategy instead — two of the three benchmarks silently produced
+    byte-identical results from the same fallback.
+    """
+    monkeypatch.setenv("QTS_STATE_ROOT", str(tmp_path))
+    from qts.backtest.engine import BacktestEngine
+    from qts.data.bootstrap import bootstrap_data
+    from qts.data.store import SqliteParquetDataStore
+    from qts.domain.value_objects import Instrument
+
+    store = SqliteParquetDataStore()
+    try:
+        res = bootstrap_data(store=store)
+        assert res.ok, res.messages
+        engine = BacktestEngine(store)
+        with pytest.raises(ValueError, match="refusing to silently run a different strategy"):
+            engine.run(
+                Instrument(symbol="XAUUSD"),
+                "1H",
+                res.version,
+                strategy_id="trend_broken",
+                # An explicit family plus a parameter it cannot accept.
+                strategy_params={"_family": "trend", "fast": "not-a-number", "slow": 48},
+            )
+    finally:
+        store.close()
 
 
 @pytest.mark.integration

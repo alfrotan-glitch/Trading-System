@@ -1,6 +1,7 @@
 # Edge & Risk Closure — 2026-10-09
 
-**Branch:** `arena/db6f7053-trading-system`
+**Branch:** `arena/db6f7053-trading-system`  
+**Phase 2 (frozen candidate set + backtest exit rules): §6b**
 **Predecessor:** [`deep_repository_and_edge_audit_2026-10-09.md`](deep_repository_and_edge_audit_2026-10-09.md)
 
 This document records what was changed to close the findings of the
@@ -198,14 +199,102 @@ it into a second tree.
    `CostModel.xauusd_default(..., basis=CostBasis.MEASURED, source="<provenance>")`.
 2. **Acquire real history.** The audit's step 1 stands unchanged: pinned WM
    Markets DEMO terminal, exact `XAUUSD@` mapping, raw preservation with
-   timestamp and clock-offset provenance, immutable hashes.
-3. **Freeze the candidate set before evaluation** (audit step 3): benchmark A
-   EMA 12/48 completed-bar trend, benchmark B volatility-normalized breakout,
-   benchmark C mean-reversion control — and evaluate all three against the same
-   measured cost model.
+   timestamp and clock-offset provenance, immutable hashes. The candidates are
+   defined on **15m** bars; the bootstrap dataset is 1H, so every current
+   observation is a timeframe mismatch.
+3. ~~Freeze the candidate set before evaluation~~ **DONE** — three frozen
+   hypotheses in `qts/research/benchmarks.py`, evaluated by
+   `qts edge benchmark`. What remains is running them on **real 15m data** with
+   **measured** costs.
 4. **Execute the randomized and placebo controls.** Both gates still report
    `NOT_IMPLEMENTED` and both still block; they were not touched here.
 5. **Launchers must pin `QTS_STATE_ROOT`** (audit acceptance gate, unchanged).
+
+---
+
+## 6b. Phase 2 — the backtest could not simulate the registered strategy
+
+While building the frozen candidate set (open item 3) a deeper defect surfaced.
+
+**The backtest engine had no stop-loss and no time exit.** The only thing that
+closed a position was an opposite signal. Every stop-loss strategy was
+therefore backtested as a naked always-in reversal system — a different
+strategy wearing the same name.
+
+Concretely, the registered DEMO benchmark is an EMA 12/48 rule with a **3.00 USD
+protective stop** and a **4-hour maximum hold**. Backtested, it had neither. The
+historical measurement and the DEMO measurement were not describing the same
+strategy, so no comparison between them was meaningful.
+
+### What was done
+
+| Layer | Change |
+|:---|:---|
+| `backtest/engine.py` | Declared `exit_rules`: `stop_distance_usd` (protective stop, intrabar) and `max_hold_bars` (deterministic time exit). Part of `config_hash`, so a run with a stop and a run without one are different experiments. |
+| `backtest/engine.py` | **Time exits fill at the bar open** and are considered **first**, so a bar that triggers both is settled by the clock. **Stop exits fill at the stop level — or at the open when the bar gapped through it**, because a stop is an order, not a guarantee. Exits are priced by the matching engine, so an exit pays spread and slippage exactly like an entry. |
+| `backtest/engine.py` | `run_stress()` carries the same exit rules: stressing the spread of a strategy with a stop while the baseline had none would compare two different strategies. |
+
+On the bootstrap fixture, adding a 3.00 USD stop and a 16-bar hold turned
+**2 fills into 38** (18 stop exits, 1 time exit).
+
+### Two integrity bugs found while wiring it up
+
+1. **Silent strategy substitution.** The engine inferred a strategy family from
+   a substring of `strategy_id` and swallowed every constructor error, falling
+   back to a default. Benchmarks B and C produced *byte-identical* results
+   because both had silently run the same fallback. An explicit `_family` now
+   **raises** instead of falling back.
+2. **Harness params leaked into the constructor.** `quantity` (an order-sizing
+   parameter the engine consumes itself) was forwarded to the strategy, raising
+   a `TypeError` that was then swallowed — feeding bug 1. Harness params are now
+   stripped.
+
+Both produced reproducible, confident evidence about the wrong strategy, which
+is worse than no evidence at all.
+
+### The frozen candidate set (audit step 3)
+
+`qts/research/benchmarks.py` — three hypotheses, declared before anything was
+measured, each hashed and verified by `verify_frozen()`:
+
+| ID | Family | Role |
+|:---|:---|:---|
+| `BENCH-A-TREND-EMA-12-48` | EMA 12/48 trend | **CANDIDATE** — the registered DEMO rule, included unchanged |
+| `BENCH-B-BREAKOUT-DONCHIAN-20` | Donchian-20 breakout | **CANDIDATE** — volatility-normalized entry |
+| `BENCH-C-MEANREV-BOLLINGER-20-2.0` | Bollinger(20, 2.0) reversion | **CONTROL** — exists to be falsified |
+
+A and B share size, stop and hold, so any difference between them is the entry
+logic. C is a control that could *plausibly* pass — the only kind worth having:
+if a trend rule and its opposite both survive the same gates, the gates are
+measuring something other than an edge.
+
+Every evaluation is recorded as a trial, because running three hypotheses *is*
+the multiple testing DSR exists to penalise.
+
+New command:
+
+```
+qts edge benchmark --spread 0.35 --slippage 0.12 --swap-per-night -1.20 \
+    --cost-source "WM Markets XAUUSD@ quoted 2026-10-09 09:15 UTC"
+```
+
+Without measured costs it reports `Cost basis: ASSUMED — nothing below can pass
+an edge gate` and says what to measure.
+
+### Result on the current dataset
+
+```
+BENCH-A  14 round turns  gross +108.36  cost  7.00  net +101.36
+BENCH-B  82 round turns  gross -133.09  cost 28.00  net -161.09
+BENCH-C  59 round turns  gross -139.59  cost 29.50  net -169.09
+
+NO_EDGE_ESTABLISHED — mechanism evidence only
+```
+
+Every row is marked `mechanism_only`, for three independent reasons: the
+hypotheses are defined on 15m bars and were evaluated on 1H; the dataset is
+synthetic and not claim-eligible; and the costs were not measured. The report
+states all three rather than implying the numbers mean what they look like.
 
 ---
 

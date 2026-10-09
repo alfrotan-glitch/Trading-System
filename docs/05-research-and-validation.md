@@ -70,6 +70,56 @@ model = CostModel.xauusd_default(
 Until then the system says so: `economic edge blocked: costs were modelled but
 not MEASURED — an assumed cost cannot establish an economic edge`.
 
+### 5. Exit rules are part of the hypothesis
+
+A trend rule with a 3.00 USD stop and the same rule without one are **two
+different strategies**. Backtesting one while registering the other is how a
+system lies to itself.
+
+`BacktestEngine.run()` therefore takes declared `exit_rules`:
+
+```python
+engine.run(..., exit_rules={"stop_distance_usd": 3.00, "max_hold_bars": 16})
+```
+
+Conventions, all deliberately conservative:
+
+| Rule | Behaviour |
+|:---|:---|
+| `max_hold_bars` | Fills at the bar's **open**. Considered first, so a bar that triggers both is settled by the clock. |
+| `stop_distance_usd` | Fills at the stop level — **or at the open when the bar gapped through it**. A stop is an order, not a guarantee. |
+
+Exits are priced by the matching engine, so an exit pays spread and slippage
+exactly like an entry. Exits are not free.
+
+### 6. The frozen candidate set
+
+Not hundreds of indicator variants — three hypotheses, written down before
+anything was measured (`qts/research/benchmarks.py`):
+
+| ID | Family | Role |
+|:---|:---|:---|
+| `BENCH-A-TREND-EMA-12-48` | EMA 12/48 trend | **CANDIDATE** — the registered DEMO rule, unchanged |
+| `BENCH-B-BREAKOUT-DONCHIAN-20` | Donchian-20 breakout | **CANDIDATE** — volatility-normalized entry |
+| `BENCH-C-MEANREV-BOLLINGER-20-2.0` | Bollinger(20, 2.0) reversion | **CONTROL** — exists to be falsified |
+
+A and B share size, stop and hold, so any difference between them is the entry
+logic. C is a control that could *plausibly* pass — the only kind worth having.
+If a trend rule and its opposite both survive the same gates, the gates are
+measuring something other than an edge.
+
+Each spec is hashed and verified by `verify_frozen()`: change a parameter after
+registration and the run refuses. Evaluations are recorded as trials, because
+running three hypotheses *is* the multiple testing DSR exists to penalise.
+
+```
+qts edge benchmark --spread 0.35 --slippage 0.12 --swap-per-night -1.20 \
+    --cost-source "WM Markets XAUUSD@ quoted 2026-10-09 09:15 UTC"
+```
+
+**This command never promotes anything.** It reports gross, cost and net per
+hypothesis and states whether the dataset could support a claim.
+
 ---
 
 ## Forward Validation Registry
