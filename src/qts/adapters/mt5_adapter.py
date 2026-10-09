@@ -2241,7 +2241,15 @@ class MT5Adapter(BrokerAdapter):
             raw_time = getattr(d, "time", None)
             if raw_time is None:
                 raise RuntimeError(f"MT5 deal {ticket_int} has no timestamp")
-            deal_time = datetime.fromtimestamp(float(raw_time), tz=UTC)
+            # MT5 stamps deals in SERVER time, not UTC -- the same trap this
+            # module already handles for ticks (see ``ticks``: it subtracts the
+            # measured offset before treating a stamp as UTC). Doing it here
+            # too keeps fill event_time on the same basis as tick event_time;
+            # on a UTC+3 broker the old line put every fill three hours in the
+            # future, which poisons hold duration, overnight counting and any
+            # "fill from the future" sanity check downstream.
+            _offset, _basis = self.server_utc_offset(sym)
+            deal_time = datetime.fromtimestamp(float(raw_time) - float(_offset), tz=UTC)
 
             fee = (
                 Decimal(str(getattr(d, "commission", 0) or 0))

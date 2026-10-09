@@ -45,7 +45,7 @@ import hashlib
 import json
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
@@ -169,9 +169,15 @@ class SubmitEvidence:
 
 
 #: Fields whose absence makes a cost record incomplete rather than merely less
-#: detailed. Everything else (``entry``, ``time_msc``, ``type`` …) is provenance:
+#: detailed. Everything else (``entry``, ``time_msc``, ``type``, …) is provenance:
 #: recorded when missing, but it does not invalidate a cost measurement.
-_REQUIRED_DEAL_FIELDS = ("volume", "price", "profit", "commission", "swap", "fee")
+#:
+#: ``profit`` is deliberately NOT here. MQL5 defines DEAL_PROFIT, but the
+#: MetaTrader5 Python package's deal record does not reliably expose it, and
+#: net P&L is not what this module measures — the charges are. Making an
+#: uncertain field blocking would mark every deal from such a terminal as
+#: incomplete and silence the one measurement that works.
+_REQUIRED_DEAL_FIELDS = ("volume", "price", "commission", "swap", "fee")
 
 
 @dataclass
@@ -204,8 +210,20 @@ class DealEvidence:
     commission: Decimal | None
     swap: Decimal | None
     fee: Decimal | None
+    #: The broker's own stamp, in milliseconds, exactly as reported.
     time_msc: int | None
+    #: TRUE UTC, only when the server->UTC offset was supplied. ``None``
+    #: otherwise -- never guessed, because MT5 stamps are SERVER-basis and on
+    #: a UTC+3 broker an uncorrected stamp reads three hours in the future.
     time_iso: str | None
+    #: The same instant rendered on the broker's clock. Always available from
+    #: the raw stamp, and always labelled: it is NOT UTC.
+    time_iso_broker: str | None
+    #: "utc-corrected" or "broker-basis-only". Recorded so a reader can never
+    #: mistake a server-basis stamp for a UTC one.
+    time_basis: str
+    #: Seconds to subtract from a server stamp to get UTC, when known.
+    server_utc_offset_s: float | None
     #: Broker-reported spread in points at capture time (from symbol_info).
     spread_points: int | None
     account_currency: str | None
@@ -303,6 +321,7 @@ def deal_evidence_from_broker(
     journal_id: int | None = None,
     spread_points: int | None = None,
     requested_price: Decimal | str | float | None = None,
+    server_utc_offset_s: float | None = None,
     account_currency: str | None = None,
     currency_source: str = "mt5.account_info.currency",
     source: str = "mt5.history_deals_get",
@@ -340,20 +359,43 @@ def deal_evidence_from_broker(
     if ticket is None:
         missing.append("ticket")
 
-    # Human-readable time: derived from the broker's own millisecond stamp
-    # when present, never from the local clock.
+    # Timestamps. MT5 reports deal time on the SERVER's clock, not UTC. The
+    # broker in this project's own evidence (WMMarkets-Demo) stamps UTC+3, and
+    # `tests/test_tick_timestamp_contract.py` exists because treating a
+    # server stamp as UTC once made every live tick look three hours old in
+    # the future. The same trap applies to deals, so:
+    #   * the raw stamp is always preserved verbatim (time_msc);
+    #   * the broker-basis rendering is always available and always labelled;
+    #   * true UTC is produced ONLY when the measured offset was supplied.
+    time_basis = "broker-basis-only"
+    time_iso_broker: str | None = None
     time_iso: str | None = None
     if time_msc is not None:
         try:
-            time_iso = datetime.fromtimestamp(time_msc / 1000.0, tz=UTC).isoformat()
+            time_iso_broker = datetime.fromtimestamp(time_msc / 1000.0, tz=UTC).isoformat()
         except (OverflowError, OSError, ValueError):
             missing.append("time_msc_unparseable")
-    if time_iso is None:
+    if time_iso_broker is None:
         raw_time = _str_field(raw, "time")
         if raw_time is not None:
-            time_iso = raw_time
+            time_iso_broker = raw_time
         else:
             missing.append("time")
+    if time_iso_broker is not None and server_utc_offset_s is not None:
+        try:
+            corrected = (
+                datetime.fromisoformat(time_iso_broker) - timedelta(seconds=float(server_utc_offset_s))
+                if "T" in time_iso_broker
+                else datetime.fromtimestamp(
+                    float(time_msc or 0) / 1000.0 - float(server_utc_offset_s), tz=UTC
+                )
+            )
+            time_iso = corrected.isoformat()
+            time_basis = "utc-corrected"
+        except (OverflowError, OSError, ValueError, TypeError):
+            # A correction that cannot be computed is recorded as such, not
+            # silently replaced by the uncorrected stamp.
+            missing.append("time_offset_unapplicable")
 
     # MT5 deal type: 0 BUY, 1 SELL, ... (2-5 are balance/credit operations)
     deal_type = num("type")
@@ -386,6 +428,9 @@ def deal_evidence_from_broker(
         fee=fee,
         time_msc=time_msc,
         time_iso=time_iso,
+        time_iso_broker=time_iso_broker,
+        time_basis=time_basis,
+        server_utc_offset_s=server_utc_offset_s,
         spread_points=spread_points,
         account_currency=account_currency,
         currency_source=currency_source,
@@ -704,6 +749,13 @@ def _deal_from_record(record: dict[str, Any]) -> DealEvidence:
         fee=dec("fee"),
         time_msc=num("time_msc"),
         time_iso=record.get("time_iso"),
+        time_iso_broker=record.get("time_iso_broker"),
+        time_basis=str(record.get("time_basis") or "broker-basis-only"),
+        server_utc_offset_s=(
+            float(record["server_utc_offset_s"])
+            if record.get("server_utc_offset_s") is not None
+            else None
+        ),
         spread_points=num("spread_points"),
         account_currency=record.get("account_currency"),
         currency_source=str(record.get("currency_source") or "unknown"),
@@ -1013,7 +1065,11 @@ def reconcile_round_trip(
     if modelled_total is not None and observed_total is not None:
         delta_total = observed_total - modelled_total
 
-    times = [d.time_iso for d in deals if d.time_iso]
+    # Either basis orders identically (both are monotonic in the same instant),
+    # so the broker rendering is a valid fallback when UTC is unavailable.
+    times: list[str] = [
+        stamp for stamp in (d.time_iso or d.time_iso_broker for d in deals) if stamp
+    ]
     last_time = max(times) if times else None
     # "Revised" means a deal arrived for a position whose round trip had
     # ALREADY been reconciled. On a first reconciliation there is nothing to
@@ -1023,6 +1079,11 @@ def reconcile_round_trip(
     notes: list[str] = []
     if not deals:
         notes.append("no deals for this position — nothing was measured")
+    if any(d.time_iso is None and d.time_iso_broker for d in deals):
+        notes.append(
+            "deal times are broker-basis (no server offset was supplied at capture) — "
+            "they are NOT UTC and must not be compared against UTC timestamps"
+        )
     if not position_id:
         notes.append(
             "these deals carry no position identifier — they cannot be attributed to a round trip"

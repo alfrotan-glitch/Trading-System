@@ -170,7 +170,9 @@ def test_a_genuine_zero_commission_is_distinguishable_from_a_missing_one() -> No
 
 
 def test_every_required_field_absence_is_recorded_individually() -> None:
-    for field in ("volume", "price", "profit", "commission", "swap", "fee"):
+    # ``profit`` is intentionally absent from this list: the MT5 Python package
+    # does not reliably expose it, so it must not gate a cost measurement.
+    for field in ("volume", "price", "commission", "swap", "fee"):
         deal = evidence(_without(field))
         assert field in deal.unavailable_fields, field
         assert deal.complete is False
@@ -195,7 +197,12 @@ def test_the_raw_broker_record_is_preserved_verbatim() -> None:
 def test_deal_time_comes_from_the_broker_stamp_not_the_local_clock() -> None:
     deal = evidence(full_deal(time_msc=1_760_000_000_000))
     assert deal.time_msc == 1_760_000_000_000
-    assert deal.time_iso is not None and deal.time_iso.startswith("2025-")
+    # The broker's stamp is rendered on the broker's own clock and labelled as
+    # such: MT5 stamps are server-basis, so calling this UTC would be a claim
+    # the data does not support.
+    assert deal.time_iso_broker is not None and deal.time_iso_broker.startswith("2025-")
+    assert deal.time_basis == "broker-basis-only"
+    assert deal.time_iso is None, "no offset was supplied, so no UTC time may be asserted"
 
 
 def test_submit_evidence_preserves_requested_versus_executed_prices() -> None:

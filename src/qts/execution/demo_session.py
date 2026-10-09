@@ -182,6 +182,7 @@ class DemoSession:
         receipt: dict[str, Any],
         requested_price: Any = None,
         account_currency: str | None = None,
+        server_utc_offset_s: float | None = None,
     ) -> dict[str, Any]:
         """Freeze the broker's own charges for this submission as evidence.
 
@@ -207,6 +208,20 @@ class DemoSession:
             return summary
 
         quote = receipt.get("pre_trade_quote") or {}
+        # The broker stamps deals in SERVER time. Without the measured offset a
+        # UTC+3 server makes every captured deal look three hours old in the
+        # future, so the offset is resolved here and passed down; if it cannot
+        # be measured the evidence is still captured, but its timestamps are
+        # labelled broker-basis instead of being quietly called UTC.
+        offset: float | None = server_utc_offset_s
+        if offset is None:
+            offset = self._measured_server_utc_offset()
+        if offset is None:
+            logger.warning(
+                "server->UTC offset unavailable for %s — deal timestamps will be "
+                "recorded as broker-basis, not UTC",
+                client_order_id,
+            )
         try:
             from qts.execution.cost_capture import deal_evidence_from_broker
 
@@ -218,6 +233,7 @@ class DemoSession:
                     journal_id=journal_id,
                     spread_points=quote.get("spread_points"),
                     requested_price=requested_price,
+                    server_utc_offset_s=offset,
                     account_currency=account_currency or receipt.get("account_currency"),
                     source="mt5.history_deals_get",
                 )
@@ -237,6 +253,23 @@ class DemoSession:
                 summary["error"],
             )
         return summary
+
+    def _measured_server_utc_offset(self) -> float | None:
+        """The broker server's offset from UTC, measured — never assumed.
+
+        ``None`` when it cannot be measured. Returning 0.0 here would be the
+        same fabrication this project already caught once for ticks: on a
+        UTC+3 broker it silently shifts every deal by three hours.
+        """
+        try:
+            adapter = self.adapter
+            if adapter is None:
+                return None
+            offset, _basis = adapter.server_utc_offset(self.broker_symbol)
+            return float(offset)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("server->UTC offset could not be measured: %s", exc)
+            return None
 
     @property
     def canonical_symbol(self) -> str:
