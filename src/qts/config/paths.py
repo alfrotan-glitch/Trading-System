@@ -196,11 +196,17 @@ def paths_report() -> dict[str, Any]:
     same state" checkable instead of hoped for.
     """
     root = state_root()
+    cwd = Path.cwd()
+    detected = _detect_repo_root()
+    explicit_root = bool((os.getenv(STATE_ROOT_ENV) or "").strip())
+    cwd_fallback_active = (
+        not explicit_root and detected is not None and cwd != detected and (cwd / "data").is_dir()
+    )
     out: dict[str, Any] = {
         "state_root": str(root),
         "state_root_source": state_root_source(),
-        "working_directory": str(Path.cwd()),
-        "cwd_independent": True,
+        "working_directory": str(cwd),
+        "cwd_independent": not cwd_fallback_active,
         "artifacts": {},
     }
     for name, relative in RELATIVE_DEFAULTS.items():
