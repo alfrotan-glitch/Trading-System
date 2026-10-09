@@ -20,15 +20,15 @@ The artifact's `risk_ceiling` includes `max_drawdown_pct: 5`. In `src/qts/lifecy
 
 **Required resolution:** do not edit the authorization JSON or recompute its hash as a workaround. The owner must re-issue a valid artifact using only the canonical supported fields, or the engineering owner must first deliberately implement and test percentage-drawdown support end-to-end in the canonical risk authority, then have the owner re-issue the artifact under the new contract. Keep execution disabled until the complete validation passes.
 
-### P1 — The `micro` evidence writer still uses working-directory-relative paths
+### P1 — CLI evidence, audit, and paper/shadow databases were working-directory-relative (fixed in this PR candidate)
 
-File: `src/qts/cli/ops.py`, `run_cmd` micro branch.
+Files: `src/qts/cli/ops.py`, `src/qts/config/paths.py`.
 
-The branch writes evidence using `_Path2("data/evidence")` and `_Path2("data/evidence/micro.json")`. This bypasses `qts.config.paths.artifact_path()`, so launching the CLI from another directory can write evidence into that directory rather than the canonical state root.
+The dry_run, micro, paper, and shadow paths wrote evidence and/or SQLite state through relative Path("data/...") calls. The audit sink also used the default relative logs/audit.jsonl path. Launching commands from another directory could split durable state between the repository and the caller cwd.
 
-The current `RELATIVE_DEFAULTS` and `ENV_OVERRIDES` in `src/qts/config/paths.py` do not define a `micro` artifact or `QTS_MICRO_EVIDENCE_PATH`.
+This PR candidate registers canonical artifacts and environment overrides for dry_run, micro, paper_trades, shadow_intents, paper/shadow SQLite databases, and the audit JSONL sink.
 
-**Required resolution:** register a `micro` artifact and its environment override, route both directory creation and file writing through the registered resolved path, and add a regression test that runs from a foreign working directory with `QTS_STATE_ROOT` set. The test must prove no evidence file is created under the foreign cwd.
+The affected writers now resolve through artifact_path() before creating directories or files. A regression test verifies state-root anchoring and environment override behavior. CI is the final verification gate for this candidate.
 
 ### P1 — State-root behavior has a documented-contract inconsistency
 
