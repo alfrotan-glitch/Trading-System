@@ -240,6 +240,46 @@ depth/span, quality, costs, controls, and forward evidence.
         cost_model=cost_model,
         trade_records=trade_records,
     )
+    # ---- expectancy / economic edge, from real round turns -----------------
+    from qts.research.costs import cost_summary_line
+
+    if edge.cost_decomposition is not None and edge.cost_decomposition.trades > 0:
+        dec = edge.cost_decomposition
+        expectancy_payload = {
+            "status": "MEASURED",
+            "round_turns": dec.trades,
+            "gross_expectancy_per_trade": dec.gross_expectancy_per_trade,
+            "modelled_cost_per_trade": dec.cost_per_trade,
+            "net_expectancy_per_trade": dec.net_expectancy_per_trade,
+            "cost_drag": dec.cost_drag,
+            "break_even_cost_multiple": dec.break_even_cost_multiple,
+            "claim_eligible": dec.claim_eligible,
+            "basis": dec.basis_summary,
+            "summary": cost_summary_line(dec),
+        }
+        if dec.claim_eligible:
+            economic_payload = {
+                "status": "MEASURED",
+                "passed": bool(edge.checks.get("economic_edge")),
+                "summary": edge.details.get("economic_edge", ""),
+            }
+        else:
+            economic_payload = {
+                "status": "NOT_CLAIM_GRADE",
+                "passed": False,
+                "reason": (
+                    "costs were modelled but not MEASURED — the decomposition is a sensitivity result, "
+                    "not an economic edge"
+                ),
+                "components": dec.basis_summary,
+            }
+    else:
+        expectancy_payload = _unavailable(
+            "no completed round turns could be paired from this run's fills — "
+            "expectancy was not measured, not zero"
+        )
+        economic_payload = _unavailable("no costed round turns — gross/net decomposition unavailable")
+
     claim_blocked = readiness.status != "READY"
     conclusion = (
         ConclusionCode.BLOCKED_INSUFFICIENT_DATA.value
@@ -330,8 +370,14 @@ depth/span, quality, costs, controls, and forward evidence.
         "forward": forward_obs,
         "shadow_paper": _unavailable("shadow/paper artifacts are not bound to this experiment"),
         "capital_policy": _unavailable("authoritative account state is unavailable in research mode"),
-        "expectancy": _unavailable("realized trade PnL attribution is unavailable from BacktestResult fills"),
-        "economic_edge": _unavailable("gross/net cost decomposition is unavailable"),
+        # These two used to be hard-coded UNAVAILABLE because nothing converted
+        # BacktestResult fills into round turns. The trade ledger does that now,
+        # so they report what was actually measured — or say why it was not.
+        "expectancy": expectancy_payload,
+        "economic_edge": economic_payload,
+        "cost_decomposition": (
+            edge.cost_decomposition.as_dict() if edge.cost_decomposition is not None else None
+        ),
         "promotion": {"state": promo_state, "advanced": False},
         "emergency": {
             "kill_switch_authority": "qts.risk.engine.RiskEngine",

@@ -24,10 +24,19 @@ from qts.research.costs import (
 
 
 def _model(**kwargs: object) -> CostModel:
+    """An ASSUMED model — a valid sensitivity result, never a claim."""
     kwargs.setdefault("spread_price_units", 0.30)
     kwargs.setdefault("slippage_price_units", 0.10)
     kwargs.setdefault("swap_per_night_per_lot_usd", 0.0)
+    kwargs.setdefault("basis", CostBasis.ASSUMED)
     return CostModel.xauusd_default(**kwargs)  # type: ignore[arg-type]
+
+
+def _measured_model(**kwargs: object) -> CostModel:
+    """A MEASURED model — the only kind an edge claim may rest on."""
+    kwargs.setdefault("basis", CostBasis.MEASURED)
+    kwargs.setdefault("source", "broker quote / commission schedule (test fixture)")
+    return _model(**kwargs)
 
 
 # --------------------------------------------------------------- components
@@ -91,9 +100,11 @@ def test_model_rejects_a_non_positive_contract_size():
         CostModel(contract_size=0)
 
 
-def test_claim_eligibility_requires_every_component_to_be_known():
-    assert _model(swap_per_night_per_lot_usd=0.0).claim_eligible() is True
-    assert _model(swap_per_night_per_lot_usd=None).claim_eligible() is False
+def test_claim_eligibility_requires_measured_costs():
+    """Gross minus a number somebody chose is not an economic edge."""
+    assert _measured_model(swap_per_night_per_lot_usd=0.0).claim_eligible() is True
+    assert _model(swap_per_night_per_lot_usd=0.0).claim_eligible() is False
+    assert _measured_model(swap_per_night_per_lot_usd=None).claim_eligible() is False
 
 
 def test_default_constructor_marks_unsupplied_financing_as_unknown():
@@ -101,6 +112,14 @@ def test_default_constructor_marks_unsupplied_financing_as_unknown():
     m = _model(swap_per_night_per_lot_usd=None)
     assert m.basis_summary()["financing"] == CostBasis.UNKNOWN.value
     assert m.claim_eligible() is False
+
+
+def test_assumed_costs_are_reported_visibly():
+    m = _model()
+    assert sorted(m.assumed_components()) == ["commission", "financing", "slippage", "spread"]
+    dec = decompose_costs([TradeRecord(lots=0.1, gross_pnl_usd=50.0)], m)
+    assert any("ASSUMED" in r and "requires measured costs" in r for r in dec.reasons)
+    assert dec.claim_eligible is False
 
 
 # ----------------------------------------------------------- decomposition
@@ -179,7 +198,7 @@ def test_empty_trade_list_is_not_a_favourable_result():
 
 def test_unincurred_unknown_cost_does_not_block_the_claim():
     """No overnight hold means unmeasured financing never touched the number."""
-    m = _model(swap_per_night_per_lot_usd=None)
+    m = _measured_model(swap_per_night_per_lot_usd=None)
     intraday = decompose_costs([TradeRecord(lots=0.1, gross_pnl_usd=50.0, nights_held=0)], m)
     assert intraday.claim_eligible is True
     assert any("never incurred" in r for r in intraday.reasons)
@@ -249,7 +268,7 @@ def test_expectancy_is_not_reported_as_net_when_no_cost_is_modelled():
 def test_a_cost_model_makes_the_cost_gate_decidable():
     from qts.validation.edge_validation import validate_edge_survival
 
-    m = _model(spread_price_units=0.30, slippage_price_units=0.10, swap_per_night_per_lot_usd=0.0)
+    m = _measured_model(spread_price_units=0.30, slippage_price_units=0.10, swap_per_night_per_lot_usd=0.0)
     trades = [TradeRecord(lots=0.1, gross_pnl_usd=60.0) for _ in range(12)]
     res = validate_edge_survival(
         **_survival_kwargs(cost_model=m, trade_records=trades),
@@ -266,7 +285,7 @@ def test_expectancy_subtracts_the_modelled_cost():
     from qts.validation.edge_validation import validate_edge_survival
 
     # gross 10 USD/trade, round-turn cost 5 USD/trade -> net 5 USD/trade
-    m = _model(spread_price_units=0.30, slippage_price_units=0.10, swap_per_night_per_lot_usd=0.0)
+    m = _measured_model(spread_price_units=0.30, slippage_price_units=0.10, swap_per_night_per_lot_usd=0.0)
     trades = [TradeRecord(lots=0.1, gross_pnl_usd=10.0) for _ in range(10)]
     res = validate_edge_survival(**_survival_kwargs(cost_model=m, trade_records=trades))
     assert res.cost_decomposition is not None
@@ -277,8 +296,25 @@ def test_expectancy_subtracts_the_modelled_cost():
 def test_a_cost_that_exceeds_the_gross_edge_fails_the_expectancy_gate():
     from qts.validation.edge_validation import validate_edge_survival
 
-    m = _model(spread_price_units=1.50, slippage_price_units=0.50)  # 25 USD at 0.1 lot
+    m = _measured_model(spread_price_units=1.50, slippage_price_units=0.50)  # 25 USD at 0.1 lot
     trades = [TradeRecord(lots=0.1, gross_pnl_usd=10.0) for _ in range(10)]
     res = validate_edge_survival(**_survival_kwargs(cost_model=m, trade_records=trades))
     assert res.checks["expectancy"] is False
     assert res.checks["economic_edge"] is False
+
+
+def test_an_assumed_cost_never_unlocks_the_economic_edge_gate():
+    """Regression: an ASSUMED cost model made this gate pass on a synthetic
+    fixture. Gross minus a chosen number is not evidence of an edge."""
+    from qts.validation.edge_validation import validate_edge_survival
+
+    m = _model(spread_price_units=0.30, slippage_price_units=0.10, swap_per_night_per_lot_usd=0.0)
+    trades = [TradeRecord(lots=0.1, gross_pnl_usd=60.0) for _ in range(12)]
+    res = validate_edge_survival(**_survival_kwargs(cost_model=m, trade_records=trades))
+    # The decomposition is still computed and reported — it just cannot pass.
+    assert res.cost_decomposition is not None
+    assert res.cost_decomposition.net_expectancy_per_trade > 0
+    assert res.checks["economic_edge"] is False
+    assert res.checks["expectancy"] is False
+    assert "not MEASURED" in res.details["economic_edge"]
+    assert "ASSUMED" in res.details["expectancy"]

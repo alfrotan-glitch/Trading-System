@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 import click
@@ -13,6 +12,36 @@ import click
 def edge() -> None:
     """Capital preservation + real edge discovery."""
     pass
+
+
+def _decomposition_markdown(dec: Any) -> str:
+    """Render the gross/cost/net decomposition — or state plainly that there isn't one."""
+    if not isinstance(dec, dict) or not dec.get("trades"):
+        return "- **No round-turn decomposition.** No completed entry/exit pairs were paired from this run.\n- This is a missing measurement, not a zero and not a pass."
+
+    basis = dec.get("basis_summary") or {}
+    measured = sorted(k for k, v in basis.items() if v == "MEASURED")
+    assumed = sorted(k for k, v in basis.items() if v == "ASSUMED")
+    unknown = sorted(k for k, v in basis.items() if v == "UNKNOWN")
+    lines = [
+        f"- Round turns paired: **{dec['trades']}**",
+        f"- Gross P&L: **{dec['gross_pnl_usd']:+.2f} USD** (expectancy {dec['gross_expectancy_per_trade']:+.4f}/trade)",
+        f"- Cost: **{dec['cost_usd']:.2f} USD** ({dec['cost_per_trade']:.4f}/trade)",
+        f"- Net P&L: **{dec['net_pnl_usd']:+.2f} USD** (expectancy {dec['net_expectancy_per_trade']:+.4f}/trade)",
+        f"- Break-even cost multiple: **{dec['break_even_cost_multiple']:.2f}x** "
+        "(1.0x = costs already consume the entire edge)",
+        f"- Claim-eligible: **{dec['claim_eligible']}** "
+        "(an edge claim requires MEASURED costs, not assumed ones)",
+    ]
+    if dec.get("per_component_usd"):
+        comp = ", ".join(f"{k} {v:.2f}" for k, v in dec["per_component_usd"].items())
+        lines.append(f"- Components: {comp}")
+    for label, names in (("MEASURED", measured), ("ASSUMED", assumed), ("UNKNOWN", unknown)):
+        if names:
+            lines.append(f"- {label}: {', '.join(names)}")
+    for reason in dec.get("reasons") or []:
+        lines.append(f"- Note: {reason}")
+    return "\n".join(lines)
 
 
 @edge.command("validate")
@@ -26,8 +55,13 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
     click.echo(f"running edge validation for {strategy} version {data_version or 'latest'} (capital preservation)")
     evidence = run_full_edge_validation(data_version=data_version, strategy_id=strategy)
     # Write machine-readable
-    Path("data/evidence").mkdir(parents=True, exist_ok=True)
-    Path("data/evidence/edge_validation.json").write_text(json.dumps(evidence, indent=2, default=str), encoding="utf-8")
+    # State-root anchored, never cwd-relative: launching from another directory
+    # must not split the canonical edge evidence across two trees.
+    from qts.config.paths import artifact_path, resolve_state_path
+
+    edge_json = artifact_path("edge_validation")
+    edge_json.parent.mkdir(parents=True, exist_ok=True)
+    edge_json.write_text(json.dumps(evidence, indent=2, default=str), encoding="utf-8")
     # Generate docs
     # 1 edge_validation_report
     ev = evidence
@@ -44,6 +78,7 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
 
     regime_rows = ev.get("regime") if isinstance(ev.get("regime"), list) else []
     economic = ev.get("economic_edge") or {}
+    decomposition_md = _decomposition_markdown(ev.get("cost_decomposition"))
     report_md = f"""# Edge Validation Report
 **Generated:** {ev["generated_at"]}
 **Strategy:** {strategy}
@@ -82,6 +117,9 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
 ## 9. Cost/slippage tolerance
 - Break-even spread: {es["cost_be"]:.1f}bps passed: {es["checks"].get("cost", False)} details: {es["details"].get("cost", "")}
 
+## 9b. Gross -> cost -> net (round-turn decomposition)
+{decomposition_md}
+
 ## 10. Regime results
 - Regimes: {ev["regime"]}
 
@@ -114,8 +152,9 @@ def edge_validate(strategy: str, data_version: str | None, strict: bool) -> None
 - Emergency kill: {ev["emergency"]}
 
 """
-    Path("docs").mkdir(parents=True, exist_ok=True)
-    Path("docs/edge_validation_report.md").write_text(report_md, encoding="utf-8")
+    docs_dir = resolve_state_path("docs")
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    (docs_dir / "edge_validation_report.md").write_text(report_md, encoding="utf-8")
     # 2 capital_preservation_policy
     cap_md = f"""# Capital Preservation Policy
 **Generated:** {ev["generated_at"]}
@@ -141,7 +180,7 @@ Current check: {ev["capital_policy"]}
 Emergency controls (Phase 17): kill_switch, cancel_all, suspend_new_orders, max_order_rate, max_order_size, stale_data_stop, abnormal_spread_stop, latency_stop, account_state_stop, reconciliation_stop — independently tested.
 
 """
-    Path("docs/capital_preservation_policy.md").write_text(cap_md, encoding="utf-8")
+    (docs_dir / "capital_preservation_policy.md").write_text(cap_md, encoding="utf-8")
     # 3 strategy_promotion_policy
     promo_md = f"""# Strategy Promotion Policy — One-Way
 **State:** {ev["promotion"]["state"]}
@@ -155,7 +194,7 @@ Immutable lifecycle: RESEARCH → CANDIDATE → VALIDATED → FORWARD_OBSERVATIO
 - Current: {ev["promotion"]["state"]}
 
 """
-    Path("docs/strategy_promotion_policy.md").write_text(promo_md, encoding="utf-8")
+    (docs_dir / "strategy_promotion_policy.md").write_text(promo_md, encoding="utf-8")
     # 4 locked_test_protocol
     locked_md = f"""# Locked Test Protocol
 **Data version:** {ds["manifest"]["version"]}
@@ -168,7 +207,7 @@ Immutable lifecycle: RESEARCH → CANDIDATE → VALIDATED → FORWARD_OBSERVATIO
 - Record every attempt to access/modify locked-test artifacts
 
 """
-    Path("docs/locked_test_protocol.md").write_text(locked_md, encoding="utf-8")
+    (docs_dir / "locked_test_protocol.md").write_text(locked_md, encoding="utf-8")
     # 5 experiment_ledger
     exp_store = __import__("qts.research.experiment", fromlist=["ExperimentStore"]).ExperimentStore()
     trials = exp_store.count_trials()
@@ -184,7 +223,7 @@ Every experiment recorded: strategy identity, parameter set, feature set, timefr
 
 Current ledger count: {trials}
 """
-    Path("docs/experiment_ledger.md").write_text(ledger_md, encoding="utf-8")
+    (docs_dir / "experiment_ledger.md").write_text(ledger_md, encoding="utf-8")
     click.echo("edge validation evidence written to data/evidence/edge_validation.json")
     click.echo(
         "docs: edge_validation_report.md, capital_preservation_policy.md, strategy_promotion_policy.md, locked_test_protocol.md, experiment_ledger.md"

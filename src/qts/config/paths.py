@@ -69,6 +69,8 @@ RELATIVE_DEFAULTS: dict[str, str] = {
     "completeness_disposition": "data/evidence/xauusd_completeness_disposition.json",
     "comparison": "data/evidence/paper_shadow_demo_comparison.json",
     "reality": "data/evidence/execution_reality.json",
+    "campaign_last": "data/evidence/campaign_last.json",
+    "autonomous_campaign": "data/evidence/autonomous_campaign.json",
 }
 
 #: Environment override per artefact (highest precedence, used verbatim).
@@ -101,6 +103,8 @@ ENV_OVERRIDES: dict[str, str] = {
     "completeness_disposition": "QTS_COMPLETENESS_DISPOSITION_PATH",
     "comparison": "QTS_COMPARISON_PATH",
     "reality": "QTS_REALITY_PATH",
+    "campaign_last": "QTS_CAMPAIGN_LAST_PATH",
+    "autonomous_campaign": "QTS_AUTONOMOUS_CAMPAIGN_PATH",
 }
 
 STATE_ROOT_ENV = "QTS_STATE_ROOT"

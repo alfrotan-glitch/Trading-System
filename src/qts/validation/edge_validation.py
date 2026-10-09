@@ -104,6 +104,16 @@ def validate_edge_survival(
                 f"{decomposition.break_even_cost_multiple:.2f}x; "
                 f"claim_eligible={decomposition.claim_eligible}"
             )
+        elif decomposition is not None:
+            # A decomposition exists but is too small to compare two equity
+            # curves. That is "not enough evidence", not "not implemented" —
+            # the two must never be reported with the same sentence.
+            cost_res = None
+            checks["cost"] = False
+            details["cost"] = (
+                f"only {decomposition.trades} completed round turn(s) — a gross vs net equity comparison "
+                "needs at least 2; the decomposition is reported but this gate cannot pass"
+            )
         else:
             cost_res = None
             checks["cost"] = False
@@ -208,10 +218,19 @@ def validate_edge_survival(
     pnl_vector = [t.gross_pnl_usd for t in trade_records] if trade_records else list(trades_pnl)
     exp_report = compute_expectancy(pnl_vector, costs_per_trade=modelled_cost_per_trade)
     cost_is_modelled = decomposition is not None and decomposition.trades > 0
-    checks["expectancy"] = bool(cost_is_modelled and exp_report.net_expectancy_after_costs > 0)
+    # Three distinct outcomes, never conflated:
+    #   no cost model at all          -> GROSS reported, gate BLOCKS
+    #   costs modelled but ASSUMED    -> net reported, gate FAILS (sensitivity only)
+    #   costs MEASURED                -> net reported, gate may PASS
+    cost_is_claimable = bool(cost_is_modelled and decomposition is not None and decomposition.claim_eligible)
+    basis_note = "" if cost_is_modelled else ""
+    if decomposition is not None and decomposition.trades > 0:
+        assumed = sorted(k for k, v in decomposition.basis_summary.items() if v == "ASSUMED")
+        basis_note = f" [costs ASSUMED: {', '.join(assumed)} — not claim-grade]" if assumed else ""
+    checks["expectancy"] = bool(cost_is_claimable and exp_report.net_expectancy_after_costs > 0)
     details["expectancy"] = (
         f"net_exp {exp_report.net_expectancy_after_costs:.4f} (gross {exp_report.expectancy_per_trade:.4f} "
-        f"- cost {modelled_cost_per_trade:.4f}/trade) pf {exp_report.profit_factor:.2f}"
+        f"- cost {modelled_cost_per_trade:.4f}/trade) pf {exp_report.profit_factor:.2f}{basis_note}"
         if cost_is_modelled
         else (
             f"GROSS exp {exp_report.expectancy_per_trade:.4f} pf {exp_report.profit_factor:.2f} — "
@@ -232,10 +251,21 @@ def validate_edge_survival(
         0.01,
     )
     checks["economic_edge"] = bool(
-        (cost_res is not None or decomposition is not None) and econ.passed and cost_is_modelled
+        (cost_res is not None or decomposition is not None) and econ.passed and cost_is_claimable
     )
     details["economic_edge"] = (
-        econ.criterion if cost_res is not None else "economic edge blocked: cost decomposition unavailable"
+        econ.criterion
+        if cost_is_claimable
+        else (
+            "economic edge blocked: cost decomposition unavailable"
+            if decomposition is None
+            else (
+                "economic edge blocked: costs were modelled but not MEASURED — an assumed cost cannot "
+                "establish an economic edge"
+                if cost_is_modelled
+                else "economic edge blocked: no cost decomposition"
+            )
+        )
     )
     passed = all(checks.values())
     return EdgeSurvivalResult(

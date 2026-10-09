@@ -50,8 +50,15 @@ class CostBasis(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
-#: Bases that a claim may rest on. UNKNOWN is deliberately absent.
-CLAIM_ELIGIBLE_BASES = frozenset({CostBasis.MEASURED, CostBasis.ASSUMED})
+#: The ONLY basis an edge claim may rest on.
+#:
+#: An ASSUMED cost still produces a perfectly good decomposition — it is the
+#: right way to run a sensitivity sweep ("even at 3x the spread I modelled,
+#: this survives"). It is NOT the right basis for "this strategy makes money":
+#: gross P&L minus a number somebody chose is arithmetic about the number
+#: somebody chose. Go and measure the spread, the commission and the swap, or
+#: do not claim an economic edge.
+CLAIM_ELIGIBLE_BASES = frozenset({CostBasis.MEASURED})
 
 
 # --------------------------------------------------------------------------- #
@@ -275,8 +282,15 @@ class CostModel:
         return {c.name: c.basis.value for c in self.components}
 
     def claim_eligible(self) -> bool:
-        """A cost model is claim-grade only if every component's basis is known."""
+        """A cost model is claim-grade only if every component was MEASURED."""
         return bool(self.components) and all(c.basis in CLAIM_ELIGIBLE_BASES for c in self.components)
+
+    def measured_components(self) -> list[str]:
+        return [c.name for c in self.components if c.basis is CostBasis.MEASURED]
+
+    def assumed_components(self) -> list[str]:
+        """Components that are known but not measured — sensitivity only."""
+        return [c.name for c in self.components if c.basis is CostBasis.ASSUMED]
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -374,42 +388,46 @@ def decompose_costs(trades: list[TradeRecord], model: CostModel) -> CostDecompos
     # before the strategy stops making money. <= 1.0 means it never did.
     break_even = gross_total / cost_total if cost_total > 0 else (float("inf") if gross_total > 0 else 0.0)
 
-    claim_eligible = model.claim_eligible()
-    if n == 0:
-        reasons.append("no trades supplied — the decomposition is empty, not favourable")
-        claim_eligible = False
-    if not model.components:
-        reasons.append("cost model declares no components — costs would be silently zero")
-        claim_eligible = False
-
-    # An UNKNOWN component blocks a claim only if it COULD have altered these
-    # numbers. Financing that was never incurred (no overnight hold) is a known
-    # zero for this trade set, not an unpriced risk.
+    # Claim eligibility is decided component by component, and only over the
+    # components that COULD have altered these numbers. Financing that was never
+    # incurred (no overnight hold) is a known zero for this trade set, not an
+    # unpriced risk — so it neither blocks nor weakens the claim.
     nights_total = float(sum(max(0.0, t.nights_held) for t in trades))
+    never_incurred: set[str] = set()
     incurred_unknown: list[str] = []
     for c in model.components:
         if c.basis is not CostBasis.UNKNOWN:
             continue
         only_financing = c.usd_per_lot_per_night != 0 or (c.price_units_per_lot == 0 and c.usd_per_lot == 0)
         if only_financing and nights_total <= 0:
+            never_incurred.add(c.name)
             reasons.append(f"cost component {c.name!r} is UNKNOWN but was never incurred (no overnight hold)")
         else:
             incurred_unknown.append(c.name)
+
+    judged = [c for c in model.components if c.name not in never_incurred]
+    claim_eligible = bool(judged) and all(c.basis in CLAIM_ELIGIBLE_BASES for c in judged)
     if incurred_unknown:
         claim_eligible = False
         reasons.append(
             f"cost component(s) with UNKNOWN basis: {', '.join(sorted(incurred_unknown))} — not claim-eligible"
         )
-    elif n > 0 and model.components:
-        # Every component that could have mattered is known.
-        claim_eligible = True
-    if model.claim_eligible() and model.components:
-        measured = sorted(c.name for c in model.components if c.basis is CostBasis.MEASURED)
-        assumed = sorted(c.name for c in model.components if c.basis is CostBasis.ASSUMED)
+    if n == 0:
+        reasons.append("no trades supplied — the decomposition is empty, not favourable")
+        claim_eligible = False
+    if not model.components:
+        reasons.append("cost model declares no components — costs would be silently zero")
+        claim_eligible = False
+    if not incurred_unknown and model.components:
+        measured = model.measured_components()
+        assumed = model.assumed_components()
         if measured:
             reasons.append(f"MEASURED: {', '.join(measured)}")
         if assumed:
-            reasons.append(f"ASSUMED (not claim-grade on its own): {', '.join(assumed)}")
+            reasons.append(
+                f"ASSUMED: {', '.join(assumed)} — a valid sensitivity result, but an economic-edge "
+                "claim requires measured costs"
+            )
 
     return CostDecomposition(
         gross_pnl_usd=gross_total,

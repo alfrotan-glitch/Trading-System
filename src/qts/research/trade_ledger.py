@@ -268,22 +268,15 @@ def round_turns_from_fills(
                     opened_at=lot.opened_at,
                 )
 
-        # 2) whatever is left opens (or extends) a position
+        # 2) whatever is left opens (or extends) a position.
+        #
+        # Lots are APPENDED, never merged. Averaging two entry prices into one
+        # lot would be average-cost accounting, and it would make the P&L of a
+        # partial close depend on lots that are still open — which is not what
+        # a broker statement does and not what FIFO means.
         if remaining > 0:
             fee_share_open = (float(raw.get("fee") or 0.0) / qty) * remaining if qty else 0.0
-            # Opening fees are carried on the lot and charged when it closes.
-            if inventory and inventory[-1].side == side:
-                prev = inventory[-1]
-                total = prev.lots + remaining
-                inventory[-1] = OpenLot(
-                    side=side,
-                    lots=total,
-                    price=((prev.price * prev.lots) + (price * remaining)) / total,
-                    mid=((prev.mid * prev.lots) + (mid * remaining)) / total,
-                    opened_at=prev.opened_at or at_text,
-                )
-            else:
-                inventory.append(OpenLot(side=side, lots=remaining, price=price, mid=mid, opened_at=at_text))
+            inventory.append(OpenLot(side=side, lots=remaining, price=price, mid=mid, opened_at=at_text))
             # Record the opening fee immediately so it is never lost: it is
             # attributed to the next round turn this lot participates in.
             if fee_share_open:
