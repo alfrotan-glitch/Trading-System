@@ -1,0 +1,138 @@
+{
+  "schema": "qts.research_pipeline.v1",
+  "generated_at": "2026-10-09T13:14:12.916408+00:00",
+  "data_version": "20261009-010+2b024334-1ba57af7",
+  "instrument": "XAUUSD",
+  "timeframe": "15m",
+  "cost_basis": "ASSUMED",
+  "cost_source": "",
+  "total_configurations_tried": 36,
+  "folds": [
+    {
+      "params": {
+        "k": 2.0,
+        "period": 30
+      },
+      "trades": 406,
+      "net_return": -2647.9911544749975,
+      "gross_return": -1903.473500000011,
+      "cost": 744.5176544749866,
+      "sharpe": 0.4106947717819088,
+      "max_drawdown": 0.7264509693821576,
+      "profit_factor": 1.0125890463814242,
+      "expectancy_per_trade": -6.522145700677334,
+      "selected_from_n": 9,
+      "fold": {
+        "index": 0,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-01-13T19:12:00+00:00",
+        "test_start": "2026-01-15T19:12:00+00:00",
+        "test_end": "2026-03-17T20:24:00+00:00"
+      }
+    },
+    {
+      "params": {
+        "k": 2.0,
+        "period": 30
+      },
+      "trades": 373,
+      "net_return": -3448.59147519999,
+      "gross_return": -2814.102000000003,
+      "cost": 634.4894751999868,
+      "sharpe": 0.12404774541464125,
+      "max_drawdown": 0.7124165267884418,
+      "profit_factor": 1.0043215961723475,
+      "expectancy_per_trade": -9.245553552814986,
+      "selected_from_n": 9,
+      "fold": {
+        "index": 1,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-03-15T20:24:00+00:00",
+        "test_start": "2026-03-17T20:24:00+00:00",
+        "test_end": "2026-05-17T21:36:00+00:00"
+      }
+    },
+    {
+      "params": {
+        "k": 2.0,
+        "period": 30
+      },
+      "trades": 18,
+      "net_return": 593.909198299998,
+      "gross_return": 623.7679999999971,
+      "cost": 29.85880169999906,
+      "sharpe": 3.0290861416566677,
+      "max_drawdown": 0.031313188434858724,
+      "profit_factor": 1.38285870619607,
+      "expectancy_per_trade": 32.994955461111005,
+      "selected_from_n": 9,
+      "fold": {
+        "index": 2,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-05-15T21:36:00+00:00",
+        "test_start": "2026-05-17T21:36:00+00:00",
+        "test_end": "2026-07-17T22:48:00+00:00"
+      }
+    },
+    {
+      "params": {
+        "k": 2.0,
+        "period": 30
+      },
+      "trades": 391,
+      "net_return": -635.8388857249993,
+      "gross_return": -19.66050000000064,
+      "cost": 616.1783857249986,
+      "sharpe": 0.11625425745188869,
+      "max_drawdown": 0.4254826814708007,
+      "profit_factor": 1.002664887633431,
+      "expectancy_per_trade": -1.6261864085038344,
+      "selected_from_n": 9,
+      "fold": {
+        "index": 3,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-07-15T22:48:00+00:00",
+        "test_start": "2026-07-17T22:48:00+00:00",
+        "test_end": "2026-09-17T00:00:00+00:00"
+      }
+    }
+  ],
+  "aggregate": {
+    "folds_evaluated": 4,
+    "total_trades": 1188,
+    "oos_net_return": -6138.512317099989,
+    "oos_gross_return": -4113.468000000017,
+    "oos_cost": 2025.044317099971,
+    "expectancy_per_trade": -5.1670979100168255,
+    "profit_factor": -2.0312977672957,
+    "max_drawdown": 0.7264509693821576,
+    "sharpe": 0.9200207290762766,
+    "profitable_folds": 1,
+    "worst_fold": -3448.59147519999,
+    "cost_fraction_of_gross": Infinity
+  },
+  "baselines": {},
+  "overfitting": {
+    "oos_observations": 15599,
+    "oos_sharpe": 0.2451323017741802,
+    "configurations_tried": 36,
+    "deflated_sharpe_pvalue": 0.0,
+    "survives_multiple_testing": true,
+    "permutation_test": {
+      "observed_sharpe": 0.12520228367111647,
+      "p_value": 0.334,
+      "purpose": "Permutation \u2014 is Sharpe just random ordering?",
+      "n_perm": 1000
+    },
+    "note": "deflated Sharpe accounts for the number of configurations tried; trying more makes the bar higher, not lower"
+  },
+  "verdict": "NO_EDGE_ESTABLISHED",
+  "reasons": [
+    "cost basis is ASSUMED, not MEASURED \u2014 mechanism evidence only, no claim is decidable",
+    "out-of-sample net return is not positive",
+    "expectancy per trade is not positive",
+    "out-of-sample GROSS return is not positive \u2014 costs are not the problem, the signal is",
+    "max drawdown 72.6% exceeds 20% limit",
+    "profitable in only 1/4 folds \u2014 results depend on the window"
+  ]
+}

@@ -143,8 +143,21 @@ def test_utc3_broker_tick_now_passes_provider_validation(tmp_path: Path):
         provider._validate_tick(naive, "XAUUSD")
 
 
-def test_offset_recovered_exactly_across_bar_phases_and_zones(tmp_path: Path):
+def test_offset_recovered_exactly_across_bar_phases_and_zones(tmp_path: Path, monkeypatch) -> None:
+    # The adapter measures ``bar_time - time.time()``, so the offset it recovers
+    # depends on the wall clock at the moment of the call. Capturing ``now`` once
+    # and then looping made this test racy: under load, a second or more elapsed
+    # between the capture and a later iteration, and at bar_phase=59 that extra
+    # second pushed the forming bar into the previous minute -- the assertion
+    # then failed with an offset 60s low (observed: 10740 != 10800). It passed
+    # only when the loop happened to finish inside one second, so CI went red
+    # intermittently and for no product reason.
+    #
+    # Freezing the clock removes the race while testing exactly the same
+    # arithmetic: the assertion is unchanged, and it now holds for every phase
+    # rather than only for phases that finish fast enough.
     now = float(int(time.time()))
+    monkeypatch.setattr(time, "time", lambda: now)
     for offset in (OFFSET_3H, 7200, 0, 19800, -18000):  # +3h, +2h, UTC, +5:30, -5h
         for bar_phase in (0, 15, 30, 59):  # anywhere inside the forming bar
             fake = FakeMT5(RawTick(time_s=now), bar_time=now + offset - bar_phase)

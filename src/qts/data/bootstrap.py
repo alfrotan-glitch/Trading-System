@@ -46,6 +46,41 @@ FIXTURE_RELPATH = Path("fixtures/XAUUSD_1H_500.csv")
 DEFAULT_FIXTURE = Path("data") / FIXTURE_RELPATH
 
 
+#: Provenance classes that denote OBSERVED market data and may therefore support
+#: a claim about real markets.
+#:
+#: ``BROKER-DERIVED`` and ``HISTORICAL`` are here for a specific reason. The
+#: classifier names genuine broker history ``BROKER-DERIVED``, not ``REAL``, so a
+#: gate written as ``data_class == "REAL"`` rejects the very data it exists to
+#: admit — an MT5 history export would be refused as if it were synthetic. The
+#: distinction that matters is observed versus generated, and every class below
+#: is observed.
+#:
+#: Everything not listed is generated or unverified (SYNTHETIC, PAPER, SHADOW,
+#: DEMO, MODEL-DERIVED, IMPUTED, ESTIMATED, UNVERIFIED) and can demonstrate
+#: mechanism only. Adding a class here widens every claim gate in the system;
+#: it is not a local decision.
+CLAIM_ADMISSIBLE_CLASSES = frozenset({"REAL", "BROKER-DERIVED", "HISTORICAL"})
+
+#: Why each inadmissible class is refused, for reporting that explains itself.
+CLAIM_INADMISSIBLE_REASONS: dict[str, str] = {
+    "SYNTHETIC": "generated data — demonstrates mechanism, not market behaviour",
+    "PAPER": "simulated fills on a simulated book",
+    "SHADOW": "intents that were never sent to a venue",
+    "DEMO": "observations from a demo environment; real fills, but a demo feed is "
+            "not proven identical to the live venue's prices",
+    "MODEL-DERIVED": "output of a model, not an observation",
+    "IMPUTED": "reconstructed values, not observed ones",
+    "ESTIMATED": "estimated values, not observed ones",
+    "UNVERIFIED": "provenance is unknown or ambiguous — never treated as observed",
+}
+
+
+def claim_admissible(data_class: str) -> bool:
+    """Whether a provenance class may support a claim about real markets."""
+    return data_class in CLAIM_ADMISSIBLE_CLASSES
+
+
 def classify_source(source: str | None) -> str:
     """Map a manifest/bar source label to exactly one provenance class.
 

@@ -26,6 +26,7 @@ mode gate forbids it, and the identity check refuses any non-DEMO trade_mode.
 from __future__ import annotations
 
 import contextlib
+import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -40,6 +41,8 @@ from qts.execution.demo_pretrade import DEFAULT_MIN_ORDER_INTERVAL_S, DemoPretra
 from qts.execution.order_truth import open_demo_journal
 from qts.lifecycle.demo_authorization import resolve_demo_execution_policy
 from qts.lifecycle.demo_stage import ORDER_STAGES, DemoStageMachine
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_DB_PATH = artifact_path("db")
 SELF_TEST_DB = artifact_path("db").with_name("demo_killswitch_selftest.db")
@@ -135,8 +138,203 @@ class DemoSession:
         self._reconcile_attempted: bool = False
         self._authority: Any = None
         self._authority_mode: Any = None
+        # Actual (as opposed to modelled) cost evidence. Created lazily by
+        # ``cost_evidence_store`` so a DEMO session that never opens costs
+        # does not write files, and so a broken evidence log cannot prevent a
+        # session from starting — it degrades to "no evidence", not to
+        # "favourable evidence".
+        self._cost_store: Any = None
+        self._cost_store_error: str | None = None
 
     # ------------------------------------------------------------- properties
+    @property
+    def cost_evidence_store(self) -> Any:
+        """Append-only store of what the broker actually charged.
+
+        ``None`` when the store could not be opened. Callers MUST treat None
+        as "no measurement available" and must never fall back to a modelled
+        or zero cost — that is the exact substitution this store exists to
+        prevent.
+        """
+        if self._cost_store is not None or self._cost_store_error is not None:
+            return self._cost_store
+        try:
+            from qts.config.paths import artifact_path
+            from qts.execution.cost_capture import CostEvidenceStore
+
+            path = artifact_path("cost_evidence")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self._cost_store = CostEvidenceStore(path)
+        except Exception as exc:  # pragma: no cover - defensive
+            self._cost_store_error = f"{type(exc).__name__}: {exc}"
+            logger.error(
+                "cost evidence store unavailable (%s) — actual costs will NOT be measured; "
+                "no modelled value will be substituted",
+                self._cost_store_error,
+            )
+        return self._cost_store
+
+    def capture_broker_cost_evidence(
+        self,
+        *,
+        client_order_id: str,
+        journal_id: int | None,
+        receipt: dict[str, Any],
+        requested_price: Any = None,
+        account_currency: str | None = None,
+        server_utc_offset_s: float | None = None,
+    ) -> dict[str, Any]:
+        """Freeze the broker's own charges for this submission as evidence.
+
+        Returns a small summary for the caller to log. Never raises: cost
+        capture is evidence, not a gate — but a failure is reported loudly
+        because it silently removes the ability to detect under-modelled costs.
+        """
+        summary: dict[str, Any] = {
+            "captured": 0,
+            "duplicates_skipped": 0,
+            "rejected_unidentified": 0,
+            "unavailable": None,
+            "error": None,
+        }
+        store = self.cost_evidence_store
+        rows = receipt.get("deal_rows") or []
+        if store is None:
+            summary["unavailable"] = self._cost_store_error or "cost evidence store unavailable"
+            summary["error"] = summary["unavailable"]
+            return summary
+        if not rows:
+            summary["unavailable"] = "broker reported no deal rows for this submission"
+            return summary
+
+        quote = receipt.get("pre_trade_quote") or {}
+        # The broker stamps deals in SERVER time. Without the measured offset a
+        # UTC+3 server makes every captured deal look three hours old in the
+        # future, so the offset is resolved here and passed down; if it cannot
+        # be measured the evidence is still captured, but its timestamps are
+        # labelled broker-basis instead of being quietly called UTC.
+        offset: float | None = server_utc_offset_s
+        if offset is None:
+            offset = self._measured_server_utc_offset()
+        if offset is None:
+            logger.warning(
+                "server->UTC offset unavailable for %s — deal timestamps will be "
+                "recorded as broker-basis, not UTC",
+                client_order_id,
+            )
+        try:
+            from qts.execution.cost_capture import deal_evidence_from_broker
+
+            for row in rows:
+                evidence = deal_evidence_from_broker(
+                    row,
+                    canonical_symbol=self.canonical_symbol,
+                    client_order_id=client_order_id,
+                    journal_id=journal_id,
+                    spread_points=quote.get("spread_points"),
+                    requested_price=requested_price,
+                    server_utc_offset_s=offset,
+                    account_currency=account_currency or receipt.get("account_currency"),
+                    source="mt5.history_deals_get",
+                )
+                record, outcome = store.append(evidence)
+                summary[outcome] = int(summary.get(outcome, 0)) + 1
+                if record is not None and evidence.unavailable_fields:
+                    logger.warning(
+                        "broker deal %s is missing cost fields %s — recorded as UNAVAILABLE, not zero",
+                        evidence.deal_ticket,
+                        list(evidence.unavailable_fields),
+                    )
+        except Exception as exc:  # pragma: no cover - defensive
+            summary["error"] = f"{type(exc).__name__}: {exc}"
+            logger.error(
+                "cost capture FAILED for %s (%s) — actual costs for this fill are unmeasured",
+                client_order_id,
+                summary["error"],
+            )
+        return summary
+
+    def capture_historical_deal_evidence(
+        self,
+        deal_rows: list[Any],
+        *,
+        server_utc_offset_s: float | None = None,
+    ) -> dict[str, Any]:
+        """Measure the cost of EXISTING broker deals — no order required.
+
+        The cheapest way to learn what this broker actually charges is to read
+        deals the account already made, not to place a new trade to find out.
+        These rows are tagged with a distinct ``source`` so a reader can always
+        tell a backfilled historical deal from one captured on a QTS
+        submission: the latter is attributable to an order the system sent, the
+        former may include trades made by hand or by another terminal.
+
+        Never raises. Returns a summary for the operator.
+        """
+        summary: dict[str, Any] = {
+            "schema": "qts.cost_evidence_backfill.v1",
+            "captured": 0,
+            "duplicates_skipped": 0,
+            "rejected_unidentified": 0,
+            "unavailable": None,
+            "error": None,
+        }
+        store = self.cost_evidence_store
+        if store is None:
+            summary["unavailable"] = self._cost_store_error or "cost evidence store unavailable"
+            return summary
+        if not deal_rows:
+            summary["unavailable"] = "no deals supplied"
+            return summary
+
+        offset = server_utc_offset_s
+        if offset is None:
+            offset = self._measured_server_utc_offset()
+        try:
+            from qts.execution.cost_capture import deal_evidence_from_broker
+
+            for row in deal_rows:
+                evidence = deal_evidence_from_broker(
+                    row,
+                    canonical_symbol=self.canonical_symbol,
+                    spread_points=None,
+                    server_utc_offset_s=offset,
+                    account_currency=self._measured_account_currency(),
+                    source="mt5.history_deals_get.backfill",
+                )
+                _record, outcome = store.append(evidence)
+                summary[outcome] = int(summary.get(outcome, 0)) + 1
+        except Exception as exc:  # pragma: no cover - defensive
+            summary["error"] = f"{type(exc).__name__}: {exc}"
+            logger.error("historical deal capture FAILED: %s", summary["error"])
+        return summary
+
+    def _measured_account_currency(self) -> str | None:
+        """The account deposit currency, or None — never a guess of "USD"."""
+        try:
+            from qts.adapters.mt5_adapter import MT5Adapter
+
+            return MT5Adapter._account_currency(getattr(self.adapter, "_mt5", None))
+        except Exception:  # pragma: no cover - defensive
+            return None
+
+    def _measured_server_utc_offset(self) -> float | None:
+        """The broker server's offset from UTC, measured — never assumed.
+
+        ``None`` when it cannot be measured. Returning 0.0 here would be the
+        same fabrication this project already caught once for ticks: on a
+        UTC+3 broker it silently shifts every deal by three hours.
+        """
+        try:
+            adapter = self.adapter
+            if adapter is None:
+                return None
+            offset, _basis = adapter.server_utc_offset(self.broker_symbol)
+            return float(offset)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("server->UTC offset could not be measured: %s", exc)
+            return None
+
     @property
     def canonical_symbol(self) -> str:
         """The ONE symbol spelling used for policy, journal and portfolio.
@@ -1037,9 +1235,20 @@ class DemoSession:
         except Exception:
             audit = None
         self._idempotency = IdempotencyStore(db_path=self.db_path)
-        from qts.risk.authority import engine_limits_from, resolve_risk_limits_from_settings
+        from qts.risk.authority import (
+            apply_risk_ceiling,
+            engine_limits_from,
+            resolve_risk_limits_from_settings,
+        )
 
         snapshot = resolve_risk_limits_from_settings(ExecutionMode.DEMO_EXECUTION)
+        # The owner authorization's risk_ceiling is not decoration: it is the
+        # tightest limit the owner agreed to, and it is APPLIED here, not just
+        # validated. apply_risk_ceiling() can only tighten — a ceiling that
+        # would widen a canonical limit is ignored, so a tampered artifact can
+        # never raise a limit.
+        ceiling = (self.authorization.document.risk_ceiling if self.authorization else None) or {}
+        snapshot = apply_risk_ceiling(snapshot, dict(ceiling), origin="owner_authorization")
         limits = engine_limits_from(snapshot)
         self._risk = RiskEngine(limits, db_path=self.db_path, persist_kill=True)
         portfolio = Portfolio(initial_balance=Decimal("0"))  # broker equity is authoritative
@@ -1716,6 +1925,25 @@ class DemoSession:
                 state="AMBIGUOUS",
                 reasons=[f"local execution persistence failed: {type(exc).__name__}: {exc}"],
                 verdict=verdict.as_dict(),
+            )
+
+        # Preserve the broker's own charges now, while the raw deal rows still
+        # exist. Deferring this to reconciliation loses them: MT5 deal rows are
+        # views over terminal memory and are not recoverable after the fact.
+        # Runs only on the success path -- every branch above returns early, so
+        # reaching here means the broker accepted and the journal was written.
+        cost_summary = self.capture_broker_cost_evidence(
+            client_order_id=client_order_id,
+            journal_id=journal_id,
+            receipt=receipt,
+            requested_price=requested_price,
+        )
+        self._last_cost_capture = cost_summary
+        if cost_summary.get("unavailable") or cost_summary.get("error"):
+            logger.warning(
+                "fill recorded without complete actual-cost evidence for %s: %s",
+                client_order_id,
+                cost_summary.get("unavailable") or cost_summary.get("error"),
             )
 
         # Bring local state up to date with the broker BEFORE reconciling: an

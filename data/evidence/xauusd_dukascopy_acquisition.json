@@ -1,6 +1,6 @@
 {
   "schema": "qts.data_acquisition.v1",
-  "acquired_at": "2026-09-18T16:28:43.692993+00:00",
+  "acquired_at": "2026-10-09T12:45:08.782586+00:00",
   "source": {
     "repository": "vudo805/forex-price-simulator",
     "commit": "4d6f15543e6285fad91fd57fe42f716bc7273075",
@@ -100,38 +100,80 @@
   },
   "ingest": {
     "15m": {
-      "version": "20260918-010+8f120133-1ba57af7",
+      "status": "registered",
+      "version": "20261009-010+2b024334-1ba57af7",
       "checksum": "sha256:1ba57af7d9d034d9",
       "rows": 26038,
       "timeframe": "15m",
       "source": "REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks",
       "provenance_class": "REAL",
+      "source_provider": "Dukascopy-derived upstream mirror",
+      "source_feed": "Dukascopy XAU/USD tick feed; exported mid-price OHLC",
+      "source_venue": "Dukascopy XAU/USD feed",
+      "execution_target": null,
+      "execution_venue": null,
+      "venue_semantics": "legacy_dataset_namespace_only",
       "start": "2025-08-06T00:00:00+00:00",
-      "end": "2026-09-17T00:00:00+00:00",
-      "status": "already_registered"
+      "end": "2026-09-17T00:00:00+00:00"
     },
     "1h": {
-      "status": "rejected_by_ingest_gate",
-      "reason": "data quality failed: no_missing_bars: 276 abnormal intraday gaps >1.5*tf",
-      "csv": "data/raw/xauusd_dukascopy_1h_mid_agg_20250806_20260916.csv",
-      "source_label": "REAL:dukascopy:vudo805@4d6f155:XAUUSD:1H:aggregate-of-15m-mid-bars"
+      "status": "registered",
+      "version": "20261009-010+2b024334-3d0c7607",
+      "checksum": "sha256:3d0c760716b0534d",
+      "rows": 6513,
+      "timeframe": "1H",
+      "source": "REAL:dukascopy:vudo805@4d6f155:XAUUSD:1H:aggregate-of-15m-mid-bars",
+      "provenance_class": "REAL",
+      "source_provider": "Dukascopy-derived upstream mirror",
+      "source_feed": "Dukascopy XAU/USD tick feed; exported mid-price OHLC",
+      "source_venue": "Dukascopy XAU/USD feed",
+      "execution_target": null,
+      "execution_venue": null,
+      "venue_semantics": "legacy_dataset_namespace_only",
+      "start": "2025-08-06T00:00:00+00:00",
+      "end": "2026-09-17T00:00:00+00:00"
     }
   },
   "registry": {
     "15m": [
       {
-        "version": "20260918-010+8f120133-1ba57af7",
+        "version": "20261009-010+2b024334-1ba57af7",
         "checksum": "sha256:1ba57af7d9d034d9",
         "rows": 26038,
         "timeframe": "15m",
         "venue": "MT5",
         "instrument": "XAUUSD",
         "provenance_class": "REAL",
+        "source_provider": "Dukascopy-derived upstream mirror",
+        "source_feed": "Dukascopy XAU/USD tick feed; exported mid-price OHLC",
+        "source_venue": "Dukascopy XAU/USD feed",
+        "execution_target": null,
+        "execution_venue": null,
+        "venue_semantics": "legacy_dataset_namespace_only",
         "source_file": "data/raw/xauusd_dukascopy_15m_mid_20250806_20260916.csv",
         "start": "2025-08-06T00:00:00+00:00",
         "end": "2026-09-17T00:00:00+00:00"
       }
     ],
-    "1h": []
+    "1h": [
+      {
+        "version": "20261009-010+2b024334-3d0c7607",
+        "checksum": "sha256:3d0c760716b0534d",
+        "rows": 6513,
+        "timeframe": "1H",
+        "venue": "MT5",
+        "instrument": "XAUUSD",
+        "provenance_class": "REAL",
+        "source_provider": "Dukascopy-derived upstream mirror",
+        "source_feed": "Dukascopy XAU/USD tick feed; exported mid-price OHLC",
+        "source_venue": "Dukascopy XAU/USD feed",
+        "execution_target": null,
+        "execution_venue": null,
+        "venue_semantics": "legacy_dataset_namespace_only",
+        "source_file": "data/raw/xauusd_dukascopy_1h_mid_agg_20250806_20260916.csv",
+        "start": "2025-08-06T00:00:00+00:00",
+        "end": "2026-09-17T00:00:00+00:00"
+      }
+    ]
   }
 }

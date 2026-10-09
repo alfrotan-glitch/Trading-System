@@ -1,0 +1,49 @@
+{
+  "schema": "qts.regime_analysis.v1",
+  "generated_at": "2026-10-09T20:29:26.548376+00:00",
+  "data_version": "20261009-010+2b024334-1ba57af7",
+  "family": "breakout",
+  "strategy_params": {
+    "period": 20
+  },
+  "exit_rules": {
+    "stop_distance_usd": 40.0,
+    "max_hold_bars": 96
+  },
+  "cost_basis": "ASSUMED",
+  "total_bars": 26038,
+  "dataset_span_days": 407,
+  "total_round_turns": 2982,
+  "regimes": {
+    "DOWNTREND": {
+      "round_turns": 528,
+      "fills": 1057,
+      "net": -1824.9881799392988,
+      "cost": 2294.0339425858883,
+      "bars": 9262,
+      "expectancy_per_trade": -3.456417007460793,
+      "net_of_cost": -4119.022122525187,
+      "share_of_bars": 0.3557108840924802
+    },
+    "UPTREND": {
+      "round_turns": 735,
+      "fills": 1470,
+      "net": 6283.989198090792,
+      "cost": 3411.2960954018886,
+      "bars": 12962,
+      "expectancy_per_trade": 8.549645167470466,
+      "net_of_cost": 2872.6931026889038,
+      "share_of_bars": 0.4978108917735617
+    },
+    "WARMUP": {
+      "round_turns": 227,
+      "fills": 455,
+      "net": -721.6049460452723,
+      "cost": 779.0743609910986,
+      "bars": 3814,
+      "expectancy_per_trade": -3.178876414296354,
+      "net_of_cost": -1500.679307036371,
+      "share_of_bars": 0.14647822413395806
+    }
+  }
+}

@@ -69,3 +69,27 @@ def test_cli_durable_writers_use_registered_artifact_paths() -> None:
         'Path("data/sqlite/shadow_cli.db")',
     ):
         assert relative_write not in source
+
+
+def test_edge_and_research_cli_writers_are_state_root_anchored() -> None:
+    """No CLI may write canonical evidence through a cwd-relative path."""
+    repo_root = Path(__file__).resolve().parents[1]
+
+    edge_source = (repo_root / "src/qts/cli/edge.py").read_text(encoding="utf-8")
+    assert 'artifact_path("edge_validation")' in edge_source
+    for relative_write in (
+        'Path("data/evidence/edge_validation.json")',
+        'Path("data/evidence").mkdir',
+        'Path("docs").mkdir',
+    ):
+        assert relative_write not in edge_source
+
+    research_source = (repo_root / "src/qts/cli/research.py").read_text(encoding="utf-8")
+    assert 'artifact_path("campaign_last")' in research_source
+    assert 'artifact_path("autonomous_campaign")' in research_source
+    for relative_write in (
+        'Path("data/evidence/campaign_last.json")',
+        'Path("data/evidence/autonomous_campaign.json")',
+        'Path("data/evidence").mkdir',
+    ):
+        assert relative_write not in research_source

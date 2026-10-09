@@ -232,6 +232,8 @@ class ExecutionEngine:
         self.audit = audit
         self.peak_equity = portfolio.equity()
         self.drawdown = Decimal("0")
+        #: ``None`` means UNMEASURABLE (no positive peak) — never a silent 0%.
+        self.drawdown_pct: Decimal | None = Decimal("0")
         self._day_start_equity = portfolio.equity()
         if db_path is not None:
             self._db_path = Path(db_path)
@@ -386,12 +388,32 @@ class ExecutionEngine:
             )
             con.commit()
 
+    def _pct_of_peak(self, drawdown: Decimal) -> Decimal | None:
+        """``drawdown`` as a percent of the durable peak, or ``None``.
+
+        ``None`` is the honest answer when the peak is unknown or non-positive:
+        risk then refuses against a percentage cap instead of trading on an
+        invented 0%. A zero dollar drawdown is 0% at any positive peak.
+        """
+        if drawdown is not None and drawdown <= 0:
+            return Decimal("0")
+        peak = self.peak_equity
+        if peak is None or not peak.is_finite() or peak <= 0:
+            return None
+        return (drawdown / peak) * Decimal("100")
+
     def _update_drawdown(self, equity: Decimal | None = None) -> None:
-        """Update drawdown from the authoritative equity source."""
+        """Update drawdown (USD and percent of peak) from the authoritative equity.
+
+        The percentage is tracked here, next to the peak it is derived from, so
+        risk never receives a percentage computed against a different peak than
+        the one that produced the dollar drawdown.
+        """
         eq = self.portfolio.equity() if equity is None else equity
         if eq > self.peak_equity:
             self.peak_equity = eq
         self.drawdown = self.peak_equity - eq if eq < self.peak_equity else Decimal("0")
+        self.drawdown_pct = self._pct_of_peak(self.drawdown)
 
     def _risk_ctx(self, reference_prices: dict[str, Decimal] | None = None) -> RiskContext:
         # Determine broker type: live (MT5), realistic paper, or legacy paper/shadow
@@ -471,6 +493,8 @@ class ExecutionEngine:
             open_orders_count=self.om.open_count(),
             daily_pnl=daily_pnl,
             drawdown=self.drawdown,
+            peak_equity=self.peak_equity,
+            drawdown_pct=self.drawdown_pct,
             instrument_suspended=set(),
             realized_vol=None,
             reference_prices=ref if ref else None,

@@ -9,6 +9,7 @@ import numpy as np
 from qts.edge.cost_robustness import evaluate_cost_robustness
 from qts.edge.expectancy import compute_expectancy, evaluate_minimum_economic_edge
 from qts.edge.regime_stability import evaluate_regime_stability
+from qts.research.costs import CostDecomposition, CostModel, TradeRecord, decompose_costs
 from qts.validation.metrics import deflated_sharpe_ratio, periods_per_year_for_timeframe, probabilistic_sharpe_ratio
 from qts.validation.pipeline import ValidatorPipeline
 
@@ -26,6 +27,7 @@ class EdgeSurvivalResult:
     regime_dependent: bool
     null_rejected: bool
     placebo_rejected: bool
+    cost_decomposition: CostDecomposition | None = None
 
 
 def validate_edge_survival(
@@ -45,8 +47,23 @@ def validate_edge_survival(
     bars: list,
     trades_pnl: list[float],
     timeframe: str = "1H",
+    cost_model: CostModel | None = None,
+    trade_records: list[TradeRecord] | None = None,
 ) -> EdgeSurvivalResult:
+    """Evaluate every survival gate.
+
+    ``cost_model`` + ``trade_records`` turn a gross trade list into a real
+    gross/net decomposition. Without them the ``cost`` and ``economic_edge``
+    gates stay blocked (``NOT_IMPLEMENTED``), and — critically — the
+    ``expectancy`` gate is evaluated on GROSS P&L and labelled as such: it is
+    never presented as a net expectation it did not measure.
+    """
     pipeline = ValidatorPipeline()
+    # A decomposition is only built when the caller supplied both halves of it.
+    # A model without trades (or trades without a model) is not evidence.
+    decomposition: CostDecomposition | None = None
+    if cost_model is not None and trade_records is not None:
+        decomposition = decompose_costs(list(trade_records), cost_model)
     # A-O checks
     checks = {}
     details = {}
@@ -73,9 +90,34 @@ def validate_edge_survival(
     # produced net equity is not allowed to masquerade as gross-vs-net cost
     # evidence.
     if equity_gross is None or equity_net is None:
-        cost_res = None
-        checks["cost"] = False
-        details["cost"] = "gross/net cost decomposition NOT_IMPLEMENTED — blocks"
+        if decomposition is not None and decomposition.trades >= 2:
+            # The caller gave a cost model and real trades — build the curves
+            # here so the gate is decidable instead of permanently blocked.
+            import numpy as _np
+
+            equity_gross = _np.asarray(decomposition.equity_gross, dtype=float)
+            equity_net = _np.asarray(decomposition.equity_net, dtype=float)
+            cost_res = evaluate_cost_robustness(equity_gross, equity_net, decomposition.trades)
+            checks["cost"] = bool(cost_res.passed) and decomposition.claim_eligible
+            details["cost"] = (
+                f"{cost_res.details}; break-even cost multiple "
+                f"{decomposition.break_even_cost_multiple:.2f}x; "
+                f"claim_eligible={decomposition.claim_eligible}"
+            )
+        elif decomposition is not None:
+            # A decomposition exists but is too small to compare two equity
+            # curves. That is "not enough evidence", not "not implemented" —
+            # the two must never be reported with the same sentence.
+            cost_res = None
+            checks["cost"] = False
+            details["cost"] = (
+                f"only {decomposition.trades} completed round turn(s) — a gross vs net equity comparison "
+                "needs at least 2; the decomposition is reported but this gate cannot pass"
+            )
+        else:
+            cost_res = None
+            checks["cost"] = False
+            details["cost"] = "gross/net cost decomposition NOT_IMPLEMENTED — blocks"
     else:
         cost_res = evaluate_cost_robustness(equity_gross, equity_net, len(trades_pnl))
         checks["cost"] = cost_res.passed
@@ -162,19 +204,68 @@ def validate_edge_survival(
     details["placebo"] = (
         f"placebo {placebo_sharpes}" if placebo_sharpes else "placebo control was not executed — NOT_IMPLEMENTED"
     )
-    # Expectancy and economic edge
-    exp_report = compute_expectancy(trades_pnl, costs_per_trade=0.0)
-    checks["expectancy"] = exp_report.net_expectancy_after_costs > 0
-    details["expectancy"] = f"net_exp {exp_report.net_expectancy_after_costs:.4f} pf {exp_report.profit_factor:.2f}"
+    # Expectancy and economic edge.
+    #
+    # The cost per trade comes from the decomposition when one exists. Calling
+    # this with ``costs_per_trade=0.0`` used to make "net expectancy" equal to
+    # gross expectancy, which is exactly the confusion a cost model exists to
+    # prevent. When no cost is modelled the result is reported as GROSS and the
+    # gate fails instead of passing on an uncosted number.
+    modelled_cost_per_trade = decomposition.cost_per_trade if decomposition is not None else 0.0
+    # When trade records were supplied they are the authoritative P&L vector:
+    # mixing them with a separately-passed ``trades_pnl`` could charge costs
+    # against a different set of trades than the ones that were costed.
+    pnl_vector = [t.gross_pnl_usd for t in trade_records] if trade_records else list(trades_pnl)
+    exp_report = compute_expectancy(pnl_vector, costs_per_trade=modelled_cost_per_trade)
+    cost_is_modelled = decomposition is not None and decomposition.trades > 0
+    # Three distinct outcomes, never conflated:
+    #   no cost model at all          -> GROSS reported, gate BLOCKS
+    #   costs modelled but ASSUMED    -> net reported, gate FAILS (sensitivity only)
+    #   costs MEASURED                -> net reported, gate may PASS
+    cost_is_claimable = bool(cost_is_modelled and decomposition is not None and decomposition.claim_eligible)
+    basis_note = "" if cost_is_modelled else ""
+    if decomposition is not None and decomposition.trades > 0:
+        assumed = sorted(k for k, v in decomposition.basis_summary.items() if v == "ASSUMED")
+        basis_note = f" [costs ASSUMED: {', '.join(assumed)} — not claim-grade]" if assumed else ""
+    checks["expectancy"] = bool(cost_is_claimable and exp_report.net_expectancy_after_costs > 0)
+    details["expectancy"] = (
+        f"net_exp {exp_report.net_expectancy_after_costs:.4f} (gross {exp_report.expectancy_per_trade:.4f} "
+        f"- cost {modelled_cost_per_trade:.4f}/trade) pf {exp_report.profit_factor:.2f}{basis_note}"
+        if cost_is_modelled
+        else (
+            f"GROSS exp {exp_report.expectancy_per_trade:.4f} pf {exp_report.profit_factor:.2f} — "
+            "no cost model supplied, net expectancy was NOT measured (blocks)"
+        )
+    )
+    # The economic-edge criterion subtracts the cost actually modelled, not a
+    # number reverse-engineered from a break-even spread in different units.
+    econ_cost = (
+        decomposition.cost_per_trade
+        if decomposition is not None
+        else (cost_res.break_even_spread_bps / 10000 * 1000 if cost_res else 0)
+    )
     econ = evaluate_minimum_economic_edge(
         exp_report.net_expectancy_after_costs,
-        cost_res.break_even_spread_bps / 10000 * 1000 if cost_res else 0,
+        econ_cost,
         0.02,
         0.01,
     )
-    checks["economic_edge"] = bool(cost_res is not None and econ.passed)
+    checks["economic_edge"] = bool(
+        (cost_res is not None or decomposition is not None) and econ.passed and cost_is_claimable
+    )
     details["economic_edge"] = (
-        econ.criterion if cost_res is not None else "economic edge blocked: cost decomposition unavailable"
+        econ.criterion
+        if cost_is_claimable
+        else (
+            "economic edge blocked: cost decomposition unavailable"
+            if decomposition is None
+            else (
+                "economic edge blocked: costs were modelled but not MEASURED — an assumed cost cannot "
+                "establish an economic edge"
+                if cost_is_modelled
+                else "economic edge blocked: no cost decomposition"
+            )
+        )
     )
     passed = all(checks.values())
     return EdgeSurvivalResult(
@@ -189,4 +280,5 @@ def validate_edge_survival(
         regime_dependent,
         control_ok,
         placebo_ok,
+        decomposition,
     )

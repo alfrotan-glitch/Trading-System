@@ -30,7 +30,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from qts.domain.modes import ExecutionMode
 
@@ -57,7 +57,15 @@ class CanonicalRiskLimits(BaseModel):
 
     # Loss control
     daily_loss_limit: Decimal = Decimal("200")
+    #: Absolute peak-to-current drawdown, USD.
     max_drawdown: Decimal = Decimal("500")
+    #: Peak-to-current drawdown as a PERCENT of the peak equity (0 < pct <= 100).
+    #:
+    #: The absolute USD cap alone is not scale-invariant: the same percentage
+    #: loss is survivable on a large account and fatal on a small one, and a
+    #: DEMO account whose balance changes would silently move the meaning of a
+    #: fixed dollar number. Both caps are enforced and BOTH must hold.
+    max_drawdown_pct: Decimal = Decimal("10")
 
     # Market-condition limits
     max_spread_bps: Decimal = Decimal("100")
@@ -72,7 +80,20 @@ class CanonicalRiskLimits(BaseModel):
     kill_switch_enabled: bool = True
     flatten_on_kill: bool = False
     approved: bool = False  # operator acknowledgement — required for LIVE family
-    version: int = 2
+    version: int = 3
+
+    @model_validator(mode="after")
+    def _validate_percentage_caps(self) -> CanonicalRiskLimits:
+        """A percentage cap must be a percentage — never a silent no-op.
+
+        ``0`` would mean "any drawdown breaches" and is almost certainly a unit
+        mistake (0.05 written where 5 was meant); a value above 100 cannot be
+        breached by a long-only equity curve. Both fail closed at construction.
+        """
+        pct = self.max_drawdown_pct
+        if not pct.is_finite() or pct <= 0 or pct > 100:
+            raise ValueError(f"max_drawdown_pct must be a finite percentage in (0, 100] — got {pct}")
+        return self
 
 
 BASE_LIMITS = CanonicalRiskLimits()
@@ -113,10 +134,16 @@ _CAP_FIELDS = frozenset(
         "max_orders_per_minute",
         "daily_loss_limit",
         "max_drawdown",
+        "max_drawdown_pct",
         "max_spread_bps",
         "max_slippage_bps",
     }
 )
+
+#: Percentage-valued cap fields. Only these may be tightened from a
+#: percentage-valued source (an authorization ceiling) — see
+#: :func:`apply_risk_ceiling`.
+_PCT_CAP_FIELDS = frozenset({"max_drawdown_pct"})
 
 
 def _assert_restriction_tightens(mode: ExecutionMode, overrides: dict[str, Any]) -> None:
@@ -259,6 +286,76 @@ def resolve_risk_limits_from_settings(mode: ExecutionMode | str | None = None) -
     return resolve_risk_limits(mode, config_overrides=overrides)
 
 
+def apply_risk_ceiling(
+    snapshot: ResolvedRiskSnapshot,
+    ceiling: dict[str, Any] | None,
+    *,
+    origin: str = "authorization",
+) -> ResolvedRiskSnapshot:
+    """Return a snapshot tightened by an explicit, already-validated ceiling.
+
+    A ``risk_ceiling`` (owner authorization artifact, policy, operator
+    directive) may only ever TIGHTEN a resolved limit — never widen it. This
+    function is the enforcement half of that rule: the caller validates the
+    ceiling, this applies it, and the returned snapshot carries per-field
+    provenance so the UI/API can state exactly where each number came from.
+
+    Unknown keys are ignored (validation owns that decision — an unknown key
+    must already have failed the artifact). Values that do not tighten are
+    recorded as ``ignored`` and never applied.
+    """
+    if not ceiling:
+        return snapshot
+
+    values = snapshot.limits.model_dump()
+    sources = dict(snapshot.sources)
+    applied = dict(snapshot.overrides_applied)
+    warnings = list(snapshot.warnings)
+
+    for key, raw in ceiling.items():
+        if key not in _CAP_FIELDS:
+            continue
+        current = values.get(key)
+        if current is None:
+            continue
+        try:
+            current_dec = Decimal(str(current))
+            ceiling_dec = Decimal(str(raw))
+        except Exception:
+            warnings.append(f"ceiling {key}={raw!r} is not numeric — ignored (canonical value retained)")
+            continue
+        if not ceiling_dec.is_finite():
+            warnings.append(f"ceiling {key}={raw!r} is not finite — ignored (canonical value retained)")
+            continue
+        if key in _PCT_CAP_FIELDS and (ceiling_dec <= 0 or ceiling_dec > 100):
+            warnings.append(f"ceiling {key}={raw!r} is not a valid percentage — ignored (canonical value retained)")
+            continue
+        if ceiling_dec > current_dec:
+            # Widening: never applied, always visible. An artifact that asks for
+            # more than the canonical limit is a fact the operator must see.
+            warnings.append(
+                f"ceiling {key}={ceiling_dec} exceeds resolved {current_dec} and was NOT applied "
+                "(a ceiling may only tighten)"
+            )
+            continue
+        if ceiling_dec == current_dec:
+            # Agreement with the resolved limit — nothing to apply, nothing to report.
+            continue
+        values[key] = ceiling_dec
+        sources[key] = origin
+        applied[key] = ceiling_dec
+
+    tightened = ResolvedRiskSnapshot(
+        limits=CanonicalRiskLimits(**values),
+        mode=snapshot.mode,
+        overrides_applied=applied,
+        sources=sources,
+        warnings=warnings,
+        resolved_at=snapshot.resolved_at,
+    )
+    return tightened
+
+
 def engine_limits_from(snapshot: ResolvedRiskSnapshot) -> RiskLimits:
     """Translate one resolved authority snapshot into the engine limits.
 
@@ -281,6 +378,7 @@ def engine_limits_from(snapshot: ResolvedRiskSnapshot) -> RiskLimits:
         max_open_orders=lim.max_open_orders,
         daily_loss_limit=lim.daily_loss_limit,
         max_drawdown=lim.max_drawdown,
+        max_drawdown_pct=lim.max_drawdown_pct,
         volatility_target=lim.volatility_target,
         kill_switch_enabled=True,
         approved=bool(lim.approved),
@@ -299,6 +397,7 @@ def demo_forward_limits_from(snapshot: ResolvedRiskSnapshot | None = None) -> di
         "max_orders_per_minute": lim.max_orders_per_minute,
         "max_daily_loss_usd": float(lim.daily_loss_limit),
         "max_drawdown_usd": float(lim.max_drawdown),
+        "max_drawdown_pct": float(lim.max_drawdown_pct),
         "max_spread_bps": float(lim.max_spread_bps),
         "max_slippage_bps": float(lim.max_slippage_bps),
         "kill_switch_enabled": lim.kill_switch_enabled,

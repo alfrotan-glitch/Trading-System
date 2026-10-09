@@ -35,14 +35,40 @@ def data_synthetic(rows: int, out: str, seed: int, trend: bool) -> None:
 
 
 @data.command("ingest")
-@click.option("--source", default="csv", type=click.Choice(["csv"]))
+@click.option(
+    "--source",
+    default=None,
+    help=(
+        "provenance label recorded on every bar and in the manifest "
+        "(e.g. REAL:dukascopy:...). Free text: the provenance classifier "
+        "reads it, so a fixed choice list would make real history unlabelable."
+    ),
+)
 @click.option("--path", required=True)
 @click.option("--instrument", default="XAUUSD")
 @click.option("--timeframe", default="1m")
 @click.option("--venue", default="MT5")
-def data_ingest(source: str, path: str, instrument: str, timeframe: str, venue: str) -> None:
+@click.option(
+    "--session-calendar",
+    default=None,
+    help=(
+        "explicit market-hours calendar (e.g. XAUUSD) separating scheduled closures "
+        "from genuinely missing bars. Omit to grade against the calendar span only."
+    ),
+)
+def data_ingest(
+    source: str, path: str, instrument: str, timeframe: str, venue: str, session_calendar: str | None
+) -> None:
     store = SqliteParquetDataStore()
-    version = ingest_csv(Path(path), instrument=instrument, timeframe=timeframe, venue=venue, store=store)
+    version = ingest_csv(
+        Path(path),
+        instrument=instrument,
+        timeframe=timeframe,
+        venue=venue,
+        store=store,
+        source=source,
+        session_calendar=session_calendar,
+    )
     click.echo(f"ingested version {version}")
 
 
@@ -72,6 +98,69 @@ def data_bootstrap(root: str, fixture: str | None, instrument: str, timeframe: s
     else:
         click.echo("bootstrap: FAILED — no usable data established (nothing was fabricated)", err=True)
         sys.exit(1)
+
+
+@data.command("mt5-depth")
+@click.option("--symbol", default=None, help="Broker symbol (default: from the setup file).")
+@click.option("--json-out", default=None)
+def data_mt5_depth(symbol: str | None, json_out: str | None) -> None:
+    """How much history does the terminal actually hold? Read-only, no download.
+
+    Answers the question the 15m benchmark audit is blocked on, in seconds
+    instead of after a full acquisition run.
+
+    It distinguishes two things one big query cannot:
+
+    * **M15 bar depth** — asked positionally via ``copy_rates_from_pos``, so it
+      is not subject to the range-request failure that made the old 365-day
+      probe fail. Bars are what the frozen benchmark needs, and this has never
+      been measured on any terminal.
+    * **tick depth** — probed as several small one-hour windows at increasing
+      age, because a single oversized request failing is evidence of a
+      REQUEST-SIZE limit and not of a RETENTION limit.
+
+    Submits nothing and calls no order API.
+    """
+    from qts.config.wizard import load_setup
+    from qts.data.mt5_depth import markdown, probe
+
+    saved = load_setup()
+    resolved = symbol or saved.get("symbol") or "XAUUSD"
+    symbol_map = saved.get("symbol_map")
+    if isinstance(symbol_map, dict):
+        from qts.adapters.mt5_adapter import broker_symbol as to_broker
+
+        resolved = to_broker(resolved, symbol_map)
+
+    mt5 = None
+    try:
+        import MetaTrader5 as mt5_module  # type: ignore[import-not-found]
+
+        mt5 = mt5_module
+        initialized = mt5.initialize(path=saved.get("terminal_path") or None)
+        if not initialized:
+            click.echo(
+                f"MT5 initialize failed: {mt5.last_error()} — this command must run "
+                "on the Windows machine with the DEMO terminal open",
+                err=True,
+            )
+            raise SystemExit(2)
+    except ImportError:
+        click.echo(
+            "MetaTrader5 package unavailable (Windows + a running terminal required). "
+            "No history was queried and nothing was fabricated.",
+            err=True,
+        )
+        raise SystemExit(2) from None
+
+    report = probe(mt5, resolved)
+    click.echo(markdown(report))
+    if json_out:
+        Path(json_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(json_out).write_text(
+            __import__("json").dumps(report.as_dict(), indent=2, default=str), encoding="utf-8"
+        )
+        click.echo(f"report written to {json_out}")
 
 
 @data.command("validate")

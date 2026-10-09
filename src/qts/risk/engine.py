@@ -26,6 +26,11 @@ class RiskVetoReason(StrEnum):
     TOO_MANY_ORDERS = "TOO_MANY_ORDERS"
     DAILY_LOSS_BREACH = "DAILY_LOSS_BREACH"
     DRAWDOWN_BREACH = "DRAWDOWN_BREACH"
+    DRAWDOWN_PCT_BREACH = "DRAWDOWN_PCT_BREACH"
+    #: A percentage drawdown cap is configured but the current drawdown cannot
+    #: be expressed as a percentage of peak equity. UNKNOWN -> BLOCK, never
+    #: UNKNOWN -> "assume 0%".
+    DRAWDOWN_PCT_UNMEASURABLE = "DRAWDOWN_PCT_UNMEASURABLE"
     KILL_SWITCH_ACTIVE = "KILL_SWITCH_ACTIVE"
     INSTRUMENT_SUSPENDED = "INSTRUMENT_SUSPENDED"
     VOL_RESIZE = "VOL_RESIZE"
@@ -50,6 +55,10 @@ class RiskLimits(BaseModel):
     max_open_orders: int = 5
     daily_loss_limit: Decimal = Decimal("200")  # USD loss (positive = max loss allowed)
     max_drawdown: Decimal = Decimal("500")  # USD drawdown
+    #: Peak-to-current drawdown as a percent of peak equity. ``None`` means the
+    #: percentage cap is NOT enforced (callers that cannot measure peak equity
+    #: must say so rather than trade against an unenforceable limit).
+    max_drawdown_pct: Decimal | None = None
     volatility_target: Decimal | None = None
     kill_switch_enabled: bool = True
     approved: bool = False
@@ -76,6 +85,10 @@ class RiskLimits(BaseModel):
             not self.max_exposure_notional.is_finite() or self.max_exposure_notional <= 0
         ):
             raise ValueError("max_exposure_notional must be finite and > 0 when set")
+        if self.max_drawdown_pct is not None and (
+            not self.max_drawdown_pct.is_finite() or self.max_drawdown_pct <= 0 or self.max_drawdown_pct > 100
+        ):
+            raise ValueError("max_drawdown_pct must be a finite percentage in (0, 100] when set")
         if self.max_open_orders < 0:
             raise ValueError("max_open_orders must be >= 0")
         if self.volatility_target is not None and (
@@ -105,11 +118,35 @@ class RiskContext:
     realized_vol: Decimal | None = None
     # Authoritative market snapshot — must be provided for market orders (Blocker 5)
     reference_prices: dict[str, Decimal] | None = None
+    #: Peak equity the USD ``drawdown`` is measured against. Required to turn a
+    #: dollar drawdown into a percentage; without it the percentage is UNKNOWN
+    #: (never assumed to be 0).
+    peak_equity: Decimal | None = None
+    #: Pre-computed drawdown percentage when the caller already knows it.
+    #: ``None`` means "derive it from drawdown/peak_equity if possible".
+    drawdown_pct: Decimal | None = None
 
     def reference_price_for(self, symbol: str) -> Decimal | None:
         if self.reference_prices is None:
             return None
         return self.reference_prices.get(symbol)
+
+    def measured_drawdown_pct(self) -> Decimal | None:
+        """Drawdown as a percent of peak equity, or ``None`` when unmeasurable.
+
+        A zero (or negative) dollar drawdown is 0% at ANY positive peak, so it
+        is reported as 0% even when the peak is unknown — that is arithmetic,
+        not an assumption. A non-zero dollar drawdown with no known peak is
+        UNKNOWN and must not be reported as a percentage at all.
+        """
+        if self.drawdown_pct is not None:
+            return self.drawdown_pct
+        if self.drawdown is not None and self.drawdown <= 0:
+            return Decimal("0")
+        peak = self.peak_equity
+        if peak is None or peak <= 0 or not peak.is_finite():
+            return None
+        return (self.drawdown / peak) * Decimal("100")
 
 
 class RiskDecision(BaseModel):
@@ -241,6 +278,29 @@ class RiskEngine:
         with db_connect(self.db_path) as con:
             con.execute("DELETE FROM risk_state WHERE k=1")
             con.commit()
+
+    def _drawdown_pct_state(self, ctx: RiskContext) -> tuple[Decimal | None, str]:
+        """``(measured_pct, detail)`` for the percentage drawdown cap.
+
+        ``(None, ...)`` means UNMEASURABLE — a caller holding a percentage cap
+        must refuse rather than treat it as "0% drawn down".
+        """
+        measured = ctx.measured_drawdown_pct()
+        if measured is None:
+            return None, (
+                "drawdown percentage is unmeasurable — peak equity is not in the risk context "
+                f"(dollar drawdown {ctx.drawdown})"
+            )
+        return measured, f"drawdown {measured:.4f}% of peak equity {ctx.peak_equity}"
+
+    def _drawdown_pct_breaches(self, ctx: RiskContext) -> tuple[bool, Decimal | None, str]:
+        limit = self.limits.max_drawdown_pct
+        if limit is None:
+            return False, None, "no percentage drawdown cap configured"
+        measured, detail = self._drawdown_pct_state(ctx)
+        if measured is None:
+            return True, None, detail
+        return bool(measured >= limit), measured, detail
 
     def _notional_for(self, intent: OrderIntent, est_price: Decimal) -> Decimal:
         """Notional USD = lots * contract_size(oz/lot) * price(USD/oz)."""
@@ -398,6 +458,29 @@ class RiskEngine:
             return RiskDecision(
                 allowed=False,
                 veto_reason=RiskVetoReason.DRAWDOWN_BREACH,
+                symbol=sym,
+                price=est_price if "est_price" in locals() else None,
+                price_source=price_source if "price_source" in locals() else None,
+            )
+
+        # Percentage drawdown: BOTH caps must hold. A fixed dollar cap is not
+        # scale-invariant — it means something different on a 1,000 USD account
+        # than on a 100,000 USD one — so the percentage cap is enforced in
+        # addition to it, never instead of it.
+        dd_pct_breach, dd_pct_measured, dd_pct_detail = self._drawdown_pct_breaches(ctx)
+        if dd_pct_breach:
+            unmeasurable = dd_pct_measured is None
+            return RiskDecision(
+                allowed=False,
+                veto_reason=(
+                    RiskVetoReason.DRAWDOWN_PCT_UNMEASURABLE if unmeasurable else RiskVetoReason.DRAWDOWN_PCT_BREACH
+                ),
+                reason_detail=(
+                    f"{dd_pct_detail} — percentage drawdown limit {self.limits.max_drawdown_pct}% "
+                    "(unmeasurable → fail closed)"
+                    if unmeasurable
+                    else f"{dd_pct_detail} ≥ {self.limits.max_drawdown_pct}%"
+                ),
                 symbol=sym,
                 price=est_price if "est_price" in locals() else None,
                 price_source=price_source if "price_source" in locals() else None,
@@ -588,6 +671,13 @@ class RiskEngine:
             self.kill_switch(f"daily loss {ctx.daily_pnl}")
         if ctx.drawdown >= self.limits.max_drawdown:
             self.kill_switch(f"drawdown {ctx.drawdown}")
+        dd_pct_breach, dd_pct_measured, dd_pct_detail = self._drawdown_pct_breaches(ctx)
+        if dd_pct_breach:
+            self.kill_switch(
+                f"percentage drawdown: {dd_pct_detail} (limit {self.limits.max_drawdown_pct}%)"
+                if dd_pct_measured is not None
+                else f"percentage drawdown unmeasurable: {dd_pct_detail} (limit {self.limits.max_drawdown_pct}%)"
+            )
 
     def check_portfolio(self, ctx: RiskContext) -> list[RiskDecision]:
         out: list[RiskDecision] = []
@@ -598,6 +688,19 @@ class RiskEngine:
             out.append(RiskDecision(allowed=False, veto_reason=RiskVetoReason.DAILY_LOSS_BREACH))
         if ctx.drawdown >= self.limits.max_drawdown:
             out.append(RiskDecision(allowed=False, veto_reason=RiskVetoReason.DRAWDOWN_BREACH))
+        dd_pct_breach, dd_pct_measured, dd_pct_detail = self._drawdown_pct_breaches(ctx)
+        if dd_pct_breach:
+            out.append(
+                RiskDecision(
+                    allowed=False,
+                    veto_reason=(
+                        RiskVetoReason.DRAWDOWN_PCT_UNMEASURABLE
+                        if dd_pct_measured is None
+                        else RiskVetoReason.DRAWDOWN_PCT_BREACH
+                    ),
+                    reason_detail=f"{dd_pct_detail} (limit {self.limits.max_drawdown_pct}%)",
+                )
+            )
         if self.killed:
             out.append(RiskDecision(allowed=False, veto_reason=RiskVetoReason.KILL_SWITCH_ACTIVE))
         return out

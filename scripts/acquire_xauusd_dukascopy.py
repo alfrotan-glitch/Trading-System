@@ -206,6 +206,14 @@ def main() -> int:
         "--report", default="data/evidence/xauusd_dukascopy_acquisition.json", help="acquisition report path"
     )
     parser.add_argument("--ingest", action="store_true", help="register both exports through ingest_csv")
+    parser.add_argument(
+        "--session-calendar",
+        default="XAUUSD",
+        help=(
+            "explicit market-hours calendar used to separate scheduled closures from "
+            "genuinely missing bars (default: XAUUSD; empty string disables)"
+        ),
+    )
     parser.add_argument("--instrument", default="XAUUSD")
     parser.add_argument("--venue", default="MT5", help="system instrument venue (provenance lives in source label)")
     args = parser.parse_args()
@@ -280,6 +288,7 @@ def main() -> int:
                     venue=args.venue,
                     store=store,
                     source=source_label,
+                    session_calendar=args.session_calendar,
                 )
             except ValueError as exc:
                 # Fail-closed pipeline: the existing quality/strictness gates rejected
