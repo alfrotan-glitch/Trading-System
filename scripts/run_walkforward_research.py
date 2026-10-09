@@ -38,6 +38,7 @@ from qts.domain.value_objects import AssetClass, Instrument  # noqa: E402
 from qts.research.pipeline import (  # noqa: E402
     RunOutcome,
     build_folds,
+    expand_grid,
     run_walk_forward,
     write_report,
 )
@@ -102,6 +103,10 @@ def make_runner(
         net = float(result.final_equity) - 10000.0
         return RunOutcome(
             trades=result.trades,
+            bars_traded=result.bars_traded,
+            bars_total=result.bars,
+            halted=result.halted,
+            halt_reason=result.halt_reason,
             net_return=net,
             gross_return=net + cost,
             cost=cost,
@@ -186,6 +191,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--max-drawdown", type=float, default=0.20)
     ap.add_argument("--cost-source", default="")
     ap.add_argument("--cost-basis", default="ASSUMED", choices=["ASSUMED", "MEASURED"])
+    ap.add_argument(
+        "--max-configs",
+        type=int,
+        default=None,
+        help="deterministically cap the parameter grid (evenly spaced) for slow families",
+    )
     ap.add_argument("--out", default="data/evidence/walkforward_research.json")
     args = ap.parse_args(argv)
 
@@ -230,8 +241,30 @@ def main(argv: list[str] | None = None) -> int:
         slippage_bps=args.slippage_bps,
         commission_per_lot=args.commission_per_lot,
     )
+    # A backtest must measure the strategy, not the risk overlay. The default
+    # limits kill trading at a $500 drawdown / $200 daily loss, which is right
+    # for live capital and wrong here: it silently truncated every run at the
+    # first 5% dip (563 fills, all inside the first 18% of the series). Research
+    # runs the kill switch off with generous limits so the FULL series is traded;
+    # the pipeline's own drawdown gate does the rejecting, and any fold that still
+    # halts is reported as truncated rather than passed off as a result.
+    from decimal import Decimal
+
+    from qts.risk.engine import RiskLimits
+
+    research_limits = RiskLimits(
+        kill_switch_enabled=False,
+        max_drawdown=Decimal("1000000"),
+        daily_loss_limit=Decimal("1000000"),
+        max_notional=Decimal("100000000"),
+        max_exposure_lots=Decimal("1000"),
+    )
+
     engine = BacktestEngine(
-        data_store=store, matching_config=matching, initial_balance=10000.0
+        data_store=store,
+        matching_config=matching,
+        risk_limits=research_limits,
+        initial_balance=10000.0,
     )
 
     runner = make_runner(
@@ -247,6 +280,11 @@ def main(argv: list[str] | None = None) -> int:
     param_space = {
         k: list(v) for k, v in BOUNDED_PARAM_SPACE[StrategyFamily(args.family)].items()
     }
+    grid = expand_grid(param_space)
+    if args.max_configs and len(grid) > args.max_configs:
+        step = len(grid) / args.max_configs
+        grid = [grid[int(i * step)] for i in range(args.max_configs)]
+        print(f"grid capped to {len(grid)} of {len(expand_grid(param_space))} configurations")
 
     baseline = buy_and_hold_baseline(
         bars,
@@ -262,6 +300,7 @@ def main(argv: list[str] | None = None) -> int:
         runner,
         param_space,
         folds,
+        param_grid=grid,
         baseline_outcomes={"buy_and_hold": baseline},
         periods_per_year=PERIODS_PER_YEAR,
         cost_basis=args.cost_basis,
@@ -284,6 +323,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"profitable folds: {agg['profitable_folds']}/{agg['folds_evaluated']}  "
           f"worst fold: {agg['worst_fold']:+.2f}")
     print(f"max DD     : {agg['max_drawdown']:.2%}   mean fold Sharpe: {agg['sharpe']:.3f}")
+    print(f"coverage   : {agg.get('coverage', 0.0):.1%} of the series traded  "
+          f"(halted folds: {agg.get('halted_folds', 0)})")
     of = result.overfitting
     print(f"deflated Sharpe p = {of['deflated_sharpe_pvalue']:.4f} "
           f"({'survives' if of['survives_multiple_testing'] else 'FAILS'} multiple testing)")

@@ -94,6 +94,9 @@ class FoldResult:
     profit_factor: float
     expectancy_per_trade: float
     selected_from_n: int
+    halted: bool = False
+    bars_traded: int | None = None
+    bars_total: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
         d = asdict_shallow(self)
@@ -349,6 +352,12 @@ class RunOutcome:
     cost: float = 0.0
     equity_curve: list[float] = field(default_factory=list)
     returns: list[float] = field(default_factory=list)
+    #: True when a risk kill switch stopped the run early. A halted run is
+    #: TRUNCATED - its numbers describe part of the series, not all of it.
+    halted: bool = False
+    halt_reason: str | None = None
+    bars_traded: int | None = None
+    bars_total: int | None = None
 
 
 #: Signature a runner must satisfy: parameters + a window → outcome.
@@ -386,6 +395,7 @@ def run_walk_forward(
     param_space: dict[str, Sequence[Any]],
     folds: list[Fold],
     *,
+    param_grid: list[dict[str, Any]] | None = None,
     periods_per_year: float = 23 * 4 * 252,
     baseline_outcomes: dict[str, RunOutcome] | None = None,
     cost_basis: str = "ASSUMED",
@@ -400,7 +410,12 @@ def run_walk_forward(
     The reported numbers come only from out-of-sample windows. What happened
     in training is used for nothing except picking parameters.
     """
-    grid = expand_grid(param_space)
+    # An explicit grid wins over the space: some families cost seconds per run
+    # and a full sweep would not finish. The count is still reported honestly,
+    # so the multiple-testing correction sees the smaller number too.
+    grid = param_grid if param_grid is not None else expand_grid(param_space)
+    if not grid:
+        raise ValueError("no parameter configurations to evaluate")
     result = PipelineResult(
         generated_at=datetime.now(UTC).isoformat(),
         data_version=data_version,
@@ -425,7 +440,10 @@ def run_walk_forward(
             FoldResult(
                 fold=fold,
                 params=params,
-                trades=outcome.trades,
+                halted=outcome.halted,
+            bars_traded=outcome.bars_traded,
+            bars_total=outcome.bars_total,
+            trades=outcome.trades,
                 net_return=outcome.net_return,
                 gross_return=outcome.gross_return,
                 cost=outcome.cost,
@@ -483,6 +501,12 @@ def _aggregate(folds: list[FoldResult]) -> dict[str, Any]:
         "profitable_folds": sum(1 for f in folds if f.net_return > 0),
         "worst_fold": min(f.net_return for f in folds),
         "cost_fraction_of_gross": (cost / gross) if gross > 0 else float("inf"),
+        "halted_folds": sum(1 for f in folds if f.halted),
+        "coverage": (
+            sum(f.bars_traded or 0 for f in folds) / sum(f.bars_total or 0 for f in folds)
+            if any(f.bars_total for f in folds)
+            else 0.0
+        ),
     }
 
 
@@ -557,6 +581,14 @@ def _verdict(result: PipelineResult, *, max_drawdown_limit: float) -> tuple[str,
         )
 
     fails: list[str] = []
+    halted_folds = agg.get("halted_folds", 0)
+    if halted_folds:
+        coverage = agg.get("coverage", 0.0) or 0.0
+        fails.append(
+            f"{halted_folds} fold(s) halted early on a risk kill switch — only "
+            f"{coverage:.1%} of the series was actually traded, so this is a "
+            f"truncated result, not a strategy result"
+        )
     if agg.get("oos_net_return", 0.0) <= 0:
         fails.append("out-of-sample net return is not positive")
     if agg.get("expectancy_per_trade", 0.0) <= 0:

@@ -16,6 +16,7 @@ Portfolio is single source of truth for PnL (lots canonical, contract_size, fees
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 from dataclasses import dataclass, field
@@ -92,6 +93,15 @@ class BacktestResult:
     # matching/risk settings, and code version).
     config_hash: str = ""
     code_version: str = ""
+    #: True when the risk engine's kill switch stopped trading before the end
+    #: of the series. A halted run is a TRUNCATED result, not a strategy
+    #: result — every number after the halt bar is missing, and reporting it
+    #: as a complete backtest overstates the strategy by however much history
+    #: went untraded.
+    halted: bool = False
+    halt_reason: str | None = None
+    halted_at_bar: int | None = None
+    bars_traded: int | None = None
 
     def hash(self) -> str:
         payload = json.dumps({"equity": self.equity_curve, "fills": self.fills}, sort_keys=True)
@@ -306,8 +316,19 @@ class BacktestEngine:
         pending_intents: list[Any] = []  # OrderIntent list
         #: symbol -> (bar index the current position was opened on).
         entry_index: dict[str, int] = {}
+        halted_at: int | None = None
+        halt_reason: str | None = None
 
         for idx, bar in enumerate(bars):
+            # The kill switch is terminal: once it fires every later intent is
+            # vetoed and the run silently produces a TRUNCATED result. Record the
+            # exact bar so a caller can never mistake this for a complete
+            # backtest of the whole series.
+            if halted_at is None and exec_engine.risk.killed:
+                halted_at = idx
+                with contextlib.suppress(Exception):
+                    halt_reason = exec_engine.risk.kill_state().get("reason")
+                halt_reason = halt_reason or "kill switch active (reason unavailable)"
             # 1) execute pending intents from previous bar at this bar's open
             if pending_intents:
                 # For each pending intent, create a synthetic execution bar at this bar's open
@@ -436,6 +457,10 @@ class BacktestEngine:
             profit_factor=float(pf),
             config_hash=config_hash,
             code_version=run_code_version,
+            halted=halted_at is not None,
+            halt_reason=halt_reason,
+            halted_at_bar=halted_at,
+            bars_traded=(halted_at if halted_at is not None else len(bars)),
         )
 
     # ------------------------------------------------------------ exit rules
