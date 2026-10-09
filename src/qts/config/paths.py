@@ -128,12 +128,7 @@ def state_root() -> Path:
     env = (os.getenv(STATE_ROOT_ENV) or "").strip()
     if env:
         return Path(env).expanduser()
-    cwd = Path.cwd()
     detected = _detect_repo_root()
-    # If the process explicitly changed directory into an isolated test/fixture
-    # directory containing its own data/ tree, honour that isolated root:
-    if detected is not None and cwd != detected and (cwd / "data").is_dir():
-        return cwd
     if detected is not None:
         return detected
     return _USER_ROOT
