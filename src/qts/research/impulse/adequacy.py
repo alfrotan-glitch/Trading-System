@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
-from qts.data.bootstrap import classify_source
+from qts.data.bootstrap import CLAIM_INADMISSIBLE_REASONS, claim_admissible, classify_source
 from qts.data.quality import MAX_UNEXPECTED_MISSING_FRACTION, analyze_gap_semantics
 from qts.domain.value_objects import Bar
 
@@ -132,14 +132,20 @@ def assess_data_adequacy(
         )
     )
 
+    admissible = claim_admissible(data_class)
+    refusal = CLAIM_INADMISSIBLE_REASONS.get(data_class, "not an observed-data class")
     checks.append(
         RequirementCheck(
             "R1-REAL-PROVENANCE",
-            "Data must be REAL broker/exchange history — synthetic or simulated data cannot "
-            "support claims about real-market behavior",
-            "data_class == REAL",
-            f"data_class={data_class} (source={source_label!r})",
-            data_class == "REAL",
+            "Data must be OBSERVED broker/exchange history — generated or simulated data "
+            "cannot support claims about real-market behavior",
+            "data_class in {REAL, BROKER-DERIVED, HISTORICAL}",
+            (
+                f"data_class={data_class} (source={source_label!r})"
+                if admissible
+                else f"data_class={data_class} (source={source_label!r}) — {refusal}"
+            ),
+            admissible,
             True,
         )
     )

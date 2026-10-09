@@ -205,6 +205,103 @@ non-claim-eligible dataset is arithmetic about that dataset.
 """
 
 
+@edge.command("readiness")
+@click.option("--data-version", default=None, help="Assess an existing dataset version (default: latest).")
+@click.option("--timeframe", default=None, help="Timeframe to assess (default: the manifest's).")
+@click.option(
+    "--ceiling-days",
+    default=None,
+    type=float,
+    help="Assess a PROSPECTIVE source with this retention ceiling instead of an existing dataset.",
+)
+@click.option("--source-label", default="", help="Provenance label to classify (e.g. MT5_HISTORY).")
+def edge_readiness(
+    data_version: str | None, timeframe: str | None, ceiling_days: float | None, source_label: str
+) -> None:
+    """Can the frozen candidates be evaluated for a CLAIM on this data?
+
+    Run this BEFORE `qts edge benchmark`. It answers, against pre-registered
+    minimums, whether a dataset can support a claim -- and, with
+    `--ceiling-days`, whether a history source with a known retention limit can
+    ever supply enough data. Discovering that after a download is the expensive
+    way.
+
+    A dataset that is not ready is still usable: it yields mechanism evidence.
+    What it cannot yield is a claim.
+    """
+    import json
+
+    from qts.research.benchmark_readiness import (
+        assess_acquisition_ceiling,
+        assess_dataset_readiness,
+        current_status,
+        days_needed_for_depth,
+        readiness_markdown,
+    )
+
+    status = current_status()
+    if not status["frozen_set_intact"]:
+        for problem in status["frozen_problems"]:
+            click.echo(f"PREREGISTRATION VIOLATION: {problem}", err=True)
+        raise SystemExit(2)
+    click.echo(f"Frozen candidate set verified ({len(status['candidates'])} hypotheses).")
+    click.echo(
+        f"Minimums: {status['minimums']['bars']} bars / {status['minimums']['span_days']} days / "
+        f"{status['minimums']['timeframe']} / {status['minimums']['round_turns_per_candidate']} "
+        "round turns per candidate."
+    )
+    click.echo("")
+
+    if ceiling_days is not None:
+        tf = timeframe or status["minimums"]["timeframe"]
+        report = assess_acquisition_ceiling(
+            max_history_days=ceiling_days, timeframe=str(tf), source_label=source_label or None
+        )
+    else:
+        from qts.data.store import SqliteParquetDataStore
+
+        store = SqliteParquetDataStore()
+        try:
+            version = data_version
+            if version is None:
+                versions = store.list_versions() if hasattr(store, "list_versions") else []
+                if not versions:
+                    click.echo("no dataset versions available — run `qts data bootstrap`", err=True)
+                    raise SystemExit(2)
+                version = str(versions[-1])
+            manifest = store.manifest(version)
+            if manifest is None:
+                click.echo(f"no manifest for version {version}", err=True)
+                raise SystemExit(2)
+            tf = str(timeframe or manifest.timeframe)
+            # The manifest already records the row count; reading the bars only
+            # to count them would be wasted work on a multi-GB dataset.
+            bar_count = int(manifest.rows)
+            span_days = (manifest.end - manifest.start).total_seconds() / 86400.0
+            report = assess_dataset_readiness(
+                bar_count=bar_count,
+                span_days=span_days,
+                timeframe=tf,
+                source_label=manifest.source or None,
+                subject=f"dataset {version}",
+            )
+        finally:
+            store.close()
+
+    click.echo(readiness_markdown(report))
+    click.echo(json.dumps(report.as_dict(), indent=2, default=str))
+
+    if not report.ready_for_claims:
+        needed = days_needed_for_depth(str(report.timeframe))
+        click.echo("")
+        click.echo(
+            f"NOT READY FOR CLAIMS. Reaching the bar minimum on {report.timeframe} bars "
+            f"needs roughly {needed:,.0f} calendar days of history.",
+            err=True,
+        )
+    raise SystemExit(0 if report.ready_for_claims else 1)
+
+
 @edge.command("validate")
 @click.option("--strategy", default="sma_breakout")
 @click.option("--data-version", default=None)
