@@ -86,12 +86,14 @@ $10,000 account, 0.01 lot.
 | trend | +63.12 | 683.76 | 620.63 | 90.8% | 372 | +0.17 | 2/4 | 4.9% | NO_EDGE |
 | breakout | +85.94 | 1,737.61 | 1,651.67 | 95.1% | 1,003 | +0.09 | 2/4 | 43.3% | NO_EDGE |
 | mean_reversion | **−3,282.25** | 1,031.94 | 4,314.19 | **418.1%** | 2,667 | −1.23 | 2/4 | **73.6%** | NO_EDGE |
-| momentum | not completed | — | — | — | — | — | — | — | — |
+| momentum | **−11,938.35** | 10,112.78 | **22,051.13** | **218.1%** | 12,644 | −0.94 | **0/4** | 64.9% | NO_EDGE |
 | volatility | not completed | — | — | — | — | — | — | — | — |
 
-Momentum and volatility trade on nearly every bar; a full walk-forward over
-26k bars did not complete in the time available. Not a result — an unfinished
-run.
+Momentum and volatility trade on nearly every bar — 12,644 trades for momentum
+against 372 for trend — so their grids are capped with `--max-configs 4`.
+Momentum is now complete and is the worst result in the set: **0 of 4 folds
+profitable**, paying 2.2× its own gross in costs. Volatility did not complete
+in the time available; not a result, an unfinished run.
 
 The cost column is the finding. Trend and breakout consume **91% and 95% of
 their own gross in assumed costs**. Mean reversion pays 4.2× its gross. These
@@ -164,6 +166,7 @@ the strategy.**
 | trend | +63.12 | 90.8% | 2/4 | 4.9% | 100% | NO_EDGE |
 | breakout | +85.94 | 95.1% | 2/4 | 43.3% | 100% | NO_EDGE |
 | mean_reversion | −3,282.25 | 418.1% | 2/4 | 73.6% | 100% | NO_EDGE |
+| momentum | −11,938.35 | 218.1% | 0/4 | 64.9% | 100% | NO_EDGE |
 | breakout + stops | +3,764.97 | 58.7% | 1/4 | 53.1% | 100% | NO_EDGE |
 | breakout + stops, 8 folds | +4,610.87 | 61.2% | 2/6 | 53.1% | 100% | NO_EDGE |
 | breakout + stops, 2× cost | −7,012.31 | 324.7% | 1/4 | 63.1% | 100% | NO_EDGE |
@@ -208,12 +211,12 @@ A rule must beat the metal. Five of the ten runs above did not.
    terminal itself holds ≥5,000 M15 bars.
 3. **More history.** 407 days with one regime cannot distinguish a regime-fit
    from an edge.
-4. **Finish momentum and volatility**, with position limits to bound the trade
-   count.
+4. **Finish volatility**, with position limits to bound the trade count.
+   Momentum is complete and is the worst result in the set.
 
 ## What is not claimed
 
-No strategy is promoted. No edge is claimed. Nine of ten corrected
+No strategy is promoted. No edge is claimed. Ten of eleven corrected
 configurations report `NO_EDGE_ESTABLISHED`, and the single `EDGE_CANDIDATE`
 was withdrawn by its own robustness checks — an 8-fold re-run and a 2× cost
 stress — not by hand.
