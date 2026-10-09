@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-09
 **Branch:** `arena/db6f7053-trading-system` → `main` (PR #11)
-**Commits:** `6beaba6`, `4dbfd5a`
+**Commits:** `6beaba6`, `4dbfd5a`, `b59d85f`, `e5e29e3`
 **Mode:** `DEMO_EXECUTION` only. `LIVE_LOCKED`. No live trading enabled. No edge claimed.
 
 ---
@@ -321,7 +321,52 @@ qts edge benchmark --timeframe 15m \
 
 ---
 
-## 9. Standing position
+## 9. Verification results
+
+Run on a clean tree at commit `e5e29e3`.
+
+| Check | Command | Result |
+|:---|:---|:---|
+| Default suite | `pytest -q -p no:cacheprovider` | **1314 passed, 341 skipped** — exit 0 |
+| Extended suite | `pytest -q -p no:cacheprovider --run-integration --run-research` | **1652 passed, 3 skipped** — exit 0 |
+| CI's extended job | `pytest -q --run-integration --run-research tests/integration tests/research` | **338 passed** — exit 0 |
+| Collection | `pytest --collect-only` | **1654 tests** (1546 before this phase: **+108**) |
+| Lint | `ruff check src/ tests/` | All checks passed |
+| Types | `mypy src` | No issues, 169 source files |
+| Security | `bandit -q -r src` | 0 issues |
+| UI tests | `npm test` | **48 passed** |
+| UI syntax | `node --check` on every `src/qts/desktop/ui/js/*.js` | clean |
+
+**CI (run 37898646502, PR #11): `fast` PASS · `extended` PASS.**
+PR #11 — `OPEN`, `MERGEABLE`, `mergeStateStatus CLEAN`, base `main`,
+head `arena/db6f7053-trading-system`.
+
+### A pre-existing flake, found during verification
+
+Two consecutive CI runs failed in *different* jobs, which pointed at flakiness
+rather than a regression. Reproduced locally: 1 of 2 full extended runs failed.
+
+`tests/test_tick_timestamp_contract.py::test_offset_recovered_exactly_across_bar_phases_and_zones`
+captured `now = time.time()` once and then looped over 5 offsets × 4 bar phases,
+while the adapter re-read `time.time()` on every call. At `bar_phase=59` the
+forming bar sits one second from the previous minute, so a single elapsed second
+pushed it over and the recovered offset came back 60s low:
+
+```
+AssertionError: (10800, 59, 10740.0)
+```
+
+It passed only when the loop finished inside one second. **The product code was
+correct** — the adapter must measure against the current clock. The test now
+freezes the clock with `monkeypatch`, so it tests the same arithmetic
+deterministically. The assertion is unchanged and is not weakened; it now holds
+for every phase rather than only for phases that run fast enough.
+
+Fixed in `e5e29e3`. No product code touched.
+
+---
+
+## 10. Standing position
 
 Unchanged from previous phases:
 
