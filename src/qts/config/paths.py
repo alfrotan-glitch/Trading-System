@@ -71,6 +71,7 @@ RELATIVE_DEFAULTS: dict[str, str] = {
     "reality": "data/evidence/execution_reality.json",
     "campaign_last": "data/evidence/campaign_last.json",
     "autonomous_campaign": "data/evidence/autonomous_campaign.json",
+    "benchmark_candidates": "data/evidence/benchmark_candidates.json",
 }
 
 #: Environment override per artefact (highest precedence, used verbatim).
@@ -105,6 +106,7 @@ ENV_OVERRIDES: dict[str, str] = {
     "reality": "QTS_REALITY_PATH",
     "campaign_last": "QTS_CAMPAIGN_LAST_PATH",
     "autonomous_campaign": "QTS_AUTONOMOUS_CAMPAIGN_PATH",
+    "benchmark_candidates": "QTS_BENCHMARK_CANDIDATES_PATH",
 }
 
 STATE_ROOT_ENV = "QTS_STATE_ROOT"

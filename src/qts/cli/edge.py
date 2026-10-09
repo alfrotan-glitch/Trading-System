@@ -44,6 +44,167 @@ def _decomposition_markdown(dec: Any) -> str:
     return "\n".join(lines)
 
 
+@edge.command("benchmark")
+@click.option("--data-version", default=None, help="Dataset version to evaluate on (default: latest).")
+@click.option("--timeframe", default=None, help="Override the dataset timeframe (default: the manifest's).")
+@click.option(
+    "--spread",
+    default=None,
+    type=float,
+    help="MEASURED round-turn spread in price units. Without it costs are ASSUMED and nothing can pass.",
+)
+@click.option("--commission-per-lot", default=0.0, type=float, help="Commission per lot per fill.")
+@click.option("--slippage", default=None, type=float, help="Slippage in price units per fill.")
+@click.option("--swap-per-night", default=None, type=float, help="Overnight financing per lot per night.")
+@click.option("--cost-source", default="", help="Provenance for the cost numbers (broker, date, method).")
+@click.option("--no-record-trials", is_flag=True, help="Do not add these runs to the experiment ledger.")
+def edge_benchmark(
+    data_version: str | None,
+    timeframe: str | None,
+    spread: float | None,
+    commission_per_lot: float,
+    slippage: float | None,
+    swap_per_night: float | None,
+    cost_source: str,
+    no_record_trials: bool,
+) -> None:
+    """Evaluate the three FROZEN preregistered candidates.
+
+    This does not search for a strategy. It measures three hypotheses that were
+    written down before anything was run, and reports gross, cost and net for
+    each. It never promotes anything.
+    """
+    import json
+
+    from qts.config.paths import artifact_path, resolve_state_path
+    from qts.data.store import SqliteParquetDataStore
+    from qts.research.benchmarks import BENCHMARKS, evaluate_benchmarks, verify_frozen
+
+    frozen_ok, frozen_problems = verify_frozen()
+    if not frozen_ok:
+        for problem in frozen_problems:
+            click.echo(f"PREREGISTRATION VIOLATION: {problem}", err=True)
+        raise SystemExit(2)
+
+    measured = spread is not None and slippage is not None and bool(cost_source.strip())
+    from qts.research.costs import CostBasis, CostModel
+
+    cost_model = CostModel.xauusd_default(
+        spread_price_units=spread if spread is not None else 0.30,
+        commission_per_lot_usd=commission_per_lot,
+        slippage_price_units=slippage if slippage is not None else 0.10,
+        swap_per_night_per_lot_usd=swap_per_night,
+        basis=CostBasis.MEASURED if measured else CostBasis.ASSUMED,
+        source=cost_source.strip() or "qts.research.costs.xauusd_default (assumed retail MT5 gold conditions)",
+    )
+
+    store = SqliteParquetDataStore()
+    try:
+        version = data_version
+        if version is None:
+            versions = store.list_versions() if hasattr(store, "list_versions") else []
+            if not versions:
+                click.echo("no dataset versions available — run `qts data bootstrap`", err=True)
+                raise SystemExit(2)
+            version = str(versions[-1])
+        report = evaluate_benchmarks(
+            store,
+            version,
+            timeframe=timeframe,
+            cost_model=cost_model,
+            record_trials=not no_record_trials,
+        )
+    finally:
+        store.close()
+
+    payload = report.as_dict()
+    payload["schema"] = "qts.benchmark_candidates.v1"
+    payload["preregistered_at"] = "2026-10-09"
+    payload["specs"] = [b.as_dict() for b in BENCHMARKS]
+    payload["cost_basis"] = "MEASURED" if measured else "ASSUMED"
+
+    out = artifact_path("benchmark_candidates")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+
+    docs_dir = resolve_state_path("docs")
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    (docs_dir / "benchmark_candidates_report.md").write_text(_benchmark_markdown(payload), encoding="utf-8")
+
+    click.echo(f"Frozen candidate set verified ({len(BENCHMARKS)} hypotheses).")
+    click.echo(f"Dataset {report.data_version} — {report.dataset_provenance}")
+    click.echo(f"Cost basis: {'MEASURED' if measured else 'ASSUMED — nothing below can pass an edge gate'}")
+    click.echo("")
+    for obs in report.observations:
+        click.echo(
+            f"{obs.benchmark_id}  [{obs.role}]  {obs.round_turns} round turns  "
+            f"gross {obs.gross_pnl_usd:+.2f}  cost {obs.cost_usd:.2f}  net {obs.net_pnl_usd:+.2f} USD  "
+            f"net/trade {obs.net_expectancy_per_trade:+.4f}  break-even {obs.break_even_cost_multiple:.2f}x"
+        )
+        for reason in obs.reasons[:3]:
+            click.echo(f"    - {reason}")
+    click.echo("")
+    click.echo(report.conclusion)
+    click.echo(f"Evidence: {out}")
+    if not measured:
+        click.echo(
+            "To make an edge claim decidable, re-run with --spread/--slippage/--swap-per-night "
+            "measured from your broker and --cost-source recording where they came from."
+        )
+
+
+def _benchmark_markdown(payload: dict) -> str:
+    rows = []
+    for obs in payload.get("observations", []):
+        rows.append(
+            f"| {obs['benchmark_id']} | {obs['role']} | {obs['timeframe_measured']} "
+            f"({'matches' if obs['timeframe_matches'] else 'MISMATCH — mechanism only'}) | "
+            f"{obs['round_turns']} | {obs['gross_pnl_usd']:+.2f} | {obs['cost_usd']:.2f} | "
+            f"{obs['measured_cost_usd']:.2f} | {obs['net_pnl_usd']:+.2f} | "
+            f"{obs['net_expectancy_per_trade']:+.4f} | {obs['break_even_cost_multiple']:.2f}x | "
+            f"{obs['walk_forward_folds']} |"
+        )
+    specs = []
+    for spec in payload.get("specs", []):
+        specs.append(
+            f"- **{spec['benchmark_id']}** ({spec['role']}) — family `{spec['family']}`, "
+            f"params `{spec['params']}`, timeframe {spec['timeframe']}, "
+            f"size {spec['quantity_lots']} lots, stop {spec['stop_distance_usd']} USD, "
+            f"max hold {spec['max_hold_bars']} bars. Hash `{spec['spec_hash'][:12]}…`"
+        )
+    return f"""# Frozen Benchmark Candidates
+
+**Generated:** {payload.get('generated_at')}
+**Dataset:** {payload.get('data_version')} ({payload.get('dataset_provenance')})
+**Cost basis:** {payload.get('cost_basis')}
+**Preregistered:** {payload.get('preregistered_at')}
+
+## Conclusion
+
+**{payload.get('conclusion')}**
+
+{chr(10).join('- ' + r for r in payload.get('reasons', []))}
+
+## Preregistered hypotheses (frozen before evaluation)
+
+{chr(10).join(specs)}
+
+## Observations
+
+| Benchmark | Role | Timeframe | Round turns | Gross USD | Modelled cost | Measured cost | Net USD | Net/trade | Break-even | WF folds |
+|:---|:---|:---|---:|---:|---:|---:|---:|---:|---:|---:|
+{chr(10).join(rows)}
+
+Modelled cost is what the declared cost model charges; measured cost is what the
+simulation actually charged (spread, slippage and fees recovered from the fill
+prices against their reference prices). A large gap between them means the cost
+model does not describe the venue.
+
+**Nothing on this page promotes a strategy.** A positive net expectancy on a
+non-claim-eligible dataset is arithmetic about that dataset.
+"""
+
+
 @edge.command("validate")
 @click.option("--strategy", default="sma_breakout")
 @click.option("--data-version", default=None)

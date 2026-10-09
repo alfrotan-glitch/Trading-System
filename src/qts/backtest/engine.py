@@ -37,6 +37,40 @@ from qts.research.strategy import SmaBreakoutStrategy, signal_to_intent
 from qts.risk.engine import RiskEngine, RiskLimits
 
 
+def _parse_exit_rules(exit_rules: dict[str, Any] | None) -> tuple[float | None, int | None]:
+    """Validate declared exit rules. A malformed rule is refused, not ignored."""
+    if not exit_rules:
+        return None, None
+    stop_raw = exit_rules.get("stop_distance_usd")
+    hold_raw = exit_rules.get("max_hold_bars")
+
+    stop_distance: float | None = None
+    if stop_raw is not None:
+        stop_distance = float(stop_raw)
+        if stop_distance != stop_distance or stop_distance in (float("inf"), float("-inf")):
+            raise ValueError("exit_rules.stop_distance_usd must be finite")
+        if stop_distance <= 0:
+            raise ValueError(f"exit_rules.stop_distance_usd must be > 0 (got {stop_distance})")
+
+    max_hold: int | None = None
+    if hold_raw is not None:
+        max_hold = int(hold_raw)
+        if max_hold < 1:
+            raise ValueError(f"exit_rules.max_hold_bars must be >= 1 (got {max_hold})")
+
+    if stop_distance is None and max_hold is None:
+        raise ValueError(
+            f"exit_rules declared no usable rule: {sorted(exit_rules)} — "
+            "expected stop_distance_usd and/or max_hold_bars"
+        )
+    return stop_distance, max_hold
+
+
+#: Parameters the backtest engine consumes itself. They are never forwarded to
+#: a strategy constructor — a strategy has no business knowing the order size.
+_HARNESS_PARAM_KEYS = frozenset({"quantity"})
+
+
 @dataclass
 class BacktestResult:
     strategy_id: str
@@ -64,6 +98,28 @@ class BacktestResult:
         return hashlib.sha256(payload.encode()).hexdigest()[:12]
 
 
+def _fill_record(fill: Any, bar: Any, idx: int, strategy_id: str, role: str) -> dict[str, Any]:
+    """One serialised fill.
+
+    ``bar_open`` is the reference price the fill was priced against and ``fee``
+    is what the matching engine charged; together they let a trade ledger
+    separate the frictionless P&L from the cost the simulation really took.
+    ``role`` records WHY the fill happened: ``signal``, ``exit_stop`` or
+    ``exit_time`` — an exit a stop produced is not an exit a signal produced.
+    """
+    return {
+        "price": str(fill.price),
+        "qty": str(fill.quantity),
+        "side": fill.side.value,
+        "time": fill.event_time.isoformat(),
+        "bar_open": str(bar.open),
+        "bar_idx": idx,
+        "fee": str(getattr(fill, "fee", Decimal("0")) or Decimal("0")),
+        "role": role,
+        "strategy_id": strategy_id,
+    }
+
+
 class BacktestEngine:
     def __init__(
         self,
@@ -89,8 +145,24 @@ class BacktestEngine:
         seed: int = 42,
         start: datetime | None = None,
         end: datetime | None = None,
+        exit_rules: dict[str, Any] | None = None,
     ) -> BacktestResult:
+        """Run a strategy over bars.
+
+        ``exit_rules`` declares how an open position is CLOSED, independently of
+        the signal that opened it:
+
+        * ``stop_distance_usd`` — protective stop, measured in price units from
+          the position's average entry price. Evaluated intrabar.
+        * ``max_hold_bars`` — deterministic time exit.
+
+        Without them a position can only be closed by an opposite signal, which
+        means a stop-loss strategy is backtested as a naked always-in reversal
+        system — a different strategy wearing the same name. Exit rules are part
+        of the run configuration and therefore part of ``config_hash``.
+        """
         strategy_params = strategy_params or {}
+        stop_distance, max_hold = _parse_exit_rules(exit_rules)
         dataset_manifest = self.data_store.manifest(data_version)
         if dataset_manifest is None:
             raise ValueError(f"dataset manifest unavailable for version {data_version}")
@@ -132,15 +204,31 @@ class BacktestEngine:
                         inferred_family = fam
                         break
             if inferred_family:
+                fam_enum = StrategyFamily(inferred_family)
+                # Filter params to only those the strategy constructor accepts:
+                # internal keys are never forwarded, and harness keys belong to
+                # the engine (``quantity`` sizes the order, it is not a signal
+                # parameter). Forwarding either used to raise a TypeError that
+                # was swallowed below, silently running a DIFFERENT strategy.
+                clean_params = {
+                    k: v for k, v in strategy_params.items() if k not in _HARNESS_PARAM_KEYS and not k.startswith("_")
+                }
                 try:
-                    fam_enum = StrategyFamily(inferred_family)
-                    # Filter params to only those expected by family (strip internal keys)
-                    clean_params = {k: v for k, v in strategy_params.items() if not k.startswith("_")}
                     strat = create_strategy(fam_enum, instrument, clean_params, strategy_id=strategy_id)
                 except Exception:
                     strat = None
         except Exception:
             strat = None
+
+        # An explicit family is a contract, not a hint. If it cannot be built,
+        # refuse: falling through to a different strategy would produce
+        # confident, reproducible evidence about the wrong thing.
+        explicit_family = strategy_params.get("_family")
+        if explicit_family and strat is None:
+            raise ValueError(
+                f"strategy {strategy_id!r}: explicit family {explicit_family!r} could not be instantiated "
+                "from the supplied parameters — refusing to silently run a different strategy"
+            )
 
         if strat is None:
             if strategy_id == "sma_breakout":
@@ -216,6 +304,8 @@ class BacktestEngine:
         # Execution convention: next-bar open
         # We maintain pending intents to be executed on next bar
         pending_intents: list[Any] = []  # OrderIntent list
+        #: symbol -> (bar index the current position was opened on).
+        entry_index: dict[str, int] = {}
 
         for idx, bar in enumerate(bars):
             # 1) execute pending intents from previous bar at this bar's open
@@ -245,23 +335,29 @@ class BacktestEngine:
                     # idempotency already handled via OrderManager
                     order, fills = exec_engine.submit_intent(intent, bar=exec_bar)
                     for fill in fills:
-                        fills_out.append(
-                            {
-                                "price": str(fill.price),
-                                "qty": str(fill.quantity),
-                                "side": fill.side.value,
-                                "time": fill.event_time.isoformat(),
-                                "bar_open": str(bar.open),
-                                "bar_idx": idx,
-                                # The reference price the fill was priced
-                                # against is ``bar_open``; ``fee`` is what the
-                                # matching engine charged. Together they let a
-                                # trade ledger separate the frictionless P&L
-                                # from the cost the simulation really took.
-                                "fee": str(getattr(fill, "fee", Decimal("0")) or Decimal("0")),
-                            }
-                        )
+                        fills_out.append(_fill_record(fill, bar, idx, strategy_id, "signal"))
                 pending_intents = []
+
+            # 1b) declared exits — stop and time. These close a position WITHOUT
+            # waiting for an opposite signal, which is what a stop-loss strategy
+            # actually does. Order is deterministic: time at this bar's open,
+            # then the intrabar stop.
+            if stop_distance is not None or max_hold is not None:
+                for order_intent, reason, exit_bar in self._exit_intents(
+                    bar=bar,
+                    idx=idx,
+                    portfolio=portfolio,
+                    entry_index=entry_index,
+                    stop_distance=stop_distance,
+                    max_hold=max_hold,
+                    strategy_id=strategy_id,
+                    seq=len(fills_out),
+                ):
+                    _order, fills = exec_engine.submit_intent(order_intent, bar=exit_bar)
+                    for fill in fills:
+                        fills_out.append(_fill_record(fill, exit_bar, idx, strategy_id, reason))
+                    # A position that just closed (or flipped) restarts the clock.
+                    self._sync_entry_index(portfolio, entry_index, idx)
 
             # 2) mark to market at bar close before signal? Position unrealized at close
             # But signal is generated after close, so mark at close first
@@ -282,6 +378,10 @@ class BacktestEngine:
                 )
                 # queue for next bar execution
                 pending_intents.append(intent)
+
+            # The position that exists after this bar's own exits is the one the
+            # clock is kept for; a queued signal has not changed anything yet.
+            self._sync_entry_index(portfolio, entry_index, idx)
 
             # if this is last bar, pending intents would not be executed (no next bar) — they expire
 
@@ -311,6 +411,7 @@ class BacktestEngine:
             "end": end.isoformat() if end else None,
             "bars": len(bars),
             "execution": "next_bar_open",
+            "exit_rules": exit_rules or {},
             "matching": self.matching_config.__dict__,
             "risk_limits": self.risk_limits.model_dump(mode="json"),
             "initial_balance": str(self.initial_balance),
@@ -337,6 +438,105 @@ class BacktestEngine:
             code_version=run_code_version,
         )
 
+    # ------------------------------------------------------------ exit rules
+    @staticmethod
+    def _sync_entry_index(portfolio: Any, entry_index: dict, idx: int) -> None:
+        """Record when each currently-open position was opened.
+
+        A position that has flipped direction is a NEW position for the clock's
+        purposes: the stop distance and the holding clock are both measured from
+        the price and the bar of the position that exists now, not from a lot
+        that has already been closed.
+        """
+        for symbol, position in portfolio.positions.items():
+            quantity = position.quantity
+            if quantity == 0:
+                entry_index.pop(symbol, None)
+                continue
+            direction = 1 if quantity > 0 else -1
+            previous = entry_index.get(symbol)
+            if not isinstance(previous, tuple) or previous[1] != direction:
+                entry_index[symbol] = (idx, direction)
+
+    def _exit_intents(
+        self,
+        *,
+        bar: Any,
+        idx: int,
+        portfolio: Any,
+        entry_index: dict,
+        stop_distance: float | None,
+        max_hold: int | None,
+        strategy_id: str,
+        seq: int,
+    ) -> list[tuple]:
+        """Exit orders a declared stop or time limit produces on this bar.
+
+        Conventions, all deliberately conservative:
+
+        * **Time exit fills at this bar's open.** Deterministic, and it is the
+          first exit considered, so a bar that triggers both is settled by the
+          clock.
+        * **Stop exit fills at the stop price — or worse if the bar gapped
+          through it.** A stop is not a guarantee; it is an order. If the bar
+          opens beyond the stop level the fill takes the open, because that is
+          the first price at which the order could trade.
+        * Both are then priced by the matching engine, so an exit pays spread
+          and slippage exactly like an entry. Exits are not free.
+        """
+        from datetime import timedelta
+
+        from qts.domain.value_objects import Bar as BarVO
+        from qts.domain.value_objects import OrderIntent, OrderType, Side
+
+        out: list[tuple] = []
+        for _symbol, position in list(portfolio.positions.items()):
+            quantity = position.quantity
+            if quantity == 0:
+                continue
+            long = quantity > 0
+            entry = entry_index.get(position.instrument.symbol)
+            entry_idx = entry[0] if isinstance(entry, tuple) else idx
+            reference: Decimal | None = None
+            reason = ""
+
+            if max_hold is not None and (idx - int(entry_idx)) >= max_hold:
+                reference = bar.open
+                reason = "exit_time"
+            elif stop_distance is not None:
+                stop = Decimal(str(stop_distance))
+                level = position.avg_price - stop if long else position.avg_price + stop
+                triggered = bar.low <= level if long else bar.high >= level
+                if triggered:
+                    # Gap through the stop -> the open is the achievable price.
+                    reference = min(bar.open, level) if long else max(bar.open, level)
+                    reason = "exit_stop"
+            if reference is None:
+                continue
+
+            exit_bar = BarVO(
+                instrument=bar.instrument,
+                open=reference,
+                high=reference,
+                low=reference,
+                close=reference,
+                volume=bar.volume,
+                open_time=bar.open_time,
+                close_time=bar.open_time + timedelta(milliseconds=1),
+                data_version=bar.data_version,
+                source=f"execution_{reason}",
+            )
+            intent = OrderIntent(
+                instrument=position.instrument,
+                side=Side.SELL if long else Side.BUY,
+                quantity=abs(quantity),
+                order_type=OrderType.MARKET,
+                client_order_id=f"{strategy_id}:{bar.open_time.isoformat()}:{reason}:{seq}",
+                strategy_id=strategy_id,
+            )
+            out.append((intent, reason, exit_bar))
+        return out
+
     def run_stress(
         self,
         instrument: Instrument,
@@ -345,8 +545,14 @@ class BacktestEngine:
         strategy_id: str,
         strategy_params: dict[str, Any] | None,
         spreads: list[float],
+        exit_rules: dict[str, Any] | None = None,
     ) -> dict[float, float]:
-        """Re-run strategy under different spread stress (real trades, not PF multiplication)."""
+        """Re-run strategy under different spread stress (real trades, not PF multiplication).
+
+        ``exit_rules`` must be the same rules as the baseline: stressing the
+        spread of a strategy with a stop while the baseline had no stop would
+        compare two different strategies.
+        """
         results: dict[float, float] = {}
         for spread in spreads:
             cfg = MatchingConfig(
@@ -369,7 +575,9 @@ class BacktestEngine:
             else:
                 stress_cfg = cfg
             engine = BacktestEngine(self.data_store, self.risk_limits, stress_cfg, initial_balance=self.initial_balance)
-            res = engine.run(instrument, timeframe, data_version, strategy_id, strategy_params)
+            res = engine.run(
+                instrument, timeframe, data_version, strategy_id, strategy_params, exit_rules=exit_rules
+            )
             # use PF as stress metric (or sharpe)
             results[spread] = res.profit_factor
         return results
