@@ -253,6 +253,12 @@ class BacktestEngine:
                                 "time": fill.event_time.isoformat(),
                                 "bar_open": str(bar.open),
                                 "bar_idx": idx,
+                                # The reference price the fill was priced
+                                # against is ``bar_open``; ``fee`` is what the
+                                # matching engine charged. Together they let a
+                                # trade ledger separate the frictionless P&L
+                                # from the cost the simulation really took.
+                                "fee": str(getattr(fill, "fee", Decimal("0")) or Decimal("0")),
                             }
                         )
                 pending_intents = []

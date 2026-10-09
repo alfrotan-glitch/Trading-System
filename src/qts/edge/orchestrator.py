@@ -194,6 +194,29 @@ depth/span, quality, costs, controls, and forward evidence.
         except Exception as exc:  # preserve the failed attempt, do not fill metrics
             run_error = f"{type(exc).__name__}: {exc}"
 
+    # ---- round turns: the fills ARE the trade evidence --------------------
+    # ``BacktestResult`` exposes fills, not trade PnL attribution, which is why
+    # expectancy and cost used to be reported as 0. Pairing the fills (FIFO)
+    # recovers the round turns, and the reference price recorded on each fill
+    # separates the frictionless P&L from the cost the simulation took.
+    from qts.research.costs import CostModel
+    from qts.research.trade_ledger import round_turns_from_fills, to_trade_records
+
+    ledger = None
+    cost_model = None
+    trade_records: list = []
+    if full is not None and getattr(full, "fills", None):
+        try:
+            contract_size = float(getattr(getattr(full, "instrument", None), "contract_size", 0) or 0)
+        except (TypeError, ValueError):
+            contract_size = 0.0
+        ledger = round_turns_from_fills(list(full.fills), contract_size=contract_size or 100.0)
+        trade_records = to_trade_records(ledger)
+        # The cost model is an ASSUMED retail baseline unless a measured one is
+        # configured. It is a sensitivity layer on top of the simulated costs,
+        # never a substitute for them, and it is labelled accordingly.
+        cost_model = CostModel.xauusd_default()
+
     # No control scores are supplied: NullControl cannot be applied to this
     # engine without executing a separately specified signal model.  Empty
     # inputs intentionally make the control/placebo gates fail.
@@ -212,8 +235,10 @@ depth/span, quality, costs, controls, and forward evidence.
         [],
         [],
         bars,
-        [],  # BacktestResult exposes fills, not realized trade PnL attribution
+        [t.gross_pnl_usd for t in trade_records],
         timeframe=manifest.timeframe,
+        cost_model=cost_model,
+        trade_records=trade_records,
     )
     claim_blocked = readiness.status != "READY"
     conclusion = (
@@ -229,6 +254,10 @@ depth/span, quality, costs, controls, and forward evidence.
             "edge_details": edge.details,
             "walk_forward_folds": folds,
             "run_error": run_error,
+            "trade_ledger": (ledger.as_dict() if ledger is not None else None),
+            "cost_decomposition": (
+                edge.cost_decomposition.as_dict() if edge.cost_decomposition is not None else None
+            ),
         },
         conclusion=conclusion,
         failure_reason=("; ".join(readiness.reasons) if claim_blocked else run_error),

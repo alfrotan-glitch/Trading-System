@@ -40,6 +40,7 @@ class RiskConfig(BaseModel):
     max_open_orders: int = 5
     daily_loss_limit: float = 200.0
     max_drawdown: float = 500.0
+    max_drawdown_pct: float = 10.0
     volatility_target: float | None = None
     kill_switch_enabled: bool = True
     flatten_on_kill: bool = False

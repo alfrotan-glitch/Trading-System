@@ -1037,9 +1037,20 @@ class DemoSession:
         except Exception:
             audit = None
         self._idempotency = IdempotencyStore(db_path=self.db_path)
-        from qts.risk.authority import engine_limits_from, resolve_risk_limits_from_settings
+        from qts.risk.authority import (
+            apply_risk_ceiling,
+            engine_limits_from,
+            resolve_risk_limits_from_settings,
+        )
 
         snapshot = resolve_risk_limits_from_settings(ExecutionMode.DEMO_EXECUTION)
+        # The owner authorization's risk_ceiling is not decoration: it is the
+        # tightest limit the owner agreed to, and it is APPLIED here, not just
+        # validated. apply_risk_ceiling() can only tighten — a ceiling that
+        # would widen a canonical limit is ignored, so a tampered artifact can
+        # never raise a limit.
+        ceiling = (self.authorization.document.risk_ceiling if self.authorization else None) or {}
+        snapshot = apply_risk_ceiling(snapshot, dict(ceiling), origin="owner_authorization")
         limits = engine_limits_from(snapshot)
         self._risk = RiskEngine(limits, db_path=self.db_path, persist_kill=True)
         portfolio = Portfolio(initial_balance=Decimal("0"))  # broker equity is authoritative

@@ -35,7 +35,9 @@ class DemoForwardLimits:
         # Risk
         self.max_daily_loss_usd: float = d["max_daily_loss_usd"]
         self.max_drawdown_usd: float = d["max_drawdown_usd"]
-        self.max_drawdown_pct: float | None = None
+        # Now a real, enforced limit resolved by the canonical risk authority
+        # (previously hard-coded to None, i.e. "no percentage cap exists").
+        self.max_drawdown_pct: float | None = d["max_drawdown_pct"]
         # Market
         self.max_spread_bps: float = d["max_spread_bps"]
         self.max_slippage_bps: float = d["max_slippage_bps"]
@@ -55,7 +57,7 @@ class DemoForwardLimits:
             "max_orders_per_minute": self.max_orders_per_minute,
             "max_daily_loss_usd": self.max_daily_loss_usd,
             "max_drawdown_usd": self.max_drawdown_usd,
-            "max_drawdown_pct": None,
+            "max_drawdown_pct": self.max_drawdown_pct,
             "max_spread_bps": self.max_spread_bps,
             "max_slippage_bps": self.max_slippage_bps,
             "kill_switch_enabled": self.kill_switch_enabled,
