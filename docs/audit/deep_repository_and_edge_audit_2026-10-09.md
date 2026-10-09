@@ -30,13 +30,13 @@ This PR candidate registers canonical artifacts and environment overrides for dr
 
 The affected writers now resolve through artifact_path() before creating directories or files. A regression test verifies state-root anchoring and environment override behavior. CI is the final verification gate for this candidate.
 
-### P1 — State-root behavior had a documented-contract inconsistency (fixed in this PR candidate)
+### P1 — State-root contract requires explicit configuration for portable and isolated workspaces
 
 File: `src/qts/config/paths.py`, `state_root()`.
 
-The module describes one cwd-independent state root, but the implementation deliberately returns the current working directory when it differs from the detected repository root and contains a `data/` directory. This may support isolated fixtures, but it makes the production contract conditional and can cause two processes to resolve different durable state depending on their launch directory.
+The repository root is detected from the installed package by default. To preserve isolated workspaces and existing tests that deliberately create their own `data/` tree, the resolver also honors a non-repository current directory containing `data/`. That fallback is conditional: separate processes launched from different directories can resolve different state if both directories contain `data/`.
 
-The cwd-based exception was removed in this PR candidate. Isolated tests and portable installations must select their state root explicitly with `QTS_STATE_ROOT` or injected paths. A regression test creates a foreign cwd containing a `data/` directory and asserts that `state_root()` and the artifact path remain anchored to the detected repository root. CI is the final verification gate.
+Therefore any deployment that requires a single invariant state location across launch directories must set `QTS_STATE_ROOT` explicitly in its launcher/service environment. Environment-specific artifact overrides remain available. A regression test now verifies that an explicit canonical `QTS_STATE_ROOT` wins even when the foreign working directory contains `data/`. The fallback is retained for isolated workspace compatibility and must not be described as universally cwd-independent.
 
 ### P0 — No validated trading edge; the canonical evidence explicitly blocks promotion
 
@@ -98,7 +98,7 @@ Do not attempt to make the current synthetic artifact pass by changing threshold
 
 - [ ] Owner authorization is valid under the canonical risk-ceiling schema; otherwise DEMO orders remain disabled.
 - [ ] `micro` artifact paths use the canonical state root and are tested from a foreign cwd.
-- [ ] State-root behavior is consistent with its documented contract and covered by regression tests.
+- [ ] Desktop/service launchers pin `QTS_STATE_ROOT`; explicit-root precedence is tested from a foreign cwd containing `data/`.
 - [ ] Current fast, extended, DEMO, static, registry-hash, and UI gates run on the exact candidate commit; all failures are classified.
 - [ ] Real data provenance and quality are independently verified.
 - [ ] Net-of-cost out-of-sample edge passes preregistered statistical and economic tests.
