@@ -13,6 +13,7 @@ import numpy as np
 
 from qts.backtest.engine import BacktestEngine
 from qts.config.settings import load_settings
+from qts.config.paths import artifact_path
 from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
 from qts.research.agent import AdversarialAgent
@@ -638,8 +639,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "request_error": req_err,
             "audit_emitted": True,
         }
-        _Path("data/evidence").mkdir(parents=True, exist_ok=True)
-        _Path("data/evidence/dry_run.json").write_text(_json.dumps(evidence, indent=2, default=str), encoding="utf-8")
+        dry_run_path = artifact_path("dry_run")
+        dry_run_path.parent.mkdir(parents=True, exist_ok=True)
+        dry_run_path.write_text(_json.dumps(evidence, indent=2, default=str), encoding="utf-8")
         click.echo(
             f"dry-run result: prereq {prereq['ok']} md {md_ok} acct {acct_ok} risk {decision.allowed} req {req_ok} (no order submitted, evidence written)"
         )
@@ -892,8 +894,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "portfolio": {"equity": str(pf2.equity()), "positions": len(pf2.positions)},
             "audit_count": len(audit2.query(limit=100)) if hasattr(audit2, "query") else 0,
         }
-        _Path2("data/evidence").mkdir(parents=True, exist_ok=True)
-        _Path2("data/evidence/micro.json").write_text(_js.dumps(ev2, indent=2), encoding="utf-8")
+        micro_path = artifact_path("micro")
+        micro_path.parent.mkdir(parents=True, exist_ok=True)
+        micro_path.write_text(_js.dumps(ev2, indent=2), encoding="utf-8")
         click.echo(
             f"micro result: broker={ev2['broker_source']} data_class={ev2['data_class']} order {ev2['order']} "
             f"fills {len(fills2)} poll {len(fills_poll)} reconcile {report2.drift} "
@@ -1007,8 +1010,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "code_version": _code_version(),
             "data_class": "PAPER",
         }
-        Path("data/evidence").mkdir(parents=True, exist_ok=True)
-        Path("data/evidence/paper_trades.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
+        paper_trades_path = artifact_path("paper_trades")
+        paper_trades_path.parent.mkdir(parents=True, exist_ok=True)
+        paper_trades_path.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
         # Also write audit evidence
         Path("logs").mkdir(parents=True, exist_ok=True)
         click.echo(
@@ -1106,8 +1110,9 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             "code_version": _code_version(),
             "data_class": "SHADOW",
         }
-        Path("data/evidence").mkdir(parents=True, exist_ok=True)
-        Path("data/evidence/shadow_intents.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
+        shadow_intents_path = artifact_path("shadow_intents")
+        shadow_intents_path.parent.mkdir(parents=True, exist_ok=True)
+        shadow_intents_path.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
         click.echo(
             f"shadow result: intents={len(shadow_intents)} would_be_fills={len(shadow_broker.get_would_be_fills())} (evidence written, no venue orders)"
         )
