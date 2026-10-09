@@ -27,6 +27,49 @@ Before any strategy code is evaluated against test data, its hypothesis must be 
 - **Deflated Sharpe Ratio (DSR):** Accounts for non-normal asset returns, sample length, and the total number of tested variations.
 - **Walk-Forward Invariance:** Edge parameters must demonstrate stability across out-of-sample temporal partitions.
 
+### 4. Cost Accounting — an edge is a NET claim
+
+A backtest that reports gross P&L as "expectancy" has not measured an edge; it
+has measured arithmetic. Every round turn costs money: you cross the spread, you
+pay commission, you slip, and you pay financing for every night you hold.
+
+QTS models this explicitly in `qts.research.costs`, and pairs a backtest's fills
+into round turns in `qts.research.trade_ledger` (FIFO — the convention a broker
+statement uses). Each fill records the reference price it was priced against, so
+the **frictionless mid-to-mid P&L** and the **cost the simulation actually
+charged** are reported separately rather than conflated.
+
+The headline number is the **break-even cost multiple**: how many times costs
+could rise before the strategy stops making money. `1.0x` means costs already
+consume the entire edge.
+
+Every cost component declares where it came from:
+
+| Basis | Meaning | Can it unlock an edge gate? |
+|:---|:---|:---:|
+| `MEASURED` | Observed — a broker quote, a filled order, a commission schedule. | **Yes** |
+| `ASSUMED` | Chosen, not observed. Valid for a sensitivity sweep. | **No** — reported, never claim-grade |
+| `UNKNOWN` | Not known. | **No** — and never silently treated as zero |
+
+Gross P&L minus a number somebody chose is arithmetic about the number somebody
+chose. To make an economic-edge claim decidable, measure the costs:
+
+```python
+from qts.research.costs import CostBasis, CostModel
+
+model = CostModel.xauusd_default(
+    spread_price_units=0.30,            # quoted bid/ask width, from your broker
+    commission_per_lot_usd=0.0,         # per fill
+    slippage_price_units=0.10,          # per fill
+    swap_per_night_per_lot_usd=-1.20,   # from the swap table; None means UNKNOWN
+    basis=CostBasis.MEASURED,
+    source="WM Markets XAUUSD@ — quoted 2026-10-09 09:15 UTC",
+)
+```
+
+Until then the system says so: `economic edge blocked: costs were modelled but
+not MEASURED — an assumed cost cannot establish an economic edge`.
+
 ---
 
 ## Forward Validation Registry
