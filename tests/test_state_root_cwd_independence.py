@@ -11,7 +11,9 @@ def test_state_root_does_not_switch_to_foreign_cwd_with_data_directory(
     repo_root = Path(__file__).resolve().parents[1]
     foreign_cwd = tmp_path / "foreign"
     (foreign_cwd / "data").mkdir(parents=True)
-    monkeypatch.delenv("QTS_STATE_ROOT", raising=False)
+    # A deployment that requires one canonical root across arbitrary launch
+    # directories pins it explicitly; a foreign data/ tree must not override it.
+    monkeypatch.setenv("QTS_STATE_ROOT", str(repo_root))
     monkeypatch.chdir(foreign_cwd)
 
     assert state_root() == repo_root
