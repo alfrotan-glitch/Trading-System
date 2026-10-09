@@ -1,0 +1,159 @@
+{
+  "schema": "qts.research_pipeline.v1",
+  "generated_at": "2026-10-09T16:51:29.645585+00:00",
+  "data_version": "20261009-010+2b024334-1ba57af7",
+  "instrument": "XAUUSD",
+  "timeframe": "15m",
+  "cost_basis": "ASSUMED",
+  "cost_source": "",
+  "total_configurations_tried": 36,
+  "folds": [
+    {
+      "params": {
+        "fast": 15,
+        "ma_type": "sma",
+        "slow": 50
+      },
+      "trades": 98,
+      "net_return": 238.95970079999825,
+      "gross_return": 418.3220000000041,
+      "cost": 179.36229920000585,
+      "sharpe": 1.2273584699671114,
+      "max_drawdown": 0.04866846870831773,
+      "profit_factor": 1.03445871657145,
+      "expectancy_per_trade": 2.438364293877533,
+      "selected_from_n": 9,
+      "halted": false,
+      "bars_traded": 3921,
+      "bars_total": 3921,
+      "fold": {
+        "index": 0,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-01-13T19:12:00+00:00",
+        "test_start": "2026-01-15T19:12:00+00:00",
+        "test_end": "2026-03-17T20:24:00+00:00"
+      }
+    },
+    {
+      "params": {
+        "fast": 15,
+        "ma_type": "sma",
+        "slow": 50
+      },
+      "trades": 91,
+      "net_return": -188.69955455000127,
+      "gross_return": -33.85499999999672,
+      "cost": 154.84455455000455,
+      "sharpe": -1.2479844290991875,
+      "max_drawdown": 0.030051743926620533,
+      "profit_factor": 0.9663135224878543,
+      "expectancy_per_trade": -2.0736214785714426,
+      "selected_from_n": 9,
+      "halted": false,
+      "bars_traded": 3858,
+      "bars_total": 3858,
+      "fold": {
+        "index": 1,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-03-15T20:24:00+00:00",
+        "test_start": "2026-03-17T20:24:00+00:00",
+        "test_end": "2026-05-17T21:36:00+00:00"
+      }
+    },
+    {
+      "params": {
+        "fast": 15,
+        "ma_type": "sma",
+        "slow": 50
+      },
+      "trades": 88,
+      "net_return": 131.1970528999973,
+      "gross_return": 268.0899999999998,
+      "cost": 136.89294710000254,
+      "sharpe": 1.0041586019875788,
+      "max_drawdown": 0.03274327334693884,
+      "profit_factor": 1.0251145530307681,
+      "expectancy_per_trade": 1.4908756011363329,
+      "selected_from_n": 9,
+      "halted": false,
+      "bars_traded": 4046,
+      "bars_total": 4046,
+      "fold": {
+        "index": 2,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-05-15T21:36:00+00:00",
+        "test_start": "2026-05-17T21:36:00+00:00",
+        "test_end": "2026-07-17T22:48:00+00:00"
+      }
+    },
+    {
+      "params": {
+        "fast": 10,
+        "ma_type": "sma",
+        "slow": 50
+      },
+      "trades": 95,
+      "net_return": -118.33329619999495,
+      "gross_return": 31.19900000000635,
+      "cost": 149.5322962000013,
+      "sharpe": -1.0449860321808992,
+      "max_drawdown": 0.042836921962868674,
+      "profit_factor": 0.971879222077184,
+      "expectancy_per_trade": -1.245613644210473,
+      "selected_from_n": 9,
+      "halted": false,
+      "bars_traded": 3778,
+      "bars_total": 3778,
+      "fold": {
+        "index": 3,
+        "train_start": "2025-08-06T00:00:00+00:00",
+        "train_end": "2026-07-15T22:48:00+00:00",
+        "test_start": "2026-07-17T22:48:00+00:00",
+        "test_end": "2026-09-17T00:00:00+00:00"
+      }
+    }
+  ],
+  "aggregate": {
+    "folds_evaluated": 4,
+    "total_trades": 372,
+    "oos_net_return": 63.12390294999932,
+    "oos_gross_return": 683.7560000000135,
+    "oos_cost": 620.6320970500142,
+    "expectancy_per_trade": 0.16968791115591214,
+    "profit_factor": 1.1017090531573208,
+    "max_drawdown": 0.04866846870831773,
+    "sharpe": -0.015363347331349142,
+    "profitable_folds": 2,
+    "worst_fold": -188.69955455000127,
+    "cost_fraction_of_gross": 0.9076806595481457,
+    "halted_folds": 0,
+    "coverage": 1.0
+  },
+  "baselines": {
+    "buy_and_hold": {
+      "net_return": -341.00796299999996,
+      "trades": 4,
+      "sharpe": -27.339532846780482,
+      "beats_strategy": true
+    }
+  },
+  "overfitting": {
+    "oos_observations": 15599,
+    "oos_sharpe": 0.13875910225312513,
+    "configurations_tried": 36,
+    "deflated_sharpe_pvalue": 0.0,
+    "survives_multiple_testing": true,
+    "permutation_test": {
+      "observed_sharpe": 0.07087175519712459,
+      "p_value": 0.059,
+      "purpose": "Permutation \u2014 is Sharpe just random ordering?",
+      "n_perm": 1000
+    },
+    "note": "deflated Sharpe accounts for the number of configurations tried; trying more makes the bar higher, not lower"
+  },
+  "verdict": "NO_EDGE_ESTABLISHED",
+  "reasons": [
+    "cost basis is ASSUMED, not MEASURED \u2014 mechanism evidence only, no claim is decidable",
+    "profitable in only 2/4 folds \u2014 results depend on the window"
+  ]
+}
