@@ -184,6 +184,44 @@ Reports: `data/evidence/wf_*_fixed.json`.
 
 ---
 
+## Regime attribution
+
+Attributing the engine's own per-bar equity change to the trend regime of that
+bar (UPTREND / DOWNTREND above or below a trailing 50-day SMA of *prior*
+closes, WARMUP before it exists). Costs are already inside the equity, so no
+reconstruction is needed — the per-regime rows sum exactly to the run's final
+P&L.
+
+**breakout, period 20, $40 stop, 96-bar exit** (round turns: 1,490):
+
+| Regime | Round turns | Net USD | Expectancy | Cost | Share of bars |
+|:---|---:|---:|---:|---:|---:|
+| UPTREND | 735 | **+6,283.99** | +8.55 | 3,411.30 | 49.8% |
+| DOWNTREND | 528 | **−1,824.99** | −3.46 | 2,294.03 | 35.6% |
+| WARMUP | 227 | −721.60 | −3.18 | 779.07 | 14.6% |
+| **Total** | 1,490 | **+3,737.40** | | 6,484.40 | 100% |
+
+**trend, default parameters, same exits** (round turns: 761):
+
+| Regime | Round turns | Net USD | Expectancy | Cost | Share of bars |
+|:---|---:|---:|---:|---:|---:|
+| UPTREND | 377 | **−1,152.52** | −3.06 | 1,238.64 | 49.8% |
+| DOWNTREND | 276 | −648.45 | −2.35 | 893.96 | 35.6% |
+| WARMUP | 108 | +30.12 | +0.28 | 283.51 | 14.6% |
+| **Total** | 761 | **−1,770.85** | | 2,416.11 | 100% |
+
+Breakout's entire profit comes from the UPTREND half of the sample; it loses
+money across the downtrend. That is what a breakout rule does in one bull
+market, and it is the clearest available statement that the result is a
+**regime bet, not an edge** — there is no second regime here to check it
+against. Trend loses in both halves.
+
+Reports: `data/evidence/regime_analysis.json`,
+`data/evidence/regime_analysis_trend.json`. Script:
+`scripts/run_regime_analysis.py`.
+
+---
+
 ## Baseline
 
 Over the four 15% test windows, **simply holding 0.01 lot of gold lost $341**
