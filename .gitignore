@@ -71,3 +71,10 @@ artifacts/
 # Raw Desktop observation exports must not enter history, regardless of location.
 *.session_evidence.json
 *.research_snapshot.json
+
+# Actual execution cost evidence — machine-local runtime state written by a live
+# DEMO session (append-only JSONL + its truncation-detection head). Committing it
+# would put machine-local fills into history, where an evidence log that looks
+# like it came from a broker is worse than no log at all.
+data/evidence/demo_cost_evidence.jsonl
+data/evidence/demo_cost_evidence.jsonl.head

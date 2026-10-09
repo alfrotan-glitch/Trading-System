@@ -655,6 +655,106 @@ class MT5Adapter(BrokerAdapter):
 
     # ---------- Symbol metadata (authoritative) ----------
 
+    # ------------------------------------------------------------------
+    # Actual execution cost evidence (phase 3)
+    #
+    # ``last_submission`` used to carry only ids and the executed price. The
+    # broker's own commission/swap/fee/spread — the whole point of measuring
+    # real costs — was fetched and thrown away. These helpers preserve it.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _deal_rows_as_dicts(rows: Any) -> list[dict[str, Any]]:
+        """Freeze MT5 deal rows into plain dicts before they go out of scope.
+
+        MT5 returns a numpy structured array whose rows are views; holding the
+        live objects across a reconnect is not safe. Absent attributes stay
+        ABSENT (never defaulted to 0) — a missing field must remain
+        distinguishable from a genuine zero charge.
+        """
+        out: list[dict[str, Any]] = []
+        for row in rows or ():
+            record: dict[str, Any] = {}
+            for name in (
+                "ticket", "order", "position_id", "symbol", "type", "entry",
+                "volume", "price", "profit", "commission", "swap", "fee",
+                "time", "time_msc", "comment", "magic", "reason", "external_id",
+            ):
+                value = getattr(row, name, None)
+                if value is not None:
+                    record[name] = value
+            out.append(record)
+        return out
+
+    @staticmethod
+    def _account_currency(mt5: Any) -> str | None:
+        """Deposit currency of the account, or None when unavailable.
+
+        MT5 reports money amounts in the account deposit currency, not in USD.
+        Returning None rather than assuming "USD" is what keeps a currency
+        conversion assumption from being smuggled in silently.
+        """
+        if mt5 is None:
+            return None
+        try:
+            info = mt5.account_info()
+        except Exception:
+            return None
+        currency = getattr(info, "currency", None)
+        return str(currency) if currency else None
+
+    @staticmethod
+    def _quote_snapshot(mt5: Any, symbol: str) -> dict[str, Any]:
+        """Pre-trade bid/ask/spread, the reference slippage is measured against.
+
+        Slippage is only meaningful against the quote that existed when the
+        order was sent. Captured BEFORE the send so a post-fill re-quote cannot
+        make the fill look better than it was. Unavailable quotes are recorded
+        as UNAVAILABLE, never as 0 spread.
+        """
+        snapshot: dict[str, Any] = {
+            "schema": "qts.broker_quote_snapshot.v1",
+            "symbol": symbol,
+            "observed_at": datetime.now(UTC).isoformat(),
+            "bid": None,
+            "ask": None,
+            "spread_points": None,
+            "unavailable": True,
+        }
+        if mt5 is None:
+            return snapshot
+        try:
+            tick = mt5.symbol_info_tick(symbol)
+        except Exception:
+            return snapshot
+        if tick is None:
+            return snapshot
+        bid = getattr(tick, "bid", None)
+        ask = getattr(tick, "ask", None)
+        snapshot["bid"] = str(bid) if bid else None
+        snapshot["ask"] = str(ask) if ask else None
+        try:
+            info = mt5.symbol_info(symbol)
+        except Exception:
+            info = None
+        point = getattr(info, "point", None) if info is not None else None
+        digits = getattr(info, "digits", None) if info is not None else None
+        spread = getattr(tick, "spread", None)
+        if spread is not None:
+            snapshot["spread_points"] = str(spread)
+        elif point not in (None, 0) and bid and ask:
+            try:
+                decimals = int(digits) if digits is not None else 8
+                spread_price = Decimal(str(ask)) - Decimal(str(bid))
+                snapshot["spread_points"] = str(
+                    int((spread_price / Decimal(str(point))).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                )
+                snapshot["spread_price_units"] = str(spread_price.quantize(Decimal(f"1e-{decimals}")))
+            except (TypeError, ValueError, InvalidOperation, ArithmeticError):
+                pass
+        snapshot["unavailable"] = snapshot["bid"] is None and snapshot["ask"] is None
+        return snapshot
+
     def get_symbol_spec(self, symbol: str) -> SymbolSpec:
         """Fetch and cache authoritative symbol spec — single canonical source.
 
@@ -1194,6 +1294,11 @@ class MT5Adapter(BrokerAdapter):
             # Simulate success for testing without terminal
             raise RuntimeError(f"MT5 dry_run enabled — would send {request}")
 
+        # Pre-trade quote: the reference slippage is measured against. Taken
+        # BEFORE the send so the fill can never be judged against a later,
+        # more favourable quote.
+        pre_trade_quote = self._quote_snapshot(mt5, mt5_symbol)
+
         # All broker sends pass through the single MT5 send authority.
         result = self._order_send(mt5, request, operation=f"order {intent.client_order_id}")
 
@@ -1244,6 +1349,10 @@ class MT5Adapter(BrokerAdapter):
                     )
                 position_identifier = str(next(iter(position_ids)))
 
+            # The deal rows here are the broker's own record of what it
+            # actually charged. They are preserved verbatim: commission, swap
+            # and fee are what cost measurement exists to observe, and they
+            # cannot be re-derived from anywhere else.
             self.last_submission = {
                 "retcode": retcode,
                 "broker_order_id": str(getattr(result, "order", "") or ""),
@@ -1252,6 +1361,13 @@ class MT5Adapter(BrokerAdapter):
                 "executed_volume": str(getattr(result, "volume", "") or ""),
                 "comment": str(getattr(result, "comment", "") or ""),
                 "request": dict(request),
+                "deal_rows": self._deal_rows_as_dicts(deal_rows)
+                if intent.order_type == OrderType.MARKET
+                else [],
+                "pre_trade_quote": pre_trade_quote,
+                "account_currency": self._account_currency(mt5),
+                "partial_fill": retcode == self.RETCODE_DONE_PARTIAL,
+                "captured_at": datetime.now(UTC).isoformat(),
             }
             return Order(
                 order_id=str(exchange_id) or intent.client_order_id,
@@ -1539,8 +1655,34 @@ class MT5Adapter(BrokerAdapter):
             )
         if retcode not in (self.RETCODE_DONE, self.RETCODE_PLACED, self.RETCODE_DONE_PARTIAL):
             raise ValueError(f"MT5 close of position {ticket} failed retcode {retcode}: {receipt['comment']}")
+        # Same cost evidence as submit(): the close carries the swap accrued
+        # over the life of the position, which is exactly the charge that
+        # arrives late and is easiest to miss.
+        receipt["deal_rows"] = self._deal_rows_as_dicts(
+            self._deals_for_order(mt5, int(str(receipt.get("broker_order_id") or 0) or 0))
+        )
+        receipt["account_currency"] = self._account_currency(mt5)
+        receipt["captured_at"] = datetime.now(UTC).isoformat()
         self.last_submission = receipt
         return receipt
+
+    @staticmethod
+    def _deals_for_order(mt5: Any, broker_order_id: int) -> list[Any]:
+        """Deal rows attributed to one broker order, or [] when unreadable.
+
+        A failure here must not fail a close that already succeeded: the
+        position is flat either way. But an unreadable deal is recorded as
+        MISSING evidence, never as a zero-cost close.
+        """
+        if mt5 is None or broker_order_id <= 0:
+            return []
+        try:
+            deals = mt5.history_deals_get(order=broker_order_id)
+        except Exception:
+            return []
+        if deals is None:
+            return []
+        return [deal for deal in deals if int(getattr(deal, "order", 0) or 0) == broker_order_id]
 
     def position_realized_result(self, ticket: int, *, client_order_id: str | None = None) -> dict[str, Any]:
         """Return broker-authoritative realized P&L and charges for one MT5 position.
