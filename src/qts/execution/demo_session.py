@@ -254,6 +254,70 @@ class DemoSession:
             )
         return summary
 
+    def capture_historical_deal_evidence(
+        self,
+        deal_rows: list[Any],
+        *,
+        server_utc_offset_s: float | None = None,
+    ) -> dict[str, Any]:
+        """Measure the cost of EXISTING broker deals — no order required.
+
+        The cheapest way to learn what this broker actually charges is to read
+        deals the account already made, not to place a new trade to find out.
+        These rows are tagged with a distinct ``source`` so a reader can always
+        tell a backfilled historical deal from one captured on a QTS
+        submission: the latter is attributable to an order the system sent, the
+        former may include trades made by hand or by another terminal.
+
+        Never raises. Returns a summary for the operator.
+        """
+        summary: dict[str, Any] = {
+            "schema": "qts.cost_evidence_backfill.v1",
+            "captured": 0,
+            "duplicates_skipped": 0,
+            "rejected_unidentified": 0,
+            "unavailable": None,
+            "error": None,
+        }
+        store = self.cost_evidence_store
+        if store is None:
+            summary["unavailable"] = self._cost_store_error or "cost evidence store unavailable"
+            return summary
+        if not deal_rows:
+            summary["unavailable"] = "no deals supplied"
+            return summary
+
+        offset = server_utc_offset_s
+        if offset is None:
+            offset = self._measured_server_utc_offset()
+        try:
+            from qts.execution.cost_capture import deal_evidence_from_broker
+
+            for row in deal_rows:
+                evidence = deal_evidence_from_broker(
+                    row,
+                    canonical_symbol=self.canonical_symbol,
+                    spread_points=None,
+                    server_utc_offset_s=offset,
+                    account_currency=self._measured_account_currency(),
+                    source="mt5.history_deals_get.backfill",
+                )
+                _record, outcome = store.append(evidence)
+                summary[outcome] = int(summary.get(outcome, 0)) + 1
+        except Exception as exc:  # pragma: no cover - defensive
+            summary["error"] = f"{type(exc).__name__}: {exc}"
+            logger.error("historical deal capture FAILED: %s", summary["error"])
+        return summary
+
+    def _measured_account_currency(self) -> str | None:
+        """The account deposit currency, or None — never a guess of "USD"."""
+        try:
+            from qts.adapters.mt5_adapter import MT5Adapter
+
+            return MT5Adapter._account_currency(getattr(self.adapter, "_mt5", None))
+        except Exception:  # pragma: no cover - defensive
+            return None
+
     def _measured_server_utc_offset(self) -> float | None:
         """The broker server's offset from UTC, measured — never assumed.
 

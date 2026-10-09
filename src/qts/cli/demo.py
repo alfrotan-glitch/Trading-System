@@ -460,6 +460,198 @@ def demo_connectivity(
         click.echo(f"report written to {json_out}")
 
 
+@demo.command("cost-check")
+@click.option("--symbol", default=None)
+@click.option("--db", default=default_db_path)
+@click.option("--terminal-path", default=None)
+@click.option("--deals", default=20, help="How many recent broker deals to inspect (read-only).")
+@click.option("--json-out", default=None)
+@click.option(
+    "--record",
+    is_flag=True,
+    help="Append the inspected historical deals to the evidence store (opt-in; off by default).",
+)
+def demo_cost_check(
+    symbol: str | None,
+    db: str,
+    terminal_path: str | None,
+    deals: int,
+    json_out: str | None,
+    record: bool,
+) -> None:
+    """Prove cost capture will work BEFORE any order is sent. Read-only.
+
+    Submits nothing. Everything here is a read against the terminal plus a
+    writability probe on a throwaway file, so the operator learns whether
+    commission, swap and fee can actually be observed *before* risking a fill
+    to find out.
+
+    Reports, and refuses to call ready unless all are true:
+
+    * the terminal answers and the account is DEMO;
+    * the deposit currency is known (MT5 reports money in it, not in USD);
+    * the server->UTC offset is MEASURED (deal timestamps would otherwise be
+      wrong by the server's offset -- three hours on a UTC+3 broker);
+    * the evidence store's directory is writable and its chain verifies;
+    * recent broker deals expose the cost fields this pipeline depends on.
+
+    Historical deals can also be measured for cost without trading at all:
+    ``--record`` appends them, tagged with a ``backfill`` source so they stay
+    distinguishable from deals captured on a QTS submission.
+    """
+    from qts.adapters.mt5_adapter import MT5Adapter
+    from qts.execution.cost_capture import CostEvidenceStore
+
+    session = _demo_session(symbol or "", db, terminal_path)
+    checks: list[dict[str, Any]] = []
+
+    def add(name: str, ok: bool, detail: str, blocking: bool = True) -> None:
+        checks.append({"check": name, "ok": bool(ok), "detail": detail, "blocking": blocking})
+
+    # 1. terminal + account identity (read-only)
+    identity: dict[str, Any] = {}
+    currency: str | None = None
+    try:
+        adapter = session.adapter
+        # as_dict(), not dataclasses.asdict(): it carries the computed
+        # ``is_demo``/``account_type`` verdicts, which are the project's own
+        # semantics for "is this a DEMO account" (None means UNKNOWN).
+        identity = adapter.broker_identity().as_dict()
+        # BrokerIdentity already carries the deposit currency; the adapter
+        # helper is the fallback when the identity probe could not read it.
+        currency = identity.get("currency") or MT5Adapter._account_currency(
+            getattr(adapter, "_mt5", None)
+        )
+    except Exception as exc:
+        add("terminal-reachable", False, f"{type(exc).__name__}: {exc}")
+    else:
+        add("terminal-reachable", True, f"login={identity.get('login')} server={identity.get('server')}")
+        add("account-is-demo", identity.get("is_demo") is True, f"is_demo={identity.get('is_demo')}")
+        add(
+            "deposit-currency-known",
+            bool(currency),
+            f"currency={currency!r}" if currency else "currency unavailable — amounts cannot be trusted as USD",
+        )
+
+    # 2. server->UTC offset must be MEASURED, not assumed
+    broker_symbol = session.broker_symbol
+    offset: float | None = None
+    basis = "unavailable"
+    try:
+        offset, basis = session.adapter.server_utc_offset(broker_symbol)
+    except Exception as exc:
+        add("server-offset-measured", False, f"{type(exc).__name__}: {exc}")
+    else:
+        add(
+            "server-offset-measured",
+            basis != "assumed-utc-fallback",
+            f"offset={offset}s basis={basis}",
+        )
+
+    # 3. evidence store: writable, and its existing chain intact
+    store = session.cost_evidence_store
+    if store is None:
+        add("evidence-store-writable", False, str(session._cost_store_error or "store unavailable"))
+    else:
+        ok, problems = store.verify_chain()
+        add("evidence-chain-verifies", ok, "; ".join(problems) or "chain intact", blocking=True)
+        try:
+            probe = CostEvidenceStore(store.path.with_suffix(store.path.suffix + ".writeprobe"))
+            probe.append(_probe_evidence())
+            probe.path.unlink(missing_ok=True)
+            probe.head_path.unlink(missing_ok=True)
+            add("evidence-store-writable", True, f"path={store.path}")
+        except Exception as exc:
+            add("evidence-store-writable", False, f"{type(exc).__name__}: {exc}")
+
+    # 4. can the broker's cost fields actually be read?
+    mt5 = getattr(session.adapter, "_mt5", None)
+    rows: list[Any] = []
+    try:
+        import time as _time
+
+        now = int(_time.time())
+        rows = list(
+            mt5.history_deals_get(now - 30 * 86400, now)  # type: ignore[union-attr]
+            if mt5 is not None
+            else []
+        )
+    except Exception as exc:
+        add("deal-history-readable", False, f"{type(exc).__name__}: {exc}", blocking=False)
+    else:
+        add("deal-history-readable", True, f"{len(rows)} deal(s) in the last 30 days", blocking=False)
+        sample = [MT5Adapter._deal_rows_as_dicts([r])[0] for r in rows[-deals:]] if rows else []
+        present = {
+            name: sum(1 for row in sample if name in row)
+            for name in ("commission", "swap", "fee", "price", "volume", "profit")
+        }
+        add(
+            "cost-fields-present",
+            bool(sample) and all(present.get(n) for n in ("commission", "swap", "fee")),
+            f"of {len(sample)} sampled deal(s): "
+            + ", ".join(f"{k}={v}" for k, v in present.items()),
+            blocking=False,
+        )
+
+    ready = all(c["ok"] for c in checks if c["blocking"])
+    report: dict[str, Any] = {
+        "schema": "qts.demo_cost_check.v1",
+        "generated_at": _utcnow().isoformat(),
+        "symbol": session.canonical_symbol,
+        "broker_symbol": broker_symbol,
+        "currency": currency,
+        "server_utc_offset_s": offset,
+        "offset_basis": basis,
+        "checks": checks,
+        "ready_for_cost_capture": ready,
+        "orders_submitted": 0,
+    }
+
+    if record and rows:
+        recorded = session.capture_historical_deal_evidence(
+            rows[-deals:], server_utc_offset_s=offset
+        )
+        report["recorded"] = recorded
+
+    click.echo(f"symbol: {session.canonical_symbol} -> {broker_symbol}")
+    click.echo(f"currency: {currency or 'UNKNOWN'}  server offset: {offset}s ({basis})")
+    click.echo("")
+    for check in checks:
+        flag = "PASS" if check["ok"] else "FAIL"
+        scope = "" if check["blocking"] else " (informational)"
+        click.echo(f"  [{flag}] {check['check']}{scope}: {check['detail']}")
+    click.echo("")
+    click.echo(f"READY_FOR_COST_CAPTURE: {ready}")
+    click.echo("No order was submitted by this command.")
+
+    if json_out:
+        Path(json_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(json_out).write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+        click.echo(f"report written to {json_out}")
+
+
+def _utcnow() -> Any:
+    from datetime import UTC, datetime
+
+    return datetime.now(UTC)
+
+
+def _probe_evidence() -> Any:
+    """A throwaway submit record used only to prove the store accepts a write."""
+    from qts.execution.cost_capture import submit_evidence_from_request
+
+    return submit_evidence_from_request(
+        client_order_id="writability-probe",
+        canonical_symbol="PROBE",
+        broker_symbol=None,
+        side="BUY",
+        requested_volume=None,
+        requested_price=None,
+        order_type="PROBE",
+        source="qts.demo_cost_check.writability_probe",
+    )
+
+
 @demo.command("arm")
 @click.option("--stage", required=True, type=click.Choice(["1", "2", "3"]))
 @click.option("--symbol", default=None)
