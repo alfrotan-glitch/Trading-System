@@ -14,6 +14,13 @@ def test_cli_evidence_artifacts_are_registered_and_state_root_anchored(
         "micro": "data/evidence/micro.json",
         "paper_trades": "data/evidence/paper_trades.json",
         "shadow_intents": "data/evidence/shadow_intents.json",
+        "audit_jsonl": "logs/audit.jsonl",
+        "paper_cli_db": "data/sqlite/paper_cli.db",
+        "paper_cli_idemp_db": "data/sqlite/paper_cli_idemp.db",
+        "paper_cli_risk_db": "data/sqlite/paper_cli_risk.db",
+        "shadow_cli_db": "data/sqlite/shadow_cli.db",
+        "shadow_cli_idemp_db": "data/sqlite/shadow_cli_idemp.db",
+        "shadow_cli_risk_db": "data/sqlite/shadow_cli_risk.db",
     }
 
     for name, relative_path in expected.items():
