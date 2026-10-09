@@ -30,13 +30,13 @@ This PR candidate registers canonical artifacts and environment overrides for dr
 
 The affected writers now resolve through artifact_path() before creating directories or files. A regression test verifies state-root anchoring and environment override behavior. CI is the final verification gate for this candidate.
 
-### P1 — State-root behavior has a documented-contract inconsistency
+### P1 — State-root behavior had a documented-contract inconsistency (fixed in this PR candidate)
 
 File: `src/qts/config/paths.py`, `state_root()`.
 
 The module describes one cwd-independent state root, but the implementation deliberately returns the current working directory when it differs from the detected repository root and contains a `data/` directory. This may support isolated fixtures, but it makes the production contract conditional and can cause two processes to resolve different durable state depending on their launch directory.
 
-**Required resolution:** preserve fixture isolation through explicit `QTS_STATE_ROOT` or explicit injected paths, rather than implicitly inferring a production state root from cwd. If the cwd exception is intentionally retained, document it as a formal exception and add tests proving it cannot split real operator state between the desktop and CLI.
+The cwd-based exception was removed in this PR candidate. Isolated tests and portable installations must select their state root explicitly with `QTS_STATE_ROOT` or injected paths. A regression test creates a foreign cwd containing a `data/` directory and asserts that `state_root()` and the artifact path remain anchored to the detected repository root. CI is the final verification gate.
 
 ### P0 — No validated trading edge; the canonical evidence explicitly blocks promotion
 
