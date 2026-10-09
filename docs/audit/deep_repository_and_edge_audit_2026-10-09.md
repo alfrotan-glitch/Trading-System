@@ -18,7 +18,7 @@ File: `data/evidence/demo_execution_authorization_2026-09-23.json`
 
 The artifact's `risk_ceiling` includes `max_drawdown_pct: 5`. In `src/qts/lifecycle/demo_authorization.py`, `_RISK_CEILING_FIELDS` does not include `max_drawdown_pct`, and `_validate_risk_ceiling()` rejects any unknown key with a fail-closed error. Therefore the checked-in authorization cannot validate as written and DEMO execution remains disabled by policy.
 
-**Required resolution:** do not edit the authorization JSON or recompute its hash as a workaround. The owner must re-issue a valid artifact using only the canonical supported fields, or the engineering owner must first deliberately implement and test percentage-drawdown support end-to-end in the canonical risk authority, then have the owner re-issue the artifact under the new contract. Keep execution disabled until the complete validation passes.
+**Required resolution:** do not edit the authorization JSON or recompute its hash as a workaround. The canonical risk model currently enforces an absolute USD drawdown cap but has no percentage-drawdown field or percentage-based enforcement. Therefore removing `max_drawdown_pct` would silently discard a stated 5% limit. Either implement percentage drawdown end-to-end in canonical risk authority/engine/context and test it, then have the owner re-issue the artifact under the new contract, or obtain an explicit owner decision to withdraw that percentage limit and issue a new artifact with only supported limits. Keep execution disabled until the chosen contract is implemented, owner-authorized, and fully validated.
 
 ### P1 — CLI evidence, audit, and paper/shadow databases were working-directory-relative (fixed in this PR candidate)
 
