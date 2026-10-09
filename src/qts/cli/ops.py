@@ -5,7 +5,6 @@ from __future__ import annotations
 import contextlib
 import sys
 from datetime import UTC
-from pathlib import Path
 from typing import Any
 
 import click
