@@ -250,6 +250,7 @@ def assess_acquisition_ceiling(
     timeframe: str = FROZEN_TIMEFRAME,
     source_label: str | None = None,
     subject: str = "prospective acquisition",
+    limit_kind: str = "proven-retention",
 ) -> BenchmarkReadinessReport:
     """Can a source with a known retention ceiling EVER supply enough data?
 
@@ -257,14 +258,43 @@ def assess_acquisition_ceiling(
     source capped at N days cannot produce more than N days, and if N is below
     the span minimum then no amount of engineering will make its output
     claim-eligible. Discovering that after the download is the expensive way.
+
+    ``limit_kind`` distinguishes two very different ceilings, and getting it
+    wrong is how a solvable problem gets recorded as a permanent one:
+
+    ``"proven-retention"``
+        N days is genuinely all the source holds. The conclusion is binding.
+    ``"single-request"``
+        N days is only the largest window one query returned. An oversized
+        request failing is what a REQUEST-SIZE limit looks like; it is NOT
+        evidence of a retention limit, and chunked requests may reach far
+        further. The projection is still computed, but it is reported as an
+        UNVERIFIED lower bound rather than a ceiling.
+
+    The 30-day figure recorded for the WMMarkets-Demo terminal is the second
+    kind: ``scripts/probe_mt5_history.py`` issued one ``copy_ticks_range`` call
+    per window and the 365-day call failed. The evidence file says so itself —
+    "not the maximum retention boundary" — and the acquisition layer already
+    assumes the difference by chunking at 24h and halving on failure.
     """
     per_day = bars_per_day(timeframe)
     projected_bars = max_history_days * per_day
     notes = [
         f"projection assumes {TRADING_HOURS_PER_SESSION:g}h sessions, "
         f"{TRADING_SESSIONS_PER_WEEK:g} days/week → {per_day:,.1f} {timeframe} bars per calendar day",
-        "a ceiling is an upper bound: the achievable window may be shorter still",
     ]
+    if limit_kind == "single-request":
+        notes.append(
+            f"{max_history_days:,.0f} days is the largest window ONE query returned — it is an "
+            "UNVERIFIED LOWER BOUND, not a proven retention limit: an oversized request failing "
+            "is a request-size limit, and chunked requests may reach much further"
+        )
+        notes.append("run `qts data mt5-depth` to measure the real depth before concluding")
+    else:
+        notes.append(
+            "a proven retention ceiling is an upper bound: the achievable window may be "
+            "shorter still"
+        )
     if source_label:
         notes.append(f"source: {source_label}")
 

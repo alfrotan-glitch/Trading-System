@@ -243,6 +243,52 @@ def test_current_status_shows_the_frozen_set_is_intact_and_unchanged() -> None:
     assert status["minimums"]["round_turns_per_candidate"] == MIN_ROUND_TURNS_PER_CANDIDATE
 
 
+def test_a_dukascopy_import_is_admissible_only_under_a_historical_label() -> None:
+    """Provenance labels are not decoration: 'dukascopy' alone is UNVERIFIED.
+
+    Dukascopy is genuine market data, but the classifier does not know that
+    name. Ingesting it as ``historical_import_*`` is truthful AND admissible;
+    relabelling it ``MT5_HISTORY`` would misstate where it came from, which is
+    the one thing provenance exists to prevent.
+    """
+    assert claim_admissible(classify_source("historical_import_dukascopy_xauusd_15m")) is True
+    assert claim_admissible(classify_source("dukascopy")) is False
+
+
+def test_a_single_request_limit_is_reported_as_unverified_not_binding() -> None:
+    """The correction at the heart of the item-4 review."""
+    report = assess_acquisition_ceiling(
+        max_history_days=30,
+        timeframe="15m",
+        source_label="MT5_HISTORY",
+        limit_kind="single-request",
+    )
+    joined = " ".join(report.notes)
+    assert "UNVERIFIED LOWER BOUND" in joined
+    assert "not a proven retention limit" in joined
+    assert "qts data mt5-depth" in joined
+
+
+def test_a_proven_retention_ceiling_is_reported_as_binding() -> None:
+    report = assess_acquisition_ceiling(
+        max_history_days=30, timeframe="15m", source_label="MT5_HISTORY",
+        limit_kind="proven-retention",
+    )
+    joined = " ".join(report.notes)
+    assert "UNVERIFIED" not in joined
+    assert "upper bound" in joined
+
+
+def test_limit_kind_does_not_change_the_verdict_only_its_meaning() -> None:
+    """Correcting the record must not quietly make an inadequate source pass."""
+    for kind in ("proven-retention", "single-request"):
+        report = assess_acquisition_ceiling(
+            max_history_days=30, timeframe="15m", source_label="MT5_HISTORY", limit_kind=kind
+        )
+        assert report.ready_for_claims is False, kind
+        assert check(report, "B3-DEPTH").passed is False, kind
+
+
 def test_assessment_time_is_recorded() -> None:
     status = current_status()
     assert datetime.fromisoformat(str(status["assessed_at"])).tzinfo is not None
