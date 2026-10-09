@@ -203,3 +203,61 @@ flag.
 
 A strategy is promoted only on reproducible out-of-sample results measured
 after real costs — and none of that exists yet.
+
+---
+
+## 7. Research on real data (no broker needed)
+
+Everything in this section runs **without** a terminal, and **without** placing
+an order. It works on any machine with the repository checked out.
+
+### 7.1 Acquire the real history
+
+The upstream source is a pinned GitHub mirror of Dukascopy tick-derived bars.
+Download it however you normally fetch a tarball:
+
+```bat
+curl -L -o duka.tar.gz https://codeload.github.com/vudo805/forex-price-simulator/tar.gz/4d6f15543e6285fad91fd57fe42f716bc7273075
+tar -xzf duka.tar.gz --wildcards "*/data/XAUUSD/XAUUSD_*.parquet"
+mkdir pinned && copy forex-price-simulator-*\data\XAUUSD\*.parquet pinned\
+```
+
+Then verify and ingest. The script checks the SHA-256 of all 14 files against
+pins in the script and refuses to continue if any byte differs:
+
+```bat
+python scripts\acquire_xauusd_dukascopy.py --source-dir pinned --ingest
+```
+
+Expect: `26,038 rows`, `class=REAL`, and a ready dataset.
+
+### 7.2 Confirm the dataset clears the gate
+
+```bat
+qts edge readiness --data-version <version printed above>
+```
+
+Must print `Ready for claims: YES` and exit 0. If it rejects with ~6% missing
+bars, the session calendar was not applied — pass `--session-calendar XAUUSD`
+to `qts data ingest`.
+
+### 7.3 Evaluate a strategy honestly
+
+```bat
+python scripts\run_walkforward_research.py ^
+  --data-version <version> --family breakout --folds 8 ^
+  --test-fraction 0.08 --stop-distance-usd 40 --max-hold-bars 96 ^
+  --cost-source "your broker, date, method"
+```
+
+Report the verdict it prints. **Do not report a single fold count as a
+result** — run it at more than one fold granularity and see whether the
+verdict changes. In this repository it did: 4 folds said EDGE_CANDIDATE and
+8 folds said NO_EDGE on identical configuration.
+
+### 7.4 What has already been established
+
+`docs/research/walkforward_findings_2026-10-09.md` records what the frozen
+candidates and five strategy families actually do on 407 days of real history.
+The short version: **nothing passed.** Do not re-run hoping for a different
+answer without new data or measured costs.
