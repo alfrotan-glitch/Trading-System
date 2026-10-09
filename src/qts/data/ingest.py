@@ -18,12 +18,20 @@ def ingest_csv(
     venue: str = "MT5",
     store: SqliteParquetDataStore | None = None,
     source: str | None = None,
+    session_calendar: str | None = None,
 ) -> str:
     """Ingest a CSV of bars into the store.
 
     ``source`` is the provenance label recorded on every Bar and in the manifest
     (e.g. ``SYNTHETIC:fixture:XAUUSD_1H_500.csv``). Data classes must never be
     conflated: a SYNTHETIC dataset can never masquerade as REAL broker history.
+
+    ``session_calendar`` names an explicit market-hours calendar (see
+    ``qts.data.sessions``) used to tell scheduled closures from genuinely
+    missing bars. It is NOT guessed from the data. Real XAUUSD history is
+    closed for roughly a third of the calendar; without this, every weekend
+    and daily maintenance break is scored as a data defect and the dataset is
+    rejected.
 
     Encoding is forced to UTF-8 (BOM-tolerant via ``utf-8-sig``) so ingestion is
     identical on Windows (cp1252 default locale) and POSIX. Fails closed on an
@@ -76,5 +84,7 @@ def ingest_csv(
             f"no usable bars in {path} — file parsed but contained zero data rows; "
             "refusing to create a dataset version (fail closed)"
         )
-    manifest = store.write_bars(bars, source_file=str(path), source=source)
+    manifest = store.write_bars(
+        bars, source_file=str(path), source=source, session_calendar=session_calendar
+    )
     return manifest.version

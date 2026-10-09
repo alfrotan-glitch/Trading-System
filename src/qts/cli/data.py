@@ -35,14 +35,40 @@ def data_synthetic(rows: int, out: str, seed: int, trend: bool) -> None:
 
 
 @data.command("ingest")
-@click.option("--source", default="csv", type=click.Choice(["csv"]))
+@click.option(
+    "--source",
+    default=None,
+    help=(
+        "provenance label recorded on every bar and in the manifest "
+        "(e.g. REAL:dukascopy:...). Free text: the provenance classifier "
+        "reads it, so a fixed choice list would make real history unlabelable."
+    ),
+)
 @click.option("--path", required=True)
 @click.option("--instrument", default="XAUUSD")
 @click.option("--timeframe", default="1m")
 @click.option("--venue", default="MT5")
-def data_ingest(source: str, path: str, instrument: str, timeframe: str, venue: str) -> None:
+@click.option(
+    "--session-calendar",
+    default=None,
+    help=(
+        "explicit market-hours calendar (e.g. XAUUSD) separating scheduled closures "
+        "from genuinely missing bars. Omit to grade against the calendar span only."
+    ),
+)
+def data_ingest(
+    source: str, path: str, instrument: str, timeframe: str, venue: str, session_calendar: str | None
+) -> None:
     store = SqliteParquetDataStore()
-    version = ingest_csv(Path(path), instrument=instrument, timeframe=timeframe, venue=venue, store=store)
+    version = ingest_csv(
+        Path(path),
+        instrument=instrument,
+        timeframe=timeframe,
+        venue=venue,
+        store=store,
+        source=source,
+        session_calendar=session_calendar,
+    )
     click.echo(f"ingested version {version}")
 
 

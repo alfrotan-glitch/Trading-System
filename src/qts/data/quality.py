@@ -243,8 +243,13 @@ def analyze_gap_semantics(
     )
 
 
-def _gap_quality_check(bars: list[Bar], timeframe: str | None = None) -> QualityCheck:
-    stats = analyze_gap_semantics(bars, timeframe)
+def _gap_quality_check(
+    bars: list[Bar],
+    timeframe: str | None = None,
+    *,
+    closure_intervals: Iterable[tuple[datetime, datetime]] | None = None,
+) -> QualityCheck:
+    stats = analyze_gap_semantics(bars, timeframe, closure_intervals=closure_intervals)
     if stats.unexpected_missing_intervals is None or stats.active_span_missing_fraction is None:
         return QualityCheck("no_missing_bars", False, "gap semantics unavailable")
     # Compare the unrounded integer-derived fraction.  The percentage is a
@@ -269,7 +274,12 @@ def _gap_quality_check(bars: list[Bar], timeframe: str | None = None) -> Quality
     return QualityCheck("no_missing_bars", passed, details)
 
 
-def validate_bars(bars: list[Bar], timeframe: str | None = None) -> DataQualityReport:
+def validate_bars(
+    bars: list[Bar],
+    timeframe: str | None = None,
+    *,
+    closure_intervals: Iterable[tuple[datetime, datetime]] | None = None,
+) -> DataQualityReport:
     checks: list[QualityCheck] = []
     if not bars:
         return DataQualityReport(passed=False, checks=[QualityCheck("non_empty", False, "no bars")])
@@ -311,7 +321,7 @@ def validate_bars(bars: list[Bar], timeframe: str | None = None) -> DataQualityR
     checks.append(QualityCheck("no_duplicates", not dup, "duplicate open_time" if dup else ""))
     sym_ok = len({(b.instrument.symbol, b.instrument.venue) for b in bars}) == 1
     checks.append(QualityCheck("single_symbol", sym_ok, "" if sym_ok else "multiple symbols in one dataset"))
-    checks.append(_gap_quality_check(bars, timeframe))
+    checks.append(_gap_quality_check(bars, timeframe, closure_intervals=closure_intervals))
     session_ok = all(
         0 < (b.close_time - b.open_time).total_seconds() <= 86400 * 2
         for b in bars

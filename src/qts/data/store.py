@@ -63,6 +63,7 @@ class DataStore(Protocol):
         source_venue: str | None = None,
         execution_target: str | None = None,
         execution_venue: str | None = None,
+        session_calendar: str | None = None,
     ) -> Manifest: ...
     def read_bars(
         self,
@@ -141,6 +142,7 @@ class SqliteParquetDataStore:
         source_venue: str | None = None,
         execution_target: str | None = None,
         execution_venue: str | None = None,
+        session_calendar: str | None = None,
     ) -> Manifest:
         if not bars:
             raise ValueError("no bars to write")
@@ -157,7 +159,15 @@ class SqliteParquetDataStore:
         # quality gate — fail closed on bad data unless strict_quality=False
         from qts.data.quality import validate_bars as _validate_bars
 
-        quality = _validate_bars(bars, timeframe)
+        closure_intervals = None
+        if session_calendar:
+            from qts.data.sessions import closure_intervals as _closure_intervals
+
+            closure_intervals = _closure_intervals(
+                bars[0].open_time, bars[-1].close_time, symbol=session_calendar
+            )
+
+        quality = _validate_bars(bars, timeframe, closure_intervals=closure_intervals)
         if strict_quality and not quality.passed:
             details = "; ".join(f"{c.name}: {c.details}" for c in quality.checks if not c.passed)
             raise ValueError(f"data quality failed: {details}")
