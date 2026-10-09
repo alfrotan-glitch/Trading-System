@@ -127,8 +127,9 @@ def test_the_calendar_explains_a_week_of_real_gold_bars() -> None:
     This is the check that matters: if the calendar left gaps unexplained, the
     quality gate would still reject the dataset as 6% missing.
     """
-    import pandas as pd
     from pathlib import Path
+
+    import pandas as pd
 
     path = Path("data/raw/xauusd_dukascopy_15m_mid_20250806_20260916.csv")
     if not path.exists():

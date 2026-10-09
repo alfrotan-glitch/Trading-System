@@ -9,19 +9,19 @@ must make the bar higher rather than lower.
 from __future__ import annotations
 
 import math
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
 from qts.research.pipeline import (
     RunOutcome,
+    _max_drawdown,
+    _profit_factor,
+    _sharpe,
     build_folds,
     deflated_sharpe_ratio,
     expand_grid,
     run_walk_forward,
-    _max_drawdown,
-    _profit_factor,
-    _sharpe,
 )
 
 START = datetime(2025, 8, 6, tzinfo=UTC)
@@ -36,7 +36,7 @@ END = datetime(2026, 9, 16, tzinfo=UTC)
 def test_folds_are_chronological_and_non_overlapping() -> None:
     folds = build_folds(START, END, n_folds=5, test_fraction=0.15)
     assert len(folds) == 5
-    for prev, nxt in zip(folds, folds[1:]):
+    for prev, nxt in zip(folds, folds[1:], strict=False):
         assert prev.test_end <= nxt.test_start, "test windows must not overlap"
 
 
@@ -45,7 +45,7 @@ def test_training_always_precedes_the_test_window() -> None:
     folds = build_folds(START, END, n_folds=4, test_fraction=0.15)
     for fold in folds:
         assert fold.train_end <= fold.test_start, "no peeking into the future"
-    for prev, nxt in zip(folds, folds[1:]):
+    for prev, nxt in zip(folds, folds[1:], strict=False):
         assert nxt.train_end > prev.train_end, "training must expand"
 
 
@@ -53,7 +53,7 @@ def test_purge_and_embargo_open_a_gap_at_the_boundary() -> None:
     """Otherwise a label straddling the boundary leaks the answer backwards."""
     plain = build_folds(START, END, n_folds=4, test_fraction=0.15)
     guarded = build_folds(START, END, n_folds=4, test_fraction=0.15, purge_bars=96, embargo_bars=96)
-    for p, g in zip(plain, guarded):
+    for p, g in zip(plain, guarded, strict=False):
         assert g.train_end < p.train_end
         assert g.train_end < g.test_start
 
