@@ -50,3 +50,4 @@ Files that remain beside these guides are cited by code or by an operator setup 
 ## Dated Research Records
 
 - [Long-history XAUUSD research, 2026-10-10](research/longhistory_results_2026-10-10.md): verdict `NO_VALIDATED_EDGE`, with its protocol (`preregistration_longhistory_2026-10-10.md`), data provenance and method survey. Research only; no order path changed.
+- [Long-history XAUUSD intraday (M15) research, 2026-10-10](research/longhistory_intraday_results_2026-10-10.md): verdict `NO_VALIDATED_EDGE`, with its protocol (`preregistration_longhistory_m15_2026-10-10.md`) and generated tables. Research only; no order path changed.

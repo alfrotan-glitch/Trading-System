@@ -235,6 +235,7 @@ Committed Evidence Manifest (data/evidence/*.json)
 | **ARCH-019** | 2026-09-28 | Phase 11 | Guided DEMO product workflow: `GET /api/demo/guide` (read-only plain-language state) and `record-identity` / `confirm-identity` / `prepare` / `refresh` / `resume` drive the SAME pin/stage/authority machinery as the CLI. The demo screen leads with one headline, one reason, one next action, an order ticket (stop required), and human error mapping; internals stay under Advanced. | Fail-closed, honest, no bypass. Refusals are 409 with a human result. | `test_demo_guide_api` (14), full suite green, live uvicorn verification | APPROVED |
 
 | **ARCH-020** | 2026-10-10 | Research | Long-history XAUUSD daily research (`src/qts/research/longhistory`). Pinned, SHA-256-verified sources. Broker-clock conversion. A frozen preregistration (`LH-XAUUSD-D1-2026-10-10`, 26 trials). Next-open engine with stops and costs. Causality and warm-up checks. Walk-forward and an untouched holdout 2020 to Feb 2025. Results in `docs/research/longhistory_results_2026-10-10.md`. | Research tooling only. No order path, DEMO/LIVE state, risk limit or authorization changed. Costs remain ASSUMED. | 27 new unit tests. Lint, mypy and bandit clean. Lookahead check passes for 26/26 candidates. Trade ledger reconciles to equity (max diff 0.0). | `NO_VALIDATED_EDGE`. No candidate passes G1–G7. Buy-and-hold beats every candidate on the holdout. |
+| **ARCH-021** | 2026-10-10 | Research | Long-history XAUUSD intraday (M15) research under a new preregistration `LH-XAUUSD-M15-2026-10-10`. Bar-aware protocol with 92 bars per trading day and 23,184 periods per year. 13 candidates plus 1 control: MA crossover, Donchian, range expansion, and a new session-range breakout. Results in `docs/research/longhistory_intraday_results_2026-10-10.md`. | Research tooling only. No order path, DEMO/LIVE state, risk limit or authorization changed. Costs remain ASSUMED. Holdout reused from ARCH-020, counted cumulatively (40 trials). | Causality check passes 14/14. Ledger reconciles to equity. Daily final re-run identical after the shared-code change. 11 new unit tests. | `NO_VALIDATED_EDGE`. No group passes G1–G7 (best 2/7). Buy-and-hold beats every group on the holdout. Cost-limited: `ma_cross` is +8,655 gross and +1,093 net at base cost. |
 
 ---
 
@@ -330,3 +331,15 @@ Not accepted: no real browser exists in this sandbox (Playwright CDN and Debian 
 * Claim status: none. Costs are ASSUMED, and `CLAIM_ELIGIBLE_BASES = {MEASURED}`.
 * Architecture: research package only. Nothing in the execution path, the DEMO policy registry, or the risk layer was changed. `DEMO_EXECUTION` and `LIVE_LOCKED` are unchanged.
 * Open blockers: broker M15 depth (Windows MT5 probe), measured broker costs, and a second independent long-history price source. Upstream licences for the long history are unverified.
+
+## 21. LONG-HISTORY XAUUSD INTRADAY (M15) RESEARCH, 2026-10-10
+
+* Scope: M15 XAUUSD signal families on the same 2004-06-11 to 2025-02-28 research series, with a Dukascopy M15 replicate (2025-08 to 2026-09). Families: MA crossover, Donchian breakout, 1-hour and 4-hour range expansion, and a session-range breakout that is specific to intraday trading.
+* Protocol: `docs/research/preregistration_longhistory_m15_2026-10-10.md`, committed (`732eeb3`) before any intraday walk-forward, holdout or replicate result. Results: `docs/research/longhistory_intraday_results_2026-10-10.md`. Evidence: `data/evidence/longhistory/intraday_research_final.json`.
+* Verdict: **NO_VALIDATED_EDGE**. Best groups pass 2 of 7 gates. Buy-and-hold beats every group on the holdout.
+* Cost sensitivity: the MA-crossover selection is +8,655 gross on the holdout and +1,093 net at ASSUMED costs. It breaks even at 1.16× those costs. Measured broker costs are the decisive missing input at M15.
+* Multiple testing: the deflated Sharpe counts 40 configurations (26 daily plus 14 intraday), because the 2020–2025 holdout was already used by the daily cycle.
+* Claim status: none. Costs are ASSUMED, and `CLAIM_ELIGIBLE_BASES = {MEASURED}`.
+* Architecture: research package only. Shared code gained protocol and annualisation parameters with daily defaults. The daily final evidence was re-run and is identical apart from timestamps. Nothing in the execution path, the DEMO policy registry, or the risk layer changed. `DEMO_EXECUTION` and `LIVE_LOCKED` are unchanged.
+* Open blockers: broker M15 depth and measured costs (Windows MT5), and a second independent long-history M15 source.
+
