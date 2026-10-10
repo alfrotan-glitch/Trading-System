@@ -545,7 +545,11 @@ def demo_cost_check(
         add(
             "server-offset-measured",
             basis != "assumed-utc-fallback",
-            f"offset={offset}s basis={basis}",
+            (
+                f"offset={offset}s basis={basis}"
+                if basis not in ("assumed-utc-fallback", "unavailable")
+                else f"offset UNMEASURED (basis={basis}; the 0.0 is a fallback, not a measurement)"
+            ),
         )
 
     # 3. evidence store: writable, and its existing chain intact
@@ -570,14 +574,20 @@ def demo_cost_check(
     try:
         import time as _time
 
+        if mt5 is None:
+            # No terminal module means no history was read. This must FAIL, never
+            # PASS-with-zero-deals: an empty list here would look like a real history.
+            raise RuntimeError("MT5 terminal unavailable — deal history not read")
         now = int(_time.time())
-        rows = list(
-            mt5.history_deals_get(now - 30 * 86400, now)  # type: ignore[union-attr]
-            if mt5 is not None
-            else []
-        )
+        rows = list(mt5.history_deals_get(now - 30 * 86400, now))  # type: ignore[union-attr]
     except Exception as exc:
         add("deal-history-readable", False, f"{type(exc).__name__}: {exc}", blocking=False)
+        add(
+            "cost-fields-present",
+            False,
+            "no deal history read — cost fields UNMEASURED (absence is not zero)",
+            blocking=False,
+        )
     else:
         add("deal-history-readable", True, f"{len(rows)} deal(s) in the last 30 days", blocking=False)
         sample = [MT5Adapter._deal_rows_as_dicts([r])[0] for r in rows[-deals:]] if rows else []
@@ -588,19 +598,25 @@ def demo_cost_check(
         add(
             "cost-fields-present",
             bool(sample) and all(present.get(n) for n in ("commission", "swap", "fee")),
-            f"of {len(sample)} sampled deal(s): "
-            + ", ".join(f"{k}={v}" for k, v in present.items()),
+            (
+                f"of {len(sample)} sampled deal(s): "
+                + ", ".join(f"{k}={v}" for k, v in present.items())
+                if sample
+                else "0 deal(s) sampled — cost fields UNMEASURED (no value implied)"
+            ),
             blocking=False,
         )
 
     ready = all(c["ok"] for c in checks if c["blocking"])
+    # An assumed/unavailable offset is not a measurement: report it as null, not 0.0.
+    measured_offset = offset if basis not in ("assumed-utc-fallback", "unavailable") else None
     report: dict[str, Any] = {
         "schema": "qts.demo_cost_check.v1",
         "generated_at": _utcnow().isoformat(),
         "symbol": session.canonical_symbol,
         "broker_symbol": broker_symbol,
         "currency": currency,
-        "server_utc_offset_s": offset,
+        "server_utc_offset_s": measured_offset,
         "offset_basis": basis,
         "checks": checks,
         "ready_for_cost_capture": ready,
@@ -614,7 +630,8 @@ def demo_cost_check(
         report["recorded"] = recorded
 
     click.echo(f"symbol: {session.canonical_symbol} -> {broker_symbol}")
-    click.echo(f"currency: {currency or 'UNKNOWN'}  server offset: {offset}s ({basis})")
+    shown_offset = f"{measured_offset}s" if measured_offset is not None else "UNMEASURED"
+    click.echo(f"currency: {currency or 'UNKNOWN'}  server offset: {shown_offset} ({basis})")
     click.echo("")
     for check in checks:
         flag = "PASS" if check["ok"] else "FAIL"
