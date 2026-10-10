@@ -149,6 +149,49 @@ def holdout(df: pd.DataFrame, plans: dict[str, Plan], end: str) -> dict[str, Any
     return out
 
 
+def buy_and_hold(df: pd.DataFrame, start: str, end: str, costs: CostModel) -> RunResult:
+    """Reference baseline: long 1.0x notional through the same engine and cost model.
+
+    The decision sits on the bar before the window, so the fill is the window's
+    first open. If the window starts at the first bar of the file there is no
+    prior bar, and the entry is one bar later (open of bar 2), which is stated in
+    the output via ``entry_delay_bars``.
+    """
+    i0, i1 = window_positions(df, start, end)
+    anchor = i0 - 1 if i0 >= 1 else 0
+    n = len(df)
+    decision = anchor
+    target = np.full(n, np.nan)
+    target[decision] = 1.0
+    size = np.full(n, np.nan)
+    size[decision] = 1.0
+    plan = Plan(
+        target=target,
+        size=size,
+        stop_dist=np.full(n, np.nan),
+        rebalance=np.zeros(n, dtype=bool),
+        family="buy_and_hold",
+        params={"long_fraction": 1.0, "entry_delay_bars": int(1 if i0 == 0 else 0)},
+    )
+    run = run_plan(df, plan, anchor, i1, costs, initial_equity=P.INITIAL_EQUITY, force_close_end=True)
+    if i0 >= 1:
+        # drop the anchor bar so the reported days start at the window; equity starts at E0
+        return RunResult(
+            days=run.days[1:],
+            equity=run.equity[1:],
+            returns=run.returns[1:],
+            held=run.held[1:],
+            trades=run.trades,
+            initial_equity=P.INITIAL_EQUITY,
+            turnover_fraction=run.turnover_fraction,
+            financing_usd=run.financing_usd,
+            cost_usd=run.cost_usd,
+            gross_usd=run.gross_usd,
+            cost_basis=run.cost_basis,
+        )
+    return run
+
+
 def break_even_multiplier(df: pd.DataFrame, plan: Plan, start: str, end: str, hi: float = 50.0) -> dict[str, Any]:
     """Cost multiplier at which net P&L crosses zero (bisection on a monotone proxy)."""
 
@@ -307,9 +350,36 @@ def evaluate(
         if replicate_df is not None:
             result["replicate"] = replicate(replicate_df, ho["selection"])
 
+    result["benchmarks"] = benchmarks(df, replicate_df if stage == "final" else None, stage)
     result["gates"] = gates(result, combined, labels, stage)
     result["verdict"] = verdict(result)
     return result
+
+
+def benchmarks(df: pd.DataFrame, replicate_df: pd.DataFrame | None, stage: str) -> dict[str, Any]:
+    """Reference baseline (not a gate): long buy-and-hold through the same engine and costs."""
+    out: dict[str, Any] = {"buy_and_hold_long": {}}
+    years_returns: list[np.ndarray] = []
+    for year in P.WF_TEST_YEARS:
+        run = buy_and_hold(df, f"{year}-01-01", f"{year}-12-31", P.COST_BASE)
+        years_returns.append(run.returns)
+    combined = np.concatenate(years_returns)
+    out["buy_and_hold_long"]["wf_2010_2019_composite"] = {
+        "sharpe": round(ST.sharpe(combined), 4),
+        "chained_return": round(float(np.prod(1.0 + combined) - 1.0), 4),
+        "max_drawdown": round(ST.max_drawdown(np.cumprod(1.0 + combined)), 4),
+        "years": len(P.WF_TEST_YEARS),
+    }
+    if stage == "final":
+        ho = buy_and_hold(df, P.HOLDOUT_START, P.RESEARCH_END, P.COST_BASE)
+        out["buy_and_hold_long"]["holdout"] = ST.summarize(ho)
+        out["buy_and_hold_long"]["holdout_2x_cost_net_usd"] = round(
+            buy_and_hold(df, P.HOLDOUT_START, P.RESEARCH_END, P.COST_BASE.scaled(2.0)).net_usd, 2
+        )
+        if replicate_df is not None:
+            rep = buy_and_hold(replicate_df, P.REPLICATE_START, P.REPLICATE_END, P.COST_BASE)
+            out["buy_and_hold_long"]["replicate"] = ST.summarize(rep)
+    return out
 
 
 def gates(result: dict[str, Any], combined: dict[str, np.ndarray], labels: pd.Series, stage: str) -> dict[str, Any]:
@@ -400,3 +470,105 @@ def replicate(replicate_df: pd.DataFrame, selection: dict[str, Any]) -> dict[str
         run = run_window(replicate_df, plan, start, end, P.COST_BASE)
         out[group] = {"cid": cid, "status": "EVALUATED", **ST.summarize(run)}
     return out
+
+
+def render_tables(result: dict[str, Any]) -> str:
+    """Markdown tables generated from the result record (no numbers typed by hand)."""
+    lines: list[str] = []
+    lines.append(f"# Long-history XAUUSD results — generated tables ({result['prereg_id']}, stage {result['stage']})")
+    lines.append("")
+    lines.append(f"Verdict: **{result['verdict']['status']}**. Claim: {result['verdict']['claim']}")
+    lines.append("")
+    lines.append("## Holdout 2020-01-01 → 2025-02-28 (selection frozen on data through 2019-12-31)")
+    lines.append("")
+    lines.append(
+        "| Group | Selected | Net USD | Sharpe | 95% CI (Sharpe) | Max DD | Round turns | Win rate | Cost USD | Net @2x | Net @3x | Break-even cost x | Holm p | Exposure |"
+    )
+    lines.append("|---|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---|---:|---:|")
+    for group, rec in result["holdout"]["groups"].items():
+        if not rec.get("cid"):
+            continue
+        b = rec["base"]
+        ci = rec["bootstrap_sharpe"]
+        be = rec["break_even_multiplier"]
+        be_txt = f"{be['value']} ({be['status']})"
+        lines.append(
+            f"| {group} | {rec['cid']} | {b['net_usd']:,.2f} | {b['sharpe']:.3f} | "
+            f"[{ci['ci95_low']:.2f}, {ci['ci95_high']:.2f}] | {b['max_drawdown']:.1%} | {b['round_turns']} | "
+            f"{b['win_rate']:.0%} | {b['cost_usd']:,.2f} | {rec['stress']['2x']['net_usd']:,.2f} | "
+            f"{rec['stress']['3x']['net_usd']:,.2f} | {be_txt} | {rec['holm_adjusted_p']:.2f} | {b['exposure']:.0%} |"
+        )
+    bh = result.get("benchmarks", {}).get("buy_and_hold_long", {})
+    if "holdout" in bh:
+        h = bh["holdout"]
+        lines.append(
+            f"| **buy_and_hold_long (reference)** | 1.0x long | {h['net_usd']:,.2f} | {h['sharpe']:.3f} | — | "
+            f"{h['max_drawdown']:.1%} | {h['round_turns']} | — | {h['cost_usd']:,.2f} | "
+            f"{bh['holdout_2x_cost_net_usd']:,.2f} | — | — | — | 100% |"
+        )
+    lines.append("")
+    lines.append("## Walk-forward 2010–2019 (per-year selection, frozen within each year)")
+    lines.append("")
+    lines.append("| Group | WF Sharpe | Positive years | Years traded | Chained return |")
+    lines.append("|---|---:|---:|---:|---:|")
+    for group, rec in result["walk_forward"]["summary"].items():
+        lines.append(
+            f"| {group} | {rec['wf_sharpe']:.3f} | {rec['wf_positive_years']}/10 | {rec['wf_years_with_trades']} | "
+            f"{rec['wf_chained_return']:.1%} |"
+        )
+    wb = bh.get("wf_2010_2019_composite", {})
+    if wb:
+        lines.append(f"| **buy_and_hold_long (reference)** | {wb['sharpe']:.3f} | — | — | {wb['chained_return']:.1%} |")
+    lines.append("")
+    lines.append("## Gates (G1–G7; all must pass)")
+    lines.append("")
+    lines.append("| Group | Candidate | G1 | G2 | G3 | G4 | G5 | G6 | G7 | DSR | OOS round turns | Passes |")
+    lines.append("|---|---|---|---|---|---|---|---|---|---:|---:|---|")
+    for group, rec in result["gates"].items():
+        if not isinstance(rec, dict) or "checks" not in rec:
+            continue
+        c = rec["checks"]
+        cells = [c[k] for k in sorted(c)]
+        lines.append(
+            f"| {group} | {rec['cid']} | " + " | ".join(cells) + f" | {rec['dsr']:.3f} | {rec['oos_round_turns']} | "
+            f"{'YES' if rec['passes_all'] else 'no'} |"
+        )
+    lines.append("")
+    lines.append("## Regimes (out-of-sample net USD, WF 2010–2019 plus holdout)")
+    lines.append("")
+    regime_names = ["UP_HIVOL", "UP_LOWVOL", "DOWN_HIVOL", "DOWN_LOWVOL"]
+    lines.append("| Group | " + " | ".join(regime_names) + " |")
+    lines.append("|---|" + "---:|" * len(regime_names))
+    for group, rec in result["gates"].items():
+        if not isinstance(rec, dict) or "regimes_oos" not in rec:
+            continue
+        cells = [f"{rec['regimes_oos'][r]['net_usd']:,.2f} ({rec['regimes_oos'][r]['days']}d)" for r in regime_names]
+        lines.append(f"| {group} | " + " | ".join(cells) + " |")
+    lines.append("")
+    lines.append("## Dukascopy replicate 2025-08-06 → 2026-09-16 (frozen holdout selections, unchanged)")
+    lines.append("")
+    lines.append("| Group | Candidate | Status | Net USD | Sharpe | Round turns |")
+    lines.append("|---|---|---|---:|---:|---:|")
+    for group, rec in result.get("replicate", {}).items():
+        if rec.get("status") == "EVALUATED":
+            lines.append(
+                f"| {group} | {rec['cid']} | EVALUATED | {rec['net_usd']:,.2f} | {rec['sharpe']:.3f} | {rec['round_turns']} |"
+            )
+        else:
+            lines.append(f"| {group} | {rec.get('cid')} | {rec['status']} | — | — | — |")
+    rb = bh.get("replicate")
+    if rb:
+        lines.append(
+            f"| **buy_and_hold_long (reference)** | 1.0x long | EVALUATED | {rb['net_usd']:,.2f} | {rb['sharpe']:.3f} | {rb['round_turns']} |"
+        )
+    lines.append("")
+    lines.append("## Sign-randomisation null (trade-level, approximate)")
+    lines.append("")
+    lines.append("| Group | Trades | Observed net (approx.) | p-value |")
+    lines.append("|---|---:|---:|---:|")
+    for group, rec in result["holdout"]["groups"].items():
+        if rec.get("cid"):
+            sr = rec["sign_randomisation"]
+            lines.append(f"| {group} | {sr['trades']} | {sr['observed_net_approx']:,.2f} | {sr['p_value']:.3f} |")
+    lines.append("")
+    return "\n".join(lines) + "\n"

@@ -63,6 +63,10 @@ def main() -> int:
     for group, rec in result.get("gates", {}).items():
         if isinstance(rec, dict) and "failed" in rec:
             print(f"  {group:22s} passes_all={rec.get('passes_all')} failed={rec.get('failed')}")
+    if args.stage == "final":
+        tables = REPO_ROOT / "docs" / "research" / "longhistory_results_tables_2026-10-10.md"
+        tables.write_text(R.render_tables(result), encoding="utf-8")
+        print(f"wrote {tables.relative_to(REPO_ROOT)}")
     print(f"wrote {out.relative_to(REPO_ROOT)}")
     return 0
 

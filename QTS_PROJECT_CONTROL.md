@@ -234,6 +234,8 @@ Committed Evidence Manifest (data/evidence/*.json)
 | **ARCH-018** | 2026-09-28 | Phase 11 | Fixed the real MT5 integration bug: `order_send` returned `None` with `(-2, 'Invalid "comment" argument')` because a 31-char `client_order_id` was sent as the comment. The comment is now a deterministic `qts` + 13-char sha256 prefix (≤16 ASCII chars); `order_check` validates the exact send-time comment. | No gate, risk limit, authorization or LIVE lock changed. Dry-run against an exploding `order_send` shows zero submissions. | `test_mt5_comment_contract` (8), full suite green | APPROVED |
 | **ARCH-019** | 2026-09-28 | Phase 11 | Guided DEMO product workflow: `GET /api/demo/guide` (read-only plain-language state) and `record-identity` / `confirm-identity` / `prepare` / `refresh` / `resume` drive the SAME pin/stage/authority machinery as the CLI. The demo screen leads with one headline, one reason, one next action, an order ticket (stop required), and human error mapping; internals stay under Advanced. | Fail-closed, honest, no bypass. Refusals are 409 with a human result. | `test_demo_guide_api` (14), full suite green, live uvicorn verification | APPROVED |
 
+| **ARCH-020** | 2026-10-10 | Research | Long-history XAUUSD daily research (`src/qts/research/longhistory`). Pinned, SHA-256-verified sources. Broker-clock conversion. A frozen preregistration (`LH-XAUUSD-D1-2026-10-10`, 26 trials). Next-open engine with stops and costs. Causality and warm-up checks. Walk-forward and an untouched holdout 2020 to Feb 2025. Results in `docs/research/longhistory_results_2026-10-10.md`. | Research tooling only. No order path, DEMO/LIVE state, risk limit or authorization changed. Costs remain ASSUMED. | 27 new unit tests. Lint, mypy and bandit clean. Lookahead check passes for 26/26 candidates. Trade ledger reconciles to equity (max diff 0.0). | `NO_VALIDATED_EDGE`. No candidate passes G1–G7. Buy-and-hold beats every candidate on the holdout. |
+
 ---
 
 ## 13. TEST STATUS
@@ -319,3 +321,12 @@ Not accepted: no real browser exists in this sandbox (Playwright CDN and Debian 
 * The former canonical branch `arena/01a0ce9f-trading-system` contains no changes ahead of `main`; it is retained only until repository branch deletion is performed.
 * Other `arena/*` branches were audited before cleanup. Stale branches that are behind `main`, or that contain unrelated/obsolete divergent history, must not be merged merely to preserve their history. Their useful work is already represented in the canonical product history where applicable; the branches are cleanup targets, not product sources.
 * No strategy was promoted. `NO_VALIDATED_EDGE`, `REAL_CAPITAL_EXPOSURE = 0`, and `LIVE = LOCKED` remain authoritative.
+
+## 20. LONG-HISTORY XAUUSD RESEARCH, 2026-10-10
+
+* Scope: daily XAUUSD signal families (time-series momentum, MA crossover, Donchian breakout, volatility expansion, NR7, regime-gated trend, RSI(2) mean reversion, and a Bollinger control) on 2004-06-11 to 2025-02-28 from one third-party quote stream, with a Dukascopy replicate (2025-08 to 2026-09).
+* Protocol: `docs/research/preregistration_longhistory_2026-10-10.md`, committed before the final stage ran. Results: `docs/research/longhistory_results_2026-10-10.md`. Generated tables: `docs/research/longhistory_results_tables_2026-10-10.md`. Evidence: `data/evidence/longhistory/`.
+* Verdict: **NO_VALIDATED_EDGE**. No group passes G1–G7. The closest candidates (`ma_20_100_atr3`, `rexp_k10_h3`) each pass 4 of 7 gates and fail the statistical gates. Buy-and-hold beats every candidate on the holdout.
+* Claim status: none. Costs are ASSUMED, and `CLAIM_ELIGIBLE_BASES = {MEASURED}`.
+* Architecture: research package only. Nothing in the execution path, the DEMO policy registry, or the risk layer was changed. `DEMO_EXECUTION` and `LIVE_LOCKED` are unchanged.
+* Open blockers: broker M15 depth (Windows MT5 probe), measured broker costs, and a second independent long-history price source. Upstream licences for the long history are unverified.

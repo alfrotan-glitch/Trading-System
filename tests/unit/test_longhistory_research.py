@@ -312,3 +312,14 @@ def test_processed_files_match_recorded_hashes_when_present():
             pytest.skip(f"{name} not present")
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         assert digest == meta["sha256"], name
+
+
+def test_buy_and_hold_matches_closed_form_at_zero_cost():
+    from qts.research.longhistory import runner as R
+
+    df = _walk(120, seed=6)
+    start, end = df.index[30].strftime("%Y-%m-%d"), df.index[100].strftime("%Y-%m-%d")
+    run = R.buy_and_hold(df, start, end, ZERO_COST)
+    expected = P.INITIAL_EQUITY * (df["close"].iloc[100] / df["open"].iloc[30])
+    assert run.final_equity == pytest.approx(expected, rel=1e-12)
+    assert len(run.trades) == 1
