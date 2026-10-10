@@ -1,0 +1,204 @@
+{
+  "generated_at": "2026-10-10T07:43:04.442508+00:00",
+  "raw_root": "data/raw/longhistory (gitignored)",
+  "schema": "qts.longhistory.source_manifest.v1",
+  "sources": [
+    {
+      "commit": "43f4177e701fdf3643cc02413e4337932af57401",
+      "files": [
+        {
+          "bytes": 24873497,
+          "path": "XAU_15m_data.csv",
+          "sha256": "9a924d80f620059d704238e2feb541454436a90595a521ce0fd30cef6a788c8c"
+        }
+      ],
+      "license_note": "MIT (repository LICENSE). The CSV states it is derived from a Kaggle dataset (novandraanugrah/xauusd-gold-price-historical-data-2004-2024); the upstream vendor of the bars and that Kaggle licence could NOT be verified from this environment.",
+      "repo": "https://github.com/BaseMax/XAUUSD-LSTM",
+      "source_id": "basemax_xauusd_15m"
+    },
+    {
+      "commit": "fbd29b3cd85c0eea4f6e8b81c053f98fb3de22fd",
+      "files": [
+        {
+          "bytes": 146169,
+          "path": "XAUUSD/XAUUSDd1.csv",
+          "sha256": "d3da2122fded57f0c78afb38db580565052cd85cff30581e5f812fa5b0b0a305"
+        },
+        {
+          "bytes": 15559071,
+          "path": "XAUUSD/XAUUSDm15.csv",
+          "sha256": "4a179fd47494169508165ae74e5d7c642647ace83cb048947193770927621d9e"
+        }
+      ],
+      "license_note": "Apache-2.0 (repository LICENSE). The repository does not state the upstream bar source. Prices are stored x100 (points); the M15 series is identical to the BaseMax series after /100, so it is NOT an independent source.",
+      "repo": "https://github.com/ejtraderLabs/historical-data",
+      "source_id": "ejtraderlabs_xauusd_m15_d1"
+    },
+    {
+      "commit": "b7ff758fb8ad928fe9fa3b7ebc154df53ba9aa5a",
+      "files": [
+        {
+          "bytes": 10384,
+          "path": "OHLC/XAUUSD/PT15M/20220309_154500-20220311_114500.csv",
+          "sha256": "b9675cff3fe006b8aff38ce9911161852c7aa5e1eb7ee4520326c5ecacc14abe"
+        },
+        {
+          "bytes": 197962,
+          "path": "OHLC/XAUUSD/PT15M/20220311_120000-20220502_134500.csv",
+          "sha256": "c459c27ddb48843e521cd8743e0600e908d006d55579aa75c1f8bd18d88068df"
+        },
+        {
+          "bytes": 212906,
+          "path": "OHLC/XAUUSD/PT15M/20220502_140000-20220623_154500.csv",
+          "sha256": "65710e6535a8ad9c836b8df459176d682df872372f851966b9fe6ac1b1d5647e"
+        },
+        {
+          "bytes": 203267,
+          "path": "OHLC/XAUUSD/PT15M/20220623_160000-20220812_204500.csv",
+          "sha256": "3700320c5d57a4ce79894ba92bfe5b4e75108928f7e62860df3c366d6604b3a0"
+        },
+        {
+          "bytes": 213178,
+          "path": "OHLC/XAUUSD/PT15M/20220814_220000-20221005_194500.csv",
+          "sha256": "694b4a6867da5a01567b20878adc486b3e711e24b50d95619a3e3a28ec39054e"
+        },
+        {
+          "bytes": 207365,
+          "path": "OHLC/XAUUSD/PT15M/20221005_200000-20221125_183000.csv",
+          "sha256": "bcf1628a6d0bb01504814a0daa402325e8feb0894b1d066581759fc7bd06edba"
+        },
+        {
+          "bytes": 197070,
+          "path": "OHLC/XAUUSD/PT15M/20221127_230000-20230117_234500.csv",
+          "sha256": "84c689902b155b9363ce20f90972b2d437dd9c720089573dab49070588662c8b"
+        },
+        {
+          "bytes": 213427,
+          "path": "OHLC/XAUUSD/PT15M/20230118_000000-20230310_214500.csv",
+          "sha256": "0c6026e53ae6eeecebe85ea045a91c0fb03e7f05713bcff1e74fbf78eacfcd23"
+        },
+        {
+          "bytes": 198675,
+          "path": "OHLC/XAUUSD/PT15M/20230312_220000-20230502_034500.csv",
+          "sha256": "36dc6d8a9783411cc62e3b167a1f483378b3c7d48c14893f20b9625a6a32f042"
+        },
+        {
+          "bytes": 213135,
+          "path": "OHLC/XAUUSD/PT15M/20230502_040000-20230623_054500.csv",
+          "sha256": "4b232657cc9102db9a9000df506030772a063d650e1f8ed45ac3f83a8c29b320"
+        },
+        {
+          "bytes": 202545,
+          "path": "OHLC/XAUUSD/PT15M/20230623_060000-20230814_074500.csv",
+          "sha256": "771998de288f4ca1a4eba5c71f2782a8c72807b27876c1b03acc7358cf5a6417"
+        },
+        {
+          "bytes": 213182,
+          "path": "OHLC/XAUUSD/PT15M/20230814_080000-20231005_094500.csv",
+          "sha256": "5cacdff117adda1d752b4afcec9903b843570c5830e53d01ae91baa4f5b0f278"
+        },
+        {
+          "bytes": 203900,
+          "path": "OHLC/XAUUSD/PT15M/20231005_100000-20231124_183000.csv",
+          "sha256": "393df62a588c3c55d2a23714f58916c312dfdfed2b14ff4107f251c4a840e26b"
+        },
+        {
+          "bytes": 200579,
+          "path": "OHLC/XAUUSD/PT15M/20231126_230000-20240117_134500.csv",
+          "sha256": "1289d95014f9345d42635c8973538afaeb0ce74797ea1acb32921d60a90ee477"
+        },
+        {
+          "bytes": 209287,
+          "path": "OHLC/XAUUSD/PT15M/20240117_140000-20240308_214500.csv",
+          "sha256": "969c5001f71b3a8082ca311e10bf41ca9148632e5d96459cdadfedafc2b5bd5c"
+        },
+        {
+          "bytes": 163656,
+          "path": "OHLC/XAUUSD/PT15M/20240310_220000-20240419_204500.csv",
+          "sha256": "99841cbe081f2985ed50e45bfed822d329a5157ca2cc3c2cd007154cb65d6567"
+        }
+      ],
+      "license_note": "MIT (repository LICENSE). README: data 'has no guarantee of accuracy or completeness'. Timestamps are explicit UTC (RFC3339 Z). Upstream provider not stated.",
+      "repo": "https://github.com/No-Trade-No-Life/Yuan-Public-Data",
+      "source_id": "yuan_public_xauusd_15m"
+    },
+    {
+      "commit": "4d6f15543e6285fad91fd57fe42f716bc7273075",
+      "files": [
+        {
+          "bytes": 66723,
+          "path": "data/XAUUSD/XAUUSD_2025-08.parquet",
+          "sha256": "e650d23cc05194ecb72bf7a748a96823e495850a6b94fac517c29031139c9e37"
+        },
+        {
+          "bytes": 80947,
+          "path": "data/XAUUSD/XAUUSD_2025-09.parquet",
+          "sha256": "48f7e1d2f5fd2f943580628f736898238b9a998fa4752cbe703ef32779ad345e"
+        },
+        {
+          "bytes": 87896,
+          "path": "data/XAUUSD/XAUUSD_2025-10.parquet",
+          "sha256": "4533939d9c7ae6e979575e753938f71661ffbe9096e61172040ba1230d9781dc"
+        },
+        {
+          "bytes": 74960,
+          "path": "data/XAUUSD/XAUUSD_2025-11.parquet",
+          "sha256": "016517904b326a5348795254a7559606d8ae1c882691c399374658a511390cd8"
+        },
+        {
+          "bytes": 80807,
+          "path": "data/XAUUSD/XAUUSD_2025-12.parquet",
+          "sha256": "e8ad92ba1b1bba37c7fa82577fd27b4faa836ea7f669581ce80f42ca830533a2"
+        },
+        {
+          "bytes": 80168,
+          "path": "data/XAUUSD/XAUUSD_2026-01.parquet",
+          "sha256": "de17f9c5316678125a9a272fed203b45f52cfe071633b66c548ebf5db826437a"
+        },
+        {
+          "bytes": 75908,
+          "path": "data/XAUUSD/XAUUSD_2026-02.parquet",
+          "sha256": "1978ce53545f31fd1f6adc5ab33bd447a7a174aa8b71485edf6bd13b792b7954"
+        },
+        {
+          "bytes": 83411,
+          "path": "data/XAUUSD/XAUUSD_2026-03.parquet",
+          "sha256": "8fba205494b4a068c8803192733d022d81feff082b9668e2a310e23f98ac969e"
+        },
+        {
+          "bytes": 78096,
+          "path": "data/XAUUSD/XAUUSD_2026-04.parquet",
+          "sha256": "f1b48a9c7c3b9deca60ff2f3856619cd672ebcc2e2d91741fd304cdee18f1486"
+        },
+        {
+          "bytes": 76902,
+          "path": "data/XAUUSD/XAUUSD_2026-05.parquet",
+          "sha256": "f8ddcae5e23ce1dd0553ada5526bfe6185b5ffc87ace7721acb1cbe0ad517f3b"
+        },
+        {
+          "bytes": 80975,
+          "path": "data/XAUUSD/XAUUSD_2026-06.parquet",
+          "sha256": "6a404b415cb921943b8419893db3361725180d86ef2c5ed67555b5b1e0d3ce37"
+        },
+        {
+          "bytes": 81347,
+          "path": "data/XAUUSD/XAUUSD_2026-07.parquet",
+          "sha256": "2f7751b028f183839ec4d3d23a94e5b6de571d00ff14978d73290ae850c6f854"
+        },
+        {
+          "bytes": 72943,
+          "path": "data/XAUUSD/XAUUSD_2026-08.parquet",
+          "sha256": "5645380ddd0c1a4b0e3cfefbcc283fd3670ea05267978023b7faa590e3c67a3a"
+        },
+        {
+          "bytes": 45181,
+          "path": "data/XAUUSD/XAUUSD_2026-09.parquet",
+          "sha256": "6b51ceb0fa34f12353a75859ff33179b901138db9d18183ff4db415cabd97da8"
+        }
+      ],
+      "license_note": "No LICENSE file in the upstream repository (treated as internal research use only, no redistribution). Dukascopy XAU/USD tick feed, 15m mid-price bars, UTC.",
+      "repo": "https://github.com/vudo805/forex-price-simulator",
+      "source_id": "dukascopy_mirror_xauusd_15m"
+    }
+  ]
+}

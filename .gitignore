@@ -84,3 +84,8 @@ against a SIMULATED terminal would assert, in Git history, that a real broker
 identity was confirmed. Same reasoning as the cost-evidence log above, and the
 same rule: export bounded summaries, never the machine-local artifact.
 data/evidence/demo_broker_identity_pin.json
+
+# Long-history XAUUSD research inputs (third-party bars, re-fetched and SHA-256
+# verified by scripts/fetch_longhistory_sources.py; the manifest, not the bars,
+# is committed).
+data/raw/longhistory/
