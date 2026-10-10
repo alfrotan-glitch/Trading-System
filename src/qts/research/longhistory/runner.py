@@ -37,14 +37,16 @@ def window_positions(df: pd.DataFrame, start: str, end: str) -> tuple[int, int]:
     """Half-open integer positions ``[i0, i1)`` of trading days in ``[start, end]``."""
     idx = pd.DatetimeIndex(df.index)
     i0 = int(idx.searchsorted(pd.Timestamp(start), side="left"))
-    i1 = int(idx.searchsorted(pd.Timestamp(end), side="right"))
+    # the window includes every bar stamped on ``end``: search the next midnight, left side.
+    # For a daily (midnight-stamped) index this equals searchsorted(end, side="right").
+    i1 = int(idx.searchsorted(pd.Timestamp(end) + pd.Timedelta(days=1), side="left"))
     if i1 - i0 < 2:
         raise ValueError(f"window {start}..{end} has fewer than two trading days")
     return i0, i1
 
 
-def build_plans(df: pd.DataFrame) -> dict[str, Plan]:
-    return {c.cid: c.builder(df) for c in P.CANDIDATES}
+def build_plans(df: pd.DataFrame, proto: Any = P) -> dict[str, Plan]:
+    return {c.cid: c.builder(df) for c in proto.CANDIDATES}
 
 
 def run_window(
@@ -67,17 +69,18 @@ def select_per_group(
     plans: dict[str, Plan],
     train_start: str,
     train_end: str,
+    proto: Any = P,
 ) -> dict[str, dict[str, Any]]:
     """Pick the training-window winner in each family group (base costs)."""
     chosen: dict[str, dict[str, Any]] = {}
-    for group in P.FAMILY_GROUPS:
+    for group in proto.FAMILY_GROUPS:
         best: tuple[float, str] | None = None
         table = []
-        for cand in P.candidates_in(group):
-            run = run_window(df, plans[cand.cid], train_start, train_end, P.COST_BASE)
-            sr = ST.sharpe(run.returns)
+        for cand in proto.candidates_in(group):
+            run = run_window(df, plans[cand.cid], train_start, train_end, proto.COST_BASE)
+            sr = ST.sharpe(run.returns, proto.PERIODS_PER_YEAR)
             turns = len(run.trades)
-            eligible = turns >= P.MIN_TRAIN_ROUND_TURNS
+            eligible = turns >= proto.MIN_TRAIN_ROUND_TURNS
             table.append(
                 {"cid": cand.cid, "train_sharpe": round(sr, 4), "train_round_turns": turns, "eligible": eligible}
             )
@@ -91,28 +94,28 @@ def select_per_group(
     return chosen
 
 
-def walk_forward(df: pd.DataFrame, plans: dict[str, Plan]) -> dict[str, Any]:
+def walk_forward(df: pd.DataFrame, plans: dict[str, Plan], proto: Any = P) -> dict[str, Any]:
     """Expanding-window selection, one test year per fold, frozen within each fold."""
     years: list[dict[str, Any]] = []
-    composite_returns: dict[str, list[np.ndarray]] = {g: [] for g in P.FAMILY_GROUPS}
-    composite_pnl: dict[str, list[tuple[pd.DatetimeIndex, np.ndarray]]] = {g: [] for g in P.FAMILY_GROUPS}
+    composite_returns: dict[str, list[np.ndarray]] = {g: [] for g in proto.FAMILY_GROUPS}
+    composite_pnl: dict[str, list[tuple[pd.DatetimeIndex, np.ndarray]]] = {g: [] for g in proto.FAMILY_GROUPS}
     first = str(pd.DatetimeIndex(df.index)[0].date())
-    for year in P.WF_TEST_YEARS:
+    for year in proto.WF_TEST_YEARS:
         train_end = f"{year - 1}-12-31"
         test_start, test_end = f"{year}-01-01", f"{year}-12-31"
-        selection = select_per_group(df, plans, first, train_end)
+        selection = select_per_group(df, plans, first, train_end, proto)
         year_rec: dict[str, Any] = {"year": year, "selection": {}}
         for group, sel in selection.items():
             cid = sel["cid"]
             if cid is None:
                 year_rec["selection"][group] = {"cid": None, "net_usd": 0.0, "sharpe": 0.0, "round_turns": 0}
                 continue
-            run = run_window(df, plans[cid], test_start, test_end, P.COST_BASE)
+            run = run_window(df, plans[cid], test_start, test_end, proto.COST_BASE)
             year_rec["selection"][group] = {
                 "cid": cid,
                 "train_sharpe": sel["train_sharpe"],
                 "net_usd": round(run.net_usd, 2),
-                "sharpe": round(ST.sharpe(run.returns), 4),
+                "sharpe": round(ST.sharpe(run.returns, proto.PERIODS_PER_YEAR), 4),
                 "round_turns": len(run.trades),
             }
             composite_returns[group].append(run.returns)
@@ -121,10 +124,10 @@ def walk_forward(df: pd.DataFrame, plans: dict[str, Plan]) -> dict[str, Any]:
     return {"folds": years, "composite_returns": composite_returns, "composite_pnl": composite_pnl}
 
 
-def holdout(df: pd.DataFrame, plans: dict[str, Plan], end: str) -> dict[str, Any]:
+def holdout(df: pd.DataFrame, plans: dict[str, Plan], end: str, proto: Any = P) -> dict[str, Any]:
     """Select once on data through DEV_END, then run the frozen choice once on the holdout."""
     first = str(pd.DatetimeIndex(df.index)[0].date())
-    selection = select_per_group(df, plans, first, P.DEV_END)
+    selection = select_per_group(df, plans, first, proto.DEV_END, proto)
     out: dict[str, Any] = {"selection": selection, "groups": {}}
     for group, sel in selection.items():
         cid = sel["cid"]
@@ -132,18 +135,18 @@ def holdout(df: pd.DataFrame, plans: dict[str, Plan], end: str) -> dict[str, Any
             out["groups"][group] = {"cid": None}
             continue
         plan = plans[cid]
-        base = run_window(df, plan, P.HOLDOUT_START, end, P.COST_BASE)
+        base = run_window(df, plan, proto.HOLDOUT_START, end, proto.COST_BASE)
         stress = {
-            f"{m:g}x": run_window(df, plan, P.HOLDOUT_START, end, P.COST_BASE.scaled(m))
-            for m in P.COST_STRESS_MULTIPLIERS
+            f"{m:g}x": run_window(df, plan, proto.HOLDOUT_START, end, proto.COST_BASE.scaled(m))
+            for m in proto.COST_STRESS_MULTIPLIERS
         }
-        zero = run_window(df, plan, P.HOLDOUT_START, end, P.COST_BASE.scaled(0.0))
+        zero = run_window(df, plan, proto.HOLDOUT_START, end, proto.COST_BASE.scaled(0.0))
         out["groups"][group] = {
             "cid": cid,
             "base": base,
             "stress": stress,
             "gross_zero_cost": zero,
-            "break_even_multiplier": break_even_multiplier(df, plan, P.HOLDOUT_START, end),
+            "break_even_multiplier": break_even_multiplier(df, plan, proto.HOLDOUT_START, end),
             "sign_randomisation_p": sign_randomisation_p(base),
         }
     return out
@@ -235,12 +238,12 @@ def sign_randomisation_p(run: RunResult, n_draws: int = 5000, seed: int = 23) ->
     return {"p_value": round(p, 4), "trades": len(trades), "observed_net_approx": round(observed, 2)}
 
 
-def regime_labels(df: pd.DataFrame) -> pd.Series:
+def regime_labels(df: pd.DataFrame, proto: Any = P) -> pd.Series:
     """Causal, mechanical regimes: trend (12-month return sign) x volatility (vs expanding median)."""
     close = df["close"]
-    trend = np.sign(close / close.shift(252) - 1.0)
-    vol = realized_vol(close)
-    vol_med = vol.expanding(min_periods=252).median()
+    trend = np.sign(close / close.shift(proto.REGIME_TREND_BARS) - 1.0)
+    vol = realized_vol(close, proto.VOL_BARS, proto.PERIODS_PER_YEAR)
+    vol_med = vol.expanding(min_periods=proto.REGIME_MIN_BARS).median()
     hi = vol > vol_med
     names = np.where(trend > 0, "UP", "DOWN") + np.where(hi, "_HIVOL", "_LOWVOL")
     labels = pd.Series(names, index=df.index, dtype=object)
@@ -254,12 +257,10 @@ def regime_attribution(pnl_series: list[tuple[pd.DatetimeIndex, np.ndarray]], la
     )
     pnl = np.concatenate([p for _, p in pnl_series]) if pnl_series else np.array([])
     out: dict[str, Any] = {}
+    # vectorised lookup: a day with no label (None/NaN) never matches a regime name
+    aligned = labels.reindex(pd.DatetimeIndex(days)).to_numpy() if len(days) else np.array([], dtype=object)
     for regime in ["UP_HIVOL", "UP_LOWVOL", "DOWN_HIVOL", "DOWN_LOWVOL"]:
-        mask = (
-            np.array([labels.get(pd.Timestamp(d)) == regime for d in days], dtype=bool)
-            if len(days)
-            else np.array([], dtype=bool)
-        )
+        mask = np.asarray(aligned == regime, dtype=bool)
         out[regime] = {
             "days": int(mask.sum()),
             "net_usd": round(float(pnl[mask].sum()), 2) if mask.any() else 0.0,
@@ -276,26 +277,29 @@ def evaluate(
     plans: dict[str, Plan],
     stage: str,
     replicate_df: pd.DataFrame | None = None,
+    proto: Any = P,
 ) -> dict[str, Any]:
     """Run the protocol and return the full, JSON-serialisable result record."""
-    wf = walk_forward(df, plans)
+    ppy = proto.PERIODS_PER_YEAR
+    wf = walk_forward(df, plans, proto)
     result: dict[str, Any] = {
-        "prereg_id": P.PREREG_ID,
+        "prereg_id": proto.PREREG_ID,
         "stage": stage,
-        "n_trials": P.N_TRIALS,
-        "cost_base": P.COST_BASE.describe(),
+        "n_trials": proto.N_TRIALS,
+        "periods_per_year": ppy,
+        "cost_base": proto.COST_BASE.describe(),
         "windows": {
-            "research": [P.RESEARCH_START, P.RESEARCH_END],
-            "dev_end": P.DEV_END,
-            "holdout": [P.HOLDOUT_START, P.RESEARCH_END],
-            "wf_test_years": list(P.WF_TEST_YEARS),
+            "research": [proto.RESEARCH_START, proto.RESEARCH_END],
+            "dev_end": proto.DEV_END,
+            "holdout": [proto.HOLDOUT_START, proto.RESEARCH_END],
+            "wf_test_years": list(proto.WF_TEST_YEARS),
         },
         "walk_forward": {"folds": wf["folds"]},
     }
-    labels = regime_labels(df)
+    labels = regime_labels(df, proto)
     wf_summary: dict[str, Any] = {}
     combined: dict[str, np.ndarray] = {}
-    for group in P.FAMILY_GROUPS:
+    for group in proto.FAMILY_GROUPS:
         rets = wf["composite_returns"][group]
         joined = np.concatenate(rets) if rets else np.array([])
         combined[group] = joined
@@ -304,7 +308,7 @@ def evaluate(
             1 for f in wf["folds"] if f["selection"][group]["cid"] and f["selection"][group]["round_turns"] > 0
         )
         wf_summary[group] = {
-            "wf_sharpe": round(ST.sharpe(joined), 4) if joined.size else 0.0,
+            "wf_sharpe": round(ST.sharpe(joined, ppy), 4) if joined.size else 0.0,
             "wf_positive_years": years_pos,
             "wf_years_with_trades": years_traded,
             "wf_chained_return": round(float(np.prod(1.0 + joined) - 1.0), 4) if joined.size else 0.0,
@@ -313,7 +317,7 @@ def evaluate(
     result["walk_forward"]["summary"] = wf_summary
 
     if stage == "final":
-        ho = holdout(df, plans, P.RESEARCH_END)
+        ho = holdout(df, plans, proto.RESEARCH_END, proto)
         ho_summary: dict[str, Any] = {}
         p_values: dict[str, float] = {}
         for group, rec in ho["groups"].items():
@@ -326,12 +330,12 @@ def evaluate(
             ho_summary[group] = {
                 "cid": rec["cid"],
                 "selection_train_sharpe": ho["selection"][group]["train_sharpe"],
-                "base": ST.summarize(base, num_trials=P.N_TRIALS),
-                "stress": {k: ST.summarize(v) for k, v in rec["stress"].items()},
+                "base": ST.summarize(base, num_trials=proto.N_TRIALS, periods_per_year=ppy),
+                "stress": {k: ST.summarize(v, periods_per_year=ppy) for k, v in rec["stress"].items()},
                 "gross_zero_cost_usd": round(rec["gross_zero_cost"].net_usd, 2),
                 "break_even_multiplier": rec["break_even_multiplier"],
                 "sign_randomisation": rec["sign_randomisation_p"],
-                "bootstrap_sharpe": ST.sharpe_interval(base.returns),
+                "bootstrap_sharpe": ST.sharpe_interval(base.returns, periods_per_year=ppy),
                 "p_mean_positive_one_sided": round(p, 4),
                 "regimes_holdout": regime_attribution(
                     [(base.days, np.diff(np.concatenate([[base.initial_equity], base.equity])))], labels
@@ -345,50 +349,54 @@ def evaluate(
             if "p_mean_positive_one_sided" in rec:
                 rec["holm_adjusted_p"] = round(holm_adj[group], 4)
         result["holdout"] = {"selection": ho["selection"], "groups": ho_summary}
-        result["holdout_selection_summary"] = {g: ho["selection"][g]["cid"] for g in P.FAMILY_GROUPS}
+        result["holdout_selection_summary"] = {g: ho["selection"][g]["cid"] for g in proto.FAMILY_GROUPS}
 
         if replicate_df is not None:
-            result["replicate"] = replicate(replicate_df, ho["selection"])
+            result["replicate"] = replicate(replicate_df, ho["selection"], proto)
 
-    result["benchmarks"] = benchmarks(df, replicate_df if stage == "final" else None, stage)
-    result["gates"] = gates(result, combined, labels, stage)
+    result["benchmarks"] = benchmarks(df, replicate_df if stage == "final" else None, stage, proto)
+    result["gates"] = gates(result, combined, labels, stage, proto)
     result["verdict"] = verdict(result)
     return result
 
 
-def benchmarks(df: pd.DataFrame, replicate_df: pd.DataFrame | None, stage: str) -> dict[str, Any]:
+def benchmarks(df: pd.DataFrame, replicate_df: pd.DataFrame | None, stage: str, proto: Any = P) -> dict[str, Any]:
     """Reference baseline (not a gate): long buy-and-hold through the same engine and costs."""
+    ppy = proto.PERIODS_PER_YEAR
     out: dict[str, Any] = {"buy_and_hold_long": {}}
     years_returns: list[np.ndarray] = []
-    for year in P.WF_TEST_YEARS:
-        run = buy_and_hold(df, f"{year}-01-01", f"{year}-12-31", P.COST_BASE)
+    for year in proto.WF_TEST_YEARS:
+        run = buy_and_hold(df, f"{year}-01-01", f"{year}-12-31", proto.COST_BASE)
         years_returns.append(run.returns)
     combined = np.concatenate(years_returns)
     out["buy_and_hold_long"]["wf_2010_2019_composite"] = {
-        "sharpe": round(ST.sharpe(combined), 4),
+        "sharpe": round(ST.sharpe(combined, ppy), 4),
         "chained_return": round(float(np.prod(1.0 + combined) - 1.0), 4),
         "max_drawdown": round(ST.max_drawdown(np.cumprod(1.0 + combined)), 4),
-        "years": len(P.WF_TEST_YEARS),
+        "years": len(proto.WF_TEST_YEARS),
     }
     if stage == "final":
-        ho = buy_and_hold(df, P.HOLDOUT_START, P.RESEARCH_END, P.COST_BASE)
-        out["buy_and_hold_long"]["holdout"] = ST.summarize(ho)
+        ho = buy_and_hold(df, proto.HOLDOUT_START, proto.RESEARCH_END, proto.COST_BASE)
+        out["buy_and_hold_long"]["holdout"] = ST.summarize(ho, periods_per_year=ppy)
         out["buy_and_hold_long"]["holdout_2x_cost_net_usd"] = round(
-            buy_and_hold(df, P.HOLDOUT_START, P.RESEARCH_END, P.COST_BASE.scaled(2.0)).net_usd, 2
+            buy_and_hold(df, proto.HOLDOUT_START, proto.RESEARCH_END, proto.COST_BASE.scaled(2.0)).net_usd, 2
         )
         if replicate_df is not None:
-            rep = buy_and_hold(replicate_df, P.REPLICATE_START, P.REPLICATE_END, P.COST_BASE)
-            out["buy_and_hold_long"]["replicate"] = ST.summarize(rep)
+            rep = buy_and_hold(replicate_df, proto.REPLICATE_START, proto.REPLICATE_END, proto.COST_BASE)
+            out["buy_and_hold_long"]["replicate"] = ST.summarize(rep, periods_per_year=ppy)
     return out
 
 
-def gates(result: dict[str, Any], combined: dict[str, np.ndarray], labels: pd.Series, stage: str) -> dict[str, Any]:
+def gates(
+    result: dict[str, Any], combined: dict[str, np.ndarray], labels: pd.Series, stage: str, proto: Any = P
+) -> dict[str, Any]:
     out: dict[str, Any] = {}
     if stage != "final":
         return {"status": "NOT_EVALUATED_DEV_STAGE", "reason": "holdout not evaluated in dev stage"}
     ho = result["holdout"]["groups"]
     wf = result["walk_forward"]["summary"]
-    for group in P.FAMILY_GROUPS:
+    ppy = proto.PERIODS_PER_YEAR
+    for group in proto.FAMILY_GROUPS:
         rec = ho.get(group, {})
         if not rec.get("cid"):
             out[group] = {"G0_candidate_selected": "FAIL", "failed": ["no eligible candidate"]}
@@ -396,7 +404,7 @@ def gates(result: dict[str, Any], combined: dict[str, np.ndarray], labels: pd.Se
         base = rec["base"]
         stress2 = rec["stress"]["2x"]
         oos = combined[group]
-        dsr = ST.deflated_sharpe(oos, P.N_TRIALS) if oos.size else {"dsr": float("nan")}
+        dsr = ST.deflated_sharpe(oos, proto.N_TRIALS, ppy) if oos.size else {"dsr": float("nan")}
         regimes = dict(wf[group]["wf_regimes"])
         for k, v in rec["regimes_holdout"].items():
             regimes[k] = {
@@ -412,11 +420,11 @@ def gates(result: dict[str, Any], combined: dict[str, np.ndarray], labels: pd.Se
             "G1_holdout_net_and_sharpe_positive": base["net_usd"] > 0 and base["sharpe"] > 0,
             "G2_holdout_net_positive_at_2x_cost": stress2["net_usd"] > 0,
             "G3_walk_forward_sharpe_and_years": wf[group]["wf_sharpe"] > 0
-            and wf[group]["wf_positive_years"] >= P.GATE_WF_MIN_POSITIVE_YEARS,
-            "G4_holm_adjusted_p_le_alpha": rec["holm_adjusted_p"] <= P.GATE_HOLM_ALPHA,
-            "G5_dsr_ge_threshold": bool(dsr.get("dsr", 0.0) >= P.GATE_DSR_MIN),
-            "G6_oos_round_turns_ge_100": oos_turns >= P.MIN_TRADES_OOS_GATE,
-            "G7_regime_coverage": all_present and positive_regimes >= P.GATE_REGIMES_MIN_POSITIVE,
+            and wf[group]["wf_positive_years"] >= proto.GATE_WF_MIN_POSITIVE_YEARS,
+            "G4_holm_adjusted_p_le_alpha": rec["holm_adjusted_p"] <= proto.GATE_HOLM_ALPHA,
+            "G5_dsr_ge_threshold": bool(dsr.get("dsr", 0.0) >= proto.GATE_DSR_MIN),
+            "G6_oos_round_turns_ge_100": oos_turns >= proto.MIN_TRADES_OOS_GATE,
+            "G7_regime_coverage": all_present and positive_regimes >= proto.GATE_REGIMES_MIN_POSITIVE,
         }
         failed = [k for k, v in checks.items() if not v]
         out[group] = {
@@ -446,16 +454,16 @@ def verdict(result: dict[str, Any]) -> dict[str, Any]:
     return {"status": "NO_VALIDATED_EDGE", "passing_groups": [], "claim": "none"}
 
 
-def replicate(replicate_df: pd.DataFrame, selection: dict[str, Any]) -> dict[str, Any]:
-    """Frozen holdout selections run unchanged on the Dukascopy daily series."""
+def replicate(replicate_df: pd.DataFrame, selection: dict[str, Any], proto: Any = P) -> dict[str, Any]:
+    """Frozen holdout selections run unchanged on the replicate series (daily or M15)."""
     out: dict[str, Any] = {}
-    start, end = P.REPLICATE_START, P.REPLICATE_END
+    start, end = proto.REPLICATE_START, proto.REPLICATE_END
     for group, sel in selection.items():
         cid = sel["cid"]
         if cid is None:
             out[group] = {"cid": None, "status": "NO_SELECTION"}
             continue
-        cand = P.candidate_by_id(cid)
+        cand = proto.candidate_by_id(cid)
         plan = cand.builder(replicate_df)
         first_valid = int(np.argmax(np.isfinite(plan.target))) if np.isfinite(plan.target).any() else len(plan.target)
         evaluable = first_valid <= 0.25 * len(replicate_df)
@@ -467,8 +475,8 @@ def replicate(replicate_df: pd.DataFrame, selection: dict[str, Any]) -> dict[str
                 "window_bars": int(len(replicate_df)),
             }
             continue
-        run = run_window(replicate_df, plan, start, end, P.COST_BASE)
-        out[group] = {"cid": cid, "status": "EVALUATED", **ST.summarize(run)}
+        run = run_window(replicate_df, plan, start, end, proto.COST_BASE)
+        out[group] = {"cid": cid, "status": "EVALUATED", **ST.summarize(run, periods_per_year=proto.PERIODS_PER_YEAR)}
     return out
 
 

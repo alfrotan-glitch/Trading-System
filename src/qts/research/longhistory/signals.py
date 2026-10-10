@@ -92,9 +92,9 @@ def efficiency_ratio(close: pd.Series, n: int) -> pd.Series:
     return net / path.replace(0.0, np.nan)
 
 
-def realized_vol(close: pd.Series, n: int = VOL_WINDOW) -> pd.Series:
-    """Annualised standard deviation of daily log returns."""
-    return np.log(close).diff().rolling(n, min_periods=n).std() * np.sqrt(TRADING_DAYS)
+def realized_vol(close: pd.Series, n: int = VOL_WINDOW, ann: int = TRADING_DAYS) -> pd.Series:
+    """Annualised standard deviation of log returns; ``ann`` = bars per year."""
+    return np.log(close).diff().rolling(n, min_periods=n).std() * np.sqrt(ann)
 
 
 def month_end(index: pd.DatetimeIndex) -> np.ndarray:
@@ -112,8 +112,8 @@ def size_stop_based(df: pd.DataFrame, stop_mult: float) -> pd.Series:
     return (RISK_PER_TRADE / stop_pct.replace(0.0, np.nan)).clip(upper=MAX_FRACTION)
 
 
-def size_vol_target(df: pd.DataFrame) -> pd.Series:
-    vol = realized_vol(df["close"])
+def size_vol_target(df: pd.DataFrame, n: int = VOL_WINDOW, ann: int = TRADING_DAYS) -> pd.Series:
+    vol = realized_vol(df["close"], n, ann)
     return (VOL_TARGET / vol.replace(0.0, np.nan)).clip(upper=MAX_FRACTION)
 
 
@@ -206,13 +206,20 @@ def tsmom(df: pd.DataFrame, lookback: int) -> Plan:
     return _plan(df, "tsmom", {"lookback": lookback}, target, size, np.full(len(df), np.nan), reb)
 
 
-def ma_cross(df: pd.DataFrame, fast: int, slow: int, stop_mult: float | None) -> Plan:
+def ma_cross(
+    df: pd.DataFrame,
+    fast: int,
+    slow: int,
+    stop_mult: float | None,
+    ann: int = TRADING_DAYS,
+    vol_n: int = VOL_WINDOW,
+) -> Plan:
     f, s = sma(df["close"], fast), sma(df["close"], slow)
     valid = (f.notna() & s.notna()).to_numpy()
     state = np.where(valid, np.where(f > s, 1.0, -1.0), np.nan)
     stop: np.ndarray
     if stop_mult is None:
-        size = size_vol_target(df)
+        size = size_vol_target(df, vol_n, ann)
         stop = np.full(len(df), np.nan)
     else:
         size = size_stop_based(df, stop_mult)
@@ -359,7 +366,7 @@ def rsi2(df: pd.DataFrame, threshold: float, trend_filter: bool, time_exit: int 
     )
 
 
-def bollinger(df: pd.DataFrame, n: int = 20, k: float = 2.0) -> Plan:
+def bollinger(df: pd.DataFrame, n: int = 20, k: float = 2.0, ann: int = TRADING_DAYS, vol_n: int = VOL_WINDOW) -> Plan:
     """CONTROL: fade band excursions, exit at the mean. Falsification benchmark only."""
     close = df["close"]
     mid = sma(close, n)
@@ -383,7 +390,14 @@ def bollinger(df: pd.DataFrame, n: int = 20, k: float = 2.0) -> Plan:
         elif s == 1.0 and c[t] >= m[t] or s == -1.0 and c[t] <= m[t]:
             s = 0.0
         state[t] = s
-    return _plan(df, "bollinger_control", {"n": n, "k": k}, state, size_vol_target(df), np.full(size_n, np.nan))
+    return _plan(
+        df,
+        "bollinger_control",
+        {"n": n, "k": k},
+        state,
+        size_vol_target(df, vol_n, ann),
+        np.full(size_n, np.nan),
+    )
 
 
 def efficiency_gate(df: pd.DataFrame, n: int, threshold: float) -> pd.Series:

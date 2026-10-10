@@ -18,6 +18,14 @@ from qts.research.longhistory.engine import CostModel
 
 PREREG_ID = "LH-XAUUSD-D1-2026-10-10"
 
+# ----------------------------------------------------------------- calendar
+#: Bars per year used for annualisation, volatility windows and regime labels.
+#: Daily protocol: one bar per trading day. The intraday protocol overrides these.
+PERIODS_PER_YEAR = 252
+VOL_BARS = G.VOL_WINDOW
+REGIME_TREND_BARS = 252
+REGIME_MIN_BARS = 252
+
 # ----------------------------------------------------------------- windows
 #: Research series (UTC trading days). BaseMax coverage is complete only to here;
 #: 2025-03 onward is partial in the source (see the data-quality evidence).

@@ -20,14 +20,14 @@ from qts.validation.metrics import deflated_sharpe_ratio
 TRADING_DAYS = 252
 
 
-def sharpe(returns: np.ndarray) -> float:
+def sharpe(returns: np.ndarray, periods_per_year: int = TRADING_DAYS) -> float:
     r = np.asarray(returns, dtype=float)
     if r.size < 2:
         return 0.0
     sd = float(np.std(r, ddof=1))
     if sd == 0.0 or not math.isfinite(sd):
         return 0.0
-    return float(np.mean(r) / sd * math.sqrt(TRADING_DAYS))
+    return float(np.mean(r) / sd * math.sqrt(periods_per_year))
 
 
 def max_drawdown(equity: np.ndarray) -> float:
@@ -38,10 +38,10 @@ def max_drawdown(equity: np.ndarray) -> float:
     return float(np.min(e / peak - 1.0))
 
 
-def cagr(initial: float, final: float, n_days: int) -> float:
+def cagr(initial: float, final: float, n_days: int, periods_per_year: int = TRADING_DAYS) -> float:
     if n_days <= 0 or initial <= 0 or final <= 0:
         return 0.0
-    return float((final / initial) ** (TRADING_DAYS / n_days) - 1.0)
+    return float((final / initial) ** (periods_per_year / n_days) - 1.0)
 
 
 def circular_block_bootstrap(
@@ -64,11 +64,20 @@ def circular_block_bootstrap(
     return out
 
 
-def sharpe_interval(returns: np.ndarray, n_boot: int = 1000, block: int = 20, seed: int = 7) -> dict[str, float]:
-    dist = circular_block_bootstrap(returns, sharpe, n_boot, block, seed)
+def sharpe_interval(
+    returns: np.ndarray,
+    n_boot: int = 1000,
+    block: int = 20,
+    seed: int = 7,
+    periods_per_year: int = TRADING_DAYS,
+) -> dict[str, float]:
+    def stat(x: np.ndarray) -> float:
+        return sharpe(x, periods_per_year)
+
+    dist = circular_block_bootstrap(returns, stat, n_boot, block, seed)
     lo, hi = np.percentile(dist, [2.5, 97.5]) if dist.size else (0.0, 0.0)
     return {
-        "sharpe": sharpe(returns),
+        "sharpe": sharpe(returns, periods_per_year),
         "ci95_low": float(lo),
         "ci95_high": float(hi),
         "share_bootstrap_sharpe_positive": float(np.mean(dist > 0)) if dist.size else 0.0,
@@ -103,19 +112,24 @@ def holm(p_values: dict[str, float]) -> dict[str, float]:
     return adjusted
 
 
-def deflated_sharpe(returns: np.ndarray, num_trials: int) -> dict[str, float]:
+def deflated_sharpe(returns: np.ndarray, num_trials: int, periods_per_year: int = TRADING_DAYS) -> dict[str, float]:
     r = np.asarray(returns, dtype=float)
     n = int(r.size)
     if n < 30 or num_trials < 1:
-        return {"dsr": float("nan"), "sharpe_annual": sharpe(r), "n": n, "num_trials": num_trials}
+        return {
+            "dsr": float("nan"),
+            "sharpe_annual": sharpe(r, periods_per_year),
+            "n": n,
+            "num_trials": num_trials,
+        }
     skew = float(sps.skew(r, bias=False)) if np.std(r) > 0 else 0.0
     kurt = float(sps.kurtosis(r, fisher=False, bias=False)) if np.std(r) > 0 else 3.0
-    sr = sharpe(r)
-    dsr = deflated_sharpe_ratio(sr, num_trials, n, skew, kurt, TRADING_DAYS, True)
+    sr = sharpe(r, periods_per_year)
+    dsr = deflated_sharpe_ratio(sr, num_trials, n, skew, kurt, periods_per_year, True)
     return {"dsr": float(dsr), "sharpe_annual": sr, "n": n, "num_trials": num_trials, "skew": skew, "kurtosis": kurt}
 
 
-def trade_summary(run: RunResult) -> dict[str, float | int]:
+def trade_summary(run: RunResult, periods_per_year: int = TRADING_DAYS) -> dict[str, float | int]:
     trades = run.trades
     nets = np.array([t.net_usd for t in trades], dtype=float)
     grosses = np.array([t.gross_usd for t in trades], dtype=float)
@@ -124,7 +138,7 @@ def trade_summary(run: RunResult) -> dict[str, float | int]:
     losses = nets[nets <= 0]
     gross_win = float(wins.sum()) if wins.size else 0.0
     gross_loss = float(-losses.sum()) if losses.size else 0.0
-    years = max(len(run.days), 1) / TRADING_DAYS
+    years = max(len(run.days), 1) / periods_per_year
     return {
         "round_turns": n,
         "round_turns_per_year": float(n / years) if years > 0 else 0.0,
@@ -140,10 +154,10 @@ def trade_summary(run: RunResult) -> dict[str, float | int]:
     }
 
 
-def summarize(run: RunResult, num_trials: int | None = None) -> dict[str, object]:
+def summarize(run: RunResult, num_trials: int | None = None, periods_per_year: int = TRADING_DAYS) -> dict[str, object]:
     """Full, JSON-serialisable summary of one engine run."""
     r = run.returns
-    years = max(len(run.days), 1) / TRADING_DAYS
+    years = max(len(run.days), 1) / periods_per_year
     out: dict[str, object] = {
         "start": str(run.days[0].date()) if len(run.days) else None,
         "end": str(run.days[-1].date()) if len(run.days) else None,
@@ -155,16 +169,19 @@ def summarize(run: RunResult, num_trials: int | None = None) -> dict[str, object
         "cost_usd": round(run.cost_usd, 2),
         "financing_usd": round(run.financing_usd, 2),
         "cost_to_gross": round(run.cost_usd / run.gross_usd, 4) if run.gross_usd > 0 else None,
-        "sharpe": round(sharpe(r), 4),
-        "cagr": round(cagr(run.initial_equity, run.final_equity, len(run.days)), 4),
+        "sharpe": round(sharpe(r, periods_per_year), 4),
+        "cagr": round(cagr(run.initial_equity, run.final_equity, len(run.days), periods_per_year), 4),
         "max_drawdown": round(max_drawdown(np.concatenate([[run.initial_equity], run.equity])), 4),
         "exposure": round(run.exposure, 4),
         "turnover_per_year": round(run.turnover_fraction / years, 3) if years > 0 else 0.0,
         "cost_basis": run.cost_basis,
     }
-    out.update({k: (round(v, 4) if isinstance(v, float) else v) for k, v in trade_summary(run).items()})
+    out.update(
+        {k: (round(v, 4) if isinstance(v, float) else v) for k, v in trade_summary(run, periods_per_year).items()}
+    )
     if num_trials is not None:
         out["deflated"] = {
-            k: (round(v, 4) if isinstance(v, float) else v) for k, v in deflated_sharpe(r, num_trials).items()
+            k: (round(v, 4) if isinstance(v, float) else v)
+            for k, v in deflated_sharpe(r, num_trials, periods_per_year).items()
         }
     return out
