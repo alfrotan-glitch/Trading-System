@@ -69,6 +69,64 @@ correct.
   figures should not be read as confirmation or refutation.
 - **No change to any verdict.** Both verdicts remain `NO_VALIDATED_EDGE`, costs ASSUMED.
 
+## Triangulation update (same day): which series disagrees with which
+
+Reproduce: `python scripts/check_m15_source_triangulation.py --out <json>`. Inputs are the
+getdata-finance repositories pinned at `ae63d12` (15m), `131c799` (1w) and `05a22e6` (3d).
+The 1-week and 3-day samples extend back to 2024-09, which is the one stretch where
+getdata overlaps the primary series.
+
+**A. Open prices at identical UTC stamps** (weekly and 3-day samples; the open of a bar
+equals the prior close, so the stamps are comparable):
+
+| Comparison | Overlap | Median Δ open ($) | Median abs Δ ($) | Within $0.50 | Median Δ by quarter ($) |
+|---|---:|---:|---:|---:|---|
+| getdata 1w − BaseMax | 37 (2024-09 → 2025-07) | −0.19 | 1.90 | 24% | 24Q3 −6.3, 24Q4 −2.3, 25Q1 +0.0, 25Q2 +1.3, 25Q3 +9.3 (sparse) |
+| getdata 3d − BaseMax | 55 (2024-09 → 2025-07) | −0.13 | 1.17 | 38% | 24Q3 −6.5, 24Q4 −1.1, 25Q1 −0.1, 25Q2 +2.2, 25Q3 +5.1 (sparse) |
+| getdata 1w − Dukascopy | 52 (2025-08 → 2026-09) | +14.55 | 15.28 | 2% | every quarter +5.8 to +19.6 |
+| getdata 3d − Dukascopy | 92 (2025-08 → 2026-09) | +11.42 | 13.02 | 13% | every quarter +3.0 to +40.4 |
+
+Reading: getdata and BaseMax agree closely in 2025 Q1 (median within $0.10) and differ by
+several dollars in 2024 Q3 and Q4. Dukascopy differs from getdata by $3 to $40 in every
+quarter they overlap. BaseMax does not overlap Dukascopy, so these data cannot say which
+of the two is off. The established fact is narrower: getdata agrees with the primary series
+where both exist. That is evidence, not proof, that getdata's basis is the common one.
+Neither getdata nor BaseMax is verified as the reference.
+
+**B. Frozen holdout selections on identical bars.** The window is 2026-03-26 02:30 to
+2026-09-16 20:45 UTC, the exact common timestamp range. The costs are the protocol's ASSUMED
+base. The holdout is not touched, and nothing is re-selected.
+
+| Candidate | Dukascopy net $ (Sharpe, round turns) | getdata 15m net $ (Sharpe, round turns) |
+|---|---:|---:|
+| donchian_384_192_atr3 | +271 (0.44, 23) | +688 (0.96, 22) |
+| ma_32_128_atr3 | −1,311 (−1.34, 113) | −608 (−0.51, 123) |
+| session_brk_b0 | +932 (1.67, 110) | +924 (1.70, 111) |
+| rexp_k10_h16 | −4,125 (−5.15, 745) | −3,794 (−4.60, 750) |
+| buy-and-hold, same bars | −570 (−0.37) | −755 (−0.53) |
+
+Three things follow:
+- **The sign of `ma_cross` against buy-and-hold flips.** On Dukascopy `ma_cross` is $741
+  worse than buy-and-hold. On getdata it is $147 better. Only the price stream differs.
+- **Buy-and-hold alone differs by $185** across the two streams, on identical timestamps.
+  The price basis at the two endpoints is different.
+- **`session_breakout` agrees on both streams** (about +$930) over this window. Its holdout
+  result (−$4,467, 2020–2025) is still negative. A six-month window with 110 round turns is
+  not enough to separate a real effect from noise.
+
+Bar coverage also differs. Over the same timestamps, getdata has 262 bars that Dukascopy
+lacks (120 in August 2026, 66 in September), and Dukascopy has 20 that getdata lacks.
+Each stream has gaps.
+
+**Data-coverage note.** BaseMax's raw file is effectively empty after its research cutoff:
+about 2,000 bars a month through February 2025, then 1,388 in March, 368 in April, 2,001 in
+May, 928 in June, 744 in July, none in August, and 2 in September 2025. Only 2 bars overlap
+Dukascopy (2025-09-30, −$1.03). BaseMax cannot cross-check Dukascopy at all. The research
+window ends 2025-02-28, so the verdicts do not depend on this tail.
+
+**Limits.** Both windows are about six months. Round-turn counts are between 22 and 750.
+Costs are ASSUMED. Nothing here is gating, and nothing here is evidence of an edge.
+
 ## What would close the gap
 
 1. A licensed, documented long-history M15 series with disclosed vendor, licence, and
