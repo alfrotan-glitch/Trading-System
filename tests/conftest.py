@@ -406,14 +406,22 @@ def _git_status_paths() -> set[str]:
         return set()
     if proc.returncode != 0:
         return set()
+    # ``-z`` output is NUL-separated. Splitting on the two characters backslash+'0'
+    # (the previous bug) turned the whole listing into one bogus path, so dirty
+    # files went unseen. A rename/copy record is followed by its origin path as a
+    # separate NUL-terminated field, which must be skipped, not treated as a file.
     paths: set[str] = set()
-    for raw in proc.stdout.split(b"\\0"):
+    fields = proc.stdout.split(b"\0")
+    i = 0
+    while i < len(fields):
+        raw = fields[i]
+        i += 1
         if len(raw) < 4:
             continue
-        entry = raw.decode("utf-8", "replace")
-        path = entry[3:]
-        if " -> " in path:
-            path = path.rsplit(" -> ", 1)[-1]
+        status = raw[:2].decode("ascii", "replace")
+        path = raw[3:].decode("utf-8", "replace")
+        if "R" in status or "C" in status:
+            i += 1  # skip the origin path field
         if path:
             paths.add(path.replace("\\", "/"))
     return paths
