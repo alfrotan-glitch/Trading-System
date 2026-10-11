@@ -122,6 +122,9 @@ def test_paths_report_and_state_root_are_cwd_independent(tmp_path: Path, monkeyp
     outside_dir = tmp_path / "somewhere_else"
     outside_dir.mkdir()
     monkeypatch.chdir(outside_dir)
+    # This test asserts the *default* artifact paths. The suite-wide per-test override
+    # (QTS_COST_EVIDENCE_PATH, conftest.py) is not a default, so clear it here.
+    monkeypatch.delenv("QTS_COST_EVIDENCE_PATH", raising=False)
 
     # State root must still resolve to the real repository root, NOT to outside_dir!
     resolved_root = state_root()
