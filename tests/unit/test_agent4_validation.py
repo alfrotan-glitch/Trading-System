@@ -20,6 +20,7 @@ from scripts.agent4_independent_validation import (
     INITIAL_EQUITY,
     M15_PPY,
     XPlan,
+    _skew_kurt_bc,
     compare,
     month_end_flags,
     side_rate,
@@ -349,3 +350,37 @@ def test_efficiency_gated_donchian_blocks_chop_and_accounting_holds() -> None:
     run_plain = xrun(df, plain.target, plain.size, plain.stop, 0, n)
     # the gate can only remove entries, never add them
     assert len(run.trades) <= len(run_plain.trades)
+
+
+# ------------------------------------------------------- statistical-layer helpers
+
+
+def test_skew_kurt_bc_matches_standard_conventions() -> None:
+    """The bias-corrected skew/kurtosis must match the standard sample estimators."""
+    from scipy import stats as sps
+
+    rng = np.random.default_rng(77)
+    x = rng.normal(0.0, 1.0, 250) + 0.3 * rng.standard_t(5, 250)
+    sk, ku = _skew_kurt_bc(x)
+    assert sk == pytest.approx(float(sps.skew(x, bias=False)), abs=1e-10)
+    assert ku == pytest.approx(float(sps.kurtosis(x, fisher=False, bias=False)), abs=1e-10)
+    # hand-computed symmetric case for [1..5]: m2=2, m4=6.8 -> g2=-1.3,
+    # G2 = (4/(3*2))*((6*(-1.3))+6) = -1.2, raw kurtosis = 1.8; skew 0
+    sk5, ku5 = _skew_kurt_bc(np.array([1.0, 2.0, 3.0, 4.0, 5.0]))
+    assert sk5 == pytest.approx(0.0, abs=1e-12)
+    assert ku5 == pytest.approx(1.8, abs=1e-12)
+    # degenerate input
+    assert _skew_kurt_bc(np.array([2.0, 2.0, 2.0, 2.0])) == (0.0, 3.0)
+
+
+def test_lag_bars_with_rebalance_preserves_accounting_identity() -> None:
+    """Fill-lag stress on the calendar-rebalance path must keep the books balanced."""
+    df = _walk(3000, seed=23, drift=0.0012)
+    plan = x_tsmom(df, 63)
+    run = xrun(df, plan.target, plan.size, plan.stop, 0, len(df), rebalance=plan.rebalance, lag_bars=1)
+    assert run.trades, "lagged tsmom should still trade on an uptrend"
+    ledger = sum(t.net_usd for t in run.trades)
+    assert run.equity[-1] - INITIAL_EQUITY == pytest.approx(ledger, abs=1e-6)
+    # lagging can only delay fills; it must not create trades the base run never had
+    base = xrun(df, plan.target, plan.size, plan.stop, 0, len(df), rebalance=plan.rebalance)
+    assert abs(run.net_usd - base.net_usd) <= abs(base.net_usd) + 1e-9

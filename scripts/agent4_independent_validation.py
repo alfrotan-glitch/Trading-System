@@ -77,6 +77,10 @@ GATE_WF_MIN_POSITIVE_YEARS = 6
 GATE_HOLM_ALPHA = 0.05
 GATE_DSR_MIN = 0.95
 GATE_REGIMES_MIN_POSITIVE = 3
+N_TRIALS_M15 = 40  # prereg: 40 M15 configurations searched
+DAILY_CONTROL_CIDS = ("bollinger_20_2_control",)  # falsification CONTROL: counted in N_TRIALS, never a candidate
+N_TRIALS_DAILY = 26  # prereg: 25 daily candidates + 1 Bollinger control
+N_TRIALS_COMBINED = N_TRIALS_M15 + N_TRIALS_DAILY  # both studies searched the same instrument
 
 DAILY_PPY = 252
 DAILY_VOL_WINDOW = 60  # 60 trading days, as the daily protocol's VOL_WINDOW
@@ -729,6 +733,28 @@ def xdsr(returns: np.ndarray, n_trials: int, ppy: float) -> dict[str, float]:
     return {"dsr": _norm_cdf(z), "sharpe_annual": sr_ann, "n": n, "n_trials": n_trials}
 
 
+def _skew_kurt_bc(r: np.ndarray) -> tuple[float, float]:
+    """Bias-corrected sample skewness and raw (non-excess) kurtosis, from scratch.
+
+    Matches the standard sample estimators (scipy's ``skew(bias=False)`` and
+    ``kurtosis(fisher=False, bias=False)`` conventions) so the re-derived
+    ``base.deflated`` fields are comparable with the committed evidence.
+    """
+    x = np.asarray(r, float)
+    n = int(x.size)
+    if n < 4 or float(np.std(x)) == 0.0:
+        return 0.0, 3.0
+    m = float(x.mean())
+    m2 = float(np.mean((x - m) ** 2))
+    m3 = float(np.mean((x - m) ** 3))
+    m4 = float(np.mean((x - m) ** 4))
+    g1 = m3 / m2**1.5
+    g2 = m4 / m2**2 - 3.0
+    skew = g1 * math.sqrt(n * (n - 1.0)) / (n - 2.0)
+    kurt = ((n - 1.0) / ((n - 2.0) * (n - 3.0))) * ((n + 1.0) * g2 + 6.0) + 3.0
+    return skew, kurt
+
+
 # ------------------------------------------------------------------ data loading
 
 
@@ -809,7 +835,7 @@ def select_group(
         table.append({"cid": cid, "train_sharpe": round(sr, 4), "train_round_turns": turns})
         if turns >= MIN_TRAIN_ROUND_TURNS and (best is None or sr > best[0] + 1e-12):
             best = (sr, cid)
-    return {"cid": best[1] if best else None, "table": table}
+    return {"cid": best[1] if best else None, "train_sharpe": round(best[0], 4) if best else None, "table": table}
 
 
 PPY_OF: dict[str, float] = {"m15": M15_PPY, "daily": DAILY_PPY}
@@ -1010,15 +1036,23 @@ def verify_regimes(
     return out
 
 
-def run_daily_checks(daily: pd.DataFrame, committed: dict[str, Any], quick: bool) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Full independent verification of the daily study LH-XAUUSD-D1-2026-10-10."""
+def run_daily_checks(
+    daily: pd.DataFrame, committed: dict[str, Any], quick: bool
+) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, np.ndarray]]:
+    """Full independent verification of the daily study LH-XAUUSD-D1-2026-10-10.
+
+    Returns the cross-checks, the re-derived selections, and each group's OOS
+    return series (WF composite + holdout) for cross-study multiple testing.
+    """
     checks: list[dict[str, Any]] = []
     plans = daily_plans(daily)
     a, b = window_bounds(daily.index, HOLDOUT_START, RESEARCH_END)
     sel: dict[str, Any] = {}
+    sel_train: dict[str, Any] = {}
     for group, cids in DAILY_GROUPS.items():
         s = select_group(daily, plans, cids, RESEARCH_START, DEV_END, ppy=DAILY_PPY)
         sel[group] = s["cid"]
+        sel_train[group] = s["train_sharpe"]
         checks.append(compare(f"daily_holdout_selection[{group}]", s["cid"], committed["holdout_selection_summary"][group], 0))
     for group, cid in sel.items():
         if cid is None:
@@ -1037,6 +1071,8 @@ def run_daily_checks(daily: pd.DataFrame, committed: dict[str, Any], quick: bool
             checks.append(compare(f"daily_holdout[{group}].net@{m_}x", round(r2.net_usd, 2), committed["holdout"]["groups"][group]["stress"][f"{m_:g}x"]["net_usd"], 0.001))
         be = x_break_even(daily, p, a, b)
         checks.append(compare(f"daily_holdout[{group}].break_even", be["value"], committed["holdout"]["groups"][group]["break_even_multiplier"]["value"], 0.02))
+        r0 = xrun(daily, p.target, p.size, p.stop, a, b, mult=0.0, rebalance=p.rebalance)
+        checks.append(compare(f"daily_holdout[{group}].zero_cost_net", round(r0.net_usd, 2), committed["holdout"]["groups"][group]["gross_zero_cost_usd"], 0.001))
     # buy-and-hold
     bh = x_buy_hold(daily, a, b)
     sb = summarize_xrun(bh, DAILY_PPY)
@@ -1044,7 +1080,11 @@ def run_daily_checks(daily: pd.DataFrame, committed: dict[str, Any], quick: bool
     for k, tol in [("net_usd", 0.001), ("sharpe", 0.01), ("max_drawdown", 0.01)]:
         checks.append(compare(f"daily_buyhold.{k}", sb[k], tb[k], tol))
     # walk-forward folds
+    oos_series: dict[str, np.ndarray] = {}
     if not quick:
+        wf_rets: dict[str, list[np.ndarray]] = {g: [] for g in DAILY_GROUPS}
+        wf_pos: dict[str, int] = dict.fromkeys(DAILY_GROUPS, 0)
+        wf_traded: dict[str, int] = dict.fromkeys(DAILY_GROUPS, 0)
         for fold in committed["walk_forward"]["folds"]:
             year = fold["year"]
             for group, cids in DAILY_GROUPS.items():
@@ -1058,10 +1098,181 @@ def run_daily_checks(daily: pd.DataFrame, committed: dict[str, Any], quick: bool
                 run = xrun(daily, p.target, p.size, p.stop, ta, tb2, rebalance=p.rebalance)
                 checks.append(compare(f"daily_wf[{year}].net[{group}]", round(run.net_usd, 2), theirs["net_usd"], 0.001))
                 checks.append(compare(f"daily_wf[{year}].turns[{group}]", len(run.trades), theirs["round_turns"], 0))
+                wf_rets[group].append(run.returns)
+                wf_pos[group] += int(run.net_usd > 0)
+                wf_traded[group] += int(len(run.trades) > 0)
+        # statistical layer: p-values, Holm, sign null, bootstrap Sharpe, DSR, WF summary
+        # every evaluated configuration counts toward the deflation: the 25
+        # candidates plus the Bollinger falsification control (prereg N_TRIALS)
+        checks.append(
+            compare(
+                "daily_n_trials",
+                sum(len(v) for v in DAILY_GROUPS.values()) + len(DAILY_CONTROL_CIDS),
+                committed["n_trials"],
+                0,
+            )
+        )
+        pvals: dict[str, float] = {}
+        for group, cid in sel.items():
+            if cid is None:
+                continue
+            p = plans[cid]
+            run = xrun(daily, p.target, p.size, p.stop, a, b, rebalance=p.rebalance)
+            rec = committed["holdout"]["groups"][group]
+            # WF summary (composite of the ten folds, mirroring the runner)
+            joined = np.concatenate(wf_rets[group]) if wf_rets[group] else np.array([])
+            tw = committed["walk_forward"]["summary"][group]
+            checks.append(compare(f"daily_wf_summary[{group}].sharpe", round(xsharpe(joined, DAILY_PPY), 4), tw["wf_sharpe"], 0.02))
+            checks.append(compare(f"daily_wf_summary[{group}].chained_return", round(float(np.prod(1.0 + joined) - 1.0), 4), tw["wf_chained_return"], 0.001))
+            checks.append(compare(f"daily_wf_summary[{group}].positive_years", wf_pos[group], tw["wf_positive_years"], 0))
+            checks.append(compare(f"daily_wf_summary[{group}].years_with_trades", wf_traded[group], tw["wf_years_with_trades"], 0))
+            # selection criterion: training-window Sharpe of the selected config
+            checks.append(compare(f"daily_selection_train_sharpe[{group}]", sel_train[group], rec["selection_train_sharpe"], 0.0005))
+            # one-sided bootstrap p for a positive mean return (own seed -> tolerance)
+            r = run.returns
+            observed = float(np.mean(r))
+            centred = r - observed
+            dist = xblock_bootstrap(centred, lambda x: float(np.mean(x)), 2000, 20, 1234)
+            p_mine = float(np.mean(dist >= observed))
+            pvals[group] = p_mine
+            checks.append(compare(f"daily_holdout[{group}].p_one_sided", round(p_mine, 4), rec["p_mean_positive_one_sided"], 0.05))
+            # bootstrap Sharpe interval (own seed/draws -> MC-noise tolerance)
+            bs = xblock_bootstrap(r, lambda x: xsharpe(x, DAILY_PPY), 4000, 20, 424242)
+            rec_bs = rec["bootstrap_sharpe"]
+            checks.append(compare(f"daily_bootstrap_sharpe[{group}].sharpe", round(xsharpe(r, DAILY_PPY), 4), round(rec_bs["sharpe"], 4), 0.0005))
+            checks.append(compare(f"daily_bootstrap_sharpe[{group}].share_positive", round(float(np.mean(bs > 0)), 4), rec_bs["share_bootstrap_sharpe_positive"], 0.05))
+            checks.append(compare(f"daily_bootstrap_sharpe[{group}].ci95_low", round(float(np.percentile(bs, 2.5)), 4), rec_bs["ci95_low"], 0.15))
+            checks.append(compare(f"daily_bootstrap_sharpe[{group}].ci95_high", round(float(np.percentile(bs, 97.5)), 4), rec_bs["ci95_high"], 0.15))
+            # sign randomisation (own seed -> tolerance)
+            trades = [t for t in run.trades if t.direction != 0]
+            dirs = np.array([t.direction for t in trades], float)
+            gross = np.array([t.gross_usd for t in trades], float)
+            costs = np.array([t.cost_usd for t in trades], float)
+            unsigned = gross * dirs
+            obs = float(gross.sum() - costs.sum())
+            rng = np.random.default_rng(99)
+            signs = rng.choice([-1.0, 1.0], size=(3000, len(trades)))
+            nulls = (signs * unsigned).sum(axis=1) - costs.sum()
+            p_sign = float(np.mean(nulls >= obs))
+            rec_sign = rec["sign_randomisation"]
+            checks.append(compare(f"daily_holdout[{group}].p_sign_randomisation", round(p_sign, 4), rec_sign["p_value"], 0.05))
+            checks.append(compare(f"daily_holdout[{group}].sign_observed_net", round(obs, 2), rec_sign["observed_net_approx"], 0.01))
+            checks.append(compare(f"daily_holdout[{group}].sign_trades", len(trades), rec_sign["trades"], 0))
+            # holdout-only DSR (base.deflated in the committed evidence)
+            dho = xdsr(r, N_TRIALS_DAILY, DAILY_PPY)
+            bd = rec["base"]["deflated"]
+            checks.append(compare(f"daily_dsr_holdout[{group}].dsr", round(dho["dsr"], 4), bd["dsr"], 0.005))
+            checks.append(compare(f"daily_dsr_holdout[{group}].n", dho["n"], bd["n"], 0))
+            checks.append(compare(f"daily_dsr_holdout[{group}].sharpe_annual", round(dho["sharpe_annual"], 4), round(bd["sharpe_annual"], 4), 0.001))
+            sk_bc, ku_bc = _skew_kurt_bc(r)
+            checks.append(compare(f"daily_dsr_holdout[{group}].skew", round(sk_bc, 4), round(bd["skew"], 4), 0.01))
+            checks.append(compare(f"daily_dsr_holdout[{group}].kurtosis", round(ku_bc, 4), round(bd["kurtosis"], 4), 0.05))
+            # OOS series (WF composite + holdout) and the gates DSR at N=26
+            oos = np.concatenate(wf_rets[group] + [run.returns])
+            oos_series[group] = oos
+            dg = xdsr(oos, N_TRIALS_DAILY, DAILY_PPY)
+            checks.append(compare(f"daily_dsr_oos[{group}]", round(dg["dsr"], 4), committed["gates"][group]["dsr"], 0.005))
+        holm = xholm(pvals)
+        for g in pvals:
+            checks.append(compare(f"daily_holm[{g}]", round(holm[g], 4), committed["holdout"]["groups"][g]["holm_adjusted_p"], 0.1))
+        # gate arithmetic verification from the committed evidence itself
+        for group, grec in committed["gates"].items():
+            if not isinstance(grec, dict) or "checks" not in grec:
+                continue
+            ho_rec = committed["holdout"]["groups"][group]
+            wfs = committed["walk_forward"]["summary"][group]
+            g1 = ho_rec["base"]["net_usd"] > 0 and ho_rec["base"]["sharpe"] > 0
+            g2 = ho_rec["stress"]["2x"]["net_usd"] > 0
+            g3 = wfs["wf_sharpe"] > 0 and wfs["wf_positive_years"] >= GATE_WF_MIN_POSITIVE_YEARS
+            g4 = ho_rec["holm_adjusted_p"] <= GATE_HOLM_ALPHA
+            g5 = grec["dsr"] >= GATE_DSR_MIN
+            oos_turns = sum(f["selection"][group]["round_turns"] for f in committed["walk_forward"]["folds"]) + ho_rec["base"]["round_turns"]
+            g6 = oos_turns >= MIN_TRADES_OOS_GATE
+            combined_regimes = {
+                k: {"days": wfs["wf_regimes"][k]["days"] + v["days"], "net_usd": round(wfs["wf_regimes"][k]["net_usd"] + v["net_usd"], 2)}
+                for k, v in ho_rec["regimes_holdout"].items()
+            }
+            positive_regimes = sum(1 for v in combined_regimes.values() if v["days"] > 0 and v["net_usd"] > 0)
+            g7 = all(v["days"] > 0 for v in combined_regimes.values()) and positive_regimes >= GATE_REGIMES_MIN_POSITIVE
+            mine_checks = [g1, g2, g3, g4, g5, g6, g7]
+            keys = sorted(grec["checks"])
+            theirs_checks = [grec["checks"][k] == "PASS" for k in keys]
+            checks.append(compare(f"daily_gate_arithmetic[{group}]", mine_checks, theirs_checks, 0))
+            checks.append(compare(f"daily_gate_arithmetic[{group}].oos_round_turns", oos_turns, grec["oos_round_turns"], 0))
+            checks.append(compare(f"daily_gate_arithmetic[{group}].positive_regimes", positive_regimes, grec["positive_regimes"], 0))
         # regime re-derivation (G7) for the daily study
         labels = regime_labels_x(daily, 252, DAILY_VOL_WINDOW, DAILY_PPY, 252)
         checks.extend(verify_regimes(daily, plans, DAILY_GROUPS, sel, committed, labels, DAILY_PPY, "daily"))
-    return checks, sel
+    return checks, sel, oos_series
+
+
+def daily_diagnostics(daily: pd.DataFrame, plans: dict[str, XPlan], sel: dict[str, Any], quick: bool) -> dict[str, Any]:
+    """Adversarial diagnostics on the FROZEN daily selections. No re-selection, no tuning."""
+    out: dict[str, Any] = {}
+    a, b = window_bounds(daily.index, HOLDOUT_START, RESEARCH_END)
+    for group, cid in sel.items():
+        if cid is None:
+            continue
+        p = plans[cid]
+        rec: dict[str, Any] = {"cid": cid}
+
+        # (a) fill-lag sensitivity: act one day later (bar-stamp convention stress)
+        rec["holdout_lag1"] = summarize_xrun(
+            xrun(daily, p.target, p.size, p.stop, a, b, rebalance=p.rebalance, lag_bars=1), DAILY_PPY
+        )
+
+        # (b) chronological stability: one continuous run 2004->2025, per-year P&L
+        full = xrun(daily, p.target, p.size, p.stop, 0, len(daily), rebalance=p.rebalance)
+        eq = np.concatenate([[INITIAL_EQUITY], full.equity])
+        pnl = np.diff(eq)
+        pnl_years = np.asarray(pd.DatetimeIndex(full.times).year)
+        rec["full_run_yearly_pnl"] = {
+            str(y): round(float(pnl[pnl_years == y].sum()), 2) for y in sorted(set(pnl_years))
+        }
+        rec["full_run_summary"] = summarize_xrun(full, DAILY_PPY)
+
+        # (c) holdout halves
+        for name, (s_, e_) in {
+            "half1_2020_2022H1": ("2020-01-01", "2022-06-30"),
+            "half2_2022H2_2025": ("2022-07-01", RESEARCH_END),
+        }.items():
+            ha, hb = window_bounds(daily.index, s_, e_)
+            rec[name] = summarize_xrun(xrun(daily, p.target, p.size, p.stop, ha, hb, rebalance=p.rebalance), DAILY_PPY)
+
+        # (d) cost grid
+        rec["cost_grid"] = {
+            f"{m_}x": round(xrun(daily, p.target, p.size, p.stop, a, b, mult=m_, rebalance=p.rebalance).net_usd, 2)
+            for m_ in (0.5, 1.0, 1.5, 2.0, 3.0)
+        }
+
+        # (e) trade-level diagnostics: overnight holds and concentration.
+        # Daily-bar positions ALWAYS cross the session roll while held, and the
+        # engine books financing as 0 (ASSUMED costs); at -3.5 USD per lot per
+        # night the unmodeled drag is nights x lots x 3.5.
+        run = xrun(daily, p.target, p.size, p.stop, a, b, rebalance=p.rebalance)
+        rec["holdout_base"] = summarize_xrun(run, DAILY_PPY)
+        nights = np.zeros(len(run.trades))
+        for k_, t_ in enumerate(run.trades):
+            e_d = trading_day(run.times[[t_.entry_bar - a]])[0]
+            x_d = trading_day(run.times[[t_.exit_bar - a]])[0]
+            nights[k_] = max(0.0, (x_d - e_d).days)
+        est_lots = np.array(
+            [t_.entry_frac * INITIAL_EQUITY / (100.0 * t_.entry_price) if t_.entry_price > 0 else 0.0 for t_ in run.trades]
+        )
+        rec["total_nights_held"] = float(nights.sum())
+        rec["unmodeled_swap_drag_usd_at_3.5_per_lot_night"] = round(float((nights * est_lots * 3.5).sum()), 2)
+        nets = sorted((t.net_usd for t in run.trades), reverse=True)
+        total_net = float(sum(nets))
+        rec["holdout_round_turns"] = len(run.trades)
+        rec["top1_trade_net_usd"] = round(nets[0], 2) if nets else 0.0
+        rec["top3_trades_net_usd"] = round(sum(nets[:3]), 2) if nets else 0.0
+        rec["top1_share_of_net"] = round(nets[0] / total_net, 4) if nets and total_net > 0 else None
+        out[group] = rec
+        print(
+            f"  daily diagnostics {group}: lag1 net {rec['holdout_lag1']['net_usd']}, "
+            f"swap drag {rec['unmodeled_swap_drag_usd_at_3.5_per_lot_night']}"
+        )
+    return out
 
 
 # ------------------------------------------------------------------ comparison helpers
@@ -1096,9 +1307,11 @@ def main() -> int:
     plans = m15_plans(m15)
     a, b = window_bounds(m15.index, HOLDOUT_START, RESEARCH_END)
     ho_sel_mine: dict[str, str | None] = {}
+    ho_train_mine: dict[str, Any] = {}
     for group, cids in M15_GROUPS.items():
         s = select_group(m15, plans, cids, RESEARCH_START, DEV_END)
         ho_sel_mine[group] = s["cid"]
+        ho_train_mine[group] = s["train_sharpe"]
         theirs_cid = committed["holdout_selection_summary"][group]
         checks.append(compare(f"m15_holdout_selection[{group}]", s["cid"], theirs_cid, 0))
     evidence["m15_holdout_selection"] = ho_sel_mine
@@ -1171,10 +1384,11 @@ def main() -> int:
 
     # ---- 4b. daily study: full independent verification -------------------------
     daily_sel: dict[str, Any] = {}
+    daily_oos: dict[str, np.ndarray] = {}
     if (PROCESSED / "xauusd_basemax_utc_daily_research.csv").exists():
         daily = load_daily("xauusd_basemax_utc_daily_research.csv")
         dcom = json.loads(DAILY_FINAL.read_text())
-        daily_checks, daily_sel = run_daily_checks(daily, dcom, args.quick)
+        daily_checks, daily_sel, daily_oos = run_daily_checks(daily, dcom, args.quick)
         checks.extend(daily_checks)
         if not args.quick and (PROCESSED / "xauusd_dukascopy_utc_daily_replicate.csv").exists():
             rep_d = load_daily("xauusd_dukascopy_utc_daily_replicate.csv")
@@ -1197,16 +1411,34 @@ def main() -> int:
         print(f"  daily study checked ({len(daily_checks)} checks)")
 
     # ---- 5. DSR / Holm / sign-randomisation statistical layer --------------------
+    m15_oos: dict[str, np.ndarray] = {}
     if not args.quick:
-        stats_checks = statistical_layer(m15, plans, ho_sel_mine, committed)
+        stats_checks, m15_oos = statistical_layer(m15, plans, ho_sel_mine, ho_train_mine, committed)
         checks.extend(stats_checks)
         # M15 regime re-derivation (G7)
         m15_labels = regime_labels_x(m15, M15_REGIME_BARS, M15_VOL_BARS, M15_PPY, M15_REGIME_BARS)
         checks.extend(verify_regimes(m15, plans, M15_GROUPS, ho_sel_mine, committed, m15_labels, M15_PPY, "m15"))
+        # cross-study multiple testing: both studies searched the same instrument,
+        # so the joint trial count is 26 + 40 = 66 (adversarial addition, no
+        # committed counterpart -- recomputing each study's OOS DSR at N=66)
+        if daily_sel:
+            evidence["cross_study_multiple_testing"] = {
+                "note": (
+                    "Agent-4 adversarial addition: the daily and M15 studies both searched "
+                    "XAUUSD; treated as one joint search the multiple-testing burden is "
+                    "26+40=66 trials. DSR below is recomputed on each study's OOS series "
+                    "(WF composite + holdout) at N=66."
+                ),
+                "combined_trials": N_TRIALS_COMBINED,
+                "m15": {g: round(xdsr(v, N_TRIALS_COMBINED, M15_PPY)["dsr"], 4) for g, v in m15_oos.items()},
+                "daily": {g: round(xdsr(v, N_TRIALS_COMBINED, DAILY_PPY)["dsr"], 4) for g, v in daily_oos.items()},
+            }
 
     # ---- 6. diagnostics ---------------------------------------------------------
     diag = diagnostics(m15, plans, ho_sel_mine, args.quick)
     evidence["diagnostics"] = diag
+    if daily_sel:
+        evidence["daily_diagnostics"] = daily_diagnostics(daily, daily_plans(daily), daily_sel, args.quick)
 
     n_match = sum(1 for c in checks if c["match"])
     evidence["cross_checks"] = checks
@@ -1222,8 +1454,18 @@ def main() -> int:
     return 0
 
 
-def statistical_layer(df: pd.DataFrame, plans: dict[str, XPlan], sel: dict[str, Any], committed: dict[str, Any]) -> list[dict[str, Any]]:
-    """Re-derive the statistical layer: WF composite Sharpe, DSR, Holm, sign null."""
+def statistical_layer(
+    df: pd.DataFrame,
+    plans: dict[str, XPlan],
+    sel: dict[str, Any],
+    sel_train: dict[str, Any],
+    committed: dict[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, np.ndarray]]:
+    """Re-derive the statistical layer: WF composite Sharpe, DSR, Holm, sign null.
+
+    Returns the cross-checks plus each group's OOS return series (WF composite +
+    holdout) so the caller can reuse it for cross-study multiple testing.
+    """
     out: list[dict[str, Any]] = []
     ppy = M15_PPY
     combined: dict[str, list[np.ndarray]] = {g: [] for g in M15_GROUPS}
@@ -1256,7 +1498,17 @@ def statistical_layer(df: pd.DataFrame, plans: dict[str, XPlan], sel: dict[str, 
         dist = xblock_bootstrap(centred, lambda x: float(np.mean(x)), 2000, 20, 1234)
         p_mine = float(np.mean(dist >= observed))
         pvals[group] = p_mine
-        out.append(compare(f"m15_holdout[{group}].p_one_sided", round(p_mine, 4), committed["holdout"]["groups"][group]["p_mean_positive_one_sided"], 0.05))
+        rec = committed["holdout"]["groups"][group]
+        out.append(compare(f"m15_holdout[{group}].p_one_sided", round(p_mine, 4), rec["p_mean_positive_one_sided"], 0.05))
+        # selection criterion: training-window Sharpe of the selected config
+        out.append(compare(f"m15_selection_train_sharpe[{group}]", sel_train.get(group), rec["selection_train_sharpe"], 0.0005))
+        # bootstrap Sharpe interval (own seed/draws -> MC-noise tolerance)
+        bs = xblock_bootstrap(r, lambda x: xsharpe(x, ppy), 4000, 20, 424242)
+        rec_bs = rec["bootstrap_sharpe"]
+        out.append(compare(f"m15_bootstrap_sharpe[{group}].sharpe", round(xsharpe(r, ppy), 4), round(rec_bs["sharpe"], 4), 0.0005))
+        out.append(compare(f"m15_bootstrap_sharpe[{group}].share_positive", round(float(np.mean(bs > 0)), 4), rec_bs["share_bootstrap_sharpe_positive"], 0.05))
+        out.append(compare(f"m15_bootstrap_sharpe[{group}].ci95_low", round(float(np.percentile(bs, 2.5)), 4), rec_bs["ci95_low"], 0.15))
+        out.append(compare(f"m15_bootstrap_sharpe[{group}].ci95_high", round(float(np.percentile(bs, 97.5)), 4), rec_bs["ci95_high"], 0.15))
         # sign randomisation (own seed -> tolerance)
         trades = [t for t in ho.trades if t.direction != 0]
         dirs = np.array([t.direction for t in trades], float)
@@ -1268,16 +1520,30 @@ def statistical_layer(df: pd.DataFrame, plans: dict[str, XPlan], sel: dict[str, 
         signs = rng.choice([-1.0, 1.0], size=(3000, len(trades)))
         nulls = (signs * unsigned).sum(axis=1) - costs.sum()
         p_sign = float(np.mean(nulls >= obs))
-        out.append(compare(f"m15_holdout[{group}].p_sign_randomisation", round(p_sign, 4), committed["holdout"]["groups"][group]["sign_randomisation"]["p_value"], 0.05))
+        rec_sign = committed["holdout"]["groups"][group]["sign_randomisation"]
+        out.append(compare(f"m15_holdout[{group}].p_sign_randomisation", round(p_sign, 4), rec_sign["p_value"], 0.05))
+        out.append(compare(f"m15_holdout[{group}].sign_observed_net", round(obs, 2), rec_sign["observed_net_approx"], 0.01))
+        out.append(compare(f"m15_holdout[{group}].sign_trades", len(trades), rec_sign["trades"], 0))
+        # holdout-only DSR (base.deflated in the committed evidence)
+        dho = xdsr(r, N_TRIALS_M15, ppy)
+        bd = committed["holdout"]["groups"][group]["base"]["deflated"]
+        out.append(compare(f"m15_dsr_holdout[{group}].dsr", round(dho["dsr"], 4), bd["dsr"], 0.005))
+        out.append(compare(f"m15_dsr_holdout[{group}].n", dho["n"], bd["n"], 0))
+        out.append(compare(f"m15_dsr_holdout[{group}].sharpe_annual", round(dho["sharpe_annual"], 4), round(bd["sharpe_annual"], 4), 0.001))
+        sk_bc, ku_bc = _skew_kurt_bc(r)
+        out.append(compare(f"m15_dsr_holdout[{group}].skew", round(sk_bc, 4), round(bd["skew"], 4), 0.01))
+        out.append(compare(f"m15_dsr_holdout[{group}].kurtosis", round(ku_bc, 4), round(bd["kurtosis"], 4), 0.05))
     holm = xholm(pvals)
     theirs_holm = {g: committed["holdout"]["groups"][g]["holm_adjusted_p"] for g in pvals}
     for g in pvals:
         out.append(compare(f"m15_holm[{g}]", round(holm[g], 4), theirs_holm[g], 0.1))
-    # DSR on combined OOS series
+    # DSR on the combined OOS series (WF composite + holdout) -- the runner's gates input
+    oos_series: dict[str, np.ndarray] = {}
     for group in pvals:
         oos = np.concatenate(combined[group])
-        dsr = xdsr(oos, 40, ppy)
-        out.append(compare(f"m15_dsr[{group}]", round(dsr["dsr"], 4), committed["gates"][group]["dsr"], 0.05))
+        oos_series[group] = oos
+        dsr = xdsr(oos, N_TRIALS_M15, ppy)
+        out.append(compare(f"m15_dsr[{group}]", round(dsr["dsr"], 4), committed["gates"][group]["dsr"], 0.005))
         dsr100 = xdsr(oos, 100, ppy)
         out.append(compare(f"m15_dsr_N100_gt_gate[{group}]", bool(dsr100["dsr"] >= GATE_DSR_MIN), False, 0))
     # gate arithmetic verification from the committed evidence itself
@@ -1297,7 +1563,7 @@ def statistical_layer(df: pd.DataFrame, plans: dict[str, XPlan], sel: dict[str, 
         keys = sorted(rec["checks"])
         theirs_checks = [rec["checks"][k] == "PASS" for k in keys]
         out.append(compare(f"m15_gate_arithmetic[{group}]", mine_checks, theirs_checks, 0))
-    return out
+    return out, oos_series
 
 
 def diagnostics(df: pd.DataFrame, plans: dict[str, XPlan], sel: dict[str, Any], quick: bool) -> dict[str, Any]:
@@ -1360,6 +1626,13 @@ def diagnostics(df: pd.DataFrame, plans: dict[str, XPlan], sel: dict[str, Any], 
         rec["total_nights_held"] = float(nights.sum())
         rec["unmodeled_swap_drag_usd_at_3.5_per_lot_night"] = round(float((nights * est_lots * 3.5).sum()), 2)
         rec["stop_exit_share"] = round(float(np.mean([t.stopped for t in run.trades])), 4) if run.trades else 0.0
+        # concentration: how much of the net edge rides on the best trades
+        nets = sorted((t.net_usd for t in run.trades), reverse=True)
+        total_net = float(sum(nets))
+        rec["holdout_round_turns"] = len(run.trades)
+        rec["top1_trade_net_usd"] = round(nets[0], 2) if nets else 0.0
+        rec["top3_trades_net_usd"] = round(sum(nets[:3]), 2) if nets else 0.0
+        rec["top1_share_of_net"] = round(nets[0] / total_net, 4) if nets and total_net > 0 else None
         out[group] = rec
         print(f"  diagnostics {group}: lag1 net {rec['holdout_lag1']['net_usd']}, break-even {rec['break_even']['value']}x")
 

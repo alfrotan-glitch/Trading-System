@@ -1142,6 +1142,12 @@
       "theirs": 0.0
     },
     {
+      "item": "daily_holdout[tsmom].zero_cost_net",
+      "match": true,
+      "mine": -308.85,
+      "theirs": -308.85
+    },
+    {
       "item": "daily_holdout[ma_cross].net_usd",
       "match": true,
       "mine": 530.11,
@@ -1194,6 +1200,12 @@
       "match": true,
       "mine": 23.6561,
       "theirs": 23.6561
+    },
+    {
+      "item": "daily_holdout[ma_cross].zero_cost_net",
+      "match": true,
+      "mine": 554.12,
+      "theirs": 554.12
     },
     {
       "item": "daily_holdout[donchian].net_usd",
@@ -1250,6 +1262,12 @@
       "theirs": 4.7614
     },
     {
+      "item": "daily_holdout[donchian].zero_cost_net",
+      "match": true,
+      "mine": 203.24,
+      "theirs": 203.24
+    },
+    {
       "item": "daily_holdout[volatility_expansion].net_usd",
       "match": true,
       "mine": 673.05,
@@ -1302,6 +1320,12 @@
       "match": true,
       "mine": 3.3494,
       "theirs": 3.3494
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].zero_cost_net",
+      "match": true,
+      "mine": 973.05,
+      "theirs": 973.05
     },
     {
       "item": "daily_holdout[trend_gated].net_usd",
@@ -1358,6 +1382,12 @@
       "theirs": 0.0
     },
     {
+      "item": "daily_holdout[trend_gated].zero_cost_net",
+      "match": true,
+      "mine": -306.73,
+      "theirs": -306.73
+    },
+    {
       "item": "daily_holdout[mean_reversion].net_usd",
       "match": true,
       "mine": -841.32,
@@ -1410,6 +1440,12 @@
       "match": true,
       "mine": 0.0,
       "theirs": 0.0
+    },
+    {
+      "item": "daily_holdout[mean_reversion].zero_cost_net",
+      "match": true,
+      "mine": -669.69,
+      "theirs": -669.69
     },
     {
       "item": "daily_buyhold.net_usd",
@@ -2402,6 +2438,936 @@
       "theirs": 10
     },
     {
+      "item": "daily_n_trials",
+      "match": true,
+      "mine": 26,
+      "theirs": 26
+    },
+    {
+      "item": "daily_wf_summary[tsmom].sharpe",
+      "match": true,
+      "mine": -0.0709,
+      "theirs": -0.0709
+    },
+    {
+      "item": "daily_wf_summary[tsmom].chained_return",
+      "match": true,
+      "mine": -0.1088,
+      "theirs": -0.1088
+    },
+    {
+      "item": "daily_wf_summary[tsmom].positive_years",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf_summary[tsmom].years_with_trades",
+      "match": true,
+      "mine": 9,
+      "theirs": 9
+    },
+    {
+      "item": "daily_selection_train_sharpe[tsmom]",
+      "match": true,
+      "mine": 0.6513,
+      "theirs": 0.6513
+    },
+    {
+      "item": "daily_holdout[tsmom].p_one_sided",
+      "match": true,
+      "mine": 0.495,
+      "theirs": 0.502
+    },
+    {
+      "item": "daily_bootstrap_sharpe[tsmom].sharpe",
+      "match": true,
+      "mine": -0.0107,
+      "theirs": -0.0107
+    },
+    {
+      "item": "daily_bootstrap_sharpe[tsmom].share_positive",
+      "match": true,
+      "mine": 0.489,
+      "theirs": 0.494
+    },
+    {
+      "item": "daily_bootstrap_sharpe[tsmom].ci95_low",
+      "match": true,
+      "mine": -0.8616,
+      "theirs": -0.8104817216952208
+    },
+    {
+      "item": "daily_bootstrap_sharpe[tsmom].ci95_high",
+      "match": true,
+      "mine": 0.8597,
+      "theirs": 0.8558309031512075
+    },
+    {
+      "item": "daily_holdout[tsmom].p_sign_randomisation",
+      "match": true,
+      "mine": 0.5553,
+      "theirs": 0.5278
+    },
+    {
+      "item": "daily_holdout[tsmom].sign_observed_net",
+      "match": true,
+      "mine": -378.57,
+      "theirs": -378.57
+    },
+    {
+      "item": "daily_holdout[tsmom].sign_trades",
+      "match": true,
+      "mine": 13,
+      "theirs": 13
+    },
+    {
+      "item": "daily_dsr_holdout[tsmom].dsr",
+      "match": true,
+      "mine": 0.0207,
+      "theirs": 0.0207
+    },
+    {
+      "item": "daily_dsr_holdout[tsmom].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[tsmom].sharpe_annual",
+      "match": true,
+      "mine": -0.0107,
+      "theirs": -0.0107
+    },
+    {
+      "item": "daily_dsr_holdout[tsmom].skew",
+      "match": true,
+      "mine": -0.6018,
+      "theirs": -0.6018
+    },
+    {
+      "item": "daily_dsr_holdout[tsmom].kurtosis",
+      "match": true,
+      "mine": 7.7016,
+      "theirs": 7.7016
+    },
+    {
+      "item": "daily_dsr_oos[tsmom]",
+      "match": true,
+      "mine": 0.0141,
+      "theirs": 0.0141
+    },
+    {
+      "item": "daily_wf_summary[ma_cross].sharpe",
+      "match": true,
+      "mine": 0.168,
+      "theirs": 0.168
+    },
+    {
+      "item": "daily_wf_summary[ma_cross].chained_return",
+      "match": true,
+      "mine": 0.0593,
+      "theirs": 0.0593
+    },
+    {
+      "item": "daily_wf_summary[ma_cross].positive_years",
+      "match": true,
+      "mine": 6,
+      "theirs": 6
+    },
+    {
+      "item": "daily_wf_summary[ma_cross].years_with_trades",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_selection_train_sharpe[ma_cross]",
+      "match": true,
+      "mine": 0.2547,
+      "theirs": 0.2547
+    },
+    {
+      "item": "daily_holdout[ma_cross].p_one_sided",
+      "match": true,
+      "mine": 0.258,
+      "theirs": 0.253
+    },
+    {
+      "item": "daily_bootstrap_sharpe[ma_cross].sharpe",
+      "match": true,
+      "mine": 0.2995,
+      "theirs": 0.2995
+    },
+    {
+      "item": "daily_bootstrap_sharpe[ma_cross].share_positive",
+      "match": true,
+      "mine": 0.7512,
+      "theirs": 0.737
+    },
+    {
+      "item": "daily_bootstrap_sharpe[ma_cross].ci95_low",
+      "match": true,
+      "mine": -0.5706,
+      "theirs": -0.5490119866249996
+    },
+    {
+      "item": "daily_bootstrap_sharpe[ma_cross].ci95_high",
+      "match": true,
+      "mine": 1.2032,
+      "theirs": 1.157900944133473
+    },
+    {
+      "item": "daily_holdout[ma_cross].p_sign_randomisation",
+      "match": true,
+      "mine": 0.4777,
+      "theirs": 0.4596
+    },
+    {
+      "item": "daily_holdout[ma_cross].sign_observed_net",
+      "match": true,
+      "mine": 530.11,
+      "theirs": 530.11
+    },
+    {
+      "item": "daily_holdout[ma_cross].sign_trades",
+      "match": true,
+      "mine": 14,
+      "theirs": 14
+    },
+    {
+      "item": "daily_dsr_holdout[ma_cross].dsr",
+      "match": true,
+      "mine": 0.094,
+      "theirs": 0.094
+    },
+    {
+      "item": "daily_dsr_holdout[ma_cross].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[ma_cross].sharpe_annual",
+      "match": true,
+      "mine": 0.2995,
+      "theirs": 0.2995
+    },
+    {
+      "item": "daily_dsr_holdout[ma_cross].skew",
+      "match": true,
+      "mine": -0.6766,
+      "theirs": -0.6766
+    },
+    {
+      "item": "daily_dsr_holdout[ma_cross].kurtosis",
+      "match": true,
+      "mine": 8.5757,
+      "theirs": 8.5757
+    },
+    {
+      "item": "daily_dsr_oos[ma_cross]",
+      "match": true,
+      "mine": 0.1165,
+      "theirs": 0.1165
+    },
+    {
+      "item": "daily_wf_summary[donchian].sharpe",
+      "match": true,
+      "mine": 0.1416,
+      "theirs": 0.1416
+    },
+    {
+      "item": "daily_wf_summary[donchian].chained_return",
+      "match": true,
+      "mine": 0.0568,
+      "theirs": 0.0568
+    },
+    {
+      "item": "daily_wf_summary[donchian].positive_years",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf_summary[donchian].years_with_trades",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_selection_train_sharpe[donchian]",
+      "match": true,
+      "mine": 0.256,
+      "theirs": 0.256
+    },
+    {
+      "item": "daily_holdout[donchian].p_one_sided",
+      "match": true,
+      "mine": 0.4185,
+      "theirs": 0.415
+    },
+    {
+      "item": "daily_bootstrap_sharpe[donchian].sharpe",
+      "match": true,
+      "mine": 0.0874,
+      "theirs": 0.0874
+    },
+    {
+      "item": "daily_bootstrap_sharpe[donchian].share_positive",
+      "match": true,
+      "mine": 0.5942,
+      "theirs": 0.57
+    },
+    {
+      "item": "daily_bootstrap_sharpe[donchian].ci95_low",
+      "match": true,
+      "mine": -0.6693,
+      "theirs": -0.7538580437879422
+    },
+    {
+      "item": "daily_bootstrap_sharpe[donchian].ci95_high",
+      "match": true,
+      "mine": 0.9675,
+      "theirs": 0.9313135674132966
+    },
+    {
+      "item": "daily_holdout[donchian].p_sign_randomisation",
+      "match": true,
+      "mine": 0.3847,
+      "theirs": 0.3738
+    },
+    {
+      "item": "daily_holdout[donchian].sign_observed_net",
+      "match": true,
+      "mine": 160.22,
+      "theirs": 160.22
+    },
+    {
+      "item": "daily_holdout[donchian].sign_trades",
+      "match": true,
+      "mine": 19,
+      "theirs": 19
+    },
+    {
+      "item": "daily_dsr_holdout[donchian].dsr",
+      "match": true,
+      "mine": 0.0356,
+      "theirs": 0.0356
+    },
+    {
+      "item": "daily_dsr_holdout[donchian].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[donchian].sharpe_annual",
+      "match": true,
+      "mine": 0.0874,
+      "theirs": 0.0874
+    },
+    {
+      "item": "daily_dsr_holdout[donchian].skew",
+      "match": true,
+      "mine": -1.787,
+      "theirs": -1.787
+    },
+    {
+      "item": "daily_dsr_holdout[donchian].kurtosis",
+      "match": true,
+      "mine": 23.8819,
+      "theirs": 23.8819
+    },
+    {
+      "item": "daily_dsr_oos[donchian]",
+      "match": true,
+      "mine": 0.0625,
+      "theirs": 0.0625
+    },
+    {
+      "item": "daily_wf_summary[volatility_expansion].sharpe",
+      "match": true,
+      "mine": 0.0135,
+      "theirs": 0.0135
+    },
+    {
+      "item": "daily_wf_summary[volatility_expansion].chained_return",
+      "match": true,
+      "mine": -0.0007,
+      "theirs": -0.0007
+    },
+    {
+      "item": "daily_wf_summary[volatility_expansion].positive_years",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf_summary[volatility_expansion].years_with_trades",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_selection_train_sharpe[volatility_expansion]",
+      "match": true,
+      "mine": 0.1612,
+      "theirs": 0.1612
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].p_one_sided",
+      "match": true,
+      "mine": 0.201,
+      "theirs": 0.1935
+    },
+    {
+      "item": "daily_bootstrap_sharpe[volatility_expansion].sharpe",
+      "match": true,
+      "mine": 0.3867,
+      "theirs": 0.3867
+    },
+    {
+      "item": "daily_bootstrap_sharpe[volatility_expansion].share_positive",
+      "match": true,
+      "mine": 0.8087,
+      "theirs": 0.797
+    },
+    {
+      "item": "daily_bootstrap_sharpe[volatility_expansion].ci95_low",
+      "match": true,
+      "mine": -0.4542,
+      "theirs": -0.490282027951946
+    },
+    {
+      "item": "daily_bootstrap_sharpe[volatility_expansion].ci95_high",
+      "match": true,
+      "mine": 1.2257,
+      "theirs": 1.2394913000184782
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].p_sign_randomisation",
+      "match": true,
+      "mine": 0.121,
+      "theirs": 0.1092
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].sign_observed_net",
+      "match": true,
+      "mine": 673.05,
+      "theirs": 673.05
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].sign_trades",
+      "match": true,
+      "mine": 134,
+      "theirs": 134
+    },
+    {
+      "item": "daily_dsr_holdout[volatility_expansion].dsr",
+      "match": true,
+      "mine": 0.1285,
+      "theirs": 0.1285
+    },
+    {
+      "item": "daily_dsr_holdout[volatility_expansion].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[volatility_expansion].sharpe_annual",
+      "match": true,
+      "mine": 0.3867,
+      "theirs": 0.3867
+    },
+    {
+      "item": "daily_dsr_holdout[volatility_expansion].skew",
+      "match": true,
+      "mine": 0.7275,
+      "theirs": 0.7275
+    },
+    {
+      "item": "daily_dsr_holdout[volatility_expansion].kurtosis",
+      "match": true,
+      "mine": 14.9155,
+      "theirs": 14.9155
+    },
+    {
+      "item": "daily_dsr_oos[volatility_expansion]",
+      "match": true,
+      "mine": 0.0733,
+      "theirs": 0.0733
+    },
+    {
+      "item": "daily_wf_summary[trend_gated].sharpe",
+      "match": true,
+      "mine": 0.536,
+      "theirs": 0.536
+    },
+    {
+      "item": "daily_wf_summary[trend_gated].chained_return",
+      "match": true,
+      "mine": 0.0281,
+      "theirs": 0.0281
+    },
+    {
+      "item": "daily_wf_summary[trend_gated].positive_years",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_wf_summary[trend_gated].years_with_trades",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_selection_train_sharpe[trend_gated]",
+      "match": true,
+      "mine": 0.2758,
+      "theirs": 0.2758
+    },
+    {
+      "item": "daily_holdout[trend_gated].p_one_sided",
+      "match": true,
+      "mine": 0.752,
+      "theirs": 0.7595
+    },
+    {
+      "item": "daily_bootstrap_sharpe[trend_gated].sharpe",
+      "match": true,
+      "mine": -0.2764,
+      "theirs": -0.2764
+    },
+    {
+      "item": "daily_bootstrap_sharpe[trend_gated].share_positive",
+      "match": true,
+      "mine": 0.226,
+      "theirs": 0.215
+    },
+    {
+      "item": "daily_bootstrap_sharpe[trend_gated].ci95_low",
+      "match": true,
+      "mine": -0.9763,
+      "theirs": -0.9647780973265521
+    },
+    {
+      "item": "daily_bootstrap_sharpe[trend_gated].ci95_high",
+      "match": true,
+      "mine": 0.5187,
+      "theirs": 0.4904466476261467
+    },
+    {
+      "item": "daily_holdout[trend_gated].p_sign_randomisation",
+      "match": true,
+      "mine": 0.8577,
+      "theirs": 0.8392
+    },
+    {
+      "item": "daily_holdout[trend_gated].sign_observed_net",
+      "match": true,
+      "mine": -319.98,
+      "theirs": -319.98
+    },
+    {
+      "item": "daily_holdout[trend_gated].sign_trades",
+      "match": true,
+      "mine": 9,
+      "theirs": 9
+    },
+    {
+      "item": "daily_dsr_holdout[trend_gated].dsr",
+      "match": true,
+      "mine": 0.0032,
+      "theirs": 0.0032
+    },
+    {
+      "item": "daily_dsr_holdout[trend_gated].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[trend_gated].sharpe_annual",
+      "match": true,
+      "mine": -0.2764,
+      "theirs": -0.2764
+    },
+    {
+      "item": "daily_dsr_holdout[trend_gated].skew",
+      "match": true,
+      "mine": -3.3191,
+      "theirs": -3.3191
+    },
+    {
+      "item": "daily_dsr_holdout[trend_gated].kurtosis",
+      "match": true,
+      "mine": 43.0716,
+      "theirs": 43.0716
+    },
+    {
+      "item": "daily_dsr_oos[trend_gated]",
+      "match": true,
+      "mine": 0.0195,
+      "theirs": 0.0195
+    },
+    {
+      "item": "daily_wf_summary[mean_reversion].sharpe",
+      "match": true,
+      "mine": -0.3331,
+      "theirs": -0.3331
+    },
+    {
+      "item": "daily_wf_summary[mean_reversion].chained_return",
+      "match": true,
+      "mine": -0.1124,
+      "theirs": -0.1124
+    },
+    {
+      "item": "daily_wf_summary[mean_reversion].positive_years",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf_summary[mean_reversion].years_with_trades",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_selection_train_sharpe[mean_reversion]",
+      "match": true,
+      "mine": 0.0396,
+      "theirs": 0.0396
+    },
+    {
+      "item": "daily_holdout[mean_reversion].p_one_sided",
+      "match": true,
+      "mine": 0.835,
+      "theirs": 0.831
+    },
+    {
+      "item": "daily_bootstrap_sharpe[mean_reversion].sharpe",
+      "match": true,
+      "mine": -0.3967,
+      "theirs": -0.3967
+    },
+    {
+      "item": "daily_bootstrap_sharpe[mean_reversion].share_positive",
+      "match": true,
+      "mine": 0.1555,
+      "theirs": 0.153
+    },
+    {
+      "item": "daily_bootstrap_sharpe[mean_reversion].ci95_low",
+      "match": true,
+      "mine": -1.1097,
+      "theirs": -1.0702468947610957
+    },
+    {
+      "item": "daily_bootstrap_sharpe[mean_reversion].ci95_high",
+      "match": true,
+      "mine": 0.3915,
+      "theirs": 0.3898781365526112
+    },
+    {
+      "item": "daily_holdout[mean_reversion].p_sign_randomisation",
+      "match": true,
+      "mine": 0.7693,
+      "theirs": 0.7664
+    },
+    {
+      "item": "daily_holdout[mean_reversion].sign_observed_net",
+      "match": true,
+      "mine": -841.32,
+      "theirs": -841.32
+    },
+    {
+      "item": "daily_holdout[mean_reversion].sign_trades",
+      "match": true,
+      "mine": 47,
+      "theirs": 47
+    },
+    {
+      "item": "daily_dsr_holdout[mean_reversion].dsr",
+      "match": true,
+      "mine": 0.0013,
+      "theirs": 0.0013
+    },
+    {
+      "item": "daily_dsr_holdout[mean_reversion].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[mean_reversion].sharpe_annual",
+      "match": true,
+      "mine": -0.3967,
+      "theirs": -0.3967
+    },
+    {
+      "item": "daily_dsr_holdout[mean_reversion].skew",
+      "match": true,
+      "mine": -2.4854,
+      "theirs": -2.4854
+    },
+    {
+      "item": "daily_dsr_holdout[mean_reversion].kurtosis",
+      "match": true,
+      "mine": 52.8622,
+      "theirs": 52.8622
+    },
+    {
+      "item": "daily_dsr_oos[mean_reversion]",
+      "match": true,
+      "mine": 0.0003,
+      "theirs": 0.0003
+    },
+    {
+      "item": "daily_holm[tsmom]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_holm[ma_cross]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_holm[donchian]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_holm[volatility_expansion]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_holm[trend_gated]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_holm[mean_reversion]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_gate_arithmetic[donchian]",
+      "match": true,
+      "mine": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "theirs": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[donchian].oos_round_turns",
+      "match": true,
+      "mine": 69,
+      "theirs": 69
+    },
+    {
+      "item": "daily_gate_arithmetic[donchian].positive_regimes",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_gate_arithmetic[ma_cross]",
+      "match": true,
+      "mine": [
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        true
+      ],
+      "theirs": [
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[ma_cross].oos_round_turns",
+      "match": true,
+      "mine": 61,
+      "theirs": 61
+    },
+    {
+      "item": "daily_gate_arithmetic[ma_cross].positive_regimes",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_gate_arithmetic[mean_reversion]",
+      "match": true,
+      "mine": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "theirs": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[mean_reversion].oos_round_turns",
+      "match": true,
+      "mine": 133,
+      "theirs": 133
+    },
+    {
+      "item": "daily_gate_arithmetic[mean_reversion].positive_regimes",
+      "match": true,
+      "mine": 1,
+      "theirs": 1
+    },
+    {
+      "item": "daily_gate_arithmetic[trend_gated]",
+      "match": true,
+      "mine": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "theirs": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[trend_gated].oos_round_turns",
+      "match": true,
+      "mine": 12,
+      "theirs": 12
+    },
+    {
+      "item": "daily_gate_arithmetic[trend_gated].positive_regimes",
+      "match": true,
+      "mine": 1,
+      "theirs": 1
+    },
+    {
+      "item": "daily_gate_arithmetic[tsmom]",
+      "match": true,
+      "mine": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "theirs": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[tsmom].oos_round_turns",
+      "match": true,
+      "mine": 47,
+      "theirs": 47
+    },
+    {
+      "item": "daily_gate_arithmetic[tsmom].positive_regimes",
+      "match": true,
+      "mine": 1,
+      "theirs": 1
+    },
+    {
+      "item": "daily_gate_arithmetic[volatility_expansion]",
+      "match": true,
+      "mine": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        true,
+        true
+      ],
+      "theirs": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        true,
+        true
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[volatility_expansion].oos_round_turns",
+      "match": true,
+      "mine": 375,
+      "theirs": 375
+    },
+    {
+      "item": "daily_gate_arithmetic[volatility_expansion].positive_regimes",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
       "item": "daily_regimes[tsmom][UP_HIVOL].days",
       "match": true,
       "mine": 929,
@@ -2786,10 +3752,82 @@
       "theirs": 0.3055
     },
     {
+      "item": "m15_selection_train_sharpe[ma_cross]",
+      "match": true,
+      "mine": -0.1074,
+      "theirs": -0.1074
+    },
+    {
+      "item": "m15_bootstrap_sharpe[ma_cross].sharpe",
+      "match": true,
+      "mine": 0.2136,
+      "theirs": 0.2136
+    },
+    {
+      "item": "m15_bootstrap_sharpe[ma_cross].share_positive",
+      "match": true,
+      "mine": 0.6965,
+      "theirs": 0.693
+    },
+    {
+      "item": "m15_bootstrap_sharpe[ma_cross].ci95_low",
+      "match": true,
+      "mine": -0.63,
+      "theirs": -0.6344809390412208
+    },
+    {
+      "item": "m15_bootstrap_sharpe[ma_cross].ci95_high",
+      "match": true,
+      "mine": 1.0428,
+      "theirs": 1.0197304192838827
+    },
+    {
       "item": "m15_holdout[ma_cross].p_sign_randomisation",
       "match": true,
       "mine": 0.0093,
       "theirs": 0.0066
+    },
+    {
+      "item": "m15_holdout[ma_cross].sign_observed_net",
+      "match": true,
+      "mine": 1092.55,
+      "theirs": 1092.55
+    },
+    {
+      "item": "m15_holdout[ma_cross].sign_trades",
+      "match": true,
+      "mine": 1154,
+      "theirs": 1154
+    },
+    {
+      "item": "m15_dsr_holdout[ma_cross].dsr",
+      "match": true,
+      "mine": 0.0445,
+      "theirs": 0.0445
+    },
+    {
+      "item": "m15_dsr_holdout[ma_cross].n",
+      "match": true,
+      "mine": 121915,
+      "theirs": 121915
+    },
+    {
+      "item": "m15_dsr_holdout[ma_cross].sharpe_annual",
+      "match": true,
+      "mine": 0.2136,
+      "theirs": 0.2136
+    },
+    {
+      "item": "m15_dsr_holdout[ma_cross].skew",
+      "match": true,
+      "mine": 0.8332,
+      "theirs": 0.8332
+    },
+    {
+      "item": "m15_dsr_holdout[ma_cross].kurtosis",
+      "match": true,
+      "mine": 51.8129,
+      "theirs": 51.8129
     },
     {
       "item": "m15_wf_summary[donchian].sharpe",
@@ -2804,10 +3842,82 @@
       "theirs": 0.3985
     },
     {
+      "item": "m15_selection_train_sharpe[donchian]",
+      "match": true,
+      "mine": 0.1099,
+      "theirs": 0.1099
+    },
+    {
+      "item": "m15_bootstrap_sharpe[donchian].sharpe",
+      "match": true,
+      "mine": 0.104,
+      "theirs": 0.104
+    },
+    {
+      "item": "m15_bootstrap_sharpe[donchian].share_positive",
+      "match": true,
+      "mine": 0.595,
+      "theirs": 0.572
+    },
+    {
+      "item": "m15_bootstrap_sharpe[donchian].ci95_low",
+      "match": true,
+      "mine": -0.7082,
+      "theirs": -0.7666646684501734
+    },
+    {
+      "item": "m15_bootstrap_sharpe[donchian].ci95_high",
+      "match": true,
+      "mine": 0.9525,
+      "theirs": 0.9478986475086502
+    },
+    {
       "item": "m15_holdout[donchian].p_sign_randomisation",
       "match": true,
       "mine": 0.221,
       "theirs": 0.229
+    },
+    {
+      "item": "m15_holdout[donchian].sign_observed_net",
+      "match": true,
+      "mine": 288.09,
+      "theirs": 288.09
+    },
+    {
+      "item": "m15_holdout[donchian].sign_trades",
+      "match": true,
+      "mine": 231,
+      "theirs": 231
+    },
+    {
+      "item": "m15_dsr_holdout[donchian].dsr",
+      "match": true,
+      "mine": 0.0255,
+      "theirs": 0.0255
+    },
+    {
+      "item": "m15_dsr_holdout[donchian].n",
+      "match": true,
+      "mine": 121915,
+      "theirs": 121915
+    },
+    {
+      "item": "m15_dsr_holdout[donchian].sharpe_annual",
+      "match": true,
+      "mine": 0.104,
+      "theirs": 0.104
+    },
+    {
+      "item": "m15_dsr_holdout[donchian].skew",
+      "match": true,
+      "mine": 1.3876,
+      "theirs": 1.3876
+    },
+    {
+      "item": "m15_dsr_holdout[donchian].kurtosis",
+      "match": true,
+      "mine": 154.5144,
+      "theirs": 154.5144
     },
     {
       "item": "m15_wf_summary[volatility_expansion].sharpe",
@@ -2822,10 +3932,82 @@
       "theirs": 1.0
     },
     {
+      "item": "m15_selection_train_sharpe[volatility_expansion]",
+      "match": true,
+      "mine": -6.3507,
+      "theirs": -6.3507
+    },
+    {
+      "item": "m15_bootstrap_sharpe[volatility_expansion].sharpe",
+      "match": true,
+      "mine": -7.1422,
+      "theirs": -7.1422
+    },
+    {
+      "item": "m15_bootstrap_sharpe[volatility_expansion].share_positive",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "m15_bootstrap_sharpe[volatility_expansion].ci95_low",
+      "match": true,
+      "mine": -8.0677,
+      "theirs": -8.13508559931405
+    },
+    {
+      "item": "m15_bootstrap_sharpe[volatility_expansion].ci95_high",
+      "match": true,
+      "mine": -6.2492,
+      "theirs": -6.226209007234403
+    },
+    {
       "item": "m15_holdout[volatility_expansion].p_sign_randomisation",
       "match": true,
       "mine": 0.9877,
       "theirs": 0.9818
+    },
+    {
+      "item": "m15_holdout[volatility_expansion].sign_observed_net",
+      "match": true,
+      "mine": -9938.7,
+      "theirs": -9938.7
+    },
+    {
+      "item": "m15_holdout[volatility_expansion].sign_trades",
+      "match": true,
+      "mine": 8162,
+      "theirs": 8162
+    },
+    {
+      "item": "m15_dsr_holdout[volatility_expansion].dsr",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "m15_dsr_holdout[volatility_expansion].n",
+      "match": true,
+      "mine": 121915,
+      "theirs": 121915
+    },
+    {
+      "item": "m15_dsr_holdout[volatility_expansion].sharpe_annual",
+      "match": true,
+      "mine": -7.1422,
+      "theirs": -7.1422
+    },
+    {
+      "item": "m15_dsr_holdout[volatility_expansion].skew",
+      "match": true,
+      "mine": 1.0606,
+      "theirs": 1.0606
+    },
+    {
+      "item": "m15_dsr_holdout[volatility_expansion].kurtosis",
+      "match": true,
+      "mine": 42.9635,
+      "theirs": 42.9635
     },
     {
       "item": "m15_wf_summary[session_breakout].sharpe",
@@ -2840,10 +4022,82 @@
       "theirs": 0.9945
     },
     {
+      "item": "m15_selection_train_sharpe[session_breakout]",
+      "match": true,
+      "mine": -0.7488,
+      "theirs": -0.7488
+    },
+    {
+      "item": "m15_bootstrap_sharpe[session_breakout].sharpe",
+      "match": true,
+      "mine": -1.1266,
+      "theirs": -1.1266
+    },
+    {
+      "item": "m15_bootstrap_sharpe[session_breakout].share_positive",
+      "match": true,
+      "mine": 0.0053,
+      "theirs": 0.004
+    },
+    {
+      "item": "m15_bootstrap_sharpe[session_breakout].ci95_low",
+      "match": true,
+      "mine": -1.9785,
+      "theirs": -1.9909218243921358
+    },
+    {
+      "item": "m15_bootstrap_sharpe[session_breakout].ci95_high",
+      "match": true,
+      "mine": -0.2599,
+      "theirs": -0.26727076518806586
+    },
+    {
       "item": "m15_holdout[session_breakout].p_sign_randomisation",
       "match": true,
       "mine": 0.269,
       "theirs": 0.2698
+    },
+    {
+      "item": "m15_holdout[session_breakout].sign_observed_net",
+      "match": true,
+      "mine": -4467.03,
+      "theirs": -4467.03
+    },
+    {
+      "item": "m15_holdout[session_breakout].sign_trades",
+      "match": true,
+      "mine": 1265,
+      "theirs": 1265
+    },
+    {
+      "item": "m15_dsr_holdout[session_breakout].dsr",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "m15_dsr_holdout[session_breakout].n",
+      "match": true,
+      "mine": 121915,
+      "theirs": 121915
+    },
+    {
+      "item": "m15_dsr_holdout[session_breakout].sharpe_annual",
+      "match": true,
+      "mine": -1.1266,
+      "theirs": -1.1266
+    },
+    {
+      "item": "m15_dsr_holdout[session_breakout].skew",
+      "match": true,
+      "mine": 0.735,
+      "theirs": 0.735
+    },
+    {
+      "item": "m15_dsr_holdout[session_breakout].kurtosis",
+      "match": true,
+      "mine": 39.114,
+      "theirs": 39.114
     },
     {
       "item": "m15_holm[ma_cross]",
@@ -3199,9 +4453,9 @@
     }
   ],
   "cross_check_summary": {
-    "matched": 522,
+    "matched": 715,
     "mismatched": 0,
-    "total": 522
+    "total": 715
   },
   "cross_checks": [
     {
@@ -4345,6 +5599,12 @@
       "theirs": 0.0
     },
     {
+      "item": "daily_holdout[tsmom].zero_cost_net",
+      "match": true,
+      "mine": -308.85,
+      "theirs": -308.85
+    },
+    {
       "item": "daily_holdout[ma_cross].net_usd",
       "match": true,
       "mine": 530.11,
@@ -4397,6 +5657,12 @@
       "match": true,
       "mine": 23.6561,
       "theirs": 23.6561
+    },
+    {
+      "item": "daily_holdout[ma_cross].zero_cost_net",
+      "match": true,
+      "mine": 554.12,
+      "theirs": 554.12
     },
     {
       "item": "daily_holdout[donchian].net_usd",
@@ -4453,6 +5719,12 @@
       "theirs": 4.7614
     },
     {
+      "item": "daily_holdout[donchian].zero_cost_net",
+      "match": true,
+      "mine": 203.24,
+      "theirs": 203.24
+    },
+    {
       "item": "daily_holdout[volatility_expansion].net_usd",
       "match": true,
       "mine": 673.05,
@@ -4505,6 +5777,12 @@
       "match": true,
       "mine": 3.3494,
       "theirs": 3.3494
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].zero_cost_net",
+      "match": true,
+      "mine": 973.05,
+      "theirs": 973.05
     },
     {
       "item": "daily_holdout[trend_gated].net_usd",
@@ -4561,6 +5839,12 @@
       "theirs": 0.0
     },
     {
+      "item": "daily_holdout[trend_gated].zero_cost_net",
+      "match": true,
+      "mine": -306.73,
+      "theirs": -306.73
+    },
+    {
       "item": "daily_holdout[mean_reversion].net_usd",
       "match": true,
       "mine": -841.32,
@@ -4613,6 +5897,12 @@
       "match": true,
       "mine": 0.0,
       "theirs": 0.0
+    },
+    {
+      "item": "daily_holdout[mean_reversion].zero_cost_net",
+      "match": true,
+      "mine": -669.69,
+      "theirs": -669.69
     },
     {
       "item": "daily_buyhold.net_usd",
@@ -5605,6 +6895,936 @@
       "theirs": 10
     },
     {
+      "item": "daily_n_trials",
+      "match": true,
+      "mine": 26,
+      "theirs": 26
+    },
+    {
+      "item": "daily_wf_summary[tsmom].sharpe",
+      "match": true,
+      "mine": -0.0709,
+      "theirs": -0.0709
+    },
+    {
+      "item": "daily_wf_summary[tsmom].chained_return",
+      "match": true,
+      "mine": -0.1088,
+      "theirs": -0.1088
+    },
+    {
+      "item": "daily_wf_summary[tsmom].positive_years",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf_summary[tsmom].years_with_trades",
+      "match": true,
+      "mine": 9,
+      "theirs": 9
+    },
+    {
+      "item": "daily_selection_train_sharpe[tsmom]",
+      "match": true,
+      "mine": 0.6513,
+      "theirs": 0.6513
+    },
+    {
+      "item": "daily_holdout[tsmom].p_one_sided",
+      "match": true,
+      "mine": 0.495,
+      "theirs": 0.502
+    },
+    {
+      "item": "daily_bootstrap_sharpe[tsmom].sharpe",
+      "match": true,
+      "mine": -0.0107,
+      "theirs": -0.0107
+    },
+    {
+      "item": "daily_bootstrap_sharpe[tsmom].share_positive",
+      "match": true,
+      "mine": 0.489,
+      "theirs": 0.494
+    },
+    {
+      "item": "daily_bootstrap_sharpe[tsmom].ci95_low",
+      "match": true,
+      "mine": -0.8616,
+      "theirs": -0.8104817216952208
+    },
+    {
+      "item": "daily_bootstrap_sharpe[tsmom].ci95_high",
+      "match": true,
+      "mine": 0.8597,
+      "theirs": 0.8558309031512075
+    },
+    {
+      "item": "daily_holdout[tsmom].p_sign_randomisation",
+      "match": true,
+      "mine": 0.5553,
+      "theirs": 0.5278
+    },
+    {
+      "item": "daily_holdout[tsmom].sign_observed_net",
+      "match": true,
+      "mine": -378.57,
+      "theirs": -378.57
+    },
+    {
+      "item": "daily_holdout[tsmom].sign_trades",
+      "match": true,
+      "mine": 13,
+      "theirs": 13
+    },
+    {
+      "item": "daily_dsr_holdout[tsmom].dsr",
+      "match": true,
+      "mine": 0.0207,
+      "theirs": 0.0207
+    },
+    {
+      "item": "daily_dsr_holdout[tsmom].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[tsmom].sharpe_annual",
+      "match": true,
+      "mine": -0.0107,
+      "theirs": -0.0107
+    },
+    {
+      "item": "daily_dsr_holdout[tsmom].skew",
+      "match": true,
+      "mine": -0.6018,
+      "theirs": -0.6018
+    },
+    {
+      "item": "daily_dsr_holdout[tsmom].kurtosis",
+      "match": true,
+      "mine": 7.7016,
+      "theirs": 7.7016
+    },
+    {
+      "item": "daily_dsr_oos[tsmom]",
+      "match": true,
+      "mine": 0.0141,
+      "theirs": 0.0141
+    },
+    {
+      "item": "daily_wf_summary[ma_cross].sharpe",
+      "match": true,
+      "mine": 0.168,
+      "theirs": 0.168
+    },
+    {
+      "item": "daily_wf_summary[ma_cross].chained_return",
+      "match": true,
+      "mine": 0.0593,
+      "theirs": 0.0593
+    },
+    {
+      "item": "daily_wf_summary[ma_cross].positive_years",
+      "match": true,
+      "mine": 6,
+      "theirs": 6
+    },
+    {
+      "item": "daily_wf_summary[ma_cross].years_with_trades",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_selection_train_sharpe[ma_cross]",
+      "match": true,
+      "mine": 0.2547,
+      "theirs": 0.2547
+    },
+    {
+      "item": "daily_holdout[ma_cross].p_one_sided",
+      "match": true,
+      "mine": 0.258,
+      "theirs": 0.253
+    },
+    {
+      "item": "daily_bootstrap_sharpe[ma_cross].sharpe",
+      "match": true,
+      "mine": 0.2995,
+      "theirs": 0.2995
+    },
+    {
+      "item": "daily_bootstrap_sharpe[ma_cross].share_positive",
+      "match": true,
+      "mine": 0.7512,
+      "theirs": 0.737
+    },
+    {
+      "item": "daily_bootstrap_sharpe[ma_cross].ci95_low",
+      "match": true,
+      "mine": -0.5706,
+      "theirs": -0.5490119866249996
+    },
+    {
+      "item": "daily_bootstrap_sharpe[ma_cross].ci95_high",
+      "match": true,
+      "mine": 1.2032,
+      "theirs": 1.157900944133473
+    },
+    {
+      "item": "daily_holdout[ma_cross].p_sign_randomisation",
+      "match": true,
+      "mine": 0.4777,
+      "theirs": 0.4596
+    },
+    {
+      "item": "daily_holdout[ma_cross].sign_observed_net",
+      "match": true,
+      "mine": 530.11,
+      "theirs": 530.11
+    },
+    {
+      "item": "daily_holdout[ma_cross].sign_trades",
+      "match": true,
+      "mine": 14,
+      "theirs": 14
+    },
+    {
+      "item": "daily_dsr_holdout[ma_cross].dsr",
+      "match": true,
+      "mine": 0.094,
+      "theirs": 0.094
+    },
+    {
+      "item": "daily_dsr_holdout[ma_cross].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[ma_cross].sharpe_annual",
+      "match": true,
+      "mine": 0.2995,
+      "theirs": 0.2995
+    },
+    {
+      "item": "daily_dsr_holdout[ma_cross].skew",
+      "match": true,
+      "mine": -0.6766,
+      "theirs": -0.6766
+    },
+    {
+      "item": "daily_dsr_holdout[ma_cross].kurtosis",
+      "match": true,
+      "mine": 8.5757,
+      "theirs": 8.5757
+    },
+    {
+      "item": "daily_dsr_oos[ma_cross]",
+      "match": true,
+      "mine": 0.1165,
+      "theirs": 0.1165
+    },
+    {
+      "item": "daily_wf_summary[donchian].sharpe",
+      "match": true,
+      "mine": 0.1416,
+      "theirs": 0.1416
+    },
+    {
+      "item": "daily_wf_summary[donchian].chained_return",
+      "match": true,
+      "mine": 0.0568,
+      "theirs": 0.0568
+    },
+    {
+      "item": "daily_wf_summary[donchian].positive_years",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf_summary[donchian].years_with_trades",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_selection_train_sharpe[donchian]",
+      "match": true,
+      "mine": 0.256,
+      "theirs": 0.256
+    },
+    {
+      "item": "daily_holdout[donchian].p_one_sided",
+      "match": true,
+      "mine": 0.4185,
+      "theirs": 0.415
+    },
+    {
+      "item": "daily_bootstrap_sharpe[donchian].sharpe",
+      "match": true,
+      "mine": 0.0874,
+      "theirs": 0.0874
+    },
+    {
+      "item": "daily_bootstrap_sharpe[donchian].share_positive",
+      "match": true,
+      "mine": 0.5942,
+      "theirs": 0.57
+    },
+    {
+      "item": "daily_bootstrap_sharpe[donchian].ci95_low",
+      "match": true,
+      "mine": -0.6693,
+      "theirs": -0.7538580437879422
+    },
+    {
+      "item": "daily_bootstrap_sharpe[donchian].ci95_high",
+      "match": true,
+      "mine": 0.9675,
+      "theirs": 0.9313135674132966
+    },
+    {
+      "item": "daily_holdout[donchian].p_sign_randomisation",
+      "match": true,
+      "mine": 0.3847,
+      "theirs": 0.3738
+    },
+    {
+      "item": "daily_holdout[donchian].sign_observed_net",
+      "match": true,
+      "mine": 160.22,
+      "theirs": 160.22
+    },
+    {
+      "item": "daily_holdout[donchian].sign_trades",
+      "match": true,
+      "mine": 19,
+      "theirs": 19
+    },
+    {
+      "item": "daily_dsr_holdout[donchian].dsr",
+      "match": true,
+      "mine": 0.0356,
+      "theirs": 0.0356
+    },
+    {
+      "item": "daily_dsr_holdout[donchian].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[donchian].sharpe_annual",
+      "match": true,
+      "mine": 0.0874,
+      "theirs": 0.0874
+    },
+    {
+      "item": "daily_dsr_holdout[donchian].skew",
+      "match": true,
+      "mine": -1.787,
+      "theirs": -1.787
+    },
+    {
+      "item": "daily_dsr_holdout[donchian].kurtosis",
+      "match": true,
+      "mine": 23.8819,
+      "theirs": 23.8819
+    },
+    {
+      "item": "daily_dsr_oos[donchian]",
+      "match": true,
+      "mine": 0.0625,
+      "theirs": 0.0625
+    },
+    {
+      "item": "daily_wf_summary[volatility_expansion].sharpe",
+      "match": true,
+      "mine": 0.0135,
+      "theirs": 0.0135
+    },
+    {
+      "item": "daily_wf_summary[volatility_expansion].chained_return",
+      "match": true,
+      "mine": -0.0007,
+      "theirs": -0.0007
+    },
+    {
+      "item": "daily_wf_summary[volatility_expansion].positive_years",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf_summary[volatility_expansion].years_with_trades",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_selection_train_sharpe[volatility_expansion]",
+      "match": true,
+      "mine": 0.1612,
+      "theirs": 0.1612
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].p_one_sided",
+      "match": true,
+      "mine": 0.201,
+      "theirs": 0.1935
+    },
+    {
+      "item": "daily_bootstrap_sharpe[volatility_expansion].sharpe",
+      "match": true,
+      "mine": 0.3867,
+      "theirs": 0.3867
+    },
+    {
+      "item": "daily_bootstrap_sharpe[volatility_expansion].share_positive",
+      "match": true,
+      "mine": 0.8087,
+      "theirs": 0.797
+    },
+    {
+      "item": "daily_bootstrap_sharpe[volatility_expansion].ci95_low",
+      "match": true,
+      "mine": -0.4542,
+      "theirs": -0.490282027951946
+    },
+    {
+      "item": "daily_bootstrap_sharpe[volatility_expansion].ci95_high",
+      "match": true,
+      "mine": 1.2257,
+      "theirs": 1.2394913000184782
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].p_sign_randomisation",
+      "match": true,
+      "mine": 0.121,
+      "theirs": 0.1092
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].sign_observed_net",
+      "match": true,
+      "mine": 673.05,
+      "theirs": 673.05
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].sign_trades",
+      "match": true,
+      "mine": 134,
+      "theirs": 134
+    },
+    {
+      "item": "daily_dsr_holdout[volatility_expansion].dsr",
+      "match": true,
+      "mine": 0.1285,
+      "theirs": 0.1285
+    },
+    {
+      "item": "daily_dsr_holdout[volatility_expansion].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[volatility_expansion].sharpe_annual",
+      "match": true,
+      "mine": 0.3867,
+      "theirs": 0.3867
+    },
+    {
+      "item": "daily_dsr_holdout[volatility_expansion].skew",
+      "match": true,
+      "mine": 0.7275,
+      "theirs": 0.7275
+    },
+    {
+      "item": "daily_dsr_holdout[volatility_expansion].kurtosis",
+      "match": true,
+      "mine": 14.9155,
+      "theirs": 14.9155
+    },
+    {
+      "item": "daily_dsr_oos[volatility_expansion]",
+      "match": true,
+      "mine": 0.0733,
+      "theirs": 0.0733
+    },
+    {
+      "item": "daily_wf_summary[trend_gated].sharpe",
+      "match": true,
+      "mine": 0.536,
+      "theirs": 0.536
+    },
+    {
+      "item": "daily_wf_summary[trend_gated].chained_return",
+      "match": true,
+      "mine": 0.0281,
+      "theirs": 0.0281
+    },
+    {
+      "item": "daily_wf_summary[trend_gated].positive_years",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_wf_summary[trend_gated].years_with_trades",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_selection_train_sharpe[trend_gated]",
+      "match": true,
+      "mine": 0.2758,
+      "theirs": 0.2758
+    },
+    {
+      "item": "daily_holdout[trend_gated].p_one_sided",
+      "match": true,
+      "mine": 0.752,
+      "theirs": 0.7595
+    },
+    {
+      "item": "daily_bootstrap_sharpe[trend_gated].sharpe",
+      "match": true,
+      "mine": -0.2764,
+      "theirs": -0.2764
+    },
+    {
+      "item": "daily_bootstrap_sharpe[trend_gated].share_positive",
+      "match": true,
+      "mine": 0.226,
+      "theirs": 0.215
+    },
+    {
+      "item": "daily_bootstrap_sharpe[trend_gated].ci95_low",
+      "match": true,
+      "mine": -0.9763,
+      "theirs": -0.9647780973265521
+    },
+    {
+      "item": "daily_bootstrap_sharpe[trend_gated].ci95_high",
+      "match": true,
+      "mine": 0.5187,
+      "theirs": 0.4904466476261467
+    },
+    {
+      "item": "daily_holdout[trend_gated].p_sign_randomisation",
+      "match": true,
+      "mine": 0.8577,
+      "theirs": 0.8392
+    },
+    {
+      "item": "daily_holdout[trend_gated].sign_observed_net",
+      "match": true,
+      "mine": -319.98,
+      "theirs": -319.98
+    },
+    {
+      "item": "daily_holdout[trend_gated].sign_trades",
+      "match": true,
+      "mine": 9,
+      "theirs": 9
+    },
+    {
+      "item": "daily_dsr_holdout[trend_gated].dsr",
+      "match": true,
+      "mine": 0.0032,
+      "theirs": 0.0032
+    },
+    {
+      "item": "daily_dsr_holdout[trend_gated].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[trend_gated].sharpe_annual",
+      "match": true,
+      "mine": -0.2764,
+      "theirs": -0.2764
+    },
+    {
+      "item": "daily_dsr_holdout[trend_gated].skew",
+      "match": true,
+      "mine": -3.3191,
+      "theirs": -3.3191
+    },
+    {
+      "item": "daily_dsr_holdout[trend_gated].kurtosis",
+      "match": true,
+      "mine": 43.0716,
+      "theirs": 43.0716
+    },
+    {
+      "item": "daily_dsr_oos[trend_gated]",
+      "match": true,
+      "mine": 0.0195,
+      "theirs": 0.0195
+    },
+    {
+      "item": "daily_wf_summary[mean_reversion].sharpe",
+      "match": true,
+      "mine": -0.3331,
+      "theirs": -0.3331
+    },
+    {
+      "item": "daily_wf_summary[mean_reversion].chained_return",
+      "match": true,
+      "mine": -0.1124,
+      "theirs": -0.1124
+    },
+    {
+      "item": "daily_wf_summary[mean_reversion].positive_years",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf_summary[mean_reversion].years_with_trades",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_selection_train_sharpe[mean_reversion]",
+      "match": true,
+      "mine": 0.0396,
+      "theirs": 0.0396
+    },
+    {
+      "item": "daily_holdout[mean_reversion].p_one_sided",
+      "match": true,
+      "mine": 0.835,
+      "theirs": 0.831
+    },
+    {
+      "item": "daily_bootstrap_sharpe[mean_reversion].sharpe",
+      "match": true,
+      "mine": -0.3967,
+      "theirs": -0.3967
+    },
+    {
+      "item": "daily_bootstrap_sharpe[mean_reversion].share_positive",
+      "match": true,
+      "mine": 0.1555,
+      "theirs": 0.153
+    },
+    {
+      "item": "daily_bootstrap_sharpe[mean_reversion].ci95_low",
+      "match": true,
+      "mine": -1.1097,
+      "theirs": -1.0702468947610957
+    },
+    {
+      "item": "daily_bootstrap_sharpe[mean_reversion].ci95_high",
+      "match": true,
+      "mine": 0.3915,
+      "theirs": 0.3898781365526112
+    },
+    {
+      "item": "daily_holdout[mean_reversion].p_sign_randomisation",
+      "match": true,
+      "mine": 0.7693,
+      "theirs": 0.7664
+    },
+    {
+      "item": "daily_holdout[mean_reversion].sign_observed_net",
+      "match": true,
+      "mine": -841.32,
+      "theirs": -841.32
+    },
+    {
+      "item": "daily_holdout[mean_reversion].sign_trades",
+      "match": true,
+      "mine": 47,
+      "theirs": 47
+    },
+    {
+      "item": "daily_dsr_holdout[mean_reversion].dsr",
+      "match": true,
+      "mine": 0.0013,
+      "theirs": 0.0013
+    },
+    {
+      "item": "daily_dsr_holdout[mean_reversion].n",
+      "match": true,
+      "mine": 1333,
+      "theirs": 1333
+    },
+    {
+      "item": "daily_dsr_holdout[mean_reversion].sharpe_annual",
+      "match": true,
+      "mine": -0.3967,
+      "theirs": -0.3967
+    },
+    {
+      "item": "daily_dsr_holdout[mean_reversion].skew",
+      "match": true,
+      "mine": -2.4854,
+      "theirs": -2.4854
+    },
+    {
+      "item": "daily_dsr_holdout[mean_reversion].kurtosis",
+      "match": true,
+      "mine": 52.8622,
+      "theirs": 52.8622
+    },
+    {
+      "item": "daily_dsr_oos[mean_reversion]",
+      "match": true,
+      "mine": 0.0003,
+      "theirs": 0.0003
+    },
+    {
+      "item": "daily_holm[tsmom]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_holm[ma_cross]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_holm[donchian]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_holm[volatility_expansion]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_holm[trend_gated]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_holm[mean_reversion]",
+      "match": true,
+      "mine": 1.0,
+      "theirs": 1.0
+    },
+    {
+      "item": "daily_gate_arithmetic[donchian]",
+      "match": true,
+      "mine": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "theirs": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[donchian].oos_round_turns",
+      "match": true,
+      "mine": 69,
+      "theirs": 69
+    },
+    {
+      "item": "daily_gate_arithmetic[donchian].positive_regimes",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_gate_arithmetic[ma_cross]",
+      "match": true,
+      "mine": [
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        true
+      ],
+      "theirs": [
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[ma_cross].oos_round_turns",
+      "match": true,
+      "mine": 61,
+      "theirs": 61
+    },
+    {
+      "item": "daily_gate_arithmetic[ma_cross].positive_regimes",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_gate_arithmetic[mean_reversion]",
+      "match": true,
+      "mine": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "theirs": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[mean_reversion].oos_round_turns",
+      "match": true,
+      "mine": 133,
+      "theirs": 133
+    },
+    {
+      "item": "daily_gate_arithmetic[mean_reversion].positive_regimes",
+      "match": true,
+      "mine": 1,
+      "theirs": 1
+    },
+    {
+      "item": "daily_gate_arithmetic[trend_gated]",
+      "match": true,
+      "mine": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "theirs": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[trend_gated].oos_round_turns",
+      "match": true,
+      "mine": 12,
+      "theirs": 12
+    },
+    {
+      "item": "daily_gate_arithmetic[trend_gated].positive_regimes",
+      "match": true,
+      "mine": 1,
+      "theirs": 1
+    },
+    {
+      "item": "daily_gate_arithmetic[tsmom]",
+      "match": true,
+      "mine": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "theirs": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[tsmom].oos_round_turns",
+      "match": true,
+      "mine": 47,
+      "theirs": 47
+    },
+    {
+      "item": "daily_gate_arithmetic[tsmom].positive_regimes",
+      "match": true,
+      "mine": 1,
+      "theirs": 1
+    },
+    {
+      "item": "daily_gate_arithmetic[volatility_expansion]",
+      "match": true,
+      "mine": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        true,
+        true
+      ],
+      "theirs": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        true,
+        true
+      ]
+    },
+    {
+      "item": "daily_gate_arithmetic[volatility_expansion].oos_round_turns",
+      "match": true,
+      "mine": 375,
+      "theirs": 375
+    },
+    {
+      "item": "daily_gate_arithmetic[volatility_expansion].positive_regimes",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
       "item": "daily_regimes[tsmom][UP_HIVOL].days",
       "match": true,
       "mine": 929,
@@ -5989,10 +8209,82 @@
       "theirs": 0.3055
     },
     {
+      "item": "m15_selection_train_sharpe[ma_cross]",
+      "match": true,
+      "mine": -0.1074,
+      "theirs": -0.1074
+    },
+    {
+      "item": "m15_bootstrap_sharpe[ma_cross].sharpe",
+      "match": true,
+      "mine": 0.2136,
+      "theirs": 0.2136
+    },
+    {
+      "item": "m15_bootstrap_sharpe[ma_cross].share_positive",
+      "match": true,
+      "mine": 0.6965,
+      "theirs": 0.693
+    },
+    {
+      "item": "m15_bootstrap_sharpe[ma_cross].ci95_low",
+      "match": true,
+      "mine": -0.63,
+      "theirs": -0.6344809390412208
+    },
+    {
+      "item": "m15_bootstrap_sharpe[ma_cross].ci95_high",
+      "match": true,
+      "mine": 1.0428,
+      "theirs": 1.0197304192838827
+    },
+    {
       "item": "m15_holdout[ma_cross].p_sign_randomisation",
       "match": true,
       "mine": 0.0093,
       "theirs": 0.0066
+    },
+    {
+      "item": "m15_holdout[ma_cross].sign_observed_net",
+      "match": true,
+      "mine": 1092.55,
+      "theirs": 1092.55
+    },
+    {
+      "item": "m15_holdout[ma_cross].sign_trades",
+      "match": true,
+      "mine": 1154,
+      "theirs": 1154
+    },
+    {
+      "item": "m15_dsr_holdout[ma_cross].dsr",
+      "match": true,
+      "mine": 0.0445,
+      "theirs": 0.0445
+    },
+    {
+      "item": "m15_dsr_holdout[ma_cross].n",
+      "match": true,
+      "mine": 121915,
+      "theirs": 121915
+    },
+    {
+      "item": "m15_dsr_holdout[ma_cross].sharpe_annual",
+      "match": true,
+      "mine": 0.2136,
+      "theirs": 0.2136
+    },
+    {
+      "item": "m15_dsr_holdout[ma_cross].skew",
+      "match": true,
+      "mine": 0.8332,
+      "theirs": 0.8332
+    },
+    {
+      "item": "m15_dsr_holdout[ma_cross].kurtosis",
+      "match": true,
+      "mine": 51.8129,
+      "theirs": 51.8129
     },
     {
       "item": "m15_wf_summary[donchian].sharpe",
@@ -6007,10 +8299,82 @@
       "theirs": 0.3985
     },
     {
+      "item": "m15_selection_train_sharpe[donchian]",
+      "match": true,
+      "mine": 0.1099,
+      "theirs": 0.1099
+    },
+    {
+      "item": "m15_bootstrap_sharpe[donchian].sharpe",
+      "match": true,
+      "mine": 0.104,
+      "theirs": 0.104
+    },
+    {
+      "item": "m15_bootstrap_sharpe[donchian].share_positive",
+      "match": true,
+      "mine": 0.595,
+      "theirs": 0.572
+    },
+    {
+      "item": "m15_bootstrap_sharpe[donchian].ci95_low",
+      "match": true,
+      "mine": -0.7082,
+      "theirs": -0.7666646684501734
+    },
+    {
+      "item": "m15_bootstrap_sharpe[donchian].ci95_high",
+      "match": true,
+      "mine": 0.9525,
+      "theirs": 0.9478986475086502
+    },
+    {
       "item": "m15_holdout[donchian].p_sign_randomisation",
       "match": true,
       "mine": 0.221,
       "theirs": 0.229
+    },
+    {
+      "item": "m15_holdout[donchian].sign_observed_net",
+      "match": true,
+      "mine": 288.09,
+      "theirs": 288.09
+    },
+    {
+      "item": "m15_holdout[donchian].sign_trades",
+      "match": true,
+      "mine": 231,
+      "theirs": 231
+    },
+    {
+      "item": "m15_dsr_holdout[donchian].dsr",
+      "match": true,
+      "mine": 0.0255,
+      "theirs": 0.0255
+    },
+    {
+      "item": "m15_dsr_holdout[donchian].n",
+      "match": true,
+      "mine": 121915,
+      "theirs": 121915
+    },
+    {
+      "item": "m15_dsr_holdout[donchian].sharpe_annual",
+      "match": true,
+      "mine": 0.104,
+      "theirs": 0.104
+    },
+    {
+      "item": "m15_dsr_holdout[donchian].skew",
+      "match": true,
+      "mine": 1.3876,
+      "theirs": 1.3876
+    },
+    {
+      "item": "m15_dsr_holdout[donchian].kurtosis",
+      "match": true,
+      "mine": 154.5144,
+      "theirs": 154.5144
     },
     {
       "item": "m15_wf_summary[volatility_expansion].sharpe",
@@ -6025,10 +8389,82 @@
       "theirs": 1.0
     },
     {
+      "item": "m15_selection_train_sharpe[volatility_expansion]",
+      "match": true,
+      "mine": -6.3507,
+      "theirs": -6.3507
+    },
+    {
+      "item": "m15_bootstrap_sharpe[volatility_expansion].sharpe",
+      "match": true,
+      "mine": -7.1422,
+      "theirs": -7.1422
+    },
+    {
+      "item": "m15_bootstrap_sharpe[volatility_expansion].share_positive",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "m15_bootstrap_sharpe[volatility_expansion].ci95_low",
+      "match": true,
+      "mine": -8.0677,
+      "theirs": -8.13508559931405
+    },
+    {
+      "item": "m15_bootstrap_sharpe[volatility_expansion].ci95_high",
+      "match": true,
+      "mine": -6.2492,
+      "theirs": -6.226209007234403
+    },
+    {
       "item": "m15_holdout[volatility_expansion].p_sign_randomisation",
       "match": true,
       "mine": 0.9877,
       "theirs": 0.9818
+    },
+    {
+      "item": "m15_holdout[volatility_expansion].sign_observed_net",
+      "match": true,
+      "mine": -9938.7,
+      "theirs": -9938.7
+    },
+    {
+      "item": "m15_holdout[volatility_expansion].sign_trades",
+      "match": true,
+      "mine": 8162,
+      "theirs": 8162
+    },
+    {
+      "item": "m15_dsr_holdout[volatility_expansion].dsr",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "m15_dsr_holdout[volatility_expansion].n",
+      "match": true,
+      "mine": 121915,
+      "theirs": 121915
+    },
+    {
+      "item": "m15_dsr_holdout[volatility_expansion].sharpe_annual",
+      "match": true,
+      "mine": -7.1422,
+      "theirs": -7.1422
+    },
+    {
+      "item": "m15_dsr_holdout[volatility_expansion].skew",
+      "match": true,
+      "mine": 1.0606,
+      "theirs": 1.0606
+    },
+    {
+      "item": "m15_dsr_holdout[volatility_expansion].kurtosis",
+      "match": true,
+      "mine": 42.9635,
+      "theirs": 42.9635
     },
     {
       "item": "m15_wf_summary[session_breakout].sharpe",
@@ -6043,10 +8479,82 @@
       "theirs": 0.9945
     },
     {
+      "item": "m15_selection_train_sharpe[session_breakout]",
+      "match": true,
+      "mine": -0.7488,
+      "theirs": -0.7488
+    },
+    {
+      "item": "m15_bootstrap_sharpe[session_breakout].sharpe",
+      "match": true,
+      "mine": -1.1266,
+      "theirs": -1.1266
+    },
+    {
+      "item": "m15_bootstrap_sharpe[session_breakout].share_positive",
+      "match": true,
+      "mine": 0.0053,
+      "theirs": 0.004
+    },
+    {
+      "item": "m15_bootstrap_sharpe[session_breakout].ci95_low",
+      "match": true,
+      "mine": -1.9785,
+      "theirs": -1.9909218243921358
+    },
+    {
+      "item": "m15_bootstrap_sharpe[session_breakout].ci95_high",
+      "match": true,
+      "mine": -0.2599,
+      "theirs": -0.26727076518806586
+    },
+    {
       "item": "m15_holdout[session_breakout].p_sign_randomisation",
       "match": true,
       "mine": 0.269,
       "theirs": 0.2698
+    },
+    {
+      "item": "m15_holdout[session_breakout].sign_observed_net",
+      "match": true,
+      "mine": -4467.03,
+      "theirs": -4467.03
+    },
+    {
+      "item": "m15_holdout[session_breakout].sign_trades",
+      "match": true,
+      "mine": 1265,
+      "theirs": 1265
+    },
+    {
+      "item": "m15_dsr_holdout[session_breakout].dsr",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "m15_dsr_holdout[session_breakout].n",
+      "match": true,
+      "mine": 121915,
+      "theirs": 121915
+    },
+    {
+      "item": "m15_dsr_holdout[session_breakout].sharpe_annual",
+      "match": true,
+      "mine": -1.1266,
+      "theirs": -1.1266
+    },
+    {
+      "item": "m15_dsr_holdout[session_breakout].skew",
+      "match": true,
+      "mine": 0.735,
+      "theirs": 0.735
+    },
+    {
+      "item": "m15_dsr_holdout[session_breakout].kurtosis",
+      "match": true,
+      "mine": 39.114,
+      "theirs": 39.114
     },
     {
       "item": "m15_holm[ma_cross]",
@@ -6401,6 +8909,686 @@
       "theirs": -2596.03
     }
   ],
+  "cross_study_multiple_testing": {
+    "combined_trials": 66,
+    "daily": {
+      "donchian": 0.0286,
+      "ma_cross": 0.0593,
+      "mean_reversion": 0.0001,
+      "trend_gated": 0.0075,
+      "tsmom": 0.0052,
+      "volatility_expansion": 0.0343
+    },
+    "m15": {
+      "donchian": 0.0023,
+      "ma_cross": 0.0001,
+      "session_breakout": 0.0,
+      "volatility_expansion": 0.0
+    },
+    "note": "Agent-4 adversarial addition: the daily and M15 studies both searched XAUUSD; treated as one joint search the multiple-testing burden is 26+40=66 trials. DSR below is recomputed on each study's OOS series (WF composite + holdout) at N=66."
+  },
+  "daily_diagnostics": {
+    "donchian": {
+      "cid": "donchian_55_20_atr2",
+      "cost_grid": {
+        "0.5x": 181.71,
+        "1.0x": 160.22,
+        "1.5x": 138.78,
+        "2.0x": 117.38,
+        "3.0x": 74.72
+      },
+      "full_run_summary": {
+        "cost_usd": 203.2,
+        "expectancy_usd": 29.6422,
+        "final_equity": 12282.45,
+        "gross_usd": 2485.65,
+        "max_drawdown": -0.1299,
+        "mean_bars_held": 33.09,
+        "net_usd": 2282.45,
+        "profit_factor": 1.4498,
+        "round_turns": 77,
+        "sharpe": 0.2343,
+        "turnover_per_year": 2.773,
+        "win_rate": 0.3247
+      },
+      "full_run_yearly_pnl": {
+        "2004": 189.98,
+        "2005": -162.29,
+        "2006": 183.52,
+        "2007": 491.81,
+        "2008": 46.03,
+        "2009": 318.05,
+        "2010": 359.88,
+        "2011": -427.05,
+        "2012": -165.44,
+        "2013": 810.28,
+        "2014": -216.16,
+        "2015": -262.65,
+        "2016": 361.73,
+        "2017": -609.05,
+        "2018": 423.33,
+        "2019": 509.17,
+        "2020": 218.38,
+        "2021": -333.49,
+        "2022": 174.68,
+        "2023": -30.81,
+        "2024": 203.34,
+        "2025": 199.2
+      },
+      "half1_2020_2022H1": {
+        "cost_usd": 21.29,
+        "expectancy_usd": -16.9853,
+        "final_equity": 9830.15,
+        "gross_usd": -148.57,
+        "max_drawdown": -0.0886,
+        "mean_bars_held": 32.7,
+        "net_usd": -169.85,
+        "profit_factor": 0.651,
+        "round_turns": 10,
+        "sharpe": -0.0956,
+        "turnover_per_year": 2.9,
+        "win_rate": 0.3
+      },
+      "half2_2022H2_2025": {
+        "cost_usd": 23.0,
+        "expectancy_usd": 34.8128,
+        "final_equity": 10348.13,
+        "gross_usd": 371.13,
+        "max_drawdown": -0.0489,
+        "mean_bars_held": 32.5,
+        "net_usd": 348.13,
+        "profit_factor": 1.7847,
+        "round_turns": 10,
+        "sharpe": 0.3369,
+        "turnover_per_year": 2.952,
+        "win_rate": 0.5
+      },
+      "holdout_base": {
+        "cost_usd": 41.69,
+        "expectancy_usd": 8.4327,
+        "final_equity": 10160.22,
+        "gross_usd": 201.91,
+        "max_drawdown": -0.1007,
+        "mean_bars_held": 34.42,
+        "net_usd": 160.22,
+        "profit_factor": 1.1737,
+        "round_turns": 19,
+        "sharpe": 0.0874,
+        "turnover_per_year": 2.782,
+        "win_rate": 0.3684
+      },
+      "holdout_lag1": {
+        "cost_usd": 41.73,
+        "expectancy_usd": 12.3615,
+        "final_equity": 10234.87,
+        "gross_usd": 276.6,
+        "max_drawdown": -0.0986,
+        "mean_bars_held": 33.68,
+        "net_usd": 234.87,
+        "profit_factor": 1.2421,
+        "round_turns": 19,
+        "sharpe": 0.1169,
+        "turnover_per_year": 2.783,
+        "win_rate": 0.4211
+      },
+      "holdout_round_turns": 19,
+      "top1_share_of_net": 2.4156,
+      "top1_trade_net_usd": 387.03,
+      "top3_trades_net_usd": 746.7,
+      "total_nights_held": 920.0,
+      "unmodeled_swap_drag_usd_at_3.5_per_lot_night": 67.88
+    },
+    "ma_cross": {
+      "cid": "ma_20_100_atr3",
+      "cost_grid": {
+        "0.5x": 542.11,
+        "1.0x": 530.11,
+        "1.5x": 518.13,
+        "2.0x": 506.15,
+        "3.0x": 482.25
+      },
+      "full_run_summary": {
+        "cost_usd": 134.24,
+        "expectancy_usd": 34.239,
+        "final_equity": 12499.45,
+        "gross_usd": 2633.69,
+        "max_drawdown": -0.1508,
+        "mean_bars_held": 60.67,
+        "net_usd": 2499.45,
+        "profit_factor": 1.5598,
+        "round_turns": 73,
+        "sharpe": 0.2797,
+        "turnover_per_year": 1.796,
+        "win_rate": 0.274
+      },
+      "full_run_yearly_pnl": {
+        "2004": 68.77,
+        "2005": -26.29,
+        "2006": 390.79,
+        "2007": 456.79,
+        "2008": -142.6,
+        "2009": 381.34,
+        "2010": 246.55,
+        "2011": 724.22,
+        "2012": -258.82,
+        "2013": 586.43,
+        "2014": -381.66,
+        "2015": -525.25,
+        "2016": -29.2,
+        "2017": -311.9,
+        "2018": 350.8,
+        "2019": 175.38,
+        "2020": -145.01,
+        "2021": -478.67,
+        "2022": 168.54,
+        "2023": 143.55,
+        "2024": 811.62,
+        "2025": 294.06
+      },
+      "half1_2020_2022H1": {
+        "cost_usd": 17.49,
+        "expectancy_usd": -59.7124,
+        "final_equity": 9343.16,
+        "gross_usd": -639.35,
+        "max_drawdown": -0.0857,
+        "mean_bars_held": 35.55,
+        "net_usd": -656.84,
+        "profit_factor": 0.0349,
+        "round_turns": 11,
+        "sharpe": -0.7646,
+        "turnover_per_year": 2.446,
+        "win_rate": 0.1818
+      },
+      "half2_2022H2_2025": {
+        "cost_usd": 6.24,
+        "expectancy_usd": 322.4006,
+        "final_equity": 11289.6,
+        "gross_usd": 1295.85,
+        "max_drawdown": -0.0333,
+        "mean_bars_held": 152.5,
+        "net_usd": 1289.6,
+        "profit_factor": 13.5153,
+        "round_turns": 4,
+        "sharpe": 1.2414,
+        "turnover_per_year": 0.777,
+        "win_rate": 0.75
+      },
+      "holdout_base": {
+        "cost_usd": 21.93,
+        "expectancy_usd": 37.8651,
+        "final_equity": 10530.11,
+        "gross_usd": 552.04,
+        "max_drawdown": -0.0857,
+        "mean_bars_held": 71.64,
+        "net_usd": 530.11,
+        "profit_factor": 1.6825,
+        "round_turns": 14,
+        "sharpe": 0.2995,
+        "turnover_per_year": 1.488,
+        "win_rate": 0.2857
+      },
+      "holdout_lag1": {
+        "cost_usd": 21.97,
+        "expectancy_usd": 43.2048,
+        "final_equity": 10604.87,
+        "gross_usd": 626.84,
+        "max_drawdown": -0.0766,
+        "mean_bars_held": 71.29,
+        "net_usd": 604.87,
+        "profit_factor": 1.8257,
+        "round_turns": 14,
+        "sharpe": 0.3409,
+        "turnover_per_year": 1.489,
+        "win_rate": 0.2857
+      },
+      "holdout_round_turns": 14,
+      "top1_share_of_net": 1.9527,
+      "top1_trade_net_usd": 1035.16,
+      "top3_trades_net_usd": 1297.4,
+      "total_nights_held": 1424.0,
+      "unmodeled_swap_drag_usd_at_3.5_per_lot_night": 69.6
+    },
+    "mean_reversion": {
+      "cid": "rsi2_t10_sma200",
+      "cost_grid": {
+        "0.5x": -755.9,
+        "1.0x": -841.32,
+        "1.5x": -925.97,
+        "2.0x": -1009.83,
+        "3.0x": -1175.27
+      },
+      "full_run_summary": {
+        "cost_usd": 910.36,
+        "expectancy_usd": -3.4861,
+        "final_equity": 9271.4,
+        "gross_usd": 181.76,
+        "max_drawdown": -0.2578,
+        "mean_bars_held": 3.61,
+        "net_usd": -728.6,
+        "profit_factor": 0.9277,
+        "round_turns": 209,
+        "sharpe": -0.076,
+        "turnover_per_year": 13.434,
+        "win_rate": 0.5742
+      },
+      "full_run_yearly_pnl": {
+        "2004": 0.0,
+        "2005": 102.98,
+        "2006": 103.47,
+        "2007": 419.69,
+        "2008": -312.32,
+        "2009": 434.86,
+        "2010": 625.96,
+        "2011": 114.73,
+        "2012": 8.76,
+        "2013": 95.09,
+        "2014": -381.74,
+        "2015": 95.0,
+        "2016": -437.33,
+        "2017": -1198.9,
+        "2018": 271.9,
+        "2019": 180.93,
+        "2020": -40.36,
+        "2021": -259.2,
+        "2022": -451.73,
+        "2023": -362.78,
+        "2024": 310.99,
+        "2025": -48.6
+      },
+      "half1_2020_2022H1": {
+        "cost_usd": 81.16,
+        "expectancy_usd": -16.9498,
+        "final_equity": 9627.1,
+        "gross_usd": -291.74,
+        "max_drawdown": -0.0694,
+        "mean_bars_held": 3.77,
+        "net_usd": -372.9,
+        "profit_factor": 0.7479,
+        "round_turns": 22,
+        "sharpe": -0.3572,
+        "turnover_per_year": 11.131,
+        "win_rate": 0.5455
+      },
+      "half2_2022H2_2025": {
+        "cost_usd": 97.65,
+        "expectancy_usd": -19.4629,
+        "final_equity": 9513.43,
+        "gross_usd": -388.92,
+        "max_drawdown": -0.0997,
+        "mean_bars_held": 3.72,
+        "net_usd": -486.57,
+        "profit_factor": 0.6454,
+        "round_turns": 25,
+        "sharpe": -0.4326,
+        "turnover_per_year": 13.325,
+        "win_rate": 0.52
+      },
+      "holdout_base": {
+        "cost_usd": 175.17,
+        "expectancy_usd": -17.9005,
+        "final_equity": 9158.68,
+        "gross_usd": -666.16,
+        "max_drawdown": -0.1581,
+        "mean_bars_held": 3.74,
+        "net_usd": -841.32,
+        "profit_factor": 0.6995,
+        "round_turns": 47,
+        "sharpe": -0.3967,
+        "turnover_per_year": 12.263,
+        "win_rate": 0.5319
+      },
+      "holdout_lag1": {
+        "cost_usd": 179.25,
+        "expectancy_usd": -6.5821,
+        "final_equity": 9697.22,
+        "gross_usd": -123.52,
+        "max_drawdown": -0.1139,
+        "mean_bars_held": 3.83,
+        "net_usd": -302.78,
+        "profit_factor": 0.8788,
+        "round_turns": 46,
+        "sharpe": -0.136,
+        "turnover_per_year": 11.974,
+        "win_rate": 0.5
+      },
+      "holdout_round_turns": 47,
+      "top1_share_of_net": null,
+      "top1_trade_net_usd": 294.2,
+      "top3_trades_net_usd": 621.86,
+      "total_nights_held": 252.0,
+      "unmodeled_swap_drag_usd_at_3.5_per_lot_night": 31.98
+    },
+    "trend_gated": {
+      "cid": "gated_er60_025",
+      "cost_grid": {
+        "0.5x": -313.36,
+        "1.0x": -319.98,
+        "1.5x": -326.6,
+        "2.0x": -333.21,
+        "3.0x": -346.42
+      },
+      "full_run_summary": {
+        "cost_usd": 54.71,
+        "expectancy_usd": 23.7507,
+        "final_equity": 10760.02,
+        "gross_usd": 814.73,
+        "max_drawdown": -0.0871,
+        "mean_bars_held": 40.0,
+        "net_usd": 760.02,
+        "profit_factor": 1.4749,
+        "round_turns": 32,
+        "sharpe": 0.154,
+        "turnover_per_year": 0.792,
+        "win_rate": 0.375
+      },
+      "full_run_yearly_pnl": {
+        "2004": -44.25,
+        "2005": 63.87,
+        "2006": 18.75,
+        "2007": 386.29,
+        "2008": 254.81,
+        "2009": 51.69,
+        "2010": 164.18,
+        "2011": -45.51,
+        "2012": -242.65,
+        "2013": 638.84,
+        "2014": -286.68,
+        "2015": -81.92,
+        "2016": 96.59,
+        "2017": -161.88,
+        "2018": 111.04,
+        "2019": 192.52,
+        "2020": -145.96,
+        "2021": 0.0,
+        "2022": -292.26,
+        "2023": -90.06,
+        "2024": 222.51,
+        "2025": -49.92
+      },
+      "half1_2020_2022H1": {
+        "cost_usd": 4.89,
+        "expectancy_usd": -77.1009,
+        "final_equity": 9768.7,
+        "gross_usd": -226.42,
+        "max_drawdown": -0.0378,
+        "mean_bars_held": 18.33,
+        "net_usd": -231.3,
+        "profit_factor": 0.0,
+        "round_turns": 3,
+        "sharpe": -0.4198,
+        "turnover_per_year": 0.666,
+        "win_rate": 0.0
+      },
+      "half2_2022H2_2025": {
+        "cost_usd": 8.64,
+        "expectancy_usd": -15.1293,
+        "final_equity": 9909.22,
+        "gross_usd": -82.13,
+        "max_drawdown": -0.0304,
+        "mean_bars_held": 27.33,
+        "net_usd": -90.78,
+        "profit_factor": 0.693,
+        "round_turns": 6,
+        "sharpe": -0.144,
+        "turnover_per_year": 1.13,
+        "win_rate": 0.3333
+      },
+      "holdout_base": {
+        "cost_usd": 13.33,
+        "expectancy_usd": -35.5532,
+        "final_equity": 9680.02,
+        "gross_usd": -306.65,
+        "max_drawdown": -0.0618,
+        "mean_bars_held": 24.33,
+        "net_usd": -319.98,
+        "profit_factor": 0.3848,
+        "round_turns": 9,
+        "sharpe": -0.2764,
+        "turnover_per_year": 0.905,
+        "win_rate": 0.2222
+      },
+      "holdout_lag1": {
+        "cost_usd": 13.31,
+        "expectancy_usd": -36.7303,
+        "final_equity": 9669.43,
+        "gross_usd": -317.26,
+        "max_drawdown": -0.0604,
+        "mean_bars_held": 23.44,
+        "net_usd": -330.57,
+        "profit_factor": 0.3843,
+        "round_turns": 9,
+        "sharpe": -0.3061,
+        "turnover_per_year": 0.905,
+        "win_rate": 0.1111
+      },
+      "holdout_round_turns": 9,
+      "top1_share_of_net": null,
+      "top1_trade_net_usd": 198.26,
+      "top3_trades_net_usd": 169.24,
+      "total_nights_held": 308.0,
+      "unmodeled_swap_drag_usd_at_3.5_per_lot_night": 14.38
+    },
+    "tsmom": {
+      "cid": "tsmom_L126",
+      "cost_grid": {
+        "0.5x": -343.77,
+        "1.0x": -378.57,
+        "1.5x": -413.25,
+        "2.0x": -447.81,
+        "3.0x": -516.56
+      },
+      "full_run_summary": {
+        "cost_usd": 469.98,
+        "expectancy_usd": 485.5624,
+        "final_equity": 26994.68,
+        "gross_usd": 17464.67,
+        "max_drawdown": -0.3693,
+        "mean_bars_held": 146.91,
+        "net_usd": 16994.68,
+        "profit_factor": 1.9947,
+        "round_turns": 35,
+        "sharpe": 0.497,
+        "turnover_per_year": 3.356,
+        "win_rate": 0.3714
+      },
+      "full_run_yearly_pnl": {
+        "2004": 0.0,
+        "2005": 823.02,
+        "2006": 750.99,
+        "2007": 2336.57,
+        "2008": -263.14,
+        "2009": 1594.21,
+        "2010": 2586.36,
+        "2011": 2673.71,
+        "2012": -828.52,
+        "2013": 1561.55,
+        "2014": 1685.51,
+        "2015": 1285.46,
+        "2016": 3584.19,
+        "2017": -2738.93,
+        "2018": -2111.76,
+        "2019": 3905.74,
+        "2020": 4191.63,
+        "2021": -4777.52,
+        "2022": -2774.96,
+        "2023": -2156.38,
+        "2024": 4331.33,
+        "2025": 1335.62
+      },
+      "half1_2020_2022H1": {
+        "cost_usd": 46.41,
+        "expectancy_usd": -173.145,
+        "final_equity": 8441.7,
+        "gross_usd": -1511.9,
+        "max_drawdown": -0.2758,
+        "mean_bars_held": 69.11,
+        "net_usd": -1558.3,
+        "profit_factor": 0.3744,
+        "round_turns": 9,
+        "sharpe": -0.5135,
+        "turnover_per_year": 6.46,
+        "win_rate": 0.1111
+      },
+      "half2_2022H2_2025": {
+        "cost_usd": 23.66,
+        "expectancy_usd": 304.0312,
+        "final_equity": 11216.12,
+        "gross_usd": 1239.78,
+        "max_drawdown": -0.1928,
+        "mean_bars_held": 166.5,
+        "net_usd": 1216.12,
+        "profit_factor": 1.9908,
+        "round_turns": 4,
+        "sharpe": 0.4574,
+        "turnover_per_year": 3.125,
+        "win_rate": 0.25
+      },
+      "holdout_base": {
+        "cost_usd": 66.78,
+        "expectancy_usd": -29.1211,
+        "final_equity": 9621.43,
+        "gross_usd": -311.79,
+        "max_drawdown": -0.3693,
+        "mean_bars_held": 100.77,
+        "net_usd": -378.57,
+        "profit_factor": 0.8889,
+        "round_turns": 13,
+        "sharpe": -0.0107,
+        "turnover_per_year": 4.748,
+        "win_rate": 0.1538
+      },
+      "holdout_lag1": {
+        "cost_usd": 70.53,
+        "expectancy_usd": -23.3078,
+        "final_equity": 9697.0,
+        "gross_usd": -232.48,
+        "max_drawdown": -0.3926,
+        "mean_bars_held": 102.38,
+        "net_usd": -303.0,
+        "profit_factor": 0.9191,
+        "round_turns": 13,
+        "sharpe": 0.0035,
+        "turnover_per_year": 4.748,
+        "win_rate": 0.1538
+      },
+      "holdout_round_turns": 13,
+      "top1_share_of_net": null,
+      "top1_trade_net_usd": 2096.12,
+      "top3_trades_net_usd": 2968.18,
+      "total_nights_held": 1852.0,
+      "unmodeled_swap_drag_usd_at_3.5_per_lot_night": 254.41
+    },
+    "volatility_expansion": {
+      "cid": "rexp_k10_h3",
+      "cost_grid": {
+        "0.5x": 822.01,
+        "1.0x": 673.05,
+        "1.5x": 526.14,
+        "2.0x": 381.23,
+        "3.0x": 97.36
+      },
+      "full_run_summary": {
+        "cost_usd": 1228.28,
+        "expectancy_usd": 2.8355,
+        "final_equity": 11463.1,
+        "gross_usd": 2691.38,
+        "max_drawdown": -0.09,
+        "mean_bars_held": 3.24,
+        "net_usd": 1463.1,
+        "profit_factor": 1.125,
+        "round_turns": 516,
+        "sharpe": 0.2207,
+        "turnover_per_year": 17.376,
+        "win_rate": 0.5
+      },
+      "full_run_yearly_pnl": {
+        "2004": -38.09,
+        "2005": 528.88,
+        "2006": -310.32,
+        "2007": 235.4,
+        "2008": 44.1,
+        "2009": 250.96,
+        "2010": -12.36,
+        "2011": 128.73,
+        "2012": -36.33,
+        "2013": 140.27,
+        "2014": -40.21,
+        "2015": -65.06,
+        "2016": 44.5,
+        "2017": 49.45,
+        "2018": -558.84,
+        "2019": 379.13,
+        "2020": 211.97,
+        "2021": 162.29,
+        "2022": 157.72,
+        "2023": 190.16,
+        "2024": -157.16,
+        "2025": 157.9
+      },
+      "half1_2020_2022H1": {
+        "cost_usd": 128.13,
+        "expectancy_usd": 7.1671,
+        "final_equity": 10444.36,
+        "gross_usd": 572.49,
+        "max_drawdown": -0.0333,
+        "mean_bars_held": 3.55,
+        "net_usd": 444.36,
+        "profit_factor": 1.3447,
+        "round_turns": 62,
+        "sharpe": 0.4942,
+        "turnover_per_year": 16.907,
+        "win_rate": 0.5323
+      },
+      "half2_2022H2_2025": {
+        "cost_usd": 154.58,
+        "expectancy_usd": 3.0411,
+        "final_equity": 10218.96,
+        "gross_usd": 373.54,
+        "max_drawdown": -0.0546,
+        "mean_bars_held": 3.33,
+        "net_usd": 218.96,
+        "profit_factor": 1.132,
+        "round_turns": 72,
+        "sharpe": 0.2722,
+        "turnover_per_year": 19.691,
+        "win_rate": 0.5278
+      },
+      "holdout_base": {
+        "cost_usd": 289.58,
+        "expectancy_usd": 5.0228,
+        "final_equity": 10673.05,
+        "gross_usd": 962.63,
+        "max_drawdown": -0.0546,
+        "mean_bars_held": 3.43,
+        "net_usd": 673.05,
+        "profit_factor": 1.2228,
+        "round_turns": 134,
+        "sharpe": 0.3867,
+        "turnover_per_year": 18.344,
+        "win_rate": 0.5299
+      },
+      "holdout_lag1": {
+        "cost_usd": 284.48,
+        "expectancy_usd": 6.1286,
+        "final_equity": 10821.23,
+        "gross_usd": 1105.71,
+        "max_drawdown": -0.0439,
+        "mean_bars_held": 3.37,
+        "net_usd": 821.23,
+        "profit_factor": 1.2792,
+        "round_turns": 134,
+        "sharpe": 0.4502,
+        "turnover_per_year": 18.344,
+        "win_rate": 0.4925
+      },
+      "holdout_round_turns": 134,
+      "top1_share_of_net": 0.4282,
+      "top1_trade_net_usd": 288.21,
+      "top3_trades_net_usd": 758.28,
+      "total_nights_held": 642.0,
+      "unmodeled_swap_drag_usd_at_3.5_per_lot_night": 42.38
+    }
+  },
   "daily_holdout_selection": {
     "donchian": "donchian_55_20_atr2",
     "ma_cross": "ma_20_100_atr3",
@@ -6576,8 +9764,12 @@
         "turnover_per_year": 87.551,
         "win_rate": 0.2338
       },
+      "holdout_round_turns": 231,
       "overnight_trades": 154,
       "stop_exit_share": 0.7229,
+      "top1_share_of_net": 3.9946,
+      "top1_trade_net_usd": 1150.77,
+      "top3_trades_net_usd": 2516.73,
       "total_nights_held": 622.0,
       "unmodeled_swap_drag_usd_at_3.5_per_lot_night": 114.32
     },
@@ -6688,8 +9880,12 @@
         "turnover_per_year": 437.853,
         "win_rate": 0.2721
       },
+      "holdout_round_turns": 1154,
       "overnight_trades": 661,
       "stop_exit_share": 0.5537,
+      "top1_share_of_net": 0.7332,
+      "top1_trade_net_usd": 801.07,
+      "top3_trades_net_usd": 2297.41,
       "total_nights_held": 1551.0,
       "unmodeled_swap_drag_usd_at_3.5_per_lot_night": 282.01
     },
@@ -6800,8 +9996,12 @@
         "turnover_per_year": 469.744,
         "win_rate": 0.4016
       },
+      "holdout_round_turns": 1265,
       "overnight_trades": 17,
       "stop_exit_share": 0.3684,
+      "top1_share_of_net": null,
+      "top1_trade_net_usd": 330.58,
+      "top3_trades_net_usd": 846.16,
       "total_nights_held": 26.0,
       "unmodeled_swap_drag_usd_at_3.5_per_lot_night": 4.73
     },
@@ -6912,13 +10112,17 @@
         "turnover_per_year": 3102.323,
         "win_rate": 0.3122
       },
+      "holdout_round_turns": 8162,
       "overnight_trades": 436,
       "stop_exit_share": 0.2616,
+      "top1_share_of_net": null,
+      "top1_trade_net_usd": 312.48,
+      "top3_trades_net_usd": 769.89,
       "total_nights_held": 617.0,
       "unmodeled_swap_drag_usd_at_3.5_per_lot_night": 112.25
     }
   },
-  "generated_at": "2026-10-11T17:18:13.695213+00:00",
+  "generated_at": "2026-10-11T18:00:07.206413+00:00",
   "m15_holdout_selection": {
     "donchian": "donchian_384_192_atr3",
     "ma_cross": "ma_32_128_atr3",

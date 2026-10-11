@@ -34,6 +34,11 @@ both studies' engines, families, selection rules, regime labels and statistics; 
    second holdout half, a sign flip under a data-preparation sensitivity for the
    Donchian selection). Details in §4. None of it rescues a candidate; several items
    would have failed a candidate even if the pre-registered gates had passed.
+   The deepened round adds: every surviving candidate's holdout net is SMALLER than
+   its single best trade (top-1 concentration 1.95×–3.99× of net, §4.7); the daily
+   "survivors" repeat the M15 chronological instability (§4.8); unmodeled swap drag
+   consumes up to 42 % of the daily Donchian edge; and treating both studies as one
+   joint search (N=66) the best OOS DSR anywhere is 0.1165 vs the 0.95 gate (§4.9).
 3. **Separately: INSUFFICIENT EVIDENCE for any economic claim.** All costs are
    ASSUMED (6.077 bps round turn at $1,300). No broker cost has been measured
    (`CLAIM_ELIGIBLE_BASES = {MEASURED}`). Even a gate-passing result would earn at most
@@ -66,7 +71,7 @@ selection rule, the cost model, the walk-forward calendar, the regime labels, th
 bootstrap, the Holm correction and the deflated Sharpe ratio (own Bailey–López de Prado
 implementation, including a fresh normal-PPF).
 
-**522 of 522 cross-checks matched** against the committed evidence of BOTH studies,
+**715 of 715 cross-checks matched** against the committed evidence of BOTH studies,
 including (M15):
 
 * holdout **selections** per group (identical candidates picked independently);
@@ -85,7 +90,17 @@ including (M15):
   expanding-median volatility labels, rebuilt from scratch): regime bar counts are
   EXACT (e.g. M15 `ma_cross` UP_HIVOL 58,266 / UP_LOWVOL 162,328 / DOWN_HIVOL 22,830 /
   DOWN_LOWVOL 108,456 bars) and per-regime net P&L matches to the cent, for both
-  studies.
+  studies;
+* **the complete statistical layer of BOTH studies**: one-sided bootstrap p-values and
+  block-bootstrap Sharpe intervals (own seeds, agreement within Monte-Carlo noise),
+  trade-level sign-randomisation nulls (p-value, observed net and trade count), Holm
+  step-down adjustments, the selection criterion itself (training-window Sharpe of
+  every selected config), the walk-forward summaries (Sharpe, chained return,
+  positive/traded years), the holdout-only DSR with its skew/kurtosis inputs, the
+  gates DSR on the OOS composite at the pre-registered trial counts (M15 N=40; daily
+  N=26, correctly including the Bollinger falsification control), the trial counts
+  themselves, and the G1–G7 gate arithmetic re-derived from the raw evidence fields
+  for both studies.
 
 The DAILY study is verified with the same completeness (273 checks): all six group
 selections identical (`tsmom_L126`, `ma_20_100_atr3`, `donchian_55_20_atr2`,
@@ -198,6 +213,61 @@ Profit factor 1.03 on both: gross wins exceed gross losses by 3 %. With ASSUMED 
 and no measured financing, a 3 % gross margin is not a durable edge — it is a rounding
 error away from zero, which is exactly what the 1.5× cost row shows.
 
+### 4.7 Single-trade concentration — every "edge" is one trade (both studies)
+
+Holdout round turns sorted by net P&L (independent engine, frozen selections):
+
+| Selection (study) | Turns | Holdout net | Best single trade | Top-1 / net |
+|---|---:|---:|---:|---:|
+| `donchian_384_192_atr3` (M15) | 231 | +$288.09 | +$1,150.77 | **3.99×** |
+| `donchian_55_20_atr2` (daily) | 19 | +$160.22 | +$387.03 | **2.42×** |
+| `ma_20_100_atr3` (daily) | 14 | +$530.11 | +$1,035.16 | **1.95×** |
+| `ma_32_128_atr3` (M15) | 1,154 | +$1,092.55 | +$801.07 | 0.73× |
+| `rexp_k10_h3` (daily) | 134 | +$673.05 | +$288.21 | 0.43× |
+
+Remove ONE trade and the daily Donchian, daily MA-cross and M15 Donchian holdout
+results all turn **negative**. The two "survivors" with positive net in both holdout
+halves and lower concentration (`rexp_k10_h3`) fail the walk-forward and significance
+gates instead. An edge that exists only because of one trade is not an edge; it is a
+coin flip that has already been flipped.
+
+### 4.8 Daily-study adversarial diagnostics (frozen selections)
+
+**Holdout halves (2020-01→2022-06 / 2022-07→2025-02):**
+
+| Daily selection | Half 1 net | Half 2 net | One-day fill lag | Swap drag @ $3.5/lot/night |
+|---|---:|---:|---:|---:|
+| `ma_20_100_atr3` | −$656.84 | +$1,289.60 | +$604.87 | −$69.60 |
+| `rexp_k10_h3` | +$444.36 | +$218.96 | +$821.23 | −$42.38 |
+| `donchian_55_20_atr2` | −$169.85 | +$348.13 | +$234.87 | −$67.88 |
+| `tsmom_L126` | −$1,558.30 | +$1,216.12 | −$303.00 | −$254.41 |
+| `gated_er60_025` | −$231.30 | −$90.78 | −$330.57 | −$14.38 |
+| `rsi2_t10_sma200` | −$372.90 | −$486.57 | −$302.78 | −$31.98 |
+
+Same pattern as M15: the daily MA-cross edge exists only in the second half of the
+holdout (−$657 then +$1,290); only `rexp_k10_h3` is positive in both halves, and its
+net falls 86 % from 1× to 3× cost (+$673 → +$97) — execution-cost dominated. The
+one-day fill lag moves every net by ±14–64 % (no sign flips — daily signals are slow —
+but the magnitudes are clearly noise-dominated). Daily-bar positions cross the
+overnight roll on EVERY held day while the engine books financing as zero: at the same
+−$3.5/lot/night assumption used for M15, the unmodeled swap drag is up to 42 % of the
+daily Donchian net (+$160.22 vs −$67.88 drag) and would push `tsmom_L126` further
+below zero.
+
+### 4.9 Cross-study multiple testing (Agent-4 addition)
+
+Both studies searched the same instrument (26 daily + 40 M15 configurations). Treated
+as one joint search, the multiple-testing burden is N=66. Recomputing the OOS DSR
+(WF composite + holdout) at N=66:
+
+| Study | Best OOS DSR at N=66 (group) |
+|---|---|
+| Daily | 0.1165 (`ma_cross`) |
+| M15 | 0.0023 (`donchian`) |
+
+Every group in both studies remains orders of magnitude below the pre-registered
+G5 threshold of 0.95 — the multiple-testing conclusion is not close.
+
 ## 5. Gate-by-gate (Agent 4 re-derivation, M15 holdout stage)
 
 | Gate | ma_cross | donchian | session_breakout | volatility_expansion |
@@ -211,8 +281,22 @@ error away from zero, which is exactly what the 1.5× cost row shows.
 | G7 all regimes, ≥3 positive | FAIL | FAIL | FAIL | FAIL |
 | **Passes all** | **no** | **no** | **no** | **no** |
 
-Daily study: same conclusion (best groups 4/7, blocked by G4/G5 and — for
-`rexp_k10_h3` — G3; for `ma_20_100_atr3` — G6 power: 61 OOS turns in ~15 years).
+Daily study (gate arithmetic re-derived and verified against the committed evidence):
+
+| Gate | donchian | ma_cross | vol_exp | tsmom | trend_gated | mean_rev |
+|---|---|---|---|---|---|---|
+| G1 holdout net & Sharpe > 0 | PASS | PASS | PASS | FAIL | FAIL | FAIL |
+| G2 net > 0 at 2× cost | PASS | PASS | PASS | FAIL | FAIL | FAIL |
+| G3 WF Sharpe > 0 & ≥6/10 years | FAIL (0.142; 5/10) | PASS (0.168; 6/10) | FAIL (0.014; 5/10) | FAIL (−0.071; 3/10) | FAIL (0.536; 2/10) | FAIL (−0.333; 5/10) |
+| G4 Holm p ≤ 0.05 | FAIL (1.00) | FAIL (1.00) | FAIL (1.00) | FAIL (1.00) | FAIL (1.00) | FAIL (1.00) |
+| G5 DSR ≥ 0.95 | FAIL (0.063) | FAIL (0.117) | FAIL (0.073) | FAIL (0.014) | FAIL (0.020) | FAIL (0.0003) |
+| G6 ≥100 OOS turns | FAIL (69) | FAIL (61) | PASS (375) | FAIL (47) | FAIL (12) | PASS (133) |
+| G7 all regimes, ≥3 positive | FAIL (2) | PASS (3) | PASS (3) | FAIL (1) | FAIL (1) | FAIL (1) |
+| **Passes all** | **no** | **no** | **no** | **no** | **no** | **no** |
+
+Best daily groups pass 4 of 7 (`ma_cross`, `volatility_expansion`), blocked by
+G4/G5 and — for `rexp_k10_h3` — G3; `ma_20_100_atr3` additionally fails G6 power
+(61 OOS turns in ~15 years).
 
 ## 6. What would change the verdict
 
@@ -258,8 +342,8 @@ None of these change the current verdict: FAIL.
 | `ruff check src/ tests/` (+ the new script and test) | pass |
 | `mypy src` | 182 files, no issues |
 | `bandit -q -r src` | pass |
-| `pytest` (fast suite) | **1475 passed, 0 failed** (347 honest skips) |
-| `pytest --run-integration --run-research` | **1818 passed, 0 failed** (4 skips) |
+| `pytest` (fast suite) | **1477 passed, 0 failed** (347 honest skips) |
+| `pytest --run-integration --run-research` | **1820 passed, 0 failed** (4 skips) |
 | `node --check` over `src/qts/desktop/ui/js` | pass |
 | `npm test` (UI) | 48 pass, 0 fail |
 
@@ -272,7 +356,7 @@ above is green only after the disclosed test repair.
 ```bash
 python scripts/fetch_longhistory_sources.py        # pinned, SHA-256-verified (github.com only)
 python scripts/build_longhistory_dataset.py        # deterministic
-python scripts/agent4_independent_validation.py    # 522/522 cross-checks + diagnostics
+python scripts/agent4_independent_validation.py    # 715/715 cross-checks + diagnostics
 pytest tests/unit/test_agent4_validation.py -q     # engine invariants on synthetic data
 ```
 
