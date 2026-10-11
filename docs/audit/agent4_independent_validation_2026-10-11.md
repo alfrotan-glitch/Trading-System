@@ -1,0 +1,267 @@
+# Agent 4 — independent validation and risk review — 2026-10-11
+
+**Mandate:** QTS multi-agent protocol, Agent 4. Independently review the candidate
+strategies and their evidence; challenge positive results; recommend PASS / FAIL /
+INSUFFICIENT EVIDENCE against the pre-registered acceptance gates. No modification of
+any candidate to improve its result on the holdout. No broker interaction. No orders.
+
+**Candidates under review:** the frozen long-history XAUUSD studies —
+intraday M15 `LH-XAUUSD-M15-2026-10-10` (holdout selections `ma_32_128_atr3`,
+`donchian_384_192_atr3`, `session_brk_b0`, `rexp_k10_h16`) and daily
+`LH-XAUUSD-D1-2026-10-10` (best `ma_20_100_atr3`, `rexp_k10_h3`), whose recorded
+verdict is `NO_VALIDATED_EDGE`.
+
+**Tooling:** `scripts/agent4_independent_validation.py` (from-scratch re-implementation;
+no `qts.research.longhistory` imports), evidence
+`data/evidence/longhistory/agent4_validation.json`, tests
+`tests/unit/test_agent4_validation.py`.
+
+---
+
+## Recommendation
+
+**FAIL — no candidate is validated. Do not promote anything beyond RESEARCH.**
+
+1. **Against the pre-registered gates (G1–G7): every group FAILS.** The best groups pass
+   2 of 7 (M15 `ma_cross`, `donchian`) or 4 of 7 (daily `ma_cross`,
+   `volatility_expansion`). The binding failures are G2 (net at 2× cost), G3
+   (walk-forward), G4 (Holm-adjusted significance), G5 (DSR ≥ 0.95) and G7 (regimes).
+   Agent 4 re-derived every gate outcome independently; all agree with the recorded
+   evidence.
+2. **Independently and additionally, Agent 4's own robustness checks produce new
+   negative evidence** (chronological instability, cost fragility at 1.5×, negative
+   second holdout half, a sign flip under a data-preparation sensitivity for the
+   Donchian selection). Details in §4. None of it rescues a candidate; several items
+   would have failed a candidate even if the pre-registered gates had passed.
+3. **Separately: INSUFFICIENT EVIDENCE for any economic claim.** All costs are
+   ASSUMED (6.077 bps round turn at $1,300). No broker cost has been measured
+   (`CLAIM_ELIGIBLE_BASES = {MEASURED}`). Even a gate-passing result would earn at most
+   `FORWARD_VALIDATION_CANDIDATE_ONLY`, never a claim. This is a standing limitation of
+   every number reviewed here, in both directions.
+
+The recorded verdict `NO_VALIDATED_EDGE` is **correct and stands**.
+
+---
+
+## 1. What was independently verified
+
+### 1.1 Full reproduction from pinned sources (deterministic)
+
+| Step | Result |
+|---|---|
+| `fetch_longhistory_sources.py` | all 4 sources fetched from GitHub at pinned commits, SHA-256 verified, manifest identical except `generated_at` |
+| `build_longhistory_dataset.py` | identical quality evidence; 475,286 raw 15m bars; 474,388 research bars after the complete-day filter |
+| `run_longhistory_research.py --stage final` (daily) | verdict, gates, and all result fields identical to the committed evidence; the only difference is the `periods_per_year` field, exactly as disclosed in the M15 preregistration §9 |
+| `run_longhistory_intraday.py --stage final` (M15) | **byte-identical** to the committed evidence except `generated_at`; bias checks `all_passed=True` reproduced |
+
+### 1.2 Independent re-implementation (the strongest check)
+
+`scripts/agent4_independent_validation.py` re-implements, from the preregistration text
+only: the execution engine (next-open fills, stop-vs-range with gap opens, re-entry
+block, forced close), the four M15 signal families, the training-window selection rule,
+the cost model, the walk-forward calendar, the block bootstrap, the Holm correction and
+the deflated Sharpe ratio (own Bailey–López de Prado implementation, including a fresh
+normal-PPF).
+
+**203 of 203 cross-checks matched** against the committed M15 evidence, including:
+
+* holdout **selections** per group (identical candidates picked independently);
+* holdout net/gross/cost/Sharpe/max-DD/round-turns for all four groups (net within
+  0.1 %, turns exact, e.g. `ma_32_128_atr3` +$1,092.55 / Sharpe 0.214 / 1,154 turns);
+* 2× and 3× cost stress, zero-cost P&L, and **break-even cost multipliers to three
+  decimals** (1.157×, 1.215×, 0.163×);
+* all ten walk-forward folds: per-year per-group selections, test-year nets and turns;
+* walk-forward composite Sharpes (exact: −0.717, −0.247, −1.030, −6.727);
+* buy-and-hold baseline (+$8,795.66, Sharpe 0.860) and the Dukascopy replicate;
+* the statistical layer: one-sided bootstrap p-values, sign-randomisation p-values
+  (own seeds, agreement within Monte-Carlo noise), Holm-adjusted p-values (1.00 all),
+  DSR (0.0003, 0.0042, 0.0, 0.0 — exact to 4 decimals), and the G1–G7 gate arithmetic
+  re-derived from the raw evidence fields.
+
+The daily study's two strongest candidates were also cross-checked with the same
+independent engine and match **exactly**: `ma_20_100_atr3` +$530.11 / Sharpe 0.2995 /
+14 turns; `rexp_k10_h3` +$673.05 / 0.3867 / 134 turns; buy-and-hold +$8,795.66 /
+0.8648; net at 2× cost +$506.15 / +$381.23.
+
+**Conclusion: the evidence is genuine, reproducible and correctly computed.** The
+numbers in the reports are what the frozen code actually produces from the pinned data.
+The failure below is a failure of the strategies, not of the pipeline.
+
+## 2. Bias audit
+
+| Bias class | Finding |
+|---|---|
+| **Look-ahead (signals)** | None found. All builders use trailing windows (`shift(1)` channels, rolling/`ewm` indicators, explicit past-only loops). The repo's truncation (causality) checks pass for all 14 M15 configurations at three cut points; Agent 4 re-implemented the same check on its own builders (tests included) and it passes. |
+| **Look-ahead (engine)** | None found. Decisions at close `t` fill at open `t+1`; stops fill at the stop or the open on a gap (conservative); entries cannot trade the price that produced the signal. Event order verified by code review and by unit tests on synthetic paths. |
+| **Look-ahead (selection)** | None found. Selection uses training windows ending before each test window; the holdout selection froze at 2019-12-31 and ran once. Independently re-derived; identical selections. |
+| **Look-ahead (calendar)** | Minor, disclosed, immaterial. `tsmom`'s month-end flag uses the index calendar; a truncated series would differ on the final bar. This affects the daily `tsmom` group only, which failed G1 outright (holdout net −$379). The complete-day filter also uses end-of-day knowledge (a day is complete only when it ends) — a sample-hygiene choice, pre-registered; see §4.5 for its measured effect. |
+| **Survivorship / selection of data** | Bounded, disclosed. One instrument (XAUUSD — fixed by project mandate, not chosen after performance screening). One vendor stream for 2004–2025 (BaseMax); the only independent candidate series was rejected by the second-source check, so no price corroboration exists for the research window. The Dukascopy replicate's price basis is unvalidated. These cap the strength of ANY result on this data, positive or negative. |
+| **Multiple testing** | Handled. `N_TRIALS = 40` counts every configuration evaluated on the shared 2020–2025 holdout across both cycles. Earlier studies used different series. DSR ≈ 0 for all groups; Agent 4 verified DSR still fails at N=100, so the correction is not the binding constraint — the raw Sharpes are simply too low. |
+| **Overfitting** | Present where it matters: the two "surviving" M15 selections are not stable out of their favourable window (§4.1, §4.2). The gate chain (G3/G5) caught this; Agent 4's chronological diagnostics confirm it more starkly than the gates do. |
+
+## 3. Baselines
+
+On the 2020–2025 holdout, buy-and-hold (+$8,795.66, Sharpe 0.860, max DD −21.9 %)
+beats every candidate by roughly 8× to 30×. `ma_32_128_atr3` (+$1,092.55) and
+`donchian_384_192_atr3` (+$288.09) do not add timing value over holding gold in this
+window, and both had negative walk-forward 2010–2019 results (Sharpe −0.717, −0.247;
+chained returns −53.6 %, −22.4 % against +34.4 % for buy-and-hold).
+
+## 4. Adversarial diagnostics (frozen selections; no re-tuning)
+
+### 4.1 Chronological stability — the decisive new evidence
+
+One continuous run of each frozen selection over the **full** 2004–2025 research
+series (single position path, base costs):
+
+| Selection | Full-run net (2004–2025) | Full-run Sharpe | Max DD | Losing streak |
+|---|---:|---:|---:|---|
+| `ma_32_128_atr3` | **−$2,704** | −0.03 | −65.2 % | 8 consecutive years (2012–2019) |
+| `donchian_384_192_atr3` | +$1,032 (≈0.5 %/yr) | 0.10 | −37.6 % | 2013–2019 mostly negative; 2024 negative |
+
+`ma_32_128_atr3` — the best M15 holdout performer — **loses money over the full
+sample**. Its positive holdout is carried by 2020 (+$1,843) and 2006–2011. Per-year
+P&L is in the evidence file. This is the overfitting picture the composite gates
+summarise; stated per year it is worse.
+
+### 4.2 Holdout halves
+
+| Selection | 2020-01 → 2022-06 | 2022-07 → 2025-02 |
+|---|---:|---:|
+| `ma_32_128_atr3` | +$1,678 | **−$535** |
+| `donchian_384_192_atr3` | +$800 | **−$508** |
+
+Both survivors' holdout positivity comes entirely from the first half. In the most
+recent ~2.6 years both lose money net of assumed costs — the opposite of the
+stability a promotion requires.
+
+### 4.3 Cost sensitivity — worse execution kills both survivors
+
+Independent cost grid on the holdout (net USD):
+
+| Selection | 0.5× | 1.0× (base) | **1.5×** | 2× | 3× | Break-even |
+|---|---:|---:|---:|---:|---:|---:|
+| `ma_32_128_atr3` | +5,427 | +1,093 | **−2,024** | −4,266 | −7,036 | 1.157× |
+| `donchian_384_192_atr3` | +989 | +288 | **−369** | −983 | −2,098 | 1.215× |
+
+A 1.5× cost assumption — a routine difference between a quoted spread and a realized
+one on gold — makes both negative. The margin of safety over the ASSUMED cost is
+16–22 %. **Financing is assumed to be zero on top of that**: 661 of 1,154 (ma_cross)
+and 154 of 231 (donchian) holdout round turns cross at least one 22:00 rollover
+(1,551 and 622 nights held); at a typical −$3.5/lot/night swap this adds ≈ −$282 and
+−$114 of unmodeled drag — 26 % and 40 % of the candidates' entire holdout net. Every
+unmodeled cost component points the same way: down.
+
+### 4.4 Execution-timing (bar-stamp convention) stress
+
+The preregistration discloses that the source's stamps may mark bar open or close. If
+stamps mark closes, every fill is effectively one bar later. Re-running the frozen
+selections with a one-bar-extra fill delay: `ma_32_128_atr3` +$1,093 → +$206 (−81 %,
+Sharpe 0.214 → 0.096); `donchian_384_192_atr3` +$288 → +$784; the two failed groups
+stay negative. No sign flips — the stamp ambiguity neither rescues the failed groups
+nor materially strengthens the survivors — but the best candidate's P&L is highly
+sensitive to execution timing, which is itself a fragility.
+
+### 4.5 Sample-construction sensitivity (complete-day filter)
+
+Including the 898 partial-day bars (0.19 % of the series) that the pre-registered
+complete-day filter excludes, and re-running the frozen selections on the holdout:
+`ma_32_128_atr3` +$1,093 → +$1,117 (robust); `donchian_384_192_atr3` +$288 →
+**−$77 — a sign flip**. The Donchian selection's entire holdout margin is inside
+data-preparation noise. (The filter itself is pre-registered and defensible — partial
+sessions cannot fairly signal — but a result that changes sign on 0.19 % of the data
+has no margin to stand on.)
+
+### 4.6 Trade-level quality (holdout, independent engine)
+
+| Selection | Turns | Win rate | Expectancy/trade | Profit factor | Avg hold | Stop exits |
+|---|---:|---:|---:|---:|---:|---:|
+| `ma_32_128_atr3` | 1,154 | 26.6 % | +$0.95 | 1.029 | 83.5 bars | 55 % |
+| `donchian_384_192_atr3` | 231 | 21.7 % | +$1.25 | 1.029 | 176 bars | 72 % |
+
+Profit factor 1.03 on both: gross wins exceed gross losses by 3 %. With ASSUMED costs
+and no measured financing, a 3 % gross margin is not a durable edge — it is a rounding
+error away from zero, which is exactly what the 1.5× cost row shows.
+
+## 5. Gate-by-gate (Agent 4 re-derivation, M15 holdout stage)
+
+| Gate | ma_cross | donchian | session_breakout | volatility_expansion |
+|---|---|---|---|---|
+| G1 holdout net & Sharpe > 0 | PASS | PASS | FAIL | FAIL |
+| G2 net > 0 at 2× cost | FAIL | FAIL | FAIL | FAIL |
+| G3 WF Sharpe > 0 & ≥6/10 years | FAIL (−0.717; 2/10) | FAIL (−0.247; 4/10) | FAIL | FAIL |
+| G4 Holm p ≤ 0.05 | FAIL (1.00) | FAIL (1.00) | FAIL | FAIL |
+| G5 DSR ≥ 0.95 | FAIL (0.0003) | FAIL (0.0042) | FAIL (0.0) | FAIL (0.0) |
+| G6 ≥100 OOS turns | PASS | PASS | PASS | PASS |
+| G7 all regimes, ≥3 positive | FAIL | FAIL | FAIL | FAIL |
+| **Passes all** | **no** | **no** | **no** | **no** |
+
+Daily study: same conclusion (best groups 4/7, blocked by G4/G5 and — for
+`rexp_k10_h3` — G3; for `ma_20_100_atr3` — G6 power: 61 OOS turns in ~15 years).
+
+## 6. What would change the verdict
+
+1. **Measured all-in round-turn costs and M15 bar depth** from the Windows MT5 DEMO
+   terminal (`qts data mt5-depth`, `qts demo cost-check --record` — read-only). These
+   are the decisive inputs: the survivors' break-even multiples (1.16×, 1.22×) mean
+   measured costs could only confirm the failure or (if materially cheaper) justify a
+   **new preregistration** on fresh data.
+2. A licensed, independent long-history price series (the second-source check rejected
+   every current candidate).
+3. Fresh out-of-sample data beyond the reused 2020–2025 window, under a new
+   preregistration, for the Donchian/MA families only if (1) and (2) land.
+
+None of these change the current verdict: FAIL.
+
+## 7. Boundaries observed
+
+- No strategy definition, parameter, gate threshold, or evidence file of the frozen
+  studies was modified. The 2020–2025 holdout was used only to evaluate frozen
+  selections and run diagnostics; nothing was re-selected or re-tuned on it.
+- No broker connection, no orders, no DEMO or LIVE state change. `LIVE_LOCKED`,
+  `REAL_CAPITAL_EXPOSURE = 0`, risk limits and authorization policies unchanged.
+- New files: this report, `scripts/agent4_independent_validation.py`,
+  `data/evidence/longhistory/agent4_validation.json`,
+  `tests/unit/test_agent4_validation.py`. The committed evidence files of the frozen
+  studies were re-generated during reproduction and restored byte-identical (verified
+  by SHA-256); nothing in `data/evidence/longhistory/` belonging to the prior cycles
+  was altered.
+- **One out-of-mandate repair, disclosed: `tests/test_conftest_git_status.py` was
+  fixed.** The test failed on the pristine baseline commit `055f1ca` (reproduced
+  deterministically with `pytest tests/integration tests/test_conftest_git_status.py`
+  and under the full `pytest -n auto` suite): its bare `import conftest` binds to
+  `tests/integration/conftest.py` whenever a worker collects that directory first,
+  because the integration conftest then occupies the top-level module name. The fix
+  exercises `_git_status_paths()` in a fresh subprocess where only `tests/` is on
+  `sys.path`, so the import is unambiguous. No product code, guard semantics or
+  assertion strength was changed.
+
+## 8. Verification suite (this branch)
+
+| Check | Result |
+|---|---|
+| `ruff check src/ tests/` (+ the new script and test) | pass |
+| `mypy src` | 182 files, no issues |
+| `bandit -q -r src` | pass |
+| `pytest` (fast suite) | **1468 passed, 0 failed** (347 honest skips) |
+| `pytest --run-integration --run-research` | **1811 passed, 0 failed** (4 skips) |
+| `node --check` over `src/qts/desktop/ui/js` | pass |
+| `npm test` (UI) | 48 pass, 0 fail |
+
+For the record: the pristine baseline commit `055f1ca` fails
+`tests/test_conftest_git_status.py` in the same environment (see §7); the suite
+above is green only after the disclosed test repair.
+
+## 9. Reproduce
+
+```bash
+python scripts/fetch_longhistory_sources.py        # pinned, SHA-256-verified (github.com only)
+python scripts/build_longhistory_dataset.py        # deterministic
+python scripts/agent4_independent_validation.py    # 203/203 cross-checks + diagnostics
+pytest tests/unit/test_agent4_validation.py -q     # engine invariants on synthetic data
+```
+
+## 10. Not claimed
+
+No edge. No profitability claim of any kind. This review confirms a negative result
+and adds independent evidence for it. `NO_VALIDATED_EDGE` stands.
