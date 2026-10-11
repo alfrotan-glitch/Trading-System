@@ -9,10 +9,12 @@ INSUFFICIENT EVIDENCE against the pre-registered acceptance gates.
 
 What this script does — and deliberately does NOT do:
 
-* It RE-IMPLEMENTS the execution engine, the signal families, the selection
-  rule and the statistics from the pre-registrations
-  (``docs/research/preregistration_longhistory_2026-10-10.md`` and
-  ``docs/research/preregistration_longhistory_m15_2026-10-10.md``) WITHOUT
+* It RE-IMPLEMENTS the execution engine, ALL signal families of both studies
+  (daily: tsmom, ma_cross, donchian, range expansion, nr7, trend-gated Donchian,
+  RSI(2), bollinger control; M15: ma_cross, donchian, range expansion, session
+  breakout), the selection rule, the regime labels and the statistics from the
+  pre-registrations (``docs/research/preregistration_longhistory_2026-10-10.md``
+  and ``docs/research/preregistration_longhistory_m15_2026-10-10.md``) WITHOUT
   importing ``qts.research.longhistory``. The only shared inputs are the
   processed, SHA-256-pinned CSVs rebuilt by the committed fetch/build scripts.
 * It re-derives every headline number of both final evidence files
@@ -77,6 +79,7 @@ GATE_DSR_MIN = 0.95
 GATE_REGIMES_MIN_POSITIVE = 3
 
 DAILY_PPY = 252
+DAILY_VOL_WINDOW = 60  # 60 trading days, as the daily protocol's VOL_WINDOW
 M15_BARS_PER_DAY = 92
 M15_PPY = M15_BARS_PER_DAY * 252
 M15_VOL_BARS = 60 * M15_BARS_PER_DAY
@@ -146,6 +149,7 @@ def xrun(
     i1: int,
     mult: float = 1.0,
     lag_bars: int = 0,
+    rebalance: np.ndarray | None = None,
 ) -> XRun:
     """Independent bar-loop engine, written from prereg §3 ('Execution model').
 
@@ -181,7 +185,8 @@ def xrun(
     turnover = 0.0
     cost_total = 0.0
     gross_total = 0.0
-    pending: tuple[float, float, float] | None = None
+    reb_flags = None if rebalance is None else np.asarray(rebalance, dtype=bool)
+    pending: tuple[float, float, float, bool] | None = None
     prev_close = math.nan
 
     def close_trade(j: int, px: float, stopped: bool, forced: bool) -> None:
@@ -208,7 +213,7 @@ def xrun(
             gross_total += pnl
         # 2. previous close's decision fills at this open
         if pending is not None:
-            tgt, sz, sd = pending
+            tgt, sz, sd, reb = pending
             if math.isfinite(tgt):
                 if tgt != blocked:
                     blocked = 0
@@ -234,6 +239,17 @@ def xrun(
                         cost_total += cost
                         turnover += f
                         blocked = 0
+                elif reb and pos != 0 and math.isfinite(sz):
+                    # calendar rebalance: resize the open position to ``size``
+                    new_f = min(float(sz), MAX_FRACTION)
+                    delta = new_f - frac
+                    if abs(delta) > 1e-12:
+                        cost = abs(delta) * E * side_rate(op, mult)
+                        E -= cost
+                        tr_cost += cost
+                        cost_total += cost
+                        turnover += abs(delta)
+                        frac = new_f
         # 3. stop against this bar's range
         if pos != 0 and math.isfinite(stop_px):
             hit = (pos > 0 and low <= stop_px) or (pos < 0 and hi >= stop_px)
@@ -268,7 +284,11 @@ def xrun(
         prev_close = cl
         # 6. decision for the next bar, from this close (optionally lagged)
         j = i - lag_bars
-        pending = (float(target[j]), float(size[j]), float(stop_dist[j])) if i + 1 < i1 and j >= 0 else None
+        if i + 1 < i1 and j >= 0:
+            reb = bool(reb_flags[j]) if reb_flags is not None else False
+            pending = (float(target[j]), float(size[j]), float(stop_dist[j]), reb)
+        else:
+            pending = None
 
     return XRun(times, equity, trades, INITIAL_EQUITY, turnover, cost_total, gross_total)
 
@@ -314,6 +334,7 @@ class XPlan:
     size: np.ndarray
     stop: np.ndarray
     cid: str
+    rebalance: np.ndarray | None = None  # bool flags: resize an open position to ``size``
 
 
 def x_ma_cross(df: pd.DataFrame, fast: int, slow: int, stop_mult: float | None, ann: float, vol_n: int) -> XPlan:
@@ -329,7 +350,7 @@ def x_ma_cross(df: pd.DataFrame, fast: int, slow: int, stop_mult: float | None, 
     return XPlan(state, size, stop, f"ma_{fast}_{slow}_{stop_mult}")
 
 
-def x_donchian(df: pd.DataFrame, entry: int, exit_n: int, stop_mult: float) -> XPlan:
+def x_donchian(df: pd.DataFrame, entry: int, exit_n: int, stop_mult: float, gate: np.ndarray | None = None) -> XPlan:
     hi_n = df["high"].shift(1).rolling(entry, min_periods=entry).max()
     lo_n = df["low"].shift(1).rolling(entry, min_periods=entry).min()
     hi_m = df["high"].shift(1).rolling(exit_n, min_periods=exit_n).max()
@@ -337,6 +358,9 @@ def x_donchian(df: pd.DataFrame, entry: int, exit_n: int, stop_mult: float) -> X
     cl = df["close"]
     up = (cl > hi_n).to_numpy()
     dn = (cl < lo_n).to_numpy()
+    if gate is not None:
+        up = up & gate
+        dn = dn & gate
     ex_l = (cl < lo_m).to_numpy()
     ex_s = (cl > hi_m).to_numpy()
     valid = (hi_n.notna() & lo_m.notna()).to_numpy()
@@ -449,6 +473,156 @@ def x_buy_hold(bars: pd.DataFrame, i0: int, i1: int, mult: float = 1.0) -> XRun:
             run.gross_usd,
         )
     return run
+
+
+# ------------------------------------------------------------------ daily-only families
+
+
+def month_end_flags(index: pd.DatetimeIndex) -> np.ndarray:
+    """True on the last bar of each calendar month (knowable only ex post; the
+    decision written on that bar fills at the NEXT open, by which time the flag
+    is true -- the same calendar exemption the repo's truncation check uses)."""
+    s = pd.Series(pd.DatetimeIndex(index), index=pd.DatetimeIndex(index))
+    last = s.groupby(pd.DatetimeIndex(index).to_period("M")).transform("max")
+    return np.asarray(last.values == s.values)
+
+
+def x_tsmom(df: pd.DataFrame, lookback: int) -> XPlan:
+    """Sign of trailing return, changed at month ends, vol-targeted size."""
+    close = df["close"]
+    trailing = close / close.shift(lookback) - 1.0
+    sig = np.sign(trailing.to_numpy())
+    me = month_end_flags(pd.DatetimeIndex(df.index))
+    target = np.where(me & np.isfinite(sig), sig, np.nan)
+    size = size_volt(close, DAILY_VOL_WINDOW, DAILY_PPY).to_numpy()
+    return XPlan(target, size, np.full(len(df), np.nan), f"tsmom_L{lookback}", rebalance=me)
+
+
+def _wilder_rsi(close: pd.Series, n: int) -> np.ndarray:
+    delta = close.diff()
+    gain = delta.clip(lower=0.0)
+    loss = -delta.clip(upper=0.0)
+    avg_gain = gain.ewm(alpha=1.0 / n, adjust=False, min_periods=n).mean()
+    avg_loss = loss.ewm(alpha=1.0 / n, adjust=False, min_periods=n).mean()
+    rs = avg_gain / avg_loss.replace(0.0, np.nan)
+    out = 100.0 - 100.0 / (1.0 + rs)
+    return out.where(avg_loss != 0.0, 100.0).to_numpy()
+
+
+def x_rsi2(df: pd.DataFrame, threshold: float, trend_filter: bool, time_exit: int = 5) -> XPlan:
+    """Connors RSI(2): buy oversold (optionally above SMA200), exit above SMA(5) or on time."""
+    close = df["close"]
+    r = _wilder_rsi(close, 2)
+    s5 = sma(close, 5).to_numpy()
+    s200 = sma(close, 200).to_numpy()
+    c = close.to_numpy()
+    n = len(df)
+    state = np.zeros(n)
+    s = 0.0
+    entry_t = -1
+    for t in range(n):
+        if not np.isfinite(r[t]) or not np.isfinite(s5[t]):
+            state[t] = np.nan
+            continue
+        ok_long = (not trend_filter) or (np.isfinite(s200[t]) and c[t] > s200[t])
+        ok_short = (not trend_filter) or (np.isfinite(s200[t]) and c[t] < s200[t])
+        if s == 0.0:
+            if r[t] < threshold and ok_long:
+                s, entry_t = 1.0, t
+            elif r[t] > 100.0 - threshold and ok_short:
+                s, entry_t = -1.0, t
+        elif (s == 1.0 and (c[t] > s5[t] or t - entry_t >= time_exit)) or (
+            s == -1.0 and (c[t] < s5[t] or t - entry_t >= time_exit)
+        ):
+            s = 0.0
+        state[t] = s
+    return XPlan(state, size_volt(close, DAILY_VOL_WINDOW, DAILY_PPY).to_numpy(), np.full(n, np.nan), f"rsi2_{threshold}")
+
+
+def x_nr7(df: pd.DataFrame, hold: int, stop_mult: float = 2.0, window: int = 5) -> XPlan:
+    """Narrowest-range-of-7 setup; close through its range within ``window`` bars trades."""
+    rng = (df["high"] - df["low"]).to_numpy()
+    n = len(df)
+    is_nr7 = np.zeros(n, dtype=bool)
+    for t in range(6, n):
+        if rng[t] <= np.min(rng[t - 6 : t + 1]):
+            is_nr7[t] = True
+    close = df["close"].to_numpy()
+    high = df["high"].to_numpy()
+    low = df["low"].to_numpy()
+    up = np.zeros(n, dtype=bool)
+    dn = np.zeros(n, dtype=bool)
+    hi_lvl = math.nan
+    lo_lvl = math.nan
+    setup_at = -(10**9)
+    for t in range(n):
+        if is_nr7[t]:
+            hi_lvl, lo_lvl, setup_at = high[t], low[t], t
+            continue
+        if 0 < t - setup_at <= window:
+            if close[t] > hi_lvl:
+                up[t] = True
+                setup_at = -(10**9)
+            elif close[t] < lo_lvl:
+                dn[t] = True
+                setup_at = -(10**9)
+    valid = np.ones(n, dtype=bool)
+    valid[:6] = False
+    state = np.zeros(n)
+    s = 0.0
+    exit_at = -1
+    for t in range(n):
+        if not valid[t]:
+            state[t] = np.nan
+            continue
+        if up[t]:
+            s, exit_at = 1.0, t + hold
+        elif dn[t]:
+            s, exit_at = -1.0, t + hold
+        elif t >= exit_at:
+            s = 0.0
+        state[t] = s
+    return XPlan(state, size_stop(stop_mult, df).to_numpy(), (stop_mult * atr14(df)).to_numpy(), f"nr7_{hold}")
+
+
+def x_bollinger(df: pd.DataFrame, n_: int = 20, k: float = 2.0) -> XPlan:
+    """CONTROL: fade band excursions, exit at the mean. Falsification benchmark only."""
+    close = df["close"]
+    mid = sma(close, n_)
+    sd = close.rolling(n_, min_periods=n_).std()
+    upper = (mid + k * sd).to_numpy()
+    lower = (mid - k * sd).to_numpy()
+    m = mid.to_numpy()
+    c = close.to_numpy()
+    nn = len(df)
+    state = np.zeros(nn)
+    s = 0.0
+    for t in range(nn):
+        if not np.isfinite(m[t]):
+            state[t] = np.nan
+            continue
+        if s == 0.0:
+            if c[t] < lower[t]:
+                s = 1.0
+            elif c[t] > upper[t]:
+                s = -1.0
+        elif s == 1.0 and c[t] >= m[t] or s == -1.0 and c[t] <= m[t]:
+            s = 0.0
+        state[t] = s
+    return XPlan(state, size_volt(close, DAILY_VOL_WINDOW, DAILY_PPY).to_numpy(), np.full(nn, np.nan), "bollinger_control")
+
+
+def x_efficiency_ratio(close: pd.Series, n: int) -> pd.Series:
+    net = (close - close.shift(n)).abs()
+    path = close.diff().abs().rolling(n, min_periods=n).sum()
+    return net / path.replace(0.0, np.nan)
+
+
+def x_gated_donchian(df: pd.DataFrame, threshold: float) -> XPlan:
+    """Donchian 55/20 with a Kaufman efficiency-ratio(60) entry gate (daily trend_gated)."""
+    gate = (x_efficiency_ratio(df["close"], 60) >= threshold).astype(float).fillna(0.0).to_numpy().astype(bool)
+    plan = x_donchian(df, 55, 20, 3.0, gate=gate)
+    return XPlan(plan.target, plan.size, plan.stop, f"gated_er60_{threshold}", plan.rebalance)
 
 
 # ------------------------------------------------------------------ independent stats
@@ -621,6 +795,7 @@ def select_group(
     cids: list[str],
     train_start: str,
     train_end: str,
+    ppy: float = M15_PPY,
 ) -> dict[str, Any]:
     """Prereg §6: highest training-window net Sharpe at base cost, >=20 turns, ties earlier."""
     a, b = window_bounds(df.index, train_start, train_end)
@@ -628,8 +803,8 @@ def select_group(
     table = []
     for cid in cids:
         p = plans[cid]
-        run = xrun(df, p.target, p.size, p.stop, a, b)
-        sr = xsharpe(run.returns, PPY_OF["m15"])
+        run = xrun(df, p.target, p.size, p.stop, a, b, rebalance=p.rebalance)
+        sr = xsharpe(run.returns, ppy)
         turns = len(run.trades)
         table.append({"cid": cid, "train_sharpe": round(sr, 4), "train_round_turns": turns})
         if turns >= MIN_TRAIN_ROUND_TURNS and (best is None or sr > best[0] + 1e-12):
@@ -707,18 +882,186 @@ def summarize_xrun(run: XRun, ppy: float) -> dict[str, Any]:
 
 
 def x_break_even(df: pd.DataFrame, p: XPlan, a: int, b: int, hi: float = 50.0) -> dict[str, Any]:
-    if xrun(df, p.target, p.size, p.stop, a, b, mult=0.0).net_usd <= 0:
+    if xrun(df, p.target, p.size, p.stop, a, b, mult=0.0, rebalance=p.rebalance).net_usd <= 0:
         return {"value": 0.0, "status": "NEGATIVE_EVEN_AT_ZERO_COST"}
-    if xrun(df, p.target, p.size, p.stop, a, b, mult=hi).net_usd > 0:
+    if xrun(df, p.target, p.size, p.stop, a, b, mult=hi, rebalance=p.rebalance).net_usd > 0:
         return {"value": hi, "status": f"POSITIVE_AT_{hi:g}X"}
     lo_m, hi_m = 0.0, hi
     for _ in range(30):
         mid = 0.5 * (lo_m + hi_m)
-        if xrun(df, p.target, p.size, p.stop, a, b, mult=mid).net_usd > 0:
+        if xrun(df, p.target, p.size, p.stop, a, b, mult=mid, rebalance=p.rebalance).net_usd > 0:
             lo_m = mid
         else:
             hi_m = mid
     return {"value": round(0.5 * (lo_m + hi_m), 4), "status": "CROSSES_ZERO"}
+
+
+# ------------------------------------------------------------------ daily study verification
+
+
+def daily_plans(df: pd.DataFrame) -> dict[str, XPlan]:
+    """The frozen daily candidate grid (preregistration_longhistory §4-5)."""
+    plans: dict[str, XPlan] = {}
+    for lb in (63, 126, 252):
+        plans[f"tsmom_L{lb}"] = x_tsmom(df, lb)
+    for f_, s_ in ((20, 100), (20, 200), (50, 200)):
+        for st_ in (None, 3.0):
+            tag = "nostop" if st_ is None else "atr3"
+            plans[f"ma_{f_}_{s_}_{tag}"] = x_ma_cross(df, f_, s_, st_, DAILY_PPY, DAILY_VOL_WINDOW)
+    for e_, x_ in ((20, 10), (55, 20)):
+        for st_ in (2.0, 3.0):
+            plans[f"donchian_{e_}_{x_}_atr{int(st_)}"] = x_donchian(df, e_, x_, st_)
+    for k_, tag in ((0.5, "k05"), (1.0, "k10")):
+        for h_ in (1, 3):
+            plans[f"rexp_{tag}_h{h_}"] = x_range_expansion(df, k_, h_)
+    for h_ in (3, 5):
+        plans[f"nr7_h{h_}"] = x_nr7(df, h_)
+    for th, tag in ((0.25, "025"), (0.35, "035")):
+        plans[f"gated_er60_{tag}"] = x_gated_donchian(df, th)
+    for th, tag in ((5.0, "t5"), (10.0, "t10")):
+        for filt, ftag in ((False, "nofilter"), (True, "sma200")):
+            plans[f"rsi2_{tag}_{ftag}"] = x_rsi2(df, th, filt)
+    plans["bollinger_20_2_control"] = x_bollinger(df, 20, 2.0)
+    return plans
+
+
+DAILY_GROUPS: dict[str, list[str]] = {
+    "tsmom": ["tsmom_L63", "tsmom_L126", "tsmom_L252"],
+    "ma_cross": [
+        "ma_20_100_nostop", "ma_20_100_atr3", "ma_20_200_nostop", "ma_20_200_atr3", "ma_50_200_nostop", "ma_50_200_atr3",
+    ],
+    "donchian": ["donchian_20_10_atr2", "donchian_20_10_atr3", "donchian_55_20_atr2", "donchian_55_20_atr3"],
+    "volatility_expansion": ["rexp_k05_h1", "rexp_k05_h3", "rexp_k10_h1", "rexp_k10_h3", "nr7_h3", "nr7_h5"],
+    "trend_gated": ["gated_er60_025", "gated_er60_035"],
+    "mean_reversion": ["rsi2_t5_nofilter", "rsi2_t5_sma200", "rsi2_t10_nofilter", "rsi2_t10_sma200"],
+}
+
+
+def regime_labels_x(df: pd.DataFrame, trend_bars: int, vol_bars: int, ann: float, min_bars: int) -> pd.Series:
+    """Causal mechanical regimes: 12-month trend sign x vol vs expanding median."""
+    close = df["close"]
+    trend = np.sign(close / close.shift(trend_bars) - 1.0)
+    vol = realized_vol(close, vol_bars, ann)
+    vol_med = vol.expanding(min_periods=min_bars).median()
+    hi = vol > vol_med
+    names = np.where(trend > 0, "UP", "DOWN") + np.where(hi, "_HIVOL", "_LOWVOL")
+    labels = pd.Series(names, index=df.index, dtype=object)
+    labels[trend.isna() | vol_med.isna()] = None
+    return labels
+
+
+def attribute_regimes(stamps: list, pnls: list, labels: pd.Series) -> dict[str, dict[str, float | int]]:
+    days = np.concatenate([np.asarray(d) for d in stamps]) if stamps else np.array([], dtype="datetime64[ns]")
+    pnl = np.concatenate([np.asarray(x) for x in pnls]) if pnls else np.array([])
+    aligned = labels.reindex(pd.DatetimeIndex(days)).to_numpy() if len(days) else np.array([], dtype=object)
+    out: dict[str, dict[str, float | int]] = {}
+    for regime in ("UP_HIVOL", "UP_LOWVOL", "DOWN_HIVOL", "DOWN_LOWVOL"):
+        mask = np.asarray(aligned == regime, dtype=bool)
+        out[regime] = {
+            "days": int(mask.sum()),
+            "net_usd": round(float(pnl[mask].sum()), 2) if mask.any() else 0.0,
+        }
+    return out
+
+
+def run_pnl_series(run: XRun) -> tuple[np.ndarray, np.ndarray]:
+    eq = np.concatenate([[run.initial_equity], run.equity])
+    return np.asarray(run.times), np.diff(eq)
+
+
+def verify_regimes(
+    df: pd.DataFrame,
+    plans: dict[str, XPlan],
+    groups: dict[str, list[str]],
+    sel: dict[str, Any],
+    committed: dict[str, Any],
+    labels: pd.Series,
+    ppy: float,
+    tag: str,
+) -> list[dict[str, Any]]:
+    """Independently re-derive the G7 regime attribution (WF composite + holdout)."""
+    out: list[dict[str, Any]] = []
+    a, b = window_bounds(df.index, HOLDOUT_START, RESEARCH_END)
+    for group in groups:
+        if group not in sel or sel[group] is None:
+            continue
+        stamps: list[np.ndarray] = []
+        pnls: list[np.ndarray] = []
+        for year in WF_YEARS:
+            fsel = select_group(df, plans, groups[group], RESEARCH_START, f"{year - 1}-12-31", ppy=ppy)
+            if fsel["cid"] is None:
+                continue
+            p = plans[fsel["cid"]]
+            ta, tb = window_bounds(df.index, f"{year}-01-01", f"{year}-12-31")
+            r = xrun(df, p.target, p.size, p.stop, ta, tb, rebalance=p.rebalance)
+            s_, v_ = run_pnl_series(r)
+            stamps.append(s_)
+            pnls.append(v_)
+        p = plans[sel[group]]
+        r = xrun(df, p.target, p.size, p.stop, a, b, rebalance=p.rebalance)
+        s_, v_ = run_pnl_series(r)
+        stamps.append(s_)
+        pnls.append(v_)
+        mine = attribute_regimes(stamps, pnls, labels)
+        theirs = committed["gates"][group]["regimes_oos"]
+        for regime in mine:
+            out.append(compare(f"{tag}_regimes[{group}][{regime}].days", mine[regime]["days"], theirs[regime]["days"], 0))
+            out.append(compare(f"{tag}_regimes[{group}][{regime}].net", mine[regime]["net_usd"], theirs[regime]["net_usd"], 0.02))
+    return out
+
+
+def run_daily_checks(daily: pd.DataFrame, committed: dict[str, Any], quick: bool) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Full independent verification of the daily study LH-XAUUSD-D1-2026-10-10."""
+    checks: list[dict[str, Any]] = []
+    plans = daily_plans(daily)
+    a, b = window_bounds(daily.index, HOLDOUT_START, RESEARCH_END)
+    sel: dict[str, Any] = {}
+    for group, cids in DAILY_GROUPS.items():
+        s = select_group(daily, plans, cids, RESEARCH_START, DEV_END, ppy=DAILY_PPY)
+        sel[group] = s["cid"]
+        checks.append(compare(f"daily_holdout_selection[{group}]", s["cid"], committed["holdout_selection_summary"][group], 0))
+    for group, cid in sel.items():
+        if cid is None:
+            continue
+        p = plans[cid]
+        run = xrun(daily, p.target, p.size, p.stop, a, b, rebalance=p.rebalance)
+        summ = summarize_xrun(run, DAILY_PPY)
+        theirs = committed["holdout"]["groups"][group]["base"]
+        for k, tol in [
+            ("net_usd", 0.001), ("sharpe", 0.01), ("round_turns", 0), ("max_drawdown", 0.01),
+            ("cost_usd", 0.005), ("gross_usd", 0.005),
+        ]:
+            checks.append(compare(f"daily_holdout[{group}].{k}", summ[k], theirs[k], tol))
+        for m_ in (2.0, 3.0):
+            r2 = xrun(daily, p.target, p.size, p.stop, a, b, mult=m_, rebalance=p.rebalance)
+            checks.append(compare(f"daily_holdout[{group}].net@{m_}x", round(r2.net_usd, 2), committed["holdout"]["groups"][group]["stress"][f"{m_:g}x"]["net_usd"], 0.001))
+        be = x_break_even(daily, p, a, b)
+        checks.append(compare(f"daily_holdout[{group}].break_even", be["value"], committed["holdout"]["groups"][group]["break_even_multiplier"]["value"], 0.02))
+    # buy-and-hold
+    bh = x_buy_hold(daily, a, b)
+    sb = summarize_xrun(bh, DAILY_PPY)
+    tb = committed["benchmarks"]["buy_and_hold_long"]["holdout"]
+    for k, tol in [("net_usd", 0.001), ("sharpe", 0.01), ("max_drawdown", 0.01)]:
+        checks.append(compare(f"daily_buyhold.{k}", sb[k], tb[k], tol))
+    # walk-forward folds
+    if not quick:
+        for fold in committed["walk_forward"]["folds"]:
+            year = fold["year"]
+            for group, cids in DAILY_GROUPS.items():
+                fsel = select_group(daily, plans, cids, RESEARCH_START, f"{year - 1}-12-31", ppy=DAILY_PPY)
+                theirs = fold["selection"][group]
+                checks.append(compare(f"daily_wf[{year}].sel[{group}]", fsel["cid"], theirs["cid"], 0))
+                if fsel["cid"] is None:
+                    continue
+                p = plans[fsel["cid"]]
+                ta, tb2 = window_bounds(daily.index, f"{year}-01-01", f"{year}-12-31")
+                run = xrun(daily, p.target, p.size, p.stop, ta, tb2, rebalance=p.rebalance)
+                checks.append(compare(f"daily_wf[{year}].net[{group}]", round(run.net_usd, 2), theirs["net_usd"], 0.001))
+                checks.append(compare(f"daily_wf[{year}].turns[{group}]", len(run.trades), theirs["round_turns"], 0))
+        # regime re-derivation (G7) for the daily study
+        labels = regime_labels_x(daily, 252, DAILY_VOL_WINDOW, DAILY_PPY, 252)
+        checks.extend(verify_regimes(daily, plans, DAILY_GROUPS, sel, committed, labels, DAILY_PPY, "daily"))
+    return checks, sel
 
 
 # ------------------------------------------------------------------ comparison helpers
@@ -826,10 +1169,40 @@ def main() -> int:
             checks.append(compare(f"m15_replicate[{group}].net", round(run.net_usd, 2), theirs["net_usd"], 0.001))
             checks.append(compare(f"m15_replicate[{group}].turns", len(run.trades), theirs["round_turns"], 0))
 
+    # ---- 4b. daily study: full independent verification -------------------------
+    daily_sel: dict[str, Any] = {}
+    if (PROCESSED / "xauusd_basemax_utc_daily_research.csv").exists():
+        daily = load_daily("xauusd_basemax_utc_daily_research.csv")
+        dcom = json.loads(DAILY_FINAL.read_text())
+        daily_checks, daily_sel = run_daily_checks(daily, dcom, args.quick)
+        checks.extend(daily_checks)
+        if not args.quick and (PROCESSED / "xauusd_dukascopy_utc_daily_replicate.csv").exists():
+            rep_d = load_daily("xauusd_dukascopy_utc_daily_replicate.csv")
+            dplans = daily_plans(rep_d)
+            ra2, rb2 = window_bounds(rep_d.index, REPLICATE_START, REPLICATE_END)
+            for group, cid in daily_sel.items():
+                if cid is None:
+                    continue
+                pr = dplans[cid]
+                first_valid = int(np.argmax(np.isfinite(pr.target))) if np.isfinite(pr.target).any() else len(pr.target)
+                theirs = dcom["replicate"][group]
+                if first_valid > 0.25 * len(rep_d):
+                    checks.append(compare(f"daily_replicate[{group}].status", "NOT_EVALUABLE_INSUFFICIENT_WARMUP", theirs["status"], 0))
+                    continue
+                checks.append(compare(f"daily_replicate[{group}].status", "EVALUATED", theirs["status"], 0))
+                rr = xrun(rep_d, pr.target, pr.size, pr.stop, ra2, rb2, rebalance=pr.rebalance)
+                checks.append(compare(f"daily_replicate[{group}].net", round(rr.net_usd, 2), theirs["net_usd"], 0.001))
+                checks.append(compare(f"daily_replicate[{group}].turns", len(rr.trades), theirs["round_turns"], 0))
+        evidence["daily_holdout_selection"] = daily_sel
+        print(f"  daily study checked ({len(daily_checks)} checks)")
+
     # ---- 5. DSR / Holm / sign-randomisation statistical layer --------------------
     if not args.quick:
         stats_checks = statistical_layer(m15, plans, ho_sel_mine, committed)
         checks.extend(stats_checks)
+        # M15 regime re-derivation (G7)
+        m15_labels = regime_labels_x(m15, M15_REGIME_BARS, M15_VOL_BARS, M15_PPY, M15_REGIME_BARS)
+        checks.extend(verify_regimes(m15, plans, M15_GROUPS, ho_sel_mine, committed, m15_labels, M15_PPY, "m15"))
 
     # ---- 6. diagnostics ---------------------------------------------------------
     diag = diagnostics(m15, plans, ho_sel_mine, args.quick)

@@ -1052,6 +1052,1728 @@
       "theirs": 246
     },
     {
+      "item": "daily_holdout_selection[tsmom]",
+      "match": true,
+      "mine": "tsmom_L126",
+      "theirs": "tsmom_L126"
+    },
+    {
+      "item": "daily_holdout_selection[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_holdout_selection[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_holdout_selection[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_holdout_selection[trend_gated]",
+      "match": true,
+      "mine": "gated_er60_025",
+      "theirs": "gated_er60_025"
+    },
+    {
+      "item": "daily_holdout_selection[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_holdout[tsmom].net_usd",
+      "match": true,
+      "mine": -378.57,
+      "theirs": -378.57
+    },
+    {
+      "item": "daily_holdout[tsmom].sharpe",
+      "match": true,
+      "mine": -0.0107,
+      "theirs": -0.0107
+    },
+    {
+      "item": "daily_holdout[tsmom].round_turns",
+      "match": true,
+      "mine": 13,
+      "theirs": 13
+    },
+    {
+      "item": "daily_holdout[tsmom].max_drawdown",
+      "match": true,
+      "mine": -0.3693,
+      "theirs": -0.3693
+    },
+    {
+      "item": "daily_holdout[tsmom].cost_usd",
+      "match": true,
+      "mine": 66.78,
+      "theirs": 66.78
+    },
+    {
+      "item": "daily_holdout[tsmom].gross_usd",
+      "match": true,
+      "mine": -311.79,
+      "theirs": -311.79
+    },
+    {
+      "item": "daily_holdout[tsmom].net@2.0x",
+      "match": true,
+      "mine": -447.81,
+      "theirs": -447.81
+    },
+    {
+      "item": "daily_holdout[tsmom].net@3.0x",
+      "match": true,
+      "mine": -516.56,
+      "theirs": -516.56
+    },
+    {
+      "item": "daily_holdout[tsmom].break_even",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "daily_holdout[ma_cross].net_usd",
+      "match": true,
+      "mine": 530.11,
+      "theirs": 530.11
+    },
+    {
+      "item": "daily_holdout[ma_cross].sharpe",
+      "match": true,
+      "mine": 0.2995,
+      "theirs": 0.2995
+    },
+    {
+      "item": "daily_holdout[ma_cross].round_turns",
+      "match": true,
+      "mine": 14,
+      "theirs": 14
+    },
+    {
+      "item": "daily_holdout[ma_cross].max_drawdown",
+      "match": true,
+      "mine": -0.0857,
+      "theirs": -0.0857
+    },
+    {
+      "item": "daily_holdout[ma_cross].cost_usd",
+      "match": true,
+      "mine": 21.93,
+      "theirs": 21.93
+    },
+    {
+      "item": "daily_holdout[ma_cross].gross_usd",
+      "match": true,
+      "mine": 552.04,
+      "theirs": 552.04
+    },
+    {
+      "item": "daily_holdout[ma_cross].net@2.0x",
+      "match": true,
+      "mine": 506.15,
+      "theirs": 506.15
+    },
+    {
+      "item": "daily_holdout[ma_cross].net@3.0x",
+      "match": true,
+      "mine": 482.25,
+      "theirs": 482.25
+    },
+    {
+      "item": "daily_holdout[ma_cross].break_even",
+      "match": true,
+      "mine": 23.6561,
+      "theirs": 23.6561
+    },
+    {
+      "item": "daily_holdout[donchian].net_usd",
+      "match": true,
+      "mine": 160.22,
+      "theirs": 160.22
+    },
+    {
+      "item": "daily_holdout[donchian].sharpe",
+      "match": true,
+      "mine": 0.0874,
+      "theirs": 0.0874
+    },
+    {
+      "item": "daily_holdout[donchian].round_turns",
+      "match": true,
+      "mine": 19,
+      "theirs": 19
+    },
+    {
+      "item": "daily_holdout[donchian].max_drawdown",
+      "match": true,
+      "mine": -0.1007,
+      "theirs": -0.1007
+    },
+    {
+      "item": "daily_holdout[donchian].cost_usd",
+      "match": true,
+      "mine": 41.69,
+      "theirs": 41.69
+    },
+    {
+      "item": "daily_holdout[donchian].gross_usd",
+      "match": true,
+      "mine": 201.91,
+      "theirs": 201.91
+    },
+    {
+      "item": "daily_holdout[donchian].net@2.0x",
+      "match": true,
+      "mine": 117.38,
+      "theirs": 117.38
+    },
+    {
+      "item": "daily_holdout[donchian].net@3.0x",
+      "match": true,
+      "mine": 74.72,
+      "theirs": 74.72
+    },
+    {
+      "item": "daily_holdout[donchian].break_even",
+      "match": true,
+      "mine": 4.7614,
+      "theirs": 4.7614
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].net_usd",
+      "match": true,
+      "mine": 673.05,
+      "theirs": 673.05
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].sharpe",
+      "match": true,
+      "mine": 0.3867,
+      "theirs": 0.3867
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].round_turns",
+      "match": true,
+      "mine": 134,
+      "theirs": 134
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].max_drawdown",
+      "match": true,
+      "mine": -0.0546,
+      "theirs": -0.0546
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].cost_usd",
+      "match": true,
+      "mine": 289.58,
+      "theirs": 289.58
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].gross_usd",
+      "match": true,
+      "mine": 962.63,
+      "theirs": 962.63
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].net@2.0x",
+      "match": true,
+      "mine": 381.23,
+      "theirs": 381.23
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].net@3.0x",
+      "match": true,
+      "mine": 97.36,
+      "theirs": 97.36
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].break_even",
+      "match": true,
+      "mine": 3.3494,
+      "theirs": 3.3494
+    },
+    {
+      "item": "daily_holdout[trend_gated].net_usd",
+      "match": true,
+      "mine": -319.98,
+      "theirs": -319.98
+    },
+    {
+      "item": "daily_holdout[trend_gated].sharpe",
+      "match": true,
+      "mine": -0.2764,
+      "theirs": -0.2764
+    },
+    {
+      "item": "daily_holdout[trend_gated].round_turns",
+      "match": true,
+      "mine": 9,
+      "theirs": 9
+    },
+    {
+      "item": "daily_holdout[trend_gated].max_drawdown",
+      "match": true,
+      "mine": -0.0618,
+      "theirs": -0.0618
+    },
+    {
+      "item": "daily_holdout[trend_gated].cost_usd",
+      "match": true,
+      "mine": 13.33,
+      "theirs": 13.33
+    },
+    {
+      "item": "daily_holdout[trend_gated].gross_usd",
+      "match": true,
+      "mine": -306.65,
+      "theirs": -306.65
+    },
+    {
+      "item": "daily_holdout[trend_gated].net@2.0x",
+      "match": true,
+      "mine": -333.21,
+      "theirs": -333.21
+    },
+    {
+      "item": "daily_holdout[trend_gated].net@3.0x",
+      "match": true,
+      "mine": -346.42,
+      "theirs": -346.42
+    },
+    {
+      "item": "daily_holdout[trend_gated].break_even",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "daily_holdout[mean_reversion].net_usd",
+      "match": true,
+      "mine": -841.32,
+      "theirs": -841.32
+    },
+    {
+      "item": "daily_holdout[mean_reversion].sharpe",
+      "match": true,
+      "mine": -0.3967,
+      "theirs": -0.3967
+    },
+    {
+      "item": "daily_holdout[mean_reversion].round_turns",
+      "match": true,
+      "mine": 47,
+      "theirs": 47
+    },
+    {
+      "item": "daily_holdout[mean_reversion].max_drawdown",
+      "match": true,
+      "mine": -0.1581,
+      "theirs": -0.1581
+    },
+    {
+      "item": "daily_holdout[mean_reversion].cost_usd",
+      "match": true,
+      "mine": 175.17,
+      "theirs": 175.17
+    },
+    {
+      "item": "daily_holdout[mean_reversion].gross_usd",
+      "match": true,
+      "mine": -666.16,
+      "theirs": -666.16
+    },
+    {
+      "item": "daily_holdout[mean_reversion].net@2.0x",
+      "match": true,
+      "mine": -1009.83,
+      "theirs": -1009.83
+    },
+    {
+      "item": "daily_holdout[mean_reversion].net@3.0x",
+      "match": true,
+      "mine": -1175.27,
+      "theirs": -1175.27
+    },
+    {
+      "item": "daily_holdout[mean_reversion].break_even",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "daily_buyhold.net_usd",
+      "match": true,
+      "mine": 8795.66,
+      "theirs": 8795.66
+    },
+    {
+      "item": "daily_buyhold.sharpe",
+      "match": true,
+      "mine": 0.8648,
+      "theirs": 0.8648
+    },
+    {
+      "item": "daily_buyhold.max_drawdown",
+      "match": true,
+      "mine": -0.2137,
+      "theirs": -0.2137
+    },
+    {
+      "item": "daily_wf[2010].sel[tsmom]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2010].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2010].net[ma_cross]",
+      "match": true,
+      "mine": 115.92,
+      "theirs": 115.92
+    },
+    {
+      "item": "daily_wf[2010].turns[ma_cross]",
+      "match": true,
+      "mine": 7,
+      "theirs": 7
+    },
+    {
+      "item": "daily_wf[2010].sel[donchian]",
+      "match": true,
+      "mine": "donchian_20_10_atr2",
+      "theirs": "donchian_20_10_atr2"
+    },
+    {
+      "item": "daily_wf[2010].net[donchian]",
+      "match": true,
+      "mine": 203.95,
+      "theirs": 203.95
+    },
+    {
+      "item": "daily_wf[2010].turns[donchian]",
+      "match": true,
+      "mine": 8,
+      "theirs": 8
+    },
+    {
+      "item": "daily_wf[2010].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2010].net[volatility_expansion]",
+      "match": true,
+      "mine": -11.54,
+      "theirs": -11.54
+    },
+    {
+      "item": "daily_wf[2010].turns[volatility_expansion]",
+      "match": true,
+      "mine": 23,
+      "theirs": 23
+    },
+    {
+      "item": "daily_wf[2010].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2010].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t5_sma200",
+      "theirs": "rsi2_t5_sma200"
+    },
+    {
+      "item": "daily_wf[2010].net[mean_reversion]",
+      "match": true,
+      "mine": 155.2,
+      "theirs": 155.2
+    },
+    {
+      "item": "daily_wf[2010].turns[mean_reversion]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2011].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2011].net[tsmom]",
+      "match": true,
+      "mine": 2765.59,
+      "theirs": 2765.59
+    },
+    {
+      "item": "daily_wf[2011].turns[tsmom]",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_wf[2011].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2011].net[ma_cross]",
+      "match": true,
+      "mine": 490.25,
+      "theirs": 490.25
+    },
+    {
+      "item": "daily_wf[2011].turns[ma_cross]",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
+      "item": "daily_wf[2011].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2011].net[donchian]",
+      "match": true,
+      "mine": -322.23,
+      "theirs": -322.23
+    },
+    {
+      "item": "daily_wf[2011].turns[donchian]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2011].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2011].net[volatility_expansion]",
+      "match": true,
+      "mine": 120.33,
+      "theirs": 120.33
+    },
+    {
+      "item": "daily_wf[2011].turns[volatility_expansion]",
+      "match": true,
+      "mine": 24,
+      "theirs": 24
+    },
+    {
+      "item": "daily_wf[2011].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2011].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t5_sma200",
+      "theirs": "rsi2_t5_sma200"
+    },
+    {
+      "item": "daily_wf[2011].net[mean_reversion]",
+      "match": true,
+      "mine": 160.34,
+      "theirs": 160.34
+    },
+    {
+      "item": "daily_wf[2011].turns[mean_reversion]",
+      "match": true,
+      "mine": 7,
+      "theirs": 7
+    },
+    {
+      "item": "daily_wf[2012].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2012].net[tsmom]",
+      "match": true,
+      "mine": -925.88,
+      "theirs": -925.88
+    },
+    {
+      "item": "daily_wf[2012].turns[tsmom]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2012].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2012].net[ma_cross]",
+      "match": true,
+      "mine": -154.38,
+      "theirs": -154.38
+    },
+    {
+      "item": "daily_wf[2012].turns[ma_cross]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2012].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2012].net[donchian]",
+      "match": true,
+      "mine": -135.46,
+      "theirs": -135.46
+    },
+    {
+      "item": "daily_wf[2012].turns[donchian]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2012].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2012].net[volatility_expansion]",
+      "match": true,
+      "mine": -33.55,
+      "theirs": -33.55
+    },
+    {
+      "item": "daily_wf[2012].turns[volatility_expansion]",
+      "match": true,
+      "mine": 25,
+      "theirs": 25
+    },
+    {
+      "item": "daily_wf[2012].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2012].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t5_sma200",
+      "theirs": "rsi2_t5_sma200"
+    },
+    {
+      "item": "daily_wf[2012].net[mean_reversion]",
+      "match": true,
+      "mine": -106.08,
+      "theirs": -106.08
+    },
+    {
+      "item": "daily_wf[2012].turns[mean_reversion]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2013].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2013].net[tsmom]",
+      "match": true,
+      "mine": 1356.28,
+      "theirs": 1356.28
+    },
+    {
+      "item": "daily_wf[2013].turns[tsmom]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2013].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2013].net[ma_cross]",
+      "match": true,
+      "mine": 547.75,
+      "theirs": 547.75
+    },
+    {
+      "item": "daily_wf[2013].turns[ma_cross]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2013].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2013].net[donchian]",
+      "match": true,
+      "mine": 782.21,
+      "theirs": 782.21
+    },
+    {
+      "item": "daily_wf[2013].turns[donchian]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2013].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2013].net[volatility_expansion]",
+      "match": true,
+      "mine": 95.41,
+      "theirs": 95.41
+    },
+    {
+      "item": "daily_wf[2013].turns[volatility_expansion]",
+      "match": true,
+      "mine": 25,
+      "theirs": 25
+    },
+    {
+      "item": "daily_wf[2013].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2013].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t5_sma200",
+      "theirs": "rsi2_t5_sma200"
+    },
+    {
+      "item": "daily_wf[2013].net[mean_reversion]",
+      "match": true,
+      "mine": -99.25,
+      "theirs": -99.25
+    },
+    {
+      "item": "daily_wf[2013].turns[mean_reversion]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2014].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2014].net[tsmom]",
+      "match": true,
+      "mine": -1903.99,
+      "theirs": -1903.99
+    },
+    {
+      "item": "daily_wf[2014].turns[tsmom]",
+      "match": true,
+      "mine": 7,
+      "theirs": 7
+    },
+    {
+      "item": "daily_wf[2014].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2014].net[ma_cross]",
+      "match": true,
+      "mine": -265.42,
+      "theirs": -265.42
+    },
+    {
+      "item": "daily_wf[2014].turns[ma_cross]",
+      "match": true,
+      "mine": 7,
+      "theirs": 7
+    },
+    {
+      "item": "daily_wf[2014].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2014].net[donchian]",
+      "match": true,
+      "mine": -281.94,
+      "theirs": -281.94
+    },
+    {
+      "item": "daily_wf[2014].turns[donchian]",
+      "match": true,
+      "mine": 6,
+      "theirs": 6
+    },
+    {
+      "item": "daily_wf[2014].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2014].net[volatility_expansion]",
+      "match": true,
+      "mine": -36.78,
+      "theirs": -36.78
+    },
+    {
+      "item": "daily_wf[2014].turns[volatility_expansion]",
+      "match": true,
+      "mine": 23,
+      "theirs": 23
+    },
+    {
+      "item": "daily_wf[2014].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2014].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2014].net[mean_reversion]",
+      "match": true,
+      "mine": -329.28,
+      "theirs": -329.28
+    },
+    {
+      "item": "daily_wf[2014].turns[mean_reversion]",
+      "match": true,
+      "mine": 11,
+      "theirs": 11
+    },
+    {
+      "item": "daily_wf[2015].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2015].net[tsmom]",
+      "match": true,
+      "mine": -648.94,
+      "theirs": -648.94
+    },
+    {
+      "item": "daily_wf[2015].turns[tsmom]",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
+      "item": "daily_wf[2015].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2015].net[ma_cross]",
+      "match": true,
+      "mine": -228.41,
+      "theirs": -228.41
+    },
+    {
+      "item": "daily_wf[2015].turns[ma_cross]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2015].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2015].net[donchian]",
+      "match": true,
+      "mine": -230.87,
+      "theirs": -230.87
+    },
+    {
+      "item": "daily_wf[2015].turns[donchian]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2015].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2015].net[volatility_expansion]",
+      "match": true,
+      "mine": -59.74,
+      "theirs": -59.74
+    },
+    {
+      "item": "daily_wf[2015].turns[volatility_expansion]",
+      "match": true,
+      "mine": 25,
+      "theirs": 25
+    },
+    {
+      "item": "daily_wf[2015].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2015].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2015].net[mean_reversion]",
+      "match": true,
+      "mine": 84.73,
+      "theirs": 84.73
+    },
+    {
+      "item": "daily_wf[2015].turns[mean_reversion]",
+      "match": true,
+      "mine": 11,
+      "theirs": 11
+    },
+    {
+      "item": "daily_wf[2016].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2016].net[tsmom]",
+      "match": true,
+      "mine": -286.96,
+      "theirs": -286.96
+    },
+    {
+      "item": "daily_wf[2016].turns[tsmom]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2016].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2016].net[ma_cross]",
+      "match": true,
+      "mine": 38.41,
+      "theirs": 38.41
+    },
+    {
+      "item": "daily_wf[2016].turns[ma_cross]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2016].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2016].net[donchian]",
+      "match": true,
+      "mine": 353.78,
+      "theirs": 353.78
+    },
+    {
+      "item": "daily_wf[2016].turns[donchian]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2016].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2016].net[volatility_expansion]",
+      "match": true,
+      "mine": 41.11,
+      "theirs": 41.11
+    },
+    {
+      "item": "daily_wf[2016].turns[volatility_expansion]",
+      "match": true,
+      "mine": 24,
+      "theirs": 24
+    },
+    {
+      "item": "daily_wf[2016].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2016].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2016].net[mean_reversion]",
+      "match": true,
+      "mine": -389.38,
+      "theirs": -389.38
+    },
+    {
+      "item": "daily_wf[2016].turns[mean_reversion]",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_wf[2017].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2017].net[tsmom]",
+      "match": true,
+      "mine": -682.97,
+      "theirs": -682.97
+    },
+    {
+      "item": "daily_wf[2017].turns[tsmom]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2017].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2017].net[ma_cross]",
+      "match": true,
+      "mine": -369.66,
+      "theirs": -369.66
+    },
+    {
+      "item": "daily_wf[2017].turns[ma_cross]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2017].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2017].net[donchian]",
+      "match": true,
+      "mine": -530.59,
+      "theirs": -530.59
+    },
+    {
+      "item": "daily_wf[2017].turns[donchian]",
+      "match": true,
+      "mine": 6,
+      "theirs": 6
+    },
+    {
+      "item": "daily_wf[2017].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2017].net[volatility_expansion]",
+      "match": true,
+      "mine": 45.49,
+      "theirs": 45.49
+    },
+    {
+      "item": "daily_wf[2017].turns[volatility_expansion]",
+      "match": true,
+      "mine": 21,
+      "theirs": 21
+    },
+    {
+      "item": "daily_wf[2017].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2017].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2017].net[mean_reversion]",
+      "match": true,
+      "mine": -1049.94,
+      "theirs": -1049.94
+    },
+    {
+      "item": "daily_wf[2017].turns[mean_reversion]",
+      "match": true,
+      "mine": 13,
+      "theirs": 13
+    },
+    {
+      "item": "daily_wf[2018].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L252",
+      "theirs": "tsmom_L252"
+    },
+    {
+      "item": "daily_wf[2018].net[tsmom]",
+      "match": true,
+      "mine": -1313.55,
+      "theirs": -1313.55
+    },
+    {
+      "item": "daily_wf[2018].turns[tsmom]",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_wf[2018].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2018].net[ma_cross]",
+      "match": true,
+      "mine": 325.88,
+      "theirs": 325.88
+    },
+    {
+      "item": "daily_wf[2018].turns[ma_cross]",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
+      "item": "daily_wf[2018].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2018].net[donchian]",
+      "match": true,
+      "mine": 385.86,
+      "theirs": 385.86
+    },
+    {
+      "item": "daily_wf[2018].turns[donchian]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2018].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2018].net[volatility_expansion]",
+      "match": true,
+      "mine": -511.76,
+      "theirs": -511.76
+    },
+    {
+      "item": "daily_wf[2018].turns[volatility_expansion]",
+      "match": true,
+      "mine": 26,
+      "theirs": 26
+    },
+    {
+      "item": "daily_wf[2018].sel[trend_gated]",
+      "match": true,
+      "mine": "gated_er60_025",
+      "theirs": "gated_er60_025"
+    },
+    {
+      "item": "daily_wf[2018].net[trend_gated]",
+      "match": true,
+      "mine": 102.7,
+      "theirs": 102.7
+    },
+    {
+      "item": "daily_wf[2018].turns[trend_gated]",
+      "match": true,
+      "mine": 1,
+      "theirs": 1
+    },
+    {
+      "item": "daily_wf[2018].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2018].net[mean_reversion]",
+      "match": true,
+      "mine": 281.18,
+      "theirs": 281.18
+    },
+    {
+      "item": "daily_wf[2018].turns[mean_reversion]",
+      "match": true,
+      "mine": 11,
+      "theirs": 11
+    },
+    {
+      "item": "daily_wf[2019].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L126",
+      "theirs": "tsmom_L126"
+    },
+    {
+      "item": "daily_wf[2019].net[tsmom]",
+      "match": true,
+      "mine": 1384.08,
+      "theirs": 1384.08
+    },
+    {
+      "item": "daily_wf[2019].turns[tsmom]",
+      "match": true,
+      "mine": 1,
+      "theirs": 1
+    },
+    {
+      "item": "daily_wf[2019].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2019].net[ma_cross]",
+      "match": true,
+      "mine": 123.43,
+      "theirs": 123.43
+    },
+    {
+      "item": "daily_wf[2019].turns[ma_cross]",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
+      "item": "daily_wf[2019].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2019].net[donchian]",
+      "match": true,
+      "mine": 408.34,
+      "theirs": 408.34
+    },
+    {
+      "item": "daily_wf[2019].turns[donchian]",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
+      "item": "daily_wf[2019].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2019].net[volatility_expansion]",
+      "match": true,
+      "mine": 365.91,
+      "theirs": 365.91
+    },
+    {
+      "item": "daily_wf[2019].turns[volatility_expansion]",
+      "match": true,
+      "mine": 25,
+      "theirs": 25
+    },
+    {
+      "item": "daily_wf[2019].sel[trend_gated]",
+      "match": true,
+      "mine": "gated_er60_025",
+      "theirs": "gated_er60_025"
+    },
+    {
+      "item": "daily_wf[2019].net[trend_gated]",
+      "match": true,
+      "mine": 176.25,
+      "theirs": 176.25
+    },
+    {
+      "item": "daily_wf[2019].turns[trend_gated]",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_wf[2019].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2019].net[mean_reversion]",
+      "match": true,
+      "mine": 181.98,
+      "theirs": 181.98
+    },
+    {
+      "item": "daily_wf[2019].turns[mean_reversion]",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_regimes[tsmom][UP_HIVOL].days",
+      "match": true,
+      "mine": 929,
+      "theirs": 929
+    },
+    {
+      "item": "daily_regimes[tsmom][UP_HIVOL].net",
+      "match": true,
+      "mine": -225.69,
+      "theirs": -225.68
+    },
+    {
+      "item": "daily_regimes[tsmom][UP_LOWVOL].days",
+      "match": true,
+      "mine": 1232,
+      "theirs": 1232
+    },
+    {
+      "item": "daily_regimes[tsmom][UP_LOWVOL].net",
+      "match": true,
+      "mine": 3587.14,
+      "theirs": 3587.14
+    },
+    {
+      "item": "daily_regimes[tsmom][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 296,
+      "theirs": 296
+    },
+    {
+      "item": "daily_regimes[tsmom][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -796.79,
+      "theirs": -796.8
+    },
+    {
+      "item": "daily_regimes[tsmom][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 1170,
+      "theirs": 1170
+    },
+    {
+      "item": "daily_regimes[tsmom][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -3199.58,
+      "theirs": -3199.58
+    },
+    {
+      "item": "daily_regimes[ma_cross][UP_HIVOL].days",
+      "match": true,
+      "mine": 987,
+      "theirs": 987
+    },
+    {
+      "item": "daily_regimes[ma_cross][UP_HIVOL].net",
+      "match": true,
+      "mine": 177.51,
+      "theirs": 177.52
+    },
+    {
+      "item": "daily_regimes[ma_cross][UP_LOWVOL].days",
+      "match": true,
+      "mine": 1420,
+      "theirs": 1420
+    },
+    {
+      "item": "daily_regimes[ma_cross][UP_LOWVOL].net",
+      "match": true,
+      "mine": 982.45,
+      "theirs": 982.45
+    },
+    {
+      "item": "daily_regimes[ma_cross][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 296,
+      "theirs": 296
+    },
+    {
+      "item": "daily_regimes[ma_cross][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -394.81,
+      "theirs": -394.81
+    },
+    {
+      "item": "daily_regimes[ma_cross][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 1170,
+      "theirs": 1170
+    },
+    {
+      "item": "daily_regimes[ma_cross][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": 388.74,
+      "theirs": 388.74
+    },
+    {
+      "item": "daily_regimes[donchian][UP_HIVOL].days",
+      "match": true,
+      "mine": 987,
+      "theirs": 987
+    },
+    {
+      "item": "daily_regimes[donchian][UP_HIVOL].net",
+      "match": true,
+      "mine": -1717.46,
+      "theirs": -1717.45
+    },
+    {
+      "item": "daily_regimes[donchian][UP_LOWVOL].days",
+      "match": true,
+      "mine": 1420,
+      "theirs": 1420
+    },
+    {
+      "item": "daily_regimes[donchian][UP_LOWVOL].net",
+      "match": true,
+      "mine": 2289.86,
+      "theirs": 2289.86
+    },
+    {
+      "item": "daily_regimes[donchian][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 296,
+      "theirs": 296
+    },
+    {
+      "item": "daily_regimes[donchian][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -142.83,
+      "theirs": -142.84
+    },
+    {
+      "item": "daily_regimes[donchian][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 1170,
+      "theirs": 1170
+    },
+    {
+      "item": "daily_regimes[donchian][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": 363.71,
+      "theirs": 363.7
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][UP_HIVOL].days",
+      "match": true,
+      "mine": 987,
+      "theirs": 987
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][UP_HIVOL].net",
+      "match": true,
+      "mine": -828.17,
+      "theirs": -828.17
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][UP_LOWVOL].days",
+      "match": true,
+      "mine": 1420,
+      "theirs": 1420
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][UP_LOWVOL].net",
+      "match": true,
+      "mine": 1330.26,
+      "theirs": 1330.26
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 296,
+      "theirs": 296
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][DOWN_HIVOL].net",
+      "match": true,
+      "mine": 134.12,
+      "theirs": 134.12
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 1170,
+      "theirs": 1170
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": 51.72,
+      "theirs": 51.73
+    },
+    {
+      "item": "daily_regimes[trend_gated][UP_HIVOL].days",
+      "match": true,
+      "mine": 608,
+      "theirs": 608
+    },
+    {
+      "item": "daily_regimes[trend_gated][UP_HIVOL].net",
+      "match": true,
+      "mine": -509.27,
+      "theirs": -509.27
+    },
+    {
+      "item": "daily_regimes[trend_gated][UP_LOWVOL].days",
+      "match": true,
+      "mine": 714,
+      "theirs": 714
+    },
+    {
+      "item": "daily_regimes[trend_gated][UP_LOWVOL].net",
+      "match": true,
+      "mine": 571.28,
+      "theirs": 571.28
+    },
+    {
+      "item": "daily_regimes[trend_gated][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 59,
+      "theirs": 59
+    },
+    {
+      "item": "daily_regimes[trend_gated][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -53.24,
+      "theirs": -53.24
+    },
+    {
+      "item": "daily_regimes[trend_gated][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 468,
+      "theirs": 468
+    },
+    {
+      "item": "daily_regimes[trend_gated][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -49.81,
+      "theirs": -49.81
+    },
+    {
+      "item": "daily_regimes[mean_reversion][UP_HIVOL].days",
+      "match": true,
+      "mine": 987,
+      "theirs": 987
+    },
+    {
+      "item": "daily_regimes[mean_reversion][UP_HIVOL].net",
+      "match": true,
+      "mine": 332.45,
+      "theirs": 332.45
+    },
+    {
+      "item": "daily_regimes[mean_reversion][UP_LOWVOL].days",
+      "match": true,
+      "mine": 1420,
+      "theirs": 1420
+    },
+    {
+      "item": "daily_regimes[mean_reversion][UP_LOWVOL].net",
+      "match": true,
+      "mine": -1142.46,
+      "theirs": -1142.46
+    },
+    {
+      "item": "daily_regimes[mean_reversion][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 296,
+      "theirs": 296
+    },
+    {
+      "item": "daily_regimes[mean_reversion][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -428.82,
+      "theirs": -428.82
+    },
+    {
+      "item": "daily_regimes[mean_reversion][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 1170,
+      "theirs": 1170
+    },
+    {
+      "item": "daily_regimes[mean_reversion][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -713.0,
+      "theirs": -713.0
+    },
+    {
+      "item": "daily_replicate[tsmom].status",
+      "match": true,
+      "mine": "NOT_EVALUABLE_INSUFFICIENT_WARMUP",
+      "theirs": "NOT_EVALUABLE_INSUFFICIENT_WARMUP"
+    },
+    {
+      "item": "daily_replicate[ma_cross].status",
+      "match": true,
+      "mine": "NOT_EVALUABLE_INSUFFICIENT_WARMUP",
+      "theirs": "NOT_EVALUABLE_INSUFFICIENT_WARMUP"
+    },
+    {
+      "item": "daily_replicate[donchian].status",
+      "match": true,
+      "mine": "EVALUATED",
+      "theirs": "EVALUATED"
+    },
+    {
+      "item": "daily_replicate[donchian].net",
+      "match": true,
+      "mine": -296.65,
+      "theirs": -296.65
+    },
+    {
+      "item": "daily_replicate[donchian].turns",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_replicate[volatility_expansion].status",
+      "match": true,
+      "mine": "EVALUATED",
+      "theirs": "EVALUATED"
+    },
+    {
+      "item": "daily_replicate[volatility_expansion].net",
+      "match": true,
+      "mine": 335.17,
+      "theirs": 335.17
+    },
+    {
+      "item": "daily_replicate[volatility_expansion].turns",
+      "match": true,
+      "mine": 26,
+      "theirs": 26
+    },
+    {
+      "item": "daily_replicate[trend_gated].status",
+      "match": true,
+      "mine": "EVALUATED",
+      "theirs": "EVALUATED"
+    },
+    {
+      "item": "daily_replicate[trend_gated].net",
+      "match": true,
+      "mine": -158.67,
+      "theirs": -158.67
+    },
+    {
+      "item": "daily_replicate[trend_gated].turns",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_replicate[mean_reversion].status",
+      "match": true,
+      "mine": "EVALUATED",
+      "theirs": "EVALUATED"
+    },
+    {
+      "item": "daily_replicate[mean_reversion].net",
+      "match": true,
+      "mine": 15.54,
+      "theirs": 15.54
+    },
+    {
+      "item": "daily_replicate[mean_reversion].turns",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
       "item": "m15_wf_summary[ma_cross].sharpe",
       "match": true,
       "mine": -0.7168,
@@ -1282,12 +3004,204 @@
         true,
         false
       ]
+    },
+    {
+      "item": "m15_regimes[ma_cross][UP_HIVOL].days",
+      "match": true,
+      "mine": 58266,
+      "theirs": 58266
+    },
+    {
+      "item": "m15_regimes[ma_cross][UP_HIVOL].net",
+      "match": true,
+      "mine": 2126.89,
+      "theirs": 2126.88
+    },
+    {
+      "item": "m15_regimes[ma_cross][UP_LOWVOL].days",
+      "match": true,
+      "mine": 162328,
+      "theirs": 162328
+    },
+    {
+      "item": "m15_regimes[ma_cross][UP_LOWVOL].net",
+      "match": true,
+      "mine": -3802.38,
+      "theirs": -3802.38
+    },
+    {
+      "item": "m15_regimes[ma_cross][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 22830,
+      "theirs": 22830
+    },
+    {
+      "item": "m15_regimes[ma_cross][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -1020.43,
+      "theirs": -1020.43
+    },
+    {
+      "item": "m15_regimes[ma_cross][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 108456,
+      "theirs": 108456
+    },
+    {
+      "item": "m15_regimes[ma_cross][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -2976.73,
+      "theirs": -2976.73
+    },
+    {
+      "item": "m15_regimes[donchian][UP_HIVOL].days",
+      "match": true,
+      "mine": 58266,
+      "theirs": 58266
+    },
+    {
+      "item": "m15_regimes[donchian][UP_HIVOL].net",
+      "match": true,
+      "mine": -1608.43,
+      "theirs": -1608.43
+    },
+    {
+      "item": "m15_regimes[donchian][UP_LOWVOL].days",
+      "match": true,
+      "mine": 162328,
+      "theirs": 162328
+    },
+    {
+      "item": "m15_regimes[donchian][UP_LOWVOL].net",
+      "match": true,
+      "mine": 1492.71,
+      "theirs": 1492.71
+    },
+    {
+      "item": "m15_regimes[donchian][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 22830,
+      "theirs": 22830
+    },
+    {
+      "item": "m15_regimes[donchian][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -1672.56,
+      "theirs": -1672.56
+    },
+    {
+      "item": "m15_regimes[donchian][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 108456,
+      "theirs": 108456
+    },
+    {
+      "item": "m15_regimes[donchian][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -252.34,
+      "theirs": -252.34
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][UP_HIVOL].days",
+      "match": true,
+      "mine": 58266,
+      "theirs": 58266
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][UP_HIVOL].net",
+      "match": true,
+      "mine": -12002.23,
+      "theirs": -12002.23
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][UP_LOWVOL].days",
+      "match": true,
+      "mine": 162328,
+      "theirs": 162328
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][UP_LOWVOL].net",
+      "match": true,
+      "mine": -32190.03,
+      "theirs": -32190.03
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 22830,
+      "theirs": 22830
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -3780.97,
+      "theirs": -3780.97
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 108456,
+      "theirs": 108456
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -21074.79,
+      "theirs": -21074.79
+    },
+    {
+      "item": "m15_regimes[session_breakout][UP_HIVOL].days",
+      "match": true,
+      "mine": 58266,
+      "theirs": 58266
+    },
+    {
+      "item": "m15_regimes[session_breakout][UP_HIVOL].net",
+      "match": true,
+      "mine": -824.91,
+      "theirs": -824.92
+    },
+    {
+      "item": "m15_regimes[session_breakout][UP_LOWVOL].days",
+      "match": true,
+      "mine": 162328,
+      "theirs": 162328
+    },
+    {
+      "item": "m15_regimes[session_breakout][UP_LOWVOL].net",
+      "match": true,
+      "mine": -9445.46,
+      "theirs": -9445.46
+    },
+    {
+      "item": "m15_regimes[session_breakout][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 22830,
+      "theirs": 22830
+    },
+    {
+      "item": "m15_regimes[session_breakout][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -517.8,
+      "theirs": -517.8
+    },
+    {
+      "item": "m15_regimes[session_breakout][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 108456,
+      "theirs": 108456
+    },
+    {
+      "item": "m15_regimes[session_breakout][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -2596.04,
+      "theirs": -2596.03
     }
   ],
   "cross_check_summary": {
-    "matched": 203,
+    "matched": 522,
     "mismatched": 0,
-    "total": 203
+    "total": 522
   },
   "cross_checks": [
     {
@@ -2341,6 +4255,1728 @@
       "theirs": 246
     },
     {
+      "item": "daily_holdout_selection[tsmom]",
+      "match": true,
+      "mine": "tsmom_L126",
+      "theirs": "tsmom_L126"
+    },
+    {
+      "item": "daily_holdout_selection[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_holdout_selection[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_holdout_selection[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_holdout_selection[trend_gated]",
+      "match": true,
+      "mine": "gated_er60_025",
+      "theirs": "gated_er60_025"
+    },
+    {
+      "item": "daily_holdout_selection[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_holdout[tsmom].net_usd",
+      "match": true,
+      "mine": -378.57,
+      "theirs": -378.57
+    },
+    {
+      "item": "daily_holdout[tsmom].sharpe",
+      "match": true,
+      "mine": -0.0107,
+      "theirs": -0.0107
+    },
+    {
+      "item": "daily_holdout[tsmom].round_turns",
+      "match": true,
+      "mine": 13,
+      "theirs": 13
+    },
+    {
+      "item": "daily_holdout[tsmom].max_drawdown",
+      "match": true,
+      "mine": -0.3693,
+      "theirs": -0.3693
+    },
+    {
+      "item": "daily_holdout[tsmom].cost_usd",
+      "match": true,
+      "mine": 66.78,
+      "theirs": 66.78
+    },
+    {
+      "item": "daily_holdout[tsmom].gross_usd",
+      "match": true,
+      "mine": -311.79,
+      "theirs": -311.79
+    },
+    {
+      "item": "daily_holdout[tsmom].net@2.0x",
+      "match": true,
+      "mine": -447.81,
+      "theirs": -447.81
+    },
+    {
+      "item": "daily_holdout[tsmom].net@3.0x",
+      "match": true,
+      "mine": -516.56,
+      "theirs": -516.56
+    },
+    {
+      "item": "daily_holdout[tsmom].break_even",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "daily_holdout[ma_cross].net_usd",
+      "match": true,
+      "mine": 530.11,
+      "theirs": 530.11
+    },
+    {
+      "item": "daily_holdout[ma_cross].sharpe",
+      "match": true,
+      "mine": 0.2995,
+      "theirs": 0.2995
+    },
+    {
+      "item": "daily_holdout[ma_cross].round_turns",
+      "match": true,
+      "mine": 14,
+      "theirs": 14
+    },
+    {
+      "item": "daily_holdout[ma_cross].max_drawdown",
+      "match": true,
+      "mine": -0.0857,
+      "theirs": -0.0857
+    },
+    {
+      "item": "daily_holdout[ma_cross].cost_usd",
+      "match": true,
+      "mine": 21.93,
+      "theirs": 21.93
+    },
+    {
+      "item": "daily_holdout[ma_cross].gross_usd",
+      "match": true,
+      "mine": 552.04,
+      "theirs": 552.04
+    },
+    {
+      "item": "daily_holdout[ma_cross].net@2.0x",
+      "match": true,
+      "mine": 506.15,
+      "theirs": 506.15
+    },
+    {
+      "item": "daily_holdout[ma_cross].net@3.0x",
+      "match": true,
+      "mine": 482.25,
+      "theirs": 482.25
+    },
+    {
+      "item": "daily_holdout[ma_cross].break_even",
+      "match": true,
+      "mine": 23.6561,
+      "theirs": 23.6561
+    },
+    {
+      "item": "daily_holdout[donchian].net_usd",
+      "match": true,
+      "mine": 160.22,
+      "theirs": 160.22
+    },
+    {
+      "item": "daily_holdout[donchian].sharpe",
+      "match": true,
+      "mine": 0.0874,
+      "theirs": 0.0874
+    },
+    {
+      "item": "daily_holdout[donchian].round_turns",
+      "match": true,
+      "mine": 19,
+      "theirs": 19
+    },
+    {
+      "item": "daily_holdout[donchian].max_drawdown",
+      "match": true,
+      "mine": -0.1007,
+      "theirs": -0.1007
+    },
+    {
+      "item": "daily_holdout[donchian].cost_usd",
+      "match": true,
+      "mine": 41.69,
+      "theirs": 41.69
+    },
+    {
+      "item": "daily_holdout[donchian].gross_usd",
+      "match": true,
+      "mine": 201.91,
+      "theirs": 201.91
+    },
+    {
+      "item": "daily_holdout[donchian].net@2.0x",
+      "match": true,
+      "mine": 117.38,
+      "theirs": 117.38
+    },
+    {
+      "item": "daily_holdout[donchian].net@3.0x",
+      "match": true,
+      "mine": 74.72,
+      "theirs": 74.72
+    },
+    {
+      "item": "daily_holdout[donchian].break_even",
+      "match": true,
+      "mine": 4.7614,
+      "theirs": 4.7614
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].net_usd",
+      "match": true,
+      "mine": 673.05,
+      "theirs": 673.05
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].sharpe",
+      "match": true,
+      "mine": 0.3867,
+      "theirs": 0.3867
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].round_turns",
+      "match": true,
+      "mine": 134,
+      "theirs": 134
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].max_drawdown",
+      "match": true,
+      "mine": -0.0546,
+      "theirs": -0.0546
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].cost_usd",
+      "match": true,
+      "mine": 289.58,
+      "theirs": 289.58
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].gross_usd",
+      "match": true,
+      "mine": 962.63,
+      "theirs": 962.63
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].net@2.0x",
+      "match": true,
+      "mine": 381.23,
+      "theirs": 381.23
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].net@3.0x",
+      "match": true,
+      "mine": 97.36,
+      "theirs": 97.36
+    },
+    {
+      "item": "daily_holdout[volatility_expansion].break_even",
+      "match": true,
+      "mine": 3.3494,
+      "theirs": 3.3494
+    },
+    {
+      "item": "daily_holdout[trend_gated].net_usd",
+      "match": true,
+      "mine": -319.98,
+      "theirs": -319.98
+    },
+    {
+      "item": "daily_holdout[trend_gated].sharpe",
+      "match": true,
+      "mine": -0.2764,
+      "theirs": -0.2764
+    },
+    {
+      "item": "daily_holdout[trend_gated].round_turns",
+      "match": true,
+      "mine": 9,
+      "theirs": 9
+    },
+    {
+      "item": "daily_holdout[trend_gated].max_drawdown",
+      "match": true,
+      "mine": -0.0618,
+      "theirs": -0.0618
+    },
+    {
+      "item": "daily_holdout[trend_gated].cost_usd",
+      "match": true,
+      "mine": 13.33,
+      "theirs": 13.33
+    },
+    {
+      "item": "daily_holdout[trend_gated].gross_usd",
+      "match": true,
+      "mine": -306.65,
+      "theirs": -306.65
+    },
+    {
+      "item": "daily_holdout[trend_gated].net@2.0x",
+      "match": true,
+      "mine": -333.21,
+      "theirs": -333.21
+    },
+    {
+      "item": "daily_holdout[trend_gated].net@3.0x",
+      "match": true,
+      "mine": -346.42,
+      "theirs": -346.42
+    },
+    {
+      "item": "daily_holdout[trend_gated].break_even",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "daily_holdout[mean_reversion].net_usd",
+      "match": true,
+      "mine": -841.32,
+      "theirs": -841.32
+    },
+    {
+      "item": "daily_holdout[mean_reversion].sharpe",
+      "match": true,
+      "mine": -0.3967,
+      "theirs": -0.3967
+    },
+    {
+      "item": "daily_holdout[mean_reversion].round_turns",
+      "match": true,
+      "mine": 47,
+      "theirs": 47
+    },
+    {
+      "item": "daily_holdout[mean_reversion].max_drawdown",
+      "match": true,
+      "mine": -0.1581,
+      "theirs": -0.1581
+    },
+    {
+      "item": "daily_holdout[mean_reversion].cost_usd",
+      "match": true,
+      "mine": 175.17,
+      "theirs": 175.17
+    },
+    {
+      "item": "daily_holdout[mean_reversion].gross_usd",
+      "match": true,
+      "mine": -666.16,
+      "theirs": -666.16
+    },
+    {
+      "item": "daily_holdout[mean_reversion].net@2.0x",
+      "match": true,
+      "mine": -1009.83,
+      "theirs": -1009.83
+    },
+    {
+      "item": "daily_holdout[mean_reversion].net@3.0x",
+      "match": true,
+      "mine": -1175.27,
+      "theirs": -1175.27
+    },
+    {
+      "item": "daily_holdout[mean_reversion].break_even",
+      "match": true,
+      "mine": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "item": "daily_buyhold.net_usd",
+      "match": true,
+      "mine": 8795.66,
+      "theirs": 8795.66
+    },
+    {
+      "item": "daily_buyhold.sharpe",
+      "match": true,
+      "mine": 0.8648,
+      "theirs": 0.8648
+    },
+    {
+      "item": "daily_buyhold.max_drawdown",
+      "match": true,
+      "mine": -0.2137,
+      "theirs": -0.2137
+    },
+    {
+      "item": "daily_wf[2010].sel[tsmom]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2010].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2010].net[ma_cross]",
+      "match": true,
+      "mine": 115.92,
+      "theirs": 115.92
+    },
+    {
+      "item": "daily_wf[2010].turns[ma_cross]",
+      "match": true,
+      "mine": 7,
+      "theirs": 7
+    },
+    {
+      "item": "daily_wf[2010].sel[donchian]",
+      "match": true,
+      "mine": "donchian_20_10_atr2",
+      "theirs": "donchian_20_10_atr2"
+    },
+    {
+      "item": "daily_wf[2010].net[donchian]",
+      "match": true,
+      "mine": 203.95,
+      "theirs": 203.95
+    },
+    {
+      "item": "daily_wf[2010].turns[donchian]",
+      "match": true,
+      "mine": 8,
+      "theirs": 8
+    },
+    {
+      "item": "daily_wf[2010].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2010].net[volatility_expansion]",
+      "match": true,
+      "mine": -11.54,
+      "theirs": -11.54
+    },
+    {
+      "item": "daily_wf[2010].turns[volatility_expansion]",
+      "match": true,
+      "mine": 23,
+      "theirs": 23
+    },
+    {
+      "item": "daily_wf[2010].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2010].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t5_sma200",
+      "theirs": "rsi2_t5_sma200"
+    },
+    {
+      "item": "daily_wf[2010].net[mean_reversion]",
+      "match": true,
+      "mine": 155.2,
+      "theirs": 155.2
+    },
+    {
+      "item": "daily_wf[2010].turns[mean_reversion]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2011].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2011].net[tsmom]",
+      "match": true,
+      "mine": 2765.59,
+      "theirs": 2765.59
+    },
+    {
+      "item": "daily_wf[2011].turns[tsmom]",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_wf[2011].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2011].net[ma_cross]",
+      "match": true,
+      "mine": 490.25,
+      "theirs": 490.25
+    },
+    {
+      "item": "daily_wf[2011].turns[ma_cross]",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
+      "item": "daily_wf[2011].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2011].net[donchian]",
+      "match": true,
+      "mine": -322.23,
+      "theirs": -322.23
+    },
+    {
+      "item": "daily_wf[2011].turns[donchian]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2011].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2011].net[volatility_expansion]",
+      "match": true,
+      "mine": 120.33,
+      "theirs": 120.33
+    },
+    {
+      "item": "daily_wf[2011].turns[volatility_expansion]",
+      "match": true,
+      "mine": 24,
+      "theirs": 24
+    },
+    {
+      "item": "daily_wf[2011].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2011].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t5_sma200",
+      "theirs": "rsi2_t5_sma200"
+    },
+    {
+      "item": "daily_wf[2011].net[mean_reversion]",
+      "match": true,
+      "mine": 160.34,
+      "theirs": 160.34
+    },
+    {
+      "item": "daily_wf[2011].turns[mean_reversion]",
+      "match": true,
+      "mine": 7,
+      "theirs": 7
+    },
+    {
+      "item": "daily_wf[2012].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2012].net[tsmom]",
+      "match": true,
+      "mine": -925.88,
+      "theirs": -925.88
+    },
+    {
+      "item": "daily_wf[2012].turns[tsmom]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2012].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2012].net[ma_cross]",
+      "match": true,
+      "mine": -154.38,
+      "theirs": -154.38
+    },
+    {
+      "item": "daily_wf[2012].turns[ma_cross]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2012].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2012].net[donchian]",
+      "match": true,
+      "mine": -135.46,
+      "theirs": -135.46
+    },
+    {
+      "item": "daily_wf[2012].turns[donchian]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2012].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2012].net[volatility_expansion]",
+      "match": true,
+      "mine": -33.55,
+      "theirs": -33.55
+    },
+    {
+      "item": "daily_wf[2012].turns[volatility_expansion]",
+      "match": true,
+      "mine": 25,
+      "theirs": 25
+    },
+    {
+      "item": "daily_wf[2012].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2012].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t5_sma200",
+      "theirs": "rsi2_t5_sma200"
+    },
+    {
+      "item": "daily_wf[2012].net[mean_reversion]",
+      "match": true,
+      "mine": -106.08,
+      "theirs": -106.08
+    },
+    {
+      "item": "daily_wf[2012].turns[mean_reversion]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2013].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2013].net[tsmom]",
+      "match": true,
+      "mine": 1356.28,
+      "theirs": 1356.28
+    },
+    {
+      "item": "daily_wf[2013].turns[tsmom]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2013].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2013].net[ma_cross]",
+      "match": true,
+      "mine": 547.75,
+      "theirs": 547.75
+    },
+    {
+      "item": "daily_wf[2013].turns[ma_cross]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2013].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2013].net[donchian]",
+      "match": true,
+      "mine": 782.21,
+      "theirs": 782.21
+    },
+    {
+      "item": "daily_wf[2013].turns[donchian]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2013].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2013].net[volatility_expansion]",
+      "match": true,
+      "mine": 95.41,
+      "theirs": 95.41
+    },
+    {
+      "item": "daily_wf[2013].turns[volatility_expansion]",
+      "match": true,
+      "mine": 25,
+      "theirs": 25
+    },
+    {
+      "item": "daily_wf[2013].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2013].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t5_sma200",
+      "theirs": "rsi2_t5_sma200"
+    },
+    {
+      "item": "daily_wf[2013].net[mean_reversion]",
+      "match": true,
+      "mine": -99.25,
+      "theirs": -99.25
+    },
+    {
+      "item": "daily_wf[2013].turns[mean_reversion]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2014].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2014].net[tsmom]",
+      "match": true,
+      "mine": -1903.99,
+      "theirs": -1903.99
+    },
+    {
+      "item": "daily_wf[2014].turns[tsmom]",
+      "match": true,
+      "mine": 7,
+      "theirs": 7
+    },
+    {
+      "item": "daily_wf[2014].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2014].net[ma_cross]",
+      "match": true,
+      "mine": -265.42,
+      "theirs": -265.42
+    },
+    {
+      "item": "daily_wf[2014].turns[ma_cross]",
+      "match": true,
+      "mine": 7,
+      "theirs": 7
+    },
+    {
+      "item": "daily_wf[2014].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2014].net[donchian]",
+      "match": true,
+      "mine": -281.94,
+      "theirs": -281.94
+    },
+    {
+      "item": "daily_wf[2014].turns[donchian]",
+      "match": true,
+      "mine": 6,
+      "theirs": 6
+    },
+    {
+      "item": "daily_wf[2014].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2014].net[volatility_expansion]",
+      "match": true,
+      "mine": -36.78,
+      "theirs": -36.78
+    },
+    {
+      "item": "daily_wf[2014].turns[volatility_expansion]",
+      "match": true,
+      "mine": 23,
+      "theirs": 23
+    },
+    {
+      "item": "daily_wf[2014].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2014].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2014].net[mean_reversion]",
+      "match": true,
+      "mine": -329.28,
+      "theirs": -329.28
+    },
+    {
+      "item": "daily_wf[2014].turns[mean_reversion]",
+      "match": true,
+      "mine": 11,
+      "theirs": 11
+    },
+    {
+      "item": "daily_wf[2015].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2015].net[tsmom]",
+      "match": true,
+      "mine": -648.94,
+      "theirs": -648.94
+    },
+    {
+      "item": "daily_wf[2015].turns[tsmom]",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
+      "item": "daily_wf[2015].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2015].net[ma_cross]",
+      "match": true,
+      "mine": -228.41,
+      "theirs": -228.41
+    },
+    {
+      "item": "daily_wf[2015].turns[ma_cross]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2015].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2015].net[donchian]",
+      "match": true,
+      "mine": -230.87,
+      "theirs": -230.87
+    },
+    {
+      "item": "daily_wf[2015].turns[donchian]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2015].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2015].net[volatility_expansion]",
+      "match": true,
+      "mine": -59.74,
+      "theirs": -59.74
+    },
+    {
+      "item": "daily_wf[2015].turns[volatility_expansion]",
+      "match": true,
+      "mine": 25,
+      "theirs": 25
+    },
+    {
+      "item": "daily_wf[2015].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2015].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2015].net[mean_reversion]",
+      "match": true,
+      "mine": 84.73,
+      "theirs": 84.73
+    },
+    {
+      "item": "daily_wf[2015].turns[mean_reversion]",
+      "match": true,
+      "mine": 11,
+      "theirs": 11
+    },
+    {
+      "item": "daily_wf[2016].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2016].net[tsmom]",
+      "match": true,
+      "mine": -286.96,
+      "theirs": -286.96
+    },
+    {
+      "item": "daily_wf[2016].turns[tsmom]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2016].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2016].net[ma_cross]",
+      "match": true,
+      "mine": 38.41,
+      "theirs": 38.41
+    },
+    {
+      "item": "daily_wf[2016].turns[ma_cross]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2016].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2016].net[donchian]",
+      "match": true,
+      "mine": 353.78,
+      "theirs": 353.78
+    },
+    {
+      "item": "daily_wf[2016].turns[donchian]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2016].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2016].net[volatility_expansion]",
+      "match": true,
+      "mine": 41.11,
+      "theirs": 41.11
+    },
+    {
+      "item": "daily_wf[2016].turns[volatility_expansion]",
+      "match": true,
+      "mine": 24,
+      "theirs": 24
+    },
+    {
+      "item": "daily_wf[2016].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2016].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2016].net[mean_reversion]",
+      "match": true,
+      "mine": -389.38,
+      "theirs": -389.38
+    },
+    {
+      "item": "daily_wf[2016].turns[mean_reversion]",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_wf[2017].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L63",
+      "theirs": "tsmom_L63"
+    },
+    {
+      "item": "daily_wf[2017].net[tsmom]",
+      "match": true,
+      "mine": -682.97,
+      "theirs": -682.97
+    },
+    {
+      "item": "daily_wf[2017].turns[tsmom]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2017].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2017].net[ma_cross]",
+      "match": true,
+      "mine": -369.66,
+      "theirs": -369.66
+    },
+    {
+      "item": "daily_wf[2017].turns[ma_cross]",
+      "match": true,
+      "mine": 5,
+      "theirs": 5
+    },
+    {
+      "item": "daily_wf[2017].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2017].net[donchian]",
+      "match": true,
+      "mine": -530.59,
+      "theirs": -530.59
+    },
+    {
+      "item": "daily_wf[2017].turns[donchian]",
+      "match": true,
+      "mine": 6,
+      "theirs": 6
+    },
+    {
+      "item": "daily_wf[2017].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2017].net[volatility_expansion]",
+      "match": true,
+      "mine": 45.49,
+      "theirs": 45.49
+    },
+    {
+      "item": "daily_wf[2017].turns[volatility_expansion]",
+      "match": true,
+      "mine": 21,
+      "theirs": 21
+    },
+    {
+      "item": "daily_wf[2017].sel[trend_gated]",
+      "match": true,
+      "mine": null,
+      "theirs": null
+    },
+    {
+      "item": "daily_wf[2017].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2017].net[mean_reversion]",
+      "match": true,
+      "mine": -1049.94,
+      "theirs": -1049.94
+    },
+    {
+      "item": "daily_wf[2017].turns[mean_reversion]",
+      "match": true,
+      "mine": 13,
+      "theirs": 13
+    },
+    {
+      "item": "daily_wf[2018].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L252",
+      "theirs": "tsmom_L252"
+    },
+    {
+      "item": "daily_wf[2018].net[tsmom]",
+      "match": true,
+      "mine": -1313.55,
+      "theirs": -1313.55
+    },
+    {
+      "item": "daily_wf[2018].turns[tsmom]",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_wf[2018].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2018].net[ma_cross]",
+      "match": true,
+      "mine": 325.88,
+      "theirs": 325.88
+    },
+    {
+      "item": "daily_wf[2018].turns[ma_cross]",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
+      "item": "daily_wf[2018].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2018].net[donchian]",
+      "match": true,
+      "mine": 385.86,
+      "theirs": 385.86
+    },
+    {
+      "item": "daily_wf[2018].turns[donchian]",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_wf[2018].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2018].net[volatility_expansion]",
+      "match": true,
+      "mine": -511.76,
+      "theirs": -511.76
+    },
+    {
+      "item": "daily_wf[2018].turns[volatility_expansion]",
+      "match": true,
+      "mine": 26,
+      "theirs": 26
+    },
+    {
+      "item": "daily_wf[2018].sel[trend_gated]",
+      "match": true,
+      "mine": "gated_er60_025",
+      "theirs": "gated_er60_025"
+    },
+    {
+      "item": "daily_wf[2018].net[trend_gated]",
+      "match": true,
+      "mine": 102.7,
+      "theirs": 102.7
+    },
+    {
+      "item": "daily_wf[2018].turns[trend_gated]",
+      "match": true,
+      "mine": 1,
+      "theirs": 1
+    },
+    {
+      "item": "daily_wf[2018].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2018].net[mean_reversion]",
+      "match": true,
+      "mine": 281.18,
+      "theirs": 281.18
+    },
+    {
+      "item": "daily_wf[2018].turns[mean_reversion]",
+      "match": true,
+      "mine": 11,
+      "theirs": 11
+    },
+    {
+      "item": "daily_wf[2019].sel[tsmom]",
+      "match": true,
+      "mine": "tsmom_L126",
+      "theirs": "tsmom_L126"
+    },
+    {
+      "item": "daily_wf[2019].net[tsmom]",
+      "match": true,
+      "mine": 1384.08,
+      "theirs": 1384.08
+    },
+    {
+      "item": "daily_wf[2019].turns[tsmom]",
+      "match": true,
+      "mine": 1,
+      "theirs": 1
+    },
+    {
+      "item": "daily_wf[2019].sel[ma_cross]",
+      "match": true,
+      "mine": "ma_20_100_atr3",
+      "theirs": "ma_20_100_atr3"
+    },
+    {
+      "item": "daily_wf[2019].net[ma_cross]",
+      "match": true,
+      "mine": 123.43,
+      "theirs": 123.43
+    },
+    {
+      "item": "daily_wf[2019].turns[ma_cross]",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
+      "item": "daily_wf[2019].sel[donchian]",
+      "match": true,
+      "mine": "donchian_55_20_atr2",
+      "theirs": "donchian_55_20_atr2"
+    },
+    {
+      "item": "daily_wf[2019].net[donchian]",
+      "match": true,
+      "mine": 408.34,
+      "theirs": 408.34
+    },
+    {
+      "item": "daily_wf[2019].turns[donchian]",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
+      "item": "daily_wf[2019].sel[volatility_expansion]",
+      "match": true,
+      "mine": "rexp_k10_h3",
+      "theirs": "rexp_k10_h3"
+    },
+    {
+      "item": "daily_wf[2019].net[volatility_expansion]",
+      "match": true,
+      "mine": 365.91,
+      "theirs": 365.91
+    },
+    {
+      "item": "daily_wf[2019].turns[volatility_expansion]",
+      "match": true,
+      "mine": 25,
+      "theirs": 25
+    },
+    {
+      "item": "daily_wf[2019].sel[trend_gated]",
+      "match": true,
+      "mine": "gated_er60_025",
+      "theirs": "gated_er60_025"
+    },
+    {
+      "item": "daily_wf[2019].net[trend_gated]",
+      "match": true,
+      "mine": 176.25,
+      "theirs": 176.25
+    },
+    {
+      "item": "daily_wf[2019].turns[trend_gated]",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_wf[2019].sel[mean_reversion]",
+      "match": true,
+      "mine": "rsi2_t10_sma200",
+      "theirs": "rsi2_t10_sma200"
+    },
+    {
+      "item": "daily_wf[2019].net[mean_reversion]",
+      "match": true,
+      "mine": 181.98,
+      "theirs": 181.98
+    },
+    {
+      "item": "daily_wf[2019].turns[mean_reversion]",
+      "match": true,
+      "mine": 10,
+      "theirs": 10
+    },
+    {
+      "item": "daily_regimes[tsmom][UP_HIVOL].days",
+      "match": true,
+      "mine": 929,
+      "theirs": 929
+    },
+    {
+      "item": "daily_regimes[tsmom][UP_HIVOL].net",
+      "match": true,
+      "mine": -225.69,
+      "theirs": -225.68
+    },
+    {
+      "item": "daily_regimes[tsmom][UP_LOWVOL].days",
+      "match": true,
+      "mine": 1232,
+      "theirs": 1232
+    },
+    {
+      "item": "daily_regimes[tsmom][UP_LOWVOL].net",
+      "match": true,
+      "mine": 3587.14,
+      "theirs": 3587.14
+    },
+    {
+      "item": "daily_regimes[tsmom][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 296,
+      "theirs": 296
+    },
+    {
+      "item": "daily_regimes[tsmom][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -796.79,
+      "theirs": -796.8
+    },
+    {
+      "item": "daily_regimes[tsmom][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 1170,
+      "theirs": 1170
+    },
+    {
+      "item": "daily_regimes[tsmom][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -3199.58,
+      "theirs": -3199.58
+    },
+    {
+      "item": "daily_regimes[ma_cross][UP_HIVOL].days",
+      "match": true,
+      "mine": 987,
+      "theirs": 987
+    },
+    {
+      "item": "daily_regimes[ma_cross][UP_HIVOL].net",
+      "match": true,
+      "mine": 177.51,
+      "theirs": 177.52
+    },
+    {
+      "item": "daily_regimes[ma_cross][UP_LOWVOL].days",
+      "match": true,
+      "mine": 1420,
+      "theirs": 1420
+    },
+    {
+      "item": "daily_regimes[ma_cross][UP_LOWVOL].net",
+      "match": true,
+      "mine": 982.45,
+      "theirs": 982.45
+    },
+    {
+      "item": "daily_regimes[ma_cross][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 296,
+      "theirs": 296
+    },
+    {
+      "item": "daily_regimes[ma_cross][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -394.81,
+      "theirs": -394.81
+    },
+    {
+      "item": "daily_regimes[ma_cross][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 1170,
+      "theirs": 1170
+    },
+    {
+      "item": "daily_regimes[ma_cross][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": 388.74,
+      "theirs": 388.74
+    },
+    {
+      "item": "daily_regimes[donchian][UP_HIVOL].days",
+      "match": true,
+      "mine": 987,
+      "theirs": 987
+    },
+    {
+      "item": "daily_regimes[donchian][UP_HIVOL].net",
+      "match": true,
+      "mine": -1717.46,
+      "theirs": -1717.45
+    },
+    {
+      "item": "daily_regimes[donchian][UP_LOWVOL].days",
+      "match": true,
+      "mine": 1420,
+      "theirs": 1420
+    },
+    {
+      "item": "daily_regimes[donchian][UP_LOWVOL].net",
+      "match": true,
+      "mine": 2289.86,
+      "theirs": 2289.86
+    },
+    {
+      "item": "daily_regimes[donchian][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 296,
+      "theirs": 296
+    },
+    {
+      "item": "daily_regimes[donchian][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -142.83,
+      "theirs": -142.84
+    },
+    {
+      "item": "daily_regimes[donchian][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 1170,
+      "theirs": 1170
+    },
+    {
+      "item": "daily_regimes[donchian][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": 363.71,
+      "theirs": 363.7
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][UP_HIVOL].days",
+      "match": true,
+      "mine": 987,
+      "theirs": 987
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][UP_HIVOL].net",
+      "match": true,
+      "mine": -828.17,
+      "theirs": -828.17
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][UP_LOWVOL].days",
+      "match": true,
+      "mine": 1420,
+      "theirs": 1420
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][UP_LOWVOL].net",
+      "match": true,
+      "mine": 1330.26,
+      "theirs": 1330.26
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 296,
+      "theirs": 296
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][DOWN_HIVOL].net",
+      "match": true,
+      "mine": 134.12,
+      "theirs": 134.12
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 1170,
+      "theirs": 1170
+    },
+    {
+      "item": "daily_regimes[volatility_expansion][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": 51.72,
+      "theirs": 51.73
+    },
+    {
+      "item": "daily_regimes[trend_gated][UP_HIVOL].days",
+      "match": true,
+      "mine": 608,
+      "theirs": 608
+    },
+    {
+      "item": "daily_regimes[trend_gated][UP_HIVOL].net",
+      "match": true,
+      "mine": -509.27,
+      "theirs": -509.27
+    },
+    {
+      "item": "daily_regimes[trend_gated][UP_LOWVOL].days",
+      "match": true,
+      "mine": 714,
+      "theirs": 714
+    },
+    {
+      "item": "daily_regimes[trend_gated][UP_LOWVOL].net",
+      "match": true,
+      "mine": 571.28,
+      "theirs": 571.28
+    },
+    {
+      "item": "daily_regimes[trend_gated][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 59,
+      "theirs": 59
+    },
+    {
+      "item": "daily_regimes[trend_gated][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -53.24,
+      "theirs": -53.24
+    },
+    {
+      "item": "daily_regimes[trend_gated][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 468,
+      "theirs": 468
+    },
+    {
+      "item": "daily_regimes[trend_gated][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -49.81,
+      "theirs": -49.81
+    },
+    {
+      "item": "daily_regimes[mean_reversion][UP_HIVOL].days",
+      "match": true,
+      "mine": 987,
+      "theirs": 987
+    },
+    {
+      "item": "daily_regimes[mean_reversion][UP_HIVOL].net",
+      "match": true,
+      "mine": 332.45,
+      "theirs": 332.45
+    },
+    {
+      "item": "daily_regimes[mean_reversion][UP_LOWVOL].days",
+      "match": true,
+      "mine": 1420,
+      "theirs": 1420
+    },
+    {
+      "item": "daily_regimes[mean_reversion][UP_LOWVOL].net",
+      "match": true,
+      "mine": -1142.46,
+      "theirs": -1142.46
+    },
+    {
+      "item": "daily_regimes[mean_reversion][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 296,
+      "theirs": 296
+    },
+    {
+      "item": "daily_regimes[mean_reversion][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -428.82,
+      "theirs": -428.82
+    },
+    {
+      "item": "daily_regimes[mean_reversion][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 1170,
+      "theirs": 1170
+    },
+    {
+      "item": "daily_regimes[mean_reversion][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -713.0,
+      "theirs": -713.0
+    },
+    {
+      "item": "daily_replicate[tsmom].status",
+      "match": true,
+      "mine": "NOT_EVALUABLE_INSUFFICIENT_WARMUP",
+      "theirs": "NOT_EVALUABLE_INSUFFICIENT_WARMUP"
+    },
+    {
+      "item": "daily_replicate[ma_cross].status",
+      "match": true,
+      "mine": "NOT_EVALUABLE_INSUFFICIENT_WARMUP",
+      "theirs": "NOT_EVALUABLE_INSUFFICIENT_WARMUP"
+    },
+    {
+      "item": "daily_replicate[donchian].status",
+      "match": true,
+      "mine": "EVALUATED",
+      "theirs": "EVALUATED"
+    },
+    {
+      "item": "daily_replicate[donchian].net",
+      "match": true,
+      "mine": -296.65,
+      "theirs": -296.65
+    },
+    {
+      "item": "daily_replicate[donchian].turns",
+      "match": true,
+      "mine": 3,
+      "theirs": 3
+    },
+    {
+      "item": "daily_replicate[volatility_expansion].status",
+      "match": true,
+      "mine": "EVALUATED",
+      "theirs": "EVALUATED"
+    },
+    {
+      "item": "daily_replicate[volatility_expansion].net",
+      "match": true,
+      "mine": 335.17,
+      "theirs": 335.17
+    },
+    {
+      "item": "daily_replicate[volatility_expansion].turns",
+      "match": true,
+      "mine": 26,
+      "theirs": 26
+    },
+    {
+      "item": "daily_replicate[trend_gated].status",
+      "match": true,
+      "mine": "EVALUATED",
+      "theirs": "EVALUATED"
+    },
+    {
+      "item": "daily_replicate[trend_gated].net",
+      "match": true,
+      "mine": -158.67,
+      "theirs": -158.67
+    },
+    {
+      "item": "daily_replicate[trend_gated].turns",
+      "match": true,
+      "mine": 2,
+      "theirs": 2
+    },
+    {
+      "item": "daily_replicate[mean_reversion].status",
+      "match": true,
+      "mine": "EVALUATED",
+      "theirs": "EVALUATED"
+    },
+    {
+      "item": "daily_replicate[mean_reversion].net",
+      "match": true,
+      "mine": 15.54,
+      "theirs": 15.54
+    },
+    {
+      "item": "daily_replicate[mean_reversion].turns",
+      "match": true,
+      "mine": 4,
+      "theirs": 4
+    },
+    {
       "item": "m15_wf_summary[ma_cross].sharpe",
       "match": true,
       "mine": -0.7168,
@@ -2571,8 +6207,208 @@
         true,
         false
       ]
+    },
+    {
+      "item": "m15_regimes[ma_cross][UP_HIVOL].days",
+      "match": true,
+      "mine": 58266,
+      "theirs": 58266
+    },
+    {
+      "item": "m15_regimes[ma_cross][UP_HIVOL].net",
+      "match": true,
+      "mine": 2126.89,
+      "theirs": 2126.88
+    },
+    {
+      "item": "m15_regimes[ma_cross][UP_LOWVOL].days",
+      "match": true,
+      "mine": 162328,
+      "theirs": 162328
+    },
+    {
+      "item": "m15_regimes[ma_cross][UP_LOWVOL].net",
+      "match": true,
+      "mine": -3802.38,
+      "theirs": -3802.38
+    },
+    {
+      "item": "m15_regimes[ma_cross][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 22830,
+      "theirs": 22830
+    },
+    {
+      "item": "m15_regimes[ma_cross][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -1020.43,
+      "theirs": -1020.43
+    },
+    {
+      "item": "m15_regimes[ma_cross][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 108456,
+      "theirs": 108456
+    },
+    {
+      "item": "m15_regimes[ma_cross][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -2976.73,
+      "theirs": -2976.73
+    },
+    {
+      "item": "m15_regimes[donchian][UP_HIVOL].days",
+      "match": true,
+      "mine": 58266,
+      "theirs": 58266
+    },
+    {
+      "item": "m15_regimes[donchian][UP_HIVOL].net",
+      "match": true,
+      "mine": -1608.43,
+      "theirs": -1608.43
+    },
+    {
+      "item": "m15_regimes[donchian][UP_LOWVOL].days",
+      "match": true,
+      "mine": 162328,
+      "theirs": 162328
+    },
+    {
+      "item": "m15_regimes[donchian][UP_LOWVOL].net",
+      "match": true,
+      "mine": 1492.71,
+      "theirs": 1492.71
+    },
+    {
+      "item": "m15_regimes[donchian][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 22830,
+      "theirs": 22830
+    },
+    {
+      "item": "m15_regimes[donchian][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -1672.56,
+      "theirs": -1672.56
+    },
+    {
+      "item": "m15_regimes[donchian][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 108456,
+      "theirs": 108456
+    },
+    {
+      "item": "m15_regimes[donchian][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -252.34,
+      "theirs": -252.34
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][UP_HIVOL].days",
+      "match": true,
+      "mine": 58266,
+      "theirs": 58266
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][UP_HIVOL].net",
+      "match": true,
+      "mine": -12002.23,
+      "theirs": -12002.23
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][UP_LOWVOL].days",
+      "match": true,
+      "mine": 162328,
+      "theirs": 162328
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][UP_LOWVOL].net",
+      "match": true,
+      "mine": -32190.03,
+      "theirs": -32190.03
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 22830,
+      "theirs": 22830
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -3780.97,
+      "theirs": -3780.97
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 108456,
+      "theirs": 108456
+    },
+    {
+      "item": "m15_regimes[volatility_expansion][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -21074.79,
+      "theirs": -21074.79
+    },
+    {
+      "item": "m15_regimes[session_breakout][UP_HIVOL].days",
+      "match": true,
+      "mine": 58266,
+      "theirs": 58266
+    },
+    {
+      "item": "m15_regimes[session_breakout][UP_HIVOL].net",
+      "match": true,
+      "mine": -824.91,
+      "theirs": -824.92
+    },
+    {
+      "item": "m15_regimes[session_breakout][UP_LOWVOL].days",
+      "match": true,
+      "mine": 162328,
+      "theirs": 162328
+    },
+    {
+      "item": "m15_regimes[session_breakout][UP_LOWVOL].net",
+      "match": true,
+      "mine": -9445.46,
+      "theirs": -9445.46
+    },
+    {
+      "item": "m15_regimes[session_breakout][DOWN_HIVOL].days",
+      "match": true,
+      "mine": 22830,
+      "theirs": 22830
+    },
+    {
+      "item": "m15_regimes[session_breakout][DOWN_HIVOL].net",
+      "match": true,
+      "mine": -517.8,
+      "theirs": -517.8
+    },
+    {
+      "item": "m15_regimes[session_breakout][DOWN_LOWVOL].days",
+      "match": true,
+      "mine": 108456,
+      "theirs": 108456
+    },
+    {
+      "item": "m15_regimes[session_breakout][DOWN_LOWVOL].net",
+      "match": true,
+      "mine": -2596.04,
+      "theirs": -2596.03
     }
   ],
+  "daily_holdout_selection": {
+    "donchian": "donchian_55_20_atr2",
+    "ma_cross": "ma_20_100_atr3",
+    "mean_reversion": "rsi2_t10_sma200",
+    "trend_gated": "gated_er60_025",
+    "tsmom": "tsmom_L126",
+    "volatility_expansion": "rexp_k10_h3"
+  },
   "diagnostics": {
     "complete_day_filter_sensitivity": {
       "donchian_384_192_atr3": {
@@ -3082,7 +6918,7 @@
       "unmodeled_swap_drag_usd_at_3.5_per_lot_night": 112.25
     }
   },
-  "generated_at": "2026-10-11T15:07:37.684203+00:00",
+  "generated_at": "2026-10-11T17:18:13.695213+00:00",
   "m15_holdout_selection": {
     "donchian": "donchian_384_192_atr3",
     "ma_cross": "ma_32_128_atr3",

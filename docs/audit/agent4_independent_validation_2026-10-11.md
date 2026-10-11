@@ -11,8 +11,9 @@ intraday M15 `LH-XAUUSD-M15-2026-10-10` (holdout selections `ma_32_128_atr3`,
 `LH-XAUUSD-D1-2026-10-10` (best `ma_20_100_atr3`, `rexp_k10_h3`), whose recorded
 verdict is `NO_VALIDATED_EDGE`.
 
-**Tooling:** `scripts/agent4_independent_validation.py` (from-scratch re-implementation;
-no `qts.research.longhistory` imports), evidence
+**Tooling:** `scripts/agent4_independent_validation.py` (from-scratch re-implementation of
+both studies' engines, families, selection rules, regime labels and statistics; no
+`qts.research.longhistory` imports), evidence
 `data/evidence/longhistory/agent4_validation.json`, tests
 `tests/unit/test_agent4_validation.py`.
 
@@ -58,12 +59,15 @@ The recorded verdict `NO_VALIDATED_EDGE` is **correct and stands**.
 
 `scripts/agent4_independent_validation.py` re-implements, from the preregistration text
 only: the execution engine (next-open fills, stop-vs-range with gap opens, re-entry
-block, forced close), the four M15 signal families, the training-window selection rule,
-the cost model, the walk-forward calendar, the block bootstrap, the Holm correction and
-the deflated Sharpe ratio (own Bailey–López de Prado implementation, including a fresh
-normal-PPF).
+block, forced close, calendar rebalance), ALL signal families of BOTH studies (daily:
+tsmom, ma_cross, donchian, range expansion, nr7, trend-gated Donchian, RSI(2), Bollinger
+control; M15: ma_cross, donchian, range expansion, session breakout), the training-window
+selection rule, the cost model, the walk-forward calendar, the regime labels, the block
+bootstrap, the Holm correction and the deflated Sharpe ratio (own Bailey–López de Prado
+implementation, including a fresh normal-PPF).
 
-**203 of 203 cross-checks matched** against the committed M15 evidence, including:
+**522 of 522 cross-checks matched** against the committed evidence of BOTH studies,
+including (M15):
 
 * holdout **selections** per group (identical candidates picked independently);
 * holdout net/gross/cost/Sharpe/max-DD/round-turns for all four groups (net within
@@ -76,12 +80,23 @@ normal-PPF).
 * the statistical layer: one-sided bootstrap p-values, sign-randomisation p-values
   (own seeds, agreement within Monte-Carlo noise), Holm-adjusted p-values (1.00 all),
   DSR (0.0003, 0.0042, 0.0, 0.0 — exact to 4 decimals), and the G1–G7 gate arithmetic
-  re-derived from the raw evidence fields.
+  re-derived from the raw evidence fields;
+* **independent re-derivation of the G7 regime attribution** (12-month trend ×
+  expanding-median volatility labels, rebuilt from scratch): regime bar counts are
+  EXACT (e.g. M15 `ma_cross` UP_HIVOL 58,266 / UP_LOWVOL 162,328 / DOWN_HIVOL 22,830 /
+  DOWN_LOWVOL 108,456 bars) and per-regime net P&L matches to the cent, for both
+  studies.
 
-The daily study's two strongest candidates were also cross-checked with the same
-independent engine and match **exactly**: `ma_20_100_atr3` +$530.11 / Sharpe 0.2995 /
-14 turns; `rexp_k10_h3` +$673.05 / 0.3867 / 134 turns; buy-and-hold +$8,795.66 /
-0.8648; net at 2× cost +$506.15 / +$381.23.
+The DAILY study is verified with the same completeness (273 checks): all six group
+selections identical (`tsmom_L126`, `ma_20_100_atr3`, `donchian_55_20_atr2`,
+`rexp_k10_h3`, `gated_er60_025`, `rsi2_t10_sma200`); holdout metrics exact
+(`ma_20_100_atr3` +$530.11 / Sharpe 0.2995 / 14 turns; `rexp_k10_h3` +$673.05 /
+0.3867 / 134 turns); 2×/3× cost stresses (+$506.15 / +$381.23 for the two above); all
+ten walk-forward folds (162 per-year selection/net/turn checks); buy-and-hold
++$8,795.66 / 0.8648; and the Dukascopy daily replicate, including exact reproduction of
+the pre-registered 25 % warm-up rule that marks `tsmom` and `ma_cross`
+`NOT_EVALUABLE_INSUFFICIENT_WARMUP` (evaluated groups match to the cent: −$296.65,
++$335.17, −$158.67, +$15.54).
 
 **Conclusion: the evidence is genuine, reproducible and correctly computed.** The
 numbers in the reports are what the frozen code actually produces from the pinned data.
@@ -243,8 +258,8 @@ None of these change the current verdict: FAIL.
 | `ruff check src/ tests/` (+ the new script and test) | pass |
 | `mypy src` | 182 files, no issues |
 | `bandit -q -r src` | pass |
-| `pytest` (fast suite) | **1468 passed, 0 failed** (347 honest skips) |
-| `pytest --run-integration --run-research` | **1811 passed, 0 failed** (4 skips) |
+| `pytest` (fast suite) | **1475 passed, 0 failed** (347 honest skips) |
+| `pytest --run-integration --run-research` | **1818 passed, 0 failed** (4 skips) |
 | `node --check` over `src/qts/desktop/ui/js` | pass |
 | `npm test` (UI) | 48 pass, 0 fail |
 
@@ -257,7 +272,7 @@ above is green only after the disclosed test repair.
 ```bash
 python scripts/fetch_longhistory_sources.py        # pinned, SHA-256-verified (github.com only)
 python scripts/build_longhistory_dataset.py        # deterministic
-python scripts/agent4_independent_validation.py    # 203/203 cross-checks + diagnostics
+python scripts/agent4_independent_validation.py    # 522/522 cross-checks + diagnostics
 pytest tests/unit/test_agent4_validation.py -q     # engine invariants on synthetic data
 ```
 

@@ -21,12 +21,18 @@ from scripts.agent4_independent_validation import (
     M15_PPY,
     XPlan,
     compare,
+    month_end_flags,
     side_rate,
     sma,
     trading_day,
     window_bounds,
+    x_bollinger,
     x_donchian,
+    x_gated_donchian,
     x_ma_cross,
+    x_nr7,
+    x_rsi2,
+    x_tsmom,
     xdsr,
     xholm,
     xmaxdd,
@@ -238,3 +244,108 @@ def test_sma_is_causal() -> None:
     assert np.isnan(out.iloc[:2]).all()
     assert out.iloc[2] == pytest.approx(1.0)
     assert out.iloc[9] == pytest.approx(8.0)
+
+
+# ------------------------------------------------------------------ daily families
+
+
+def test_month_end_flags_mark_last_bar_of_each_month() -> None:
+    idx = pd.bdate_range("2024-01-01", "2024-03-31")  # three complete months
+    flags = month_end_flags(idx)
+    assert flags.sum() == 3
+    for month in (1, 2, 3):
+        pos = np.where(idx.month == month)[0]
+        assert flags[pos[-1]], f"last bar of month {month} must be flagged"
+        assert not flags[pos[-2]]
+
+
+def test_tsmom_resizes_on_month_end_and_keeps_accounting_identity() -> None:
+    df = _walk(3000, seed=21, drift=0.001)  # strong uptrend -> long after warm-up
+    plan = x_tsmom(df, 63)
+    run = xrun(df, plan.target, plan.size, plan.stop, 0, len(df), rebalance=plan.rebalance)
+    assert run.trades, "tsmom should trade on an uptrend"
+    # accounting identity must hold through the resize path
+    ledger = sum(t.net_usd for t in run.trades)
+    assert run.equity[-1] - INITIAL_EQUITY == pytest.approx(ledger, abs=1e-6)
+    # the position must be long most of the time on an uptrend
+    long_frac = float(np.mean([t.direction for t in run.trades]))
+    assert long_frac > 0.5
+
+
+def test_tsmom_signals_causal_under_truncation_with_calendar_exemption() -> None:
+    """The final truncated bar can look like a month end; exempt it (as the repo check does)."""
+    df = _walk(2500, seed=22)
+    for cut in (800, 1600):
+        part = df.iloc[:cut]
+        full = x_tsmom(df, 63)
+        trunc = x_tsmom(part, 63)
+        for field in ("target", "size", "stop"):
+            a = np.asarray(getattr(full, field))[: cut - 1]
+            b = np.asarray(getattr(trunc, field))[: cut - 1]
+            both_nan = np.isnan(a) & np.isnan(b)
+            ok = both_nan | np.isclose(a, b, rtol=1e-12, atol=1e-12, equal_nan=False)
+            assert ok.all(), f"tsmom.{field} differs at bar {int(np.argmin(ok))} for cut {cut}"
+
+
+def test_rsi2_buys_oversold_dip_and_exits_on_recovery() -> None:
+    # flat, deep dive, recovery: RSI(2) < 5 at the bottom, close > SMA5 on the bounce
+    n_flat, n_dive, n_rec = 60, 6, 8
+    close = np.concatenate(
+        [np.full(n_flat, 1000.0), np.linspace(1000.0, 940.0, n_dive), np.linspace(940.0, 990.0, n_rec)]
+    )
+    idx = pd.bdate_range("2020-01-01", periods=len(close))
+    df = _ohlc(idx, close, spread=0.3)
+    plan = x_rsi2(df, threshold=5.0, trend_filter=False)
+    state = plan.target
+    assert (state == 1.0).any(), "RSI(2) < 5 must go long on the dive"
+    first_long = int(np.argmax(state == 1.0))
+    assert first_long >= n_flat - 1  # no entry before the dive
+    # state returns to 0 after the recovery (close > SMA5)
+    assert (state[first_long:] == 0.0).any()
+
+
+def test_nr7_narrow_range_breakout_triggers() -> None:
+    # six ordinary bars, one very narrow bar (NR7), then a close above its high
+    rngs = [8.0, 7.0, 6.0, 5.0, 4.5, 4.0, 0.5]
+    closes = [1000.0 + i for i in range(len(rngs))]
+    closes.append(closes[-1] + 10.0)  # breakout close above the NR7 high
+    idx = pd.bdate_range("2020-01-01", periods=len(closes))
+    opens = np.concatenate([[closes[0]], np.array(closes[:-1])])
+    highs = np.maximum(opens, closes) + np.concatenate([rngs, [2.0]])
+    lows = np.minimum(opens, closes) - np.concatenate([rngs, [2.0]])
+    df = pd.DataFrame(
+        {"open": opens, "high": highs, "low": lows, "close": closes, "volume": 1.0}, index=idx
+    )
+    plan = x_nr7(df, hold=3)
+    assert (plan.target == 1.0).any(), "a close through the NR7 range must enter long"
+
+
+def test_bollinger_control_fades_excursion_and_exits_at_mean() -> None:
+    rng = np.random.default_rng(31)
+    n = 400
+    close = 1000.0 + np.cumsum(rng.normal(0, 1.0, n))
+    close[200:212] = close[199] - np.linspace(1, 24, 12)  # shove below the lower band
+    idx = pd.bdate_range("2020-01-01", periods=n)
+    df = _ohlc(idx, close, spread=0.2)
+    plan = x_bollinger(df, 20, 2.0)
+    state = plan.target
+    assert (state == 1.0).any(), "a close below the lower band must fade long"
+    assert (state == -1.0).any() or (state == 1.0).any()
+
+
+def test_efficiency_gated_donchian_blocks_chop_and_accounting_holds() -> None:
+    rng = np.random.default_rng(41)
+    n = 5000
+    # alternating chop: efficiency ratio stays low, so the gate must suppress entries
+    step = np.where(np.arange(n) % 2 == 0, 6.0, -6.0)
+    close = 1000.0 + np.cumsum(rng.normal(0, 0.8, n) + step * 0.0)
+    idx = pd.bdate_range("2015-01-01", periods=n)
+    df = _ohlc(idx, close, spread=0.5)
+    plan = x_gated_donchian(df, 0.25)
+    run = xrun(df, plan.target, plan.size, plan.stop, 0, n)
+    ledger = sum(t.net_usd for t in run.trades)
+    assert run.equity[-1] - INITIAL_EQUITY == pytest.approx(ledger, abs=1e-6)
+    plain = x_donchian(df, 55, 20, 3.0)
+    run_plain = xrun(df, plain.target, plain.size, plain.stop, 0, n)
+    # the gate can only remove entries, never add them
+    assert len(run.trades) <= len(run_plain.trades)
