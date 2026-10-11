@@ -435,6 +435,25 @@ def _digest_if_file(rel_path: str) -> str | None:
         return None
 
 
+#: Gitignored, machine-local stores that tests must never write to. ``git status``
+#: cannot see them, so the session guard compares their digests directly.
+_GUARDED_IGNORED_STORES = (
+    "data/evidence/demo_cost_evidence.jsonl",
+    "data/evidence/demo_cost_evidence.jsonl.head",
+)
+
+
+@pytest.fixture(autouse=True)
+def _cost_evidence_store_is_per_test(tmp_path, monkeypatch):
+    """Every test writes its cost evidence under its own tmp_path.
+
+    Found 2026-10-11: five integration tests submitted orders with the default store
+    path, which resolves to the real repository state root, so fake deal records
+    (ticket 770002, time 1970-01-01) landed in the operator's evidence store.
+    """
+    monkeypatch.setenv("QTS_COST_EVIDENCE_PATH", str(tmp_path / "cost_evidence" / "demo_cost_evidence.jsonl"))
+
+
 @pytest.fixture(scope="session", autouse=True)
 def repository_tracked_files_must_not_be_modified_by_tests():
     """Fail the session if tests create new worktree changes or alter pre-existing ones."""
@@ -444,6 +463,7 @@ def repository_tracked_files_must_not_be_modified_by_tests():
         digest = _digest_if_file(path)
         if digest is not None:
             baseline_hashes[path] = digest
+    guarded_before = {rel: _digest_if_file(rel) for rel in _GUARDED_IGNORED_STORES}
     yield
 
     after = _git_status_paths()
@@ -452,6 +472,16 @@ def repository_tracked_files_must_not_be_modified_by_tests():
         path for path, digest in baseline_hashes.items()
         if _digest_if_file(path) != digest
     )
+    touched_stores = sorted(
+        rel for rel, digest in guarded_before.items() if _digest_if_file(rel) != digest
+    )
+    if touched_stores:
+        pytest.fail(
+            "a test wrote to the operator's gitignored evidence store: "
+            + ", ".join(touched_stores)
+            + " (set QTS_COST_EVIDENCE_PATH / QTS_STATE_ROOT to tmp_path)",
+            pytrace=False,
+        )
     if new_changes or altered_baseline:
         lines = [
             "the test suite modified the repository working tree; tests must be",
