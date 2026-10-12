@@ -1,0 +1,152 @@
+{
+  "base_cost_run": {
+    "cost_basis": "ASSUMED",
+    "cost_usd": 17.2741,
+    "final_equity_usd": 10259.918,
+    "financing_usd": 0.0,
+    "gross_usd": 277.1921,
+    "net_usd": 259.918,
+    "round_turns": 3,
+    "trades": [
+      {
+        "bars_held": 1,
+        "cost_usd": 5.698,
+        "direction": "SHORT",
+        "entry_day": "2020-05-21",
+        "entry_price": 2000.0,
+        "exit_day": "2020-05-22",
+        "exit_price": 2000.75,
+        "forced_exit": false,
+        "gross_usd": -3.7489,
+        "net_usd": -9.4469,
+        "stopped": false
+      },
+      {
+        "bars_held": 142,
+        "cost_usd": 5.7531,
+        "direction": "LONG",
+        "entry_day": "2020-05-22",
+        "entry_price": 2000.75,
+        "exit_day": "2020-12-08",
+        "exit_price": 2048.5,
+        "forced_exit": false,
+        "gross_usd": 238.3671,
+        "net_usd": 232.614,
+        "stopped": false
+      },
+      {
+        "bars_held": 16,
+        "cost_usd": 5.823,
+        "direction": "SHORT",
+        "entry_day": "2020-12-08",
+        "entry_price": 2048.5,
+        "exit_day": "2020-12-30",
+        "exit_price": 2040.0,
+        "forced_exit": true,
+        "gross_usd": 42.574,
+        "net_usd": 36.751,
+        "stopped": false
+      }
+    ]
+  },
+  "candidate": {
+    "candidate_id": "ma_20_100_atr3",
+    "protocol_id": "LH-XAUUSD-D1-2026-10-10",
+    "signal": "long when SMA(20) > SMA(100), otherwise short after warmup",
+    "stop": "3 x ATR(14); size from the frozen 1% stop-risk rule, capped at 1.0x",
+    "timeframe": "1D"
+  },
+  "cost_model": {
+    "basis": "ASSUMED",
+    "commission_usd_per_lot_side": 7.0,
+    "cost_multiplier": 1.0,
+    "financing_bps_per_day": 0.0,
+    "round_turn_bps_at_1300": 6.077,
+    "slippage_bps_per_side": 1.0,
+    "spread_bps_full": 3.0
+  },
+  "data": {
+    "bars": 260,
+    "class": "SYNTHETIC_MECHANISM_ONLY",
+    "first_day": "2020-01-02",
+    "last_day": "2020-12-30",
+    "ohlc_sha256": "5be25595f5ab71dbcdd17083ddc16404c5467f6cd133126640ed7e25f7dc92b6",
+    "purpose": "signal, execution-timing, risk-sizing, cost and determinism regression only",
+    "symbol": "XAUUSD_SYNTHETIC"
+  },
+  "double_cost_sensitivity": {
+    "cost_basis": "ASSUMED",
+    "cost_model": {
+      "basis": "ASSUMED",
+      "commission_usd_per_lot_side": 7.0,
+      "cost_multiplier": 2.0,
+      "financing_bps_per_day": 0.0,
+      "round_turn_bps_at_1300": 12.154,
+      "slippage_bps_per_side": 1.0,
+      "spread_bps_full": 3.0
+    },
+    "cost_usd": 34.5235,
+    "final_equity_usd": 10242.4054,
+    "financing_usd": 0.0,
+    "gross_usd": 276.9288,
+    "net_usd": 242.4054,
+    "round_turns": 3,
+    "trades": [
+      {
+        "bars_held": 1,
+        "cost_usd": 11.3944,
+        "direction": "SHORT",
+        "entry_day": "2020-05-21",
+        "entry_price": 2000.0,
+        "exit_day": "2020-05-22",
+        "exit_price": 2000.75,
+        "forced_exit": false,
+        "gross_usd": -3.7479,
+        "net_usd": -15.1422,
+        "stopped": false
+      },
+      {
+        "bars_held": 142,
+        "cost_usd": 11.4981,
+        "direction": "LONG",
+        "entry_day": "2020-05-22",
+        "entry_price": 2000.75,
+        "exit_day": "2020-12-08",
+        "exit_price": 2048.5,
+        "forced_exit": false,
+        "gross_usd": 238.1633,
+        "net_usd": 226.6652,
+        "stopped": false
+      },
+      {
+        "bars_held": 16,
+        "cost_usd": 11.6311,
+        "direction": "SHORT",
+        "entry_day": "2020-12-08",
+        "entry_price": 2048.5,
+        "exit_day": "2020-12-30",
+        "exit_price": 2040.0,
+        "forced_exit": true,
+        "gross_usd": 42.5134,
+        "net_usd": 30.8823,
+        "stopped": false
+      }
+    ]
+  },
+  "execution": {
+    "decision": "completed daily close",
+    "fill": "following daily open",
+    "first_fill_day": "2020-05-21",
+    "first_fill_price": 2000.0,
+    "first_signal_day": "2020-05-20",
+    "stop_fill": "daily high/low; stop level or open on a gap through the stop"
+  },
+  "run_id": "agent3-xauusd-ma20-100-atr3-smoke-2026-10-11",
+  "schema": "qts.selected_strategy_smoke.v1",
+  "validation": {
+    "claim": "NONE",
+    "claim_eligible": false,
+    "performance_validation": "BLOCKED",
+    "reason": "synthetic input only; reliable independent market data and measured broker costs are unavailable"
+  }
+}
