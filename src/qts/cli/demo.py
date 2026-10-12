@@ -624,9 +624,16 @@ def demo_cost_check(
     }
 
     if record and rows:
-        recorded = session.capture_historical_deal_evidence(
-            rows[-deals:], server_utc_offset_s=offset
-        )
+        if identity.get("is_demo") is True:
+            recorded = session.capture_historical_deal_evidence(
+                rows[-deals:], server_utc_offset_s=measured_offset
+            )
+        else:
+            recorded = {
+                "recorded": 0,
+                "skipped_existing": 0,
+                "error": "refusing to record deal evidence from a non-DEMO account",
+            }
         report["recorded"] = recorded
 
     click.echo(f"symbol: {session.canonical_symbol} -> {broker_symbol}")

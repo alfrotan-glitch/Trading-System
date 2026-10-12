@@ -209,6 +209,45 @@ def test_execution_reality_records_signal_expected_actual_and_labels_source():
     summary2 = store.summary()
     assert summary2["synthetic_count"] >= 1
 
+    # Opposite-sign REAL slippages must not cancel in avg_abs_slippage_bps,
+    # and rejected orders without realized_price must still record latency_ms.
+    neg_real = ExecutionObservation(
+        symbol="XAUUSD",
+        signal_price=Decimal("2000"),
+        expected_price=Decimal("2000.1"),
+        requested_price=Decimal("2000.1"),
+        submission_timestamp=now,
+        broker_ack_timestamp=now + timedelta(milliseconds=80),
+        fill_timestamp=now + timedelta(milliseconds=120),
+        requested_volume=Decimal("0.1"),
+        filled_volume=Decimal("0.1"),
+        realized_price=Decimal("2000.0"),
+        source="REAL",
+    )
+    store.record(neg_real)
+    rejected_demo = ExecutionObservation(
+        symbol="XAUUSD",
+        signal_price=Decimal("2000"),
+        expected_price=Decimal("2000.1"),
+        requested_price=Decimal("2000.1"),
+        submission_timestamp=now,
+        broker_ack_timestamp=now + timedelta(milliseconds=65),
+        requested_volume=Decimal("0.1"),
+        filled_volume=Decimal("0"),
+        realized_price=None,
+        rejection_reason="market closed",
+        source="DEMO",
+    )
+    rejected_demo.compute_slippage()
+    assert rejected_demo.slippage_bps is None
+    assert rejected_demo.latency_ms == 65.0
+    store.record(rejected_demo)
+    summary3 = store.summary()
+    assert summary3["demo_count"] == 1
+    assert summary3["avg_slippage_bps"] == 0.0
+    assert summary3["avg_abs_slippage_bps"] is not None and summary3["avg_abs_slippage_bps"] > 0.4
+    assert summary3["max_abs_slippage_bps"] is not None and summary3["max_abs_slippage_bps"] > 0.4
+
 
 def test_execution_reality_empty_means_cannot_claim_realism():
     import tempfile

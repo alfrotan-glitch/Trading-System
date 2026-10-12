@@ -17,9 +17,13 @@ from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
 
 
-def _assess_gaps(bars: list[Any], timeframe: str | None = None) -> dict[str, Any]:
+def _assess_gaps(
+    bars: list[Any],
+    timeframe: str | None = None,
+    closure_intervals: Any = None,
+) -> dict[str, Any]:
     """Use the canonical gap model; keep this wrapper for callers/tests."""
-    return dataset_missing_stats(bars, timeframe or "")
+    return dataset_missing_stats(bars, timeframe or "", closure_intervals=closure_intervals)
 
 
 def _resolution(bars: list[Any]) -> str:
@@ -59,8 +63,14 @@ def generate_inventory(root: Path = Path("data")) -> list[dict[str, Any]]:
             continue
         instr = Instrument(symbol=manifest.instrument, venue=manifest.venue)
         bars = sorted(store.read_bars(instr, manifest.timeframe, version=version), key=lambda b: b.open_time)
-        report = validate_bars(bars) if bars else None
-        gap_info = _assess_gaps(bars, manifest.timeframe)
+        session_cal = getattr(manifest, "session_calendar", None)
+        closures = None
+        if session_cal and bars:
+            from qts.data.sessions import closure_intervals as _closure_intervals
+
+            closures = _closure_intervals(bars[0].open_time, bars[-1].close_time, symbol=session_cal)
+        report = validate_bars(bars, manifest.timeframe, closure_intervals=closures) if bars else None
+        gap_info = _assess_gaps(bars, manifest.timeframe, closure_intervals=closures)
         source_label = getattr(manifest, "source", None) or "UNVERIFIED"
         raw_source = getattr(manifest, "source_file", None)
         data_class = getattr(manifest, "provenance_class", None) or classify_source(source_label)
@@ -137,8 +147,13 @@ def generate_inventory(root: Path = Path("data")) -> list[dict[str, Any]]:
                 },
                 "duplicates": duplicates,
                 "gaps": gap_info,
+                "session_calendar": session_cal,
                 "session_coverage": _session_coverage(bars),
-                "market_closure_handling": "closures measured from UTC calendar gaps; broker session schedule UNAVAILABLE",
+                "market_closure_handling": (
+                    f"closures evaluated against declared session_calendar={session_cal} ({gap_info.get('closure_policy')})"
+                    if session_cal
+                    else "closures measured from UTC calendar gaps; broker session schedule UNAVAILABLE"
+                ),
                 "broker_artifacts": "UNAVAILABLE: no broker tick/session diagnostics in OHLC dataset",
                 "checksum": manifest.checksum,
                 "ingestion_method": f"{source_note} → raw preserved → validation → canonical {version}",

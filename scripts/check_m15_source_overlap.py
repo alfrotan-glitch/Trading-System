@@ -30,20 +30,39 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from qts.research.longhistory.sources import parse_duka_parquet_dir
+from qts.research.longhistory.sources import (
+    bar_integrity_diagnostics,
+    parse_duka_parquet_dir,
+    to_utc,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DUKA = REPO_ROOT / "data" / "raw" / "longhistory" / "dukascopy_mirror_xauusd_15m" / "data" / "XAUUSD"
 
 
-def load_candidate(path: Path) -> pd.DataFrame:
-    frame = pd.read_csv(path)
-    stamps = pd.to_datetime(frame["datetime"], utc=True).dt.tz_localize(None)
+def load_candidate(path: Path, stamp_basis: str = "utc") -> pd.DataFrame:
+    frame = pd.read_parquet(path) if path.suffix.lower() == ".parquet" else pd.read_csv(path)
+    time_col = "datetime" if "datetime" in frame.columns else "time"
+    if time_col not in frame.columns:
+        raise ValueError(f"candidate {path} must have a 'datetime' or 'time' column")
+    if stamp_basis == "utc":
+        stamps = pd.to_datetime(frame[time_col], utc=True).dt.tz_localize(None)
+    else:
+        stamps = pd.to_datetime(frame[time_col])
+        if getattr(stamps.dt, "tz", None) is not None:
+            stamps = stamps.dt.tz_localize(None)
+    cols = ["open", "high", "low", "close"]
+    if "volume" in frame.columns:
+        cols.append("volume")
+    elif "tick_volume" in frame.columns:
+        frame = frame.rename(columns={"tick_volume": "volume"})
+        cols.append("volume")
     frame = frame.assign(stamp=stamps).set_index("stamp")
-    frame = frame[["open", "high", "low", "close"]].astype(float)
+    frame = frame[cols].astype(float)
     if frame.index.duplicated().any():
         raise ValueError("candidate has duplicate timestamps")
-    return frame.sort_index()
+    frame = frame.sort_index()
+    return to_utc(frame, stamp_basis)
 
 
 def shift_scan(duka: pd.DataFrame, cand: pd.DataFrame) -> list[dict]:
@@ -91,20 +110,28 @@ def level_stats(duka: pd.DataFrame, cand: pd.DataFrame) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--candidate", type=Path, required=True)
+    parser.add_argument(
+        "--stamp-basis",
+        choices=["utc", "server_gmt23_us_dst", "server_gmt23_eu_dst"],
+        default="utc",
+        help="Timestamp basis of candidate before UTC comparison (default: utc)",
+    )
     parser.add_argument("--duka", type=Path, default=DEFAULT_DUKA)
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args()
 
     duka = parse_duka_parquet_dir(args.duka)
-    cand = load_candidate(args.candidate)
+    cand = load_candidate(args.candidate, stamp_basis=args.stamp_basis)
     scan = shift_scan(duka, cand)
     best = min(scan, key=lambda r: r["median_abs_close_diff"]) if scan else None
     report = {
         "schema": "qts.m15_source_overlap_check.v1",
         "reference": "dukascopy_mirror_xauusd_15m (4d6f155)",
         "candidate_file": str(args.candidate),
+        "candidate_stamp_basis": args.stamp_basis,
         "candidate_span": [str(cand.index.min()), str(cand.index.max())],
         "candidate_bars": int(len(cand)),
+        "integrity_diagnostics": bar_integrity_diagnostics(cand),
         "best_shift": best,
         "shift_scan": scan,
         "level": level_stats(duka, cand.loc[:, ["open", "high", "low", "close"]]) if best else None,

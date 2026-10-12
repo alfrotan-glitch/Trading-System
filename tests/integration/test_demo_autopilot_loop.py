@@ -313,17 +313,17 @@ class WarmupTerminal(FakeTerminal):
 
     def __init__(self, *, completed_bars: int = 60, **kwargs: object) -> None:
         super().__init__(**kwargs)
-        edge = int(time.time() // 900) * 900
-        # One forming bar (the current quarter hour) + `completed_bars` finished ones.
-        self.m15: list[dict] = [
-            {"time": edge - 900 * (completed_bars - i), "close": 2000.0 + i}
-            for i in range(completed_bars)
-        ]
-        self.m15.append({"time": edge, "close": 2000.0 + completed_bars})  # forming
+        self._completed_bars = completed_bars
 
     def copy_rates_from_pos(self, name, timeframe, start, count):
         if timeframe == self.TIMEFRAME_M15:
-            return list(self.m15[-count:])
+            edge = int(time.time() // 900) * 900
+            m15 = [
+                {"time": edge - 900 * (self._completed_bars - i), "close": 2000.0 + i}
+                for i in range(self._completed_bars)
+            ]
+            m15.append({"time": edge, "close": 2000.0 + self._completed_bars})  # forming
+            return list(m15[-count:])
         return super().copy_rates_from_pos(name, timeframe, start, count)
 
 

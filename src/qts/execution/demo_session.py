@@ -329,8 +329,10 @@ class DemoSession:
             adapter = self.adapter
             if adapter is None:
                 return None
-            offset, _basis = adapter.server_utc_offset(self.broker_symbol)
-            return float(offset)
+            offset, basis = adapter.server_utc_offset(self.broker_symbol)
+            if basis in ("assumed-utc-fallback", "unavailable", None, ""):
+                return None
+            return float(offset) if offset is not None else None
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning("server->UTC offset could not be measured: %s", exc)
             return None

@@ -7,9 +7,14 @@ path and dirty files went unseen by the guard.
 
 from __future__ import annotations
 
+import importlib.util
 import subprocess
+from pathlib import Path
 
-import conftest
+_SPEC = importlib.util.spec_from_file_location("_root_conftest", Path(__file__).with_name("conftest.py"))
+assert _SPEC is not None and _SPEC.loader is not None
+conftest = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(conftest)
 
 
 def _git(cwd, *args: str) -> None:

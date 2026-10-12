@@ -46,10 +46,37 @@ class CostModel:
     financing_bps_per_day: float = 0.0
     multiplier: float = 1.0
     basis: str = "ASSUMED"
+    spread_usd_per_oz: float = 0.0
+    slippage_usd_per_oz_side: float = 0.0
+
+    @classmethod
+    def from_price_units(
+        cls,
+        *,
+        spread_usd_per_oz: float,
+        slippage_usd_per_oz_side: float,
+        commission_usd_per_lot_side: float = 0.0,
+        financing_bps_per_day: float = 0.0,
+        multiplier: float = 1.0,
+        basis: str = "ASSUMED",
+    ) -> CostModel:
+        """Construct a fixed-dollar ($/oz) cost model matching MT5 quote/deal units."""
+        if spread_usd_per_oz < 0 or slippage_usd_per_oz_side < 0 or commission_usd_per_lot_side < 0:
+            raise ValueError("Cost components must be non-negative")
+        return cls(
+            spread_bps=0.0,
+            slippage_bps=0.0,
+            commission_usd_per_lot_side=commission_usd_per_lot_side,
+            financing_bps_per_day=financing_bps_per_day,
+            multiplier=multiplier,
+            basis=basis,
+            spread_usd_per_oz=spread_usd_per_oz,
+            slippage_usd_per_oz_side=slippage_usd_per_oz_side,
+        )
 
     def side_rate(self, price: float) -> float:
-        half_spread = self.spread_bps / 2.0 / 1e4
-        slip = self.slippage_bps / 1e4
+        half_spread = (self.spread_bps / 2.0 / 1e4) + (self.spread_usd_per_oz / (2.0 * price))
+        slip = (self.slippage_bps / 1e4) + (self.slippage_usd_per_oz_side / price)
         commission = self.commission_usd_per_lot_side / (OUNCES_PER_LOT * price)
         return self.multiplier * (half_spread + slip + commission)
 
@@ -61,10 +88,12 @@ class CostModel:
             financing_bps_per_day=self.financing_bps_per_day,
             multiplier=self.multiplier * multiplier,
             basis=self.basis,
+            spread_usd_per_oz=self.spread_usd_per_oz,
+            slippage_usd_per_oz_side=self.slippage_usd_per_oz_side,
         )
 
     def describe(self) -> dict[str, float | str]:
-        return {
+        out: dict[str, float | str] = {
             "basis": self.basis,
             "spread_bps_full": self.spread_bps,
             "slippage_bps_per_side": self.slippage_bps,
@@ -73,6 +102,11 @@ class CostModel:
             "cost_multiplier": self.multiplier,
             "round_turn_bps_at_1300": round(2 * self.side_rate(1300.0) * 1e4, 3),
         }
+        if self.spread_usd_per_oz != 0.0 or self.slippage_usd_per_oz_side != 0.0:
+            out["spread_usd_per_oz"] = self.spread_usd_per_oz
+            out["slippage_usd_per_oz_side"] = self.slippage_usd_per_oz_side
+            out["round_turn_bps_at_2000"] = round(2 * self.side_rate(2000.0) * 1e4, 3)
+        return out
 
 
 @dataclass

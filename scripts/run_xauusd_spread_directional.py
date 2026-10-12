@@ -13,15 +13,15 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
+from qts.research.xauusd_directional import DiscoveryIdentity as ViewIdentity
+
+# Reuse view infrastructure's preflight but with H-DIR-03 identity
+from qts.research.xauusd_directional_view import preflight_view
 from qts.research.xauusd_spread_directional import (
     IDENTITY,
     SpreadDirectionalScan,
     evaluate_spread,
 )
-
-# Reuse view infrastructure's preflight but with H-DIR-03 identity
-from qts.research.xauusd_directional_view import preflight_view
-from qts.research.xauusd_directional import DiscoveryIdentity as ViewIdentity
 
 # Map H-DIR-03 identity to view identity type expected by preflight
 VIEW_IDENTITY = ViewIdentity(

@@ -12,6 +12,7 @@ import pyarrow.parquet as pq
 from qts.research.xauusd_directional_view import preflight_view
 from qts.research.xauusd_marketmaking import DISCOVERY_ROWS, MarketMakingScan, evaluate_marketmaking
 
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="H-MM-01 runner")
     parser.add_argument("--view-dir", type=Path, required=True)
@@ -48,7 +49,7 @@ def main(argv=None) -> int:
         md = f"# XAUUSD H-MM-01 market-making (16 fill / 256 exc) — discovery only\n\n## H-MM-01: {hyp['status']}\n"
         for r in hyp["reasons"]:
             md += f"- {r}\n"
-        md += f"\nHeld-out 40%: CLOSED. Orders: 0. Demo execution: DISABLED. SYNTHETIC fills.\n"
+        md += "\nHeld-out 40%: CLOSED. Orders: 0. Demo execution: DISABLED. SYNTHETIC fills.\n"
         md += f"\nFill/Exc: {result['measured'].get('16_fill_256_exc')}\n"
         args.markdown.write_text(md, encoding="utf-8")
 

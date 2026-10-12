@@ -96,13 +96,15 @@ def assess_bars(
     source_label: str | None,
     requirements: ResearchDataRequirements | None = None,
     provenance_class: str | None = None,
+    timeframe: str | None = None,
+    session_calendar: str | None = None,
 ) -> ResearchDataReadiness:
     """Assess already-read canonical bars without inventing or imputing data."""
     req = requirements or ResearchDataRequirements()
     label = source_label or ""
     data_class = provenance_class or classify_source(label)
     instrument = bars[0].instrument.symbol if bars else None
-    timeframe = _infer_timeframe(bars)
+    resolved_tf = timeframe or _infer_timeframe(bars)
     rows = len(bars)
     span_days = (
         (bars[-1].close_time.astimezone(UTC) - bars[0].open_time.astimezone(UTC)).total_seconds() / 86_400.0
@@ -124,7 +126,14 @@ def assess_bars(
             requirements=req,
         )
 
-    quality = validate_bars(list(bars))
+    closures = None
+    if session_calendar:
+        from qts.data.sessions import closure_intervals as _closure_intervals
+
+        closures = _closure_intervals(
+            bars[0].open_time, bars[-1].close_time, symbol=session_calendar
+        )
+    quality = validate_bars(list(bars), resolved_tf, closure_intervals=closures)
     reasons: list[str] = []
     if data_class not in req.allowed_claim_classes:
         reasons.append(
@@ -145,7 +154,7 @@ def assess_bars(
         data_class=data_class,
         source_label=label,
         instrument=instrument,
-        timeframe=timeframe,
+        timeframe=resolved_tf,
         rows=rows,
         span_days=span_days,
         quality_passed=quality.passed,
@@ -191,12 +200,19 @@ def assess_dataset(
             if getattr(manifest, "provenance_class", "UNVERIFIED") != "UNVERIFIED"
             else None
         ),
+        timeframe=resolved_timeframe,
+        session_calendar=getattr(manifest, "session_calendar", None),
     )
 
 
 def _infer_timeframe(bars: list[Bar] | tuple[Bar, ...]) -> str | None:
     if len(bars) < 2:
         return None
-    seconds = (bars[1].open_time - bars[0].open_time).total_seconds()
+    steps = [
+        (bars[i + 1].open_time - bars[i].open_time).total_seconds()
+        for i in range(min(len(bars) - 1, 20))
+        if (bars[i + 1].open_time - bars[i].open_time).total_seconds() > 0
+    ]
+    seconds = min(steps) if steps else (bars[1].open_time - bars[0].open_time).total_seconds()
     candidates = {60: "1m", 300: "5m", 900: "15m", 1800: "30m", 3600: "1H", 14_400: "4H", 86_400: "1D"}
     return candidates.get(int(seconds), f"{seconds:g}s")

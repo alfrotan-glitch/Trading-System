@@ -287,11 +287,18 @@ def check_manifest() -> tuple[bool, str]:
         if not m:
             return False, f"manifest {v} missing"
         from qts.data.quality import validate_bars
+        from qts.data.sessions import closure_intervals as _closure_intervals
         from qts.domain.value_objects import Instrument
 
         instr = Instrument(symbol=m.instrument, venue=m.venue)
         bars = store.read_bars(instr, m.timeframe, version=v)
-        rpt = validate_bars(bars)
+        session_cal = getattr(m, "session_calendar", None)
+        closures = (
+            _closure_intervals(bars[0].open_time, bars[-1].close_time, symbol=session_cal)
+            if session_cal and bars
+            else None
+        )
+        rpt = validate_bars(bars, m.timeframe, closure_intervals=closures)
         if not rpt.passed:
             return False, f"data quality fail for {v}: {[c.details for c in rpt.checks if not c.passed][:2]}"
         return True, f"manifest {v} quality PASS {len(bars)} bars"

@@ -323,3 +323,72 @@ def test_buy_and_hold_matches_closed_form_at_zero_cost():
     expected = P.INITIAL_EQUITY * (df["close"].iloc[100] / df["open"].iloc[30])
     assert run.final_equity == pytest.approx(expected, rel=1e-12)
     assert len(run.trades) == 1
+
+
+def test_server_clock_eu_dst_switches_in_late_october_before_us_dst():
+    # On 2025-10-28, EU DST has ended (ended 2025-10-26 -> UTC+2), whereas US DST
+    # is still active until 2025-11-02 (UTC+3).
+    stamps = pd.DatetimeIndex(["2025-07-01 12:00", "2025-10-28 12:00", "2025-11-10 12:00"])
+    utc_eu = S.server_gmt23_eu_dst_to_utc(stamps)
+    utc_us = S.server_gmt23_to_utc(stamps)
+    assert list(utc_eu) == [
+        pd.Timestamp("2025-07-01 09:00"),
+        pd.Timestamp("2025-10-28 10:00"),
+        pd.Timestamp("2025-11-10 10:00"),
+    ]
+    assert list(utc_us) == [
+        pd.Timestamp("2025-07-01 09:00"),
+        pd.Timestamp("2025-10-28 09:00"),
+        pd.Timestamp("2025-11-10 10:00"),
+    ]
+    frame = _ohlc(stamps, np.array([2500.0, 2600.0, 2700.0]))
+    out = S.to_utc(frame, "server_gmt23_eu_dst")
+    assert list(out.index) == list(utc_eu)
+
+
+def test_bar_integrity_diagnostics_flags_non_integer_volumes_and_zero_weekend_gaps():
+    idx = pd.DatetimeIndex(
+        [
+            "2026-03-27 20:30",
+            "2026-03-27 20:45",
+            "2026-03-29 22:00",  # > 24h weekend gap
+            "2026-03-29 22:15",
+        ]
+    )
+    frame = pd.DataFrame(
+        {
+            "open": [4500.0, 4501.0, 4502.0, 4505.0],
+            "high": [4502.0, 4503.0, 4506.0, 4507.0],
+            "low": [4499.0, 4500.0, 4501.0, 4503.0],
+            "close": [4501.0, 4502.0, 4505.0, 4506.0],
+            "volume": [100.0, 200.0, 19649.951518, 150.0],
+        },
+        index=idx,
+    )
+    diag = S.bar_integrity_diagnostics(frame)
+    assert diag["rows"] == 4
+    assert diag["non_integer_volume_bars"] == 1
+    assert diag["open_equals_prev_close_share"] == pytest.approx(1.0)
+    assert diag["weekend_reopen_bars"] == 1
+    assert diag["weekend_reopen_zero_gap_bars"] == 1
+
+
+def test_cost_model_from_price_units_and_scaling():
+    cm = E.CostModel.from_price_units(
+        spread_usd_per_oz=0.24,
+        slippage_usd_per_oz_side=0.10,
+        commission_usd_per_lot_side=7.0,
+        basis="MIXED_MEASURED_SPREAD_ASSUMED_SLIPPAGE",
+    )
+    # At $2,000/oz: half_spread = $0.12 / 2000 = 0.6 bps; slip = $0.10 / 2000 = 0.5 bps;
+    # commission = $7 / (100 * 2000) = 0.35 bps -> side_rate = 1.45 bps (2.90 bps round-turn).
+    assert cm.side_rate(2000.0) == pytest.approx(1.45e-4, rel=1e-12)
+    scaled = cm.scaled(2.0)
+    assert scaled.side_rate(2000.0) == pytest.approx(2.90e-4, rel=1e-12)
+    desc = cm.describe()
+    assert desc["spread_usd_per_oz"] == 0.24
+    assert desc["slippage_usd_per_oz_side"] == 0.10
+    assert desc["round_turn_bps_at_2000"] == pytest.approx(2.9, rel=1e-6)
+    with pytest.raises(ValueError, match="non-negative"):
+        E.CostModel.from_price_units(spread_usd_per_oz=-0.01, slippage_usd_per_oz_side=0.0)
+
