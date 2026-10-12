@@ -7,9 +7,8 @@ path and dirty files went unseen by the guard.
 
 from __future__ import annotations
 
+import pathlib
 import subprocess
-
-import conftest
 
 
 def _git(cwd, *args: str) -> None:
@@ -21,7 +20,7 @@ def _git(cwd, *args: str) -> None:
     )
 
 
-def test_git_status_guard_sees_every_dirty_path(tmp_path, monkeypatch) -> None:
+def test_git_status_guard_sees_every_dirty_path(tmp_path, monkeypatch, pytestconfig) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
     _git(repo, "init", "-q")
@@ -35,8 +34,14 @@ def test_git_status_guard_sees_every_dirty_path(tmp_path, monkeypatch) -> None:
     (repo / "untracked_c.txt").write_text("new\n", encoding="utf-8")  # untracked
     _git(repo, "mv", "to_rename.txt", "renamed.txt")  # staged rename
 
-    monkeypatch.setattr(conftest, "_REPO_ROOT", repo)
-    paths = conftest._git_status_paths()
+    root_conftest_path = pathlib.Path(__file__).with_name("conftest.py").resolve()
+    root_conftest = next(
+        plugin
+        for plugin in pytestconfig.pluginmanager.get_plugins()
+        if pathlib.Path(getattr(plugin, "__file__", "")).resolve() == root_conftest_path
+    )
+    monkeypatch.setattr(root_conftest, "_REPO_ROOT", repo)
+    paths = root_conftest._git_status_paths()
 
     assert {"tracked_a.txt", "untracked_c.txt", "renamed.txt"} <= paths
     # The rename origin is not a dirty file of its own; it must not be reported.

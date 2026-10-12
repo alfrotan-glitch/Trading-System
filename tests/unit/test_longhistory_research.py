@@ -154,6 +154,44 @@ def test_regime_label_at_t_does_not_change_with_future_data():
     assert (full.loc[common.index] == common).all()
 
 
+# ----------------------------------------------------------------------- stop-based sizing
+
+
+def test_stop_based_risk_override_is_opt_in_and_preserves_frozen_defaults():
+    df = _walk(450, seed=31)
+    legacy_ma = P.candidate_by_id("ma_20_100_atr3").builder(df)
+    default_ma = G.ma_cross(df, 20, 100, 3.0, risk_fraction=G.RISK_PER_TRADE)
+    reduced_ma = G.ma_cross(df, 20, 100, 3.0, risk_fraction=0.005)
+    legacy_donchian = P.candidate_by_id("donchian_55_20_atr2").builder(df)
+    default_donchian = G.donchian(df, 55, 20, 2.0, risk_fraction=G.RISK_PER_TRADE)
+    reduced_donchian = G.donchian(df, 55, 20, 2.0, risk_fraction=0.005)
+
+    for legacy, explicit_default, reduced in (
+        (legacy_ma, default_ma, reduced_ma),
+        (legacy_donchian, default_donchian, reduced_donchian),
+    ):
+        np.testing.assert_allclose(legacy.target, explicit_default.target, equal_nan=True)
+        np.testing.assert_allclose(legacy.size, explicit_default.size, equal_nan=True)
+        np.testing.assert_allclose(legacy.stop_dist, explicit_default.stop_dist, equal_nan=True)
+        np.testing.assert_array_equal(legacy.rebalance, explicit_default.rebalance)
+        np.testing.assert_allclose(reduced.target, legacy.target, equal_nan=True)
+        np.testing.assert_allclose(reduced.stop_dist, legacy.stop_dist, equal_nan=True)
+        valid_size = np.isfinite(legacy.size)
+        assert valid_size.any()
+        np.testing.assert_allclose(reduced.size[valid_size], legacy.size[valid_size] * 0.5)
+        assert "risk_fraction" not in legacy.params  # preserves frozen result metadata
+        assert reduced.params["risk_fraction"] == pytest.approx(0.005)
+
+
+def test_stop_based_sizing_rejects_invalid_or_increased_risk_budgets():
+    df = _walk(40)
+    for risk_fraction in (0.0, -0.001, np.nan, np.inf, G.RISK_PER_TRADE + 1e-6):
+        with pytest.raises(ValueError, match="risk_fraction"):
+            G.size_stop_based(df, 2.0, risk_fraction=risk_fraction)
+    with pytest.raises(ValueError, match="only to stop-based"):
+        G.ma_cross(df, 20, 100, None, risk_fraction=0.005)
+
+
 # ----------------------------------------------------------------------- engine
 
 
