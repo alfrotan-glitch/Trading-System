@@ -76,6 +76,10 @@ def api_env(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("QTS_DEMO_AUTHORIZATION", str(auth_path))
     monkeypatch.setenv("QTS_DEMO_REGISTRY", str(registry))
     monkeypatch.setenv("QTS_DEMO_IDENTITY_PIN", str(tmp_path / "pin.json"))
+    # Submitted orders write cost-evidence and state under QTS_STATE_ROOT. Without this
+    # the store resolves to the real repository state root and test runs leak records
+    # into data/evidence (found 2026-10-10: a test-generated deal was written there).
+    monkeypatch.setenv("QTS_STATE_ROOT", str(tmp_path / "state"))
 
     monkeypatch.setattr(server, "_db_path", lambda: tmp_path / "qts.db")
     monkeypatch.setattr(server, "_DEMO_AUTHORITY", None)

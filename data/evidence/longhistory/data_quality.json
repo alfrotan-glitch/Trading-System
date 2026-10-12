@@ -1,0 +1,319 @@
+{
+  "generated_at": "2026-10-10T07:51:26.334765+00:00",
+  "limitations": [
+    "Provider and licence of the BaseMax/Kaggle bars are unverified; no broker measurement exists.",
+    "Prices in the research window come from one quote stream (see price_agreement); they are not independent.",
+    "2025-03 onward is partial in BaseMax; research ends 2025-02-28.",
+    "Dukascopy data (2025-08 to 2026-09) is a separate feed but overlaps no BaseMax bar, and an earlier study already used it.",
+    "All costs are assumed. Bar volume is a tick count, not traded volume."
+  ],
+  "prereg_id": "LH-XAUUSD-D1-2026-10-10",
+  "price_agreement": {
+    "basemax_vs_ejt_exact_close_share": 0.9999565968454587,
+    "basemax_vs_ejt_overlap_bars": 230398,
+    "basemax_vs_yuan_median_abs_close_diff_usd": 0.03,
+    "basemax_vs_yuan_overlap_bars": 49820,
+    "basemax_vs_yuan_p90_abs_close_diff_usd": 0.15,
+    "basemax_vs_yuan_p99_abs_close_diff_usd": 5.4081,
+    "dukascopy_overlap_with_basemax_bars": 2,
+    "note": "BaseMax, ejtraderLabs and Yuan agree to cents, so they are one quote stream exported three times and cannot corroborate prices independently. Dukascopy has no overlap with BaseMax."
+  },
+  "processed_files": {
+    "xauusd_basemax_utc_15m_20040611_20250228.csv": {
+      "rows": 475286,
+      "sha256": "22c43f79b4258edf548b9d06188300f95d62305e6d87a4511c5ba56b5fa6fa6b"
+    },
+    "xauusd_basemax_utc_daily_research.csv": {
+      "rows": 5281,
+      "sha256": "20558ea23a764f2e06209947807a5fd426f85ee06ff9963a92d160ec0b0bf0b8"
+    },
+    "xauusd_dukascopy_utc_15m_20250806_20260916.csv": {
+      "rows": 26038,
+      "sha256": "4442331b4018968256bae6abb7a4a5a5c36c569a063cc4ec516f8d4ed093a409"
+    },
+    "xauusd_dukascopy_utc_daily_replicate.csv": {
+      "rows": 288,
+      "sha256": "7afc917c61c0a710218148485307a20febb70b71f0f27542806eaf4017cc207e"
+    }
+  },
+  "research_daily_span": {
+    "days": 5281,
+    "first": "2004-06-11",
+    "last": "2025-02-28"
+  },
+  "schema": "qts.longhistory.data_quality.v1",
+  "sources": {
+    "basemax_xauusd_15m": {
+      "clock": {
+        "by_window_after_conversion": [
+          {
+            "best_shift_hours": 0,
+            "correlations": {
+              "-1": -0.0043,
+              "-2": -0.0051,
+              "-3": -0.0021,
+              "-4": 0.026,
+              "0": 0.9269,
+              "1": 0.0842,
+              "2": 0.0021,
+              "3": -0.0109,
+              "4": 0.0228
+            },
+            "window": [
+              "2022-03-10",
+              "2022-09-30"
+            ]
+          },
+          {
+            "best_shift_hours": 0,
+            "correlations": {
+              "-1": 0.0123,
+              "-2": 0.0047,
+              "-3": 0.0065,
+              "-4": 0.0029,
+              "0": 0.8951,
+              "1": 0.1246,
+              "2": 0.0091,
+              "3": 0.0067,
+              "4": 0.0022
+            },
+            "window": [
+              "2022-10-01",
+              "2023-03-15"
+            ]
+          },
+          {
+            "best_shift_hours": 0,
+            "correlations": {
+              "-1": 0.0063,
+              "-2": -0.0042,
+              "-3": -0.0106,
+              "-4": 0.0013,
+              "0": 0.9169,
+              "1": 0.097,
+              "2": 0.0023,
+              "3": -0.0073,
+              "4": -0.0044
+            },
+            "window": [
+              "2023-03-20",
+              "2023-10-25"
+            ]
+          },
+          {
+            "best_shift_hours": 0,
+            "correlations": {
+              "-1": -0.0002,
+              "-2": 0.0136,
+              "-3": -0.0007,
+              "-4": -0.006,
+              "0": 0.8986,
+              "1": 0.1156,
+              "2": 0.0141,
+              "3": -0.0023,
+              "4": -0.0014
+            },
+            "window": [
+              "2023-10-30",
+              "2024-03-20"
+            ]
+          },
+          {
+            "best_shift_hours": 0,
+            "correlations": {
+              "-1": -0.0375,
+              "-2": 0.0578,
+              "-3": -0.0754,
+              "-4": 0.0246,
+              "0": 0.9036,
+              "1": 0.0727,
+              "2": 0.063,
+              "3": -0.0719,
+              "4": 0.023
+            },
+            "window": [
+              "2024-03-25",
+              "2024-04-19"
+            ]
+          }
+        ],
+        "converted_fit_vs_yuan_utc": {
+          "best_shift_hours": 0,
+          "correlations": {
+            "-1": 0.0007,
+            "-2": 0.0057,
+            "-3": -0.009,
+            "-4": 0.01,
+            "0": 0.8944,
+            "1": 0.1194,
+            "2": 0.0094,
+            "3": -0.0089,
+            "4": 0.0095
+          }
+        },
+        "raw_fit_vs_yuan_utc": {
+          "best_shift_hours": -3,
+          "correlations": {
+            "-1": 0.0092,
+            "-2": 0.4169,
+            "-3": 0.6038,
+            "-4": 0.0018,
+            "0": -0.0085,
+            "1": 0.0115,
+            "2": -0.0001,
+            "3": 0.0057,
+            "4": 0.0022
+          }
+        },
+        "stamp_basis_inferred": "server GMT+2 (winter) / GMT+3 (US DST)"
+      },
+      "coverage_research_window": {
+        "bars": 475286,
+        "first_utc": "2004-06-11 04:15:00",
+        "last_utc": "2025-02-28 21:45:00"
+      },
+      "daily_coverage_research": {
+        "days_complete": 5281,
+        "days_partial": 55,
+        "days_total": 5336,
+        "median_bars_per_day": 92.0,
+        "partial_share": 0.010307346326836582
+      },
+      "monthly_bars_2024_onward_server_clock": {
+        "2024-01": 2019,
+        "2024-02": 1922,
+        "2024-03": 1844,
+        "2024-04": 2024,
+        "2024-05": 2098,
+        "2024-06": 1838,
+        "2024-07": 2107,
+        "2024-08": 2016,
+        "2024-09": 1930,
+        "2024-10": 2120,
+        "2024-11": 1901,
+        "2024-12": 1919,
+        "2025-01": 2000,
+        "2025-02": 1830,
+        "2025-03": 1388,
+        "2025-04": 368,
+        "2025-05": 2001,
+        "2025-06": 928,
+        "2025-07": 744,
+        "2025-09": 2
+      },
+      "structure": {
+        "bars_by_year": {
+          "2004": 11397,
+          "2005": 20921,
+          "2006": 21340,
+          "2007": 22775,
+          "2008": 23086,
+          "2009": 23130,
+          "2010": 21780,
+          "2011": 22203,
+          "2012": 22489,
+          "2013": 23440,
+          "2014": 23454,
+          "2015": 23361,
+          "2016": 23538,
+          "2017": 23439,
+          "2018": 23487,
+          "2019": 23475,
+          "2020": 23611,
+          "2021": 23581,
+          "2022": 23653,
+          "2023": 23558,
+          "2024": 23738,
+          "2025": 9261
+        },
+        "duplicate_stamps": 0,
+        "first_stamp": "2004-06-11T07:15:00",
+        "last_stamp": "2025-09-30T19:30:00",
+        "name": "basemax_raw_server_clock",
+        "nan_cells": 0,
+        "non_monotonic_steps": 0,
+        "nonpositive_prices": 0,
+        "notes": [],
+        "off_grid_steps": 0,
+        "ohlc_violations": 0,
+        "rows": 480717
+      }
+    },
+    "dukascopy_mirror_xauusd_15m": {
+      "daily_coverage_replicate": {
+        "days_complete": 288,
+        "days_partial": 1,
+        "days_total": 289,
+        "median_bars_per_day": 92.0,
+        "partial_share": 0.0034602076124567475
+      },
+      "structure": {
+        "bars_by_year": {
+          "2025": 9526,
+          "2026": 16512
+        },
+        "duplicate_stamps": 0,
+        "first_stamp": "2025-08-06T00:00:00",
+        "last_stamp": "2026-09-16T23:45:00",
+        "name": "dukascopy_mirror_utc",
+        "nan_cells": 0,
+        "non_monotonic_steps": 0,
+        "nonpositive_prices": 0,
+        "notes": [],
+        "off_grid_steps": 0,
+        "ohlc_violations": 0,
+        "rows": 26038
+      }
+    },
+    "ejtraderlabs_xauusd_m15": {
+      "note": "x100 point prices; /100 applied and verified against BaseMax (see price_agreement)",
+      "structure": {
+        "bars_by_year": {
+          "2012": 14892,
+          "2013": 23440,
+          "2014": 23454,
+          "2015": 23361,
+          "2016": 23539,
+          "2017": 23440,
+          "2018": 23487,
+          "2019": 23475,
+          "2020": 23611,
+          "2021": 23581,
+          "2022": 4120
+        },
+        "duplicate_stamps": 0,
+        "first_stamp": "2012-05-15T08:00:00",
+        "last_stamp": "2022-03-04T23:45:00",
+        "name": "ejt_m15_points_div_100",
+        "nan_cells": 0,
+        "non_monotonic_steps": 0,
+        "nonpositive_prices": 0,
+        "notes": [],
+        "off_grid_steps": 0,
+        "ohlc_violations": 0,
+        "rows": 230400
+      }
+    },
+    "yuan_public_xauusd_15m": {
+      "note": "explicit UTC; chunk duplicates checked for conflicts",
+      "structure": {
+        "bars_by_year": {
+          "2022": 19282,
+          "2023": 23562,
+          "2024": 7156
+        },
+        "duplicate_stamps": 0,
+        "first_stamp": "2022-03-09T15:45:00",
+        "last_stamp": "2024-04-19T20:45:00",
+        "name": "yuan_pt15m_utc",
+        "nan_cells": 0,
+        "non_monotonic_steps": 0,
+        "nonpositive_prices": 0,
+        "notes": [],
+        "off_grid_steps": 0,
+        "ohlc_violations": 0,
+        "rows": 50000
+      }
+    }
+  }
+}

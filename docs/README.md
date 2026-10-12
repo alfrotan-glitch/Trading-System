@@ -46,3 +46,10 @@ Files that remain beside these guides are cited by code or by an operator setup 
 - [MT5 Demo Setup](mt5_demo_setup.md)
 - [UI Design System Specification](evidence/ui_design_system.md)
 - [Troubleshooting on Windows](troubleshooting_windows.md)
+
+## Dated Research Records
+
+- [Long-history XAUUSD research, 2026-10-10](research/longhistory_results_2026-10-10.md): verdict `NO_VALIDATED_EDGE`, with its protocol (`preregistration_longhistory_2026-10-10.md`), data provenance and method survey. Research only; no order path changed.
+- [Long-history XAUUSD intraday (M15) research, 2026-10-10](research/longhistory_intraday_results_2026-10-10.md): verdict `NO_VALIDATED_EDGE`, with its protocol (`preregistration_longhistory_m15_2026-10-10.md`) and generated tables. Research only; no order path changed.
+- [M15 second-source check, 2026-10-11](research/m15_second_source_check_2026-10-11.md): a GitHub M15 sample was tested against the Dukascopy replicate and rejected. It disagrees by tens of dollars in price level, and its provenance is undisclosed. Diagnostic only; `scripts/check_m15_source_overlap.py`.
+- [M15 cost sensitivity, 2026-10-11](research/m15_cost_sensitivity_2026-10-11.md): engine break-even cost multipliers and zero-cost P&L for the four intraday selections, from saved evidence. Costs remain ASSUMED.

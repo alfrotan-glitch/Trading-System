@@ -248,6 +248,39 @@ def test_unreadable_deal_history_is_reported_not_hidden(runner, monkeypatch, env
     assert "history unavailable" in result.output
 
 
+def test_no_terminal_module_is_never_reported_as_a_passing_empty_history(
+    runner, monkeypatch, env, tmp_path
+) -> None:
+    """Regression (2026-10-10): with no MT5 module, history was read as [] and PASSed.
+
+    Absence must read as UNMEASURED, and a fallback clock offset must not be shown as 0.0.
+    """
+    _patch_offset(monkeypatch, 0.0, "assumed-utc-fallback")
+    out = tmp_path / "report.json"
+    result = _run(runner, monkeypatch, env, None, "--json-out", str(out))
+    assert "[PASS] deal-history-readable" not in result.output
+    assert "[FAIL] deal-history-readable" in result.output
+    assert "[FAIL] cost-fields-present" in result.output
+    assert "cost fields UNMEASURED" in result.output
+    assert "server offset: UNMEASURED" in result.output
+    assert "READY_FOR_COST_CAPTURE: False" in result.output
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert report["server_utc_offset_s"] is None
+    assert report["offset_basis"] == "assumed-utc-fallback"
+    assert report["orders_submitted"] == 0
+
+
+def test_zero_deals_on_a_live_terminal_is_unmeasured_not_zero_cost(
+    runner, monkeypatch, env
+) -> None:
+    terminal = FakeMT5(deals=[])
+    _patch_offset(monkeypatch, 10800.0, "measured-m1-bar")
+    result = _run(runner, monkeypatch, env, terminal)
+    assert "[PASS] deal-history-readable" in result.output
+    assert "0 deal(s) sampled — cost fields UNMEASURED" in result.output
+    assert "[FAIL] cost-fields-present" in result.output
+
+
 def test_every_failure_names_itself_in_the_output(runner, monkeypatch, env) -> None:
     """An operator must be able to act on the message, not just see 'failed'."""
     terminal = FakeMT5(currency=None)

@@ -1,0 +1,2138 @@
+{
+  "benchmarks": {
+    "buy_and_hold_long": {
+      "holdout": {
+        "avg_loss_usd": 0.0,
+        "avg_win_usd": 8795.6603,
+        "bars": 1333,
+        "cagr": 0.1267,
+        "cost_basis": "ASSUMED",
+        "cost_to_gross": 0.0009,
+        "cost_usd": 8.12,
+        "end": "2025-02-28",
+        "expectancy_usd": 8795.6603,
+        "exposure": 0.9992,
+        "final_equity": 18795.66,
+        "financing_usd": 0.0,
+        "forced_exit_count": 1,
+        "gross_usd": 8803.78,
+        "gross_usd_trades": 8803.7813,
+        "initial_equity": 10000.0,
+        "max_drawdown": -0.2137,
+        "mean_bars_held": 1332.0,
+        "net_usd": 8795.66,
+        "profit_factor": Infinity,
+        "round_turns": 1,
+        "round_turns_per_year": 0.189,
+        "sharpe": 0.8648,
+        "start": "2020-01-02",
+        "stop_exit_share": 0.0,
+        "turnover_per_year": 0.378,
+        "win_rate": 1.0
+      },
+      "holdout_2x_cost_net_usd": 8784.94,
+      "replicate": {
+        "avg_loss_usd": 0.0,
+        "avg_win_usd": 2647.2218,
+        "bars": 288,
+        "cagr": 0.2281,
+        "cost_basis": "ASSUMED",
+        "cost_to_gross": 0.0023,
+        "cost_usd": 6.08,
+        "end": "2026-09-16",
+        "expectancy_usd": 2647.2218,
+        "exposure": 0.9931,
+        "final_equity": 12647.22,
+        "financing_usd": 0.0,
+        "forced_exit_count": 1,
+        "gross_usd": 2653.3,
+        "gross_usd_trades": 2653.2999,
+        "initial_equity": 10000.0,
+        "max_drawdown": -0.265,
+        "mean_bars_held": 286.0,
+        "net_usd": 2647.22,
+        "profit_factor": Infinity,
+        "round_turns": 1,
+        "round_turns_per_year": 0.875,
+        "sharpe": 0.8991,
+        "start": "2025-08-06",
+        "stop_exit_share": 0.0,
+        "turnover_per_year": 1.75,
+        "win_rate": 1.0
+      },
+      "wf_2010_2019_composite": {
+        "chained_return": 0.3437,
+        "max_drawdown": -0.456,
+        "sharpe": 0.2696,
+        "years": 10
+      }
+    }
+  },
+  "cost_base": {
+    "basis": "ASSUMED",
+    "commission_usd_per_lot_side": 7.0,
+    "cost_multiplier": 1.0,
+    "financing_bps_per_day": 0.0,
+    "round_turn_bps_at_1300": 6.077,
+    "slippage_bps_per_side": 1.0,
+    "spread_bps_full": 3.0
+  },
+  "data": {
+    "replicate_daily_rows": 288,
+    "replicate_source": "dukascopy mirror (UTC), complete days only",
+    "research_daily_rows": 5281,
+    "research_source": "basemax_xauusd_15m (UTC-normalised), complete days only"
+  },
+  "gates": {
+    "donchian": {
+      "checks": {
+        "G1_holdout_net_and_sharpe_positive": "PASS",
+        "G2_holdout_net_positive_at_2x_cost": "PASS",
+        "G3_walk_forward_sharpe_and_years": "FAIL",
+        "G4_holm_adjusted_p_le_alpha": "FAIL",
+        "G5_dsr_ge_threshold": "FAIL",
+        "G6_oos_round_turns_ge_100": "FAIL",
+        "G7_regime_coverage": "FAIL"
+      },
+      "cid": "donchian_55_20_atr2",
+      "dsr": 0.0625,
+      "failed": [
+        "G3_walk_forward_sharpe_and_years",
+        "G4_holm_adjusted_p_le_alpha",
+        "G5_dsr_ge_threshold",
+        "G6_oos_round_turns_ge_100",
+        "G7_regime_coverage"
+      ],
+      "oos_round_turns": 69,
+      "passes_all": false,
+      "positive_regimes": 2,
+      "regimes_oos": {
+        "DOWN_HIVOL": {
+          "days": 296,
+          "net_usd": -142.84
+        },
+        "DOWN_LOWVOL": {
+          "days": 1170,
+          "net_usd": 363.7
+        },
+        "UP_HIVOL": {
+          "days": 987,
+          "net_usd": -1717.45
+        },
+        "UP_LOWVOL": {
+          "days": 1420,
+          "net_usd": 2289.86
+        }
+      }
+    },
+    "ma_cross": {
+      "checks": {
+        "G1_holdout_net_and_sharpe_positive": "PASS",
+        "G2_holdout_net_positive_at_2x_cost": "PASS",
+        "G3_walk_forward_sharpe_and_years": "PASS",
+        "G4_holm_adjusted_p_le_alpha": "FAIL",
+        "G5_dsr_ge_threshold": "FAIL",
+        "G6_oos_round_turns_ge_100": "FAIL",
+        "G7_regime_coverage": "PASS"
+      },
+      "cid": "ma_20_100_atr3",
+      "dsr": 0.1165,
+      "failed": [
+        "G4_holm_adjusted_p_le_alpha",
+        "G5_dsr_ge_threshold",
+        "G6_oos_round_turns_ge_100"
+      ],
+      "oos_round_turns": 61,
+      "passes_all": false,
+      "positive_regimes": 3,
+      "regimes_oos": {
+        "DOWN_HIVOL": {
+          "days": 296,
+          "net_usd": -394.81
+        },
+        "DOWN_LOWVOL": {
+          "days": 1170,
+          "net_usd": 388.74
+        },
+        "UP_HIVOL": {
+          "days": 987,
+          "net_usd": 177.52
+        },
+        "UP_LOWVOL": {
+          "days": 1420,
+          "net_usd": 982.45
+        }
+      }
+    },
+    "mean_reversion": {
+      "checks": {
+        "G1_holdout_net_and_sharpe_positive": "FAIL",
+        "G2_holdout_net_positive_at_2x_cost": "FAIL",
+        "G3_walk_forward_sharpe_and_years": "FAIL",
+        "G4_holm_adjusted_p_le_alpha": "FAIL",
+        "G5_dsr_ge_threshold": "FAIL",
+        "G6_oos_round_turns_ge_100": "PASS",
+        "G7_regime_coverage": "FAIL"
+      },
+      "cid": "rsi2_t10_sma200",
+      "dsr": 0.0003,
+      "failed": [
+        "G1_holdout_net_and_sharpe_positive",
+        "G2_holdout_net_positive_at_2x_cost",
+        "G3_walk_forward_sharpe_and_years",
+        "G4_holm_adjusted_p_le_alpha",
+        "G5_dsr_ge_threshold",
+        "G7_regime_coverage"
+      ],
+      "oos_round_turns": 133,
+      "passes_all": false,
+      "positive_regimes": 1,
+      "regimes_oos": {
+        "DOWN_HIVOL": {
+          "days": 296,
+          "net_usd": -428.82
+        },
+        "DOWN_LOWVOL": {
+          "days": 1170,
+          "net_usd": -713.0
+        },
+        "UP_HIVOL": {
+          "days": 987,
+          "net_usd": 332.45
+        },
+        "UP_LOWVOL": {
+          "days": 1420,
+          "net_usd": -1142.46
+        }
+      }
+    },
+    "trend_gated": {
+      "checks": {
+        "G1_holdout_net_and_sharpe_positive": "FAIL",
+        "G2_holdout_net_positive_at_2x_cost": "FAIL",
+        "G3_walk_forward_sharpe_and_years": "FAIL",
+        "G4_holm_adjusted_p_le_alpha": "FAIL",
+        "G5_dsr_ge_threshold": "FAIL",
+        "G6_oos_round_turns_ge_100": "FAIL",
+        "G7_regime_coverage": "FAIL"
+      },
+      "cid": "gated_er60_025",
+      "dsr": 0.0195,
+      "failed": [
+        "G1_holdout_net_and_sharpe_positive",
+        "G2_holdout_net_positive_at_2x_cost",
+        "G3_walk_forward_sharpe_and_years",
+        "G4_holm_adjusted_p_le_alpha",
+        "G5_dsr_ge_threshold",
+        "G6_oos_round_turns_ge_100",
+        "G7_regime_coverage"
+      ],
+      "oos_round_turns": 12,
+      "passes_all": false,
+      "positive_regimes": 1,
+      "regimes_oos": {
+        "DOWN_HIVOL": {
+          "days": 59,
+          "net_usd": -53.24
+        },
+        "DOWN_LOWVOL": {
+          "days": 468,
+          "net_usd": -49.81
+        },
+        "UP_HIVOL": {
+          "days": 608,
+          "net_usd": -509.27
+        },
+        "UP_LOWVOL": {
+          "days": 714,
+          "net_usd": 571.28
+        }
+      }
+    },
+    "tsmom": {
+      "checks": {
+        "G1_holdout_net_and_sharpe_positive": "FAIL",
+        "G2_holdout_net_positive_at_2x_cost": "FAIL",
+        "G3_walk_forward_sharpe_and_years": "FAIL",
+        "G4_holm_adjusted_p_le_alpha": "FAIL",
+        "G5_dsr_ge_threshold": "FAIL",
+        "G6_oos_round_turns_ge_100": "FAIL",
+        "G7_regime_coverage": "FAIL"
+      },
+      "cid": "tsmom_L126",
+      "dsr": 0.0141,
+      "failed": [
+        "G1_holdout_net_and_sharpe_positive",
+        "G2_holdout_net_positive_at_2x_cost",
+        "G3_walk_forward_sharpe_and_years",
+        "G4_holm_adjusted_p_le_alpha",
+        "G5_dsr_ge_threshold",
+        "G6_oos_round_turns_ge_100",
+        "G7_regime_coverage"
+      ],
+      "oos_round_turns": 47,
+      "passes_all": false,
+      "positive_regimes": 1,
+      "regimes_oos": {
+        "DOWN_HIVOL": {
+          "days": 296,
+          "net_usd": -796.8
+        },
+        "DOWN_LOWVOL": {
+          "days": 1170,
+          "net_usd": -3199.58
+        },
+        "UP_HIVOL": {
+          "days": 929,
+          "net_usd": -225.68
+        },
+        "UP_LOWVOL": {
+          "days": 1232,
+          "net_usd": 3587.14
+        }
+      }
+    },
+    "volatility_expansion": {
+      "checks": {
+        "G1_holdout_net_and_sharpe_positive": "PASS",
+        "G2_holdout_net_positive_at_2x_cost": "PASS",
+        "G3_walk_forward_sharpe_and_years": "FAIL",
+        "G4_holm_adjusted_p_le_alpha": "FAIL",
+        "G5_dsr_ge_threshold": "FAIL",
+        "G6_oos_round_turns_ge_100": "PASS",
+        "G7_regime_coverage": "PASS"
+      },
+      "cid": "rexp_k10_h3",
+      "dsr": 0.0733,
+      "failed": [
+        "G3_walk_forward_sharpe_and_years",
+        "G4_holm_adjusted_p_le_alpha",
+        "G5_dsr_ge_threshold"
+      ],
+      "oos_round_turns": 375,
+      "passes_all": false,
+      "positive_regimes": 3,
+      "regimes_oos": {
+        "DOWN_HIVOL": {
+          "days": 296,
+          "net_usd": 134.12
+        },
+        "DOWN_LOWVOL": {
+          "days": 1170,
+          "net_usd": 51.73
+        },
+        "UP_HIVOL": {
+          "days": 987,
+          "net_usd": -828.17
+        },
+        "UP_LOWVOL": {
+          "days": 1420,
+          "net_usd": 1330.26
+        }
+      }
+    }
+  },
+  "generated_at": "2026-10-10T07:59:23.342031+00:00",
+  "holdout": {
+    "groups": {
+      "donchian": {
+        "base": {
+          "avg_loss_usd": -76.8538,
+          "avg_win_usd": 154.6382,
+          "bars": 1333,
+          "cagr": 0.003,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": 0.2065,
+          "cost_usd": 41.69,
+          "deflated": {
+            "dsr": 0.0356,
+            "kurtosis": 23.8819,
+            "n": 1333,
+            "num_trials": 26,
+            "sharpe_annual": 0.0874,
+            "skew": -1.787
+          },
+          "end": "2025-02-28",
+          "expectancy_usd": 8.4327,
+          "exposure": 0.4906,
+          "final_equity": 10160.22,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": 201.91,
+          "gross_usd_trades": 201.9136,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.1007,
+          "mean_bars_held": 34.4211,
+          "net_usd": 160.22,
+          "profit_factor": 1.1737,
+          "round_turns": 19,
+          "round_turns_per_year": 3.5919,
+          "sharpe": 0.0874,
+          "start": "2020-01-02",
+          "stop_exit_share": 0.3684,
+          "turnover_per_year": 2.782,
+          "win_rate": 0.3684
+        },
+        "bootstrap_sharpe": {
+          "ci95_high": 0.9313135674132966,
+          "ci95_low": -0.7538580437879422,
+          "share_bootstrap_sharpe_positive": 0.57,
+          "sharpe": 0.08738303257909294
+        },
+        "break_even_multiplier": {
+          "status": "CROSSES_ZERO",
+          "value": 4.7614
+        },
+        "cid": "donchian_55_20_atr2",
+        "gross_zero_cost_usd": 203.24,
+        "holm_adjusted_p": 1.0,
+        "p_mean_positive_one_sided": 0.415,
+        "regimes_holdout": {
+          "DOWN_HIVOL": {
+            "days": 59,
+            "net_usd": -163.68
+          },
+          "DOWN_LOWVOL": {
+            "days": 252,
+            "net_usd": -71.09
+          },
+          "UP_HIVOL": {
+            "days": 563,
+            "net_usd": -914.19
+          },
+          "UP_LOWVOL": {
+            "days": 459,
+            "net_usd": 1309.18
+          }
+        },
+        "selection_train_sharpe": 0.256,
+        "sign_randomisation": {
+          "observed_net_approx": 160.22,
+          "p_value": 0.3738,
+          "trades": 19
+        },
+        "stress": {
+          "2x": {
+            "avg_loss_usd": -78.8828,
+            "avg_win_usd": 151.9968,
+            "bars": 1333,
+            "cagr": 0.0022,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": 0.4148,
+            "cost_usd": 83.21,
+            "end": "2025-02-28",
+            "expectancy_usd": 6.1781,
+            "exposure": 0.4906,
+            "final_equity": 10117.38,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": 200.6,
+            "gross_usd_trades": 200.5969,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.1036,
+            "mean_bars_held": 34.4211,
+            "net_usd": 117.38,
+            "profit_factor": 1.124,
+            "round_turns": 19,
+            "round_turns_per_year": 3.5919,
+            "sharpe": 0.0704,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.3684,
+            "turnover_per_year": 2.782,
+            "win_rate": 0.3684
+          },
+          "3x": {
+            "avg_loss_usd": -80.9047,
+            "avg_win_usd": 149.3682,
+            "bars": 1333,
+            "cagr": 0.0014,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": 0.6251,
+            "cost_usd": 124.56,
+            "end": "2025-02-28",
+            "expectancy_usd": 3.9327,
+            "exposure": 0.4906,
+            "final_equity": 10074.72,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": 199.29,
+            "gross_usd_trades": 199.2857,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.1064,
+            "mean_bars_held": 34.4211,
+            "net_usd": 74.72,
+            "profit_factor": 1.077,
+            "round_turns": 19,
+            "round_turns_per_year": 3.5919,
+            "sharpe": 0.0535,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.3684,
+            "turnover_per_year": 2.782,
+            "win_rate": 0.3684
+          }
+        }
+      },
+      "ma_cross": {
+        "base": {
+          "avg_loss_usd": -77.6703,
+          "avg_win_usd": 326.7037,
+          "bars": 1333,
+          "cagr": 0.0098,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": 0.0397,
+          "cost_usd": 21.93,
+          "deflated": {
+            "dsr": 0.094,
+            "kurtosis": 8.5757,
+            "n": 1333,
+            "num_trials": 26,
+            "sharpe_annual": 0.2995,
+            "skew": -0.6766
+          },
+          "end": "2025-02-28",
+          "expectancy_usd": 37.8651,
+          "exposure": 0.7524,
+          "final_equity": 10530.11,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": 552.04,
+          "gross_usd_trades": 552.0442,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.0857,
+          "mean_bars_held": 71.6429,
+          "net_usd": 530.11,
+          "profit_factor": 1.6825,
+          "round_turns": 14,
+          "round_turns_per_year": 2.6467,
+          "sharpe": 0.2995,
+          "start": "2020-01-02",
+          "stop_exit_share": 0.5,
+          "turnover_per_year": 1.488,
+          "win_rate": 0.2857
+        },
+        "bootstrap_sharpe": {
+          "ci95_high": 1.157900944133473,
+          "ci95_low": -0.5490119866249996,
+          "share_bootstrap_sharpe_positive": 0.737,
+          "sharpe": 0.29946113199355273
+        },
+        "break_even_multiplier": {
+          "status": "CROSSES_ZERO",
+          "value": 23.6561
+        },
+        "cid": "ma_20_100_atr3",
+        "gross_zero_cost_usd": 554.12,
+        "holm_adjusted_p": 1.0,
+        "p_mean_positive_one_sided": 0.253,
+        "regimes_holdout": {
+          "DOWN_HIVOL": {
+            "days": 59,
+            "net_usd": -330.7
+          },
+          "DOWN_LOWVOL": {
+            "days": 252,
+            "net_usd": 39.84
+          },
+          "UP_HIVOL": {
+            "days": 563,
+            "net_usd": 554.88
+          },
+          "UP_LOWVOL": {
+            "days": 459,
+            "net_usd": 266.09
+          }
+        },
+        "selection_train_sharpe": 0.2547,
+        "sign_randomisation": {
+          "observed_net_approx": 530.11,
+          "p_value": 0.4596,
+          "trades": 14
+        },
+        "stress": {
+          "2x": {
+            "avg_loss_usd": -79.2896,
+            "avg_win_usd": 324.7623,
+            "bars": 1333,
+            "cagr": 0.0094,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": 0.0797,
+            "cost_usd": 43.82,
+            "end": "2025-02-28",
+            "expectancy_usd": 36.1538,
+            "exposure": 0.7524,
+            "final_equity": 10506.15,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": 549.97,
+            "gross_usd_trades": 549.9709,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.0869,
+            "mean_bars_held": 71.6429,
+            "net_usd": 506.15,
+            "profit_factor": 1.6384,
+            "round_turns": 14,
+            "round_turns_per_year": 2.6467,
+            "sharpe": 0.2868,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.5,
+            "turnover_per_year": 1.488,
+            "win_rate": 0.2857
+          },
+          "3x": {
+            "avg_loss_usd": -80.9058,
+            "avg_win_usd": 322.8265,
+            "bars": 1333,
+            "cagr": 0.0089,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": 0.1198,
+            "cost_usd": 65.65,
+            "end": "2025-02-28",
+            "expectancy_usd": 34.4463,
+            "exposure": 0.7524,
+            "final_equity": 10482.25,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": 547.9,
+            "gross_usd_trades": 547.9024,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.088,
+            "mean_bars_held": 71.6429,
+            "net_usd": 482.25,
+            "profit_factor": 1.5961,
+            "round_turns": 14,
+            "round_turns_per_year": 2.6467,
+            "sharpe": 0.2741,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.5,
+            "turnover_per_year": 1.488,
+            "win_rate": 0.2857
+          }
+        }
+      },
+      "mean_reversion": {
+        "base": {
+          "avg_loss_usd": -127.281,
+          "avg_win_usd": 78.3543,
+          "bars": 1333,
+          "cagr": -0.0165,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": null,
+          "cost_usd": 175.17,
+          "deflated": {
+            "dsr": 0.0013,
+            "kurtosis": 52.8622,
+            "n": 1333,
+            "num_trials": 26,
+            "sharpe_annual": -0.3967,
+            "skew": -2.4854
+          },
+          "end": "2025-02-28",
+          "expectancy_usd": -17.9005,
+          "exposure": 0.132,
+          "final_equity": 9158.68,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": -666.16,
+          "gross_usd_trades": -666.1588,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.1581,
+          "mean_bars_held": 3.7447,
+          "net_usd": -841.32,
+          "profit_factor": 0.6995,
+          "round_turns": 47,
+          "round_turns_per_year": 8.8852,
+          "sharpe": -0.3967,
+          "start": "2020-01-02",
+          "stop_exit_share": 0.0,
+          "turnover_per_year": 12.263,
+          "win_rate": 0.5319
+        },
+        "bootstrap_sharpe": {
+          "ci95_high": 0.3898781365526112,
+          "ci95_low": -1.0702468947610957,
+          "share_bootstrap_sharpe_positive": 0.153,
+          "sharpe": -0.3967067709006127
+        },
+        "break_even_multiplier": {
+          "status": "NEGATIVE_EVEN_AT_ZERO_COST",
+          "value": 0.0
+        },
+        "cid": "rsi2_t10_sma200",
+        "gross_zero_cost_usd": -669.69,
+        "holm_adjusted_p": 1.0,
+        "p_mean_positive_one_sided": 0.831,
+        "regimes_holdout": {
+          "DOWN_HIVOL": {
+            "days": 59,
+            "net_usd": -336.45
+          },
+          "DOWN_LOWVOL": {
+            "days": 252,
+            "net_usd": -62.4
+          },
+          "UP_HIVOL": {
+            "days": 563,
+            "net_usd": 4.43
+          },
+          "UP_LOWVOL": {
+            "days": 459,
+            "net_usd": -446.9
+          }
+        },
+        "selection_train_sharpe": 0.0396,
+        "sign_randomisation": {
+          "observed_net_approx": -841.32,
+          "p_value": 0.7664,
+          "trades": 47
+        },
+        "stress": {
+          "2x": {
+            "avg_loss_usd": -124.6103,
+            "avg_win_usd": 77.3418,
+            "bars": 1333,
+            "cagr": -0.0199,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": null,
+            "cost_usd": 347.21,
+            "end": "2025-02-28",
+            "expectancy_usd": -21.4858,
+            "exposure": 0.132,
+            "final_equity": 8990.17,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": -662.62,
+            "gross_usd_trades": -662.6236,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.1687,
+            "mean_bars_held": 3.7447,
+            "net_usd": -1009.83,
+            "profit_factor": 0.6477,
+            "round_turns": 47,
+            "round_turns_per_year": 8.8852,
+            "sharpe": -0.4835,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.0,
+            "turnover_per_year": 12.263,
+            "win_rate": 0.5106
+          },
+          "3x": {
+            "avg_loss_usd": -122.2747,
+            "avg_win_usd": 76.492,
+            "bars": 1333,
+            "cagr": -0.0234,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": null,
+            "cost_usd": 516.19,
+            "end": "2025-02-28",
+            "expectancy_usd": -25.0058,
+            "exposure": 0.132,
+            "final_equity": 8824.73,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": -659.09,
+            "gross_usd_trades": -659.0877,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.1793,
+            "mean_bars_held": 3.7447,
+            "net_usd": -1175.27,
+            "profit_factor": 0.5995,
+            "round_turns": 47,
+            "round_turns_per_year": 8.8852,
+            "sharpe": -0.5696,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.0,
+            "turnover_per_year": 12.263,
+            "win_rate": 0.4894
+          }
+        }
+      },
+      "trend_gated": {
+        "base": {
+          "avg_loss_usd": -74.308,
+          "avg_win_usd": 100.0886,
+          "bars": 1333,
+          "cagr": -0.0061,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": null,
+          "cost_usd": 13.33,
+          "deflated": {
+            "dsr": 0.0032,
+            "kurtosis": 43.0716,
+            "n": 1333,
+            "num_trials": 26,
+            "sharpe_annual": -0.2764,
+            "skew": -3.3191
+          },
+          "end": "2025-02-28",
+          "expectancy_usd": -35.5532,
+          "exposure": 0.1643,
+          "final_equity": 9680.02,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": -306.65,
+          "gross_usd_trades": -306.6496,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.0618,
+          "mean_bars_held": 24.3333,
+          "net_usd": -319.98,
+          "profit_factor": 0.3848,
+          "round_turns": 9,
+          "round_turns_per_year": 1.7014,
+          "sharpe": -0.2764,
+          "start": "2020-01-02",
+          "stop_exit_share": 0.3333,
+          "turnover_per_year": 0.905,
+          "win_rate": 0.2222
+        },
+        "bootstrap_sharpe": {
+          "ci95_high": 0.4904466476261467,
+          "ci95_low": -0.9647780973265521,
+          "share_bootstrap_sharpe_positive": 0.215,
+          "sharpe": -0.2764306751019666
+        },
+        "break_even_multiplier": {
+          "status": "NEGATIVE_EVEN_AT_ZERO_COST",
+          "value": 0.0
+        },
+        "cid": "gated_er60_025",
+        "gross_zero_cost_usd": -306.73,
+        "holm_adjusted_p": 1.0,
+        "p_mean_positive_one_sided": 0.7595,
+        "regimes_holdout": {
+          "DOWN_HIVOL": {
+            "days": 59,
+            "net_usd": -53.24
+          },
+          "DOWN_LOWVOL": {
+            "days": 252,
+            "net_usd": -117.38
+          },
+          "UP_HIVOL": {
+            "days": 563,
+            "net_usd": -499.34
+          },
+          "UP_LOWVOL": {
+            "days": 459,
+            "net_usd": 349.97
+          }
+        },
+        "selection_train_sharpe": 0.2758,
+        "sign_randomisation": {
+          "observed_net_approx": -319.98,
+          "p_value": 0.8392,
+          "trades": 9
+        },
+        "stress": {
+          "2x": {
+            "avg_loss_usd": -75.7353,
+            "avg_win_usd": 98.4701,
+            "bars": 1333,
+            "cagr": -0.0064,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": null,
+            "cost_usd": 26.64,
+            "end": "2025-02-28",
+            "expectancy_usd": -37.023,
+            "exposure": 0.1643,
+            "final_equity": 9666.79,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": -306.57,
+            "gross_usd_trades": -306.566,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.0624,
+            "mean_bars_held": 24.3333,
+            "net_usd": -333.21,
+            "profit_factor": 0.3715,
+            "round_turns": 9,
+            "round_turns_per_year": 1.7014,
+            "sharpe": -0.2884,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.3333,
+            "turnover_per_year": 0.905,
+            "win_rate": 0.2222
+          },
+          "3x": {
+            "avg_loss_usd": -67.6253,
+            "avg_win_usd": 194.5844,
+            "bars": 1333,
+            "cagr": -0.0066,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": null,
+            "cost_usd": 39.94,
+            "end": "2025-02-28",
+            "expectancy_usd": -38.4909,
+            "exposure": 0.1643,
+            "final_equity": 9653.58,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": -306.48,
+            "gross_usd_trades": -306.4824,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.063,
+            "mean_bars_held": 24.3333,
+            "net_usd": -346.42,
+            "profit_factor": 0.3597,
+            "round_turns": 9,
+            "round_turns_per_year": 1.7014,
+            "sharpe": -0.3004,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.3333,
+            "turnover_per_year": 0.905,
+            "win_rate": 0.1111
+          }
+        }
+      },
+      "tsmom": {
+        "base": {
+          "avg_loss_usd": -309.762,
+          "avg_win_usd": 1514.4037,
+          "bars": 1333,
+          "cagr": -0.0073,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": null,
+          "cost_usd": 66.78,
+          "deflated": {
+            "dsr": 0.0207,
+            "kurtosis": 7.7016,
+            "n": 1333,
+            "num_trials": 26,
+            "sharpe_annual": -0.0107,
+            "skew": -0.6018
+          },
+          "end": "2025-02-28",
+          "expectancy_usd": -29.1211,
+          "exposure": 0.9827,
+          "final_equity": 9621.43,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": -311.79,
+          "gross_usd_trades": -311.7925,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.3693,
+          "mean_bars_held": 100.7692,
+          "net_usd": -378.57,
+          "profit_factor": 0.8889,
+          "round_turns": 13,
+          "round_turns_per_year": 2.4576,
+          "sharpe": -0.0107,
+          "start": "2020-01-02",
+          "stop_exit_share": 0.0,
+          "turnover_per_year": 4.748,
+          "win_rate": 0.1538
+        },
+        "bootstrap_sharpe": {
+          "ci95_high": 0.8558309031512075,
+          "ci95_low": -0.8104817216952208,
+          "share_bootstrap_sharpe_positive": 0.494,
+          "sharpe": -0.010659097373951428
+        },
+        "break_even_multiplier": {
+          "status": "NEGATIVE_EVEN_AT_ZERO_COST",
+          "value": 0.0
+        },
+        "cid": "tsmom_L126",
+        "gross_zero_cost_usd": -308.85,
+        "holm_adjusted_p": 1.0,
+        "p_mean_positive_one_sided": 0.502,
+        "regimes_holdout": {
+          "DOWN_HIVOL": {
+            "days": 59,
+            "net_usd": -503.15
+          },
+          "DOWN_LOWVOL": {
+            "days": 252,
+            "net_usd": -88.63
+          },
+          "UP_HIVOL": {
+            "days": 563,
+            "net_usd": 596.77
+          },
+          "UP_LOWVOL": {
+            "days": 459,
+            "net_usd": -383.57
+          }
+        },
+        "selection_train_sharpe": 0.6513,
+        "sign_randomisation": {
+          "observed_net_approx": -378.57,
+          "p_value": 0.5278,
+          "trades": 13
+        },
+        "stress": {
+          "2x": {
+            "avg_loss_usd": -313.2548,
+            "avg_win_usd": 1498.9971,
+            "bars": 1333,
+            "cagr": -0.0086,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": null,
+            "cost_usd": 133.12,
+            "end": "2025-02-28",
+            "expectancy_usd": -34.4469,
+            "exposure": 0.9827,
+            "final_equity": 9552.19,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": -314.69,
+            "gross_usd_trades": -314.6884,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.3731,
+            "mean_bars_held": 100.7692,
+            "net_usd": -447.81,
+            "profit_factor": 0.87,
+            "round_turns": 13,
+            "round_turns_per_year": 2.4576,
+            "sharpe": -0.023,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.0,
+            "turnover_per_year": 4.748,
+            "win_rate": 0.1538
+          },
+          "3x": {
+            "avg_loss_usd": -316.721,
+            "avg_win_usd": 1483.6857,
+            "bars": 1333,
+            "cagr": -0.01,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": null,
+            "cost_usd": 199.02,
+            "end": "2025-02-28",
+            "expectancy_usd": -39.7353,
+            "exposure": 0.9827,
+            "final_equity": 9483.44,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": -317.54,
+            "gross_usd_trades": -317.5404,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.3769,
+            "mean_bars_held": 100.7692,
+            "net_usd": -516.56,
+            "profit_factor": 0.8517,
+            "round_turns": 13,
+            "round_turns_per_year": 2.4576,
+            "sharpe": -0.0354,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.0,
+            "turnover_per_year": 4.748,
+            "win_rate": 0.1538
+          }
+        }
+      },
+      "volatility_expansion": {
+        "base": {
+          "avg_loss_usd": -47.9605,
+          "avg_win_usd": 52.0361,
+          "bars": 1333,
+          "cagr": 0.0124,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": 0.3008,
+          "cost_usd": 289.58,
+          "deflated": {
+            "dsr": 0.1285,
+            "kurtosis": 14.9155,
+            "n": 1333,
+            "num_trials": 26,
+            "sharpe_annual": 0.3867,
+            "skew": 0.7275
+          },
+          "end": "2025-02-28",
+          "expectancy_usd": 5.0228,
+          "exposure": 0.3451,
+          "final_equity": 10673.05,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": 962.63,
+          "gross_usd_trades": 962.6312,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.0546,
+          "mean_bars_held": 3.4328,
+          "net_usd": 673.05,
+          "profit_factor": 1.2228,
+          "round_turns": 134,
+          "round_turns_per_year": 25.3323,
+          "sharpe": 0.3867,
+          "start": "2020-01-02",
+          "stop_exit_share": 0.0299,
+          "turnover_per_year": 18.344,
+          "win_rate": 0.5299
+        },
+        "bootstrap_sharpe": {
+          "ci95_high": 1.2394913000184782,
+          "ci95_low": -0.490282027951946,
+          "share_bootstrap_sharpe_positive": 0.797,
+          "sharpe": 0.3866774841109454
+        },
+        "break_even_multiplier": {
+          "status": "CROSSES_ZERO",
+          "value": 3.3494
+        },
+        "cid": "rexp_k10_h3",
+        "gross_zero_cost_usd": 973.05,
+        "holm_adjusted_p": 1.0,
+        "p_mean_positive_one_sided": 0.1935,
+        "regimes_holdout": {
+          "DOWN_HIVOL": {
+            "days": 59,
+            "net_usd": 80.0
+          },
+          "DOWN_LOWVOL": {
+            "days": 252,
+            "net_usd": 24.77
+          },
+          "UP_HIVOL": {
+            "days": 563,
+            "net_usd": -470.35
+          },
+          "UP_LOWVOL": {
+            "days": 459,
+            "net_usd": 1038.64
+          }
+        },
+        "selection_train_sharpe": 0.1612,
+        "sign_randomisation": {
+          "observed_net_approx": 673.05,
+          "p_value": 0.1092,
+          "trades": 134
+        },
+        "stress": {
+          "2x": {
+            "avg_loss_usd": -45.8318,
+            "avg_win_usd": 52.9969,
+            "bars": 1333,
+            "cagr": 0.0071,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": 0.5997,
+            "cost_usd": 571.14,
+            "end": "2025-02-28",
+            "expectancy_usd": 2.845,
+            "exposure": 0.3451,
+            "final_equity": 10381.23,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": 952.37,
+            "gross_usd_trades": 952.3716,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.0588,
+            "mean_bars_held": 3.4328,
+            "net_usd": 381.23,
+            "profit_factor": 1.1223,
+            "round_turns": 134,
+            "round_turns_per_year": 25.3323,
+            "sharpe": 0.2291,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.0299,
+            "turnover_per_year": 18.344,
+            "win_rate": 0.4925
+          },
+          "3x": {
+            "avg_loss_usd": -45.3158,
+            "avg_win_usd": 52.6155,
+            "bars": 1333,
+            "cagr": 0.0018,
+            "cost_basis": "ASSUMED",
+            "cost_to_gross": 0.8967,
+            "cost_usd": 844.91,
+            "end": "2025-02-28",
+            "expectancy_usd": 0.7265,
+            "exposure": 0.3451,
+            "final_equity": 10097.36,
+            "financing_usd": 0.0,
+            "forced_exit_count": 1,
+            "gross_usd": 942.27,
+            "gross_usd_trades": 942.2656,
+            "initial_equity": 10000.0,
+            "max_drawdown": -0.063,
+            "mean_bars_held": 3.4328,
+            "net_usd": 97.36,
+            "profit_factor": 1.0303,
+            "round_turns": 134,
+            "round_turns_per_year": 25.3323,
+            "sharpe": 0.0716,
+            "start": "2020-01-02",
+            "stop_exit_share": 0.0299,
+            "turnover_per_year": 18.344,
+            "win_rate": 0.4701
+          }
+        }
+      }
+    },
+    "selection": {
+      "donchian": {
+        "candidates": [
+          {
+            "cid": "donchian_20_10_atr2",
+            "eligible": true,
+            "train_round_turns": 121,
+            "train_sharpe": 0.0161
+          },
+          {
+            "cid": "donchian_20_10_atr3",
+            "eligible": true,
+            "train_round_turns": 121,
+            "train_sharpe": 0.1185
+          },
+          {
+            "cid": "donchian_55_20_atr2",
+            "eligible": true,
+            "train_round_turns": 58,
+            "train_sharpe": 0.256
+          },
+          {
+            "cid": "donchian_55_20_atr3",
+            "eligible": true,
+            "train_round_turns": 58,
+            "train_sharpe": 0.1405
+          }
+        ],
+        "cid": "donchian_55_20_atr2",
+        "train_sharpe": 0.256
+      },
+      "ma_cross": {
+        "candidates": [
+          {
+            "cid": "ma_20_100_nostop",
+            "eligible": true,
+            "train_round_turns": 60,
+            "train_sharpe": 0.1804
+          },
+          {
+            "cid": "ma_20_100_atr3",
+            "eligible": true,
+            "train_round_turns": 60,
+            "train_sharpe": 0.2547
+          },
+          {
+            "cid": "ma_20_200_nostop",
+            "eligible": true,
+            "train_round_turns": 31,
+            "train_sharpe": 0.123
+          },
+          {
+            "cid": "ma_20_200_atr3",
+            "eligible": true,
+            "train_round_turns": 31,
+            "train_sharpe": 0.0222
+          },
+          {
+            "cid": "ma_50_200_nostop",
+            "eligible": true,
+            "train_round_turns": 23,
+            "train_sharpe": 0.2402
+          },
+          {
+            "cid": "ma_50_200_atr3",
+            "eligible": true,
+            "train_round_turns": 23,
+            "train_sharpe": 0.2074
+          }
+        ],
+        "cid": "ma_20_100_atr3",
+        "train_sharpe": 0.2547
+      },
+      "mean_reversion": {
+        "candidates": [
+          {
+            "cid": "rsi2_t5_nofilter",
+            "eligible": true,
+            "train_round_turns": 255,
+            "train_sharpe": -0.2602
+          },
+          {
+            "cid": "rsi2_t5_sma200",
+            "eligible": true,
+            "train_round_turns": 72,
+            "train_sharpe": -0.1445
+          },
+          {
+            "cid": "rsi2_t10_nofilter",
+            "eligible": true,
+            "train_round_turns": 461,
+            "train_sharpe": -0.1284
+          },
+          {
+            "cid": "rsi2_t10_sma200",
+            "eligible": true,
+            "train_round_turns": 162,
+            "train_sharpe": 0.0396
+          }
+        ],
+        "cid": "rsi2_t10_sma200",
+        "train_sharpe": 0.0396
+      },
+      "trend_gated": {
+        "candidates": [
+          {
+            "cid": "gated_er60_025",
+            "eligible": true,
+            "train_round_turns": 23,
+            "train_sharpe": 0.2758
+          },
+          {
+            "cid": "gated_er60_035",
+            "eligible": false,
+            "train_round_turns": 14,
+            "train_sharpe": -0.1095
+          }
+        ],
+        "cid": "gated_er60_025",
+        "train_sharpe": 0.2758
+      },
+      "tsmom": {
+        "candidates": [
+          {
+            "cid": "tsmom_L63",
+            "eligible": true,
+            "train_round_turns": 54,
+            "train_sharpe": 0.1322
+          },
+          {
+            "cid": "tsmom_L126",
+            "eligible": true,
+            "train_round_turns": 23,
+            "train_sharpe": 0.6513
+          },
+          {
+            "cid": "tsmom_L252",
+            "eligible": true,
+            "train_round_turns": 27,
+            "train_sharpe": 0.5106
+          }
+        ],
+        "cid": "tsmom_L126",
+        "train_sharpe": 0.6513
+      },
+      "volatility_expansion": {
+        "candidates": [
+          {
+            "cid": "rexp_k05_h1",
+            "eligible": true,
+            "train_round_turns": 1252,
+            "train_sharpe": -0.4962
+          },
+          {
+            "cid": "rexp_k05_h3",
+            "eligible": true,
+            "train_round_turns": 927,
+            "train_sharpe": -0.2021
+          },
+          {
+            "cid": "rexp_k10_h1",
+            "eligible": true,
+            "train_round_turns": 441,
+            "train_sharpe": -0.2185
+          },
+          {
+            "cid": "rexp_k10_h3",
+            "eligible": true,
+            "train_round_turns": 382,
+            "train_sharpe": 0.1612
+          },
+          {
+            "cid": "nr7_h3",
+            "eligible": true,
+            "train_round_turns": 436,
+            "train_sharpe": -0.0187
+          },
+          {
+            "cid": "nr7_h5",
+            "eligible": true,
+            "train_round_turns": 402,
+            "train_sharpe": -0.0877
+          }
+        ],
+        "cid": "rexp_k10_h3",
+        "train_sharpe": 0.1612
+      }
+    }
+  },
+  "holdout_selection_summary": {
+    "donchian": "donchian_55_20_atr2",
+    "ma_cross": "ma_20_100_atr3",
+    "mean_reversion": "rsi2_t10_sma200",
+    "trend_gated": "gated_er60_025",
+    "tsmom": "tsmom_L126",
+    "volatility_expansion": "rexp_k10_h3"
+  },
+  "n_trials": 26,
+  "prereg_id": "LH-XAUUSD-D1-2026-10-10",
+  "replicate": {
+    "donchian": {
+      "avg_loss_usd": -98.8841,
+      "avg_win_usd": 0.0,
+      "bars": 288,
+      "cagr": -0.026,
+      "cid": "donchian_55_20_atr2",
+      "cost_basis": "ASSUMED",
+      "cost_to_gross": null,
+      "cost_usd": 3.76,
+      "end": "2026-09-16",
+      "expectancy_usd": -98.8841,
+      "exposure": 0.0486,
+      "final_equity": 9703.35,
+      "financing_usd": 0.0,
+      "forced_exit_count": 0,
+      "gross_usd": -292.9,
+      "gross_usd_trades": -292.8964,
+      "initial_equity": 10000.0,
+      "max_drawdown": -0.0354,
+      "mean_bars_held": 4.6667,
+      "net_usd": -296.65,
+      "profit_factor": 0.0,
+      "round_turns": 3,
+      "round_turns_per_year": 2.625,
+      "sharpe": -1.3308,
+      "start": "2025-08-06",
+      "status": "EVALUATED",
+      "stop_exit_share": 1.0,
+      "turnover_per_year": 1.252,
+      "win_rate": 0.0
+    },
+    "ma_cross": {
+      "cid": "ma_20_100_atr3",
+      "status": "NOT_EVALUABLE_INSUFFICIENT_WARMUP",
+      "warmup_bars_required": 99,
+      "window_bars": 288
+    },
+    "mean_reversion": {
+      "avg_loss_usd": -148.9957,
+      "avg_win_usd": 54.8465,
+      "bars": 288,
+      "cagr": 0.0014,
+      "cid": "rsi2_t10_sma200",
+      "cost_basis": "ASSUMED",
+      "cost_to_gross": 0.3517,
+      "cost_usd": 8.43,
+      "end": "2026-09-16",
+      "expectancy_usd": 3.886,
+      "exposure": 0.0417,
+      "final_equity": 10015.54,
+      "financing_usd": 0.0,
+      "forced_exit_count": 0,
+      "gross_usd": 23.98,
+      "gross_usd_trades": 23.9781,
+      "initial_equity": 10000.0,
+      "max_drawdown": -0.0155,
+      "mean_bars_held": 3.0,
+      "net_usd": 15.54,
+      "profit_factor": 1.1043,
+      "round_turns": 4,
+      "round_turns_per_year": 3.5,
+      "sharpe": 0.0928,
+      "start": "2025-08-06",
+      "status": "EVALUATED",
+      "stop_exit_share": 0.0,
+      "turnover_per_year": 2.751,
+      "win_rate": 0.75
+    },
+    "trend_gated": {
+      "avg_loss_usd": -79.3356,
+      "avg_win_usd": 0.0,
+      "bars": 288,
+      "cagr": -0.0139,
+      "cid": "gated_er60_025",
+      "cost_basis": "ASSUMED",
+      "cost_to_gross": null,
+      "cost_usd": 1.74,
+      "end": "2026-09-16",
+      "expectancy_usd": -79.3356,
+      "exposure": 0.1528,
+      "final_equity": 9841.33,
+      "financing_usd": 0.0,
+      "forced_exit_count": 0,
+      "gross_usd": -156.93,
+      "gross_usd_trades": -156.9263,
+      "initial_equity": 10000.0,
+      "max_drawdown": -0.0196,
+      "mean_bars_held": 22.0,
+      "net_usd": -158.67,
+      "profit_factor": 0.0,
+      "round_turns": 2,
+      "round_turns_per_year": 1.75,
+      "sharpe": -0.9469,
+      "start": "2025-08-06",
+      "status": "EVALUATED",
+      "stop_exit_share": 0.5,
+      "turnover_per_year": 0.578,
+      "win_rate": 0.0
+    },
+    "tsmom": {
+      "cid": "tsmom_L126",
+      "status": "NOT_EVALUABLE_INSUFFICIENT_WARMUP",
+      "warmup_bars_required": 145,
+      "window_bars": 288
+    },
+    "volatility_expansion": {
+      "avg_loss_usd": -48.6277,
+      "avg_win_usd": 51.3401,
+      "bars": 288,
+      "cagr": 0.0293,
+      "cid": "rexp_k10_h3",
+      "cost_basis": "ASSUMED",
+      "cost_to_gross": 0.093,
+      "cost_usd": 34.35,
+      "end": "2026-09-16",
+      "expectancy_usd": 12.891,
+      "exposure": 0.2917,
+      "final_equity": 10335.17,
+      "financing_usd": 0.0,
+      "forced_exit_count": 0,
+      "gross_usd": 369.52,
+      "gross_usd_trades": 369.5165,
+      "initial_equity": 10000.0,
+      "max_drawdown": -0.0463,
+      "mean_bars_held": 3.2308,
+      "net_usd": 335.17,
+      "profit_factor": 1.6892,
+      "round_turns": 26,
+      "round_turns_per_year": 22.75,
+      "sharpe": 0.698,
+      "start": "2025-08-06",
+      "status": "EVALUATED",
+      "stop_exit_share": 0.0769,
+      "turnover_per_year": 11.164,
+      "win_rate": 0.6154
+    }
+  },
+  "stage": "final",
+  "verdict": {
+    "claim": "none",
+    "passing_groups": [],
+    "status": "NO_VALIDATED_EDGE"
+  },
+  "walk_forward": {
+    "folds": [
+      {
+        "selection": {
+          "donchian": {
+            "cid": "donchian_20_10_atr2",
+            "net_usd": 203.95,
+            "round_turns": 8,
+            "sharpe": 0.4234,
+            "train_sharpe": 0.0398
+          },
+          "ma_cross": {
+            "cid": "ma_20_100_atr3",
+            "net_usd": 115.92,
+            "round_turns": 7,
+            "sharpe": 0.3213,
+            "train_sharpe": 0.4172
+          },
+          "mean_reversion": {
+            "cid": "rsi2_t5_sma200",
+            "net_usd": 155.2,
+            "round_turns": 3,
+            "sharpe": 0.8868,
+            "train_sharpe": 0.6007
+          },
+          "trend_gated": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "tsmom": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "volatility_expansion": {
+            "cid": "rexp_k10_h3",
+            "net_usd": -11.54,
+            "round_turns": 23,
+            "sharpe": -0.03,
+            "train_sharpe": 0.4112
+          }
+        },
+        "year": 2010
+      },
+      {
+        "selection": {
+          "donchian": {
+            "cid": "donchian_55_20_atr2",
+            "net_usd": -322.23,
+            "round_turns": 5,
+            "sharpe": -1.5739,
+            "train_sharpe": 0.4474
+          },
+          "ma_cross": {
+            "cid": "ma_20_100_atr3",
+            "net_usd": 490.25,
+            "round_turns": 4,
+            "sharpe": 1.2797,
+            "train_sharpe": 0.4365
+          },
+          "mean_reversion": {
+            "cid": "rsi2_t5_sma200",
+            "net_usd": 160.34,
+            "round_turns": 7,
+            "sharpe": 0.5828,
+            "train_sharpe": 0.6302
+          },
+          "trend_gated": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "tsmom": {
+            "cid": "tsmom_L63",
+            "net_usd": 2765.59,
+            "round_turns": 2,
+            "sharpe": 2.1918,
+            "train_sharpe": 0.4335
+          },
+          "volatility_expansion": {
+            "cid": "rexp_k10_h3",
+            "net_usd": 120.33,
+            "round_turns": 24,
+            "sharpe": 0.3468,
+            "train_sharpe": 0.3525
+          }
+        },
+        "year": 2011
+      },
+      {
+        "selection": {
+          "donchian": {
+            "cid": "donchian_55_20_atr2",
+            "net_usd": -135.46,
+            "round_turns": 5,
+            "sharpe": -0.3185,
+            "train_sharpe": 0.3006
+          },
+          "ma_cross": {
+            "cid": "ma_20_100_atr3",
+            "net_usd": -154.38,
+            "round_turns": 5,
+            "sharpe": -0.4757,
+            "train_sharpe": 0.5489
+          },
+          "mean_reversion": {
+            "cid": "rsi2_t5_sma200",
+            "net_usd": -106.08,
+            "round_turns": 5,
+            "sharpe": -0.6443,
+            "train_sharpe": 0.6217
+          },
+          "trend_gated": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "tsmom": {
+            "cid": "tsmom_L63",
+            "net_usd": -925.88,
+            "round_turns": 5,
+            "sharpe": -1.1,
+            "train_sharpe": 0.6597
+          },
+          "volatility_expansion": {
+            "cid": "rexp_k10_h3",
+            "net_usd": -33.55,
+            "round_turns": 25,
+            "sharpe": -0.1269,
+            "train_sharpe": 0.3508
+          }
+        },
+        "year": 2012
+      },
+      {
+        "selection": {
+          "donchian": {
+            "cid": "donchian_55_20_atr2",
+            "net_usd": 782.21,
+            "round_turns": 3,
+            "sharpe": 0.9834,
+            "train_sharpe": 0.2313
+          },
+          "ma_cross": {
+            "cid": "ma_20_100_atr3",
+            "net_usd": 547.75,
+            "round_turns": 3,
+            "sharpe": 0.9616,
+            "train_sharpe": 0.4484
+          },
+          "mean_reversion": {
+            "cid": "rsi2_t5_sma200",
+            "net_usd": -99.25,
+            "round_turns": 5,
+            "sharpe": -0.5792,
+            "train_sharpe": 0.5156
+          },
+          "trend_gated": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "tsmom": {
+            "cid": "tsmom_L63",
+            "net_usd": 1356.28,
+            "round_turns": 3,
+            "sharpe": 0.9785,
+            "train_sharpe": 0.4358
+          },
+          "volatility_expansion": {
+            "cid": "rexp_k10_h3",
+            "net_usd": 95.41,
+            "round_turns": 25,
+            "sharpe": 0.2126,
+            "train_sharpe": 0.306
+          }
+        },
+        "year": 2013
+      },
+      {
+        "selection": {
+          "donchian": {
+            "cid": "donchian_55_20_atr2",
+            "net_usd": -281.94,
+            "round_turns": 6,
+            "sharpe": -0.7572,
+            "train_sharpe": 0.3469
+          },
+          "ma_cross": {
+            "cid": "ma_20_100_atr3",
+            "net_usd": -265.42,
+            "round_turns": 7,
+            "sharpe": -0.6158,
+            "train_sharpe": 0.505
+          },
+          "mean_reversion": {
+            "cid": "rsi2_t10_sma200",
+            "net_usd": -329.28,
+            "round_turns": 11,
+            "sharpe": -0.994,
+            "train_sharpe": 0.4564
+          },
+          "trend_gated": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "tsmom": {
+            "cid": "tsmom_L63",
+            "net_usd": -1903.99,
+            "round_turns": 7,
+            "sharpe": -1.9191,
+            "train_sharpe": 0.5087
+          },
+          "volatility_expansion": {
+            "cid": "rexp_k10_h3",
+            "net_usd": -36.78,
+            "round_turns": 23,
+            "sharpe": -0.1011,
+            "train_sharpe": 0.2974
+          }
+        },
+        "year": 2014
+      },
+      {
+        "selection": {
+          "donchian": {
+            "cid": "donchian_55_20_atr2",
+            "net_usd": -230.87,
+            "round_turns": 5,
+            "sharpe": -0.6976,
+            "train_sharpe": 0.2858
+          },
+          "ma_cross": {
+            "cid": "ma_20_100_atr3",
+            "net_usd": -228.41,
+            "round_turns": 5,
+            "sharpe": -0.7541,
+            "train_sharpe": 0.4
+          },
+          "mean_reversion": {
+            "cid": "rsi2_t10_sma200",
+            "net_usd": 84.73,
+            "round_turns": 11,
+            "sharpe": 0.2429,
+            "train_sharpe": 0.3264
+          },
+          "trend_gated": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "tsmom": {
+            "cid": "tsmom_L63",
+            "net_usd": -648.94,
+            "round_turns": 4,
+            "sharpe": -0.6759,
+            "train_sharpe": 0.2682
+          },
+          "volatility_expansion": {
+            "cid": "rexp_k10_h3",
+            "net_usd": -59.74,
+            "round_turns": 25,
+            "sharpe": -0.2396,
+            "train_sharpe": 0.2612
+          }
+        },
+        "year": 2015
+      },
+      {
+        "selection": {
+          "donchian": {
+            "cid": "donchian_55_20_atr2",
+            "net_usd": 353.78,
+            "round_turns": 5,
+            "sharpe": 0.7799,
+            "train_sharpe": 0.2254
+          },
+          "ma_cross": {
+            "cid": "ma_20_100_atr3",
+            "net_usd": 38.41,
+            "round_turns": 3,
+            "sharpe": 0.1171,
+            "train_sharpe": 0.2902
+          },
+          "mean_reversion": {
+            "cid": "rsi2_t10_sma200",
+            "net_usd": -389.38,
+            "round_turns": 10,
+            "sharpe": -0.7296,
+            "train_sharpe": 0.3187
+          },
+          "trend_gated": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "tsmom": {
+            "cid": "tsmom_L63",
+            "net_usd": -286.96,
+            "round_turns": 5,
+            "sharpe": -0.2281,
+            "train_sharpe": 0.1653
+          },
+          "volatility_expansion": {
+            "cid": "rexp_k10_h3",
+            "net_usd": 41.11,
+            "round_turns": 24,
+            "sharpe": 0.1365,
+            "train_sharpe": 0.2284
+          }
+        },
+        "year": 2016
+      },
+      {
+        "selection": {
+          "donchian": {
+            "cid": "donchian_55_20_atr2",
+            "net_usd": -530.59,
+            "round_turns": 6,
+            "sharpe": -2.1926,
+            "train_sharpe": 0.2636
+          },
+          "ma_cross": {
+            "cid": "ma_20_100_atr3",
+            "net_usd": -369.66,
+            "round_turns": 5,
+            "sharpe": -1.4839,
+            "train_sharpe": 0.2669
+          },
+          "mean_reversion": {
+            "cid": "rsi2_t10_sma200",
+            "net_usd": -1049.94,
+            "round_turns": 13,
+            "sharpe": -2.3023,
+            "train_sharpe": 0.1975
+          },
+          "trend_gated": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "tsmom": {
+            "cid": "tsmom_L63",
+            "net_usd": -682.97,
+            "round_turns": 5,
+            "sharpe": -0.7143,
+            "train_sharpe": 0.1066
+          },
+          "volatility_expansion": {
+            "cid": "rexp_k10_h3",
+            "net_usd": 45.49,
+            "round_turns": 21,
+            "sharpe": 0.2085,
+            "train_sharpe": 0.2207
+          }
+        },
+        "year": 2017
+      },
+      {
+        "selection": {
+          "donchian": {
+            "cid": "donchian_55_20_atr2",
+            "net_usd": 385.86,
+            "round_turns": 3,
+            "sharpe": 0.7837,
+            "train_sharpe": 0.1641
+          },
+          "ma_cross": {
+            "cid": "ma_20_100_atr3",
+            "net_usd": 325.88,
+            "round_turns": 4,
+            "sharpe": 0.9193,
+            "train_sharpe": 0.2081
+          },
+          "mean_reversion": {
+            "cid": "rsi2_t10_sma200",
+            "net_usd": 281.18,
+            "round_turns": 11,
+            "sharpe": 0.9869,
+            "train_sharpe": -0.0464
+          },
+          "trend_gated": {
+            "cid": "gated_er60_025",
+            "net_usd": 102.7,
+            "round_turns": 1,
+            "sharpe": 0.4334,
+            "train_sharpe": 0.2363
+          },
+          "tsmom": {
+            "cid": "tsmom_L252",
+            "net_usd": -1313.55,
+            "round_turns": 2,
+            "sharpe": -1.4569,
+            "train_sharpe": 0.5786
+          },
+          "volatility_expansion": {
+            "cid": "rexp_k10_h3",
+            "net_usd": -511.76,
+            "round_turns": 26,
+            "sharpe": -1.9401,
+            "train_sharpe": 0.2193
+          }
+        },
+        "year": 2018
+      },
+      {
+        "selection": {
+          "donchian": {
+            "cid": "donchian_55_20_atr2",
+            "net_usd": 408.34,
+            "round_turns": 4,
+            "sharpe": 0.7306,
+            "train_sharpe": 0.2101
+          },
+          "ma_cross": {
+            "cid": "ma_20_100_atr3",
+            "net_usd": 123.43,
+            "round_turns": 4,
+            "sharpe": 0.3112,
+            "train_sharpe": 0.2458
+          },
+          "mean_reversion": {
+            "cid": "rsi2_t10_sma200",
+            "net_usd": 181.98,
+            "round_turns": 10,
+            "sharpe": 0.46,
+            "train_sharpe": 0.0079
+          },
+          "trend_gated": {
+            "cid": "gated_er60_025",
+            "net_usd": 176.25,
+            "round_turns": 2,
+            "sharpe": 0.6255,
+            "train_sharpe": 0.2491
+          },
+          "tsmom": {
+            "cid": "tsmom_L126",
+            "net_usd": 1384.08,
+            "round_turns": 1,
+            "sharpe": 1.3492,
+            "train_sharpe": 0.5896
+          },
+          "volatility_expansion": {
+            "cid": "rexp_k10_h3",
+            "net_usd": 365.91,
+            "round_turns": 25,
+            "sharpe": 1.1952,
+            "train_sharpe": 0.0928
+          }
+        },
+        "year": 2019
+      }
+    ],
+    "summary": {
+      "donchian": {
+        "wf_chained_return": 0.0568,
+        "wf_positive_years": 5,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 237,
+            "net_usd": 20.84
+          },
+          "DOWN_LOWVOL": {
+            "days": 918,
+            "net_usd": 434.79
+          },
+          "UP_HIVOL": {
+            "days": 424,
+            "net_usd": -803.26
+          },
+          "UP_LOWVOL": {
+            "days": 961,
+            "net_usd": 980.68
+          }
+        },
+        "wf_sharpe": 0.1416,
+        "wf_years_with_trades": 10
+      },
+      "ma_cross": {
+        "wf_chained_return": 0.0593,
+        "wf_positive_years": 6,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 237,
+            "net_usd": -64.11
+          },
+          "DOWN_LOWVOL": {
+            "days": 918,
+            "net_usd": 348.9
+          },
+          "UP_HIVOL": {
+            "days": 424,
+            "net_usd": -377.36
+          },
+          "UP_LOWVOL": {
+            "days": 961,
+            "net_usd": 716.36
+          }
+        },
+        "wf_sharpe": 0.168,
+        "wf_years_with_trades": 10
+      },
+      "mean_reversion": {
+        "wf_chained_return": -0.1124,
+        "wf_positive_years": 5,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 237,
+            "net_usd": -92.37
+          },
+          "DOWN_LOWVOL": {
+            "days": 918,
+            "net_usd": -650.6
+          },
+          "UP_HIVOL": {
+            "days": 424,
+            "net_usd": 328.02
+          },
+          "UP_LOWVOL": {
+            "days": 961,
+            "net_usd": -695.56
+          }
+        },
+        "wf_sharpe": -0.3331,
+        "wf_years_with_trades": 10
+      },
+      "trend_gated": {
+        "wf_chained_return": 0.0281,
+        "wf_positive_years": 2,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "DOWN_LOWVOL": {
+            "days": 216,
+            "net_usd": 67.57
+          },
+          "UP_HIVOL": {
+            "days": 45,
+            "net_usd": -9.93
+          },
+          "UP_LOWVOL": {
+            "days": 255,
+            "net_usd": 221.31
+          }
+        },
+        "wf_sharpe": 0.536,
+        "wf_years_with_trades": 2
+      },
+      "tsmom": {
+        "wf_chained_return": -0.1088,
+        "wf_positive_years": 3,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 237,
+            "net_usd": -293.65
+          },
+          "DOWN_LOWVOL": {
+            "days": 918,
+            "net_usd": -3110.95
+          },
+          "UP_HIVOL": {
+            "days": 366,
+            "net_usd": -822.45
+          },
+          "UP_LOWVOL": {
+            "days": 773,
+            "net_usd": 3970.71
+          }
+        },
+        "wf_sharpe": -0.0709,
+        "wf_years_with_trades": 9
+      },
+      "volatility_expansion": {
+        "wf_chained_return": -0.0007,
+        "wf_positive_years": 5,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 237,
+            "net_usd": 54.12
+          },
+          "DOWN_LOWVOL": {
+            "days": 918,
+            "net_usd": 26.96
+          },
+          "UP_HIVOL": {
+            "days": 424,
+            "net_usd": -357.82
+          },
+          "UP_LOWVOL": {
+            "days": 961,
+            "net_usd": 291.62
+          }
+        },
+        "wf_sharpe": 0.0135,
+        "wf_years_with_trades": 10
+      }
+    }
+  },
+  "windows": {
+    "dev_end": "2019-12-31",
+    "holdout": [
+      "2020-01-01",
+      "2025-02-28"
+    ],
+    "research": [
+      "2004-06-11",
+      "2025-02-28"
+    ],
+    "wf_test_years": [
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019
+    ]
+  }
+}
