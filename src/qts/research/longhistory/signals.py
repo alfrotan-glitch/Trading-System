@@ -307,6 +307,31 @@ def range_expansion(df: pd.DataFrame, k: float, hold: int, stop_mult: float = 2.
     )
 
 
+def impulse_fade(df: pd.DataFrame, k: float, hold: int, stop_mult: float = 2.0) -> Plan:
+    """Mean-reversion mirror of :func:`range_expansion`.
+
+    A bar whose body is larger than ``k * ATR20`` (prior bar) starts a ``hold``-bar
+    trade AGAINST the bar's direction: an up impulse opens a short at the next open,
+    a down impulse opens a long. Same stop, sizing and timing contract as
+    ``range_expansion``; only the direction is inverted.
+    """
+    prev_atr = atr(df, 20).shift(1)
+    body = df["close"] - df["open"]
+    up = (body > k * prev_atr).to_numpy()
+    dn = (body < -k * prev_atr).to_numpy()
+    valid = prev_atr.notna().to_numpy()
+    # Inverted: an up impulse enters short (passed as the dn event), a down impulse long.
+    state = _timed_state(len(df), dn, up, hold, valid)
+    return _plan(
+        df,
+        "impulse_fade",
+        {"k_atr": k, "hold": hold, "stop_atr": stop_mult, "direction": "fade"},
+        state,
+        size_stop_based(df, stop_mult),
+        (stop_mult * atr(df)).to_numpy(),
+    )
+
+
 def nr7(df: pd.DataFrame, hold: int, stop_mult: float = 2.0, window: int = 5) -> Plan:
     """NR7 contraction; a close through the NR7 bar's range within ``window`` bars trades."""
     rng = (df["high"] - df["low"]).to_numpy()
