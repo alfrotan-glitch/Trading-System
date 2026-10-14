@@ -178,11 +178,13 @@ equals the prior close, so the stamps are comparable):
 | getdata 1w − Dukascopy | 52 (2025-08 → 2026-09) | +14.55 | 15.28 | 2% | every quarter +5.8 to +19.6 |
 | getdata 3d − Dukascopy | 92 (2025-08 → 2026-09) | +11.42 | 13.02 | 13% | every quarter +3.0 to +40.4 |
 
-Reading: getdata and BaseMax agree closely in 2025 Q1 (median within $0.10) and differ by
-several dollars in 2024 Q3 and Q4. Dukascopy differs from getdata by $3 to $40 in every
-quarter they overlap. BaseMax does not overlap Dukascopy, so these data cannot say which
-of the two is off. The established fact is narrower: getdata agrees with the primary series
-where both exist. That is evidence, not proof, that getdata's basis is the common one.
+Reading: the weekly/3-day samples agree closely with BaseMax in 2025 Q1, but diverge in
+2024 Q3/Q4 and differ from Dukascopy by $3–$40 in overlapping quarters. That limited agreement
+does not rescue the getdata-finance M15 sample: the forensic check above identified synthetic
+22:00 UTC reopen bars and splice resets in that series. Treat this triangulation as a diagnostic
+of inconsistent price bases, not independent validation or proof that getdata is a trustworthy
+reference. The licensed `soloshun` H1 and `xaubot-ai` M15 samples are the separate cross-checks
+described above; they still do not validate a profitable edge.
 Neither getdata nor BaseMax is verified as the reference.
 
 **B. Frozen holdout selections on identical bars.** The window is 2026-03-26 02:30 to
