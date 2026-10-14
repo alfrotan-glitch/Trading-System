@@ -1,0 +1,180 @@
+{
+  "break_probe_verdict": "OPEN_STAMP",
+  "established_basis": "OPEN_STAMP",
+  "generated_at": "2026-10-14T01:30:31.356334+00:00",
+  "maintenance_break_probe": {
+    "break_probe_verdict": "OPEN_STAMP",
+    "close_stamp_votes": 0,
+    "dst_summer": {
+      "bar_counts_by_utc_hour": {
+        "0": 10133,
+        "1": 10033,
+        "2": 10051,
+        "3": 10108,
+        "4": 10159,
+        "5": 10249,
+        "6": 10263,
+        "7": 10265,
+        "8": 10253,
+        "9": 10233,
+        "10": 10250,
+        "11": 10282,
+        "12": 10292,
+        "13": 10285,
+        "14": 10287,
+        "15": 10278,
+        "16": 10136,
+        "17": 10024,
+        "18": 9940,
+        "19": 9699,
+        "20": 7473,
+        "22": 9903,
+        "23": 10179
+      },
+      "distinct_days": 3105,
+      "minutes_by_hour": {
+        "20": [
+          0,
+          15,
+          30,
+          45
+        ],
+        "21": [],
+        "22": [
+          0,
+          15,
+          30,
+          45
+        ],
+        "23": [
+          0,
+          15,
+          30,
+          45
+        ]
+      }
+    },
+    "interpretation_observations": {
+      "summer_2200_present": true,
+      "summer_hour21_minutes": [],
+      "winter_2300_present": true,
+      "winter_hour22_minutes": []
+    },
+    "open_stamp_votes": 4,
+    "std_winter": {
+      "bar_counts_by_utc_hour": {
+        "0": 5367,
+        "1": 5305,
+        "2": 5320,
+        "3": 5304,
+        "4": 5332,
+        "5": 5382,
+        "6": 5421,
+        "7": 5485,
+        "8": 5497,
+        "9": 5486,
+        "10": 5479,
+        "11": 5492,
+        "12": 5507,
+        "13": 5514,
+        "14": 5517,
+        "15": 5515,
+        "16": 5492,
+        "17": 5341,
+        "18": 5176,
+        "19": 5127,
+        "20": 5051,
+        "21": 4023,
+        "23": 5332
+      },
+      "distinct_days": 1681,
+      "minutes_by_hour": {
+        "21": [
+          0,
+          15,
+          30,
+          45
+        ],
+        "22": [],
+        "23": [
+          0,
+          15,
+          30,
+          45
+        ]
+      }
+    }
+  },
+  "nfp_release_probe": {
+    "close_stamp_score": 3.2159,
+    "control_fridays_by_hour_min": {
+      "735": {
+        "mean_rel_range": 0.9883,
+        "mean_rel_volume": 0.9764,
+        "n": 602
+      },
+      "750": {
+        "mean_rel_range": 1.0508,
+        "mean_rel_volume": 1.0326,
+        "n": 602
+      },
+      "765": {
+        "mean_rel_range": 1.0749,
+        "mean_rel_volume": 1.0326,
+        "n": 602
+      },
+      "795": {
+        "mean_rel_range": 1.0463,
+        "mean_rel_volume": 1.0359,
+        "n": 602
+      },
+      "810": {
+        "mean_rel_range": 1.0482,
+        "mean_rel_volume": 1.0388,
+        "n": 602
+      },
+      "825": {
+        "mean_rel_range": 1.054,
+        "mean_rel_volume": 1.0463,
+        "n": 602
+      }
+    },
+    "nfp_probe_verdict": "OPEN_STAMP",
+    "open_stamp_score": 4.1574,
+    "release_minutes_by_delta": {
+      "-15": {
+        "mean_rel_range": 1.3289,
+        "mean_rel_volume": 1.2178,
+        "n": 179
+      },
+      "0": {
+        "mean_rel_range": 2.2207,
+        "mean_rel_volume": 1.9367,
+        "n": 179
+      },
+      "15": {
+        "mean_rel_range": 1.4978,
+        "mean_rel_volume": 1.7181,
+        "n": 178
+      },
+      "30": {
+        "mean_rel_range": 1.327,
+        "mean_rel_volume": 1.3419,
+        "n": 180
+      }
+    }
+  },
+  "notes": [
+    "Probe uses bar presence and tick-volume/range location only; no return sign is examined.",
+    "First-Friday rule approximates the payrolls calendar; rare off-cycle releases add noise but no direction.",
+    "Established basis applies to the BaseMax research series after server->UTC conversion."
+  ],
+  "probe_window": [
+    "2004-06-11",
+    "2019-12-31"
+  ],
+  "probes_agree": true,
+  "rows_probed": 353240,
+  "schema": "qts.stamp_basis_probe.v1",
+  "source": "xauusd_basemax_utc_15m_20040611_20250228.csv"
+}

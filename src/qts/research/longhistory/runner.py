@@ -396,6 +396,7 @@ def gates(
     ho = result["holdout"]["groups"]
     wf = result["walk_forward"]["summary"]
     ppy = proto.PERIODS_PER_YEAR
+    g8_min = getattr(proto, "GATE_BREAK_EVEN_MIN", None)
     for group in proto.FAMILY_GROUPS:
         rec = ho.get(group, {})
         if not rec.get("cid"):
@@ -426,6 +427,11 @@ def gates(
             "G6_oos_round_turns_ge_100": oos_turns >= proto.MIN_TRADES_OOS_GATE,
             "G7_regime_coverage": all_present and positive_regimes >= proto.GATE_REGIMES_MIN_POSITIVE,
         }
+        if g8_min is not None:
+            # Optional stricter gate defined by a cycle's protocol: the
+            # evaluation-window break-even cost multiplier must reach g8_min.
+            be = rec.get("break_even_multiplier") or {}
+            checks["G8_break_even_multiplier_ge_min"] = float(be.get("value", 0.0) or 0.0) >= float(g8_min)
         failed = [k for k, v in checks.items() if not v]
         out[group] = {
             "cid": rec["cid"],
@@ -528,10 +534,18 @@ def render_tables(result: dict[str, Any]) -> str:
     if wb:
         lines.append(f"| **buy_and_hold_long (reference)** | {wb['sharpe']:.3f} | — | — | {wb['chained_return']:.1%} |")
     lines.append("")
-    lines.append("## Gates (G1–G7; all must pass)")
+    first_rec = next(
+        (r for r in result["gates"].values() if isinstance(r, dict) and "checks" in r), None
+    )
+    labels = (
+        [k.split("_", 1)[0] for k in sorted(first_rec["checks"])]  # type: ignore[union-attr]
+        if first_rec
+        else ["G1", "G2", "G3", "G4", "G5", "G6", "G7"]
+    )
+    lines.append(f"## Gates ({labels[0]}–{labels[-1]}; all must pass)")
     lines.append("")
-    lines.append("| Group | Candidate | G1 | G2 | G3 | G4 | G5 | G6 | G7 | DSR | OOS round turns | Passes |")
-    lines.append("|---|---|---|---|---|---|---|---|---|---:|---:|---|")
+    lines.append("| Group | Candidate | " + " | ".join(labels) + " | DSR | OOS round turns | Passes |")
+    lines.append("|---|---|" + "---|" * len(labels) + "---:|---:|---|")
     for group, rec in result["gates"].items():
         if not isinstance(rec, dict) or "checks" not in rec:
             continue
