@@ -89,3 +89,6 @@ data/evidence/demo_broker_identity_pin.json
 # verified by scripts/fetch_longhistory_sources.py; the manifest, not the bars,
 # is committed).
 data/raw/longhistory/
+# All raw third-party market data (incl. external_checks clones used for source
+# cross-checks) stays machine-local. Only manifests and bounded summaries are committed.
+data/raw/
