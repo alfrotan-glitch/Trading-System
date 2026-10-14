@@ -1,0 +1,397 @@
+{
+  "benchmarks": {
+    "buy_and_hold_long": {
+      "wf_2010_2019_composite": {
+        "chained_return": 0.3437,
+        "max_drawdown": -0.4639,
+        "sharpe": 0.2719,
+        "years": 10
+      }
+    }
+  },
+  "cost_base": {
+    "basis": "ASSUMED",
+    "commission_usd_per_lot_side": 7.0,
+    "cost_multiplier": 1.0,
+    "financing_bps_per_day": 0.0,
+    "round_turn_bps_at_1300": 6.077,
+    "slippage_bps_per_side": 1.0,
+    "spread_bps_full": 3.0
+  },
+  "data": {
+    "bars_per_day": 92,
+    "holdout_reused_from_parent_cycles": true,
+    "periods_per_year": 23184,
+    "replicate_m15_bars": null,
+    "replicate_source": "dukascopy mirror (UTC) M15, complete trading days only",
+    "research_first_bar": "2004-06-11 04:15:00",
+    "research_last_bar": "2025-02-28 21:45:00",
+    "research_m15_bars": 474388,
+    "research_source": "basemax_xauusd_15m (UTC), complete trading days only",
+    "stamp_basis": "OPEN (established by data/evidence/longhistory/stamp_basis_probe.json)"
+  },
+  "gates": {
+    "reason": "holdout not evaluated in dev stage",
+    "status": "NOT_EVALUATED_DEV_STAGE"
+  },
+  "generated_at": "2026-10-14T02:16:44.569349+00:00",
+  "n_trials": 47,
+  "periods_per_year": 23184,
+  "prereg_id": "LH-XAUUSD-SES-2026-10-14",
+  "stage": "dev",
+  "verdict": {
+    "claim": "none",
+    "status": "NOT_EVALUATED"
+  },
+  "walk_forward": {
+    "folds": [
+      {
+        "selection": {
+          "nfp_drift": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "session_drift": {
+            "cid": "sd_all",
+            "net_usd": -223.94,
+            "round_turns": 245,
+            "sharpe": -0.688,
+            "train_sharpe": -1.0939
+          },
+          "weekday_drift": {
+            "cid": "wd_all",
+            "net_usd": 481.63,
+            "round_turns": 97,
+            "sharpe": 0.8081,
+            "train_sharpe": 0.4417
+          }
+        },
+        "year": 2010
+      },
+      {
+        "selection": {
+          "nfp_drift": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "session_drift": {
+            "cid": "sd_all",
+            "net_usd": -420.01,
+            "round_turns": 240,
+            "sharpe": -1.0362,
+            "train_sharpe": -1.0368
+          },
+          "weekday_drift": {
+            "cid": "wd_all",
+            "net_usd": 1028.33,
+            "round_turns": 99,
+            "sharpe": 1.5796,
+            "train_sharpe": 0.5013
+          }
+        },
+        "year": 2011
+      },
+      {
+        "selection": {
+          "nfp_drift": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "session_drift": {
+            "cid": "sd_all",
+            "net_usd": -549.53,
+            "round_turns": 242,
+            "sharpe": -1.8497,
+            "train_sharpe": -1.0354
+          },
+          "weekday_drift": {
+            "cid": "wd_all",
+            "net_usd": -155.05,
+            "round_turns": 75,
+            "sharpe": -0.258,
+            "train_sharpe": 0.7056
+          }
+        },
+        "year": 2012
+      },
+      {
+        "selection": {
+          "nfp_drift": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "session_drift": {
+            "cid": "sd_all",
+            "net_usd": -538.9,
+            "round_turns": 257,
+            "sharpe": -1.1472,
+            "train_sharpe": -1.1156
+          },
+          "weekday_drift": {
+            "cid": "wd_all",
+            "net_usd": -602.99,
+            "round_turns": 51,
+            "sharpe": -1.1714,
+            "train_sharpe": 0.5463
+          }
+        },
+        "year": 2013
+      },
+      {
+        "selection": {
+          "nfp_drift": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "session_drift": {
+            "cid": "sd_all",
+            "net_usd": -1062.86,
+            "round_turns": 255,
+            "sharpe": -2.459,
+            "train_sharpe": -1.1164
+          },
+          "weekday_drift": {
+            "cid": "wd_all",
+            "net_usd": 36.08,
+            "round_turns": 51,
+            "sharpe": 0.0962,
+            "train_sharpe": 0.3167
+          }
+        },
+        "year": 2014
+      },
+      {
+        "selection": {
+          "nfp_drift": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "session_drift": {
+            "cid": "sd_all",
+            "net_usd": -456.27,
+            "round_turns": 254,
+            "sharpe": -1.0152,
+            "train_sharpe": -1.2686
+          },
+          "weekday_drift": {
+            "cid": "wd_all",
+            "net_usd": 264.88,
+            "round_turns": 49,
+            "sharpe": 0.5954,
+            "train_sharpe": 0.2911
+          }
+        },
+        "year": 2015
+      },
+      {
+        "selection": {
+          "nfp_drift": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "session_drift": {
+            "cid": "sd_all",
+            "net_usd": -8.28,
+            "round_turns": 257,
+            "sharpe": 0.0113,
+            "train_sharpe": -1.2417
+          },
+          "weekday_drift": {
+            "cid": "wd_all",
+            "net_usd": -29.9,
+            "round_turns": 51,
+            "sharpe": -0.0246,
+            "train_sharpe": 0.3191
+          }
+        },
+        "year": 2016
+      },
+      {
+        "selection": {
+          "nfp_drift": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "session_drift": {
+            "cid": "sd_all",
+            "net_usd": -1291.18,
+            "round_turns": 256,
+            "sharpe": -3.6968,
+            "train_sharpe": -1.1
+          },
+          "weekday_drift": {
+            "cid": "wd_all",
+            "net_usd": 316.87,
+            "round_turns": 51,
+            "sharpe": 0.6845,
+            "train_sharpe": 0.2825
+          }
+        },
+        "year": 2017
+      },
+      {
+        "selection": {
+          "nfp_drift": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "session_drift": {
+            "cid": "sd_all",
+            "net_usd": -2109.88,
+            "round_turns": 256,
+            "sharpe": -5.5728,
+            "train_sharpe": -1.2802
+          },
+          "weekday_drift": {
+            "cid": "wd_all",
+            "net_usd": -78.22,
+            "round_turns": 52,
+            "sharpe": -0.1555,
+            "train_sharpe": 0.3147
+          }
+        },
+        "year": 2018
+      },
+      {
+        "selection": {
+          "nfp_drift": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "session_drift": {
+            "cid": "sd_all",
+            "net_usd": -1294.48,
+            "round_turns": 256,
+            "sharpe": -3.3013,
+            "train_sharpe": -1.595
+          },
+          "weekday_drift": {
+            "cid": "wd_all",
+            "net_usd": -100.05,
+            "round_turns": 51,
+            "sharpe": -0.1826,
+            "train_sharpe": 0.291
+          }
+        },
+        "year": 2019
+      }
+    ],
+    "summary": {
+      "nfp_drift": {
+        "wf_chained_return": 0.0,
+        "wf_positive_years": 0,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "DOWN_LOWVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_LOWVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          }
+        },
+        "wf_sharpe": 0.0,
+        "wf_years_with_trades": 0
+      },
+      "session_drift": {
+        "wf_chained_return": -0.5731,
+        "wf_positive_years": 0,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 19761,
+            "net_usd": -106.74
+          },
+          "DOWN_LOWVOL": {
+            "days": 83428,
+            "net_usd": -4303.33
+          },
+          "UP_HIVOL": {
+            "days": 27331,
+            "net_usd": -699.97
+          },
+          "UP_LOWVOL": {
+            "days": 99445,
+            "net_usd": -2845.28
+          }
+        },
+        "wf_sharpe": -2.0044,
+        "wf_years_with_trades": 10
+      },
+      "weekday_drift": {
+        "wf_chained_return": 0.1131,
+        "wf_positive_years": 5,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 19761,
+            "net_usd": -54.01
+          },
+          "DOWN_LOWVOL": {
+            "days": 83428,
+            "net_usd": 132.63
+          },
+          "UP_HIVOL": {
+            "days": 27331,
+            "net_usd": -26.28
+          },
+          "UP_LOWVOL": {
+            "days": 99445,
+            "net_usd": 1109.25
+          }
+        },
+        "wf_sharpe": 0.2292,
+        "wf_years_with_trades": 10
+      }
+    }
+  },
+  "windows": {
+    "dev_end": "2019-12-31",
+    "holdout": [
+      "2020-01-01",
+      "2025-02-28"
+    ],
+    "research": [
+      "2004-06-11",
+      "2025-02-28"
+    ],
+    "wf_test_years": [
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019
+    ]
+  }
+}
