@@ -160,20 +160,96 @@ def server_gmt23_to_utc(stamps: pd.DatetimeIndex) -> pd.DatetimeIndex:
     return pd.DatetimeIndex(out, name="utc")
 
 
+def server_gmt23_eu_dst_to_utc(stamps: pd.DatetimeIndex) -> pd.DatetimeIndex:
+    """Convert GMT+2 / GMT+3 (EU-DST, ``Europe/Athens``) broker-server stamps to naive UTC.
+
+    Some MT5 servers follow the European Union DST calendar (last Sunday of
+    March to last Sunday of October) rather than US DST. During the late-October
+    and mid-March transition weeks, EU-DST servers are at UTC+2 while US-DST
+    servers are at UTC+3.
+    """
+    s = pd.DatetimeIndex(stamps)
+    cand = s - pd.Timedelta(hours=SERVER_OFFSET_HOURS_DST)
+    eu_wall = pd.DatetimeIndex(cand).tz_localize("UTC").tz_convert("Europe/Athens").tz_localize(None)
+    eu_offset_h = (eu_wall - cand) / pd.Timedelta(hours=1)
+    dst = np.asarray(eu_offset_h == 3.0)
+    out = np.where(dst, cand.values, (s - pd.Timedelta(hours=SERVER_OFFSET_HOURS_STANDARD)).values)
+    return pd.DatetimeIndex(out, name="utc")
+
+
 def to_utc(frame: pd.DataFrame, stamp_basis: str) -> pd.DataFrame:
     """Return ``frame`` re-indexed to naive UTC bar opens, sorted and unique.
 
-    ``stamp_basis`` is one of ``utc`` or ``server_gmt23_us_dst``.
+    ``stamp_basis`` is one of ``utc``, ``server_gmt23_us_dst`` or
+    ``server_gmt23_eu_dst``.
     """
     if stamp_basis == "utc":
         index = pd.DatetimeIndex(frame.index, name="utc")
     elif stamp_basis == "server_gmt23_us_dst":
         index = server_gmt23_to_utc(pd.DatetimeIndex(frame.index))
+    elif stamp_basis == "server_gmt23_eu_dst":
+        index = server_gmt23_eu_dst_to_utc(pd.DatetimeIndex(frame.index))
     else:
         raise ValueError(f"unknown stamp basis {stamp_basis!r}")
     out = frame.copy()
     out.index = index
     return out.sort_index()
+
+
+def bar_integrity_diagnostics(frame: pd.DataFrame) -> dict[str, Any]:
+    """Forensic diagnostics for synthetic bar stitching and non-integer tick volumes.
+
+    Read-only: inspects ``frame`` without altering any bar. Flags:
+    - ``non_integer_volume_bars``: bars whose ``volume`` is not an integer
+      (impossible for raw tick-count volumes, indicative of synthetic/rescaled bars).
+    - ``open_equals_prev_close_share``: fraction of bar transitions where
+      ``|open[t] - close[t-1]| <= 1e-9``.
+    - ``weekend_reopen_bars`` and ``weekend_reopen_zero_gap_bars``: transitions
+      across gaps > 24h where ``open[t] == close[t-1]`` (indicative of synthetic
+      gap suppression across weekend closures).
+    """
+    rows = len(frame)
+    if rows == 0:
+        return {
+            "rows": 0,
+            "non_integer_volume_bars": 0,
+            "open_equals_prev_close_share": 0.0,
+            "weekend_reopen_bars": 0,
+            "weekend_reopen_zero_gap_bars": 0,
+        }
+    non_int_vol = 0
+    if "volume" in frame.columns:
+        vol = frame["volume"].to_numpy(dtype=float)
+        finite_vol = vol[np.isfinite(vol)]
+        non_int_vol = int(np.sum(np.abs(finite_vol - np.round(finite_vol)) > 1e-9))
+
+    if rows < 2:
+        return {
+            "rows": int(rows),
+            "non_integer_volume_bars": non_int_vol,
+            "open_equals_prev_close_share": 0.0,
+            "weekend_reopen_bars": 0,
+            "weekend_reopen_zero_gap_bars": 0,
+        }
+
+    opens = frame["open"].to_numpy(dtype=float)[1:]
+    prev_closes = frame["close"].to_numpy(dtype=float)[:-1]
+    zero_gap = np.abs(opens - prev_closes) <= 1e-9
+    open_eq_share = float(np.mean(zero_gap))
+
+    idx = pd.DatetimeIndex(frame.index)
+    gap_hours = pd.Series(idx).diff().iloc[1:].dt.total_seconds().to_numpy(dtype=float) / 3600.0
+    weekend_mask = gap_hours > 24.0
+    weekend_reopens = int(np.sum(weekend_mask))
+    weekend_zero_gap = int(np.sum(weekend_mask & zero_gap))
+
+    return {
+        "rows": int(rows),
+        "non_integer_volume_bars": non_int_vol,
+        "open_equals_prev_close_share": round(open_eq_share, 6),
+        "weekend_reopen_bars": weekend_reopens,
+        "weekend_reopen_zero_gap_bars": weekend_zero_gap,
+    }
 
 
 def clock_fit(reference: pd.DataFrame, candidate: pd.DataFrame, hours: range = range(-4, 5)) -> dict[str, Any]:

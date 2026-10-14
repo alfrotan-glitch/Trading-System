@@ -60,11 +60,12 @@ def ingest_csv(
                     ct = ct.replace(tzinfo=UTC)
             else:
                 # infer close from timeframe
-                tf_map = {"1m": 1, "5m": 5, "15m": 15, "1H": 60, "1D": 1440}
+                tf_map = {"1m": 1, "5m": 5, "15m": 15, "30m": 30, "1H": 60, "4H": 240, "1D": 1440}
                 mins = tf_map.get(timeframe, 60)
                 from datetime import timedelta
 
                 ct = ot + timedelta(minutes=mins)
+            vol_raw = row.get("volume") or row.get("tick_volume") or "1000"
             bars.append(
                 Bar(
                     instrument=instr,
@@ -72,7 +73,7 @@ def ingest_csv(
                     high=Decimal(str(row["high"])),
                     low=Decimal(str(row["low"])),
                     close=Decimal(str(row["close"])),
-                    volume=Decimal(str(row.get("volume", "1000"))),
+                    volume=Decimal(str(vol_raw)),
                     open_time=ot,
                     close_time=ct,
                     data_version="ingest",

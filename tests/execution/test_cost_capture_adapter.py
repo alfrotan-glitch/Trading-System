@@ -222,3 +222,75 @@ def test_rows_always_serialise_to_plain_dicts(rows: list[object]) -> None:
     """Numpy rows are views over terminal memory; only dicts survive a reconnect."""
     out = MT5Adapter._deal_rows_as_dicts(rows)
     assert all(isinstance(row, dict) for row in out)
+
+
+def test_deal_rows_as_dicts_supports_numpy_structured_arrays_and_mappings() -> None:
+    """Multi-row numpy structured arrays must not raise truth-value errors or drop fields."""
+    import numpy as np
+
+    dtype = np.dtype(
+        [
+            ("ticket", "i8"),
+            ("order", "i8"),
+            ("position_id", "i8"),
+            ("symbol", "U16"),
+            ("type", "i4"),
+            ("entry", "i4"),
+            ("volume", "f8"),
+            ("price", "f8"),
+            ("profit", "f8"),
+            ("commission", "f8"),
+            ("swap", "f8"),
+            ("fee", "f8"),
+            ("time", "i8"),
+            ("time_msc", "i8"),
+        ]
+    )
+    arr = np.array(
+        [
+            (1001, 501, 77, "XAUUSD@", 0, 0, 0.01, 4000.5, 0.0, -0.7, 0.0, -0.1, 1760000000, 1760000000000),
+            (1002, 502, 77, "XAUUSD@", 1, 1, 0.01, 4001.5, 1.0, -0.7, -0.05, -0.1, 1760000900, 1760000900000),
+        ],
+        dtype=dtype,
+    )
+    out = MT5Adapter._deal_rows_as_dicts(arr)
+    assert len(out) == 2
+    assert out[0]["ticket"] == 1001
+    assert out[0]["commission"] == -0.7
+    assert out[1]["swap"] == -0.05
+    assert "comment" not in out[0]
+
+
+def test_server_utc_offset_maps_canonical_symbol_to_broker_alias(tmp_path, monkeypatch) -> None:
+    """Probing or reading cached offset by canonical symbol must map to the broker symbol."""
+    import qts.adapters.mt5_adapter as mt5_adapter
+
+    now = 1_800_000_123.4
+    offset = 3 * 3600
+
+    class _StrictSymbolMT5:
+        TIMEFRAME_M1 = 1
+
+        def symbol_info_tick(self, symbol):
+            if symbol != "XAUUSD@":
+                return None
+            return SimpleNamespace(time=now + offset, time_msc=(now + offset) * 1000, bid=4000.0, ask=4000.3)
+
+        def copy_rates_from_pos(self, symbol, timeframe, start_pos, count):
+            if symbol != "XAUUSD@":
+                return None
+            return [{"time": (int(now + offset) // 60) * 60, "close": 4000.0}]
+
+    monkeypatch.setattr(mt5_adapter.time, "time", lambda: now)
+    adapter = MT5Adapter(
+        mt5_module=_StrictSymbolMT5(),
+        config={"symbol_map": {"XAUUSD": "XAUUSD@"}},
+        db_path=tmp_path / "qts.db",
+    )
+
+    measured, basis = adapter.server_utc_offset("XAUUSD")
+    assert measured == offset
+    assert basis in {"measured-m1-bar", "measured-fresh-tick"}
+    assert adapter.offset_cache_info("XAUUSD")["status"] == "MEASURED"
+    assert adapter.offset_cache_info("XAUUSD@")["status"] == "MEASURED"
+

@@ -154,3 +154,82 @@ def test_the_calendar_explains_a_week_of_real_gold_bars() -> None:
             unexplained += 1
     # A real bar must never fall inside a scheduled closure.
     assert unexplained == 0, f"{unexplained} bars fall inside a declared closure"
+
+
+def test_store_manifest_and_inventory_preserve_session_calendar_closures(tmp_path) -> None:
+    """When ingested with session_calendar='XAUUSD', manifest and inventory must use it."""
+    from datetime import timedelta
+    from decimal import Decimal
+
+    from qts.data.inventory import generate_inventory
+    from qts.data.store import SqliteParquetDataStore
+    from qts.domain.value_objects import Bar, Instrument
+
+    instr = Instrument(symbol="XAUUSD", venue="MT5")
+    # Monday 2026-01-05 20:00..21:45 UTC (before 22:00 UTC / 17:00 EST break)
+    # and 23:00..23:45 UTC (after 23:00 UTC / 18:00 EST reopen).
+    opens = [
+        datetime(2026, 1, 5, 20, 0, tzinfo=UTC) + timedelta(minutes=15 * i)
+        for i in range(8)
+    ] + [
+        datetime(2026, 1, 5, 23, 0, tzinfo=UTC) + timedelta(minutes=15 * i)
+        for i in range(4)
+    ]
+    bars = [
+        Bar(
+            instrument=instr,
+            open=Decimal("4000"),
+            high=Decimal("4001"),
+            low=Decimal("3999"),
+            close=Decimal("4000.5"),
+            volume=Decimal("10"),
+            open_time=t,
+            close_time=t + timedelta(minutes=15),
+        )
+        for t in opens
+    ]
+    data_root = tmp_path / "data"
+    store = SqliteParquetDataStore(root=data_root)
+    manifest = store.write_bars(
+        bars,
+        source="REAL:test:xauusd_15m",
+        session_calendar="XAUUSD",
+    )
+    assert manifest.session_calendar == "XAUUSD"
+    assert manifest.missing_data_stats["closure_policy"] == "weekend_boundary_plus_explicit_intervals"
+    assert manifest.missing_data_stats["unexpected_missing_intervals"] == 0
+    assert manifest.session_stats["unexpected_missing_intervals"] == 0
+
+    inv = generate_inventory(root=data_root)
+    assert len(inv) == 1
+    assert inv[0]["quality_passed"] is True
+    assert inv[0]["session_calendar"] == "XAUUSD"
+    assert "session_calendar=XAUUSD" in inv[0]["market_closure_handling"]
+    assert inv[0]["gaps"]["unexpected_missing_intervals"] == 0
+    assert inv[0]["gaps"]["closure_policy"] == "weekend_boundary_plus_explicit_intervals"
+
+    from qts.data.audit import audit_data_sources
+
+    audit = audit_data_sources(root=data_root)
+    assert audit["available_sources"][0]["timestamp_quality"]["session_calendar"] == "XAUUSD"
+
+    from qts.research.readiness import assess_bars, assess_dataset
+
+    readiness = assess_dataset(store, manifest.version)
+    assert readiness.quality_passed is True
+    assert readiness.timeframe == "15m"
+    assert not any("DATA_QUALITY_FAILED" in r for r in readiness.reasons)
+
+    # Also verify _infer_timeframe when bars[0] -> bars[1] crosses a session break
+    leading_gap_bars = bars[7:]  # 21:45 UTC followed by 23:00 UTC, then 23:15 UTC
+    lead_readiness = assess_bars(
+        leading_gap_bars,
+        data_version="v-lead",
+        source_label="REAL:test:xauusd_15m",
+        session_calendar="XAUUSD",
+    )
+    assert lead_readiness.timeframe == "15m"
+    assert lead_readiness.quality_passed is True
+
+
+

@@ -87,6 +87,7 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
     def check_data():
         try:
             from qts.data.quality import validate_bars
+            from qts.data.sessions import closure_intervals as _closure_intervals
             from qts.data.store import SqliteParquetDataStore
             from qts.domain.value_objects import Instrument
 
@@ -98,9 +99,16 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
             m = store.manifest(v)
             instr = Instrument(symbol=m.instrument, venue=m.venue)
             bars = store.read_bars(instr, m.timeframe, version=v)
-            rpt = validate_bars(bars)
+            session_cal = getattr(m, "session_calendar", None)
+            closures = (
+                _closure_intervals(bars[0].open_time, bars[-1].close_time, symbol=session_cal)
+                if session_cal and bars
+                else None
+            )
+            rpt = validate_bars(bars, m.timeframe, closure_intervals=closures)
             if not rpt.passed:
-                return False, f"data quality fail: {rpt.checks[0].details if rpt.checks else 'fail'}"
+                failed = [f"{c.name}: {c.details}" for c in rpt.checks if not c.passed]
+                return False, f"data quality fail: {'; '.join(failed[:2]) if failed else 'fail'}"
             return True, f"data healthy {v} {len(bars)} bars"
         except Exception as e:
             return False, f"data verify failed: {e}"

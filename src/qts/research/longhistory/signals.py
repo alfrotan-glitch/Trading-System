@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 
 TRADING_DAYS = 252
-RISK_PER_TRADE = 0.01  # fraction of equity risked to the stop (stop-based sizing)
+RISK_PER_TRADE = 0.01  # frozen research default/maximum; not the product risk authority
 VOL_TARGET = 0.10  # annualised volatility target (no-stop sizing)
 MAX_FRACTION = 1.0  # no leverage: position notional <= equity
 VOL_WINDOW = 60
@@ -106,10 +106,22 @@ def month_end(index: pd.DatetimeIndex) -> np.ndarray:
 # --------------------------------------------------------------------------- sizing
 
 
-def size_stop_based(df: pd.DataFrame, stop_mult: float) -> pd.Series:
-    """Risk ``RISK_PER_TRADE`` of equity to a stop at ``stop_mult * ATR``, capped."""
+def size_stop_based(
+    df: pd.DataFrame,
+    stop_mult: float,
+    risk_fraction: float = RISK_PER_TRADE,
+) -> pd.Series:
+    """Size to ``risk_fraction`` equity risk at a ``stop_mult * ATR`` stop, capped.
+
+    The 1% default preserves the existing frozen research protocols. New research
+    can pass a lower explicit fraction (for example, 0.005 for a 50 bp risk budget).
+    The override cannot exceed the legacy 1% research maximum. This helper is
+    research-only and does not set or authorize product risk.
+    """
+    if not np.isfinite(risk_fraction) or risk_fraction <= 0.0 or risk_fraction > RISK_PER_TRADE:
+        raise ValueError(f"risk_fraction must be finite and in (0, {RISK_PER_TRADE}]")
     stop_pct = stop_mult * atr(df) / df["close"]
-    return (RISK_PER_TRADE / stop_pct.replace(0.0, np.nan)).clip(upper=MAX_FRACTION)
+    return (risk_fraction / stop_pct.replace(0.0, np.nan)).clip(upper=MAX_FRACTION)
 
 
 def size_vol_target(df: pd.DataFrame, n: int = VOL_WINDOW, ann: int = TRADING_DAYS) -> pd.Series:
@@ -213,7 +225,12 @@ def ma_cross(
     stop_mult: float | None,
     ann: int = TRADING_DAYS,
     vol_n: int = VOL_WINDOW,
+    *,
+    risk_fraction: float = RISK_PER_TRADE,
 ) -> Plan:
+    """SMA crossover; risk_fraction affects sizing only when an ATR stop is used."""
+    if stop_mult is None and risk_fraction != RISK_PER_TRADE:
+        raise ValueError("risk_fraction applies only to stop-based ma_cross sizing")
     f, s = sma(df["close"], fast), sma(df["close"], slow)
     valid = (f.notna() & s.notna()).to_numpy()
     state = np.where(valid, np.where(f > s, 1.0, -1.0), np.nan)
@@ -222,16 +239,16 @@ def ma_cross(
         size = size_vol_target(df, vol_n, ann)
         stop = np.full(len(df), np.nan)
     else:
-        size = size_stop_based(df, stop_mult)
+        size = size_stop_based(df, stop_mult, risk_fraction)
         stop = (stop_mult * atr(df)).to_numpy()
-    return _plan(
-        df,
-        "ma_cross",
-        {"fast": fast, "slow": slow, "stop_atr": float(stop_mult) if stop_mult is not None else 0.0},
-        state,
-        size,
-        stop,
-    )
+    params: dict[str, float | int | bool | str] = {
+        "fast": fast,
+        "slow": slow,
+        "stop_atr": float(stop_mult) if stop_mult is not None else 0.0,
+    }
+    if stop_mult is not None and risk_fraction != RISK_PER_TRADE:
+        params["risk_fraction"] = risk_fraction
+    return _plan(df, "ma_cross", params, state, size, stop)
 
 
 def donchian(
@@ -240,6 +257,8 @@ def donchian(
     exit_n: int,
     stop_mult: float,
     gate: pd.Series | None = None,
+    *,
+    risk_fraction: float = RISK_PER_TRADE,
 ) -> Plan:
     """Channel breakout on closes; exit on an opposite ``exit_n`` channel break."""
     high_n = df["high"].shift(1).rolling(entry, min_periods=entry).max()
@@ -258,13 +277,15 @@ def donchian(
     valid = (high_n.notna() & low_m.notna()).to_numpy()
     state = _state_from_events(len(df), up, dn, ex_l, ex_s, valid)
     stop = (stop_mult * atr(df)).to_numpy()
-    size = size_stop_based(df, stop_mult)
+    size = size_stop_based(df, stop_mult, risk_fraction)
     params: dict[str, float | int | bool | str] = {
         "entry": entry,
         "exit": exit_n,
         "stop_atr": stop_mult,
         "gated": gate is not None,
     }
+    if risk_fraction != RISK_PER_TRADE:
+        params["risk_fraction"] = risk_fraction
     return _plan(df, "donchian" if gate is None else "trend_gated", params, state, size, stop)
 
 

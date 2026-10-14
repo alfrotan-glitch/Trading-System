@@ -10,8 +10,9 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from qts.research.xauusd_directional_view import preflight_view
-from qts.research.xauusd_marketmaking import MarketMakingScan, DISCOVERY_ROWS
+from qts.research.xauusd_marketmaking import DISCOVERY_ROWS, MarketMakingScan
 from qts.research.xauusd_marketmaking_wf import evaluate_marketmaking_wf
+
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="H-MM-02 WF runner")
@@ -49,7 +50,7 @@ def main(argv=None) -> int:
         md = f"# XAUUSD H-MM-02 risk-adjusted walk-forward — discovery only\n\n## H-MM-02: {hyp['status']}\n"
         for r in hyp["reasons"]:
             md += f"- {r}\n"
-        md += f"\nHeld-out 40%: CLOSED. Orders: 0. SYNTHETIC.\n"
+        md += "\nHeld-out 40%: CLOSED. Orders: 0. SYNTHETIC.\n"
         args.markdown.write_text(md, encoding="utf-8")
 
     print(json.dumps({"discovery_rows": scan.rows, "status": result["hypotheses"]["H-MM-02"]["status"]}))

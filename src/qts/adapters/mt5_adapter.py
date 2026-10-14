@@ -29,6 +29,7 @@ import math
 import os
 import time
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -673,16 +674,31 @@ class MT5Adapter(BrokerAdapter):
         distinguishable from a genuine zero charge.
         """
         out: list[dict[str, Any]] = []
-        for row in rows or ():
+        if rows is None:
+            return out
+        fields = (
+            "ticket", "order", "position_id", "symbol", "type", "entry",
+            "volume", "price", "profit", "commission", "swap", "fee",
+            "time", "time_msc", "comment", "magic", "reason", "external_id",
+        )
+        for row in rows:
             record: dict[str, Any] = {}
-            for name in (
-                "ticket", "order", "position_id", "symbol", "type", "entry",
-                "volume", "price", "profit", "commission", "swap", "fee",
-                "time", "time_msc", "comment", "magic", "reason", "external_id",
-            ):
-                value = getattr(row, name, None)
-                if value is not None:
-                    record[name] = value
+            dtype_names = getattr(getattr(row, "dtype", None), "names", None)
+            if isinstance(row, Mapping):
+                for name in fields:
+                    if name in row and row[name] is not None:
+                        val = row[name]
+                        record[name] = val.item() if hasattr(val, "item") else val
+            elif dtype_names:
+                for name in fields:
+                    if name in dtype_names and row[name] is not None:
+                        val = row[name]
+                        record[name] = val.item() if hasattr(val, "item") else val
+            else:
+                for name in fields:
+                    value = getattr(row, name, None)
+                    if value is not None:
+                        record[name] = value.item() if hasattr(value, "item") else value
             out.append(record)
         return out
 
@@ -1847,9 +1863,10 @@ class MT5Adapter(BrokerAdapter):
         getter = getattr(self._mt5, "copy_rates_from_pos", None)
         if getter is None:
             return None
+        broker_sym = self._map_symbol(symbol)
         timeframe_m1 = getattr(self._mt5, "TIMEFRAME_M1", 1)
         try:
-            rates = getter(symbol, timeframe_m1, 0, 1)
+            rates = getter(broker_sym, timeframe_m1, 0, 1)
             if rates is None or len(rates) == 0:
                 return None
             bar = rates[0]
@@ -1877,6 +1894,7 @@ class MT5Adapter(BrokerAdapter):
         minute-resolution fallback. Failed probes never replace a known-good
         offset with zero.
         """
+        symbol = self._map_symbol(symbol)
         now_epoch = time.time()
         cached = self._server_offset_cache.get(symbol)
         if cached is not None and (now_epoch - cached[2]) < self._OFFSET_TTL_S:
@@ -2003,7 +2021,7 @@ class MT5Adapter(BrokerAdapter):
         if tf_const is None:
             return {"ok": False, "error": f"terminal exposes no M{minutes} timeframe constant"}
 
-        offset, basis = self.server_utc_offset(symbol)
+        offset, basis = self.server_utc_offset(broker_sym)
         if basis not in MEASURED_SERVER_OFFSET_BASES:
             return {
                 "ok": False,
@@ -2097,6 +2115,7 @@ class MT5Adapter(BrokerAdapter):
         refresh stamp, so this is deliberately NOT labelled a measurement
         timestamp — no clock fact is invented.
         """
+        symbol = self._map_symbol(symbol)
         cached = self._server_offset_cache.get(symbol)
         if cached is None:
             return {"status": "UNAVAILABLE", "reason": "no broker offset has been measured yet for this symbol"}

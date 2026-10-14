@@ -323,3 +323,40 @@ def test_recording_historical_deals_produces_cost_evidence_without_an_order(
     assert deal.reported_cost == Decimal("0.80")
     assert deal.time_basis == "utc-corrected"
     assert store.verify_chain()[0] is True
+
+
+def test_record_with_unmeasured_server_offset_preserves_unadjusted_basis_in_store(
+    runner, monkeypatch, env
+) -> None:
+    """When server offset is unmeasured (assumed-utc-fallback), --record must not stamp 0.0."""
+    terminal = FakeMT5()
+    _patch_offset(monkeypatch, 0.0, "assumed-utc-fallback")
+    result = _run(runner, monkeypatch, env, terminal, "--record")
+    assert result.exit_code == 0, result.output
+    from qts.config.paths import artifact_path
+
+    store = CostEvidenceStore(artifact_path("cost_evidence"))
+    deals = store.deals()
+    assert len(deals) == 1
+    assert deals[0].server_utc_offset_s is None
+    assert deals[0].time_iso is None
+    assert deals[0].time_basis == "broker-basis-only"
+
+
+def test_record_refuses_to_backfill_from_non_demo_account(
+    runner, monkeypatch, env, tmp_path
+) -> None:
+    """A non-DEMO account must never contaminate the demo cost evidence store."""
+    terminal = FakeMT5(demo=False)
+    _patch_offset(monkeypatch, 10800.0, "measured-m1-bar")
+    out = tmp_path / "report.json"
+    result = _run(runner, monkeypatch, env, terminal, "--record", "--json-out", str(out))
+    assert result.exit_code == 0, result.output
+    from qts.config.paths import artifact_path
+
+    path = artifact_path("cost_evidence")
+    assert (not path.exists()) or CostEvidenceStore(path).deals() == []
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert report["recorded"]["recorded"] == 0
+    assert "non-DEMO" in report["recorded"]["error"]
+

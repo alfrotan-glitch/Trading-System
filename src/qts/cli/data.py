@@ -9,6 +9,7 @@ import click
 
 from qts.data.ingest import ingest_csv
 from qts.data.quality import validate_bars
+from qts.data.sessions import closure_intervals as _closure_intervals
 from qts.data.store import SqliteParquetDataStore
 from qts.data.synthetic import generate_gbm_bars, generate_trending_bars, write_csv
 from qts.domain.value_objects import AssetClass, Instrument
@@ -153,7 +154,12 @@ def data_mt5_depth(symbol: str | None, json_out: str | None) -> None:
         )
         raise SystemExit(2) from None
 
-    report = probe(mt5, resolved)
+    try:
+        report = probe(mt5, resolved)
+    finally:
+        shutdown = getattr(mt5, "shutdown", None)
+        if callable(shutdown):
+            shutdown()
     click.echo(markdown(report))
     if json_out:
         Path(json_out).parent.mkdir(parents=True, exist_ok=True)
@@ -173,7 +179,13 @@ def data_validate(version: str) -> None:
         sys.exit(1)
     instr = Instrument(symbol=manifest.instrument, venue=manifest.venue)
     bars = store.read_bars(instr, manifest.timeframe, version=version)
-    report = validate_bars(bars)
+    session_cal = getattr(manifest, "session_calendar", None)
+    closures = (
+        _closure_intervals(bars[0].open_time, bars[-1].close_time, symbol=session_cal)
+        if session_cal and bars
+        else None
+    )
+    report = validate_bars(bars, manifest.timeframe, closure_intervals=closures)
     for c in report.checks:
         click.echo(f"{c.name}: {'PASS' if c.passed else 'FAIL'} {c.details}")
     click.echo(f"overall: {'PASS' if report.passed else 'FAIL'} ({len(bars)} bars)")

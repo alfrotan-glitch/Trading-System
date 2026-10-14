@@ -213,3 +213,20 @@ def test_the_markdown_reports_no_when_shallow() -> None:
 def test_the_sufficiency_boundary_is_exact(bars: int) -> None:
     report = probe(Terminal(bars_available=bars), "XAUUSD@", now=NOW)
     assert report.bar_depth_sufficient is (bars >= 5000)
+
+
+def test_bar_probe_records_oldest_and_newest_raw_epochs_when_present() -> None:
+    class TimedTerminal(Terminal):
+        def _bars(self, symbol, timeframe, start, count):
+            self.calls.append(("bars", (symbol, timeframe, start, count)))
+            return [
+                {"time": 1726704000},  # 2024-09-19T00:00:00+00:00
+                {"time": 1758240000},  # 2025-09-19T00:00:00+00:00
+            ]
+
+    report = probe(TimedTerminal(), "XAUUSD@", now=NOW)
+    assert report.oldest_bar_time_raw == "2024-09-19T00:00:00+00:00"
+    assert report.newest_bar_time_raw == "2025-09-19T00:00:00+00:00"
+    assert report.as_dict()["oldest_bar_time_raw"] == "2024-09-19T00:00:00+00:00"
+    assert report.as_dict()["newest_bar_time_raw"] == "2025-09-19T00:00:00+00:00"
+

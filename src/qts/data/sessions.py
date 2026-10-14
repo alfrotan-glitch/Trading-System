@@ -87,9 +87,9 @@ def closure_intervals(
     A calendar invented for one instrument must never be quietly applied to
     another whose hours differ.
     """
-    if symbol != SYMBOL:
+    if symbol not in (SYMBOL, CALENDAR_ID):
         raise ValueError(
-            f"no session calendar for {symbol!r}; only {SYMBOL!r} is modelled. "
+            f"no session calendar for {symbol!r}; only {SYMBOL!r} ({CALENDAR_ID!r}) is modelled. "
             "Supply explicit closure intervals for any other instrument."
         )
 

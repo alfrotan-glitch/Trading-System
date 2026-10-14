@@ -46,6 +46,7 @@ class Manifest(BaseModel):
     ingestion_timestamp: datetime | None = None
     preprocessing_version: str = "1.0"
     timezone: str = "UTC"
+    session_calendar: str | None = None
     missing_data_stats: dict | None = None
     session_stats: dict | None = None
 
@@ -196,9 +197,10 @@ class SqliteParquetDataStore:
         pq.write_table(table, out_dir / "part-0.parquet", compression="snappy")
         # Compute the same explicit gap model used by validation and inventory.
         # Do not swallow errors or silently fall back to a different population.
-        missing_stats = dataset_missing_stats(bars, timeframe)
+        missing_stats = dataset_missing_stats(bars, timeframe, closure_intervals=closure_intervals)
         session_stats = {
             "timezone": "UTC",
+            "session_calendar": session_calendar,
             "closure_policy": missing_stats.get("closure_policy"),
             "closure_gap_events": missing_stats.get("closure_gap_events"),
             "closure_intervals": missing_stats.get("closure_intervals"),
@@ -241,6 +243,7 @@ class SqliteParquetDataStore:
             ingestion_timestamp=datetime.now(UTC),
             preprocessing_version="1.0",
             timezone="UTC",
+            session_calendar=session_calendar,
             missing_data_stats=missing_stats,
             session_stats=session_stats,
         )
@@ -458,7 +461,7 @@ class SqliteParquetDataStore:
         if not deltas:
             return "1m"
         secs = Counter(deltas).most_common(1)[0][0]
-        known = {60: "1m", 300: "5m", 900: "15m", 3600: "1H", 86400: "1D"}
+        known = {60: "1m", 300: "5m", 900: "15m", 1800: "30m", 3600: "1H", 14400: "4H", 86400: "1D"}
         return known.get(secs, f"{secs}s")
 
     def close(self) -> None:

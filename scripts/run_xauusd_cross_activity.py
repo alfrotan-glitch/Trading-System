@@ -9,8 +9,9 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from qts.research.xauusd_directional_view import preflight_view
 from qts.research.xauusd_cross_activity import DISCOVERY_ROWS, CrossActivityScan, evaluate_cross_activity
+from qts.research.xauusd_directional_view import preflight_view
+
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="H-XF-02 runner")
@@ -48,7 +49,7 @@ def main(argv=None) -> int:
         md = f"# XAUUSD H-XF-02 volatility × activity (256/1024) — discovery only\n\n## H-XF-02: {hyp['status']}\n"
         for r in hyp["reasons"]:
             md += f"- {r}\n"
-        md += f"\nHeld-out 40%: CLOSED. Orders: 0. Demo execution: DISABLED.\n"
+        md += "\nHeld-out 40%: CLOSED. Orders: 0. Demo execution: DISABLED.\n"
         md += f"\n256: {result['measured'].get('256')}\n"
         args.markdown.write_text(md, encoding="utf-8")
 
