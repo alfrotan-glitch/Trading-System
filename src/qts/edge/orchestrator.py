@@ -61,9 +61,20 @@ depth/span, quality, costs, controls, and forward evidence.
     instr = Instrument(symbol=manifest.instrument, venue=manifest.venue)
     bars = store.read_bars(instr, manifest.timeframe, version=data_version) if store.version_usable(data_version) else []
     from qts.data.quality import dataset_missing_stats, validate_bars
+    from qts.data.sessions import closure_intervals as _closure_intervals
 
-    dq = validate_bars(bars) if bars else None
-    missing = dataset_missing_stats(bars, manifest.timeframe) if bars else _unavailable("no readable bars")
+    session_cal = getattr(manifest, "session_calendar", None)
+    closures = (
+        _closure_intervals(bars[0].open_time, bars[-1].close_time, symbol=session_cal)
+        if session_cal and bars
+        else None
+    )
+    dq = validate_bars(bars, manifest.timeframe, closure_intervals=closures) if bars else None
+    missing = (
+        dataset_missing_stats(bars, manifest.timeframe, closure_intervals=closures)
+        if bars
+        else _unavailable("no readable bars")
+    )
 
     # The locked partition is an actual partition/access record.  It is not a
     # substitute for forward observations and is never relabelled as one.

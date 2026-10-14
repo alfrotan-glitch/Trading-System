@@ -44,6 +44,7 @@ def audit_data_sources(root: Path = Path("data")) -> dict[str, Any]:
                 "tick_available": item["tick_count"],
                 "timestamp_quality": {
                     "timezone": item["timezone"],
+                    "session_calendar": item.get("session_calendar"),
                     "resolution": item["timestamp_resolution"],
                     "missingness": item["missingness"],
                     "gap_semantics": item.get("gaps", {}),

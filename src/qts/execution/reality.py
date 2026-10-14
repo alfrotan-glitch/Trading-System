@@ -47,8 +47,8 @@ class ExecutionObservation(BaseModel):
         if self.realized_price and self.expected_price and self.expected_price != 0:
             diff = float(self.realized_price - self.expected_price) / float(self.expected_price) * 10000
             self.slippage_bps = diff
-            if self.broker_ack_timestamp and self.submission_timestamp:
-                self.latency_ms = (self.broker_ack_timestamp - self.submission_timestamp).total_seconds() * 1000
+        if self.broker_ack_timestamp and self.submission_timestamp:
+            self.latency_ms = (self.broker_ack_timestamp - self.submission_timestamp).total_seconds() * 1000
 
 
 class ExecutionRealityStore:
@@ -93,14 +93,21 @@ class ExecutionRealityStore:
                 "note": "No real execution observations — cannot claim execution realism without actual observations. Synthetic may be used but must be labeled SYNTHETIC.",
             }
         real = [o for o in obs if o.source == "REAL"]
+        demo = [o for o in obs if o.source == "DEMO"]
+        unverified = [o for o in obs if o.source == "UNVERIFIED"]
         synth = [o for o in obs if o.source != "REAL"]
         slippages = [o.slippage_bps for o in real if o.slippage_bps is not None]
+        abs_slippages = [abs(s) for s in slippages]
         return {
             "count": len(obs),
             "real_count": len(real),
+            "demo_count": len(demo),
+            "unverified_count": len(unverified),
             "synthetic_count": len(synth),
             "avg_slippage_bps": float(sum(slippages) / len(slippages)) if slippages else None,
+            "avg_abs_slippage_bps": float(sum(abs_slippages) / len(abs_slippages)) if abs_slippages else None,
             "max_slippage_bps": float(max(slippages)) if slippages else None,
+            "max_abs_slippage_bps": float(max(abs_slippages)) if abs_slippages else None,
             "rejections": len([o for o in obs if o.rejection_reason]),
             "partial_fills": len([o for o in obs if o.partial_fill]),
             "never_claim_real_without_observations": True,

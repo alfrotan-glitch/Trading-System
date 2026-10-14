@@ -74,6 +74,8 @@ class DepthReport:
     generated_at: str
     observations: list[DepthObservation] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    oldest_bar_time_raw: str | None = None
+    newest_bar_time_raw: str | None = None
 
     @property
     def max_bar_rows(self) -> int | None:
@@ -104,6 +106,8 @@ class DepthReport:
             "generated_at": self.generated_at,
             "observations": [o.as_dict() for o in self.observations],
             "max_bar_rows": self.max_bar_rows,
+            "oldest_bar_time_raw": self.oldest_bar_time_raw,
+            "newest_bar_time_raw": self.newest_bar_time_raw,
             "oldest_tick_age_days": self.oldest_tick_age_days,
             "bar_depth_sufficient_for_frozen_benchmark": self.bar_depth_sufficient,
             "notes": self.notes,
@@ -139,7 +143,10 @@ def probe(mt5: Any, symbol: str, *, now: datetime | None = None) -> DepthReport:
         )
         return report
 
-    report.observations.extend(_probe_bars(mt5, symbol))
+    bar_obs, oldest_raw, newest_raw = _probe_bars(mt5, symbol)
+    report.observations.extend(bar_obs)
+    report.oldest_bar_time_raw = oldest_raw
+    report.newest_bar_time_raw = newest_raw
     report.observations.extend(_probe_ticks(mt5, symbol, now))
 
     if report.max_bar_rows == 0:
@@ -164,20 +171,47 @@ def probe(mt5: Any, symbol: str, *, now: datetime | None = None) -> DepthReport:
     return report
 
 
-def _probe_bars(mt5: Any, symbol: str) -> list[DepthObservation]:
+def _row_time_iso(row: Any) -> str | None:
+    raw = None
+    if hasattr(row, "time"):
+        raw = getattr(row, "time", None)
+    else:
+        try:
+            raw = row["time"]
+        except Exception:
+            raw = None
+    try:
+        epoch = int(raw) if raw is not None else 0
+    except (TypeError, ValueError):
+        return None
+    if epoch <= 0:
+        return None
+    try:
+        return datetime.fromtimestamp(epoch, tz=UTC).isoformat()
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
+def _probe_bars(mt5: Any, symbol: str) -> tuple[list[DepthObservation], str | None, str | None]:
     """How many M15 bars exist? Positional read; not a range request."""
     getter = getattr(mt5, "copy_rates_from_pos", None)
     tf_m15 = _mt5_constant(mt5, "TIMEFRAME_M15", 15)
     if getter is None:
-        return [
-            DepthObservation(
-                probe="bars", requested="M15 bars", observed="api unavailable",
-                rows=None, status="UNAVAILABLE",
-                detail="copy_rates_from_pos not exposed by the MT5 package",
-            )
-        ]
+        return (
+            [
+                DepthObservation(
+                    probe="bars", requested="M15 bars", observed="api unavailable",
+                    rows=None, status="UNAVAILABLE",
+                    detail="copy_rates_from_pos not exposed by the MT5 package",
+                )
+            ],
+            None,
+            None,
+        )
 
     out: list[DepthObservation] = []
+    oldest_iso: str | None = None
+    newest_iso: str | None = None
     for count in BAR_PROBE_COUNTS:
         try:
             rows = getter(symbol, tf_m15, 0, count)
@@ -191,6 +225,13 @@ def _probe_bars(mt5: Any, symbol: str) -> list[DepthObservation]:
             )
             continue
         n = 0 if rows is None else len(rows)
+        if n > 0 and rows is not None:
+            first_iso = _row_time_iso(rows[0])
+            last_iso = _row_time_iso(rows[-1])
+            if first_iso is not None:
+                oldest_iso = first_iso
+            if last_iso is not None:
+                newest_iso = last_iso
         out.append(
             DepthObservation(
                 probe="bars",
@@ -204,7 +245,7 @@ def _probe_bars(mt5: Any, symbol: str) -> list[DepthObservation]:
         # Ascending: stop as soon as the terminal cannot fill the request.
         if n < count:
             break
-    return out
+    return out, oldest_iso, newest_iso
 
 
 def _probe_ticks(mt5: Any, symbol: str, now: datetime) -> list[DepthObservation]:

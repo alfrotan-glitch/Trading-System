@@ -102,7 +102,6 @@ def build_view(zip_path: Path, view_dir: Path, authority_path: Path) -> dict:
         part_hashes: dict[str, str] = {}
         cumulative = 0
         selected_indices = []
-        previous_complete_end = None
         straddling_found = False
         for idx, part in enumerate(parts_ledger):
             name = part.get("part")

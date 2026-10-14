@@ -9,8 +9,9 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from qts.research.xauusd_directional_view import preflight_view
 from qts.research.xauusd_1m import DISCOVERY_ROWS, OneMScan, evaluate_1m
+from qts.research.xauusd_directional_view import preflight_view
+
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="H-1M-01 runner")
@@ -50,7 +51,7 @@ def main(argv=None) -> int:
         md = f"# XAUUSD H-1M-01 1m Donchian 20/12 (SYNTHETIC_DERIVED) — discovery only\n\n## H-1M-01: {hyp['status']}\n"
         for r in hyp["reasons"]:
             md += f"- {r}\n"
-        md += f"\nHeld-out 40%: CLOSED. Orders: 0. Demo execution: DISABLED. Bars derived from tick mids.\n"
+        md += "\nHeld-out 40%: CLOSED. Orders: 0. Demo execution: DISABLED. Bars derived from tick mids.\n"
         md += f"\nBars: {result['window'].get('n_bars')} Events: {result['window'].get('n_events')} Long {result['window'].get('n_long')} Short {result['window'].get('n_short')}\n"
         args.markdown.write_text(md, encoding="utf-8")
 
