@@ -20,24 +20,24 @@ The implementation is deliberately a thin, research-only entry point in `qts.res
 
 ## Existing historical evidence — not a new result
 
-The checked-in final-stage artifact is `data/evidence/longhistory/research_final.json`, governed by `docs/research/preregistration_longhistory_2026-10-10.md`. Its daily `ma_20_100_atr3` result is:
+The checked-in final-stage artifact is `data/evidence/longhistory/research_final.json`, governed by `docs/research/preregistration_longhistory_2026-10-10.md`. At the time it was generated, its daily `ma_20_100_atr3` result was:
 
 - Holdout net: **+$530**, Sharpe **0.30**, 14 round turns; net at 2× assumed costs **+$506**.
 - Walk-forward: Sharpe **0.17**, 6/10 positive years.
 - Gates: **4/7**. Fails Holm-adjusted significance; DSR is **0.12** against a 0.95 threshold; only **61** out-of-sample round turns against a 100 minimum.
 - Buy-and-hold's holdout was **+$8,796**, materially higher. Other pre-registered families also failed the full gates.
 
-This is not a profitability claim. The project verdict remains `NO_VALIDATED_EDGE`; all costs are assumed. The holdout was used by the daily and intraday studies, so it is not a fresh, independent selection target.
+**Accounting audit, 2026-10-14:** `docs/audit/longhistory_engine_accounting_audit_2026-10-14.md` found that the prior engine's mark-to-market multiplied a fixed entry fraction by changing equity, which implicitly resized positions without a fill or costs. These committed historical numbers use that pre-v2 execution model. They remain archived as historical diagnostics only; they are not validated performance evidence, are not comparable to the corrected `fixed_units.v2` engine, and have not been recomputed on the reused holdout. The standing verdict is still `NO_VALIDATED_EDGE`.
 
 ## Reproducible mechanism smoke output
 
-`scripts/run_selected_strategy_smoke.py` builds the 260-bar synthetic daily path and writes `reports/selected_strategy_smoke_2026-10-11.json`; the unit/regression test checks that artifact against the live runner output. The machine-readable record includes the OHLC fixture hash, assumptions, per-trade accounting, base-cost result, and 2× sensitivity. The base run is:
+`scripts/run_selected_strategy_smoke.py` builds the 260-bar synthetic daily path and writes `reports/selected_strategy_smoke_2026-10-11.json`; the unit/regression test checks that artifact against the live runner output. The machine-readable record includes the OHLC fixture hash, assumptions, the `fixed_units.v2` accounting-model version, per-trade accounting, base-cost result, and 2× sensitivity. The base run is:
 
 | Data | Candidate | Round turns | Gross | Simulated costs | Financing | Net | Final equity |
 |---|---|---:|---:|---:|---:|---:|---:|
-| Synthetic, mechanism-only | `ma_20_100_atr3` | 3 | $277.1921 | $17.2741 | $0.0000 | $259.9180 | $10,259.9180 |
+| Synthetic, mechanism-only (`fixed_units.v2`) | `ma_20_100_atr3` | 3 | $277.1050 | $17.2546 | $0.0000 | $259.8504 | $10,259.8504 |
 
-These numbers are a regression fixture for timing, sizing, cost decomposition and deterministic accounting. The synthetic path intentionally contains a trend; this output is **not a market backtest**, must not be compared with historical performance, and is not claim-eligible. The tests also verify truncation causality, 3×ATR sizing and stops, next-open entry, intrabar stop fills without same-direction re-entry, explicit cost assumptions, and lower net under 2× modeled cost.
+The 2× assumed-cost regression run is gross $276.9209, fill costs $34.4895, net $242.4314, and final equity $10,242.4314. These numbers are a regression fixture for timing, fixed-quantity accounting, sizing, cost decomposition and determinism. The synthetic path intentionally contains a trend; it is **not a market backtest**, must not be compared with historical performance, and is not claim-eligible. The tests also verify truncation causality, 3×ATR sizing and stops, next-open entry, intrabar stop fills without same-direction re-entry, explicit cost assumptions, no implicit resize between fills, explicit rebalance fills, and time-prorated carry.
 
 Reproduce the JSON output and its regression check with:
 

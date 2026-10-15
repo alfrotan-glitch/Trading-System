@@ -74,6 +74,7 @@ def _trade_output(trade) -> dict[str, object]:
 
 def _run_output(run) -> dict[str, object]:
     return {
+        "accounting_model_version": run.accounting_model_version,
         "round_turns": len(run.trades),
         "gross_usd": round(float(run.gross_usd), 4),
         "cost_usd": round(float(run.cost_usd), 4),

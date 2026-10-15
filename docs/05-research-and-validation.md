@@ -70,6 +70,23 @@ model = CostModel.xauusd_default(
 Until then the system says so: `economic edge blocked: costs were modelled but
 not MEASURED — an assumed cost cannot establish an economic edge`.
 
+### Long-history simulator accounting
+
+The daily/M15 research-only runner is versioned as `fixed_units.v2`. An entry
+converts target notional to signed ounces; quantity stays fixed until an entry,
+exit, stop, or explicit rebalance fill, and every size change pays modeled fill
+costs. Mark-to-market does not silently rebalance a fraction of changing equity.
+Run summaries record the accounting-model version. Its bps-per-calendar-day
+financing option is only a symmetric, time-prorated sensitivity model—not a
+broker's directional or triple-rollover swap schedule—and remains `ASSUMED`
+unless independently captured and reconciled.
+
+The 2026-10-14 accounting audit found that earlier long-history artifacts used
+implicit costless resizing. Those final-stage files remain preserved, but are
+historical diagnostics and are not comparable to `fixed_units.v2`. They were
+not regenerated against the reused holdout; see
+`docs/audit/longhistory_engine_accounting_audit_2026-10-14.md`.
+
 ### 5. Exit rules are part of the hypothesis
 
 A trend rule with a 3.00 USD stop and the same rule without one are **two
