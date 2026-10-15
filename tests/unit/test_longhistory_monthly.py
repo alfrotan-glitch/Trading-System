@@ -334,10 +334,12 @@ def test_quote_probe_accepts_correct_reading() -> None:
     assert len(probes) == sum(len(v) for v in build.QUOTE_PROBES.values())
 
 
-def test_gold_month_gap_fails_closed() -> None:
+def test_gold_month_gap_fails_closed(tmp_path) -> None:
     import scripts.build_longhistory_monthly_dataset as build
 
-    tmp = build.REPO_ROOT / "data" / "raw" / "gold_monthly_gap_test.csv"
+    # Write into pytest's tmp_path: data/raw/ is fully gitignored and does
+    # not exist in a fresh CI checkout.
+    tmp = tmp_path / "gold_monthly_gap_test.csv"
     # 2026-02 is missing between the three rows.
     pd.DataFrame({"Date": ["2026-01", "2026-03", "2026-04"], "Price": [100.0, 101.0, 103.0]}).to_csv(
         tmp, index=False
