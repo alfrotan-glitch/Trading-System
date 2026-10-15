@@ -116,13 +116,18 @@ def replicate_with_context(
     """Frozen holdout selections run on BaseMax monthly bars (source replication).
 
     The builders fit expanding statistics, so plans are built on the
-    concatenation of the research series (history prefix) and the replicate
-    series; the run window is replicate-only, so the engine still starts flat
-    at the replicate's first bar. The replicate uses real OHLC bars and the
-    engine's next-open fills — an independent quote stream and an independent
+    history-prefix concatenation: research months strictly BEFORE the
+    replicate window followed by the replicate months (this cycle's research
+    series spans the replicate window, so the full research frame cannot be
+    prepended — only its pre-window history, which is what "history prefix"
+    means here; the builders need far less than the ~31 years available). The
+    run window is replicate-only, so the engine still starts flat at the
+    replicate's first bar. The replicate uses real OHLC bars and the engine's
+    next-open fills — an independent quote stream and an independent
     execution convention versus the research TWAP-average convention.
     """
-    combined = pd.concat([context_df, replicate_df])
+    prefix = context_df[context_df.index < replicate_df.index[0]]
+    combined = pd.concat([prefix, replicate_df])
     out: dict[str, object] = {}
     for group, sel in selection.items():
         cid = sel.get("cid") if isinstance(sel, dict) else None
@@ -135,7 +140,7 @@ def replicate_with_context(
         out[group] = {
             "cid": cid,
             "status": "EVALUATED",
-            "history_prefix_months": int(len(context_df)),
+            "history_prefix_months": int(len(prefix)),
             "execution_convention": "next-open fills on real BaseMax monthly OHLC",
             **R.ST.summarize(run, periods_per_year=proto.PERIODS_PER_YEAR),
         }

@@ -590,7 +590,23 @@ def render_tables(result: dict[str, Any]) -> str:
         cells = [f"{rec['regimes_oos'][r]['net_usd']:,.2f} ({rec['regimes_oos'][r]['days']}d)" for r in regime_names]
         lines.append(f"| {group} | " + " | ".join(cells) + " |")
     lines.append("")
-    lines.append("## Dukascopy replicate 2025-08-06 → 2026-09-16 (frozen holdout selections, unchanged)")
+    # Replicate header: parents hard-coded the Dukascopy window; derive it
+    # from the data so cycles with a different replicate source/window (e.g.
+    # monthly BaseMax) print their own window instead of the parent's.
+    rep_bh = bh.get("replicate") or {}
+    rep_start = str(rep_bh.get("start") or "")
+    rep_end = str(rep_bh.get("end") or "")
+    legacy_rep_header = "## Dukascopy replicate 2025-08-06 → 2026-09-16 (frozen holdout selections, unchanged)"
+    if rep_start and rep_end and not (
+        rep_start[:10] == "2025-08-06" and rep_end[:10] == "2026-09-16"
+    ):
+        rep_src = (result.get("data") or {}).get("replicate_source", "replicate source")
+        lines.append(
+            f"## Replicate {rep_start[:10]} → {rep_end[:10]} ({rep_src}) "
+            "(frozen holdout selections, unchanged)"
+        )
+    else:
+        lines.append(legacy_rep_header)
     lines.append("")
     lines.append("| Group | Candidate | Status | Net USD | Sharpe | Round turns |")
     lines.append("|---|---|---|---:|---:|---:|")
