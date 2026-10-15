@@ -1,0 +1,404 @@
+{
+  "benchmarks": {
+    "buy_and_hold_long": {
+      "wf_2010_2019_composite": {
+        "chained_return": -0.2903,
+        "max_drawdown": -0.3682,
+        "sharpe": -0.2822,
+        "years": 10
+      }
+    }
+  },
+  "cost_base": {
+    "basis": "ASSUMED",
+    "commission_usd_per_lot_side": 7.0,
+    "cost_multiplier": 1.0,
+    "financing_bps_per_day": 0.0,
+    "financing_convention": "symmetric_time_prorated_bps_per_calendar_day",
+    "round_turn_bps_at_1300": 6.077,
+    "slippage_bps_per_side": 1.0,
+    "spread_bps_full": 3.0
+  },
+  "data": {
+    "execution_convention": "research bars: open=high=low=close=monthly average, decisions fill at the next month's average (TWAP); replicate bars: real OHLC, next-open fills",
+    "periods_per_year": 12,
+    "replicate_months": null,
+    "replicate_source": "BaseMax XAUUSD 15m aggregated to monthly OHLC (UTC)",
+    "research_first_month": "1973-01-31 00:00:00",
+    "research_last_month": "2026-09-30 00:00:00",
+    "research_months": 645,
+    "research_source": "World Bank monthly gold average + Fed H.10 basket USD index (see monthly_data_quality.json)"
+  },
+  "gates": {
+    "reason": "holdout not evaluated in dev stage",
+    "status": "NOT_EVALUATED_DEV_STAGE"
+  },
+  "generated_at": "2026-10-15T03:00:33.522247+00:00",
+  "n_trials": 72,
+  "periods_per_year": 12,
+  "prereg_id": "LH-XAUUSD-MON-2026-10-15",
+  "stage": "dev",
+  "verdict": {
+    "claim": "none",
+    "status": "NOT_EVALUATED"
+  },
+  "walk_forward": {
+    "folds": [
+      {
+        "selection": {
+          "gold_trend": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          },
+          "usd_agreement": {
+            "cid": "m_agree_6_12",
+            "net_usd": -447.4,
+            "round_turns": 2,
+            "sharpe": -1.2464,
+            "train_sharpe": 0.6536
+          },
+          "usd_veto": {
+            "cid": null,
+            "net_usd": 0.0,
+            "round_turns": 0,
+            "sharpe": 0.0
+          }
+        },
+        "year": 1990
+      },
+      {
+        "selection": {
+          "gold_trend": {
+            "cid": "m_tsmom_6",
+            "net_usd": 1.67,
+            "round_turns": 3,
+            "sharpe": 0.0272,
+            "train_sharpe": 0.5512
+          },
+          "usd_agreement": {
+            "cid": "m_agree_6_12",
+            "net_usd": 86.03,
+            "round_turns": 2,
+            "sharpe": 0.2104,
+            "train_sharpe": 0.6034
+          },
+          "usd_veto": {
+            "cid": "m_usdveto_6_12",
+            "net_usd": 133.09,
+            "round_turns": 3,
+            "sharpe": 0.3121,
+            "train_sharpe": 0.6284
+          }
+        },
+        "year": 1991
+      },
+      {
+        "selection": {
+          "gold_trend": {
+            "cid": "m_tsmom_6",
+            "net_usd": -39.64,
+            "round_turns": 3,
+            "sharpe": -0.0303,
+            "train_sharpe": 0.5215
+          },
+          "usd_agreement": {
+            "cid": "m_agree_6_12",
+            "net_usd": 69.54,
+            "round_turns": 3,
+            "sharpe": 0.1731,
+            "train_sharpe": 0.5711
+          },
+          "usd_veto": {
+            "cid": "m_usdveto_6_12",
+            "net_usd": 69.54,
+            "round_turns": 3,
+            "sharpe": 0.1739,
+            "train_sharpe": 0.6017
+          }
+        },
+        "year": 1992
+      },
+      {
+        "selection": {
+          "gold_trend": {
+            "cid": "m_tsmom_6",
+            "net_usd": -1065.93,
+            "round_turns": 2,
+            "sharpe": -0.8202,
+            "train_sharpe": 0.4933
+          },
+          "usd_agreement": {
+            "cid": "m_agree_12_12",
+            "net_usd": -1104.23,
+            "round_turns": 1,
+            "sharpe": -1.4423,
+            "train_sharpe": 0.5633
+          },
+          "usd_veto": {
+            "cid": "m_usdveto_6_12",
+            "net_usd": -1065.93,
+            "round_turns": 2,
+            "sharpe": -0.8202,
+            "train_sharpe": 0.5765
+          }
+        },
+        "year": 1993
+      },
+      {
+        "selection": {
+          "gold_trend": {
+            "cid": "m_tsmom_6",
+            "net_usd": -707.17,
+            "round_turns": 4,
+            "sharpe": -1.749,
+            "train_sharpe": 0.4321
+          },
+          "usd_agreement": {
+            "cid": "m_agree_12_12",
+            "net_usd": -487.68,
+            "round_turns": 3,
+            "sharpe": -1.8251,
+            "train_sharpe": 0.4821
+          },
+          "usd_veto": {
+            "cid": "m_usdveto_6_12",
+            "net_usd": -397.55,
+            "round_turns": 2,
+            "sharpe": -1.3422,
+            "train_sharpe": 0.5072
+          }
+        },
+        "year": 1994
+      },
+      {
+        "selection": {
+          "gold_trend": {
+            "cid": "m_tsmom_6",
+            "net_usd": -293.57,
+            "round_turns": 3,
+            "sharpe": -0.8668,
+            "train_sharpe": 0.3908
+          },
+          "usd_agreement": {
+            "cid": "m_agree_12_12",
+            "net_usd": -69.08,
+            "round_turns": 2,
+            "sharpe": -0.6052,
+            "train_sharpe": 0.4421
+          },
+          "usd_veto": {
+            "cid": "m_usdveto_6_12",
+            "net_usd": -8.6,
+            "round_turns": 1,
+            "sharpe": -0.0629,
+            "train_sharpe": 0.4765
+          }
+        },
+        "year": 1995
+      },
+      {
+        "selection": {
+          "gold_trend": {
+            "cid": "m_tsmom_6",
+            "net_usd": -210.54,
+            "round_turns": 2,
+            "sharpe": -0.4696,
+            "train_sharpe": 0.3721
+          },
+          "usd_agreement": {
+            "cid": "m_agree_12_12",
+            "net_usd": -76.24,
+            "round_turns": 4,
+            "sharpe": -0.1781,
+            "train_sharpe": 0.4283
+          },
+          "usd_veto": {
+            "cid": "m_usdveto_6_12",
+            "net_usd": -269.58,
+            "round_turns": 3,
+            "sharpe": -0.62,
+            "train_sharpe": 0.4655
+          }
+        },
+        "year": 1996
+      },
+      {
+        "selection": {
+          "gold_trend": {
+            "cid": "m_tsmom_6",
+            "net_usd": 1875.6,
+            "round_turns": 1,
+            "sharpe": 1.998,
+            "train_sharpe": 0.3492
+          },
+          "usd_agreement": {
+            "cid": "m_agree_12_12",
+            "net_usd": 1875.6,
+            "round_turns": 1,
+            "sharpe": 1.998,
+            "train_sharpe": 0.4367
+          },
+          "usd_veto": {
+            "cid": "m_usdveto_6_12",
+            "net_usd": 1875.6,
+            "round_turns": 1,
+            "sharpe": 1.998,
+            "train_sharpe": 0.4434
+          }
+        },
+        "year": 1997
+      },
+      {
+        "selection": {
+          "gold_trend": {
+            "cid": "m_tsmom_6",
+            "net_usd": -162.72,
+            "round_turns": 3,
+            "sharpe": -0.1992,
+            "train_sharpe": 0.4224
+          },
+          "usd_agreement": {
+            "cid": "m_agree_12_12",
+            "net_usd": 67.76,
+            "round_turns": 1,
+            "sharpe": 0.1279,
+            "train_sharpe": 0.5311
+          },
+          "usd_veto": {
+            "cid": "m_usdveto_6_12",
+            "net_usd": -162.72,
+            "round_turns": 3,
+            "sharpe": -0.1992,
+            "train_sharpe": 0.5171
+          }
+        },
+        "year": 1998
+      },
+      {
+        "selection": {
+          "gold_trend": {
+            "cid": "m_tsmom_12",
+            "net_usd": -775.6,
+            "round_turns": 3,
+            "sharpe": -0.2896,
+            "train_sharpe": 0.4027
+          },
+          "usd_agreement": {
+            "cid": "m_agree_12_12",
+            "net_usd": 1109.07,
+            "round_turns": 2,
+            "sharpe": 1.8541,
+            "train_sharpe": 0.5037
+          },
+          "usd_veto": {
+            "cid": "m_usdveto_6_12",
+            "net_usd": 665.8,
+            "round_turns": 3,
+            "sharpe": 1.0053,
+            "train_sharpe": 0.4866
+          }
+        },
+        "year": 1999
+      }
+    ],
+    "summary": {
+      "gold_trend": {
+        "wf_chained_return": -0.1531,
+        "wf_positive_years": 2,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 3,
+            "net_usd": -1544.43
+          },
+          "DOWN_LOWVOL": {
+            "days": 68,
+            "net_usd": 2208.64
+          },
+          "UP_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_LOWVOL": {
+            "days": 37,
+            "net_usd": -2042.12
+          }
+        },
+        "wf_sharpe": -0.1452,
+        "wf_years_with_trades": 9
+      },
+      "usd_agreement": {
+        "wf_chained_return": 0.0746,
+        "wf_positive_years": 5,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 4,
+            "net_usd": -5.68
+          },
+          "DOWN_LOWVOL": {
+            "days": 79,
+            "net_usd": 2646.36
+          },
+          "UP_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_LOWVOL": {
+            "days": 37,
+            "net_usd": -1617.31
+          }
+        },
+        "wf_sharpe": 0.1539,
+        "wf_years_with_trades": 10
+      },
+      "usd_veto": {
+        "wf_chained_return": 0.0604,
+        "wf_positive_years": 4,
+        "wf_regimes": {
+          "DOWN_HIVOL": {
+            "days": 3,
+            "net_usd": -207.5
+          },
+          "DOWN_LOWVOL": {
+            "days": 68,
+            "net_usd": 2493.49
+          },
+          "UP_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_LOWVOL": {
+            "days": 37,
+            "net_usd": -1446.36
+          }
+        },
+        "wf_sharpe": 0.1296,
+        "wf_years_with_trades": 9
+      }
+    }
+  },
+  "windows": {
+    "dev_end": "1999-12-31",
+    "holdout": [
+      "2000-01-01",
+      "2026-09-30"
+    ],
+    "research": [
+      "1973-01-01",
+      "2026-09-30"
+    ],
+    "wf_test_years": [
+      1990,
+      1991,
+      1992,
+      1993,
+      1994,
+      1995,
+      1996,
+      1997,
+      1998,
+      1999
+    ]
+  }
+}

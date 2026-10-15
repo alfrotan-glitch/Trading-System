@@ -1,0 +1,250 @@
+{
+  "cross_source": {
+    "max_abs_rel_diff": 0.115103,
+    "mean_abs_rel_diff": 0.02008,
+    "median_abs_rel_diff": 0.015385078581321172,
+    "note": "World Bank monthly averages (LBMA-based) versus BaseMax broker-quotes monthly bars; an information check on the overlapping calendar, not an execution-price claim.",
+    "overlap_months": 249,
+    "pearson_close_correlation": 0.997771
+  },
+  "execution_convention": "open=high=low=close=World-Bank monthly average price; decisions at month t fill at the open of month t+1 (the month t+1 published average = uniform-across-the-month TWAP); no interpolation, no synthetic bars, missing months fail the build",
+  "generated_at": "2026-10-15T02:49:22.560111+00:00",
+  "primary_series": {
+    "end": "2026-09-30",
+    "missing_months": 0,
+    "months": 645,
+    "path": "xauusd_worldbank_monthly_utc_197301_202609.csv",
+    "sha256": "0db007ba59f46006a6844897a2471b75e800ed2949c091fe6d376be1def433cd",
+    "start": "1973-01-31",
+    "usd_basket_size": 8
+  },
+  "quote_convention": {
+    "basket": [
+      "Australia",
+      "Canada",
+      "Denmark",
+      "Japan",
+      "New Zealand",
+      "Sweden",
+      "Switzerland",
+      "United Kingdom"
+    ],
+    "note": "The datasets/exchange-rates README claims USD/currency quotes for Australia, Ireland, New Zealand and the United Kingdom; the actual extract values fail the currency-per-USD probes if inverted, so all basket series are used as-is. The probe table is the evidence for that decision.",
+    "probes": [
+      {
+        "accepted_range": [
+          1.0,
+          2.0
+        ],
+        "country": "Australia",
+        "observation_date": "1985-03-01",
+        "probe_date": "1985-03-01",
+        "reading": "currency_per_usd",
+        "value": 1.4114
+      },
+      {
+        "accepted_range": [
+          1.2,
+          1.6
+        ],
+        "country": "Canada",
+        "observation_date": "1985-03-01",
+        "probe_date": "1985-03-01",
+        "reading": "currency_per_usd",
+        "value": 1.3885
+      },
+      {
+        "accepted_range": [
+          8.0,
+          16.0
+        ],
+        "country": "Denmark",
+        "observation_date": "1985-03-01",
+        "probe_date": "1985-03-01",
+        "reading": "currency_per_usd",
+        "value": 12.02
+      },
+      {
+        "accepted_range": [
+          200.0,
+          300.0
+        ],
+        "country": "Japan",
+        "observation_date": "1985-03-01",
+        "probe_date": "1985-03-01",
+        "reading": "currency_per_usd",
+        "value": 260.35
+      },
+      {
+        "accepted_range": [
+          1.8,
+          3.0
+        ],
+        "country": "New Zealand",
+        "observation_date": "1985-03-01",
+        "probe_date": "1985-03-01",
+        "reading": "currency_per_usd",
+        "value": 2.3256
+      },
+      {
+        "accepted_range": [
+          8.0,
+          12.0
+        ],
+        "country": "Sweden",
+        "observation_date": "1985-03-01",
+        "probe_date": "1985-03-01",
+        "reading": "currency_per_usd",
+        "value": 9.53
+      },
+      {
+        "accepted_range": [
+          2.0,
+          4.0
+        ],
+        "country": "Switzerland",
+        "observation_date": "1985-03-01",
+        "probe_date": "1985-03-01",
+        "reading": "currency_per_usd",
+        "value": 2.861
+      },
+      {
+        "accepted_range": [
+          0.7,
+          1.2
+        ],
+        "country": "United Kingdom",
+        "observation_date": "1985-03-01",
+        "probe_date": "1985-03-01",
+        "reading": "currency_per_usd",
+        "value": 0.9328
+      },
+      {
+        "accepted_range": [
+          1.2,
+          1.8
+        ],
+        "country": "Australia",
+        "observation_date": "2024-01-02",
+        "probe_date": "2024-01-02",
+        "reading": "currency_per_usd",
+        "value": 1.4769
+      },
+      {
+        "accepted_range": [
+          1.2,
+          1.5
+        ],
+        "country": "Canada",
+        "observation_date": "2024-01-02",
+        "probe_date": "2024-01-02",
+        "reading": "currency_per_usd",
+        "value": 1.331
+      },
+      {
+        "accepted_range": [
+          6.0,
+          8.0
+        ],
+        "country": "Denmark",
+        "observation_date": "2024-01-02",
+        "probe_date": "2024-01-02",
+        "reading": "currency_per_usd",
+        "value": 6.8041
+      },
+      {
+        "accepted_range": [
+          120.0,
+          160.0
+        ],
+        "country": "Japan",
+        "observation_date": "2024-01-02",
+        "probe_date": "2024-01-02",
+        "reading": "currency_per_usd",
+        "value": 141.89
+      },
+      {
+        "accepted_range": [
+          1.4,
+          1.9
+        ],
+        "country": "New Zealand",
+        "observation_date": "2024-01-02",
+        "probe_date": "2024-01-02",
+        "reading": "currency_per_usd",
+        "value": 1.5967
+      },
+      {
+        "accepted_range": [
+          9.0,
+          12.0
+        ],
+        "country": "Sweden",
+        "observation_date": "2024-01-02",
+        "probe_date": "2024-01-02",
+        "reading": "currency_per_usd",
+        "value": 10.1963
+      },
+      {
+        "accepted_range": [
+          0.8,
+          1.3
+        ],
+        "country": "Switzerland",
+        "observation_date": "2024-01-02",
+        "probe_date": "2024-01-02",
+        "reading": "currency_per_usd",
+        "value": 0.8483
+      },
+      {
+        "accepted_range": [
+          0.7,
+          0.9
+        ],
+        "country": "United Kingdom",
+        "observation_date": "2024-01-02",
+        "probe_date": "2024-01-02",
+        "reading": "currency_per_usd",
+        "value": 0.7916
+      }
+    ],
+    "reading": "currency-per-USD"
+  },
+  "replicate_series": {
+    "bars_15m_source_rows": 475286,
+    "end": "2025-02-28",
+    "months": 249,
+    "months_with_less_than_60_bars": 0,
+    "path": "xauusd_basemax_monthly_utc_200406_202502.csv",
+    "sha256": "1a6ab6301978c1ab4e4fab2663c9351363e0af5a63f83502718bdff78912d16c",
+    "start": "2004-06-30"
+  },
+  "schema": "qts.longhistory.monthly_data_quality.v1",
+  "sources": [
+    {
+      "commit": "f6e97610178379ef8db280702fcaa3ec0875c5c2",
+      "license_note": "Repository PDDL (maintainers' statement). Modern data: World Bank Commodity Markets (Pink Sheet), freely available; 1833-1959 historical table not used.",
+      "path": "data/monthly.csv",
+      "repo": "https://github.com/datasets/gold-prices",
+      "sha256": "f5945c29f746ff14e54acd635dcbb43dbe9f4706f22d6ac8c5d7c3b7908ebcf5",
+      "source_id": "worldbank_gold_monthly"
+    },
+    {
+      "commit": "c023dd8b8f879610641a7391c0394c3bbb42d0f7",
+      "license_note": "Repository PDDL (maintainers' statement) for gathered FRED/Federal Reserve H.10 quotes; source data are US Federal Reserve daily FX rates.",
+      "path": "data/daily.csv",
+      "repo": "https://github.com/datasets/exchange-rates",
+      "sha256": "68349ef41ecc0cf35fa00ba0d9d63ec93b45a5182c37d2bb9a368fcd654bfeaa",
+      "source_id": "fed_h10_fx_daily"
+    },
+    {
+      "commit": "43f4177e701fdf3643cc02413e4337932af57401",
+      "license_note": "See docs/research/longhistory_data_provenance_2026-10-10.md (research-only stream).",
+      "path": "processed/xauusd_basemax_utc_15m_20040611_20250228.csv",
+      "repo": "https://github.com/BaseMax/XAUUSD-LSTM",
+      "sha256": "22c43f79b4258edf548b9d06188300f95d62305e6d87a4511c5ba56b5fa6fa6b",
+      "source_id": "basemax_monthly_replicate"
+    }
+  ],
+  "status": "OK"
+}

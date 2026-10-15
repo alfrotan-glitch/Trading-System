@@ -141,7 +141,7 @@ def holdout(df: pd.DataFrame, plans: dict[str, Plan], end: str, proto: Any = P) 
             for m in proto.COST_STRESS_MULTIPLIERS
         }
         zero = run_window(df, plan, proto.HOLDOUT_START, end, proto.COST_BASE.scaled(0.0))
-        out["groups"][group] = {
+        rec: dict[str, Any] = {
             "cid": cid,
             "base": base,
             "stress": stress,
@@ -149,6 +149,12 @@ def holdout(df: pd.DataFrame, plans: dict[str, Plan], end: str, proto: Any = P) 
             "break_even_multiplier": break_even_multiplier(df, plan, proto.HOLDOUT_START, end),
             "sign_randomisation_p": sign_randomisation_p(base),
         }
+        # Optional pre-registered financing-charged regime (protocols that
+        # define COST_FINANCING; parents do not, so their results are unchanged).
+        financing_model = getattr(proto, "COST_FINANCING", None)
+        if financing_model is not None:
+            rec["financing_charged"] = run_window(df, plan, proto.HOLDOUT_START, end, financing_model)
+        out["groups"][group] = rec
     return out
 
 
@@ -332,6 +338,11 @@ def evaluate(
                 "selection_train_sharpe": ho["selection"][group]["train_sharpe"],
                 "base": ST.summarize(base, num_trials=proto.N_TRIALS, periods_per_year=ppy),
                 "stress": {k: ST.summarize(v, periods_per_year=ppy) for k, v in rec["stress"].items()},
+                "financing_charged": (
+                    ST.summarize(rec["financing_charged"], periods_per_year=ppy)
+                    if "financing_charged" in rec
+                    else None
+                ),
                 "gross_zero_cost_usd": round(rec["gross_zero_cost"].net_usd, 2),
                 "break_even_multiplier": rec["break_even_multiplier"],
                 "sign_randomisation": rec["sign_randomisation_p"],
@@ -432,6 +443,11 @@ def gates(
             # evaluation-window break-even cost multiplier must reach g8_min.
             be = rec.get("break_even_multiplier") or {}
             checks["G8_break_even_multiplier_ge_min"] = float(be.get("value", 0.0) or 0.0) >= float(g8_min)
+        if getattr(proto, "GATE_FINANCING_CHARGED_POSITIVE", False):
+            # Optional gate: net evaluation-window P&L must stay positive when
+            # the protocol's financing-charged cost regime is applied.
+            fin = rec.get("financing_charged") or {}
+            checks["G9_financing_charged_net_positive"] = float(fin.get("net_usd") or 0.0) > 0.0
         failed = [k for k, v in checks.items() if not v]
         out[group] = {
             "cid": rec["cid"],
@@ -493,7 +509,12 @@ def render_tables(result: dict[str, Any]) -> str:
     lines.append("")
     lines.append(f"Verdict: **{result['verdict']['status']}**. Claim: {result['verdict']['claim']}")
     lines.append("")
-    lines.append("## Holdout 2020-01-01 → 2025-02-28 (selection frozen on data through 2019-12-31)")
+    win = result.get("windows", {})
+    holdout = win.get("holdout", ["HOLDOUT_START", "RESEARCH_END"])
+    lines.append(
+        f"## Holdout {holdout[0]} → {holdout[1]} "
+        f"(selection frozen on data through {win.get('dev_end', 'DEV_END')})"
+    )
     lines.append("")
     lines.append(
         "| Group | Selected | Net USD | Sharpe | 95% CI (Sharpe) | Max DD | Round turns | Win rate | Cost USD | Net @2x | Net @3x | Break-even cost x | Holm p | Exposure |"
@@ -521,7 +542,9 @@ def render_tables(result: dict[str, Any]) -> str:
             f"{bh['holdout_2x_cost_net_usd']:,.2f} | — | — | — | 100% |"
         )
     lines.append("")
-    lines.append("## Walk-forward 2010–2019 (per-year selection, frozen within each year)")
+    wf_years = win.get("wf_test_years") or []
+    wf_span = f"{wf_years[0]}–{wf_years[-1]}" if wf_years else "WF"
+    lines.append(f"## Walk-forward {wf_span} (per-year selection, frozen within each year)")
     lines.append("")
     lines.append("| Group | WF Sharpe | Positive years | Years traded | Chained return |")
     lines.append("|---|---:|---:|---:|---:|")
@@ -556,7 +579,7 @@ def render_tables(result: dict[str, Any]) -> str:
             f"{'YES' if rec['passes_all'] else 'no'} |"
         )
     lines.append("")
-    lines.append("## Regimes (out-of-sample net USD, WF 2010–2019 plus holdout)")
+    lines.append(f"## Regimes (out-of-sample net USD, WF {wf_span} plus holdout)")
     lines.append("")
     regime_names = ["UP_HIVOL", "UP_LOWVOL", "DOWN_HIVOL", "DOWN_LOWVOL"]
     lines.append("| Group | " + " | ".join(regime_names) + " |")
@@ -567,7 +590,23 @@ def render_tables(result: dict[str, Any]) -> str:
         cells = [f"{rec['regimes_oos'][r]['net_usd']:,.2f} ({rec['regimes_oos'][r]['days']}d)" for r in regime_names]
         lines.append(f"| {group} | " + " | ".join(cells) + " |")
     lines.append("")
-    lines.append("## Dukascopy replicate 2025-08-06 → 2026-09-16 (frozen holdout selections, unchanged)")
+    # Replicate header: parents hard-coded the Dukascopy window; derive it
+    # from the data so cycles with a different replicate source/window (e.g.
+    # monthly BaseMax) print their own window instead of the parent's.
+    rep_bh = bh.get("replicate") or {}
+    rep_start = str(rep_bh.get("start") or "")
+    rep_end = str(rep_bh.get("end") or "")
+    legacy_rep_header = "## Dukascopy replicate 2025-08-06 → 2026-09-16 (frozen holdout selections, unchanged)"
+    if rep_start and rep_end and not (
+        rep_start[:10] == "2025-08-06" and rep_end[:10] == "2026-09-16"
+    ):
+        rep_src = (result.get("data") or {}).get("replicate_source", "replicate source")
+        lines.append(
+            f"## Replicate {rep_start[:10]} → {rep_end[:10]} ({rep_src}) "
+            "(frozen holdout selections, unchanged)"
+        )
+    else:
+        lines.append(legacy_rep_header)
     lines.append("")
     lines.append("| Group | Candidate | Status | Net USD | Sharpe | Round turns |")
     lines.append("|---|---|---|---:|---:|---:|")
