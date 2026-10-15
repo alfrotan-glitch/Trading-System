@@ -159,6 +159,7 @@ def summarize(run: RunResult, num_trials: int | None = None, periods_per_year: i
     r = run.returns
     years = max(len(run.days), 1) / periods_per_year
     out: dict[str, object] = {
+        "accounting_model_version": run.accounting_model_version,
         "start": str(run.days[0].date()) if len(run.days) else None,
         "end": str(run.days[-1].date()) if len(run.days) else None,
         "bars": int(len(run.days)),

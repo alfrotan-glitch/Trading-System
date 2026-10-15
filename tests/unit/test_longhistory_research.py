@@ -213,6 +213,93 @@ def test_decision_at_close_fills_at_next_open():
     assert run.trades[0].entry_day == df.index[6]
 
 
+def test_position_quantity_stays_fixed_until_an_explicit_rebalance():
+    idx = pd.date_range("2024-01-01", periods=4, freq="D")
+    prices = np.array([100.0, 100.0, 110.0, 121.0])
+    bars = pd.DataFrame(
+        {"open": prices, "high": prices, "low": prices, "close": prices}, index=idx
+    )
+    n = len(bars)
+    target = np.full(n, np.nan)
+    target[0] = 1.0
+    size = np.full(n, np.nan)
+    size[0] = 0.5
+    no_rebalance = G._plan(
+        bars, "fixed_units", {}, target.copy(), size.copy(), np.full(n, np.nan)
+    )
+
+    fixed = E.run_plan(bars, no_rebalance, 0, n, ZERO_COST)
+    assert fixed.gross_usd == pytest.approx(1_050.0)  # 50 oz x ($121 - $100)
+    assert fixed.final_equity == pytest.approx(11_050.0)
+    assert fixed.accounting_model_version == "fixed_units.v2"
+
+    target[1] = 1.0
+    size[1] = 1.0
+    rebalance = np.zeros(n, dtype=bool)
+    rebalance[1] = True
+    explicit_rebalance = G._plan(bars, "fixed_units", {}, target, size, np.full(n, np.nan), rebalance)
+    resized = E.run_plan(bars, explicit_rebalance, 0, n, ZERO_COST)
+    assert resized.gross_usd == pytest.approx(1_550.0)  # explicit resize occurs at the $110 open
+    assert resized.final_equity == pytest.approx(11_550.0)
+    assert resized.turnover_fraction > fixed.turnover_fraction
+
+
+def test_explicit_rebalance_charges_only_the_actual_quantity_delta():
+    idx = pd.date_range("2024-01-01", periods=4, freq="D")
+    price = np.full(4, 100.0)
+    bars = pd.DataFrame({"open": price, "high": price, "low": price, "close": price}, index=idx)
+    target = np.full(4, np.nan)
+    target[0:2] = 1.0
+    size = np.full(4, np.nan)
+    size[0:2] = [0.5, 1.0]
+    rebalance = np.zeros(4, dtype=bool)
+    rebalance[1] = True
+    plan = G._plan(bars, "rebalance_cost", {}, target, size, np.full(4, np.nan), rebalance)
+    costs = E.CostModel(spread_bps=3.0, slippage_bps=1.0, commission_usd_per_lot_side=7.0, basis="TEST")
+    run = E.run_plan(bars, plan, 0, len(bars), costs)
+
+    rate = costs.side_rate(100.0)
+    entry_notional = 5_000.0
+    entry_cost = entry_notional * rate
+    equity_after_entry = 10_000.0 - entry_cost
+    target_notional = equity_after_entry
+    rebalance_cost = (target_notional - entry_notional) * rate
+    exit_cost = target_notional * rate
+    assert run.cost_usd == pytest.approx(entry_cost + rebalance_cost + exit_cost)
+    assert run.final_equity == pytest.approx(10_000.0 - run.cost_usd)
+    assert run.trades[0].net_usd == pytest.approx(run.net_usd)
+
+
+def test_zero_cap_skips_entry_and_zero_size_explicit_rebalance_closes():
+    idx = pd.date_range("2024-01-01", periods=4, freq="D")
+    price = np.full(4, 100.0)
+    bars = pd.DataFrame({"open": price, "high": price, "low": price, "close": price}, index=idx)
+    target = np.full(4, np.nan)
+    target[:2] = 1.0
+    size = np.full(4, np.nan)
+    size[:2] = [0.5, 0.0]
+    rebalance = np.zeros(4, dtype=bool)
+    rebalance[1] = True
+    plan = G._plan(bars, "zero_size_rebalance", {}, target, size, np.full(4, np.nan), rebalance)
+    costs = E.CostModel(spread_bps=3.0, slippage_bps=1.0, commission_usd_per_lot_side=7.0, basis="TEST")
+
+    no_capacity = E.run_plan(bars, plan, 0, len(bars), costs, cap=0.0)
+    assert no_capacity.trades == []
+    assert not no_capacity.held.any()
+    assert no_capacity.turnover_fraction == 0.0
+    assert no_capacity.cost_usd == 0.0
+
+    closed = E.run_plan(bars, plan, 0, len(bars), costs)
+    entry_notional = 5_000.0
+    side_rate = costs.side_rate(100.0)
+    assert len(closed.trades) == 1
+    assert closed.trades[0].exit_day == idx[2]
+    assert not closed.trades[0].forced_exit
+    assert closed.trades[0].gross_usd == pytest.approx(0.0)
+    assert closed.cost_usd == pytest.approx(2.0 * entry_notional * side_rate)
+    assert closed.final_equity == pytest.approx(10_000.0 - closed.cost_usd)
+
+
 def test_zero_cost_identity_trades_equal_equity_change():
     df = _walk(200, seed=4)
     plan = _plan_at(df, 10, sd=None)
@@ -226,10 +313,11 @@ def test_costs_match_hand_calculation_on_flat_price():
     costs = E.CostModel(spread_bps=3.0, slippage_bps=1.0, commission_usd_per_lot_side=7.0, basis="TEST")
     run = E.run_plan(df, _plan_at(df, 5, size=0.5), 0, 30, costs)
     rate = costs.side_rate(100.0)
-    e1 = 10_000.0 - 0.5 * 10_000.0 * rate  # entry
-    e2 = e1 - 0.5 * e1 * rate  # forced exit at the same price
+    entry_notional = 0.5 * 10_000.0
+    e1 = 10_000.0 - entry_notional * rate  # entry cost
+    e2 = e1 - entry_notional * rate  # fixed 50 oz exit at the same price
     assert run.final_equity == pytest.approx(e2, rel=1e-12)
-    assert run.cost_usd == pytest.approx(10_000.0 - e2, rel=1e-9)
+    assert run.cost_usd == pytest.approx(2 * entry_notional * rate, rel=1e-9)
 
 
 def test_stop_fills_at_stop_level_when_range_crosses_it():
@@ -282,6 +370,96 @@ def test_cost_model_commission_scales_with_price():
     cheap = E.CostModel(spread_bps=0, slippage_bps=0, commission_usd_per_lot_side=7.0)
     assert cheap.side_rate(1000.0) > cheap.side_rate(4000.0)
     assert cheap.scaled(2.0).side_rate(1000.0) == pytest.approx(2 * cheap.side_rate(1000.0))
+
+
+def test_cost_model_rejects_non_finite_negative_and_invalid_price_inputs():
+    invalid_models = (
+        {"spread_bps": -0.1},
+        {"slippage_bps": np.nan},
+        {"commission_usd_per_lot_side": np.inf},
+        {"financing_bps_per_day": -0.1},
+        {"multiplier": -1.0},
+        {"spread_usd_per_oz": np.inf},
+        {"slippage_usd_per_oz_side": -0.1},
+    )
+    for values in invalid_models:
+        with pytest.raises(ValueError):
+            E.CostModel(**values)
+    for price in (0.0, -1.0, np.nan, np.inf):
+        with pytest.raises(ValueError, match="fill price"):
+            E.CostModel().side_rate(price)
+    with pytest.raises(ValueError):
+        E.CostModel().scaled(-1.0)
+
+
+def test_run_plan_refuses_invalid_risk_or_ohlc_inputs():
+    bars = _walk(10)
+    plan = _plan_at(bars, 2)
+    for equity in (0.0, -1.0, np.nan, np.inf):
+        with pytest.raises(ValueError, match="initial_equity"):
+            E.run_plan(bars, plan, 0, len(bars), ZERO_COST, initial_equity=equity)
+    with pytest.raises(ValueError, match="no leverage"):
+        E.run_plan(bars, plan, 0, len(bars), ZERO_COST, cap=1.01)
+    malformed = bars.copy()
+    malformed.iloc[4, malformed.columns.get_loc("low")] = malformed["high"].iloc[4] + 1.0
+    with pytest.raises(ValueError, match="OHLC ranges"):
+        E.run_plan(malformed, _plan_at(malformed, 2), 0, len(malformed), ZERO_COST)
+    bad_target = np.full(len(bars), np.nan)
+    bad_target[2] = 2.0
+    bad_plan = G._plan(bars, "bad", {}, bad_target, np.ones(len(bars)), np.full(len(bars), np.nan))
+    with pytest.raises(ValueError, match="targets must be"):
+        E.run_plan(bars, bad_plan, 0, len(bars), ZERO_COST)
+
+
+def test_financing_is_time_prorated_and_includes_calendar_gaps():
+    costs = E.CostModel(
+        spread_bps=0.0,
+        slippage_bps=0.0,
+        commission_usd_per_lot_side=0.0,
+        financing_bps_per_day=24.0,
+        basis="ASSUMED_TEST",
+    )
+    # Four 15-minute holding intervals equal one hour: 24 bps/day on $5,000
+    # is $12/day, hence $0.50 for one hour (not 96x the daily rate).
+    idx = pd.date_range("2024-01-01", periods=7, freq="15min")
+    flat = np.full(len(idx), 100.0)
+    bars = pd.DataFrame({"open": flat, "high": flat, "low": flat, "close": flat}, index=idx)
+    target = np.full(len(idx), np.nan)
+    target[0], target[4] = 1.0, 0.0
+    size = np.full(len(idx), np.nan)
+    size[0] = 0.5
+    plan = G._plan(bars, "carry", {}, target, size, np.full(len(idx), np.nan))
+    intraday = E.run_plan(bars, plan, 0, len(bars), costs)
+    assert intraday.financing_usd == pytest.approx(0.5)
+    assert intraday.net_usd == pytest.approx(-intraday.financing_usd)
+
+    # Friday-to-Monday is three calendar days in this continuous-rate model;
+    # this is not a broker-specific weekday/triple-swap convention.
+    daily_idx = pd.DatetimeIndex(["2024-01-04", "2024-01-05", "2024-01-08", "2024-01-09"])
+    daily = pd.DataFrame(
+        {"open": flat[:4], "high": flat[:4], "low": flat[:4], "close": flat[:4]}, index=daily_idx
+    )
+    daily_target = np.full(4, np.nan)
+    daily_target[0], daily_target[1] = 1.0, 0.0
+    daily_size = np.full(4, np.nan)
+    daily_size[0] = 0.5
+    daily_plan = G._plan(daily, "carry", {}, daily_target, daily_size, np.full(4, np.nan))
+    weekend = E.run_plan(daily, daily_plan, 0, len(daily), costs)
+    assert weekend.financing_usd == pytest.approx(36.0)  # $12/day x three calendar days
+
+    # The terminal estimate uses only intervals inside this run window. Large
+    # gaps after its end must not leak into the final in-window carry charge.
+    partial_idx = pd.DatetimeIndex(["2024-01-01", "2024-01-02", "2024-01-12", "2024-01-22"])
+    partial = pd.DataFrame(
+        {"open": flat[:4], "high": flat[:4], "low": flat[:4], "close": flat[:4]}, index=partial_idx
+    )
+    partial_target = np.full(4, np.nan)
+    partial_target[0] = 1.0
+    partial_size = np.full(4, np.nan)
+    partial_size[0] = 0.5
+    partial_plan = G._plan(partial, "carry_window", {}, partial_target, partial_size, np.full(4, np.nan))
+    windowed = E.run_plan(partial, partial_plan, 0, 2, costs)
+    assert windowed.financing_usd == pytest.approx(12.0)  # one in-window day, not a future ten-day gap
 
 
 # ----------------------------------------------------------------------- statistics

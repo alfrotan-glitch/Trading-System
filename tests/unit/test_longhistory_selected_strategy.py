@@ -54,6 +54,7 @@ def test_default_cost_model_keeps_each_component_and_unknown_financing_honest():
         "slippage_bps_per_side": 1.0,
         "commission_usd_per_lot_side": 7.0,
         "financing_bps_per_day": 0.0,
+        "financing_convention": "symmetric_time_prorated_bps_per_calendar_day",
         "cost_multiplier": 1.0,
         "round_turn_bps_at_1300": 6.077,
     }
@@ -113,11 +114,12 @@ def test_smoke_backtest_is_next_open_costed_and_reproducible():
     report = build_smoke_report()
     base = report["base_cost_run"]
     assert base["round_turns"] == 3
-    assert base["gross_usd"] == 277.1921
-    assert base["cost_usd"] == 17.2741
+    assert base["accounting_model_version"] == "fixed_units.v2"
+    assert base["gross_usd"] == 277.105
+    assert base["cost_usd"] == 17.2546
     assert base["financing_usd"] == 0.0
-    assert base["net_usd"] == 259.918
-    assert base["final_equity_usd"] == 10259.918
+    assert base["net_usd"] == 259.8504
+    assert base["final_equity_usd"] == 10259.8504
     assert base["cost_basis"] == "ASSUMED"
     assert report["data"]["class"] == "SYNTHETIC_MECHANISM_ONLY"
     assert report["validation"] == {
