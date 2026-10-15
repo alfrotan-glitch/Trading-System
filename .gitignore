@@ -92,3 +92,4 @@ data/raw/longhistory/
 # All raw third-party market data (incl. external_checks clones used for source
 # cross-checks) stays machine-local. Only manifests and bounded summaries are committed.
 data/raw/
+scratch/
