@@ -87,3 +87,18 @@ def test_ensemble_hand_built_direction() -> None:
     plan = ES.ensemble_tsmom(df, (2, 4, 8), vol_n=12, ann=12)
     tail = plan.target[-10:]
     assert bool((tail[np.isfinite(tail)] == 1.0).all())
+
+
+def test_forward_champions_states_on_rising_frame() -> None:
+    from qts.research.longhistory import forward as FWD
+
+    n = 60
+    idx = pd.date_range("2001-01-31", periods=n, freq="ME")
+    gold = 1000.0 * (1.02 ** np.arange(n))
+    df = pd.DataFrame(
+        {"open": gold, "high": gold, "low": gold, "close": gold, "usd": np.ones(n)}, index=idx
+    )
+    states = FWD.current_states(df)
+    assert states["ts9_lo"]["state"] == "LONG"
+    assert states["veto9"]["state"] == "LONG"  # rising gold: veto never engages
+    assert 0.0 < float(states["ts9_lo"]["size_fraction"]) <= 1.0  # type: ignore[arg-type]

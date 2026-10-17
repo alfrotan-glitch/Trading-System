@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T06:25:43.640936+00:00",
+  "generated_at": "2026-10-17T09:50:37.495612+00:00",
   "limitations": [
     "Provider and licence of the BaseMax/Kaggle bars are unverified; no broker measurement exists.",
     "Prices in the research window come from one quote stream (see price_agreement); they are not independent.",
