@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-10-17T12:30:16.926828+00:00",
+  "method": "independent stdlib+numpy reimplementation; no qts.research.longhistory imports",
+  "reference_evidence": {
+    "ts9_lo": {
+      "net_usd": 70989.0,
+      "sharpe": 0.837,
+      "source": "ensemble/hybrid_research_final.json"
+    },
+    "veto9": {
+      "net_usd": 49897.0,
+      "sharpe": 0.662,
+      "source": "hybrid_research_final.json"
+    }
+  },
+  "windows": {
+    "evaluation_2000_2026": {
+      "ts9_lo": {
+        "net_usd": 70988.62,
+        "sharpe": 0.8365,
+        "entries": 16,
+        "max_drawdown": -0.3098,
+        "months": 321,
+        "net_deviation_pct": 0.001,
+        "sharpe_deviation": 0.0005,
+        "within_tolerance": true
+      },
+      "veto9": {
+        "net_usd": 49897.43,
+        "sharpe": 0.6618,
+        "entries": 9,
+        "max_drawdown": -0.3597,
+        "months": 321,
+        "net_deviation_pct": 0.001,
+        "sharpe_deviation": 0.0002,
+        "within_tolerance": true
+      }
+    }
+  },
+  "verdict": "AGREE"
+}
