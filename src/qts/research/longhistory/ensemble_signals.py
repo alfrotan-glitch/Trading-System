@@ -79,16 +79,23 @@ def tsmom_single(
     long_only: bool = False,
     vol_n: int,
     ann: int,
+    sizing_vol_n: int | None = None,
 ) -> Plan:
-    """Trailing-return sign at one lookback, vol-targeted."""
+    """Trailing-return sign at one lookback, vol-targeted.
+
+    ``sizing_vol_n`` optionally estimates the sizing volatility over a
+    shorter window than the signal warm-up window (fast de-risking).
+    """
     _validate_frame(df)
     if lookback < 1:
         raise ValueError("lookback must be >= 1")
     target = np.sign((df["close"] / df["close"].shift(lookback) - 1.0).to_numpy())
     target = _clip_long_only(target, long_only)
     return _finish(
-        df, "tsmom_single", {"lookback": lookback, "long_only": long_only, "vol_n": vol_n, "ann": ann},
-        target, vol_size(df, vol_n, ann),
+        df, "tsmom_single",
+        {"lookback": lookback, "long_only": long_only, "vol_n": vol_n, "ann": ann,
+         "sizing_vol_n": sizing_vol_n or vol_n},
+        target, vol_size(df, sizing_vol_n or vol_n, ann),
     )
 
 
@@ -125,6 +132,61 @@ def ensemble_tsmom(
         "ann": ann,
     }
     return _finish(df, "ensemble_tsmom", params, target, size)
+def _apply_drawdown_brake(
+    df: pd.DataFrame, base: Plan, peak_n: int, threshold: float, mode: str
+) -> Plan:
+    """Scale/flatten a base plan while gold sits deep below its trailing peak.
+
+    Causal: the peak uses closes up to and including bar ``t``; the plan
+    still executes at ``t+1``. ``mode='half'`` halves the size, ``'flat'``
+    zeroes the target, whenever ``close < threshold * trailing peak``.
+    """
+    if mode not in ("half", "flat"):
+        raise ValueError("brake mode must be 'half' or 'flat'")
+    peak = df["close"].rolling(peak_n, min_periods=peak_n).max()
+    deep = (df["close"] < threshold * peak).to_numpy()
+    target = np.asarray(base.target, dtype=float).copy()
+    size = pd.Series(np.asarray(base.size, dtype=float), index=df.index)
+    if mode == "flat":
+        target[deep] = 0.0
+    else:
+        size = size.where(~deep, size * 0.5)
+    params = dict(base.params)
+    params.update({"brake_peak_n": peak_n, "brake_threshold": threshold, "brake_mode": mode})
+    return _finish(df, base.family + "_braked", params, target, size)
+
+
+def braked_tsmom_single(
+    df: pd.DataFrame,
+    lookback: int,
+    *,
+    long_only: bool = False,
+    vol_n: int,
+    ann: int,
+    peak_n: int = 24,
+    threshold: float = 0.85,
+    mode: str = "half",
+) -> Plan:
+    """``tsmom_single`` with a trailing-peak drawdown brake on size/target."""
+    base = tsmom_single(df, lookback=lookback, long_only=long_only, vol_n=vol_n, ann=ann)
+    return _apply_drawdown_brake(df, base, peak_n, threshold, mode)
+
+
+def braked_usd_veto(
+    df: pd.DataFrame,
+    lookbacks: tuple[int, ...],
+    *,
+    usd_lb: int = 12,
+    vol_n: int,
+    ann: int,
+    peak_n: int = 24,
+    threshold: float = 0.85,
+    mode: str = "half",
+) -> Plan:
+    """``ensemble_usd_veto`` with a trailing-peak drawdown brake."""
+    base = ensemble_usd_veto(df, lookbacks=lookbacks, usd_lb=usd_lb, vol_n=vol_n, ann=ann)
+    return _apply_drawdown_brake(df, base, peak_n, threshold, mode)
+
 
 def bollinger_control(df: pd.DataFrame, *, vol_n: int, ann: int) -> Plan:
     """CONTROL: 20-bar two-sigma mean reversion, target masked to sized bars."""
@@ -156,6 +218,7 @@ def ensemble_usd_veto(
     usd_lb: int = 12,
     vol_n: int,
     ann: int,
+    sizing_vol_n: int | None = None,
 ) -> Plan:
     """Ensemble trend; shorts only while the USD index rose over ``usd_lb`` bars."""
     _validate_frame(df)
@@ -165,8 +228,9 @@ def ensemble_usd_veto(
     target = np.where(trend > 0, 1.0, np.where(trend < 0, np.where(usd_up, -1.0, 0.0), 0.0))
     params: dict[str, float | int | bool | str] = {
         "lookbacks": ",".join(str(lb) for lb in lookbacks), "usd_lb": usd_lb, "vol_n": vol_n, "ann": ann,
+        "sizing_vol_n": sizing_vol_n or vol_n,
     }
-    return _finish(df, "ensemble_usd_veto", params, target, vol_size(df, vol_n, ann))
+    return _finish(df, "ensemble_usd_veto", params, target, vol_size(df, sizing_vol_n or vol_n, ann))
 
 
 def ensemble_usd_agreement(

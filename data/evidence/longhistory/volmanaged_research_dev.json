@@ -1,0 +1,296 @@
+{
+  "prereg_id": "LH-XAUUSD-VOLM-2026-10-17",
+  "stage": "dev",
+  "n_trials": 285,
+  "periods_per_year": 12,
+  "cost_base": {
+    "basis": "ASSUMED",
+    "spread_bps_full": 3.0,
+    "slippage_bps_per_side": 1.0,
+    "commission_usd_per_lot_side": 7.0,
+    "financing_bps_per_day": 0.0,
+    "financing_convention": "symmetric_time_prorated_bps_per_calendar_day",
+    "cost_multiplier": 1.0,
+    "round_turn_bps_at_1300": 6.077
+  },
+  "windows": {
+    "research": [
+      "1973-01-01",
+      "2026-09-30"
+    ],
+    "dev_end": "1999-12-31",
+    "holdout": [
+      "2000-01-01",
+      "2026-09-30"
+    ],
+    "wf_test_years": [
+      1990,
+      1991,
+      1992,
+      1993,
+      1994,
+      1995,
+      1996,
+      1997,
+      1998,
+      1999
+    ]
+  },
+  "walk_forward": {
+    "folds": [
+      {
+        "year": 1990,
+        "selection": {
+          "vm_veto": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1991,
+        "selection": {
+          "vm_veto": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1992,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.7539,
+            "net_usd": 349.63,
+            "sharpe": 1.012,
+            "round_turns": 2
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1993,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.7556,
+            "net_usd": -1311.19,
+            "sharpe": -1.1054,
+            "round_turns": 2
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1994,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6768,
+            "net_usd": -360.81,
+            "sharpe": -0.7336,
+            "round_turns": 3
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1995,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6427,
+            "net_usd": 238.54,
+            "sharpe": 1.4084,
+            "round_turns": 3
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1996,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6365,
+            "net_usd": -217.15,
+            "sharpe": -0.504,
+            "round_turns": 3
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1997,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6293,
+            "net_usd": 1876.83,
+            "sharpe": 1.998,
+            "round_turns": 1
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1998,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6874,
+            "net_usd": -49.18,
+            "sharpe": -0.049,
+            "round_turns": 3
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1999,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6619,
+            "net_usd": 979.91,
+            "sharpe": 1.5683,
+            "round_turns": 2
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      }
+    ],
+    "summary": {
+      "vm_veto": {
+        "wf_sharpe": 0.2506,
+        "wf_positive_years": 4,
+        "wf_years_with_trades": 8,
+        "wf_chained_return": 0.1266,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_LOWVOL": {
+            "days": 37,
+            "net_usd": -1209.34
+          },
+          "DOWN_HIVOL": {
+            "days": 3,
+            "net_usd": -134.84
+          },
+          "DOWN_LOWVOL": {
+            "days": 56,
+            "net_usd": 2850.77
+          }
+        }
+      },
+      "vm_lo": {
+        "wf_sharpe": 0.0,
+        "wf_positive_years": 0,
+        "wf_years_with_trades": 0,
+        "wf_chained_return": 0.0,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_LOWVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "DOWN_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "DOWN_LOWVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          }
+        }
+      }
+    }
+  },
+  "benchmarks": {
+    "buy_and_hold_long": {
+      "wf_2010_2019_composite": {
+        "sharpe": -0.2822,
+        "chained_return": -0.2903,
+        "max_drawdown": -0.3682,
+        "years": 10
+      }
+    }
+  },
+  "gates": {
+    "status": "NOT_EVALUATED_DEV_STAGE",
+    "reason": "holdout not evaluated in dev stage"
+  },
+  "verdict": {
+    "status": "NOT_EVALUATED",
+    "claim": "none"
+  },
+  "generated_at": "2026-10-17T10:10:30.365720+00:00",
+  "data": {
+    "research_monthly_rows": 645,
+    "replicate_monthly_rows": null,
+    "research_source": "World Bank monthly gold average + Fed H.10 USD index (month-end stamps)",
+    "replicate_source": "BaseMax monthly OHLC aggregated from 15m bars (next-open fills)"
+  }
+}
