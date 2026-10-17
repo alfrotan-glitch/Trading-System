@@ -297,3 +297,70 @@ The most useful single number in the findings is the cost column: trend and
 breakout consume 91% and 95% of their own gross in assumed costs. Until costs
 are measured on your broker (step 3 of this runbook), no verdict can be more
 than provisional.
+
+---
+
+## 8. Measuring real broker costs (spread, swap, commission, slippage)
+
+Everything in this section is **read-only** and submits no order. It produces
+JSON evidence artifacts; keep them — they are the only thing that can ever
+turn a research cost from `ASSUMED` into `MEASURED`. Fields the broker does
+not expose are reported `UNAVAILABLE`, never zero. Run every step on the DEMO
+account only; the commands refuse a non-DEMO identity.
+
+### 8.1 Directional swap and symbol terms (do this first)
+
+```bat
+qts demo symbol-terms --json-out artifacts\symbol_terms.json
+```
+
+Reports `swap_long`/`swap_short` in points and, for points-mode USD symbols,
+converted USD per lot per night, plus contract size, tick geometry and the
+current spread. The swap line is the carrying cost of holding a position —
+for the frozen gold champions (long-biased, held for months) `swap_long` is
+a first-order cost that per-deal evidence cannot reveal until after a
+position has been held overnight. Note `swap_rollover3days` (usually
+Wednesday): that weekday is charged 3x. Repeat per broker/account and record
+the server name and date with the artifact; swap schedules change.
+
+### 8.2 Spread profile (repeat across sessions)
+
+```bat
+qts demo spread-profile --samples 60 --interval-sec 5 --json-out artifacts\spread_london.json
+qts demo spread-profile --samples 60 --interval-sec 5 --json-out artifacts\spread_rollover.json
+```
+
+Run at least: a London/NY-overlap sample, a quiet sample, and one spanning
+the 00:00 server-time rollover, where retail gold spreads widen most. Judge
+stress on p95/p99, not the median.
+
+### 8.3 Commission (from deals — never trade just to measure)
+
+```bat
+qts demo cost-check --record
+```
+
+If the DEMO account already has deals, this backfills their commission /
+swap / fee verbatim into the tamper-evident evidence store. If it has none,
+commission stays `UNKNOWN` until an authorized DEMO fill exists (Section 6
+is the only path that creates one, under its own gates and limits).
+
+### 8.4 Slippage
+
+Slippage accrues in the execution-reality store from DEMO fills
+(`avg_abs_slippage_bps`). With no fills it is `UNKNOWN` — that is the honest
+state, not a gap to paper over.
+
+### 8.5 Assemble the measured cost model
+
+```bat
+qts demo measured-model --spread-profile artifacts\spread_london.json --symbol-terms artifacts\symbol_terms.json --direction long --json-out artifacts\measured_cost_model.json
+```
+
+The output tags every component (`spread`, `commission`, `slippage`,
+`financing`) with its own basis. **`claim_eligible` must be `true`** — every
+component MEASURED — before any research number may cite measured costs.
+Anything less is sensitivity material only. A measured model is specific to
+one broker + account type; re-measure when either changes, and compare
+`swap_long` against the financing break-even published in the research audit
+before trusting any long-horizon result at that broker.

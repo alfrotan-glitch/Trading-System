@@ -654,6 +654,179 @@ def demo_cost_check(
         click.echo(f"report written to {json_out}")
 
 
+def _require_demo_identity(session: Any) -> dict[str, Any]:
+    """Fail closed: cost measurement is only ever taken from a DEMO account."""
+    try:
+        identity = session.adapter.broker_identity().as_dict()
+    except Exception as exc:
+        click.echo(
+            f"REFUSED: DEMO identity cannot be verified ({type(exc).__name__}: {exc}); "
+            "no measurement taken, no order submitted. Broker cost measurement "
+            "requires a Windows host with MetaTrader 5 installed and a DEMO "
+            "account logged in (see docs/windows_demo_runbook.md, Section 8)."
+        )
+        raise SystemExit(2) from exc
+    if identity.get("is_demo") is not True:
+        click.echo(
+            "REFUSED: account is not DEMO "
+            f"(is_demo={identity.get('is_demo')}); no measurement taken, no order submitted."
+        )
+        raise SystemExit(2)
+    return identity
+
+
+@demo.command("symbol-terms")
+@click.option("--symbol", default=None)
+@click.option("--db", default=default_db_path)
+@click.option("--terminal-path", default=None)
+@click.option("--json-out", default=None)
+def demo_symbol_terms(symbol: str | None, db: str, terminal_path: str | None, json_out: str | None) -> None:
+    """Read-only probe of broker symbol cost terms (directional swap, tick
+    geometry, current spread). Submits nothing.
+
+    This is the ONLY way the pipeline learns overnight carrying cost before
+    a position exists: per-deal evidence can only report swap after the
+    fact. Fields the broker does not expose are reported UNAVAILABLE.
+    """
+    session = _demo_session(symbol or "", db, terminal_path)
+    identity = _require_demo_identity(session)
+    terms = session.adapter.symbol_cost_terms(session.broker_symbol)
+    report: dict[str, Any] = {
+        "schema": "qts.demo_symbol_terms.v1",
+        "generated_at": _utcnow().isoformat(),
+        "symbol": session.canonical_symbol,
+        "broker_symbol": session.broker_symbol,
+        "server": identity.get("server"),
+        "login": identity.get("login"),
+        "terms": terms,
+        "orders_submitted": 0,
+    }
+    click.echo(f"symbol: {session.canonical_symbol} -> {session.broker_symbol} (DEMO {identity.get('server')})")
+    click.echo(f"swap mode: {terms.get('swap_mode_name')}  rollover3days: {terms.get('swap_rollover3days')}")
+    click.echo(f"swap long:  {terms.get('swap_long_points')} pts -> {terms.get('swap_long_usd_per_lot_night')} USD/lot/night")
+    click.echo(f"swap short: {terms.get('swap_short_points')} pts -> {terms.get('swap_short_usd_per_lot_night')} USD/lot/night")
+    click.echo(f"spread now: {terms.get('spread_price_units')} ({terms.get('spread_bps_of_mid')} bps of mid)")
+    if terms.get("unavailable_fields"):
+        click.echo(f"UNAVAILABLE fields: {', '.join(terms['unavailable_fields'])}")
+    click.echo("No order was submitted by this command.")
+    if json_out:
+        Path(json_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(json_out).write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+        click.echo(f"report written to {json_out}")
+
+
+@demo.command("spread-profile")
+@click.option("--symbol", default=None)
+@click.option("--db", default=default_db_path)
+@click.option("--terminal-path", default=None)
+@click.option("--samples", default=30, type=int)
+@click.option("--interval-sec", default=2.0, type=float)
+@click.option("--json-out", default=None)
+def demo_spread_profile(
+    symbol: str | None,
+    db: str,
+    terminal_path: str | None,
+    samples: int,
+    interval_sec: float,
+    json_out: str | None,
+) -> None:
+    """Sample the live quoted spread N times and report its distribution.
+
+    Read-only. Repeat across sessions (London/NY/rollover) and merge the
+    JSON artifacts offline; the rollover hour is where retail gold spreads
+    widen most, so a single quiet-hour profile understates cost.
+    """
+    from qts.execution.spread_profile import collect_spread_profile
+
+    session = _demo_session(symbol or "", db, terminal_path)
+    _require_demo_identity(session)
+    adapter = session.adapter
+    broker_symbol = session.broker_symbol
+    profile = collect_spread_profile(
+        lambda: adapter.symbol_cost_terms(broker_symbol),
+        samples=samples,
+        interval_sec=interval_sec,
+        symbol=session.canonical_symbol,
+        source="qts.demo.spread_profile (read-only DEMO quote sampler)",
+    )
+    profile["broker_symbol"] = broker_symbol
+    profile["orders_submitted"] = 0
+    stats = profile.get("spread_bps") or {}
+    click.echo(f"symbol: {session.canonical_symbol} -> {broker_symbol}")
+    click.echo(f"samples: {profile['samples_usable']} usable / {profile['samples_total']} total")
+    if stats:
+        click.echo(
+            "spread bps: p50={p50} p90={p90} p95={p95} p99={p99} max={max}".format(**stats)
+        )
+    else:
+        click.echo("spread bps: UNMEASURED (no usable quote samples)")
+    click.echo("No order was submitted by this command.")
+    if json_out:
+        Path(json_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(json_out).write_text(json.dumps(profile, indent=2, default=str), encoding="utf-8")
+        click.echo(f"profile written to {json_out}")
+
+
+@demo.command("measured-model")
+@click.option("--spread-profile", "spread_profile_path", default=None)
+@click.option("--symbol-terms", "symbol_terms_path", default=None)
+@click.option("--direction", default="long", type=click.Choice(["long", "short"]))
+@click.option("--db", default=default_db_path)
+@click.option("--json-out", default=None)
+def demo_measured_model(
+    spread_profile_path: str | None,
+    symbol_terms_path: str | None,
+    direction: str,
+    db: str,
+    json_out: str | None,
+) -> None:
+    """Assemble a broker-MEASURED cost model from pipeline evidence (offline).
+
+    Reads a spread-profile JSON, a symbol-terms JSON, the recorded deal
+    evidence store (commission) and the execution-reality store (slippage).
+    Any component without a measurement stays UNKNOWN and the model is
+    reported NOT claim-eligible — it never upgrades an assumption silently.
+    """
+    from qts.execution.measured_model import build_measured_cost_model
+    from qts.execution.reality import ExecutionRealityStore
+
+    def _load(path: str | None) -> dict[str, Any] | None:
+        if not path:
+            return None
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+
+    spread_profile = _load(spread_profile_path)
+    terms_doc = _load(symbol_terms_path)
+    symbol_terms = (terms_doc or {}).get("terms") if terms_doc else None
+
+    session = _demo_session("", db)
+    deals: list[Any] = []
+    store = session.cost_evidence_store
+    if store is not None:
+        ok, problems = store.verify_chain()
+        if not ok:
+            raise click.ClickException(f"cost evidence chain does not verify: {problems}")
+        deals = store.deals()
+    slippage_bps = ExecutionRealityStore().summary().get("avg_abs_slippage_bps")
+
+    model = build_measured_cost_model(
+        spread_profile=spread_profile,
+        symbol_terms=symbol_terms,
+        deals=deals,
+        slippage_bps=slippage_bps,
+        direction=direction,
+    )
+    click.echo(f"claim_eligible: {model['claim_eligible']}")
+    for comp in model["components"]:
+        click.echo(f"  {comp['name']:<10} basis={comp['basis']}")
+    if json_out:
+        Path(json_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(json_out).write_text(json.dumps(model, indent=2, default=str), encoding="utf-8")
+        click.echo(f"model written to {json_out}")
+    else:
+        click.echo(json.dumps(model, indent=2, default=str))
+
+
 def _utcnow() -> Any:
     from datetime import UTC, datetime
 

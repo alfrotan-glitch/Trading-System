@@ -1,0 +1,390 @@
+{
+  "prereg_id": "LH-XAUUSD-HYB-2026-10-17",
+  "stage": "dev",
+  "n_trials": 237,
+  "periods_per_year": 12,
+  "cost_base": {
+    "basis": "ASSUMED",
+    "spread_bps_full": 3.0,
+    "slippage_bps_per_side": 1.0,
+    "commission_usd_per_lot_side": 7.0,
+    "financing_bps_per_day": 0.0,
+    "financing_convention": "symmetric_time_prorated_bps_per_calendar_day",
+    "cost_multiplier": 1.0,
+    "round_turn_bps_at_1300": 6.077
+  },
+  "windows": {
+    "research": [
+      "1973-01-01",
+      "2026-09-30"
+    ],
+    "dev_end": "1999-12-31",
+    "holdout": [
+      "2000-01-01",
+      "2026-09-30"
+    ],
+    "wf_test_years": [
+      1990,
+      1991,
+      1992,
+      1993,
+      1994,
+      1995,
+      1996,
+      1997,
+      1998,
+      1999
+    ]
+  },
+  "walk_forward": {
+    "folds": [
+      {
+        "year": 1990,
+        "selection": {
+          "hyb_veto": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "hyb_agree": {
+            "cid": "agree6912",
+            "train_sharpe": 0.6885,
+            "net_usd": -220.66,
+            "sharpe": -1.4827,
+            "round_turns": 2
+          },
+          "hyb_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1991,
+        "selection": {
+          "hyb_veto": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "hyb_agree": {
+            "cid": "agree9",
+            "train_sharpe": 0.6893,
+            "net_usd": 2.4,
+            "sharpe": 0.0262,
+            "round_turns": 3
+          },
+          "hyb_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1992,
+        "selection": {
+          "hyb_veto": {
+            "cid": "veto9",
+            "train_sharpe": 0.6547,
+            "net_usd": 349.63,
+            "sharpe": 1.012,
+            "round_turns": 2
+          },
+          "hyb_agree": {
+            "cid": "agree9",
+            "train_sharpe": 0.6665,
+            "net_usd": 349.63,
+            "sharpe": 1.012,
+            "round_turns": 2
+          },
+          "hyb_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1993,
+        "selection": {
+          "hyb_veto": {
+            "cid": "veto9",
+            "train_sharpe": 0.6627,
+            "net_usd": -1065.93,
+            "sharpe": -0.8202,
+            "round_turns": 2
+          },
+          "hyb_agree": {
+            "cid": "agree9",
+            "train_sharpe": 0.6805,
+            "net_usd": -1225.52,
+            "sharpe": -1.6357,
+            "round_turns": 1
+          },
+          "hyb_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1994,
+        "selection": {
+          "hyb_veto": {
+            "cid": "veto9",
+            "train_sharpe": 0.5875,
+            "net_usd": -309.61,
+            "sharpe": -0.667,
+            "round_turns": 3
+          },
+          "hyb_agree": {
+            "cid": "agree9",
+            "train_sharpe": 0.5854,
+            "net_usd": -286.58,
+            "sharpe": -0.6156,
+            "round_turns": 3
+          },
+          "hyb_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1995,
+        "selection": {
+          "hyb_veto": {
+            "cid": "veto9",
+            "train_sharpe": 0.5576,
+            "net_usd": 238.54,
+            "sharpe": 1.4084,
+            "round_turns": 3
+          },
+          "hyb_agree": {
+            "cid": "agree9",
+            "train_sharpe": 0.5525,
+            "net_usd": 238.54,
+            "sharpe": 1.4084,
+            "round_turns": 3
+          },
+          "hyb_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1996,
+        "selection": {
+          "hyb_veto": {
+            "cid": "veto9",
+            "train_sharpe": 0.5547,
+            "net_usd": -217.15,
+            "sharpe": -0.504,
+            "round_turns": 3
+          },
+          "hyb_agree": {
+            "cid": "agree9",
+            "train_sharpe": 0.5524,
+            "net_usd": -65.45,
+            "sharpe": -0.1649,
+            "round_turns": 3
+          },
+          "hyb_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1997,
+        "selection": {
+          "hyb_veto": {
+            "cid": "veto9",
+            "train_sharpe": 0.5504,
+            "net_usd": 1875.6,
+            "sharpe": 1.998,
+            "round_turns": 1
+          },
+          "hyb_agree": {
+            "cid": "agree9",
+            "train_sharpe": 0.5579,
+            "net_usd": 1875.6,
+            "sharpe": 1.998,
+            "round_turns": 1
+          },
+          "hyb_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1998,
+        "selection": {
+          "hyb_veto": {
+            "cid": "veto9",
+            "train_sharpe": 0.6207,
+            "net_usd": -130.32,
+            "sharpe": -0.152,
+            "round_turns": 3
+          },
+          "hyb_agree": {
+            "cid": "agree9",
+            "train_sharpe": 0.646,
+            "net_usd": -62.22,
+            "sharpe": -0.0558,
+            "round_turns": 2
+          },
+          "hyb_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1999,
+        "selection": {
+          "hyb_veto": {
+            "cid": "veto9",
+            "train_sharpe": 0.588,
+            "net_usd": 902.65,
+            "sharpe": 1.3906,
+            "round_turns": 2
+          },
+          "hyb_agree": {
+            "cid": "agree9",
+            "train_sharpe": 0.6083,
+            "net_usd": 1114.75,
+            "sharpe": 1.8658,
+            "round_turns": 1
+          },
+          "hyb_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      }
+    ],
+    "summary": {
+      "hyb_veto": {
+        "wf_sharpe": 0.2777,
+        "wf_positive_years": 4,
+        "wf_years_with_trades": 8,
+        "wf_chained_return": 0.1469,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_LOWVOL": {
+            "days": 37,
+            "net_usd": -912.88
+          },
+          "DOWN_HIVOL": {
+            "days": 3,
+            "net_usd": -212.11
+          },
+          "DOWN_LOWVOL": {
+            "days": 56,
+            "net_usd": 2768.39
+          }
+        }
+      },
+      "hyb_agree": {
+        "wf_sharpe": 0.2766,
+        "wf_positive_years": 5,
+        "wf_years_with_trades": 10,
+        "wf_chained_return": 0.1512,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_LOWVOL": {
+            "days": 37,
+            "net_usd": -1123.52
+          },
+          "DOWN_HIVOL": {
+            "days": 4,
+            "net_usd": -132.54
+          },
+          "DOWN_LOWVOL": {
+            "days": 79,
+            "net_usd": 2976.55
+          }
+        }
+      },
+      "hyb_lo": {
+        "wf_sharpe": 0.0,
+        "wf_positive_years": 0,
+        "wf_years_with_trades": 0,
+        "wf_chained_return": 0.0,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_LOWVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "DOWN_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "DOWN_LOWVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          }
+        }
+      }
+    }
+  },
+  "benchmarks": {
+    "buy_and_hold_long": {
+      "wf_2010_2019_composite": {
+        "sharpe": -0.2822,
+        "chained_return": -0.2903,
+        "max_drawdown": -0.3682,
+        "years": 10
+      }
+    }
+  },
+  "gates": {
+    "status": "NOT_EVALUATED_DEV_STAGE",
+    "reason": "holdout not evaluated in dev stage"
+  },
+  "verdict": {
+    "status": "NOT_EVALUATED",
+    "claim": "none"
+  },
+  "generated_at": "2026-10-17T06:32:30.484360+00:00",
+  "data": {
+    "research_monthly_rows": 645,
+    "replicate_monthly_rows": null,
+    "research_source": "World Bank monthly gold average + Fed H.10 USD index (month-end stamps)",
+    "replicate_source": "BaseMax monthly OHLC aggregated from 15m bars (next-open fills)"
+  }
+}

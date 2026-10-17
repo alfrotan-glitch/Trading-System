@@ -1,0 +1,399 @@
+{
+  "prereg_id": "LH-XAUUSD-W1-2026-10-17",
+  "stage": "dev",
+  "n_trials": 190,
+  "periods_per_year": 52,
+  "cost_base": {
+    "basis": "ASSUMED",
+    "spread_bps_full": 3.0,
+    "slippage_bps_per_side": 1.0,
+    "commission_usd_per_lot_side": 7.0,
+    "financing_bps_per_day": 0.0,
+    "financing_convention": "symmetric_time_prorated_bps_per_calendar_day",
+    "cost_multiplier": 1.0,
+    "round_turn_bps_at_1300": 6.077
+  },
+  "windows": {
+    "research": [
+      "2004-06-11",
+      "2025-02-28"
+    ],
+    "dev_end": "2019-12-31",
+    "holdout": [
+      "2020-01-01",
+      "2025-02-28"
+    ],
+    "wf_test_years": [
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019
+    ]
+  },
+  "walk_forward": {
+    "folds": [
+      {
+        "year": 2010,
+        "selection": {
+          "wk_ens": {
+            "cid": "w_e4132652_ls_gr",
+            "train_sharpe": 0.8813,
+            "net_usd": 929.42,
+            "sharpe": 1.0527,
+            "round_turns": 4
+          },
+          "wk_trend": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "wk_longonly": {
+            "cid": "w_e4132652_lo",
+            "train_sharpe": 0.9982,
+            "net_usd": 1167.28,
+            "sharpe": 1.1891,
+            "round_turns": 4
+          }
+        }
+      },
+      {
+        "year": 2011,
+        "selection": {
+          "wk_ens": {
+            "cid": "w_e4132652_ls_gr",
+            "train_sharpe": 0.9044,
+            "net_usd": 1721.0,
+            "sharpe": 1.7269,
+            "round_turns": 2
+          },
+          "wk_trend": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "wk_longonly": {
+            "cid": "w_e4132652_lo",
+            "train_sharpe": 1.0204,
+            "net_usd": 1849.64,
+            "sharpe": 1.5361,
+            "round_turns": 2
+          }
+        }
+      },
+      {
+        "year": 2012,
+        "selection": {
+          "wk_ens": {
+            "cid": "w_e4132652_ls_gr",
+            "train_sharpe": 1.0146,
+            "net_usd": -317.71,
+            "sharpe": -0.8796,
+            "round_turns": 11
+          },
+          "wk_trend": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "wk_longonly": {
+            "cid": "w_e4132652_lo",
+            "train_sharpe": 1.0921,
+            "net_usd": -482.74,
+            "sharpe": -1.1645,
+            "round_turns": 5
+          }
+        }
+      },
+      {
+        "year": 2013,
+        "selection": {
+          "wk_ens": {
+            "cid": "w_e4132652_ls_gr",
+            "train_sharpe": 0.8962,
+            "net_usd": 918.33,
+            "sharpe": 1.0184,
+            "round_turns": 4
+          },
+          "wk_trend": {
+            "cid": "w_sma52_ls",
+            "train_sharpe": 0.8373,
+            "net_usd": 1842.76,
+            "sharpe": 1.4716,
+            "round_turns": 3
+          },
+          "wk_longonly": {
+            "cid": "w_e4132652_lo",
+            "train_sharpe": 0.9482,
+            "net_usd": -147.76,
+            "sharpe": -0.9908,
+            "round_turns": 1
+          }
+        }
+      },
+      {
+        "year": 2014,
+        "selection": {
+          "wk_ens": {
+            "cid": "w_e132652_ls",
+            "train_sharpe": 0.9557,
+            "net_usd": -1117.4,
+            "sharpe": -1.1266,
+            "round_turns": 11
+          },
+          "wk_trend": {
+            "cid": "w_sma52_ls",
+            "train_sharpe": 0.9115,
+            "net_usd": -1391.69,
+            "sharpe": -1.44,
+            "round_turns": 9
+          },
+          "wk_longonly": {
+            "cid": "w_e4132652_lo",
+            "train_sharpe": 0.8764,
+            "net_usd": -499.52,
+            "sharpe": -1.3731,
+            "round_turns": 2
+          }
+        }
+      },
+      {
+        "year": 2015,
+        "selection": {
+          "wk_ens": {
+            "cid": "w_e4132652_ls_gr",
+            "train_sharpe": 0.7731,
+            "net_usd": -869.8,
+            "sharpe": -1.1571,
+            "round_turns": 9
+          },
+          "wk_trend": {
+            "cid": "w_sma52_ls",
+            "train_sharpe": 0.6842,
+            "net_usd": 25.96,
+            "sharpe": 0.0759,
+            "round_turns": 3
+          },
+          "wk_longonly": {
+            "cid": "w_e4132652_lo",
+            "train_sharpe": 0.7659,
+            "net_usd": -336.52,
+            "sharpe": -1.1894,
+            "round_turns": 3
+          }
+        }
+      },
+      {
+        "year": 2016,
+        "selection": {
+          "wk_ens": {
+            "cid": "w_e132652_ls",
+            "train_sharpe": 0.6581,
+            "net_usd": -279.66,
+            "sharpe": -0.2174,
+            "round_turns": 5
+          },
+          "wk_trend": {
+            "cid": "w_sma52_ls",
+            "train_sharpe": 0.6368,
+            "net_usd": -98.84,
+            "sharpe": -0.0365,
+            "round_turns": 3
+          },
+          "wk_longonly": {
+            "cid": "w_e4132652_lo",
+            "train_sharpe": 0.6899,
+            "net_usd": 21.74,
+            "sharpe": 0.0658,
+            "round_turns": 3
+          }
+        }
+      },
+      {
+        "year": 2017,
+        "selection": {
+          "wk_ens": {
+            "cid": "w_e132652_ls",
+            "train_sharpe": 0.5924,
+            "net_usd": -519.02,
+            "sharpe": -0.5474,
+            "round_turns": 10
+          },
+          "wk_trend": {
+            "cid": "w_sma52_ls",
+            "train_sharpe": 0.5862,
+            "net_usd": -1174.36,
+            "sharpe": -1.3601,
+            "round_turns": 8
+          },
+          "wk_longonly": {
+            "cid": "w_e4132652_lo",
+            "train_sharpe": 0.6391,
+            "net_usd": -216.01,
+            "sharpe": -0.3071,
+            "round_turns": 6
+          }
+        }
+      },
+      {
+        "year": 2018,
+        "selection": {
+          "wk_ens": {
+            "cid": "w_e132652_ls",
+            "train_sharpe": 0.5085,
+            "net_usd": -813.32,
+            "sharpe": -0.9765,
+            "round_turns": 6
+          },
+          "wk_trend": {
+            "cid": "w_sma52_ls",
+            "train_sharpe": 0.453,
+            "net_usd": -593.3,
+            "sharpe": -0.7005,
+            "round_turns": 6
+          },
+          "wk_longonly": {
+            "cid": "w_sma52_lo",
+            "train_sharpe": 0.654,
+            "net_usd": -426.23,
+            "sharpe": -0.7316,
+            "round_turns": 3
+          }
+        }
+      },
+      {
+        "year": 2019,
+        "selection": {
+          "wk_ens": {
+            "cid": "w_e132652_ls",
+            "train_sharpe": 0.4323,
+            "net_usd": 1149.95,
+            "sharpe": 1.1579,
+            "round_turns": 3
+          },
+          "wk_trend": {
+            "cid": "w_sma52_ls",
+            "train_sharpe": 0.3972,
+            "net_usd": 1715.72,
+            "sharpe": 1.6731,
+            "round_turns": 1
+          },
+          "wk_longonly": {
+            "cid": "w_sma52_lo",
+            "train_sharpe": 0.5954,
+            "net_usd": 1715.72,
+            "sharpe": 1.6731,
+            "round_turns": 1
+          }
+        }
+      }
+    ],
+    "summary": {
+      "wk_ens": {
+        "wf_sharpe": 0.085,
+        "wf_positive_years": 4,
+        "wf_years_with_trades": 10,
+        "wf_chained_return": 0.0368,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 68,
+            "net_usd": 456.19
+          },
+          "UP_LOWVOL": {
+            "days": 217,
+            "net_usd": 2656.05
+          },
+          "DOWN_HIVOL": {
+            "days": 49,
+            "net_usd": -426.21
+          },
+          "DOWN_LOWVOL": {
+            "days": 184,
+            "net_usd": -1884.23
+          }
+        }
+      },
+      "wk_trend": {
+        "wf_sharpe": 0.0281,
+        "wf_positive_years": 3,
+        "wf_years_with_trades": 7,
+        "wf_chained_return": -0.0157,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 27,
+            "net_usd": 542.22
+          },
+          "UP_LOWVOL": {
+            "days": 119,
+            "net_usd": -217.83
+          },
+          "DOWN_HIVOL": {
+            "days": 49,
+            "net_usd": 214.8
+          },
+          "DOWN_LOWVOL": {
+            "days": 170,
+            "net_usd": -212.95
+          }
+        }
+      },
+      "wk_longonly": {
+        "wf_sharpe": 0.3514,
+        "wf_positive_years": 4,
+        "wf_years_with_trades": 10,
+        "wf_chained_return": 0.2528,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 68,
+            "net_usd": -373.11
+          },
+          "UP_LOWVOL": {
+            "days": 217,
+            "net_usd": 4365.29
+          },
+          "DOWN_HIVOL": {
+            "days": 49,
+            "net_usd": -279.06
+          },
+          "DOWN_LOWVOL": {
+            "days": 184,
+            "net_usd": -1067.53
+          }
+        }
+      }
+    }
+  },
+  "benchmarks": {
+    "buy_and_hold_long": {
+      "wf_2010_2019_composite": {
+        "sharpe": 0.2742,
+        "chained_return": 0.3409,
+        "max_drawdown": -0.4421,
+        "years": 10
+      }
+    }
+  },
+  "gates": {
+    "status": "NOT_EVALUATED_DEV_STAGE",
+    "reason": "holdout not evaluated in dev stage"
+  },
+  "verdict": {
+    "status": "NOT_EVALUATED",
+    "claim": "none"
+  },
+  "generated_at": "2026-10-17T06:29:09.284788+00:00",
+  "data": {
+    "research_weekly_rows": 1078,
+    "replicate_weekly_rows": null,
+    "research_source": "BaseMax complete-day daily resampled W-FRI (UTC)",
+    "replicate_source": "Dukascopy complete-day daily resampled W-FRI (UTC)"
+  }
+}

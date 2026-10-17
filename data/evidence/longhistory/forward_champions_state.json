@@ -1,0 +1,27 @@
+{
+  "protocol": "forward_validation_champions_2026-10-17",
+  "generated_at": "2026-10-17T09:52:08.266399+00:00",
+  "nature": "paper observation only; no order, no broker, no DEMO/LIVE state",
+  "champions": {
+    "ts9_lo": {
+      "as_of": "2026-09-30",
+      "state": "LONG",
+      "target": 1.0,
+      "size_fraction": 0.4728,
+      "in_state_since": "2023-02-28",
+      "gold_close": 4319.0,
+      "gold_trailing_9m_return": 0.0023,
+      "usd_trailing_12m_change": 0.0271
+    },
+    "veto9": {
+      "as_of": "2026-09-30",
+      "state": "LONG",
+      "target": 1.0,
+      "size_fraction": 0.4728,
+      "in_state_since": "2023-02-28",
+      "gold_close": 4319.0,
+      "gold_trailing_9m_return": 0.0023,
+      "usd_trailing_12m_change": 0.0271
+    }
+  }
+}

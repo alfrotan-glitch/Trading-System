@@ -1,0 +1,228 @@
+{
+ "diagnostic": "out-of-asset replication of frozen champions (post-hoc, non-gating)",
+ "source": {
+  "repo": "https://github.com/awongstory/commodity-price-forecast-xgboost",
+  "commit": "c4a9f734d92df0d0a6c4744a2d7c34417ecd074b",
+  "file": "data/wb_commodity_price_intelligence_1960_2026.csv",
+  "sha256": "3328bdff6156eb9ae11173ca2d52a8b207218cdd913ee0fa986be17d16e92aaf",
+  "license": "MIT (repo LICENSE); upstream World Bank Pink Sheet (PDDL-style public data)",
+  "validation": "file's Gold series vs pinned datasets/gold-prices monthly: corr 0.99999989 over 624 months, median diff $0.01 (rounding); Silver/Platinum 780 contiguous months 1960-01..2024-12, no gaps/duplicates"
+ },
+ "method": "frozen ts9_lo / veto9 / ls9 builders verbatim, monthly o=h=l=c=Pink Sheet monthly average, USD index = research series; costs ASSUMED base; windows self-contained $10k",
+ "results": {
+  "Silver": {
+   "aligned_from": "1973-01-31 00:00:00",
+   "ts9_lo": {
+    "wf1990_99": {
+     "sr": -0.365,
+     "net": -2558,
+     "turns": 10,
+     "maxdd": -0.276
+    },
+    "eval2000_19": {
+     "sr": 0.345,
+     "net": 7910,
+     "turns": 18,
+     "maxdd": -0.236
+    },
+    "recent2020_24": {
+     "sr": -0.344,
+     "net": -1307,
+     "turns": 5,
+     "maxdd": -0.183
+    },
+    "evalanon2000_24": {
+     "sr": 0.25,
+     "net": 6147,
+     "turns": 22,
+     "maxdd": -0.308
+    }
+   },
+   "veto9": {
+    "wf1990_99": {
+     "sr": -0.606,
+     "net": -4908,
+     "turns": 21,
+     "maxdd": -0.515
+    },
+    "eval2000_19": {
+     "sr": 0.293,
+     "net": 7068,
+     "turns": 28,
+     "maxdd": -0.254
+    },
+    "recent2020_24": {
+     "sr": -0.858,
+     "net": -4201,
+     "turns": 8,
+     "maxdd": -0.455
+    },
+    "evalanon2000_24": {
+     "sr": 0.066,
+     "net": 264,
+     "turns": 35,
+     "maxdd": -0.524
+    }
+   },
+   "ls9": {
+    "wf1990_99": {
+     "sr": -0.506,
+     "net": -5067,
+     "turns": 21,
+     "maxdd": -0.621
+    },
+    "eval2000_19": {
+     "sr": 0.203,
+     "net": 4113,
+     "turns": 35,
+     "maxdd": -0.282
+    },
+    "recent2020_24": {
+     "sr": -0.868,
+     "net": -4302,
+     "turns": 9,
+     "maxdd": -0.464
+    },
+    "evalanon2000_24": {
+     "sr": -0.0,
+     "net": -1661,
+     "turns": 43,
+     "maxdd": -0.506
+    }
+   },
+   "buyhold": {
+    "wf1990_99": {
+     "sr": 0.057,
+     "net": -519,
+     "turns": 1,
+     "maxdd": -0.324
+    },
+    "eval2000_19": {
+     "sr": 0.371,
+     "net": 22387,
+     "turns": 1,
+     "maxdd": -0.671
+    },
+    "recent2020_24": {
+     "sr": 0.542,
+     "net": 7121,
+     "turns": 1,
+     "maxdd": -0.312
+    },
+    "evalanon2000_24": {
+     "sr": 0.417,
+     "net": 48351,
+     "turns": 1,
+     "maxdd": -0.671
+    }
+   }
+  },
+  "Platinum": {
+   "aligned_from": "1973-01-31 00:00:00",
+   "ts9_lo": {
+    "wf1990_99": {
+     "sr": 0.389,
+     "net": 2948,
+     "turns": 10,
+     "maxdd": -0.158
+    },
+    "eval2000_19": {
+     "sr": 0.279,
+     "net": 6438,
+     "turns": 14,
+     "maxdd": -0.445
+    },
+    "recent2020_24": {
+     "sr": -0.667,
+     "net": -2364,
+     "turns": 5,
+     "maxdd": -0.236
+    },
+    "evalanon2000_24": {
+     "sr": 0.146,
+     "net": 2829,
+     "turns": 18,
+     "maxdd": -0.525
+    }
+   },
+   "veto9": {
+    "wf1990_99": {
+     "sr": 0.329,
+     "net": 3201,
+     "turns": 21,
+     "maxdd": -0.229
+    },
+    "eval2000_19": {
+     "sr": 0.298,
+     "net": 8139,
+     "turns": 23,
+     "maxdd": -0.451
+    },
+    "recent2020_24": {
+     "sr": -0.856,
+     "net": -3489,
+     "turns": 8,
+     "maxdd": -0.349
+    },
+    "evalanon2000_24": {
+     "sr": 0.121,
+     "net": 2070,
+     "turns": 30,
+     "maxdd": -0.573
+    }
+   },
+   "ls9": {
+    "wf1990_99": {
+     "sr": 0.558,
+     "net": 7102,
+     "turns": 20,
+     "maxdd": -0.229
+    },
+    "eval2000_19": {
+     "sr": 0.261,
+     "net": 6685,
+     "turns": 27,
+     "maxdd": -0.467
+    },
+    "recent2020_24": {
+     "sr": -0.848,
+     "net": -3631,
+     "turns": 9,
+     "maxdd": -0.363
+    },
+    "evalanon2000_24": {
+     "sr": 0.087,
+     "net": 862,
+     "turns": 35,
+     "maxdd": -0.608
+    }
+   },
+   "buyhold": {
+    "wf1990_99": {
+     "sr": -0.07,
+     "net": -1499,
+     "turns": 1,
+     "maxdd": -0.339
+    },
+    "eval2000_19": {
+     "sr": 0.248,
+     "net": 7774,
+     "turns": 1,
+     "maxdd": -0.615
+    },
+    "recent2020_24": {
+     "sr": 0.075,
+     "net": -248,
+     "turns": 1,
+     "maxdd": -0.284
+    },
+    "evalanon2000_24": {
+     "sr": 0.221,
+     "net": 8037,
+     "turns": 1,
+     "maxdd": -0.633
+    }
+   }
+  }
+ }
+}

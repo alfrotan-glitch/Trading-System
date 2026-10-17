@@ -8,7 +8,7 @@
     "pearson_close_correlation": 0.997771
   },
   "execution_convention": "open=high=low=close=World-Bank monthly average price; decisions at month t fill at the open of month t+1 (the month t+1 published average = uniform-across-the-month TWAP); no interpolation, no synthetic bars, missing months fail the build",
-  "generated_at": "2026-10-15T02:49:22.560111+00:00",
+  "generated_at": "2026-10-17T11:54:24.141693+00:00",
   "primary_series": {
     "end": "2026-09-30",
     "missing_months": 0,

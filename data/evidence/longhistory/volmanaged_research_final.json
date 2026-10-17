@@ -1,0 +1,907 @@
+{
+  "prereg_id": "LH-XAUUSD-VOLM-2026-10-17",
+  "stage": "final",
+  "n_trials": 285,
+  "periods_per_year": 12,
+  "cost_base": {
+    "basis": "ASSUMED",
+    "spread_bps_full": 3.0,
+    "slippage_bps_per_side": 1.0,
+    "commission_usd_per_lot_side": 7.0,
+    "financing_bps_per_day": 0.0,
+    "financing_convention": "symmetric_time_prorated_bps_per_calendar_day",
+    "cost_multiplier": 1.0,
+    "round_turn_bps_at_1300": 6.077
+  },
+  "windows": {
+    "research": [
+      "1973-01-01",
+      "2026-09-30"
+    ],
+    "dev_end": "1999-12-31",
+    "holdout": [
+      "2000-01-01",
+      "2026-09-30"
+    ],
+    "wf_test_years": [
+      1990,
+      1991,
+      1992,
+      1993,
+      1994,
+      1995,
+      1996,
+      1997,
+      1998,
+      1999
+    ]
+  },
+  "walk_forward": {
+    "folds": [
+      {
+        "year": 1990,
+        "selection": {
+          "vm_veto": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1991,
+        "selection": {
+          "vm_veto": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1992,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.7539,
+            "net_usd": 349.63,
+            "sharpe": 1.012,
+            "round_turns": 2
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1993,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.7556,
+            "net_usd": -1311.19,
+            "sharpe": -1.1054,
+            "round_turns": 2
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1994,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6768,
+            "net_usd": -360.81,
+            "sharpe": -0.7336,
+            "round_turns": 3
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1995,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6427,
+            "net_usd": 238.54,
+            "sharpe": 1.4084,
+            "round_turns": 3
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1996,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6365,
+            "net_usd": -217.15,
+            "sharpe": -0.504,
+            "round_turns": 3
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1997,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6293,
+            "net_usd": 1876.83,
+            "sharpe": 1.998,
+            "round_turns": 1
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1998,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6874,
+            "net_usd": -49.18,
+            "sharpe": -0.049,
+            "round_turns": 3
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 1999,
+        "selection": {
+          "vm_veto": {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6619,
+            "net_usd": 979.91,
+            "sharpe": 1.5683,
+            "round_turns": 2
+          },
+          "vm_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      }
+    ],
+    "summary": {
+      "vm_veto": {
+        "wf_sharpe": 0.2506,
+        "wf_positive_years": 4,
+        "wf_years_with_trades": 8,
+        "wf_chained_return": 0.1266,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_LOWVOL": {
+            "days": 37,
+            "net_usd": -1209.34
+          },
+          "DOWN_HIVOL": {
+            "days": 3,
+            "net_usd": -134.84
+          },
+          "DOWN_LOWVOL": {
+            "days": 56,
+            "net_usd": 2850.77
+          }
+        }
+      },
+      "vm_lo": {
+        "wf_sharpe": 0.0,
+        "wf_positive_years": 0,
+        "wf_years_with_trades": 0,
+        "wf_chained_return": 0.0,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "UP_LOWVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "DOWN_HIVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          },
+          "DOWN_LOWVOL": {
+            "days": 0,
+            "net_usd": 0.0
+          }
+        }
+      }
+    }
+  },
+  "holdout": {
+    "selection": {
+      "vm_veto": {
+        "cid": "veto9_fv3",
+        "train_sharpe": 0.6819,
+        "candidates": [
+          {
+            "cid": "veto9_fv3",
+            "train_sharpe": 0.6819,
+            "train_round_turns": 35,
+            "eligible": true
+          },
+          {
+            "cid": "veto9_fv6",
+            "train_sharpe": 0.6436,
+            "train_round_turns": 35,
+            "eligible": true
+          },
+          {
+            "cid": "veto12_fv3",
+            "train_sharpe": 0.477,
+            "train_round_turns": 30,
+            "eligible": true
+          }
+        ]
+      },
+      "vm_lo": {
+        "cid": "lo9_fv3",
+        "train_sharpe": 0.5315,
+        "candidates": [
+          {
+            "cid": "lo9_fv3",
+            "train_sharpe": 0.5315,
+            "train_round_turns": 20,
+            "eligible": true
+          },
+          {
+            "cid": "lo9_fv6",
+            "train_sharpe": 0.5133,
+            "train_round_turns": 20,
+            "eligible": true
+          },
+          {
+            "cid": "lo12_fv3",
+            "train_sharpe": 0.3126,
+            "train_round_turns": 16,
+            "eligible": false
+          }
+        ]
+      }
+    },
+    "groups": {
+      "vm_veto": {
+        "cid": "veto9_fv3",
+        "selection_train_sharpe": 0.6819,
+        "base": {
+          "accounting_model_version": "fixed_units.v2",
+          "start": "2000-01-31",
+          "end": "2026-09-30",
+          "bars": 321,
+          "initial_equity": 10000.0,
+          "final_equity": 53487.2,
+          "net_usd": 43487.2,
+          "gross_usd": 44024.47,
+          "cost_usd": 537.27,
+          "financing_usd": 0.0,
+          "cost_to_gross": 0.0122,
+          "sharpe": 0.6235,
+          "cagr": 0.0647,
+          "max_drawdown": -0.3801,
+          "exposure": 0.9346,
+          "turnover_per_year": 2.86,
+          "cost_basis": "ASSUMED",
+          "round_turns": 26,
+          "round_turns_per_year": 0.972,
+          "win_rate": 0.3846,
+          "expectancy_usd": 1672.5846,
+          "avg_win_usd": 6175.4994,
+          "avg_loss_usd": -1141.7371,
+          "profit_factor": 3.3805,
+          "stop_exit_share": 0.0,
+          "forced_exit_count": 1,
+          "mean_bars_held": 11.5385,
+          "gross_usd_trades": 44024.4724,
+          "deflated": {
+            "dsr": 0.6366,
+            "sharpe_annual": 0.6235,
+            "n": 321,
+            "num_trials": 285,
+            "skew": 0.4155,
+            "kurtosis": 3.8468
+          }
+        },
+        "stress": {
+          "2x": {
+            "accounting_model_version": "fixed_units.v2",
+            "start": "2000-01-31",
+            "end": "2026-09-30",
+            "bars": 321,
+            "initial_equity": 10000.0,
+            "final_equity": 52135.0,
+            "net_usd": 42135.0,
+            "gross_usd": 43193.4,
+            "cost_usd": 1058.4,
+            "financing_usd": 0.0,
+            "cost_to_gross": 0.0245,
+            "sharpe": 0.6144,
+            "cagr": 0.0637,
+            "max_drawdown": -0.3855,
+            "exposure": 0.9346,
+            "turnover_per_year": 2.86,
+            "cost_basis": "ASSUMED",
+            "round_turns": 26,
+            "round_turns_per_year": 0.972,
+            "win_rate": 0.3846,
+            "expectancy_usd": 1620.5768,
+            "avg_win_usd": 6037.6881,
+            "avg_loss_usd": -1140.1177,
+            "profit_factor": 3.3098,
+            "stop_exit_share": 0.0,
+            "forced_exit_count": 1,
+            "mean_bars_held": 11.5385,
+            "gross_usd_trades": 43193.3962
+          },
+          "3x": {
+            "accounting_model_version": "fixed_units.v2",
+            "start": "2000-01-31",
+            "end": "2026-09-30",
+            "bars": 321,
+            "initial_equity": 10000.0,
+            "final_equity": 50816.49,
+            "net_usd": 40816.49,
+            "gross_usd": 42380.3,
+            "cost_usd": 1563.81,
+            "financing_usd": 0.0,
+            "cost_to_gross": 0.0369,
+            "sharpe": 0.6054,
+            "cagr": 0.0627,
+            "max_drawdown": -0.3911,
+            "exposure": 0.9346,
+            "turnover_per_year": 2.86,
+            "cost_basis": "ASSUMED",
+            "round_turns": 26,
+            "round_turns_per_year": 0.972,
+            "win_rate": 0.3846,
+            "expectancy_usd": 1569.8651,
+            "avg_win_usd": 5902.9801,
+            "avg_loss_usd": -1138.3319,
+            "profit_factor": 3.241,
+            "stop_exit_share": 0.0,
+            "forced_exit_count": 1,
+            "mean_bars_held": 11.5385,
+            "gross_usd_trades": 42380.3032
+          }
+        },
+        "financing_charged": {
+          "accounting_model_version": "fixed_units.v2",
+          "start": "2000-01-31",
+          "end": "2026-09-30",
+          "bars": 321,
+          "initial_equity": 10000.0,
+          "final_equity": 43909.3,
+          "net_usd": 33909.3,
+          "gross_usd": 38326.65,
+          "cost_usd": 483.46,
+          "financing_usd": 3933.9,
+          "cost_to_gross": 0.0126,
+          "sharpe": 0.5567,
+          "cagr": 0.0569,
+          "max_drawdown": -0.4129,
+          "exposure": 0.9346,
+          "turnover_per_year": 2.863,
+          "cost_basis": "ASSUMED",
+          "round_turns": 26,
+          "round_turns_per_year": 0.972,
+          "win_rate": 0.3846,
+          "expectancy_usd": 1304.2037,
+          "avg_win_usd": 5156.3122,
+          "avg_loss_usd": -1103.3642,
+          "profit_factor": 2.9208,
+          "stop_exit_share": 0.0,
+          "forced_exit_count": 1,
+          "mean_bars_held": 11.5385,
+          "gross_usd_trades": 38326.6535
+        },
+        "gross_zero_cost_usd": 44873.95,
+        "break_even_multiplier": {
+          "value": 50.0,
+          "status": "POSITIVE_AT_50X"
+        },
+        "sign_randomisation": {
+          "p_value": 0.1018,
+          "trades": 26,
+          "observed_net_approx": 43487.2
+        },
+        "bootstrap_sharpe": {
+          "sharpe": 0.6234627504463544,
+          "ci95_low": 0.10456548351814615,
+          "ci95_high": 1.1406743548153335,
+          "share_bootstrap_sharpe_positive": 0.989
+        },
+        "p_mean_positive_one_sided": 0.009,
+        "regimes_holdout": {
+          "UP_HIVOL": {
+            "days": 92,
+            "net_usd": 2875.73
+          },
+          "UP_LOWVOL": {
+            "days": 157,
+            "net_usd": 42596.15
+          },
+          "DOWN_HIVOL": {
+            "days": 23,
+            "net_usd": -5460.21
+          },
+          "DOWN_LOWVOL": {
+            "days": 49,
+            "net_usd": 3475.53
+          }
+        },
+        "holm_adjusted_p": 0.009
+      },
+      "vm_lo": {
+        "cid": "lo9_fv3",
+        "selection_train_sharpe": 0.5315,
+        "base": {
+          "accounting_model_version": "fixed_units.v2",
+          "start": "2000-01-31",
+          "end": "2026-09-30",
+          "bars": 321,
+          "initial_equity": 10000.0,
+          "final_equity": 75083.53,
+          "net_usd": 65083.53,
+          "gross_usd": 65527.96,
+          "cost_usd": 444.43,
+          "financing_usd": 0.0,
+          "cost_to_gross": 0.0068,
+          "sharpe": 0.8107,
+          "cagr": 0.0783,
+          "max_drawdown": -0.3084,
+          "exposure": 0.7165,
+          "turnover_per_year": 1.923,
+          "cost_basis": "ASSUMED",
+          "round_turns": 16,
+          "round_turns_per_year": 0.5981,
+          "win_rate": 0.5,
+          "expectancy_usd": 4067.7205,
+          "avg_win_usd": 9451.5747,
+          "avg_loss_usd": -1316.1338,
+          "profit_factor": 7.1813,
+          "stop_exit_share": 0.0,
+          "forced_exit_count": 1,
+          "mean_bars_held": 14.375,
+          "gross_usd_trades": 65527.9553,
+          "deflated": {
+            "dsr": 0.917,
+            "sharpe_annual": 0.8107,
+            "n": 321,
+            "num_trials": 285,
+            "skew": 0.7078,
+            "kurtosis": 5.0952
+          }
+        },
+        "stress": {
+          "2x": {
+            "accounting_model_version": "fixed_units.v2",
+            "start": "2000-01-31",
+            "end": "2026-09-30",
+            "bars": 321,
+            "initial_equity": 10000.0,
+            "final_equity": 73784.85,
+            "net_usd": 63784.85,
+            "gross_usd": 64663.91,
+            "cost_usd": 879.06,
+            "financing_usd": 0.0,
+            "cost_to_gross": 0.0136,
+            "sharpe": 0.8039,
+            "cagr": 0.0776,
+            "max_drawdown": -0.3114,
+            "exposure": 0.7165,
+            "turnover_per_year": 1.923,
+            "cost_basis": "ASSUMED",
+            "round_turns": 16,
+            "round_turns_per_year": 0.5981,
+            "win_rate": 0.5,
+            "expectancy_usd": 3986.5532,
+            "avg_win_usd": 9292.5221,
+            "avg_loss_usd": -1319.4157,
+            "profit_factor": 7.0429,
+            "stop_exit_share": 0.0,
+            "forced_exit_count": 1,
+            "mean_bars_held": 14.375,
+            "gross_usd_trades": 64663.9066
+          },
+          "3x": {
+            "accounting_model_version": "fixed_units.v2",
+            "start": "2000-01-31",
+            "end": "2026-09-30",
+            "bars": 321,
+            "initial_equity": 10000.0,
+            "final_equity": 72508.11,
+            "net_usd": 62508.11,
+            "gross_usd": 63812.18,
+            "cost_usd": 1304.07,
+            "financing_usd": 0.0,
+            "cost_to_gross": 0.0204,
+            "sharpe": 0.7971,
+            "cagr": 0.0769,
+            "max_drawdown": -0.3143,
+            "exposure": 0.7165,
+            "turnover_per_year": 1.923,
+            "cost_basis": "ASSUMED",
+            "round_turns": 16,
+            "round_turns_per_year": 0.5981,
+            "win_rate": 0.5,
+            "expectancy_usd": 3906.7568,
+            "avg_win_usd": 9136.0187,
+            "avg_loss_usd": -1322.5051,
+            "profit_factor": 6.9081,
+            "stop_exit_share": 0.0,
+            "forced_exit_count": 1,
+            "mean_bars_held": 14.375,
+            "gross_usd_trades": 63812.1761
+          }
+        },
+        "financing_charged": {
+          "accounting_model_version": "fixed_units.v2",
+          "start": "2000-01-31",
+          "end": "2026-09-30",
+          "bars": 321,
+          "initial_equity": 10000.0,
+          "final_equity": 64668.46,
+          "net_usd": 54668.46,
+          "gross_usd": 58960.46,
+          "cost_usd": 408.48,
+          "financing_usd": 3883.52,
+          "cost_to_gross": 0.0069,
+          "sharpe": 0.7554,
+          "cagr": 0.0723,
+          "max_drawdown": -0.3244,
+          "exposure": 0.7165,
+          "turnover_per_year": 1.926,
+          "cost_basis": "ASSUMED",
+          "round_turns": 16,
+          "round_turns_per_year": 0.5981,
+          "win_rate": 0.5,
+          "expectancy_usd": 3416.7788,
+          "avg_win_usd": 8124.6984,
+          "avg_loss_usd": -1291.1409,
+          "profit_factor": 6.2927,
+          "stop_exit_share": 0.0,
+          "forced_exit_count": 1,
+          "mean_bars_held": 14.375,
+          "gross_usd_trades": 58960.4644
+        },
+        "gross_zero_cost_usd": 66404.51,
+        "break_even_multiplier": {
+          "value": 50.0,
+          "status": "POSITIVE_AT_50X"
+        },
+        "sign_randomisation": {
+          "p_value": 0.0502,
+          "trades": 16,
+          "observed_net_approx": 65083.53
+        },
+        "bootstrap_sharpe": {
+          "sharpe": 0.8106853150650059,
+          "ci95_low": 0.28123743780626087,
+          "ci95_high": 1.2936676232928432,
+          "share_bootstrap_sharpe_positive": 0.998
+        },
+        "p_mean_positive_one_sided": 0.003,
+        "regimes_holdout": {
+          "UP_HIVOL": {
+            "days": 92,
+            "net_usd": 11919.63
+          },
+          "UP_LOWVOL": {
+            "days": 157,
+            "net_usd": 57206.59
+          },
+          "DOWN_HIVOL": {
+            "days": 23,
+            "net_usd": -1352.88
+          },
+          "DOWN_LOWVOL": {
+            "days": 49,
+            "net_usd": -2689.81
+          }
+        },
+        "holm_adjusted_p": 0.006
+      }
+    }
+  },
+  "holdout_selection_summary": {
+    "vm_veto": "veto9_fv3",
+    "vm_lo": "lo9_fv3"
+  },
+  "benchmarks": {
+    "buy_and_hold_long": {
+      "wf_2010_2019_composite": {
+        "sharpe": -0.2822,
+        "chained_return": -0.2903,
+        "max_drawdown": -0.3682,
+        "years": 10
+      },
+      "holdout": {
+        "accounting_model_version": "fixed_units.v2",
+        "start": "2000-01-31",
+        "end": "2026-09-30",
+        "bars": 321,
+        "initial_equity": 10000.0,
+        "final_equity": 152032.02,
+        "net_usd": 142032.02,
+        "gross_usd": 142077.46,
+        "cost_usd": 45.45,
+        "financing_usd": 0.0,
+        "cost_to_gross": 0.0003,
+        "sharpe": 0.8497,
+        "cagr": 0.1071,
+        "max_drawdown": -0.3928,
+        "exposure": 0.9969,
+        "turnover_per_year": 0.075,
+        "cost_basis": "ASSUMED",
+        "round_turns": 1,
+        "round_turns_per_year": 0.0374,
+        "win_rate": 1.0,
+        "expectancy_usd": 142032.0158,
+        "avg_win_usd": 142032.0158,
+        "avg_loss_usd": 0.0,
+        "profit_factor": Infinity,
+        "stop_exit_share": 0.0,
+        "forced_exit_count": 1,
+        "mean_bars_held": 320.0,
+        "gross_usd_trades": 142077.4648
+      },
+      "holdout_2x_cost_net_usd": 141986.57,
+      "replicate": {
+        "accounting_model_version": "fixed_units.v2",
+        "start": "2004-06-30",
+        "end": "2025-02-28",
+        "bars": 249,
+        "initial_equity": 10000.0,
+        "final_equity": 72577.62,
+        "net_usd": 62577.62,
+        "gross_usd": 62601.83,
+        "cost_usd": 24.21,
+        "financing_usd": 0.0,
+        "cost_to_gross": 0.0004,
+        "sharpe": 0.6639,
+        "cagr": 0.1002,
+        "max_drawdown": -0.4194,
+        "exposure": 0.992,
+        "turnover_per_year": 0.096,
+        "cost_basis": "ASSUMED",
+        "round_turns": 1,
+        "round_turns_per_year": 0.0482,
+        "win_rate": 1.0,
+        "expectancy_usd": 62577.6228,
+        "avg_win_usd": 62577.6228,
+        "avg_loss_usd": 0.0,
+        "profit_factor": Infinity,
+        "stop_exit_share": 0.0,
+        "forced_exit_count": 1,
+        "mean_bars_held": 247.0,
+        "gross_usd_trades": 62601.8283
+      }
+    }
+  },
+  "gates": {
+    "vm_veto": {
+      "cid": "veto9_fv3",
+      "checks": {
+        "G1_holdout_net_and_sharpe_positive": "PASS",
+        "G2_holdout_net_positive_at_2x_cost": "PASS",
+        "G3_walk_forward_sharpe_and_years": "FAIL",
+        "G4_holm_adjusted_p_le_alpha": "PASS",
+        "G5_dsr_ge_threshold": "FAIL",
+        "G6_oos_round_turns_ge_100": "FAIL",
+        "G7_regime_coverage": "PASS",
+        "G8_break_even_multiplier_ge_min": "PASS",
+        "G9_financing_charged_net_positive": "PASS"
+      },
+      "failed": [
+        "G3_walk_forward_sharpe_and_years",
+        "G5_dsr_ge_threshold",
+        "G6_oos_round_turns_ge_100"
+      ],
+      "dsr": 0.6569,
+      "oos_round_turns": 45,
+      "positive_regimes": 3,
+      "regimes_oos": {
+        "UP_HIVOL": {
+          "days": 92,
+          "net_usd": 2875.73
+        },
+        "UP_LOWVOL": {
+          "days": 194,
+          "net_usd": 41386.81
+        },
+        "DOWN_HIVOL": {
+          "days": 26,
+          "net_usd": -5595.05
+        },
+        "DOWN_LOWVOL": {
+          "days": 105,
+          "net_usd": 6326.3
+        }
+      },
+      "passes_all": false
+    },
+    "vm_lo": {
+      "cid": "lo9_fv3",
+      "checks": {
+        "G1_holdout_net_and_sharpe_positive": "PASS",
+        "G2_holdout_net_positive_at_2x_cost": "PASS",
+        "G3_walk_forward_sharpe_and_years": "FAIL",
+        "G4_holm_adjusted_p_le_alpha": "PASS",
+        "G5_dsr_ge_threshold": "FAIL",
+        "G6_oos_round_turns_ge_100": "FAIL",
+        "G7_regime_coverage": "FAIL",
+        "G8_break_even_multiplier_ge_min": "PASS",
+        "G9_financing_charged_net_positive": "PASS"
+      },
+      "failed": [
+        "G3_walk_forward_sharpe_and_years",
+        "G5_dsr_ge_threshold",
+        "G6_oos_round_turns_ge_100",
+        "G7_regime_coverage"
+      ],
+      "dsr": 0.917,
+      "oos_round_turns": 16,
+      "positive_regimes": 2,
+      "regimes_oos": {
+        "UP_HIVOL": {
+          "days": 92,
+          "net_usd": 11919.63
+        },
+        "UP_LOWVOL": {
+          "days": 157,
+          "net_usd": 57206.59
+        },
+        "DOWN_HIVOL": {
+          "days": 23,
+          "net_usd": -1352.88
+        },
+        "DOWN_LOWVOL": {
+          "days": 49,
+          "net_usd": -2689.81
+        }
+      },
+      "passes_all": false
+    }
+  },
+  "verdict": {
+    "status": "NO_VALIDATED_EDGE",
+    "passing_groups": [],
+    "claim": "none"
+  },
+  "replicate": {
+    "vm_veto": {
+      "cid": "veto9_fv3",
+      "status": "EVALUATED",
+      "history_prefix_months": 377,
+      "execution_convention": "next-open fills on real BaseMax monthly OHLC",
+      "accounting_model_version": "fixed_units.v2",
+      "start": "2004-06-30",
+      "end": "2025-02-28",
+      "bars": 249,
+      "initial_equity": 10000.0,
+      "final_equity": 23142.4,
+      "net_usd": 13142.4,
+      "gross_usd": 13556.9,
+      "cost_usd": 414.5,
+      "financing_usd": 0.0,
+      "cost_to_gross": 0.0306,
+      "sharpe": 0.3965,
+      "cagr": 0.0413,
+      "max_drawdown": -0.2875,
+      "exposure": 0.9237,
+      "turnover_per_year": 3.856,
+      "cost_basis": "ASSUMED",
+      "round_turns": 32,
+      "round_turns_per_year": 1.5422,
+      "win_rate": 0.4688,
+      "expectancy_usd": 410.7001,
+      "avg_win_usd": 1786.4667,
+      "avg_loss_usd": -803.2117,
+      "profit_factor": 1.9625,
+      "stop_exit_share": 0.0,
+      "forced_exit_count": 1,
+      "mean_bars_held": 7.1875,
+      "gross_usd_trades": 13556.9034
+    },
+    "vm_lo": {
+      "cid": "lo9_fv3",
+      "status": "EVALUATED",
+      "history_prefix_months": 377,
+      "execution_convention": "next-open fills on real BaseMax monthly OHLC",
+      "accounting_model_version": "fixed_units.v2",
+      "start": "2004-06-30",
+      "end": "2025-02-28",
+      "bars": 249,
+      "initial_equity": 10000.0,
+      "final_equity": 30378.9,
+      "net_usd": 20378.9,
+      "gross_usd": 20676.15,
+      "cost_usd": 297.25,
+      "financing_usd": 0.0,
+      "cost_to_gross": 0.0144,
+      "sharpe": 0.5767,
+      "cagr": 0.055,
+      "max_drawdown": -0.2655,
+      "exposure": 0.6787,
+      "turnover_per_year": 2.425,
+      "cost_basis": "ASSUMED",
+      "round_turns": 18,
+      "round_turns_per_year": 0.8675,
+      "win_rate": 0.5,
+      "expectancy_usd": 1132.1614,
+      "avg_win_usd": 3083.5991,
+      "avg_loss_usd": -819.2764,
+      "profit_factor": 3.7638,
+      "stop_exit_share": 0.0,
+      "forced_exit_count": 1,
+      "mean_bars_held": 9.3889,
+      "gross_usd_trades": 20676.1505
+    }
+  },
+  "generated_at": "2026-10-17T10:10:37.404001+00:00",
+  "data": {
+    "research_monthly_rows": 645,
+    "replicate_monthly_rows": 249,
+    "research_source": "World Bank monthly gold average + Fed H.10 USD index (month-end stamps)",
+    "replicate_source": "BaseMax monthly OHLC aggregated from 15m bars (next-open fills)"
+  }
+}
