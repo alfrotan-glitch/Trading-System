@@ -99,6 +99,16 @@ not a fill-timing artifact). Evaluation-start jitter 2000→2010 keeps
 start-invariant (−0.310 / −0.360, set by the 2011–15 episode). The headline
 numbers are not artifacts of the window start or the execution convention.
 
+Data-definition audit (2026-10-17, descriptive): on BaseMax broker daily
+data aggregated to **month-end closes** (2004-06→2025-02, 249 months),
+`ts9_lo` nets +$24,066 / Sharpe 0.681 and `veto9` +$14,850 / 0.462, vs
++$31,376 / 0.762 and +$22,210 / 0.573 on Pink Sheet monthly averages over
+the same window (B&H 0.667 vs 0.813). Champions survive a different source
+and bar convention with ~80–90% Sharpe retention and higher turnover
+(18/31 vs 14/23 turns); no sign flips. Note: `datasets/gold-prices` is the
+**same** World Bank upstream (it is this repo's own pinned gold source),
+not an independent check — do not cite it as one.
+
 **Forward status (frozen, paper only):** both champions LONG since 2023-02,
 target 1.0, size 0.4728 as of 2026-09-30 (gold 4319.0). Protocol
 `docs/research/forward_validation_champions_2026-10-17.md`; state
@@ -115,6 +125,14 @@ drawdowns and segment counts identical. Verdict **AGREE**
 Scope note: this verifies the engine's arithmetic under the frozen
 conventions; it does not validate the conventions, the ASSUMED costs, or the
 edge itself.
+
+Trial-ledger audit (2026-10-17, scripted): recomputing `N_TRIALS` from the
+protocol modules reproduces the full chain 26 (daily) → 40 → 47 → 50 → 72
+(monthly) → 149 → 193 → 237 → 262 → 285, and every committed final's
+recorded DSR `num_trials` matches its cycle (149/193/237/262/285; monthly
+72). The Waves 6–8 increments (+22/+20/+10 → 337) rest on the ARCH prose
+ledger and their discovery outputs. The DSR denominators are not
+hand-edited.
 
 ## 7. Falsified branches — do not retry
 
