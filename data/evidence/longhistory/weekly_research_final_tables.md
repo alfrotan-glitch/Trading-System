@@ -40,9 +40,9 @@ Verdict: **NO_VALIDATED_EDGE**. Claim: none
 
 | Group | Candidate | Status | Net USD | Sharpe | Round turns |
 |---|---|---|---:|---:|---:|
-| wk_ens | w_e132652_ls | NOT_EVALUABLE_INSUFFICIENT_WARMUP | — | — | — |
-| wk_trend | w_sma52_ls | NOT_EVALUABLE_INSUFFICIENT_WARMUP | — | — | — |
-| wk_longonly | w_sma52_lo | NOT_EVALUABLE_INSUFFICIENT_WARMUP | — | — | — |
+| wk_ens | w_e132652_ls | EVALUATED | 139.41 | 0.178 | 5 |
+| wk_trend | w_sma52_ls | EVALUATED | 386.27 | 0.412 | 3 |
+| wk_longonly | w_sma52_lo | EVALUATED | 641.35 | 0.687 | 2 |
 | **buy_and_hold_long (reference)** | 1.0x long | EVALUATED | 2,790.02 | 1.063 | 1 |
 
 ## Sign-randomisation null (trade-level, approximate)

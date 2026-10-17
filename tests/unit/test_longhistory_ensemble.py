@@ -10,6 +10,7 @@ from qts.research.longhistory import ensemble_protocol as ENS
 from qts.research.longhistory import ensemble_signals as ES
 from qts.research.longhistory import hybrid_protocol as HYB
 from qts.research.longhistory import monthly_protocol as MON
+from qts.research.longhistory import weekly_hybrid_protocol as WH
 from qts.research.longhistory import weekly_protocol as WK
 
 
@@ -28,11 +29,12 @@ def test_trial_counts_are_cumulative() -> None:
     assert ENS.N_TRIALS == MON.N_TRIALS + ENS.DISCOVERY_TRIALS
     assert WK.N_TRIALS == ENS.N_TRIALS + WK.DISCOVERY_TRIALS
     assert HYB.N_TRIALS == WK.N_TRIALS + HYB.DISCOVERY_TRIALS
+    assert WH.N_TRIALS == HYB.N_TRIALS + WH.DISCOVERY_TRIALS
 
 
 def test_signal_shapes_and_target_domain() -> None:
     df = _frame()
-    for proto in (ENS, WK, HYB):
+    for proto in (ENS, WK, HYB, WH):
         for cand in proto.CANDIDATES:
             plan = cand.builder(df)
             assert len(plan.target) == len(df)
@@ -46,7 +48,7 @@ def test_signal_shapes_and_target_domain() -> None:
 def test_truncation_causality_all_candidates() -> None:
     df = _frame(200)
     cuts = sorted({int(len(df) * f) for f in (0.25, 0.5, 0.75)})
-    for proto in (ENS, WK, HYB):
+    for proto in (ENS, WK, HYB, WH):
         for cand in proto.CANDIDATES:
             rep = C.truncation_check(cand.builder, df, cuts)
             assert rep.passed, f"{cand.cid}: {rep.as_dict()}"

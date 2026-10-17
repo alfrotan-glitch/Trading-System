@@ -1,0 +1,299 @@
+{
+  "prereg_id": "LH-XAUUSD-WHYB-2026-10-17",
+  "stage": "dev",
+  "n_trials": 262,
+  "periods_per_year": 52,
+  "cost_base": {
+    "basis": "ASSUMED",
+    "spread_bps_full": 3.0,
+    "slippage_bps_per_side": 1.0,
+    "commission_usd_per_lot_side": 7.0,
+    "financing_bps_per_day": 0.0,
+    "financing_convention": "symmetric_time_prorated_bps_per_calendar_day",
+    "cost_multiplier": 1.0,
+    "round_turn_bps_at_1300": 6.077
+  },
+  "windows": {
+    "research": [
+      "2004-06-11",
+      "2025-02-28"
+    ],
+    "dev_end": "2019-12-31",
+    "holdout": [
+      "2020-01-01",
+      "2025-02-28"
+    ],
+    "wf_test_years": [
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019
+    ]
+  },
+  "walk_forward": {
+    "folds": [
+      {
+        "year": 2010,
+        "selection": {
+          "wh_veto": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "wh_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 2011,
+        "selection": {
+          "wh_veto": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "wh_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 2012,
+        "selection": {
+          "wh_veto": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          },
+          "wh_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 2013,
+        "selection": {
+          "wh_veto": {
+            "cid": "wv_132652",
+            "train_sharpe": 0.8956,
+            "net_usd": 2213.09,
+            "sharpe": 1.7527,
+            "round_turns": 2
+          },
+          "wh_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 2014,
+        "selection": {
+          "wh_veto": {
+            "cid": "wv_132652",
+            "train_sharpe": 1.0016,
+            "net_usd": -1082.99,
+            "sharpe": -1.2105,
+            "round_turns": 11
+          },
+          "wh_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 2015,
+        "selection": {
+          "wh_veto": {
+            "cid": "wv_2652",
+            "train_sharpe": 0.8074,
+            "net_usd": 64.32,
+            "sharpe": 0.1141,
+            "round_turns": 5
+          },
+          "wh_lo": {
+            "cid": null,
+            "net_usd": 0.0,
+            "sharpe": 0.0,
+            "round_turns": 0
+          }
+        }
+      },
+      {
+        "year": 2016,
+        "selection": {
+          "wh_veto": {
+            "cid": "wv_2652",
+            "train_sharpe": 0.752,
+            "net_usd": -577.24,
+            "sharpe": -0.6275,
+            "round_turns": 3
+          },
+          "wh_lo": {
+            "cid": "wl_132652",
+            "train_sharpe": 0.792,
+            "net_usd": 79.16,
+            "sharpe": 0.1303,
+            "round_turns": 2
+          }
+        }
+      },
+      {
+        "year": 2017,
+        "selection": {
+          "wh_veto": {
+            "cid": "wv_2652",
+            "train_sharpe": 0.6539,
+            "net_usd": -140.12,
+            "sharpe": -0.2045,
+            "round_turns": 9
+          },
+          "wh_lo": {
+            "cid": "wl_2652",
+            "train_sharpe": 0.7813,
+            "net_usd": -226.19,
+            "sharpe": -0.4185,
+            "round_turns": 6
+          }
+        }
+      },
+      {
+        "year": 2018,
+        "selection": {
+          "wh_veto": {
+            "cid": "wv_2652",
+            "train_sharpe": 0.6094,
+            "net_usd": -1115.98,
+            "sharpe": -1.5705,
+            "round_turns": 5
+          },
+          "wh_lo": {
+            "cid": "wl_2652",
+            "train_sharpe": 0.7187,
+            "net_usd": -614.28,
+            "sharpe": -1.2167,
+            "round_turns": 3
+          }
+        }
+      },
+      {
+        "year": 2019,
+        "selection": {
+          "wh_veto": {
+            "cid": "wv_132652",
+            "train_sharpe": 0.4963,
+            "net_usd": 1149.95,
+            "sharpe": 1.1579,
+            "round_turns": 3
+          },
+          "wh_lo": {
+            "cid": "wl_2652",
+            "train_sharpe": 0.6372,
+            "net_usd": 1525.25,
+            "sharpe": 1.6933,
+            "round_turns": 1
+          }
+        }
+      }
+    ],
+    "summary": {
+      "wh_veto": {
+        "wf_sharpe": 0.0588,
+        "wf_positive_years": 3,
+        "wf_years_with_trades": 7,
+        "wf_chained_return": 0.0087,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 27,
+            "net_usd": 180.4
+          },
+          "UP_LOWVOL": {
+            "days": 119,
+            "net_usd": -353.6
+          },
+          "DOWN_HIVOL": {
+            "days": 49,
+            "net_usd": 747.77
+          },
+          "DOWN_LOWVOL": {
+            "days": 170,
+            "net_usd": -63.55
+          }
+        }
+      },
+      "wh_lo": {
+        "wf_sharpe": 0.2546,
+        "wf_positive_years": 2,
+        "wf_years_with_trades": 4,
+        "wf_chained_return": 0.0656,
+        "wf_regimes": {
+          "UP_HIVOL": {
+            "days": 27,
+            "net_usd": 525.23
+          },
+          "UP_LOWVOL": {
+            "days": 108,
+            "net_usd": 588.4
+          },
+          "DOWN_HIVOL": {
+            "days": 2,
+            "net_usd": 0.0
+          },
+          "DOWN_LOWVOL": {
+            "days": 72,
+            "net_usd": -349.7
+          }
+        }
+      }
+    }
+  },
+  "benchmarks": {
+    "buy_and_hold_long": {
+      "wf_2010_2019_composite": {
+        "sharpe": 0.2742,
+        "chained_return": 0.3409,
+        "max_drawdown": -0.4421,
+        "years": 10
+      }
+    }
+  },
+  "gates": {
+    "status": "NOT_EVALUATED_DEV_STAGE",
+    "reason": "holdout not evaluated in dev stage"
+  },
+  "verdict": {
+    "status": "NOT_EVALUATED",
+    "claim": "none"
+  },
+  "generated_at": "2026-10-17T06:34:43.617787+00:00",
+  "data": {
+    "research_weekly_rows": 1078,
+    "replicate_weekly_rows": null,
+    "research_source": "BaseMax complete-day daily resampled W-FRI + Fed H.10 weekly USD index",
+    "replicate_source": "Dukascopy complete-day daily resampled W-FRI + same USD index"
+  }
+}
