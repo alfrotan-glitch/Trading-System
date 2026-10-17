@@ -62,8 +62,9 @@ cumulative trial count; G6 ≥100 out-of-sample round turns; G7 regime stability
 | VOLM 2026-10-17 | `LH-XAUUSD-VOLM-2026-10-17` | ≤1989 (22 cfg incl. brakes) | 285 | NO_VALIDATED_EDGE |
 | Wave-6 (discovery only) | — | ≤1989 (22 cfg) | 307 | no cycle frozen |
 | Wave-7 (discovery only) | — | ≤1989 (20 cfg) | 327 | no cycle frozen |
+| Wave-8 (discovery only) | — | ≤1989 (10 cfg) | 337 | no cycle frozen |
 
-The next gated cycle must use **N = 327** in its DSR. Per-cycle evidence:
+The next gated cycle must use **N = 337** in its DSR. Per-cycle evidence:
 `data/evidence/longhistory/{ensemble,weekly,hybrid,weekly_hybrid,volmanaged}_research_final.json`;
 preregistrations and results under `docs/research/`.
 
@@ -128,6 +129,25 @@ edge itself.
 - **Hysteresis bands (Wave-6):** ±2% identical to champions; wider is
   monotonically worse. **Basket-relative trend** (`close/usd`): selects weaker
   than plain trend (selection Sharpe 0.66–0.75).
+- **Volatility-regime gate (Wave-7):** holding champions only when 12 m vol is
+  below its trailing quantile is neutral (selection Sharpe 0.826 vs 0.828).
+- **Extension (anti-chase) gate (Wave-7):** flat when price > (1+x)·12 m mean
+  helps 1973–78 and 1984–89 but forfeits the 1979–81 blow-off (episode net
+  +$6,712 → +$470 for `ts9_lo`); no plateau across x∈{10,15,20,25}% (selection
+  Sharpe 0.48/0.88/0.76/0.92) — regime-dependent, rejected.
+- **Extreme mean reversion / USD-momentum primary (Wave-7):** monthly
+  contrarian-at-extremes is negative-to-flat; USD-momentum alone (0.78/0.33
+  selection/check) trails the gold-trend champions.
+- **Real-price (CPI-deflated) trend (Wave-8):** trend on CPI-deflated gold
+  (BLS CPI-U NSA via `datasets/cpi-us@dceeb87`, PDDL; CPI lagged 1 m for
+  release timing) peaks at 9 m exactly like nominal — the same edge with a
+  deflated ruler. The LS form trails `veto9` on selection (0.767 vs 0.828);
+  its check-window strength concentrates in the single 1982–89 disinflation
+  regime (SR 0.55 vs 0.32; the real bear ran 1980–2001, mostly outside the
+  check window). `real9_lo` beats `ts9_lo` only +0.04/+0.08 — noise. The
+  real-extremity (valuation) gate is harmful (selection 0.51/0.58 vs bases
+  0.78/0.83). Not a distinct validated mechanism; do not re-run deflation
+  variants without a new idea.
 - **Cross-asset ports:** frozen slow TSMOM basket Sharpe −0.007 on 11 FX pairs;
   champions trail buy-and-hold on World Bank silver (trend Sharpe 0.250 vs B&H
   0.417) and platinum (0.146), all trend forms negative 2020-24 on both
@@ -144,6 +164,17 @@ edge itself.
 - MEASURED costs (MT5 demo) remain required before any claim; the forward
   readout alone cannot promote anything while costs are ASSUMED.
 
+Expectation-setting (iid-bootstrap scenario on 2000–2026 returns — assumes the
+future resembles that window; **not** a forecast and not a gate): joint
+probability both champions post a positive forward-24 Sharpe ≈ 0.80.
+Combined-DSR projection at the frozen N=262 if forward performance repeats
+history: `ts9_lo` median DSR crosses 0.95 around the 24-month checkpoint
+(+24 m: median 0.958; +60 m: 0.977; +120 m: 0.991), while `veto9` remains
+below for a decade (0.755 → 0.884). Read: the forward clock is a genuinely
+informative validation path for `ts9_lo` on a 2–5-year horizon; `veto9`'s
+role is decade-robustness, not G5 clearance. The frozen protocol's own
+checkpoint criteria govern regardless.
+
 ## 9. What could change the verdict
 
 1. **Genuinely new data:** forward months as they accrue (already frozen), or
@@ -151,9 +182,11 @@ edge itself.
 2. **MEASURED costs** from a Windows MT5 demo terminal (also unblocks the
    claim-eligibility question and the M15 cost-sensitivity blocker).
 3. A *new mechanism* (not a re-parameterisation) discovered on ≤1989 (or
-   weekly 2004-2009) partitions only, frozen under N ≥ 307, that beats the
-   champions on discovery by a margin large enough to matter — Wave-6 showed
-   the two most plausible mechanism tweaks do not.
+   weekly 2004-2009) partitions only, frozen under N ≥ 337, that beats the
+   champions on discovery by a margin large enough to matter — Waves 6–8
+   showed the plausible mechanism tweaks (hysteresis, relative trend,
+   vol-regime and extension gates, extreme mean reversion, USD-momentum,
+   real-price deflation) do not.
 Nothing else. In particular: re-running existing cycles, loosening G6 for
 slow trend, or cherry-picking lookbacks 10–11 m post-hoc are prohibited.
 
