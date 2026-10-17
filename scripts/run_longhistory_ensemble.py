@@ -34,6 +34,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from qts.research.longhistory import ensemble_protocol as ENS  # noqa: E402
 from qts.research.longhistory import runner as R  # noqa: E402
+from qts.research.longhistory import stats as ST  # noqa: E402
 
 PROCESSED = REPO_ROOT / "data" / "raw" / "longhistory" / "processed"
 EVIDENCE_DIR = REPO_ROOT / "data" / "evidence" / "longhistory"
@@ -54,6 +55,37 @@ def load_monthly(path: Path, cols: tuple[str, ...]) -> pd.DataFrame:
     return bars
 
 
+def replicate_with_context(
+    context_df: pd.DataFrame, replicate_df: pd.DataFrame, selection: dict, proto=ENS
+) -> dict:
+    """Frozen selections on BaseMax monthly bars with a research history prefix.
+
+    Plans are built on research months strictly before the replicate window
+    followed by the replicate months (builders need warm-up; the run window
+    itself is replicate-only and starts flat). Independent quote stream and
+    next-open execution convention; informational, never gating.
+    """
+    prefix = context_df[context_df.index < replicate_df.index[0]]
+    combined = pd.concat([prefix, replicate_df])
+    out: dict = {}
+    for group, sel in selection.items():
+        cid = sel.get("cid") if isinstance(sel, dict) else None
+        if cid is None:
+            out[group] = {"cid": None, "status": "NO_SELECTION"}
+            continue
+        cand = proto.candidate_by_id(str(cid))
+        plan = cand.builder(combined)
+        run = R.run_window(combined, plan, proto.REPLICATE_START, proto.REPLICATE_END, proto.COST_BASE)
+        out[group] = {
+            "cid": cid,
+            "status": "EVALUATED",
+            "history_prefix_months": int(len(prefix)),
+            "execution_convention": "next-open fills on real BaseMax monthly OHLC",
+            **ST.summarize(run, periods_per_year=proto.PERIODS_PER_YEAR),
+        }
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--stage", choices=["dev", "final"], required=True)
@@ -61,11 +93,25 @@ def main() -> int:
 
     research = load_monthly(RESEARCH_FILE, ("open", "high", "low", "close", "usd"))
     replicate = (
-        load_monthly(REPLICATE_FILE, ("open", "high", "low", "close")) if args.stage == "final" else None
+        load_monthly(REPLICATE_FILE, ("open", "high", "low", "close", "usd"))
+        if args.stage == "final"
+        else None
     )
 
     plans = R.build_plans(research, ENS)
-    result = R.evaluate(research, plans, args.stage, replicate_df=replicate, proto=ENS)
+    # The replicate is attached below with a history prefix (the shared
+    # evaluate() would rebuild plans on the replicate frame alone, starving
+    # the 12-month builders of warm-up), so evaluate() sees replicate_df=None.
+    result = R.evaluate(research, plans, args.stage, replicate_df=None, proto=ENS)
+    if args.stage == "final":
+        assert replicate is not None
+        result["replicate"] = replicate_with_context(
+            research, replicate, result["holdout"]["selection"], ENS
+        )
+        rep_bh = R.buy_and_hold(replicate, ENS.REPLICATE_START, ENS.REPLICATE_END, ENS.COST_BASE)
+        result["benchmarks"]["buy_and_hold_long"]["replicate"] = ST.summarize(
+            rep_bh, periods_per_year=ENS.PERIODS_PER_YEAR
+        )
     result["generated_at"] = datetime.now(UTC).isoformat()
     result["data"] = {
         "research_monthly_rows": int(len(research)),

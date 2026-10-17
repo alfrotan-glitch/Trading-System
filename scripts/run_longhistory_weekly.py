@@ -33,6 +33,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from qts.research.longhistory import runner as R  # noqa: E402
+from qts.research.longhistory import stats as ST  # noqa: E402
 from qts.research.longhistory import weekly_protocol as WK  # noqa: E402
 
 PROCESSED = REPO_ROOT / "data" / "raw" / "longhistory" / "processed"
@@ -59,6 +60,35 @@ def load_daily(path: Path) -> pd.DataFrame:
     return frame
 
 
+def replicate_with_context(
+    context_df: pd.DataFrame, replicate_df: pd.DataFrame, selection: dict, proto=WK
+) -> dict:
+    """Frozen selections on Dukascopy weekly bars with a research history prefix.
+
+    Plans are built on research weeks strictly before the replicate window
+    followed by the replicate weeks (warm-up); the run window is
+    replicate-only and starts flat. Informational, never gating.
+    """
+    prefix = context_df[context_df.index < replicate_df.index[0]]
+    combined = pd.concat([prefix, replicate_df])
+    out: dict = {}
+    for group, sel in selection.items():
+        cid = sel.get("cid") if isinstance(sel, dict) else None
+        if cid is None:
+            out[group] = {"cid": None, "status": "NO_SELECTION"}
+            continue
+        cand = proto.candidate_by_id(str(cid))
+        plan = cand.builder(combined)
+        run = R.run_window(combined, plan, proto.REPLICATE_START, proto.REPLICATE_END, proto.COST_BASE)
+        out[group] = {
+            "cid": cid,
+            "status": "EVALUATED",
+            "history_prefix_weeks": int(len(prefix)),
+            **ST.summarize(run, periods_per_year=proto.PERIODS_PER_YEAR),
+        }
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--stage", choices=["dev", "final"], required=True)
@@ -72,7 +102,19 @@ def main() -> int:
     )
 
     plans = R.build_plans(research, WK)
-    result = R.evaluate(research, plans, args.stage, replicate_df=replicate, proto=WK)
+    # Replicate attached below with a research history prefix: the replicate
+    # alone (59 weeks) is shorter than the 52-week warm-up, so the shared
+    # evaluate() would mark every group NOT_EVALUABLE. Informational only.
+    result = R.evaluate(research, plans, args.stage, replicate_df=None, proto=WK)
+    if args.stage == "final":
+        assert replicate is not None
+        result["replicate"] = replicate_with_context(
+            research, replicate, result["holdout"]["selection"], WK
+        )
+        rep_bh = R.buy_and_hold(replicate, WK.REPLICATE_START, WK.REPLICATE_END, WK.COST_BASE)
+        result["benchmarks"]["buy_and_hold_long"]["replicate"] = ST.summarize(
+            rep_bh, periods_per_year=WK.PERIODS_PER_YEAR
+        )
     result["generated_at"] = datetime.now(UTC).isoformat()
     result["data"] = {
         "research_weekly_rows": int(len(research)),
