@@ -60,9 +60,10 @@ cumulative trial count; G6 ≥100 out-of-sample round turns; G7 regime stability
 | HYB 2026-10-17 | `LH-XAUUSD-HYB-2026-10-17` | ≤1989 slow-hybrid (43 cfg) | 237 | NO_VALIDATED_EDGE |
 | WHYB 2026-10-17 | `LH-XAUUSD-WHYB-2026-10-17` | 2004-2009 weekly-hybrid (24 cfg) | 262 | NO_VALIDATED_EDGE |
 | VOLM 2026-10-17 | `LH-XAUUSD-VOLM-2026-10-17` | ≤1989 (22 cfg incl. brakes) | 285 | NO_VALIDATED_EDGE |
-| Wave-6 (discovery only) | — | ≤1989 (22 cfg) | 307 for future cycles | no cycle frozen |
+| Wave-6 (discovery only) | — | ≤1989 (22 cfg) | 307 | no cycle frozen |
+| Wave-7 (discovery only) | — | ≤1989 (20 cfg) | 327 | no cycle frozen |
 
-The next gated cycle must use **N = 307** in its DSR. Per-cycle evidence:
+The next gated cycle must use **N = 327** in its DSR. Per-cycle evidence:
 `data/evidence/longhistory/{ensemble,weekly,hybrid,weekly_hybrid,volmanaged}_research_final.json`;
 preregistrations and results under `docs/research/`.
 
