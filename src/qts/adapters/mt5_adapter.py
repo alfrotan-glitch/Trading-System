@@ -771,6 +771,190 @@ class MT5Adapter(BrokerAdapter):
         snapshot["unavailable"] = snapshot["bid"] is None and snapshot["ask"] is None
         return snapshot
 
+    #: MT5 ENUM_SYMBOL_SWAP_MODE values (only BY_POINTS can be converted to
+    #: money without extra broker state; every other mode is reported raw).
+    _SWAP_MODE_NAMES = {
+        0: "disabled",
+        1: "by_points",
+        2: "by_symbol_currency",
+        3: "by_interest_current",
+        4: "by_interest_open",
+        5: "by_charge_reopening",
+        6: "by_balance",
+        7: "by_equity",
+    }
+
+    @staticmethod
+    def _symbol_cost_terms(mt5: Any, symbol: str) -> dict[str, Any]:
+        """Read-only broker symbol cost terms — directional swap above all.
+
+        Answers "what will this venue charge to HOLD a position overnight,
+        per direction?" from ``symbol_info`` BEFORE any order exists, which
+        the per-deal evidence (``cost_capture``) cannot: it only learns swap
+        after a position has been held. For a long-biased strategy held for
+        months, swap_long is a first-order cost, not a footnote.
+
+        Same evidence rules as everywhere else in this pipeline: a field the
+        broker did not give us is ``None`` AND named in ``unavailable_fields``
+        — never zero. The per-lot-per-night money conversion is derived ONLY
+        for ``by_points`` swap mode on a USD-profit-currency symbol; any
+        other mode is reported raw with the derivation marked unavailable.
+        """
+        terms: dict[str, Any] = {
+            "schema": "qts.broker_symbol_cost_terms.v1",
+            "symbol": symbol,
+            "observed_at": datetime.now(UTC).isoformat(),
+            "swap_long_points": None,
+            "swap_short_points": None,
+            "swap_mode": None,
+            "swap_mode_name": None,
+            "swap_rollover3days": None,
+            "contract_size": None,
+            "tick_value": None,
+            "tick_size": None,
+            "point": None,
+            "digits": None,
+            "currency_profit": None,
+            "bid": None,
+            "ask": None,
+            "spread_price_units": None,
+            "spread_bps_of_mid": None,
+            "swap_long_usd_per_lot_night": None,
+            "swap_short_usd_per_lot_night": None,
+            "unavailable_fields": [],
+            "unavailable": True,
+        }
+        if mt5 is None:
+            terms["unavailable_fields"] = ["terminal"]
+            return terms
+        try:
+            info = mt5.symbol_info(symbol)
+        except Exception:
+            info = None
+        if info is None:
+            terms["unavailable_fields"] = ["symbol_info"]
+            return terms
+
+        def num(name: str) -> Decimal | None:
+            raw = getattr(info, name, None)
+            if raw is None:
+                return None
+            try:
+                value = Decimal(str(raw))
+            except (InvalidOperation, ValueError, TypeError):
+                return None
+            return value if value.is_finite() else None
+
+        unavailable: list[str] = []
+
+        def fill(key: str, field_name: str) -> Decimal | None:
+            value = num(field_name)
+            if value is None:
+                unavailable.append(field_name)
+            else:
+                terms[key] = str(value)
+            return value
+
+        swap_long = fill("swap_long_points", "swap_long")
+        swap_short = fill("swap_short_points", "swap_short")
+        contract_size = fill("contract_size", "trade_contract_size")
+        tick_value = fill("tick_value", "trade_tick_value")
+        tick_size = fill("tick_size", "trade_tick_size")
+        point = fill("point", "point")
+        mode_raw = getattr(info, "swap_mode", None)
+        if mode_raw is None:
+            unavailable.append("swap_mode")
+        else:
+            try:
+                mode_int = int(mode_raw)
+            except (TypeError, ValueError):
+                mode_int = -1
+                unavailable.append("swap_mode")
+            if mode_int >= 0:
+                terms["swap_mode"] = mode_int
+                terms["swap_mode_name"] = MT5Adapter._SWAP_MODE_NAMES.get(mode_int, f"unknown_{mode_int}")
+        rollover = getattr(info, "swap_rollover3days", None)
+        if rollover is None:
+            unavailable.append("swap_rollover3days")
+        else:
+            with contextlib.suppress(TypeError, ValueError):
+                terms["swap_rollover3days"] = int(rollover)
+        digits = getattr(info, "digits", None)
+        if digits is None:
+            unavailable.append("digits")
+        else:
+            with contextlib.suppress(TypeError, ValueError):
+                terms["digits"] = int(digits)
+        profit_ccy = getattr(info, "currency_profit", None)
+        if profit_ccy:
+            terms["currency_profit"] = str(profit_ccy)
+        else:
+            unavailable.append("currency_profit")
+
+        try:
+            tick = mt5.symbol_info_tick(symbol)
+        except Exception:
+            tick = None
+        bid = getattr(tick, "bid", None) if tick is not None else None
+        ask = getattr(tick, "ask", None) if tick is not None else None
+        if bid and ask:
+            terms["bid"] = str(bid)
+            terms["ask"] = str(ask)
+            try:
+                spread = Decimal(str(ask)) - Decimal(str(bid))
+                mid = (Decimal(str(ask)) + Decimal(str(bid))) / 2
+                terms["spread_price_units"] = str(spread)
+                if mid > 0:
+                    terms["spread_bps_of_mid"] = str((spread / mid * Decimal("10000")).quantize(Decimal("0.001")))
+            except (InvalidOperation, ValueError, TypeError):
+                unavailable.append("spread")
+        else:
+            unavailable.append("tick")
+
+        # Money conversion: by_points only, USD profit currency only.
+        # USD/lot/night = swap_points x point x (tick_value / tick_size);
+        # tick_value/tick_size is the broker's own USD value of a 1.0 price
+        # move per lot, so no contract-size assumption is smuggled in.
+        # Mode 0 means the broker runs no swap mechanism at all — a measured
+        # zero, provided the raw fields were actually exposed.
+        if terms.get("swap_mode") == 0 and swap_long is not None and swap_short is not None:
+            terms["swap_long_usd_per_lot_night"] = "0.0000"
+            terms["swap_short_usd_per_lot_night"] = "0.0000"
+        else:
+            if (
+                terms.get("swap_mode") == 1
+                and terms.get("currency_profit") == "USD"
+                and point is not None
+                and tick_value is not None
+                and tick_size is not None
+                and tick_size != 0
+            ):
+                per_point_usd = point * tick_value / tick_size
+                if swap_long is not None:
+                    terms["swap_long_usd_per_lot_night"] = str(
+                        (swap_long * per_point_usd).quantize(Decimal("0.0001"))
+                    )
+                if swap_short is not None:
+                    terms["swap_short_usd_per_lot_night"] = str(
+                        (swap_short * per_point_usd).quantize(Decimal("0.0001"))
+                    )
+            if (swap_long is not None or swap_short is not None) and (
+                terms["swap_long_usd_per_lot_night"] is None or terms["swap_short_usd_per_lot_night"] is None
+            ):
+                unavailable.append("swap_derived_usd")
+        terms["unavailable_fields"] = unavailable
+        terms["unavailable"] = bool(unavailable)
+        _ = contract_size  # reported raw above; conversion uses tick geometry
+        return terms
+
+    def symbol_cost_terms(self, symbol: str) -> dict[str, Any]:
+        """Instance wrapper: resolve the live terminal + broker symbol."""
+        mt5 = self._require_mt5()
+        mt5_sym = self._map_symbol(symbol)
+        with contextlib.suppress(Exception):
+            mt5.symbol_select(mt5_sym, True)
+        return self._symbol_cost_terms(mt5, mt5_sym)
+
     def get_symbol_spec(self, symbol: str) -> SymbolSpec:
         """Fetch and cache authoritative symbol spec — single canonical source.
 
