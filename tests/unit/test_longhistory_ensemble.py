@@ -104,3 +104,26 @@ def test_forward_champions_states_on_rising_frame() -> None:
     assert states["ts9_lo"]["state"] == "LONG"
     assert states["veto9"]["state"] == "LONG"  # rising gold: veto never engages
     assert 0.0 < float(states["ts9_lo"]["size_fraction"]) <= 1.0  # type: ignore[arg-type]
+
+
+def test_hysteresis_and_relative_builders() -> None:
+    df = _frame(150)
+    plans = [
+        ES.hysteresis_trend(df, 9, 0.05, long_only=True, vol_n=12, ann=12),
+        ES.hysteresis_trend(df, 9, 0.02, usd_lb=12, vol_n=12, ann=12),
+        ES.relative_trend(df, 9, long_only=True, vol_n=12, ann=12),
+        ES.relative_trend(df, 12, vol_n=12, ann=12),
+    ]
+    cuts = sorted({int(len(df) * f) for f in (0.25, 0.5, 0.75)})
+    for plan_builder_df, plan in zip([df] * 4, plans, strict=True):
+        assert len(plan.target) == len(plan_builder_df)
+        finite = np.isfinite(plan.target)
+        assert set(np.unique(plan.target[finite])) <= {-1.0, 0.0, 1.0}
+        assert bool(np.isfinite(plan.size[finite]).all())
+    for builder in (
+        lambda d: ES.hysteresis_trend(d, 9, 0.05, long_only=True, vol_n=12, ann=12),
+        lambda d: ES.hysteresis_trend(d, 9, 0.02, usd_lb=12, vol_n=12, ann=12),
+        lambda d: ES.relative_trend(d, 9, vol_n=12, ann=12),
+    ):
+        rep = C.truncation_check(builder, df, cuts)
+        assert rep.passed, rep.as_dict()

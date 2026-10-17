@@ -187,6 +187,75 @@ def braked_usd_veto(
     base = ensemble_usd_veto(df, lookbacks=lookbacks, usd_lb=usd_lb, vol_n=vol_n, ann=ann)
     return _apply_drawdown_brake(df, base, peak_n, threshold, mode)
 
+def hysteresis_trend(
+    df: pd.DataFrame,
+    lookback: int,
+    band: float,
+    *,
+    long_only: bool = False,
+    usd_lb: int | None = None,
+    vol_n: int,
+    ann: int,
+) -> Plan:
+    """Trend state with a no-trade band around the trailing return.
+
+    The desired state flips long only when the trailing ``lookback``
+    return exceeds ``+band`` and short/flat only when it falls below
+    ``-band``; inside the band the previous state persists, so sideways
+    chop is never traded. With ``usd_lb`` set, shorts are additionally
+    vetoed per bar unless the USD index rose over ``usd_lb`` bars (the
+    champion veto semantics applied to the hysteresis state).
+    """
+    _validate_frame(df)
+    if lookback < 1 or band < 0.0:
+        raise ValueError("lookback >= 1 and band >= 0 required")
+    trailing = (df["close"] / df["close"].shift(lookback) - 1.0).to_numpy()
+    n = len(df)
+    desired = np.zeros(n)
+    s = 0.0
+    for t in range(n):
+        r = trailing[t]
+        if not np.isfinite(r):
+            desired[t] = np.nan
+            continue
+        if s <= 0.0 and r > band:
+            s = 1.0
+        elif s >= 0.0 and r < -band:
+            s = -1.0 if not long_only else 0.0
+        desired[t] = s
+    target = np.asarray(desired, dtype=float)
+    if usd_lb is not None:
+        usd_up = _usd_change(df, usd_lb) > 0.0
+        target = np.where(target < 0.0, np.where(usd_up, -1.0, 0.0), target)
+    params: dict[str, float | int | bool | str] = {
+        "lookback": lookback, "band": band, "long_only": long_only,
+        "usd_lb": usd_lb or 0, "vol_n": vol_n, "ann": ann,
+    }
+    return _finish(df, "hysteresis_trend", params, np.asarray(target, dtype=float), vol_size(df, vol_n, ann))
+
+
+def relative_trend(
+    df: pd.DataFrame,
+    lookback: int,
+    *,
+    long_only: bool = False,
+    vol_n: int,
+    ann: int,
+) -> Plan:
+    """Trend of gold priced in USD-basket terms (close / usd index)."""
+    _validate_frame(df)
+    if "usd" not in df.columns:
+        raise ValueError("relative_trend requires the monthly 'usd' column")
+    if lookback < 1:
+        raise ValueError("lookback must be >= 1")
+    rel = df["close"] / df["usd"]
+    target = np.sign((rel / rel.shift(lookback) - 1.0).to_numpy())
+    target = _clip_long_only(np.asarray(target, dtype=float), long_only)
+    return _finish(
+        df, "relative_trend", {"lookback": lookback, "long_only": long_only, "vol_n": vol_n, "ann": ann},
+        target, vol_size(df, vol_n, ann),
+    )
+
 
 def bollinger_control(df: pd.DataFrame, *, vol_n: int, ann: int) -> Plan:
     """CONTROL: 20-bar two-sigma mean reversion, target masked to sized bars."""
