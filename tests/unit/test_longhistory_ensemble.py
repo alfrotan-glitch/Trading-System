@@ -7,8 +7,8 @@ import pandas as pd
 
 from qts.research.longhistory import checks as C
 from qts.research.longhistory import ensemble_protocol as ENS
-from qts.research.longhistory import hybrid_protocol as HYB
 from qts.research.longhistory import ensemble_signals as ES
+from qts.research.longhistory import hybrid_protocol as HYB
 from qts.research.longhistory import monthly_protocol as MON
 from qts.research.longhistory import weekly_protocol as WK
 
