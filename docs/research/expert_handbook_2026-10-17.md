@@ -90,6 +90,14 @@ Robustness (post-hoc, disclosed, non-gating): long-only lookback plateau
 return (+$142,032, Sharpe 0.850) — the champions are risk-shaped, not
 return-maximal.
 
+Fragility audit (2026-10-17, independent verifier conventions, post-hoc):
+delaying fills by 1–2 extra months does **not** hurt — `ts9_lo` Sharpe
+0.836 → 0.847/0.851, `veto9` 0.662 → 0.671/0.674 (the edge is slow-moving,
+not a fill-timing artifact). Evaluation-start jitter 2000→2010 keeps
+`ts9_lo` Sharpe in 0.79–0.88 and `veto9` in 0.62–0.72; drawdowns are
+start-invariant (−0.310 / −0.360, set by the 2011–15 episode). The headline
+numbers are not artifacts of the window start or the execution convention.
+
 **Forward status (frozen, paper only):** both champions LONG since 2023-02,
 target 1.0, size 0.4728 as of 2026-09-30 (gold 4319.0). Protocol
 `docs/research/forward_validation_champions_2026-10-17.md`; state
