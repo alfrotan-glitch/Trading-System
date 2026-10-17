@@ -63,8 +63,9 @@ cumulative trial count; G6 ≥100 out-of-sample round turns; G7 regime stability
 | Wave-6 (discovery only) | — | ≤1989 (22 cfg) | 307 | no cycle frozen |
 | Wave-7 (discovery only) | — | ≤1989 (20 cfg) | 327 | no cycle frozen |
 | Wave-8 (discovery only) | — | ≤1989 (10 cfg) | 337 | no cycle frozen |
+| Wave-9 (discovery only) | — | ≤1989 (6 cfg) | 343 | no cycle frozen |
 
-The next gated cycle must use **N = 337** in its DSR. Per-cycle evidence:
+The next gated cycle must use **N = 343** in its DSR. Per-cycle evidence:
 `data/evidence/longhistory/{ensemble,weekly,hybrid,weekly_hybrid,volmanaged}_research_final.json`;
 preregistrations and results under `docs/research/`.
 
@@ -83,6 +84,14 @@ Evaluation: net **+$49,897**, Sharpe **0.662**, DSR 0.752 @N=237, financing
 positive standalone in **every decade** (Sharpe 0.750 / 0.268 / 0.752 / 0.192 /
 1.098 for 1973-89 / 1990s / 2000s / 2010s / 2020-26); `ts9_lo` decades:
 0.711 / −0.253 / 0.936 / 0.314 / 1.244.
+
+Financing fragility (audit F-1, 2026-10-17): both champions' G9 pass rests
+on the assumed symmetric 0.25 bps/day. Re-costed break-evens are ≈3.3
+(`ts9_lo`) and ≈2.4 (`veto9`) bps/day — at a broker whose measured
+`swap_long` exceeds that, the financing-charged result fails G9. Never
+quote the financing-charged nets without the broker's measured swap
+(`docs/audit/independent_research_audit_2026-10-17.md` §4,
+`data/evidence/longhistory/champion_financing_sensitivity.json`).
 
 Robustness (post-hoc, disclosed, non-gating): long-only lookback plateau
 6–15 m evaluation Sharpe 0.79–0.96 (9 m is interior, not a spike; the higher
@@ -166,6 +175,12 @@ hand-edited.
   real-extremity (valuation) gate is harmful (selection 0.51/0.58 vs bases
   0.78/0.83). Not a distinct validated mechanism; do not re-run deflation
   variants without a new idea.
+- **Inflation-regime conditioning (Wave-9):** gating the champions on CPI
+  YoY level (>3%) or 6 m inflation momentum collapses the check window
+  (`ts9_lo` gates: −0.05/−0.03 vs base +0.563 on 1984–89 — the profitable
+  longs there were disinflationary-grind longs the gate forbids); pure
+  inflation-momentum timing is negative (−0.57/−0.73 check). "Gold as
+  inflation-hedge timing" is folklore at monthly frequency; do not retry.
 - **Cross-asset ports:** frozen slow TSMOM basket Sharpe −0.007 on 11 FX pairs;
   champions trail buy-and-hold on World Bank silver (trend Sharpe 0.250 vs B&H
   0.417) and platinum (0.146), all trend forms negative 2020-24 on both
@@ -200,11 +215,11 @@ checkpoint criteria govern regardless.
 2. **MEASURED costs** from a Windows MT5 demo terminal (also unblocks the
    claim-eligibility question and the M15 cost-sensitivity blocker).
 3. A *new mechanism* (not a re-parameterisation) discovered on ≤1989 (or
-   weekly 2004-2009) partitions only, frozen under N ≥ 337, that beats the
-   champions on discovery by a margin large enough to matter — Waves 6–8
+   weekly 2004-2009) partitions only, frozen under N ≥ 343, that beats the
+   champions on discovery by a margin large enough to matter — Waves 6–9
    showed the plausible mechanism tweaks (hysteresis, relative trend,
    vol-regime and extension gates, extreme mean reversion, USD-momentum,
-   real-price deflation) do not.
+   real-price deflation, inflation-regime conditioning) do not.
 Nothing else. In particular: re-running existing cycles, loosening G6 for
 slow trend, or cherry-picking lookbacks 10–11 m post-hoc are prohibited.
 
