@@ -1,0 +1,35 @@
+{
+  "method": "frozen champions re-costed post-hoc with engine CostModel.financing_bps_per_day (symmetric bps/day on held notional); no re-selection, no re-tuning; diagnostic",
+  "window": "2000-01-01..2026-09-30",
+  "financing_bps_per_day_to_net_usd": {
+    "0.0": {
+      "ts9_lo": 70989,
+      "veto9": 49897
+    },
+    "0.25": {
+      "ts9_lo": 59931,
+      "veto9": 39392
+    },
+    "0.5": {
+      "ts9_lo": 50378,
+      "veto9": 30725
+    },
+    "1.0": {
+      "ts9_lo": 34995,
+      "veto9": 17675
+    },
+    "1.5": {
+      "ts9_lo": 23518,
+      "veto9": 8797
+    },
+    "2.0": {
+      "ts9_lo": 14958,
+      "veto9": 2760
+    },
+    "3.0": {
+      "ts9_lo": 3822,
+      "veto9": -4129
+    }
+  },
+  "note": "G9 in the frozen cycles used 0.25 bps/day. Broker swap_long for XAUUSD is directional and broker-specific (MEASURED value pending Windows MT5 demo, runbook Section 8); e.g. $55/lot/night at $2000 gold = 2.75 bps/day."
+}
