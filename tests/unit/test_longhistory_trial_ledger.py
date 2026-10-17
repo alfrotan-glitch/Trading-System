@@ -72,7 +72,7 @@ def _evidence_cids(doc) -> set:
 
 @pytest.mark.parametrize(("module", "expected_n", "fname"), CHAIN, ids=[c[0].__name__ for c in CHAIN])
 def test_trial_count_chain(module, expected_n, fname):
-    assert module.N_TRIALS == expected_n
+    assert expected_n == module.N_TRIALS
 
 
 @pytest.mark.parametrize(("module", "expected_n", "fname"), [c for c in CHAIN if c[2]], ids=[c[2] for c in CHAIN if c[2]])
