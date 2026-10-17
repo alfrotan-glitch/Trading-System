@@ -17,10 +17,10 @@ from __future__ import annotations
 
 from functools import partial
 
-from qts.research.longhistory import ensemble_protocol as ENS
 from qts.research.longhistory import ensemble_signals as ES
 from qts.research.longhistory import monthly_protocol as MON
 from qts.research.longhistory import protocol as D
+from qts.research.longhistory import weekly_protocol as _WK
 from qts.research.longhistory.protocol import Candidate
 
 PREREG_ID = "LH-XAUUSD-HYB-2026-10-17"
@@ -52,8 +52,6 @@ REPLICATE_END = MON.REPLICATE_END
 #: partition (enumerated in the preregistration), plus the control.
 DISCOVERY_TRIALS = 44
 #: Cumulative through LH-XAUUSD-W1-2026-10-17 (weekly cycle).
-from qts.research.longhistory import weekly_protocol as _WK  # noqa: E402
-
 N_TRIALS_INHERITED = _WK.N_TRIALS
 N_TRIALS_THIS_CYCLE = DISCOVERY_TRIALS
 N_TRIALS = N_TRIALS_INHERITED + N_TRIALS_THIS_CYCLE
