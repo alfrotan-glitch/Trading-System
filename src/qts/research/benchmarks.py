@@ -173,7 +173,30 @@ BENCHMARK_C = BenchmarkSpec(
     ),
 )
 
-BENCHMARKS: tuple[BenchmarkSpec, ...] = (BENCHMARK_A, BENCHMARK_B, BENCHMARK_C)
+BENCHMARK_D = BenchmarkSpec(
+    benchmark_id="BENCH-D-MONTHLY-TREND-TS9-LO",
+    hypothesis_id="H-BENCH-D",
+    role=BenchmarkRole.CANDIDATE,
+    family=StrategyFamily.TREND,
+    params={"trend_window_months": 9, "sizing_target_vol_annual_pct": 0.10, "max_equity_multiple": 1.0, "long_only": True},
+    timeframe="monthly",
+    quantity_lots=0.10,
+    stop_distance_usd=0.0,
+    max_hold_bars=12,
+    rationale=(
+        "Best long-history candidate from 2026-10-17 series (`ts9_lo`). "
+        "Monthly trend sign on 9-month trailing return, long-only, sized to 10% annualised vol target, no leverage, no stop. "
+        "Positive evaluation (+70,989 USD, Sharpe 0.837) on 1973-2026 data with assumed costs. "
+        "Fails G3 (positive-year count), G5 (DSR < 0.95 at N=149; 0.929; 0.945 at N=237), G6 (<100 OOS turns), G7 (long-only cannot profit in DOWN regimes). "
+        "Requires verified claim-eligible dataset + measured broker costs for promotion."
+    ),
+    basis=(
+        "Time-series momentum / monthly trend following — publicly documented in Moskowitz, Ooi & Pedersen (2012). "
+        "The long-history evaluation is informational (assumed costs, one third-party source); it does NOT establish a validated edge without prerequisites."
+    ),
+)
+
+BENCHMARKS: tuple[BenchmarkSpec, ...] = (BENCHMARK_A, BENCHMARK_B, BENCHMARK_C, BENCHMARK_D)
 
 #: Hashes recorded when the set was frozen. ``verify_frozen`` recomputes them;
 #: a mismatch means a parameter was edited after preregistration.
@@ -181,6 +204,7 @@ FROZEN_SPEC_HASHES: dict[str, str] = {
     "BENCH-A-TREND-EMA-12-48": "d6d5dccd5b0cbb2cfcf47b1092eaedd5960721d70034029611afb636c45f2036",
     "BENCH-B-BREAKOUT-DONCHIAN-20": "f44be6d02e28d0696334251978022d267614d3b3d2302e403394f87172373c5e",
     "BENCH-C-MEANREV-BOLLINGER-20-2.0": "7704e9b18617d5b97024eafdd083ba5fc55c184b0b182c3083453593b01a48cf",
+    "BENCH-D-MONTHLY-TREND-TS9-LO": "654850af10976a40ac9ae5c7ec785da7eaa09fdef812271b7861ee76abbe9eea",
 }
 
 PREREGISTERED_AT = "2026-10-09"

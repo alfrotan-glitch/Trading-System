@@ -162,6 +162,39 @@
         "cost component(s) with UNKNOWN basis: financing \u2014 not claim-eligible",
         "dataset provenance 'REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks' is not claim-eligible \u2014 mechanism evidence only"
       ]
+    },
+    {
+      "benchmark_id": "BENCH-D-MONTHLY-TREND-TS9-LO",
+      "role": "CANDIDATE",
+      "spec_hash": "654850af10976a40ac9ae5c7ec785da7eaa09fdef812271b7861ee76abbe9eea",
+      "timeframe_requested": "monthly",
+      "timeframe_measured": "15m",
+      "timeframe_matches": false,
+      "bars": 26038,
+      "round_turns": 0,
+      "gross_pnl_usd": 0.0,
+      "cost_usd": 7562.0,
+      "measured_cost_usd": 7562.0,
+      "net_pnl_usd": 0.0,
+      "net_expectancy_per_trade": 0.0,
+      "break_even_cost_multiple": 0.0,
+      "win_rate": 0.0,
+      "profit_factor": 0.0,
+      "exits": {},
+      "sharpe": 0.0,
+      "max_drawdown": 0.0,
+      "walk_forward_folds": 0,
+      "walk_forward_wfe": null,
+      "claim_eligible": false,
+      "mechanism_only": true,
+      "reasons": [
+        "Preregistered monthly trend candidate (`ts9_lo`) from 2026-10-17 long-history series \u2014 mechanism verified, freeze hash verified.",
+        "Positive long-history evaluation (+70,989 USD gross, Sharpe 0.837, DSR 0.929 at N=149; 0.945 at N=237) \u2014 information only, not a validated claim.",
+        "Fails economic gates: G3 (positive-year count below threshold), G5 (DSR < 0.95 gate at standard trial count), G6 (<100 OOS turns \u2014 16 turns over 36 years), G7 (long-only cannot profit in DOWN regimes).",
+        "Dataset claim-eligible: FALSE \u2014 reconstructed M15 dataset (5.42% unexpected gaps, provenance REAL:dukascopy...) does not match monthly timeframe; no claim-eligible monthly dataset available in this environment.",
+        "Cost components measured from documentation (MEASURED_FROM_DOCUMENTATION) \u2014 NOT deal-level MT5 measurement.",
+        "Requires verified claim-eligible monthly dataset (independent source, <2% gaps) + deal-level broker cost measurement before promotion."
+      ]
     }
   ],
   "conclusion": "NO_EDGE_ESTABLISHED \u2014 mechanism evidence only",
