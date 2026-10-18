@@ -85,13 +85,15 @@
       "max_drawdown": 0.2895416318905104,
       "walk_forward_folds": 6,
       "walk_forward_wfe": 0.9687933691368967,
-      "claim_eligible": true,
+      "claim_eligible": false,
       "mechanism_only": true,
       "reasons": [
-        "Cost components measured from official broker documentation (spread: 18 pips standard / 5 pips ECN; commission: $3.50/side; swap: -60 pips long / +19 pips short; triple swap Wednesday)",
-        "Mechanism verified on reconstructed M15 dataset (26,038 rows, Aug 2025 - Sep 2026)",
-        "Frozen benchmark parameters preserved (hash verified)",
-        "Agent4 daily validation confirms positive full-run (+2499 USD, SR=0.28, PF=1.56) and positive half2 (+1289 USD, PF=13.52)"
+        "Cost components measured from official broker documentation (spread: 18 pips standard / 5 pips ECN; commission: $3.50/side; swap: -60 pips long / +19 pips short; triple swap Wednesday) \u2014 but NOT deal-level MT5 measurement (Linux sandbox blocks terminal connection)",
+        "Mechanism verified on reconstructed M15 dataset (26,038 rows, Aug 2025 - Sep 2026) but dataset quality gate FAIL: 5.42% unexpected missing intervals (>2% gate); dataset provenance 'REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks' is NOT claim-eligible",
+        "Frozen benchmark parameters preserved (hash verified: d6d5dccd...)",
+        "Agent4 daily validation confirms positive full-run (+2499 USD, SR=0.28, PF=1.56) and positive half2 (+1289 USD, PF=13.52) \u2014 THESE ARE DAILY HOLDOUT RESULTS, NOT M15 INTRADAY CLAIMS",
+        "M15 economic performance: gross +8655 USD, cost 7562 USD, net +1093 USD, BUT Sharpe -5.425, profit factor 0.898 (<1), win rate 0.098, max drawdown 0.29 \u2014 economic gates FAIL",
+        "No validated economic edge exists for M15; mechanism verified only; prerequisites (corrected/replaced dataset <2% gaps + deal-level MT5 measurement) clearly stated"
       ]
     },
     {
