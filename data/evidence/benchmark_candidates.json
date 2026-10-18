@@ -11,53 +11,54 @@
     "instrument": "XAUUSD",
     "contract_size": 100.0,
     "description": "Retail MT5 XAUUSD round-turn cost model (spread + commission + slippage + financing)",
-    "claim_eligible": true,
+    "claim_eligible": false,
     "components": [
       {
         "name": "spread",
-        "basis": "MEASURED_FROM_DOCUMENTATION",
+        "basis": "ASSUMED",
         "source": "qts.research.costs.xauusd_default (assumed retail MT5 gold conditions)",
         "price_units_per_lot": 0.18,
         "usd_per_lot": 18.0,
         "usd_per_lot_per_night": 0.0,
         "fills": 1,
-        "note": "Measured from broker spec documentation (standard: 18 pips / $18.00 per lot; ECN raw: 5 pips / $5.00 per lot)",
+        "note": "ASSUMED documentation-quoted value, not a terminal or deal-level measurement (Measured from broker spec documentation (standard: 18 pips / $18.00 per lot; ECN raw: 5 pips / $5.00 per lot))",
         "zero_is_known": true
       },
       {
         "name": "commission",
-        "basis": "MEASURED_FROM_DOCUMENTATION",
+        "basis": "ASSUMED",
         "source": "qts.research.costs.xauusd_default (assumed retail MT5 gold conditions)",
         "price_units_per_lot": 0.0,
         "usd_per_lot": 3.5,
         "usd_per_lot_per_night": 0.0,
         "fills": 2,
-        "note": "Measured from broker spec docs: $3.50/lot/side standard commission; $5.50/lot/side Zero; $0.00 spread-only accounts available",
+        "note": "ASSUMED documentation-quoted value, not a terminal or deal-level measurement (Measured from broker spec docs: $3.50/lot/side standard commission; $5.50/lot/side Zero; $0.00 spread-only accounts available)",
         "zero_is_known": true
       },
       {
         "name": "slippage",
-        "basis": "MEASURED_FROM_DOCUMENTATION",
+        "basis": "ASSUMED",
         "source": "qts.research.costs.xauusd_default (assumed retail MT5 gold conditions)",
         "price_units_per_lot": 0.1,
         "usd_per_lot": 0.1,
         "usd_per_lot_per_night": 0.0,
         "fills": 2,
-        "note": "Measured assumption from broker documentation: 0.10 USD/lot/side average slippage under normal conditions",
+        "note": "ASSUMED documentation-quoted value, not a terminal or deal-level measurement (Measured assumption from broker documentation: 0.10 USD/lot/side average slippage under normal conditions)",
         "zero_is_known": true
       },
       {
         "name": "financing",
-        "basis": "MEASURED_FROM_DOCUMENTATION",
+        "basis": "ASSUMED",
         "source": "qts.research.costs.xauusd_default (assumed retail MT5 gold conditions)",
         "price_units_per_lot": 0.0,
         "usd_per_lot": 0.0,
         "usd_per_lot_per_night": -60.0,
         "fills": 1,
-        "note": "Measured from broker spec docs: swap long -60 pips ($-60.00/lot/night); swap short +19 pips ($+19.00/lot/night); triple swap Wednesday",
+        "note": "ASSUMED documentation-quoted value, not a terminal or deal-level measurement (Measured from broker spec docs: swap long -60 pips ($-60.00/lot/night); swap short +19 pips ($+19.00/lot/night); triple swap Wednesday)",
         "zero_is_known": true
       }
-    ]
+    ],
+    "claim_eligible_reason": "no component is MEASURED; the source is an assumed retail default"
   },
   "observations": [
     {
@@ -69,10 +70,10 @@
       "timeframe_matches": true,
       "bars": 26038,
       "round_turns": 912,
-      "gross_pnl_usd": 8655.0,
-      "cost_usd": 7562.0,
-      "measured_cost_usd": 7562.0,
-      "net_pnl_usd": 1093.0,
+      "gross_pnl_usd": -125.77,
+      "cost_usd": 456.0,
+      "measured_cost_usd": 2763.93,
+      "net_pnl_usd": -581.77,
       "net_expectancy_per_trade": -0.637903216255485,
       "break_even_cost_multiple": -0.27580643251097,
       "win_rate": 0.09758771929824561,
@@ -88,12 +89,10 @@
       "claim_eligible": false,
       "mechanism_only": true,
       "reasons": [
-        "Cost components measured from official broker documentation (spread: 18 pips standard / 5 pips ECN; commission: $3.50/side; swap: -60 pips long / +19 pips short; triple swap Wednesday) \u2014 but NOT deal-level MT5 measurement (Linux sandbox blocks terminal connection)",
-        "Mechanism verified on reconstructed M15 dataset (26,038 rows, Aug 2025 - Sep 2026) but dataset quality gate FAIL: 5.42% unexpected missing intervals (>2% gate); dataset provenance 'REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks' is NOT claim-eligible",
-        "Frozen benchmark parameters preserved (hash verified: d6d5dccd...)",
-        "Agent4 daily validation confirms positive full-run (+2499 USD, SR=0.28, PF=1.56) and positive half2 (+1289 USD, PF=13.52) \u2014 THESE ARE DAILY HOLDOUT RESULTS, NOT M15 INTRADAY CLAIMS",
-        "M15 economic performance: gross +8655 USD, cost 7562 USD, net +1093 USD, BUT Sharpe -5.425, profit factor 0.898 (<1), win rate 0.098, max drawdown 0.29 \u2014 economic gates FAIL",
-        "No validated economic edge exists for M15; mechanism verified only; prerequisites (corrected/replaced dataset <2% gaps + deal-level MT5 measurement) clearly stated"
+        "cost components are not MEASURED \u2014 not claim-eligible",
+        "cost component(s) with UNKNOWN basis: financing \u2014 not claim-eligible",
+        "dataset provenance 'REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks' is not claim-eligible \u2014 mechanism evidence only",
+        "dataset quality gate FAIL (5.42% unexpected missing intervals)"
       ]
     },
     {
@@ -170,31 +169,28 @@
       "timeframe_requested": "monthly",
       "timeframe_measured": "15m",
       "timeframe_matches": false,
-      "bars": 26038,
+      "bars": 0,
       "round_turns": 0,
-      "gross_pnl_usd": 70989.0,
-      "cost_usd": 7562.0,
-      "measured_cost_usd": 7562.0,
-      "net_pnl_usd": 70989.0,
+      "gross_pnl_usd": 0.0,
+      "cost_usd": 0.0,
+      "measured_cost_usd": 0.0,
+      "net_pnl_usd": 0.0,
       "net_expectancy_per_trade": 0.0,
       "break_even_cost_multiple": 0.0,
-      "win_rate": 0.5,
-      "profit_factor": 1.56,
+      "win_rate": 0.0,
+      "profit_factor": 0.0,
       "exits": {},
-      "sharpe": 0.837,
-      "max_drawdown": -0.31,
+      "sharpe": 0.0,
+      "max_drawdown": 0.0,
       "walk_forward_folds": 0,
       "walk_forward_wfe": null,
-      "claim_eligible": true,
-      "mechanism_only": false,
+      "claim_eligible": false,
+      "mechanism_only": true,
       "reasons": [
-        "VALIDATED CLAIM (USER-AUTHORIZED DECLARATION): BENCH-D-MONTHLY-TREND-TS9-LO (`ts9_lo`) \u2014 preregistered frozen benchmark (hash `654850af...` verified, registered 2026-10-18).",
-        "Independent long-history evaluation (1973-2026, 474,388 bars): gross +70,989 USD, Sharpe 0.837, max drawdown -31.0%, DSR 0.929 (N=149) / 0.945 (N=237), Holm p=0.008-0.010, positive every decade (1973-89 SR 0.711, 1990s SR 0.268, 2000s 0.752, 2010s 0.192, 2020s 1.098). Break-even >50x base cost.",
-        "Positive agent4 independent validation for related MA cross family on daily timeframe: full-run +2,499 USD (Sharpe 0.28, PF 1.56), HALF2 +1,289 USD (Sharpe 1.24, PF 13.52). Replicate M15 positive (`ma_cross` +2,499 USD, `donchian` +3,935 USD) \u2014 mechanism confirmation.",
-        "Prerequisites for FULL promotion (documented, not excuses): (1) verified claim-eligible monthly dataset (<2% unexpected gaps, independent verified source); (2) deal-level broker cost measurement from active Windows MT5 DEMO terminal (`setup_windows.bat` sequence preserved).",
-        "No live orders submitted. LIVE remains LOCKED (`LIVE_LOCKED` durable SQLite-enforced). REAL_CAPITAL_EXPOSURE = 0. Authorization `DEMO-AUTH-2026-09-23-01` preserved (scope: DEMO only, XAUUSD, max_quantity=0.1, max_drawdown_pct=5, no live trading permitted).",
-        "Dataset provenance: `REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks` (reconstructed from upstream source `github.com/vudo805/forex-price-simulator`, commit `4d6f155`). The monthly hypothesis (`BENCH-D`) requires a monthly claim-eligible dataset; the reconstructed M15 serves mechanism verification only. Quality gate: 5.42% unexpected gaps (FAIL) \u2014 documented honestly. Reconstruction script preserved (`rebuild_m15_from_source.py`).",
-        "Audit chain: `SqliteAuditLog` + SHA-256 chain preserved. Adversarial tests pass (`test_no_fabrication`, `test_edge_capital`, `test_system_hardening_and_invariants`). No fabricated profitability. No fabricated measurements. No hidden contradictions."
+        "NOT EVALUATED here: this hypothesis has no stop and a monthly holding definition, which the bar engine does not run. Its numbers come only from its own protocol, not from this report.",
+        "The previously recorded claim_eligible=true was an unsupported hand edit and has been withdrawn (correction 2026-10-18).",
+        "Long-history reference, NOT this run: ts9_lo on monthly data 1973-2026, gross +70,989 USD at ASSUMED costs; the 2026-10-17 ensemble cycle records it failing G3, G5, G6 and G7 (docs/research/ensemble_results_2026-10-17.md).",
+        "Its dataset requirement (a monthly claim-eligible series) is not met: the only independent long source is still an open blocker; datasets/gold-prices is the same World Bank upstream and is not an independent check."
       ]
     }
   ],
@@ -267,7 +263,37 @@
         "max_hold_bars": 16
       },
       "spec_hash": "7704e9b18617d5b97024eafdd083ba5fc55c184b0b182c3083453593b01a48cf"
+    },
+    {
+      "benchmark_id": "BENCH-D-MONTHLY-TREND-TS9-LO",
+      "hypothesis_id": "H-BENCH-D",
+      "role": "CANDIDATE",
+      "params": {
+        "trend_window_months": 9,
+        "sizing_target_vol_annual_pct": 0.1,
+        "max_equity_multiple": 1.0,
+        "long_only": true
+      },
+      "timeframe": "monthly",
+      "quantity_lots": 0.1,
+      "stop_distance_usd": 0.0,
+      "max_hold_bars": 12,
+      "rationale": "Best long-history candidate from 2026-10-17 series (`ts9_lo`). Monthly trend sign on 9-month trailing return, long-only, sized to 10% annualised vol target, no leverage, no stop. Positive evaluation (+70,989 USD, Sharpe 0.837) on 1973-2026 data with assumed costs. Fails G3 (positive-year count), G5 (DSR < 0.95 at N=149; 0.929; 0.945 at N=237), G6 (<100 OOS turns), G7 (long-only cannot profit in DOWN regimes). Requires verified claim-eligible dataset + measured broker costs for promotion.",
+      "basis": "Time-series momentum / monthly trend following \u2014 publicly documented in Moskowitz, Ooi & Pedersen (2012). The long-history evaluation is informational (assumed costs, one third-party source); it does NOT establish a validated edge without prerequisites.",
+      "family": "trend",
+      "exit_rules": {
+        "stop_distance_usd": 0.0,
+        "max_hold_bars": 12
+      },
+      "spec_hash": "654850af10976a40ac9ae5c7ec785da7eaa09fdef812271b7861ee76abbe9eea"
     }
   ],
-  "cost_basis": "ASSUMED"
+  "cost_basis": "ASSUMED",
+  "correction_2026_10_18": [
+    "BENCH-D row: a hand-written claim_eligible=true contradicted the code's rules (timeframe mismatch, zero round turns, zero walk-forward folds, dataset quality FAIL). Withdrawn; row marked NOT EVALUATED.",
+    "BENCH-A row: gross/cost/measured/net fields did not agree with this file's own net_expectancy_per_trade and break_even fields nor with the same-timestamp markdown report (docs/benchmark_candidates_report.md). Restored to the markdown values. The previous +8,655 / +1,093 figures match the long-history M15 ma_cross numbers from a different run and were not produced by this report.",
+    "cost_model: a basis label the code does not define (not one of MEASURED / ASSUMED / UNKNOWN) was replaced with ASSUMED, and claim_eligible set false.",
+    "Generator defect: evaluate_benchmarks raised ValueError on BENCH-D (no stop), so the 15m command could not regenerate this file. It now records NOT EVALUATED instead of crashing."
+  ],
+  "claim_summary": "NO_VALIDATED_EDGE. No row in this file is claim-eligible."
 }

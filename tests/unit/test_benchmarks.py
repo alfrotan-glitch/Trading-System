@@ -20,6 +20,7 @@ from qts.research.benchmarks import (
     BENCHMARK_A,
     BENCHMARK_B,
     BENCHMARK_C,
+    BENCHMARK_D,
     BENCHMARKS,
     FROZEN_SPEC_HASHES,
     BenchmarkRole,
@@ -31,8 +32,16 @@ from qts.research.strategies import StrategyFamily
 
 
 def test_the_set_is_small_and_deliberate():
-    """Three hypotheses, not hundreds of variants."""
-    assert len(BENCHMARKS) == 3
+    """Four preregistered hypotheses, not hundreds of variants.
+
+    Three are 15m bar strategies that this engine runs. BENCH-D is a monthly,
+    unstopped hypothesis that the bar engine cannot run; it is frozen here so it
+    cannot be redefined, and it is reported as NOT EVALUATED.
+    """
+    assert len(BENCHMARKS) == 4
+    assert len([b for b in BENCHMARKS if b.timeframe == "15m"]) == 3
+    assert BENCHMARK_D.timeframe == "monthly"
+    assert BENCHMARK_D.stop_distance_usd == 0.0
 
 
 def test_one_control_exists_and_is_labelled_as_one():
@@ -44,12 +53,20 @@ def test_one_control_exists_and_is_labelled_as_one():
     assert BENCHMARK_B.role is BenchmarkRole.CANDIDATE
 
 
-def test_every_benchmark_declares_its_exit_rules():
+def test_every_bar_benchmark_declares_its_exit_rules():
     """A trend rule with a stop and one without are different strategies."""
     for spec in BENCHMARKS:
+        if spec.timeframe != "15m":
+            continue
         rules = spec.exit_rules()
         assert rules["stop_distance_usd"] > 0
         assert rules["max_hold_bars"] >= 1
+
+
+def test_the_monthly_hypothesis_is_not_run_as_a_bar_strategy():
+    """BENCH-D has no stop, so the 15m engine must not be asked to run it."""
+    assert BENCHMARK_D.stop_distance_usd <= 0
+    assert BENCHMARK_D.exit_rules()["stop_distance_usd"] <= 0
 
 
 def test_candidates_are_comparable_on_everything_except_the_entry():
@@ -164,15 +181,18 @@ def test_benchmarks_produce_distinct_mechanism_evidence_on_the_bootstrap_set(tmp
         store.close()
 
     assert report.frozen_verified
-    assert len(report.observations) == 3
+    assert len(report.observations) == 4
     ids = [o.benchmark_id for o in report.observations]
-    assert len(set(ids)) == 3
+    assert len(set(ids)) == 4
+
+    bar_obs = [o for o in report.observations if o.benchmark_id != BENCHMARK_D.benchmark_id]
+    assert len(bar_obs) == 3
 
     # Distinct strategies on distinct logic must not collide. A previous
     # version of the engine silently fell back to one default strategy and all
     # three were byte-identical.
     fingerprints = {
-        (o.round_turns, round(o.gross_pnl_usd, 6), round(o.net_pnl_usd, 6)) for o in report.observations
+        (o.round_turns, round(o.gross_pnl_usd, 6), round(o.net_pnl_usd, 6)) for o in bar_obs
     }
     assert len(fingerprints) == 3, "two benchmarks produced identical results — a strategy was substituted"
 
@@ -181,7 +201,13 @@ def test_benchmarks_produce_distinct_mechanism_evidence_on_the_bootstrap_set(tmp
     for obs in report.observations:
         assert obs.mechanism_only is True
         assert obs.claim_eligible is False
-        assert any("not claim-eligible" in r for r in obs.reasons)
+        assert any("not claim-eligible" in r or "NOT EVALUATED" in r for r in obs.reasons)
+
+    # The monthly hypothesis is reported as not evaluated — zero numbers, not a result.
+    monthly = next(o for o in report.observations if o.benchmark_id == BENCHMARK_D.benchmark_id)
+    assert monthly.round_turns == 0
+    assert monthly.gross_pnl_usd == 0.0
+    assert any("NOT EVALUATED" in r for r in monthly.reasons)
 
 
 @pytest.mark.integration
@@ -231,8 +257,13 @@ def test_benchmarks_report_a_timeframe_mismatch_instead_of_ignoring_it(tmp_path,
     finally:
         store.close()
 
-    for obs in report.observations:
+    bar_obs = [o for o in report.observations if o.benchmark_id != BENCHMARK_D.benchmark_id]
+    assert len(bar_obs) == 3
+    for obs in bar_obs:
         assert obs.timeframe_requested == "15m"
         assert obs.timeframe_measured == "1H"
         assert obs.timeframe_matches is False
         assert any("mechanism evidence only" in r for r in obs.reasons)
+    monthly = next(o for o in report.observations if o.benchmark_id == BENCHMARK_D.benchmark_id)
+    assert monthly.timeframe_requested == "monthly"
+    assert monthly.timeframe_matches is False

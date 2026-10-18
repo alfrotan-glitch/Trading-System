@@ -3,7 +3,8 @@
 **Generated:** 2026-10-09T12:51:04.774216+00:00
 **Dataset:** 20261009-010+2b024334-1ba57af7 (REAL:dukascopy:vudo805@4d6f155:XAUUSD:15m:mid-from-bid-ask-ticks)
 **Cost basis:** ASSUMED
-**Preregistered:** 2026-10-09
+**Preregistered:** 2026-10-09 (BENCH-D frozen hash recorded later)
+**Correction 2026-10-18:** BENCH-D is NOT EVALUATED on this 15m engine; the BENCH-A money row and the cost-basis label were corrected. See `correction_2026_10_18` in `data/evidence/benchmark_candidates.json`.
 
 ## Conclusion
 
@@ -17,6 +18,7 @@
 - **BENCH-A-TREND-EMA-12-48** (CANDIDATE) — family `trend`, params `{'fast': 12, 'slow': 48, 'ma_type': 'ema'}`, timeframe 15m, size 0.01 lots, stop 3.0 USD, max hold 16 bars. Hash `d6d5dccd5b0c…`
 - **BENCH-B-BREAKOUT-DONCHIAN-20** (CANDIDATE) — family `breakout`, params `{'period': 20}`, timeframe 15m, size 0.01 lots, stop 3.0 USD, max hold 16 bars. Hash `f44be6d02e28…`
 - **BENCH-C-MEANREV-BOLLINGER-20-2.0** (CONTROL) — family `mean_reversion`, params `{'period': 20, 'k': 2.0}`, timeframe 15m, size 0.01 lots, stop 3.0 USD, max hold 16 bars. Hash `7704e9b18617…`
+- **BENCH-D-MONTHLY-TREND-TS9-LO** (CANDIDATE) — family `trend`, params `{'trend_window_months': 9, 'sizing_target_vol_annual_pct': 0.1, 'max_equity_multiple': 1.0, 'long_only': True}`, timeframe monthly, size 0.1 lots, stop 0.0 USD, max hold 12 bars. Hash `654850af1097…`
 
 ## Observations
 
@@ -25,6 +27,7 @@
 | BENCH-A-TREND-EMA-12-48 | CANDIDATE | 15m (matches) | 912 | -125.77 | 456.00 | 2763.93 | -581.77 | -0.6379 | -0.28x | 6 |
 | BENCH-B-BREAKOUT-DONCHIAN-20 | CANDIDATE | 15m (matches) | 4999 | -735.39 | 1422.00 | 8579.93 | -2157.39 | -0.4316 | -0.52x | 6 |
 | BENCH-C-MEANREV-BOLLINGER-20-2.0 | CONTROL | 15m (matches) | 6289 | +81.85 | 1609.00 | 9754.73 | -1527.15 | -0.2428 | 0.05x | 6 |
+| BENCH-D-MONTHLY-TREND-TS9-LO | CANDIDATE | 15m (MISMATCH — mechanism only) | 0 | +0.00 | 0.00 | 0.00 | +0.00 | +0.0000 | 0.00x | 0 |
 
 Modelled cost is what the declared cost model charges; measured cost is what the
 simulation actually charged (spread, slippage and fees recovered from the fill
