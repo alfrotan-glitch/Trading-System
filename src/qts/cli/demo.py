@@ -827,6 +827,73 @@ def demo_measured_model(
         click.echo(json.dumps(model, indent=2, default=str))
 
 
+@demo.command("evaluate-champions")
+@click.option("--spread-profile", "spread_profile_path", default=None)
+@click.option("--symbol-terms", "symbol_terms_path", default=None)
+@click.option("--direction", default="long", type=click.Choice(["long", "short"]))
+@click.option("--db", default=default_db_path)
+@click.option("--json-out", default=None)
+def demo_evaluate_champions(
+    spread_profile_path: str | None,
+    symbol_terms_path: str | None,
+    direction: str,
+    db: str,
+    json_out: str | None,
+) -> None:
+    """Re-evaluate frozen champions (ts9_lo, veto9) under measured vs assumed costs without retuning."""
+    from qts.execution.measured_model import (
+        assumed_vs_measured_comparison,
+        build_measured_cost_model,
+        reevaluate_frozen_champions,
+    )
+    from qts.execution.reality import ExecutionRealityStore
+
+    def _load(path: str | None) -> dict[str, Any] | None:
+        if not path:
+            return None
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+
+    spread_profile = _load(spread_profile_path)
+    terms_doc = _load(symbol_terms_path)
+    symbol_terms = (terms_doc or {}).get("terms") if terms_doc else None
+    if symbol_terms is None and isinstance(terms_doc, dict) and terms_doc.get("schema") == "qts.broker_symbol_cost_terms.v1":
+        symbol_terms = terms_doc
+
+    session = _demo_session("", db)
+    deals: list[Any] = []
+    store = session.cost_evidence_store
+    if store is not None:
+        ok, problems = store.verify_chain()
+        if not ok:
+            raise click.ClickException(f"cost evidence chain does not verify: {problems}")
+        deals = store.deals()
+    slippage_bps = ExecutionRealityStore().summary().get("avg_abs_slippage_bps")
+
+    model = build_measured_cost_model(
+        spread_profile=spread_profile,
+        symbol_terms=symbol_terms,
+        deals=deals,
+        slippage_bps=slippage_bps,
+        direction=direction,
+    )
+    report = {
+        "schema": "qts.demo_evaluate_champions.v1",
+        "generated_at": _utcnow().isoformat(),
+        "measured_cost_model": model,
+        "assumed_vs_measured": assumed_vs_measured_comparison(model),
+        "champion_reevaluation": reevaluate_frozen_champions(model),
+    }
+    click.echo(f"claim_eligible: {model['claim_eligible']}")
+    click.echo(f"overall_verdict: {report['champion_reevaluation']['overall_verdict']}")
+    click.echo(f"decision_summary: {report['champion_reevaluation']['decision_summary']}")
+    if json_out:
+        Path(json_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(json_out).write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+        click.echo(f"report written to {json_out}")
+    else:
+        click.echo(json.dumps(report, indent=2, default=str))
+
+
 def _utcnow() -> Any:
     from datetime import UTC, datetime
 

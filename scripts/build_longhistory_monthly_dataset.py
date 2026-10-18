@@ -275,11 +275,46 @@ def cross_source_check(primary: pd.DataFrame, replicate: pd.DataFrame) -> dict[s
     }
 
 
-def main() -> int:
+def _ensure_sources() -> None:
+    """Fetch and build upstream inputs when requested on a clean clone."""
+    import subprocess
+
+    if not GOLD_CSV.is_file() or not FX_CSV.is_file():
+        subprocess.run(
+            [sys.executable, str(REPO_ROOT / "scripts" / "fetch_longhistory_monthly_sources.py")],
+            check=True,
+        )
+    if not BASEMAX_15M.is_file():
+        subprocess.run(
+            [sys.executable, str(REPO_ROOT / "scripts" / "fetch_longhistory_sources.py")],
+            check=True,
+        )
+        subprocess.run(
+            [sys.executable, str(REPO_ROOT / "scripts" / "build_longhistory_dataset.py")],
+            check=True,
+        )
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--ensure-sources",
+        action="store_true",
+        help="fetch pinned raw sources and build BaseMax 15m dataset first if missing",
+    )
+    args = parser.parse_args(argv)
+    if args.ensure_sources:
+        _ensure_sources()
     if not GOLD_CSV.is_file() or not FX_CSV.is_file():
         raise SystemExit(
-            "pinned monthly sources missing; fetch datasets/gold-prices and "
-            "datasets/exchange-rates at the pinned commits (see the evidence file)"
+            "pinned monthly sources missing; run:\n"
+            "  python scripts/fetch_longhistory_monthly_sources.py\n"
+            "  python scripts/fetch_longhistory_sources.py\n"
+            "  python scripts/build_longhistory_dataset.py\n"
+            "  python scripts/build_longhistory_monthly_dataset.py\n"
+            "(or pass --ensure-sources)"
         )
     gold = load_gold()
     daily = pd.read_csv(FX_CSV)
@@ -293,10 +328,10 @@ def main() -> int:
     PROCESSED.mkdir(parents=True, exist_ok=True)
     primary_out = primary.copy()
     primary_out.index.name = "date"
-    primary_out.to_csv(OUT_GOLD, index=True, date_format="%Y-%m-%d")
+    primary_out.to_csv(OUT_GOLD, index=True, date_format="%Y-%m-%d", lineterminator="\n")
     repl_out = replicate.copy()
     repl_out.index.name = "date"
-    repl_out.to_csv(OUT_REPL, index=True, date_format="%Y-%m-%d")
+    repl_out.to_csv(OUT_REPL, index=True, date_format="%Y-%m-%d", lineterminator="\n")
 
     evidence = {
         "schema": "qts.longhistory.monthly_data_quality.v1",

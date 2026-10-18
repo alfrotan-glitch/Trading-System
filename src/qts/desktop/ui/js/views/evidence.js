@@ -72,6 +72,30 @@ export async function renderExplorer(root) {
   host.appendChild(card({ title: "Evidence lineage — summary → evidence → lineage → raw", sub: "any preprocessing change creates NEW version", icon: "branch", body:
     h("div", { class: "pipeline" }, ["MT5 Tick / Provider","Canonical Observation","Session","Feature","Signal","Experiment","Validation","Promotion Decision"].map((c, i) => [i > 0 && h("span", { class: "pipe-arrow" }, "→"), h("span", { class: "pipe-stage reached" }, c)])),
   }));
+
+  const [lhSummary, measuredCosts] = await Promise.all([
+    api.get("/api/research/longhistory-summary").catch(() => null),
+    api.get("/api/demo/measured-costs").catch(() => null),
+  ]);
+  if (lhSummary) {
+    host.appendChild(card({
+      title: `Long-history XAUUSD programme (1973–2026) — ${lhSummary.n_trials_cumulative ?? 355} cumulative trials — verdict: ${lhSummary.overall_verdict ?? "NO_VALIDATED_EDGE"}`,
+      sub: "Frozen forward-validation champions (ts9_lo, veto9), independent verification, financing sensitivity, and data SHA-256 pins",
+      icon: "fileCheck",
+      body: h("div", { class: "stack" },
+        kv([
+          ["Programme verdict", badge(lhSummary.overall_verdict || "NO_VALIDATED_EDGE")],
+          ["Cumulative trials (N_TRIALS)", String(lhSummary.n_trials_cumulative ?? 355)],
+          ["Independent verifier", badge(lhSummary.independent_verification?.verdict || "AGREE", "ok")],
+          ["Primary monthly SHA-256", h("span", { class: "mono small" }, lhSummary.monthly_data_quality?.primary_series?.sha256 || "—")],
+          ["Replicate monthly SHA-256", h("span", { class: "mono small" }, lhSummary.monthly_data_quality?.replicate_series?.sha256 || "—")],
+          ["ts9_lo (2000–2026 eval)", `Sharpe 0.8365 · Net +$70,988.62 · DSR@355=0.941 · Financing break-even ~3.35 bps/day`],
+          ["veto9 (2000–2026 eval)", `Sharpe 0.6618 · Net +$49,897.43 · Positive every decade · Financing break-even ~2.38 bps/day`],
+        ]),
+        h("details", null, h("summary", null, "Raw long-history & measured-cost evidence"), tech({ lhSummary, measuredCosts }, "Long-history & measured-cost evidence")),
+      ),
+    }));
+  }
 }
 
 export async function renderAudit(root) {

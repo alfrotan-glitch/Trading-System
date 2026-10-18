@@ -128,11 +128,24 @@ def build_measured_cost_model(
         swap = _num(symbol_terms.get(key))
         if swap is not None:
             swap_basis = CostBasis.MEASURED
+        swap_long_num = _num(symbol_terms.get("swap_long_usd_per_lot_night"))
+        swap_short_num = _num(symbol_terms.get("swap_short_usd_per_lot_night"))
         provenance["inputs"]["swap"] = {
             "direction_used": direction,
             "swap_long_usd_per_lot_night": symbol_terms.get("swap_long_usd_per_lot_night"),
             "swap_short_usd_per_lot_night": symbol_terms.get("swap_short_usd_per_lot_night"),
             "swap_rollover3days": symbol_terms.get("swap_rollover3days"),
+            "swap_sign_convention": "mt5_venue_signed (negative = debit/cost to holder, positive = credit to holder)",
+            "financing_cost_usd_per_lot_night": round(-swap, 4) if swap is not None else None,
+            "financing_cost_bps_per_day_at_mid": (
+                round((-swap) / (100.0 * mid) * 1e4, 4) if (swap is not None and mid) else None
+            ),
+            "financing_long_bps_per_day_at_mid": (
+                round((-swap_long_num) / (100.0 * mid) * 1e4, 4) if (swap_long_num is not None and mid) else None
+            ),
+            "financing_short_bps_per_day_at_mid": (
+                round((-swap_short_num) / (100.0 * mid) * 1e4, 4) if (swap_short_num is not None and mid) else None
+            ),
         }
 
     def component(name: str, basis: CostBasis, value: float | None, **kw: Any) -> CostComponent:
@@ -164,4 +177,313 @@ def build_measured_cost_model(
     )
     out = model.as_dict()
     out["provenance"] = provenance
+    return out
+
+
+def assumed_vs_measured_comparison(measured_model: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Compare historical research cost assumptions against measured broker evidence.
+
+    Missing measurements stay explicitly ``UNMEASURED`` with ``value: None`` —
+    never substituted with zero or an assumed default.
+    """
+    comp_map: dict[str, dict[str, Any]] = {}
+    if isinstance(measured_model, dict):
+        for comp in measured_model.get("components") or []:
+            if isinstance(comp, dict) and comp.get("name"):
+                comp_map[str(comp["name"])] = comp
+    prov_inputs = ((measured_model or {}).get("provenance") or {}).get("inputs") or {}
+    spread_in = prov_inputs.get("spread_profile") or {}
+    swap_in = prov_inputs.get("swap") or {}
+    slip_in = prov_inputs.get("slippage") or {}
+    deals_in = prov_inputs.get("deals") or {}
+
+    def _live_status(name: str, val_key: str) -> dict[str, Any]:
+        c = comp_map.get(name)
+        if not c or c.get("basis") != "MEASURED":
+            return {
+                "status": "UNMEASURED",
+                "basis": c.get("basis", "UNKNOWN") if c else "UNKNOWN",
+                "value": None,
+                "reason": f"No live DEMO {name} measurement recorded yet — never assumed zero.",
+            }
+        return {
+            "status": "MEASURED",
+            "basis": "MEASURED",
+            "value": c.get(val_key),
+            "source": c.get("source"),
+        }
+
+    spread_live = _live_status("spread", "price_units_per_lot")
+    if spread_live["status"] == "MEASURED":
+        spread_live["spread_bps_p50"] = spread_in.get("spread_bps_p50")
+        spread_live["samples_usable"] = spread_in.get("samples_usable")
+
+    comm_live = _live_status("commission", "usd_per_lot")
+    if comm_live["status"] == "MEASURED":
+        comm_live["deals_used"] = deals_in.get("deals_used_for_commission", 0)
+
+    slip_live = _live_status("slippage", "price_units_per_lot")
+    if slip_live["status"] == "MEASURED":
+        slip_live["avg_abs_slippage_bps"] = slip_in.get("avg_abs_slippage_bps")
+
+    fin_live = _live_status("financing", "usd_per_lot_per_night")
+    if fin_live["status"] == "MEASURED":
+        fin_live["swap_long_usd_per_lot_night"] = swap_in.get("swap_long_usd_per_lot_night")
+        fin_live["swap_short_usd_per_lot_night"] = swap_in.get("swap_short_usd_per_lot_night")
+        fin_live["financing_cost_usd_per_lot_night"] = swap_in.get("financing_cost_usd_per_lot_night")
+        fin_live["financing_cost_bps_per_day_at_mid"] = swap_in.get("financing_cost_bps_per_day_at_mid")
+        fin_live["swap_rollover3days"] = swap_in.get("swap_rollover3days")
+
+    return {
+        "schema": "qts.assumed_vs_measured_costs.v1",
+        "claim_eligible": bool((measured_model or {}).get("claim_eligible")),
+        "components": {
+            "spread": {
+                "assumed_longhistory_d1_monthly": {
+                    "basis": "ASSUMED",
+                    "spread_bps": 3.0,
+                    "note": "3.0 bps full width ($0.39/oz at $1,300; $0.795/oz at $2,650)",
+                },
+                "assumed_intraday_15m": {
+                    "basis": "ASSUMED",
+                    "spread_usd_per_oz": 0.30,
+                    "note": "$0.30/oz ($30/lot round-turn)",
+                },
+                "repository_measured_archive": {
+                    "wm_markets_demo_730d": {
+                        "status": "MEASURED",
+                        "provenance_class": "DEMO",
+                        "ticks": 139_930_971,
+                        "mean_bps": 0.720,
+                        "normal_median_usd_per_oz": 0.24,
+                        "rollover_median_usd_per_oz": 0.39,
+                    },
+                    "dukascopy_macro_events_23w": {
+                        "status": "MEASURED",
+                        "provenance_class": "REAL",
+                        "ticks": 368_326,
+                        "median_bps": 1.732,
+                        "p95_bps": 3.037,
+                        "max_bps": 36.633,
+                    },
+                },
+                "live_terminal": spread_live,
+            },
+            "commission": {
+                "assumed_longhistory_d1_monthly": {
+                    "basis": "ASSUMED",
+                    "usd_per_lot_side": 7.0,
+                    "usd_per_lot_round_turn": 14.0,
+                },
+                "assumed_intraday_15m": {
+                    "basis": "ASSUMED",
+                    "usd_per_lot_side": 0.0,
+                    "note": "Spread-only CFD assumption",
+                },
+                "live_terminal": comm_live,
+            },
+            "slippage": {
+                "assumed_longhistory_d1_monthly": {
+                    "basis": "ASSUMED",
+                    "slippage_bps_per_side": 1.0,
+                    "slippage_bps_round_turn": 2.0,
+                },
+                "assumed_intraday_15m": {
+                    "basis": "ASSUMED",
+                    "slippage_usd_per_oz_side": 0.10,
+                    "slippage_usd_per_oz_round_turn": 0.20,
+                },
+                "live_terminal": slip_live,
+            },
+            "financing": {
+                "assumed_longhistory_g9": {
+                    "basis": "ASSUMED",
+                    "financing_bps_per_day": 0.25,
+                    "note": "0.25 bps/calendar day symmetric carry (~0.91%/yr; ~$6.63/lot/night at $2,650 gold)",
+                },
+                "champion_break_even_ceilings": {
+                    "ts9_lo_break_even_bps_per_day": 3.35,
+                    "veto9_break_even_bps_per_day": 2.38,
+                    "note": "Evaluation window (2000-01..2026-09) net P&L reaches $0 at ~3.35 bps/day (ts9_lo) and ~2.38 bps/day (veto9)",
+                },
+                "live_terminal": fin_live,
+            },
+        },
+    }
+
+
+def reevaluate_frozen_champions(
+    measured_model: dict[str, Any] | None = None,
+    *,
+    monthly_csv_path: Any = None,
+) -> dict[str, Any]:
+    """Re-evaluate frozen candidates (ts9_lo, veto9) without retuning.
+
+    Distinguishes strictly between:
+    - ``baseline_assumed``: the canonical research cost model (ASSUMED),
+    - ``partial_measurement_sensitivity``: measured components combined with
+      baseline conservative assumptions for any still-UNMEASURED component
+      (labelled sensitivity-only, never claim-eligible), and
+    - ``claim_grade_measured``: populated ONLY when all 4 cost components are
+      MEASURED (``claim_eligible == True``).
+    """
+    from pathlib import Path
+
+    import pandas as pd
+
+    from qts.research.longhistory import engine as ENG
+    from qts.research.longhistory import ensemble_signals as ES
+    from qts.research.longhistory import hybrid_protocol as HYB
+    from qts.research.longhistory import runner as R
+    from qts.research.longhistory import stats as ST
+
+    comp_map: dict[str, dict[str, Any]] = {}
+    if isinstance(measured_model, dict):
+        for comp in measured_model.get("components") or []:
+            if isinstance(comp, dict) and comp.get("name"):
+                comp_map[str(comp["name"])] = comp
+
+    measured_names = [k for k, v in comp_map.items() if v.get("basis") == "MEASURED"]
+    unmeasured_names = [
+        k for k in ("spread", "commission", "slippage", "financing") if k not in measured_names
+    ]
+    claim_eligible = bool((measured_model or {}).get("claim_eligible")) and not unmeasured_names
+
+    out: dict[str, Any] = {
+        "schema": "qts.champion_cost_reevaluation.v1",
+        "candidates": ["ts9_lo", "veto9"],
+        "window": "2000-01-01..2026-09-30",
+        "retuned": False,
+        "claim_eligible": claim_eligible,
+        "measured_components": measured_names,
+        "unmeasured_components": unmeasured_names,
+        "baseline_assumed": {
+            "cost_basis": "ASSUMED",
+            "unfinanced_0bps": {
+                "ts9_lo": {"net_usd": 70988.62, "sharpe": 0.8365, "round_turns": 16, "max_drawdown": -0.3098},
+                "veto9": {"net_usd": 49897.43, "sharpe": 0.6618, "round_turns": 45, "max_drawdown": -0.3597},
+            },
+            "g9_financed_0_25bps_per_day": {
+                "ts9_lo": {"net_usd": 59931.0, "g9_positive": True},
+                "veto9": {"net_usd": 39392.0, "g9_positive": True},
+            },
+        },
+        "claim_grade_measured": None,
+        "partial_measurement_sensitivity": None,
+        "overall_verdict": "NO_VALIDATED_EDGE",
+        "decision_summary": (
+            "Unmeasured cost components remain (" + ", ".join(unmeasured_names) + "); "
+            "no candidate may be promoted on assumed or partial costs. Overall verdict stays NO_VALIDATED_EDGE."
+            if unmeasured_names
+            else "All four cost components are MEASURED; see claim_grade_measured for directional evaluation."
+        ),
+    }
+
+    if not measured_names:
+        return out
+
+    repo_root = Path(__file__).resolve().parents[3]
+    csv_path = (
+        Path(monthly_csv_path)
+        if monthly_csv_path is not None
+        else repo_root / "data" / "raw" / "longhistory" / "processed" / "xauusd_worldbank_monthly_utc_197301_202609.csv"
+    )
+    if not csv_path.is_file():
+        out["decision_summary"] += " (Monthly dataset CSV not built locally yet; run scripts/build_longhistory_monthly_dataset.py --ensure-sources to compute dynamic re-evaluation.)"
+        return out
+
+    raw = pd.read_csv(csv_path)
+    idx = pd.to_datetime(raw["date"], utc=True).dt.tz_convert(None)
+    bars = raw[["open", "high", "low", "close", "usd"]].astype(float)
+    bars.index = pd.DatetimeIndex(idx, name="utc")
+
+    prov_inputs = ((measured_model or {}).get("provenance") or {}).get("inputs") or {}
+    spread_in = prov_inputs.get("spread_profile") or {}
+    swap_in = prov_inputs.get("swap") or {}
+    slip_in = prov_inputs.get("slippage") or {}
+
+    spread_bps = (
+        float(spread_in["spread_bps_p50"])
+        if "spread" in measured_names and spread_in.get("spread_bps_p50") is not None
+        else HYB.COST_BASE.spread_bps
+    )
+    slip_bps = (
+        abs(float(slip_in["avg_abs_slippage_bps"]))
+        if "slippage" in measured_names and slip_in.get("avg_abs_slippage_bps") is not None
+        else HYB.COST_BASE.slippage_bps
+    )
+    comm_usd = (
+        float(comp_map["commission"]["usd_per_lot"])
+        if "commission" in measured_names and comp_map["commission"].get("usd_per_lot") is not None
+        else HYB.COST_BASE.commission_usd_per_lot_side
+    )
+    fin_long_bps = (
+        float(swap_in["financing_long_bps_per_day_at_mid"])
+        if "financing" in measured_names and swap_in.get("financing_long_bps_per_day_at_mid") is not None
+        else (
+            float(swap_in["financing_cost_bps_per_day_at_mid"])
+            if "financing" in measured_names and swap_in.get("financing_cost_bps_per_day_at_mid") is not None
+            else HYB.FINANCING_BPS_PER_DAY
+        )
+    )
+    fin_short_bps = (
+        float(swap_in["financing_short_bps_per_day_at_mid"])
+        if "financing" in measured_names and swap_in.get("financing_short_bps_per_day_at_mid") is not None
+        else fin_long_bps
+    )
+
+    engine_cost = ENG.CostModel(
+        spread_bps=max(0.0, spread_bps),
+        slippage_bps=max(0.0, slip_bps),
+        commission_usd_per_lot_side=max(0.0, comm_usd),
+        financing_bps_per_day=max(0.0, fin_long_bps),
+        basis="MEASURED" if claim_eligible else "PARTIAL_MEASURED_SENSITIVITY",
+        financing_long_bps_per_day=fin_long_bps,
+        financing_short_bps_per_day=fin_short_bps,
+    )
+
+    p_ts9 = ES.tsmom_single(bars, lookback=9, long_only=True, vol_n=12, ann=12)
+    p_veto9 = ES.ensemble_usd_veto(bars, lookbacks=(9,), usd_lb=12, vol_n=12, ann=12)
+    r_ts9 = R.run_window(bars, p_ts9, "2000-01-01", "2026-09-30", engine_cost)
+    r_veto9 = R.run_window(bars, p_veto9, "2000-01-01", "2026-09-30", engine_cost)
+    s_ts9: dict[str, Any] = ST.summarize(r_ts9, periods_per_year=12)
+    s_veto9: dict[str, Any] = ST.summarize(r_veto9, periods_per_year=12)
+
+    eval_payload: dict[str, Any] = {
+        "cost_model_used": engine_cost.describe(),
+        "ts9_lo": {
+            "net_usd": round(float(s_ts9["net_usd"]), 2),
+            "gross_usd": round(float(r_ts9.gross_usd), 2),
+            "fill_cost_usd": round(float(r_ts9.cost_usd), 2),
+            "financing_usd": round(float(r_ts9.financing_usd), 2),
+            "sharpe": round(float(s_ts9["sharpe"]), 4),
+            "max_drawdown": round(float(s_ts9["max_drawdown"]), 4),
+            "round_turns": int(s_ts9["round_turns"]),
+            "financed_positive_g9": bool(s_ts9["net_usd"] > 0),
+        },
+        "veto9": {
+            "net_usd": round(float(s_veto9["net_usd"]), 2),
+            "gross_usd": round(float(r_veto9.gross_usd), 2),
+            "fill_cost_usd": round(float(r_veto9.cost_usd), 2),
+            "financing_usd": round(float(r_veto9.financing_usd), 2),
+            "sharpe": round(float(s_veto9["sharpe"]), 4),
+            "max_drawdown": round(float(s_veto9["max_drawdown"]), 4),
+            "round_turns": int(s_veto9["round_turns"]),
+            "financed_positive_g9": bool(s_veto9["net_usd"] > 0),
+        },
+    }
+
+    if claim_eligible:
+        out["claim_grade_measured"] = eval_payload
+        both_pos = eval_payload["ts9_lo"]["financed_positive_g9"] and eval_payload["veto9"]["financed_positive_g9"]
+        out["decision_summary"] = (
+            f"All 4 cost components MEASURED (financing_long={fin_long_bps:.3f} bps/day, "
+            f"financing_short={fin_short_bps:.3f} bps/day). "
+            f"ts9_lo net=${eval_payload['ts9_lo']['net_usd']:,.2f} (SR {eval_payload['ts9_lo']['sharpe']:.3f}), "
+            f"veto9 net=${eval_payload['veto9']['net_usd']:,.2f} (SR {eval_payload['veto9']['sharpe']:.3f}). "
+            f"G9 financing gate: {'PASS' if both_pos else 'FAIL'}. "
+            "Overall promotion verdict remains NO_VALIDATED_EDGE pending 24-36 months of forward out-of-sample observation (gates G3/G5/G6)."
+        )
+    else:
+        out["partial_measurement_sensitivity"] = eval_payload
     return out

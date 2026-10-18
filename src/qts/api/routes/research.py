@@ -455,4 +455,71 @@ def research_statistical() -> dict[str, Any]:
     }
 
 
+@router.get("/api/research/longhistory-summary")
+def research_longhistory_summary() -> dict[str, Any]:
+    """Consolidated summary of the 53-year long-history XAUUSD research programme and frozen forward champions."""
+    from pathlib import Path
+
+    lh_dir = Path(__file__).resolve().parents[4] / "data" / "evidence" / "longhistory"
+
+    def _read_json(name: str) -> dict[str, Any]:
+        p = lh_dir / name
+        if p.is_file():
+            try:
+                return json.loads(p.read_text(encoding="utf-8"))
+            except Exception:
+                return {}
+        return {}
+
+    forward_state = _read_json("forward_champions_state.json")
+    verification = _read_json("champion_independent_verification.json")
+    financing = _read_json("champion_financing_sensitivity.json")
+    monthly_quality = _read_json("monthly_data_quality.json")
+    xmetal = _read_json("xmetal_replication.json")
+
+    return {
+        "schema": "qts.research.longhistory_summary.v1",
+        "overall_verdict": "NO_VALIDATED_EDGE",
+        "live_locked": True,
+        "real_capital_exposure_usd": 0,
+        "n_trials_cumulative": 355,
+        "trial_waves": [
+            {"wave": "Cycles 1-4 (D1/M15/Seasonal/Monthly)", "trials": 136, "verdict": "NO_VALIDATED_EDGE"},
+            {"wave": "Cycles 5-8 (ENS/W1/HYB/WHYB)", "trials": 149, "verdict": "NO_VALIDATED_EDGE (ts9_lo & veto9 frozen for forward observation)"},
+            {"wave": "Wave 5 (LH-XAUUSD-VOLM fast-vol & drawdown brakes)", "trials": 22, "verdict": "NO_VALIDATED_EDGE"},
+            {"wave": "Wave 6 (Hysteresis & gold/USD relative trend, <=1989)", "trials": 22, "verdict": "DISCOVERY_NEGATIVE"},
+            {"wave": "Wave 7 (ATR & peak trailing stops, <=1989)", "trials": 16, "verdict": "DISCOVERY_NEGATIVE"},
+            {"wave": "Wave 8 (Slope acceleration & CPI-deflated trend, <=1989)", "trials": 12, "verdict": "DISCOVERY_NEGATIVE"},
+            {"wave": "Wave 9 (US CPI YoY inflation regime gating, <=1989)", "trials": 8, "verdict": "DISCOVERY_NEGATIVE (fails 1984-1989 disinflation)"},
+            {"wave": "Wave 10 (US 10Y Treasury nominal & real yield conditioning, <=1989 + 1990s dev)", "trials": 12, "verdict": "DEV_NEGATIVE (10Y yield short-gate fails 1990s strong-USD/falling-yield gold bear)"},
+        ],
+        "frozen_champions": {
+            "ts9_lo": {
+                "rule": "9-month TSMOM sign, long-or-flat, 10% vol target (12m vol), max 1.0x equity, no leverage",
+                "evaluation_2000_2026_sharpe": 0.8365,
+                "evaluation_2000_2026_net_usd": 70988.62,
+                "evaluation_2000_2026_max_dd": -0.3098,
+                "evaluation_2000_2026_turns": 16,
+                "dsr_at_n237": 0.945,
+                "dsr_at_n355": 0.941,
+                "financing_break_even_bps_per_day": 3.35,
+            },
+            "veto9": {
+                "rule": "9-month TSMOM sign; longs unconditioned, shorts only while 8-FX equal-weight USD index rose over 12 months",
+                "evaluation_2000_2026_sharpe": 0.6618,
+                "evaluation_2000_2026_net_usd": 49897.43,
+                "evaluation_2000_2026_max_dd": -0.3597,
+                "evaluation_2000_2026_turns": 45,
+                "positive_in_every_decade": True,
+                "financing_break_even_bps_per_day": 2.38,
+            },
+        },
+        "forward_champions_state": forward_state,
+        "independent_verification": verification,
+        "financing_sensitivity": financing,
+        "monthly_data_quality": monthly_quality,
+        "cross_metal_replication": xmetal,
+    }
+
+
 

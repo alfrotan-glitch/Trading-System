@@ -494,3 +494,11 @@ def repository_tracked_files_must_not_be_modified_by_tests():
         if altered_baseline:
             lines.append("altered pre-existing changes: " + ", ".join(altered_baseline))
         pytest.fail("\n".join(lines), pytrace=False)
+
+
+def pytest_runtest_logreport(report):
+    """Surface failed test names in GitHub Actions annotations."""
+    if report.failed and os.environ.get("GITHUB_ACTIONS") == "true":
+        msg = str(report.longrepr).replace("\n", " | ")[:400]
+        print(f"\n::error title={report.nodeid}::{msg}", flush=True)
+

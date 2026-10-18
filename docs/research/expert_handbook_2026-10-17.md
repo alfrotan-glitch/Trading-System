@@ -64,9 +64,11 @@ cumulative trial count; G6 ≥100 out-of-sample round turns; G7 regime stability
 | Wave-7 (discovery only) | — | ≤1989 (20 cfg) | 327 | no cycle frozen |
 | Wave-8 (discovery only) | — | ≤1989 (10 cfg) | 337 | no cycle frozen |
 | Wave-9 (discovery only) | — | ≤1989 (6 cfg) | 343 | no cycle frozen |
+| Wave-10 (discovery + dev only) | — | ≤1989 + 1990–99 dev (12 cfg: US 10Y yield & real rate) | 355 | no cycle frozen |
 
-The next gated cycle must use **N = 343** in its DSR. Per-cycle evidence:
+The next gated cycle must use **N = 355** in its DSR. Per-cycle evidence:
 `data/evidence/longhistory/{ensemble,weekly,hybrid,weekly_hybrid,volmanaged}_research_final.json`;
+Wave-10 discovery/dev evidence: `data/evidence/longhistory/wave10_treasury_real_rate.json`;
 preregistrations and results under `docs/research/`.
 
 ## 5. The champions (best candidates; still unvalidated)
@@ -181,6 +183,44 @@ hand-edited.
   longs there were disinflationary-grind longs the gate forbids); pure
   inflation-momentum timing is negative (−0.57/−0.73 check). "Gold as
   inflation-hedge timing" is folklore at monthly frequency; do not retry.
+- **Wave 10 — US 10Y Treasury nominal & real interest-rate conditioning**
+  (`N = 343 + 12 = 355`, discovery `<=1989` + `1990–1999` dev walk-forward;
+  `datasets/bond-yields-us-10y@2383155` Fed H.15 GS10 combined with 1m-lagged
+  US CPI YoY `r10 = y10 - cpi_yoy_lag1`, evaluation window `2000–2026`
+  untouched):
+  1. Long-side yield/real-rate filters (`ts9_lo` gated by `y10` falling, `r10`
+     falling, or `r10 < 3%/4%`) degrade discovery (`1973–1989` SR `0.506–0.697`
+     vs `ts9_lo` `0.711`), confirming that the long side of gold trend wants no
+     macro confirmation.
+  2. Short-side 10Y yield confirmation (`veto9_y10_up12`, shorts only when 10Y
+     yield rose over 12m) scores strongly on `<=1989` (`1973–1983` SR `+0.946`,
+     `1984–1989` SR `+1.160`, full `<=1989` SR `+1.004`), **but collapses on
+     the `1990–1999` dev walk-forward (`SR = −0.244`, `net = −$2,065`, `3/10`
+     positive years)** because the late-1990s Rubin strong-dollar / Asian-crisis
+     gold bear market occurred while 10Y Treasury yields were *falling*
+     (`7.8% → 4.5%`). Real-rate short confirmation (`veto9_r10_up12`) also turns
+     negative in the 1990s (`SR = −0.076`), and joint USD+real-rate short
+     confirmation (`veto9_usd_and_r10_up`, `1990s SR = +0.250`, `5/10` positive
+     years) still trails plain `veto9` (`1990s SR = +0.268`) and fails G3
+     (`>=6/10` positive years). Stopped at dev; `2000–2026` holdout untouched;
+     all 12 trials counted (`N_TRIALS = 355`; `ts9_lo` DSR at `N=355` is `0.941`).
+- **Monthly data SHA-256 & Pink Sheet quantization reconciliation:**
+  - Canonical LF build of `xauusd_worldbank_monthly_utc_197301_202609.csv`
+    (645 rows `1973-01-31..2026-09-30`) has SHA-256
+    `0db007ba59f46006a6844897a2471b75e800ed2949c091fe6d376be1def433cd`
+    (replicate `1a6ab6301978c1ab4e4fab2663c9351363e0af5a63f83502718bdff78912d16c`).
+  - A Windows checkout without `lineterminator="\n"` produced CRLF (`\r\n`)
+    hash `74338c63b14d454046034809d4b4ee73c2d8ef6d1b3986074c4fbb857608fa83`
+    on identical numerical rows; `scripts/build_longhistory_monthly_dataset.py`
+    and `scripts/fetch_longhistory_*_sources.py` now enforce LF (`\n`) and
+    `-c core.autocrlf=false`.
+  - Comparing `datasets/gold-prices@f6e9761` (which rounds 643/645 months to
+    whole dollars) against the raw 2-decimal World Bank Pink Sheet
+    (`awongstory/commodity-price-forecast-xgboost@c4a9f73`, 624 overlapping
+    months `1973-01..2024-12`) shows `max |diff| = $0.50`, `mean |diff| =
+    $0.2387`, `corr = 0.99999989`, and virtually identical evaluation metrics
+    (`ts9_lo` `+$70,924.16` / SR `0.8360` vs `+$70,988.62` / SR `0.8365`;
+    `veto9` `+$49,729.29` / SR `0.6606` vs `+$49,897.43` / SR `0.6618`).
 - **Cross-asset ports:** frozen slow TSMOM basket Sharpe −0.007 on 11 FX pairs;
   champions trail buy-and-hold on World Bank silver (trend Sharpe 0.250 vs B&H
   0.417) and platinum (0.146), all trend forms negative 2020-24 on both
@@ -215,11 +255,13 @@ checkpoint criteria govern regardless.
 2. **MEASURED costs** from a Windows MT5 demo terminal (also unblocks the
    claim-eligibility question and the M15 cost-sensitivity blocker).
 3. A *new mechanism* (not a re-parameterisation) discovered on ≤1989 (or
-   weekly 2004-2009) partitions only, frozen under N ≥ 343, that beats the
-   champions on discovery by a margin large enough to matter — Waves 6–9
-   showed the plausible mechanism tweaks (hysteresis, relative trend,
-   vol-regime and extension gates, extreme mean reversion, USD-momentum,
-   real-price deflation, inflation-regime conditioning) do not.
+   weekly 2004-2009) partitions only, frozen under N ≥ 355, that beats the
+   champions on discovery and survives the 1990–1999 dev walk-forward by a
+   margin large enough to matter — Waves 6–10 showed the plausible mechanism
+   tweaks (hysteresis, relative trend, vol-regime and extension gates,
+   extreme mean reversion, USD-momentum, real-price deflation,
+   inflation-regime conditioning, and US 10Y Treasury nominal/real-rate
+   conditioning) do not.
 Nothing else. In particular: re-running existing cycles, loosening G6 for
 slow trend, or cherry-picking lookbacks 10–11 m post-hoc are prohibited.
 

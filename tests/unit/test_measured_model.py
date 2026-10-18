@@ -6,7 +6,12 @@ from decimal import Decimal
 
 import pytest
 
-from qts.execution.measured_model import build_measured_cost_model, commission_per_lot_side
+from qts.execution.measured_model import (
+    assumed_vs_measured_comparison,
+    build_measured_cost_model,
+    commission_per_lot_side,
+    reevaluate_frozen_champions,
+)
 
 TERMS = {
     "schema": "qts.broker_symbol_cost_terms.v1",
@@ -75,3 +80,65 @@ def test_no_inputs_means_nothing_is_measured():
     out = build_measured_cost_model()
     assert out["claim_eligible"] is False
     assert all(c["basis"] == "UNKNOWN" for c in out["components"])
+
+
+def test_assumed_vs_measured_comparison_preserves_unmeasured_honesty():
+    unmeasured = build_measured_cost_model()
+    comp = assumed_vs_measured_comparison(unmeasured)
+    assert comp["claim_eligible"] is False
+    for name in ("spread", "commission", "slippage", "financing"):
+        live = comp["components"][name]["live_terminal"]
+        assert live["status"] == "UNMEASURED"
+        assert live["value"] is None
+
+    measured = build_measured_cost_model(
+        spread_profile=PROFILE, symbol_terms=TERMS, deals=_deals(), slippage_bps=0.75, direction="long"
+    )
+    comp_m = assumed_vs_measured_comparison(measured)
+    assert comp_m["claim_eligible"] is True
+    assert comp_m["components"]["financing"]["live_terminal"]["status"] == "MEASURED"
+    assert comp_m["components"]["financing"]["live_terminal"]["financing_cost_usd_per_lot_night"] == 55.3
+    assert comp_m["components"]["financing"]["live_terminal"]["financing_cost_bps_per_day_at_mid"] == pytest.approx(
+        2.0866, abs=1e-3
+    )
+
+
+def test_reevaluate_frozen_champions_unmeasured_and_measured(tmp_path):
+    import numpy as np
+    import pandas as pd
+
+    unmeasured = build_measured_cost_model()
+    res_unm = reevaluate_frozen_champions(unmeasured)
+    assert res_unm["claim_eligible"] is False
+    assert res_unm["claim_grade_measured"] is None
+    assert res_unm["overall_verdict"] == "NO_VALIDATED_EDGE"
+    assert set(res_unm["unmeasured_components"]) == {"spread", "commission", "slippage", "financing"}
+
+    # Build a synthetic monthly CSV spanning 1998-01..2026-09 so 2000-01..2026-09 can run
+    dates = pd.date_range("1998-01-31", "2026-09-30", freq="ME")
+    n = len(dates)
+    close = 300.0 * np.exp(np.linspace(0.0, 2.2, n))
+    usd = 100.0 * np.exp(np.sin(np.linspace(0.0, 12.0, n)) * 0.1)
+    csv_path = tmp_path / "monthly.csv"
+    pd.DataFrame(
+        {
+            "date": dates.strftime("%Y-%m-%d"),
+            "open": close,
+            "high": close,
+            "low": close,
+            "close": close,
+            "usd": usd,
+        }
+    ).to_csv(csv_path, index=False, lineterminator="\n")
+
+    measured = build_measured_cost_model(
+        spread_profile=PROFILE, symbol_terms=TERMS, deals=_deals(), slippage_bps=0.75, direction="long"
+    )
+    res_m = reevaluate_frozen_champions(measured, monthly_csv_path=csv_path)
+    assert res_m["claim_eligible"] is True
+    assert res_m["unmeasured_components"] == []
+    assert res_m["claim_grade_measured"] is not None
+    assert res_m["claim_grade_measured"]["cost_model_used"]["financing_convention"] == (
+        "directional_time_prorated_bps_per_calendar_day"
+    )
+    assert res_m["overall_verdict"] == "NO_VALIDATED_EDGE"

@@ -360,3 +360,14 @@ def test_gold_month_gap_fails_closed(tmp_path) -> None:
     finally:
         build.GOLD_CSV, build.START, build.END = orig_csv, orig_start, orig_end
         tmp.unlink(missing_ok=True)
+
+
+def test_monthly_builder_uses_explicit_lf_lineterminator() -> None:
+    """Guard against Windows CRLF hash shift (74338c63... vs canonical 0db007ba...)."""
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[2] / "scripts" / "build_longhistory_monthly_dataset.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'primary_out.to_csv(OUT_GOLD, index=True, date_format="%Y-%m-%d", lineterminator="\\n")' in src
+    assert 'repl_out.to_csv(OUT_REPL, index=True, date_format="%Y-%m-%d", lineterminator="\\n")' in src

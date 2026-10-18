@@ -1,0 +1,168 @@
+{
+  "wave": "Wave-10",
+  "date": "2026-10-18",
+  "hypothesis": "US 10-year Treasury nominal yield (Fed H.15 GS10) and real rate (r10 = y10 - cpi_yoy_lag1) conditioning of monthly gold trend",
+  "sources": {
+    "xauusd_monthly": {
+      "file": "data/raw/longhistory/processed/xauusd_worldbank_monthly_utc_197301_202609.csv",
+      "sha256": "0db007ba59f46006a6844897a2471b75e800ed2949c091fe6d376be1def433cd"
+    },
+    "us_10y_treasury_gs10": {
+      "repo": "https://github.com/datasets/bond-yields-us-10y.git",
+      "commit": "2383155249efbcbbabfbfe7ba9ddbe5cf2f4fb9e",
+      "series": "Federal Reserve H.15 10-Year Treasury Constant Maturity (GS10), monthly"
+    },
+    "us_cpi_u_nsa": {
+      "repo": "https://github.com/datasets/cpi-us.git",
+      "commit": "dceeb872c839cd4932cf460995c1872ebb7b75d8",
+      "lag_months": 1
+    }
+  },
+  "trial_ledger": {
+    "previous_n_trials": 343,
+    "wave_trials": 12,
+    "cumulative_n_trials": 355,
+    "evaluation_window_2000_2026_touched": false,
+    "verdict": "NO_CYCLE_FROZEN — FALSIFIED_AT_DEV_1990_1999"
+  },
+  "baselines": {
+    "ts9_lo": {
+      "sel_1973_1983_sr": 0.779,
+      "chk_1984_1989_sr": 0.563,
+      "disc_1973_1989_sr": 0.711,
+      "dev_1990_1999_sr": -0.253,
+      "dev_1990_1999_net_usd": -1157.0,
+      "dev_1990_1999_positive_years": 2
+    },
+    "veto9": {
+      "sel_1973_1983_sr": 0.828,
+      "chk_1984_1989_sr": 0.588,
+      "disc_1973_1989_sr": 0.75,
+      "dev_1990_1999_sr": 0.268,
+      "dev_1990_1999_net_usd": 1838.0,
+      "dev_1990_1999_positive_years": 5
+    }
+  },
+  "candidates": [
+    {
+      "cid": "ts9_lo_y10_down12",
+      "rule": "9m gold trend long-only when 12m change in 10Y yield < 0",
+      "sel_1973_1983_sr": 0.651,
+      "chk_1984_1989_sr": 0.493,
+      "disc_1973_1989_sr": 0.577,
+      "dev_1990_1999_sr": -0.351,
+      "dev_1990_1999_net_usd": -1324.0,
+      "dev_1990_1999_positive_years": 2
+    },
+    {
+      "cid": "ts9_lo_y10_down6",
+      "rule": "9m gold trend long-only when 6m change in 10Y yield < 0",
+      "sel_1973_1983_sr": 0.548,
+      "chk_1984_1989_sr": 0.443,
+      "disc_1973_1989_sr": 0.506,
+      "dev_1990_1999_sr": -0.453,
+      "dev_1990_1999_net_usd": -1556.0,
+      "dev_1990_1999_positive_years": 1
+    },
+    {
+      "cid": "ts9_lo_r10_down12",
+      "rule": "9m gold trend long-only when 12m change in real rate r10 < 0",
+      "sel_1973_1983_sr": 0.727,
+      "chk_1984_1989_sr": 0.408,
+      "disc_1973_1989_sr": 0.629,
+      "dev_1990_1999_sr": -0.33,
+      "dev_1990_1999_net_usd": -969.0,
+      "dev_1990_1999_positive_years": 2
+    },
+    {
+      "cid": "ts9_lo_r10_down6",
+      "rule": "9m gold trend long-only when 6m change in real rate r10 < 0",
+      "sel_1973_1983_sr": 0.751,
+      "chk_1984_1989_sr": 0.422,
+      "disc_1973_1989_sr": 0.654,
+      "dev_1990_1999_sr": -0.056,
+      "dev_1990_1999_net_usd": -224.0,
+      "dev_1990_1999_positive_years": 3
+    },
+    {
+      "cid": "ts9_lo_r10_lt3",
+      "rule": "9m gold trend long-only when real rate r10 < 3.0%",
+      "sel_1973_1983_sr": 0.805,
+      "chk_1984_1989_sr": -1.031,
+      "disc_1973_1989_sr": 0.697,
+      "dev_1990_1999_sr": -0.443,
+      "dev_1990_1999_net_usd": -846.0,
+      "dev_1990_1999_positive_years": 2
+    },
+    {
+      "cid": "ts9_lo_r10_lt4",
+      "rule": "9m gold trend long-only when real rate r10 < 4.0%",
+      "sel_1973_1983_sr": 0.785,
+      "chk_1984_1989_sr": -0.684,
+      "disc_1973_1989_sr": 0.653,
+      "dev_1990_1999_sr": 0.043,
+      "dev_1990_1999_net_usd": 49.0,
+      "dev_1990_1999_positive_years": 5
+    },
+    {
+      "cid": "veto9_y10_up12",
+      "rule": "9m gold trend, shorts only when 12m change in 10Y yield > 0",
+      "sel_1973_1983_sr": 0.946,
+      "chk_1984_1989_sr": 1.16,
+      "disc_1973_1989_sr": 1.004,
+      "dev_1990_1999_sr": -0.244,
+      "dev_1990_1999_net_usd": -2065.0,
+      "dev_1990_1999_positive_years": 3
+    },
+    {
+      "cid": "veto9_r10_up12",
+      "rule": "9m gold trend, shorts only when 12m change in real rate r10 > 0",
+      "sel_1973_1983_sr": 0.931,
+      "chk_1984_1989_sr": 0.562,
+      "disc_1973_1989_sr": 0.827,
+      "dev_1990_1999_sr": -0.076,
+      "dev_1990_1999_net_usd": -777.0,
+      "dev_1990_1999_positive_years": 4
+    },
+    {
+      "cid": "veto9_usd_and_r10_up",
+      "rule": "9m gold trend, shorts only when both USD index 12m > 0 AND r10 12m > 0",
+      "sel_1973_1983_sr": 0.916,
+      "chk_1984_1989_sr": 0.563,
+      "disc_1973_1989_sr": 0.826,
+      "dev_1990_1999_sr": 0.25,
+      "dev_1990_1999_net_usd": 1445.0,
+      "dev_1990_1999_positive_years": 5
+    },
+    {
+      "cid": "veto9_usd_or_r10_up",
+      "rule": "9m gold trend, shorts when USD index 12m > 0 OR r10 12m > 0",
+      "sel_1973_1983_sr": 0.842,
+      "chk_1984_1989_sr": 0.587,
+      "disc_1973_1989_sr": 0.752,
+      "dev_1990_1999_sr": -0.073,
+      "dev_1990_1999_net_usd": -754.0,
+      "dev_1990_1999_positive_years": 4
+    },
+    {
+      "cid": "pure_r10_mom12_lo",
+      "rule": "Long gold when 12m change in real rate r10 < 0, flat otherwise",
+      "sel_1973_1983_sr": 0.453,
+      "chk_1984_1989_sr": 0.23,
+      "disc_1973_1989_sr": 0.388,
+      "dev_1990_1999_sr": -0.464,
+      "dev_1990_1999_net_usd": -2943.0,
+      "dev_1990_1999_positive_years": 3
+    },
+    {
+      "cid": "pure_r10_mom12_ls",
+      "rule": "Long gold when 12m change in r10 < 0, short when > 0",
+      "sel_1973_1983_sr": 0.273,
+      "chk_1984_1989_sr": 0.017,
+      "disc_1973_1989_sr": 0.207,
+      "dev_1990_1999_sr": -0.235,
+      "dev_1990_1999_net_usd": -2242.0,
+      "dev_1990_1999_positive_years": 3
+    }
+  ]
+}
