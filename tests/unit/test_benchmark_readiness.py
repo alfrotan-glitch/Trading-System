@@ -236,8 +236,8 @@ def test_current_status_shows_the_frozen_set_is_intact_and_unchanged() -> None:
     status = current_status()
     assert status["frozen_set_intact"] is True
     assert status["frozen_problems"] == []
-    assert len(status["candidates"]) == 3
-    assert all(c["timeframe"] == "15m" for c in status["candidates"])
+    assert len(status["candidates"]) == 4
+    assert all(c["timeframe"] == "15m" for c in status["candidates"] if c["benchmark_id"] != "BENCH-D-MONTHLY-TREND-TS9-LO")
     assert status["minimums"]["bars"] == MIN_BARS_REAL_CLAIMS
     assert status["minimums"]["span_days"] == MIN_SPAN_DAYS
     assert status["minimums"]["round_turns_per_candidate"] == MIN_ROUND_TURNS_PER_CANDIDATE
