@@ -42,7 +42,7 @@ def test_a_deep_enough_ceiling_passes(runner: CliRunner) -> None:
 
 def test_the_command_reports_the_preregistered_minimums(runner: CliRunner) -> None:
     result = runner.invoke(edge, ["readiness", "--ceiling-days", "30"])
-    assert "Frozen candidate set verified (3 hypotheses)" in result.output
+    assert "Frozen candidate set verified (4 hypotheses)" in result.output
     assert "5,000 bars" in result.output or "5000 bars" in result.output
 
 

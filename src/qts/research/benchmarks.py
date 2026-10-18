@@ -342,6 +342,41 @@ def evaluate_benchmarks(
                 "mechanism evidence only, not a test of the stated hypothesis"
             )
 
+        # A hypothesis with no stop (BENCH-D: monthly long-only trend, re-sign
+        # exit) cannot be run by the 15m engine, which refuses unstopped
+        # strategies by design. It is reported as NOT EVALUATED — zero numbers,
+        # never a fabricated result — and is measured by its own protocol.
+        if spec.stop_distance_usd <= 0:
+            reasons.append(
+                "NOT EVALUATED here: this hypothesis has no stop and a "
+                f"{spec.timeframe} holding definition, which the bar engine does not run. "
+                "Its numbers come only from its own protocol, not from this report."
+            )
+            observations.append(
+                BenchmarkObservation(
+                    benchmark_id=spec.benchmark_id,
+                    role=spec.role.value,
+                    spec_hash=spec.spec_hash(),
+                    timeframe_requested=spec.timeframe,
+                    timeframe_measured=bar_timeframe,
+                    timeframe_matches=spec.timeframe == bar_timeframe,
+                    bars=0,
+                    round_turns=0,
+                    gross_pnl_usd=0.0,
+                    cost_usd=0.0,
+                    measured_cost_usd=0.0,
+                    net_pnl_usd=0.0,
+                    net_expectancy_per_trade=0.0,
+                    break_even_cost_multiple=0.0,
+                    win_rate=0.0,
+                    profit_factor=0.0,
+                    claim_eligible=False,
+                    mechanism_only=True,
+                    reasons=reasons,
+                )
+            )
+            continue
+
         # ``_family`` is an explicit contract with the engine: it refuses to
         # fall back to another strategy if these parameters cannot be built.
         params = {**spec.params, "_family": spec.family.value, "quantity": str(spec.quantity_lots)}
