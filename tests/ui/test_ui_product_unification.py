@@ -199,8 +199,10 @@ def test_research_validation_translates_opportunity_disposition():
     assert "READY FOR DEMO" not in research_src
 
 
-def test_measured_costs_and_longhistory_summary_api_endpoints(client):
+def test_measured_costs_and_longhistory_summary_api_endpoints(client, tmp_path, monkeypatch):
     """API exposes measured vs assumed execution costs and long-history research state honestly."""
+    monkeypatch.setenv("QTS_STATE_ROOT", str(tmp_path))
+    monkeypatch.setenv("QTS_DB_PATH", str(tmp_path / "qts.db"))
     r_costs = client.get("/api/demo/measured-costs")
     assert r_costs.status_code == 200
     body_costs = r_costs.json()

@@ -1089,9 +1089,10 @@ def demo_guide_resume(payload: dict[str, Any] | None = None) -> Any:
     )
 
 
-def _assemble_measured_costs_payload(session: Any) -> dict[str, Any]:
+def _assemble_measured_costs_payload(session: Any | None = None) -> dict[str, Any]:
     """Assemble measured vs assumed execution costs and champion re-evaluation (read-only)."""
-    from qts.config.paths import state_root
+    from qts.config.paths import artifact_path, state_root
+    from qts.execution.cost_capture import CostEvidenceStore
     from qts.execution.measured_model import (
         assumed_vs_measured_comparison,
         build_measured_cost_model,
@@ -1099,6 +1100,15 @@ def _assemble_measured_costs_payload(session: Any) -> dict[str, Any]:
     )
     from qts.execution.reality import ExecutionRealityStore
     from qts.execution.spread_profile import summarize_spread_profile
+
+    if session is not None:
+        canonical_symbol = session.canonical_symbol
+        broker_symbol = session.broker_symbol
+    else:
+        setup = _wizard_setup_kwargs(None, None)
+        canonical_symbol = str(setup.get("symbol") or "XAUUSD")
+        sym_map = setup.get("symbol_map") or {}
+        broker_symbol = str(sym_map.get(canonical_symbol, canonical_symbol))
 
     sroot = state_root()
     terms_file = sroot / "symbol_terms.json"
@@ -1121,13 +1131,17 @@ def _assemble_measured_costs_payload(session: Any) -> dict[str, Any]:
     elif symbol_terms and symbol_terms.get("spread_bps_of_mid") is not None:
         spread_profile = summarize_spread_profile(
             [symbol_terms],
-            symbol=session.canonical_symbol,
+            symbol=canonical_symbol,
             source="qts.demo.symbol_terms (single-sample quote snapshot)",
         )
 
     deals: list[Any] = []
     store_verified = True
-    store = getattr(session, "cost_evidence_store", None)
+    store = getattr(session, "cost_evidence_store", None) if session is not None else None
+    if store is None:
+        ev_path = artifact_path("cost_evidence")
+        if ev_path.is_file():
+            store = CostEvidenceStore(ev_path)
     if store is not None:
         try:
             ok, _problems = store.verify_chain()
@@ -1148,13 +1162,13 @@ def _assemble_measured_costs_payload(session: Any) -> dict[str, Any]:
         deals=deals,
         slippage_bps=slippage_bps,
         direction="long",
-        instrument=session.canonical_symbol,
+        instrument=canonical_symbol,
     )
     return {
         "schema": "qts.api.measured_costs.v1",
         "generated_at": datetime.now(UTC).isoformat(),
-        "symbol": session.canonical_symbol,
-        "broker_symbol": session.broker_symbol,
+        "symbol": canonical_symbol,
+        "broker_symbol": broker_symbol,
         "live_locked": True,
         "orders_submitted": 0,
         "cost_store_verified": store_verified,
@@ -1169,9 +1183,7 @@ def _assemble_measured_costs_payload(session: Any) -> dict[str, Any]:
 @router.get("/api/demo/measured-costs")
 def demo_measured_costs() -> dict[str, Any]:
     """Return measured vs assumed execution costs and frozen-champion re-evaluation (read-only)."""
-    server = _bind()
-    session = server._demo_session()
-    return _assemble_measured_costs_payload(session)
+    return _assemble_measured_costs_payload(None)
 
 
 @router.post("/api/demo/measure-symbol-terms")
