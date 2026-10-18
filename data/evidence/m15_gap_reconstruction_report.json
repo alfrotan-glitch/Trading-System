@@ -1,9 +1,9 @@
 {
   "reconstructed_from": "https://github.com/vudo805/forex-price-simulator (commit 4d6f155)",
-  "files_processed": 0,
-  "total_rows": 0,
-  "date_range_start": null,
-  "date_range_end": null,
+  "files_processed": 14,
+  "total_rows": 26038,
+  "date_range_start": "2025-08-06T00:00:00+00:00",
+  "date_range_end": "2026-09-16T23:45:00+00:00",
   "expected_interval_s": 900,
   "unexpected_gap_count": 278,
   "max_gap_duration_s": 102600,
