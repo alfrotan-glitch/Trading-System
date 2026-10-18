@@ -231,11 +231,11 @@ function renderHeaderStatus({ account, status, mode }) {
   let label = "";
   if (!s.sources.health.current) label = "Status unavailable";
   else if (s.killActive) label = "Trading is temporarily stopped";
-  else if (s.permission === "PERMITTED · DEMO ONLY") label = "Ready for demo trading";
+  else if (s.permission === "PERMITTED · DEMO ONLY") label = "DEMO execution gates pass";
   else if (connected) label = "Connected — setup continues on Trading";
   else label = "Getting started";
   status.textContent = label;
-  status.dataset.tone = s.killActive ? "err" : s.permission === "PERMITTED · DEMO ONLY" ? "ok" : "neutral";
+  status.dataset.tone = s.killActive ? "err" : "neutral";
 }
 
 /* ---------------- sidebar: few choices, quiet Advanced ---------------- */

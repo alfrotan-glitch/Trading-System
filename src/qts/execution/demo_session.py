@@ -52,6 +52,70 @@ def new_client_order_id(prefix: str = "demo") -> str:
     return f"{prefix}-{datetime.now(UTC).strftime('%Y%m%dT%H%M%S')}-{uuid.uuid4().hex[:10]}"
 
 
+def _stop_risk_estimate(
+    *,
+    lots: Decimal | None,
+    distance: Decimal | None,
+    spec: Any | None,
+    account: Any | None,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    """Estimate price-distance loss from authoritative XAUUSD contract facts.
+
+    This is a display estimate, not a guarantee or an order permission. It
+    excludes spread, commission, slippage, financing, gaps and stop execution
+    differences. Unknown contract/profit-currency facts remain unavailable.
+    """
+    unavailable = {
+        "status": "UNAVAILABLE",
+        "amount": None,
+        "currency": None,
+        "account_equity_pct": None,
+        "basis": "abs(stop distance) × broker contract size × lots",
+        "maximum_loss_guaranteed": False,
+        "excludes": ["spread", "commission", "slippage", "financing", "gaps", "stop execution differences"],
+        "reason": reason or "required broker contract, currency, size, or stop facts are unavailable",
+    }
+    if spec is None or lots is None or distance is None:
+        return unavailable
+    try:
+        size = Decimal(str(lots))
+        stop_distance = abs(Decimal(str(distance)))
+        contract_size = Decimal(str(spec.contract_size))
+    except Exception:
+        return unavailable
+    if not all(value.is_finite() for value in (size, stop_distance, contract_size)):
+        return unavailable
+    if size <= 0 or stop_distance <= 0 or contract_size <= 0:
+        return unavailable
+    raw = getattr(spec, "raw", None) or {}
+    profit_currency = raw.get("currency_profit") if isinstance(raw, dict) else None
+    if not profit_currency:
+        return {**unavailable, "reason": "broker profit currency is unavailable"}
+
+    amount = size * stop_distance * contract_size
+    equity = getattr(account, "equity", None) if account is not None else None
+    account_currency = getattr(account, "currency", None) if account is not None else None
+    equity_pct: str | None = None
+    if equity is not None and account_currency == profit_currency:
+        try:
+            equity_value = Decimal(str(equity))
+            if equity_value.is_finite() and equity_value > 0:
+                equity_pct = str((amount / equity_value * Decimal("100")).quantize(Decimal("0.01")))
+        except Exception:
+            equity_pct = None
+    return {
+        "status": "ESTIMATED",
+        "amount": str(amount.normalize()),
+        "currency": str(profit_currency),
+        "account_equity_pct": equity_pct,
+        "basis": "abs(stop distance) × broker contract size × lots",
+        "maximum_loss_guaranteed": False,
+        "excludes": ["spread", "commission", "slippage", "financing", "gaps", "stop execution differences"],
+        "reason": None,
+    }
+
+
 @dataclass
 class DemoSessionConfig:
     """Operator-supplied connection/selection inputs (no secrets here)."""
@@ -602,6 +666,24 @@ class DemoSession:
                 "error": f"adapter {type(self.adapter).__name__} exposes no completed-bar source",
             }
         return loader(self.canonical_symbol, timeframe_minutes=timeframe_minutes, count=count)
+
+    def estimate_stop_risk(self, *, lots: Decimal | None, distance: Decimal | None) -> dict[str, Any]:
+        """Read-only stop-distance estimate using current broker contract terms."""
+        try:
+            spec = self.adapter.get_symbol_spec(self.canonical_symbol)
+        except Exception as exc:
+            return _stop_risk_estimate(
+                lots=lots,
+                distance=distance,
+                spec=None,
+                account=None,
+                reason=f"broker symbol specification unavailable: {type(exc).__name__}: {exc}",
+            )
+        try:
+            account = self.adapter.account()
+        except Exception:
+            account = None
+        return _stop_risk_estimate(lots=lots, distance=distance, spec=spec, account=account)
 
     def _account_probe(self) -> dict[str, Any]:
         try:
@@ -1562,8 +1644,17 @@ class DemoSession:
             autonomous=autonomous,
         )
         verdict = run_pretrade_gate(ctx)
+        reference = params.get("reference_price")
+        risk_distance = abs(reference - stop) if reference is not None and stop is not None else None
+        risk_estimate = _stop_risk_estimate(
+            lots=size,
+            distance=risk_distance,
+            spec=ctx.spec,
+            account=ctx.account,
+        )
         return {
             "verdict": verdict.as_dict(),
+            "risk_estimate": risk_estimate,
             "intended_order": {
                 "symbol": self.canonical_symbol,
                 "broker_symbol": ctx.broker_symbol,

@@ -1,373 +1,146 @@
 # Windows DEMO runbook
 
-**Audience:** the operator, on the Windows machine with the MetaTrader5 DEMO
-terminal.
-**Mode:** `DEMO_EXECUTION` only. `LIVE_LOCKED`. **No strategy is promoted by
-anything in this document.**
+**Audience:** an operator on the authorized Windows workstation with MetaTrader 5.
+**Boundary:** DEMO only; LIVE stays locked; this runbook does not authorize an order.
+**Reviewed:** 2026-10-18.
 
-This runbook exists so that a Windows session produces *evidence*, not
-surprises. Every step before the last one is read-only. Nothing here submits an
-order automatically, and nothing should ever be submitted "to generate test
-evidence" — the commands below are designed so that you never have to.
+The order-capable DEMO path exists, but a checklist, a passing readiness probe, a strategy snapshot or a simulated test is not permission to trade. This guide separates read-only inspection from actions that persist identity, grant permission or can submit an order. Nothing in this audit connected to MT5 or sent an order.
 
----
+## 0. Current status and stop conditions
 
-## 0. Before you start
+- The registered provider is **`DEMO-XAUUSD-TREND-TSMOM-V1`**: completed-bar XAUUSD M15 EMA(12/48), 0.01 registered lots, a USD 3.00/oz XAUUSD quote-price-distance protective stop (not a dollar-loss cap) and a four-hour maximum hold. It is a frozen DEMO diagnostic (`validated_edge: false`), not a validated or profitable strategy.
+- The Trading page's history snapshot is read-only. A crossover found in the last seeded bar is historical information, not a live signal. Only a future completed-bar crossover observed by the provider can generate an autopilot signal.
+- The UI's manual ticket is **not** strategy-generated. It is an operator-selected diagnostic request; the page runs no-order preflight first and asks for explicit confirmation. The backend repeats the gates before submission.
+- Monthly `ts9_lo` / `veto9` are separate paper research. They are not registered in the DEMO order path.
+- Public WM Markets pages returned a regional-restrictions notice in this session on 2026-10-18. The pages did not establish account eligibility or current, account-specific XAUUSD terms. Confirm eligibility directly with the broker before connecting. Do not attempt to bypass a restriction.
+- Linux in this audit had no MT5 terminal/package and no broker/account was queried. No real-terminal verification or order is claimed.
+
+**Stop here** if broker eligibility is not confirmed, the account is not explicitly DEMO, a required field is unavailable, readiness fails, an order outcome is ambiguous, or QTS and broker state do not reconcile. Unknown cost fields remain unknown; never replace them with zero.
+
+## 1. Environment and first read-only checks
+
+On the Windows workstation, open MT5 and sign in only to an eligible DEMO account. Do not put passwords in command history, repository files or reports.
 
 ```bat
 cd C:\path\to\Trading-System
 python -c "import MetaTrader5; print(MetaTrader5.__version__)"
-```
-
-If that fails, stop: the package is Windows-only and needs a running terminal.
-Nothing below will work and nothing below will fake it.
-
-Open the MetaTrader 5 DEMO terminal and confirm it is connected and logged in.
-QTS does not start the terminal for you.
-
-### The one command that tells you where you stand
-
-```bat
 qts demo verify
+mkdir "%LOCALAPPDATA%\QTS\cost-audit"
+qts demo connectivity --json-out "%LOCALAPPDATA%\QTS\cost-audit\connectivity.json"
 ```
 
-This is read-only and safe to run at any time, including on a machine where
-nothing works yet. It reports mode, authorization, terminal reachability,
-identity pin, symbol mapping, quote freshness, registry, policy, stage,
-pre-trade gate result, kill switch and reconciliation state, then prints:
+`qts demo verify` and `qts demo connectivity` without `--pin` are probes; they submit no order. `verify` reports blockers and one next action. A failed command/exit code is not a reason to bypass a gate.
 
-* `READY: True/False`
-* one `BLOCKED:` line per blocking condition, with the reason
-* `NEXT:` — the single command that unblocks the most important one
+**Not read-only:** `connectivity --pin` writes an identity pin; `--confirm-pin` records owner confirmation; `qts mode declare`, `qts demo arm`, `qts demo reverify`, and evidence `--record` change local state. They require a deliberate operator decision and are not part of the inspection sequence below.
 
-If something is wrong, run this first. It is the fastest path from "it isn't
-working" to "here is the specific thing that is wrong".
+## 2. Read-only strategy, size, risk and readiness review
 
----
+Open the **Trading** page. Review:
 
-## 1. Measure the history depth — the question the 15m audit is blocked on
+- registered DEMO policy and explicit `no validated edge` status;
+- latest completed M15 indicator state and bar timestamp, if MT5 history is available;
+- last-bar cross as a **snapshot only** (it cannot produce an order);
+- registered default size, broker volume-bound check and the broker-contract stop-distance estimate, if the required facts are readable;
+- current quote freshness/spread and the ordered readiness blockers.
 
-**Read-only. Submits nothing.**
+The estimated stop-distance loss is not a maximum-loss guarantee. It excludes spread, commission, slippage, financing, gaps and differences in stop execution. Without contract size, profit currency, registered size or stop distance, the amount remains `UNAVAILABLE`; without readable account equity in the same currency, only the percentage-of-equity field remains unavailable. The indicator snapshot is independently unavailable until completed M15 history is readable.
+
+### Optional read-only broker history-depth check
+
+On the controlled Windows workstation with the eligible DEMO terminal open, the broker-history depth probe answers how many M15 bars the terminal currently exposes and whether small tick-history windows return rows:
 
 ```bat
-qts data mt5-depth --json-out data\evidence\mt5_depth_probe.json
+qts data mt5-depth --json-out "%LOCALAPPDATA%\QTS\cost-audit\mt5_depth_probe.json"
 ```
 
-This answers, in seconds, the question that has been blocking the frozen
-benchmark audit:
+It performs bounded read-only queries, writes counts/timestamps (not raw bars or ticks), downloads no dataset and submits no orders. Keep its report local. It measures terminal depth only; it does **not** establish data completeness, licensing, independent source quality or readiness of the committed research series. The saved M15 completeness gate remains failed at 6.42% unexpected missing intervals. This audit did not run the broker probe.
 
-* **M15 bar depth**, read positionally with `copy_rates_from_pos`. Bars are
-  what the frozen candidates need — and this has never been measured on any
-  terminal. If it reports ≥ 5,000 bars, the depth blocker is gone.
-* **Tick depth**, probed as several small one-hour windows at increasing age.
-
-Why it asks two different questions: the old evidence said "30 days". That
-number came from *one* `copy_ticks_range` call per window, and the 365-day call
-failed. An oversized request failing is what a **request-size limit** looks
-like; it is **not** a retention limit. The probe separates them on purpose.
-
-> **Recorded correction:** the previous phase-3 report treated that 30-day
-> figure as a proven retention ceiling and concluded broker history could not
-> be obtained in sufficient quantity. That conclusion was too strong. The
-> evidence file itself says "not the maximum retention boundary", and the
-> acquisition layer already assumes the difference — it chunks at 24h and
-> halves on failure. The correct status is **UNKNOWN until this command is
-> run**.
-
-Copy `data\evidence\mt5_depth_probe.json` back into the repository and commit
-it.
-
----
-
-## 2. Connectivity, identity, symbol, quote — Stage 1
-
-**Read-only. Submits nothing.**
+Optional no-order walk-through of the autopilot loop:
 
 ```bat
-qts demo connectivity --pin --json-out data\evidence\demo_connectivity.json
-qts demo connectivity --confirm-pin
+qts demo run --strategy DEMO-XAUUSD-TREND-TSMOM-V1 --dry-run --max-iterations 1
 ```
 
-Confirms: terminal reachable · account is **DEMO** · server/company identity ·
-`XAUUSD` → `XAUUSD@` mapping resolves and is tradable · quote is fresh ·
-order_check dry-run passes.
+`--dry-run` never submits an order. Its output is not a fill, live-signal record, broker verification or profitability evidence.
 
-`STAGE_1_READY: True` must print. If `identity.is_demo` is `None`, that means
-UNKNOWN and the gate fails closed — it is not a pass.
+## 3. Broker cost capture — no order required
 
----
+Keep evidence under a machine-local directory such as `%LOCALAPPDATA%\QTS\cost-audit`; reports can expose account, broker and server identifiers. Do not commit raw account reports, deal records or private cost artifacts. Export only a sanitized summary if sharing is necessary.
 
-## 3. Prove cost capture will work — before any order
-
-**Read-only. Submits nothing.**
+### 3.1 Symbol terms, including directional swap
 
 ```bat
-qts demo cost-check --json-out data\evidence\demo_cost_check.json
+qts demo symbol-terms --json-out "%LOCALAPPDATA%\QTS\cost-audit\symbol_terms.json"
 ```
 
-This is the step that makes the rest safe. It reports whether the broker's
-commission, swap and fee can actually be observed, and blocks with a named
-reason when they cannot:
+This read-only probe reports broker symbol geometry, current spread and directional `swap_long` / `swap_short` terms where the terminal exposes them. It requires a DEMO account and never submits an order. Record the account type, server and measurement time locally; broker terms may change. The broker's generic material describes triple rollover, but the applicable instrument/account schedule must be checked in MT5.
 
-| Check | Blocks | Why it matters |
-|:---|:---|:---|
-| `terminal-reachable` | yes | nothing works without the terminal |
-| `account-is-demo` | yes | `None` means UNKNOWN, and fails closed |
-| `deposit-currency-known` | yes | MT5 reports money in the deposit currency; an unknown currency must never be read as USD |
-| `server-offset-measured` | yes | must be MEASURED, not `assumed-utc-fallback`, or every captured deal time is wrong by the server's offset (3h on this broker) |
-| `evidence-chain-verifies` | yes | an existing log that fails integrity is not evidence |
-| `evidence-store-writable` | yes | proven with a throwaway probe file that is then deleted |
-| `deal-history-readable` | no | informational |
-| `cost-fields-present` | no | informational — which cost fields recent deals expose |
+### 3.2 Spread distribution
 
-`READY_FOR_COST_CAPTURE: True` must print before you go further.
-
-### Measuring cost without trading at all
-
-If the account already has deals, this is the cheapest honest measurement
-available — **no new order required**:
+Run samples at more than one session, including a quiet period, active overlap and broker-server rollover. Confirm server time from MT5; do not guess it from UTC.
 
 ```bat
-qts demo cost-check --record --json-out data\evidence\demo_cost_check.json
+qts demo spread-profile --samples 60 --interval-sec 5 --json-out "%LOCALAPPDATA%\QTS\cost-audit\spread_overlap.json"
+qts demo spread-profile --samples 60 --interval-sec 5 --json-out "%LOCALAPPDATA%\QTS\cost-audit\spread_quiet.json"
+qts demo spread-profile --samples 60 --interval-sec 5 --json-out "%LOCALAPPDATA%\QTS\cost-audit\spread_rollover.json"
 ```
 
-Backfills the sampled historical deals into the evidence store, tagged
-`source=mt5.history_deals_get.backfill` so they stay distinguishable from
-deals captured on a QTS submission (which are attributable to an order this
-system sent). **Prefer this over placing a trade to see what it costs.**
+Use p95/p99 as stress context; a single median or one quiet session is not the spread cost of every future order.
 
----
-
-## 4. Arm — explicit confirmation required
+### 3.3 Commission, swap and fee from existing DEMO deals
 
 ```bat
-qts demo arm --stage 1 --confirm --risk-ack
-qts demo arm --stage 2 --confirm --risk-ack
+qts demo cost-check --json-out "%LOCALAPPDATA%\QTS\cost-audit\cost_check.json"
 ```
 
-Each stage demands `--confirm` and `--risk-ack` explicitly. `LIVE_LOCKED` is
-untouched; there is no stage that unlocks it.
+The check reports whether the terminal is DEMO, account currency is known, server-to-UTC offset is measured, the evidence chain is valid/writable and recent deals expose commission/swap/fee fields. `READY_FOR_COST_CAPTURE: True` is necessary for recording, not a trade authorization.
 
----
-
-## 5. Verify the evidence, then review it
+If the account already has suitable DEMO deals, the optional flag records those existing rows locally—no order is needed:
 
 ```bat
-qts demo reverify --confirm --risk-ack
+qts demo cost-check --record --json-out "%LOCALAPPDATA%\QTS\cost-audit\cost_check_recorded.json"
 ```
 
-Review what was actually recorded:
+`--record` changes the local evidence store. It is opt-in, records backfill provenance and must not be run if the operator does not want local deal-level evidence persisted. If no existing DEMO deal exposes a field, that cost stays `UNKNOWN`; do not place an order solely to measure it.
+
+### 3.4 Slippage and offline cost evaluation
+
+Slippage is measured from actual DEMO fill records. Without such fills it is unavailable; do not substitute zero. Once the read-only artifacts and any existing deal evidence are available, assemble the component-wise model and re-evaluate the frozen monthly champions without retuning:
 
 ```bat
-qts edge readiness --data-version <version>
+qts demo measured-model --spread-profile "%LOCALAPPDATA%\QTS\cost-audit\spread_overlap.json" --symbol-terms "%LOCALAPPDATA%\QTS\cost-audit\symbol_terms.json" --direction long --json-out "%LOCALAPPDATA%\QTS\cost-audit\measured_cost_model.json"
+qts demo evaluate-champions --spread-profile "%LOCALAPPDATA%\QTS\cost-audit\spread_overlap.json" --symbol-terms "%LOCALAPPDATA%\QTS\cost-audit\symbol_terms.json" --direction long --json-out "%LOCALAPPDATA%\QTS\cost-audit\champion_cost_evaluation.json"
 ```
 
-**Do not place an order at this point.** Everything measurable so far has been
-measured read-only. A DEMO order is a separate, deliberate decision by you —
-it is not a step in collecting evidence.
+Each component has its own basis. Unless the result says **`claim_eligible: true`** with every cost component measured, it is sensitivity analysis only. Missing commission, slippage or financing cannot be filled with historical averages or zeros.
 
----
+## 4. Research status and cost limitations
 
-## 6. Only if you choose to trade
+The current research verdict is **`NO_VALIDATED_EDGE`** (`N_TRIALS = 355`). The monthly `ts9_lo` and `veto9` candidates remain in research; the separate DEMO EMA policy is not one of those monthly candidates.
+
+For context only, the saved 2000-01–2026-09 monthly evaluation reports `ts9_lo` net about `+$70,989` (16 round turns, max drawdown `−30.98%`, exposure `71.65%`) and `veto9` about `+$49,897` (26 round turns, max drawdown `−35.97%`, exposure `93.46%`) under an **ASSUMED** base cost model. The research report's required gates fail and passive buy-and-hold outperformed the active candidates. A separate stdlib/NumPy calculation agrees with the saved accounting; it reuses the same input lineage and does not provide independent market-data validation.
+
+Financing is a material unknown: a post-hoc symmetric financing sensitivity (assumed bps per calendar day, not broker swap) reduces `ts9_lo` / `veto9` to about `+$59,931` / `+$39,392` at 0.25 bps/day, and `+$3,822` / `−$4,129` at 3 bps/day. The broker's actual directional XAUUSD swaps were not measured. Do not interpret these assumed scenarios as a WM Markets quote or a promise of future performance.
+
+The older Dukascopy-derived M15 snapshot has a recorded completeness result of **6.42% unexpected missing active-span intervals**, above the unchanged 2% quality threshold; its quality gate is `FAIL`, upstream licensing is not cleared, and the planned OOS evaluation was not executed. The old acquisition instructions that expected `Ready for claims: YES` are obsolete. Do not rerun or use that data for claims unless new source, licensing and completeness evidence resolves the blockers. See `data/evidence/xauusd_completeness_disposition.json` and `data/evidence/xauusd_dukascopy_new_quality.json`.
+
+Historical WM tick-archive spread measurements documented in the 2026-10-11 audit are not current broker quotes, account-specific fees or a reproducible raw sample from this checkout. Treat them as historical context only. Current XAUUSD spread, commission, swap, slippage, contract details and account eligibility remain unverified until measured/confirmed on an authorized account.
+
+## 5. DEMO state changes and orders — separately authorized only
+
+Identity pinning, confirmation, mode declaration, arming and re-verification write state or enable the order path. Do not perform them during a read-only audit. A non-dry-run autopilot can submit an order after a future provider signal; it requires an explicit separate operator decision and both flags:
 
 ```bat
-qts demo preflight --side BUY --lots 0.01 --stop-loss 3995.00
-qts demo order --side BUY --lots 0.01 --stop-loss 3995.00
+qts demo run --strategy DEMO-XAUUSD-TREND-TSMOM-V1 --confirm --risk-ack
 ```
 
-`preflight` refuses before the order if any gate fails. The order command is
-the one and only place an order can be sent, and it is never automated by this
-runbook.
-
-After a fill, confirm the charges were captured:
+For an individual manual diagnostic order, `qts demo order` also requires `--confirm --risk-ack`, and must be preceded by `qts demo preflight` / a no-order preview. Example format only—not authorization to run:
 
 ```bat
-qts demo journal --limit 5
+qts demo preflight --side BUY --lots 0.01
+qts demo order --side BUY --lots 0.01 --strategy DEMO-XAUUSD-TREND-TSMOM-V1 --confirm --risk-ack --rationale "authorized DEMO diagnostic"
 ```
 
-The evidence log (`data/evidence/demo_cost_evidence.jsonl`) is **machine-local
-and deliberately gitignored** — committing a log that looks like it came from a
-broker, when it came from a simulation, would be worse than having no log at
-all. Export summaries, not the log.
+Use a current, broker-valid stop; the registered policy requires protection. A command-line invocation with the flags is an explicit operator act, but it does not bypass identity, authorization, readiness, staged permission, risk, spread, broker order-check or reconciliation gates. Never use a manual order as evidence that the strategy generated a signal.
 
----
-
-## Failure messages and what to do
-
-| Message | Meaning | Action |
-|:---|:---|:---|
-| `MT5_PACKAGE_UNAVAILABLE` | not on Windows, or no terminal | run on the Windows machine |
-| `terminal unreachable: BrokerIdentityError: MetaTrader5 package not installed` | the package is missing or the terminal is not running | `pip install MetaTrader5`, then open the terminal and log in — `qts demo verify` reports this as a blocking condition, not a crash |
-| `MT5 initialize failed` | terminal not connected | open the terminal and log in |
-| `account-is-demo: is_demo=None` | identity UNKNOWN | fails closed by design; do not proceed |
-| `deposit-currency-known: currency unavailable` | `account_info().currency` unreadable | do not treat amounts as USD |
-| `server-offset-measured: assumed-utc-fallback` | offset could not be measured | captured times would be wrong; fix before trading |
-| `evidence-store-writable: PermissionError` | state dir not writable | set `QTS_STATE_ROOT` to a writable path |
-| `cost-fields-present: commission=0` | broker deals lack the field | costs stay UNAVAILABLE, never zero |
-
-Every one of these fails **closed**. None of them can be overridden with a
-flag.
-
----
-
-## What this runbook must never do
-
-* submit an order to produce test evidence (step 3 exists precisely so this is
-  never necessary);
-* unlock LIVE, or touch `LIVE_LOCKED`;
-* edit `data/evidence/demo_execution_authorization_2026-09-23.json` or
-  recompute its `integrity.content_sha256`;
-* withdraw or loosen a risk limit;
-* promote a strategy on the strength of anything in this document.
-
-A strategy is promoted only on reproducible out-of-sample results measured
-after real costs — and none of that exists yet.
-
----
-
-## 7. Research on real data (no broker needed)
-
-Everything in this section runs **without** a terminal, and **without** placing
-an order. It works on any machine with the repository checked out.
-
-### 7.1 Acquire the real history
-
-The upstream source is a pinned GitHub mirror of Dukascopy tick-derived bars.
-Download it however you normally fetch a tarball:
-
-```bat
-curl -L -o duka.tar.gz https://codeload.github.com/vudo805/forex-price-simulator/tar.gz/4d6f15543e6285fad91fd57fe42f716bc7273075
-tar -xzf duka.tar.gz --wildcards "*/data/XAUUSD/XAUUSD_*.parquet"
-mkdir pinned && copy forex-price-simulator-*\data\XAUUSD\*.parquet pinned\
-```
-
-Then verify and ingest. The script checks the SHA-256 of all 14 files against
-pins in the script and refuses to continue if any byte differs:
-
-```bat
-python scripts\acquire_xauusd_dukascopy.py --source-dir pinned --ingest
-```
-
-Expect: `26,038 rows`, `class=REAL`, and a ready dataset.
-
-### 7.2 Confirm the dataset clears the gate
-
-```bat
-qts edge readiness --data-version <version printed above>
-```
-
-Must print `Ready for claims: YES` and exit 0. If it rejects with ~6% missing
-bars, the session calendar was not applied — pass `--session-calendar XAUUSD`
-to `qts data ingest`.
-
-### 7.3 Evaluate a strategy honestly
-
-```bat
-python scripts\run_walkforward_research.py ^
-  --data-version <version> --family breakout --folds 8 ^
-  --test-fraction 0.08 --stop-distance-usd 40 --max-hold-bars 96 ^
-  --cost-source "your broker, date, method"
-```
-
-Report the verdict it prints. **Do not report a single fold count as a
-result** — run it at more than one fold granularity and see whether the
-verdict changes. In this repository it did: 4 folds said EDGE_CANDIDATE and
-8 folds said NO_EDGE on identical configuration.
-
-### 7.4 What has already been established
-
-`docs/research/walkforward_findings_2026-10-09.md` records what the frozen
-candidates and five strategy families actually do on 407 days of real history.
-The short version: **nothing passed.** Eleven of twelve corrected runs report
-`NO_EDGE_ESTABLISHED`, and the single `EDGE_CANDIDATE` was withdrawn by its own
-8-fold and 2× cost stress tests. Do not re-run hoping for a different answer
-without new data or measured costs.
-
-Two traps that cost this repository real time, both now guarded in code:
-
-* **Check `coverage` before believing any number.** The pipeline prints
-  `coverage: X% of the series traded (halted folds: N)`. For a long time every
-  run silently reported ~18% because the risk engine's kill switch stopped
-  trading at the first 5% drawdown and nothing said so. A halted run describes
-  part of the series, not the strategy. Anything below 100% is not a result.
-* **Never trust one fold count.** Run at more than one granularity; this is
-  what 7.3 is for.
-
-The most useful single number in the findings is the cost column: trend and
-breakout consume 91% and 95% of their own gross in assumed costs. Until costs
-are measured on your broker (step 3 of this runbook), no verdict can be more
-than provisional.
-
----
-
-## 8. Measuring real broker costs (spread, swap, commission, slippage)
-
-Everything in this section is **read-only** and submits no order. It produces
-JSON evidence artifacts; keep them — they are the only thing that can ever
-turn a research cost from `ASSUMED` into `MEASURED`. Fields the broker does
-not expose are reported `UNAVAILABLE`, never zero. Run every step on the DEMO
-account only; the commands refuse a non-DEMO identity.
-
-### 8.1 Directional swap and symbol terms (do this first)
-
-```bat
-qts demo symbol-terms --json-out artifacts\symbol_terms.json
-```
-
-Reports `swap_long`/`swap_short` in points and, for points-mode USD symbols,
-converted USD per lot per night, plus contract size, tick geometry and the
-current spread. The swap line is the carrying cost of holding a position —
-for the frozen gold champions (long-biased, held for months) `swap_long` is
-a first-order cost that per-deal evidence cannot reveal until after a
-position has been held overnight. Note `swap_rollover3days` (usually
-Wednesday): that weekday is charged 3x. Repeat per broker/account and record
-the server name and date with the artifact; swap schedules change.
-
-### 8.2 Spread profile (repeat across sessions)
-
-```bat
-qts demo spread-profile --samples 60 --interval-sec 5 --json-out artifacts\spread_london.json
-qts demo spread-profile --samples 60 --interval-sec 5 --json-out artifacts\spread_rollover.json
-```
-
-Run at least: a London/NY-overlap sample, a quiet sample, and one spanning
-the 00:00 server-time rollover, where retail gold spreads widen most. Judge
-stress on p95/p99, not the median.
-
-### 8.3 Commission (from deals — never trade just to measure)
-
-```bat
-qts demo cost-check --record
-```
-
-If the DEMO account already has deals, this backfills their commission /
-swap / fee verbatim into the tamper-evident evidence store. If it has none,
-commission stays `UNKNOWN` until an authorized DEMO fill exists (Section 6
-is the only path that creates one, under its own gates and limits).
-
-### 8.4 Slippage
-
-Slippage accrues in the execution-reality store from DEMO fills
-(`avg_abs_slippage_bps`). With no fills it is `UNKNOWN` — that is the honest
-state, not a gap to paper over.
-
-### 8.5 Assemble the measured cost model and re-evaluate frozen champions
-
-```bat
-qts demo measured-model --spread-profile artifacts\spread_london.json --symbol-terms artifacts\symbol_terms.json --direction long --json-out artifacts\measured_cost_model.json
-qts demo evaluate-champions --spread-profile artifacts\spread_london.json --symbol-terms artifacts\symbol_terms.json --direction long --json-out artifacts\champion_cost_evaluation.json
-```
-
-The output tags every component (`spread`, `commission`, `slippage`,
-`financing`) with its own basis. **`claim_eligible` must be `true`** — every
-component MEASURED — before any research number may cite measured costs.
-Anything less is sensitivity material only. A measured model is specific to
-one broker + account type; re-measure when either changes, and compare
-`swap_long` (`swap_long_bps_per_day_of_notional`) against the financing
-break-even published in the research audit (`~3.35 bps/day` for `ts9_lo`,
-`~2.38 bps/day` for `veto9`) before trusting any long-horizon result at that
-broker.
-
-You can also view the measured vs assumed cost table and trigger a read-only
-symbol-terms probe directly from the Desktop UI on the **Reports** page
-(`http://127.0.0.1:8000/#/reports` → **"Check broker symbol terms (read-only)"**).
+No order was sent in this audit. The external regional notice, unmeasured all-in costs and `NO_VALIDATED_EDGE` remain blockers to any economic claim. **LIVE must remain locked.**

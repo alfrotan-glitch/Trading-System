@@ -163,6 +163,20 @@ def test_connectivity_can_write_a_json_report(run_cli, operator_env):
 # ----------------------------------------------------------- arming and orders
 
 
+def test_manual_order_requires_explicit_confirmation_before_opening_a_session(run_cli, operator_env, monkeypatch):
+    import qts.cli.demo as demo_cli
+
+    def forbidden_session(*_args, **_kwargs):
+        pytest.fail("missing confirmation must be refused before connecting to the terminal")
+
+    monkeypatch.setattr(demo_cli, "_demo_session", forbidden_session)
+    result = run_cli("order", "--side", "BUY", "--db", operator_env["db"])
+
+    assert result.exit_code == 2
+    assert "--confirm --risk-ack" in _out(result)
+    assert operator_env["terminal"].requests == []
+
+
 def test_full_operator_flow_arms_and_submits_one_labelled_order(run_cli, operator_env):
     # Stage 1 — pin and confirm the observed DEMO identity.
     pinned = run_cli("connectivity", "--db", operator_env["db"], "--pin")
@@ -184,14 +198,16 @@ def test_full_operator_flow_arms_and_submits_one_labelled_order(run_cli, operato
     assert "STAGE_2_MIN_SIZE_ORDER" in arm2.output
 
     # One order, minimum size, with its stop — only after a strategy is registered.
-    no_strategy = run_cli("order", "--side", "BUY", "--stop-loss", "1995.00", "--db", operator_env["db"])
+    no_strategy = run_cli(
+        "order", "--side", "BUY", "--stop-loss", "1995.00", "--db", operator_env["db"], "--confirm", "--risk-ack"
+    )
     assert no_strategy.exit_code == 2
     assert "NO_TRADE" in no_strategy.output
 
     _register_strategy(operator_env["registry"])
     ordered = run_cli(
         "order", "--side", "BUY", "--stop-loss", "1995.00", "--db", operator_env["db"],
-        "--rationale", "cli integration test",
+        "--rationale", "cli integration test", "--confirm", "--risk-ack",
     )
     assert ordered.exit_code == 0, ordered.output
     body = json.loads(ordered.output)
@@ -249,7 +265,7 @@ def test_journal_export_writes_the_forward_trail(run_cli, operator_env):
     run_cli("connectivity", "--db", operator_env["db"], "--confirm-pin")
     run_cli("arm", "--stage", "1", "--db", operator_env["db"], "--confirm", "--risk-ack")
     run_cli("arm", "--stage", "2", "--db", operator_env["db"], "--confirm", "--risk-ack")
-    run_cli("order", "--side", "BUY", "--stop-loss", "1995.00", "--db", operator_env["db"])
+    run_cli("order", "--side", "BUY", "--stop-loss", "1995.00", "--db", operator_env["db"], "--confirm", "--risk-ack")
 
     export = operator_env["tmp"] / "journal.jsonl"
     result = run_cli("journal", "--db", operator_env["db"], "--export", str(export))
@@ -295,7 +311,9 @@ def test_revoke_disables_execution_and_never_edits_the_artifact(run_cli, operato
     assert "DISABLED BY POLICY" in status.output
 
     _register_strategy(operator_env["registry"])
-    ordered = run_cli("order", "--side", "BUY", "--stop-loss", "1995.00", "--db", operator_env["db"])
+    ordered = run_cli(
+        "order", "--side", "BUY", "--stop-loss", "1995.00", "--db", operator_env["db"], "--confirm", "--risk-ack"
+    )
     assert ordered.exit_code == 2
     assert operator_env["terminal"].requests == []
 
@@ -408,7 +426,7 @@ def test_positions_and_close_commands_lifecycle(run_cli, operator_env):
     # Order
     order_res = run_cli(
         "order", "--side", "BUY", "--stop-loss", "1995.00", "--db", operator_env["db"],
-        "--rationale", "cli close test",
+        "--rationale", "cli close test", "--confirm", "--risk-ack",
     )
     assert order_res.exit_code == 0
     body = json.loads(order_res.output)

@@ -13,11 +13,11 @@
 
 ### 1. Clone the Repository
 ```bash
-git clone --branch arena/01a0ce9f-trading-system https://github.com/alfrotan-glitch/Trading-System.git
+git clone https://github.com/alfrotan-glitch/Trading-System.git
 cd Trading-System
 ```
 
-Do not clone `main`. That branch does not contain this desktop build.
+`main` is the canonical integration branch. Do not pin an old Arena work branch for a clean installation.
 
 ### 2. Set Up Virtual Environment
 ```bash

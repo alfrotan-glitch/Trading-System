@@ -53,6 +53,7 @@ class FakeTerminal:
             trade_mode=4,
             filling_mode=1,
             execution_mode=2,
+            currency_profit="USD",
             stops_level=0,
             freeze_level=0,
         )

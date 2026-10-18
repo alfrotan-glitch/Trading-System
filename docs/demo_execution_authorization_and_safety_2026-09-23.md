@@ -4,11 +4,13 @@
 artifact is currently refused — §2.5) · `LIVE = LOCKED` · `REAL_CAPITAL_EXPOSURE = 0` ·
 **Trading state: `TRADING_ELIGIBLE_DIAGNOSTIC`** (2026-09-24) — a registered, **non-validated** DEMO
 forward research policy may trade to *measure*; no strategy has a validated edge.
-**Branch:** `arena/01a0ce9f-trading-system`
+**Historical implementation branch:** `arena/01a0ce9f-trading-system` · **current canonical integration branch:** `main`
 **Authorization artifact:** `data/evidence/demo_execution_authorization_2026-09-23.json` (`DEMO-AUTH-2026-09-23-01`)
 **Strategy registry:** `data/evidence/demo_forward_validation_registry_2026-09-23.json` (1 entry, see §12a)
 **Registered policy:** `DEMOPOL-EXEC-COST-XAUUSD-2026-09-24-V1` · preregistration
 `docs/preregistration_demo_execution_probe_2026-09-24.md`
+
+> **Historical snapshot notice (2026-10-18):** The original policy and branch details below describe the authorization-contract work recorded in September 2026; they are not the current registry or a fresh verification. The current registered DEMO diagnostic, research verdict, regional/cost limitations, and read-only operating sequence are in `docs/windows_demo_runbook.md` and `QTS_PROJECT_CONTROL.md`. `main` is the canonical integration branch. No broker was connected and no order was submitted for this update.
 
 > **One-line summary.** The owner has authorized real order submission on the configured **MT5 DEMO**
 > account for forward-validation research. The authorization is a recorded, hashed, revocable artifact —
@@ -440,27 +442,35 @@ This work was implemented and tested in a **Linux sandbox without a MetaTrader5 
   and symbol → **order refused** (verified: `/api/demo/preflight` → HTTP 409).
 * No order was submitted from this sandbox and none could be.
 
-## 15. Operating procedure (Windows terminal, DEMO account)
+## 15. Operating procedure (Windows terminal, eligible DEMO account)
 
-```bash
-set QTS_MODE=demo_execution                  # the DEMO order path exists ONLY in this mode
-qts demo verify                              # START HERE: what's blocking, and the one next command
-qts demo authorization                       # artifact + resolved policy
-qts demo connectivity                        # Stage 1 (no orders)
-qts demo connectivity --pin                  # record observed identity + symbol provenance (PENDING_REVIEW)
-qts demo connectivity --confirm-pin          # owner confirms the pin
-qts demo arm --stage 1                       # prove Stage 1 prerequisites
-qts demo preflight --side BUY                # full-gate dry run (derives the policy stop; no order)
-qts demo arm --stage 2 --confirm --risk-ack  # open the order path
-qts demo reverify --confirm --risk-ack       # refresh permission when its 120 s evidence expires
-qts demo order --side BUY                    # ONE RESEARCH_DEMO_ORDER (SL derived unless given)
-qts demo run --strategy <id> --confirm --risk-ack   # autonomous DEMO trading (refreshes permission)
-qts demo journal --export data/evidence/demo_forward_observations.jsonl
-qts demo kill --reason "..."                 # halt immediately (durable; halts the stage)
-qts demo clear-kill --reason "..." --confirm # lift the halt (stage stays HALTED — re-arm)
-qts demo revoke --reason "..."               # withdraw authorization
-python scripts/demo_static_validation.py     # offline check: LIVE lock, scope, policy, hashes
+Start with read-only checks. Keep account identifiers and raw reports outside the repository:
+
+```bat
+qts demo verify
+qts demo connectivity --json-out "%LOCALAPPDATA%\QTS\cost-audit\connectivity.json"
+qts demo symbol-terms --json-out "%LOCALAPPDATA%\QTS\cost-audit\symbol_terms.json"
+qts demo cost-check --json-out "%LOCALAPPDATA%\QTS\cost-audit\cost_check.json"
 ```
+
+The following operations change local state or can enable execution; they are **not** read-only and require a separate operator decision: `qts mode declare demo_execution`, `connectivity --pin`, `connectivity --confirm-pin`, `arm`, and `reverify`. Stage 1 records connectivity; the order-capable Stage 2/3 transitions and same-stage permission refresh require explicit `--confirm --risk-ack`. Review `docs/windows_demo_runbook.md` before any Windows session.
+
+A no-order preflight submits nothing:
+
+```bat
+qts demo preflight --side BUY --lots 0.01
+```
+
+The registered provider is `DEMO-XAUUSD-TREND-TSMOM-V1`, a DEMO diagnostic only (`validated_edge: false`). A non-dry-run manual order or autopilot session can submit a broker order. They require explicit confirmation and risk acknowledgement; this does not override any gate:
+
+```bat
+qts demo order --side BUY --lots 0.01 --strategy DEMO-XAUUSD-TREND-TSMOM-V1 --confirm --risk-ack --rationale "authorized DEMO diagnostic"
+qts demo run --strategy DEMO-XAUUSD-TREND-TSMOM-V1 --confirm --risk-ack
+```
+
+Do not execute those order-capable commands merely to collect evidence. The manual order is an operator-selected diagnostic, not a provider-generated signal. Use `--dry-run` for a no-order loop check. Exported journals can contain broker identifiers; write them to a protected machine-local path, not `data/evidence` in the repository.
+
+For emergency action, `qts demo kill --reason "..."` durably halts the stage. Clearing with `qts demo clear-kill --reason "..." --confirm` does not re-arm; the stage stays HALTED until the separately gated preparation flow is repeated.
 
 **Readiness evidence expires every 120 s — that is normal, not a failure.**
 Permission is proven against the live terminal rather than inherited from an old
