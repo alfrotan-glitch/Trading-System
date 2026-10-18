@@ -15,11 +15,11 @@ git --version
 
 ## Clone
 ```powershell
-git clone --branch arena/01a0ce9f-trading-system https://github.com/alfrotan-glitch/Trading-System.git
+git clone https://github.com/alfrotan-glitch/Trading-System.git
 cd Trading-System
 ```
 
-Do not omit `--branch`. A plain clone checks out `main`, which is not this desktop build.
+`main` is the canonical integration branch. A clean clone should use the supported product branch, not an old Arena work branch.
 
 ## Setup (One Click)
 PowerShell (recommended):

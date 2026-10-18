@@ -111,7 +111,7 @@ export async function renderDemo(root) {
   root.appendChild(page({
     crumb: "Trading", group: "Demo",
     title: "Demo account",
-    answer: h("b", null, "Connect your practice account, let QTS run the safety checks, and place demo orders. Live trading stays locked. No real money is at risk."),
+    answer: h("b", null, "Review the registered DEMO diagnostic, its read-only completed-bar snapshot, planned size and stop risk. Any order is manual and DEMO-only; no validated edge is claimed. No real money is at risk on a confirmed DEMO account and Live stays locked."),
     actions: [h("button", { class: "btn", onclick: () => load(true) }, icon("refresh", 14), "Refresh")],
     body: null,
   }));
@@ -269,17 +269,82 @@ export async function renderDemo(root) {
     );
   }
 
+  function strategyPreviewCard(g) {
+    const preview = g.strategy_preview || {};
+    const plan = preview.plan || {};
+    const signal = preview.signal || {};
+    const order = preview.order || g.order_defaults || {};
+    const risk = order.risk_estimate || {};
+    const blockers = Array.isArray(g.blockers) ? g.blockers : [];
+    const trendLabel = signal.status === "AVAILABLE"
+      ? ({ BULLISH: "Fast EMA above slow", BEARISH: "Fast EMA below slow", NEUTRAL: "EMAs equal" }[signal.trend_state] || "Unavailable")
+      : signal.status === "WARMING_UP"
+        ? `Warming up · ${signal.completed_bars ?? "—"}/${signal.required_bars ?? "—"} completed bars`
+        : "Unavailable";
+    const crossLabel = signal.status === "AVAILABLE"
+      ? (signal.latest_completed_cross === "NONE" ? "No cross on last completed bar" : `${signal.latest_completed_cross} cross · snapshot only`)
+      : "Unavailable";
+    const riskLabel = risk.status === "ESTIMATED" && risk.amount !== null
+      ? `${fmtNum(risk.amount)} ${risk.currency || ""}${risk.account_equity_pct !== null && risk.account_equity_pct !== undefined ? ` · ${fmtNum(risk.account_equity_pct)}% of equity` : ""}`.trim()
+      : "UNAVAILABLE";
+    const spreadLabel = g.quote?.fresh && g.quote?.spread_bps !== null && g.quote?.spread_bps !== undefined
+      ? `${fmtNum(g.quote.spread_bps)} bps · fresh quote`
+      : "UNAVAILABLE";
+    const registrationLabel = plan.validated_edge === true ? "Validated edge" : "Diagnostic only · no validated edge";
+
+    return card({
+      title: "Registered DEMO diagnostic", icon: "activity",
+      sub: plan.label || "No eligible DEMO diagnostic policy registered",
+      actions: [h("span", { class: `prov ${plan.validated_edge === true ? "" : "warn"}` }, registrationLabel)],
+      body: h("div", { class: "stack" },
+        h("div", { class: "stat-grid" },
+          stat({ label: "Latest completed-bar state", value: trendLabel, tone: signal.status === "AVAILABLE" ? "info" : "neutral", icon: "pulse", hint: signal.last_completed_bar ? `Bar time: ${fmtUtc(signal.last_completed_bar)}` : (signal.reason || "No broker history snapshot available.") }),
+          stat({ label: "Last-bar crossover", value: crossLabel, tone: "neutral", icon: "activity", hint: "Historical snapshot only; a seeded crossover is never emitted as a live order signal." }),
+          stat({ label: "Registered default size", value: order.default_size ? `${order.default_size} lots` : "UNAVAILABLE", tone: order.broker_size_check === "FAIL" ? "err" : order.broker_size_check === "PASS" ? "info" : "neutral", icon: "layers", hint: `${order.size_basis || "Registered size policy"} · broker check: ${order.broker_size_check || "UNAVAILABLE"}` }),
+          stat({ label: "Stop-distance estimate", value: riskLabel, tone: risk.status === "ESTIMATED" ? "warn" : "neutral", icon: "scale", hint: order.stop_distance_price ? `${order.stop_distance_price} XAUUSD price units · stop required: ${order.stop_required === true ? "yes" : order.stop_required === false ? "no" : "unknown"}` : "Registered stop distance unavailable." }),
+          stat({ label: "Current quoted spread", value: spreadLabel, tone: g.quote?.fresh ? "info" : "neutral", icon: "activity", hint: "A live quote is not a complete all-in cost model." }),
+          stat({ label: "Order permission", value: g.can_trade ? "DEMO gates currently pass" : "Blocked", tone: g.can_trade ? "info" : "warn", icon: g.can_trade ? "shield" : "lock", hint: "Every order still requires fresh per-order preflight and explicit confirmation." }),
+        ),
+        signal.note ? h("p", { class: "small text-dim" }, signal.note) : null,
+        risk.status === "ESTIMATED"
+          ? h("p", { class: "small text-dim" }, `Estimate basis: ${risk.basis}. It is not a maximum-loss guarantee and excludes ${(risk.excludes || []).join(", ")}.`)
+          : h("p", { class: "small text-dim" }, risk.reason || "Stop-loss risk is unavailable until broker contract and profit-currency facts are readable."),
+        blockers.length
+          ? h("div", { class: "stack" },
+              h("b", { class: "small" }, "Readiness blockers · ordered by workflow dependency"),
+              ...blockers.slice(0, 4).map((item) => h("div", { class: "guide-step", style: { padding: "8px 0", borderBottom: "1px solid var(--border)" } },
+                h("div", { class: "small", style: { fontWeight: 600 } }, `${item.priority}. ${item.title}`),
+                h("div", { class: "small text-dim" }, item.action),
+              )),
+              blockers.length > 4 ? h("details", null,
+                h("summary", { class: "small" }, `Show all ${blockers.length} blockers`),
+                h("div", { class: "stack mt-2" }, ...blockers.slice(4).map((item) => h("p", { class: "small text-dim" }, `${item.priority}. ${item.title} — ${item.action}`))),
+              ) : null,
+            )
+          : banner("info", "Readiness checks pass", "This is permission to request a DEMO action only; it does not validate an edge and does not authorize a LIVE order.", "shield"),
+        h("p", { class: "small text-dim" }, preview.research_boundary || "Paper research and the registered DEMO diagnostic are separate."),
+      ),
+    });
+  }
+
   function orderTicket(g) {
     if (!g.can_trade) {
       return card({
-        title: "Place a demo order", icon: "zap",
-        sub: "Available once the steps above are complete",
-        body: emptyState({ icon: "lock", title: "Not ready to trade yet", desc: g.reason || "Finish the steps above. QTS will tell you when an order is possible. No real money is at risk either way." }),
+        title: "Manual DEMO diagnostic order", icon: "zap",
+        sub: "Unavailable until the DEMO execution gates pass",
+        body: emptyState({ icon: "lock", title: "DEMO order path is blocked", desc: g.reason || "Resolve the ordered readiness blockers before requesting a manual DEMO diagnostic action. No real money is at risk either way." }),
       });
     }
     let side = "BUY";
-    const size = h("input", { class: "input", type: "number", step: "0.01", min: "0.01", value: g.order_defaults?.size ?? "0.01", style: { maxWidth: "140px" } });
-    const stop = h("input", { class: "input", type: "number", step: "0.01", placeholder: "e.g. 3280.00", style: { maxWidth: "160px" } });
+    const volume = g.order_defaults || {};
+    const sizeAttrs = {
+      class: "input", type: "number", step: volume.volume_step ?? "any",
+      value: volume.size ?? "", style: { maxWidth: "140px" },
+    };
+    if (volume.volume_min !== null && volume.volume_min !== undefined) sizeAttrs.min = volume.volume_min;
+    if (volume.volume_max !== null && volume.volume_max !== undefined) sizeAttrs.max = volume.volume_max;
+    const size = h("input", sizeAttrs);
+    const stop = h("input", { class: "input", type: "number", step: "any", placeholder: "enter broker-valid stop price", style: { maxWidth: "160px" } });
     const result = h("div");
     const sideBtn = (label) => h("button", {
       class: `btn sm ${side === label ? "primary" : ""}`,
@@ -290,61 +355,101 @@ export async function renderDemo(root) {
       if (acting) return;
       acting = true;
       try {
-      const payload = { side, lots: size.value || undefined, stop_loss: stop.value || undefined, confirmed: true, risk_ack: true };
-      if (dry) payload.dry_run = true;
-      if (!dry) {
-        // One simple review before anything is sent — exactly what will happen.
+        const rationale = "operator-selected manual DEMO probe; not a provider signal; no validated edge";
+        const payload = {
+          side,
+          lots: size.value || undefined,
+          stop_loss: stop.value || undefined,
+          strategy: g.plan_id || undefined,
+          rationale,
+          confirmed: true,
+          risk_ack: true,
+          dry_run: true,
+        };
+        // Always run the authoritative no-order preflight first. The backend
+        // recomputes all checks again at submission; this preview is never a
+        // permit and cannot be used to bypass stale readiness.
+        const preview = await api.post("/api/demo/order", payload);
+        const verdict = preview?.verdict || {};
+        if (dry) {
+          const passed = verdict.passed === true;
+          result.replaceChildren(
+            banner(passed ? "ok" : "warn", passed ? "Preview passed the safety checks" : "Preview is blocked", passed ? "No order was sent. The preview is not permission; the backend checks again for every order." : humanRefusal(verdict.reasons || verdict.failed || []), passed ? "check" : "alert"),
+            tech(preview, "Preview detail"),
+          );
+          return;
+        }
+        if (verdict.passed !== true) {
+          result.replaceChildren(
+            banner("warn", "Demo order was not submitted", humanRefusal(verdict.reasons || verdict.failed || []), "alert"),
+            tech(preview, "Preflight refusal"),
+          );
+          return;
+        }
+
+        const intended = preview.intended_order || {};
+        const estimate = preview.risk_estimate || {};
+        const estimateLabel = estimate.status === "ESTIMATED" && estimate.amount !== null
+          ? `${fmtNum(estimate.amount)} ${estimate.currency || ""}${estimate.account_equity_pct !== null && estimate.account_equity_pct !== undefined ? ` (${fmtNum(estimate.account_equity_pct)}% of equity)` : ""}`.trim()
+          : "UNAVAILABLE";
+        const estimateDetail = estimate.status === "ESTIMATED"
+          ? `${estimate.basis || "stop-distance estimate"}; not a maximum-loss guarantee; excludes ${(estimate.excludes || []).join(", ")}.`
+          : `${estimate.reason || "Required broker risk facts are unavailable"}; unknown risk is not zero.`;
         const ok = await confirmModal({
-          title: "Confirm demo trade",
+          title: "Confirm manual DEMO diagnostic order",
           body: h("div", { class: "stack" },
             kv([
+              ["Action source", "Manual operator choice — not a strategy-generated signal"],
+              ["Plan", g.strategy_preview?.plan?.label || g.plan_id || "registered DEMO plan"],
               ["Direction", side === "BUY" ? "Buy" : "Sell"],
               ["Instrument", g.instrument || "Gold (XAUUSD)"],
-              ["Amount", `${size.value || "—"} lot`],
-              ["Stop loss", stop.value || "—"],
-              ["Account", "Demo — no real money"],
+              ["Planned size", `${intended.lots ?? size.value ?? "UNAVAILABLE"} lot(s)`],
+              ["Stop loss", intended.stop_loss ?? "UNAVAILABLE"],
+              ["Reference quote", intended.reference_price ?? "UNAVAILABLE"],
+              ["Estimated stop-distance loss", estimateLabel],
+              ["Risk-estimate limits", estimateDetail],
             ]),
-            banner("info", "This trade is placed on a Demo account.", "No real money is at risk. Live trading stays locked.", "lock")),
-          acks: ["I want to place this demo trade."],
-          confirmLabel: "Place demo trade",
+            banner("warn", "Diagnostic only — no validated edge", "This is a practice-account order. The estimate excludes spread, commission, slippage, financing and gaps; a stop does not guarantee the loss. Live trading stays locked.", "shield")),
+          acks: ["I reviewed the no-order preflight and explicitly authorize this manual DEMO diagnostic order."],
+          confirmLabel: "Place DEMO diagnostic order",
         });
         if (!ok) return;
-      }
-      try {
-        const out = await api.post("/api/demo/order", payload);
-        if (dry) {
-          result.replaceChildren(banner("ok", "Preview passed the safety checks", "No order was sent. Press “Place demo trade” to submit on the demo account.", "check"), tech(out, "Preview detail"));
-        } else {
-          result.replaceChildren(banner("ok", "Demo trade placed", `Broker reference ${out.broker_order_id ?? "recorded"}. This is a practice account — no real money.`, "check"), tech(out, "Order detail"));
-          toast("ok", "Demo trade placed", "No real money is at risk.");
-        }
+
+        const sendPayload = {
+          ...payload,
+          dry_run: false,
+          lots: intended.lots ?? payload.lots,
+          stop_loss: intended.stop_loss ?? payload.stop_loss,
+        };
+        const out = await api.post("/api/demo/order", sendPayload);
+        result.replaceChildren(banner("ok", "DEMO diagnostic order submitted", `Broker reference ${out.broker_order_id ?? "recorded"}. This is a practice account; it is not evidence of a validated edge.`, "check"), tech(out, "Order detail"));
+        toast("ok", "DEMO diagnostic order submitted", "No real money is at risk; research status remains unvalidated.");
       } catch (e) {
         const b = e.body || {};
-        const reasons = Array.isArray(b.reasons) ? b.reasons : (b.detail ? [String(b.detail)] : []);
+        const reasons = Array.isArray(b.reasons) ? b.reasons : Array.isArray(b.verdict?.reasons) ? b.verdict.reasons : (b.detail ? [String(b.detail)] : []);
         result.replaceChildren(
-          banner("warn", "Demo trade could not be placed", humanRefusal(reasons), "alert"),
+          banner("warn", "DEMO diagnostic action refused", humanRefusal(reasons), "alert"),
           h("details", null, h("summary", null, "Technical details"), tech(b, "Raw refusal")),
         );
-      }
       } finally {
         acting = false;
       }
     }
 
     return card({
-      title: "New demo trade", icon: "zap",
-      sub: `${g.instrument} · practice account · no real money at risk`,
-      actions: [h("span", { class: "prov demo" }, "DEMO ONLY")],
+      title: "Manual DEMO diagnostic order", icon: "zap",
+      sub: `${g.instrument} · operator-selected · not generated by the indicator`,
+      actions: [h("span", { class: "prov demo" }, "MANUAL · DEMO ONLY")],
       body: h("div", { class: "stack" },
-        banner("info", "No real money is at risk", "This order goes to your demo (practice) account only. Live trading stays locked.", "lock"),
+        banner("warn", "No validated edge", "This manual ticket is not a strategy signal. It is a DEMO-only diagnostic action. No real money is at risk on a confirmed DEMO account; Live stays locked and the backend re-checks every order.", "shield"),
         h("div", { class: "row", style: { flexWrap: "wrap", gap: "10px", alignItems: "flex-end" } },
           h("div", { class: "field" }, h("label", { class: "small" }, "Direction"), h("div", { class: "row" }, sideBtn("BUY"), sideBtn("SELL"))),
-          h("div", { class: "field" }, h("label", { class: "small" }, "Amount (lots)"), size),
-          h("div", { class: "field" }, h("label", { class: "small" }, `Stop loss ${g.order_defaults?.stop_required === false ? "(optional)" : "(required)"}`), stop, h("div", { class: "hint" }, g.order_defaults?.stop_required === false ? "A protective stop is optional for this plan." : "The demo plan requires a protective stop on every order. Set the price where this trade must close if it moves against you.")),
+          h("div", { class: "field" }, h("label", { class: "small" }, "Planned size (lots)"), size, h("div", { class: "hint" }, volume.size_basis || "Size follows the registered policy; broker bounds are rechecked at preflight.")),
+          h("div", { class: "field" }, h("label", { class: "small" }, `Stop loss ${volume.stop_required === false ? "(optional)" : "(required)"}`), stop, h("div", { class: "hint" }, volume.stop_required === false ? "A protective stop is optional for this plan." : `A stop is required. Enter a broker-valid price, or leave blank for QTS to derive the registered ${volume.stop_distance_price ?? "UNAVAILABLE"} price-unit distance from a fresh quote; review the exact stop in preflight.`)),
         ),
         h("div", { class: "row" },
           h("button", { class: "btn", disabled: acting, onclick: () => submit(true) }, icon("eye", 14), "Preview (no order)"),
-          h("button", { class: "btn primary", disabled: acting, onclick: () => submit(false) }, icon("zap", 14), "Place demo trade"),
+          h("button", { class: "btn primary", disabled: acting, onclick: () => submit(false) }, icon("zap", 14), "Review and place DEMO order"),
         ),
         result,
       ),
@@ -571,12 +676,12 @@ export async function renderDemo(root) {
         g.reason ? h("p", { class: "text-dim small" }, g.reason) : null,
       ),
       h("div", { class: "next-action" },
-        h("div", { class: "eyebrow" }, g.can_trade ? "TRADE" : "NEXT"),
-        g.can_trade ? h("span", { class: "badge ok" }, "Ready — place a demo order below") : nextActionButton(g),
+        h("div", { class: "eyebrow" }, g.can_trade ? "DEMO" : "NEXT"),
+        g.can_trade ? h("span", { class: "badge ok" }, "DEMO gates pass — any order is manual") : nextActionButton(g),
       )));
 
-    host.appendChild(banner(toneFor(g), g.status === "ready" ? "Ready for demo trading" : g.status === "stopped" ? "Trading is stopped" : "Not ready yet",
-      `Live trading is locked. Real-capital exposure is $0. ${g.reason ? g.reason : (g.status === "ready" ? "Every order still passes the full pre-trade safety gate." : "Follow the next step — QTS runs the checks for you.")}`,
+    host.appendChild(banner(toneFor(g), g.status === "ready" ? "DEMO diagnostic gates pass — no validated edge" : g.status === "stopped" ? "Trading is stopped" : "Not ready yet",
+      `Live trading is locked. Real-capital exposure is $0. ${g.reason ? g.reason : (g.status === "ready" ? "A manual DEMO request still needs explicit confirmation and fresh per-order preflight." : "Follow the next step — QTS runs the checks for you.")}`,
       headlineIcon(g)));
 
     host.appendChild(h("div", { class: "grid-2" },
@@ -591,6 +696,7 @@ export async function renderDemo(root) {
       }),
     ));
 
+    host.appendChild(strategyPreviewCard(g));
     host.appendChild(orderTicket(g));
     host.appendChild(positionsSection());
     advancedSection(g).then((node) => host.appendChild(node)).catch(() => {

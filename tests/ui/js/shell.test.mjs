@@ -140,6 +140,11 @@ test("trading page keeps the guided workflow and the full checklist", async () =
   await waitUntil(() => document.querySelectorAll(".check").length >= 10, 75000, "readiness checks");
   assert.ok(document.body.textContent.includes("DEMO EXECUTION: DISABLED"), "authority state shown verbatim under disclosure");
   assert.ok(document.body.textContent.includes("No real money is at risk"), "demo-only reassurance on the trade ticket");
+  assert.ok(document.body.textContent.includes("Registered DEMO diagnostic"), "registered provider is distinct from manual order intent");
+  assert.ok(document.body.textContent.includes("Diagnostic only · no validated edge"), "weak research status remains explicit");
+  assert.ok(document.body.textContent.includes("Readiness blockers · ordered by workflow dependency"), "actionable blockers render in precedence order");
+  assert.ok(document.body.textContent.includes("Manual DEMO diagnostic order"), "manual ticket is named separately");
+  assert.ok(![...document.querySelectorAll("button")].some((button) => /Review and place DEMO order/.test(button.textContent)), "blocked sandbox cannot expose the submission control");
   const failing = document.querySelectorAll(".check.fail").length;
   assert.ok(failing >= 1, `sandbox readiness must show failing checks (no MT5), got ${failing}`);
 });

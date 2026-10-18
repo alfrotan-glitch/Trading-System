@@ -1101,6 +1101,8 @@ def demo_preflight(symbol: str | None, db: str, side: str, lots: str | None, sto
 @click.option("--strategy", default=None)
 @click.option("--rationale", default="")
 @click.option("--dry-run", is_flag=True, help="evaluate the gate without submitting")
+@click.option("--confirm", is_flag=True, help="explicit operator confirmation (required unless --dry-run)")
+@click.option("--risk-ack", is_flag=True, help="explicit risk acknowledgement (required unless --dry-run)")
 def demo_order(
     symbol: str | None,
     db: str,
@@ -1111,9 +1113,19 @@ def demo_order(
     strategy: str | None,
     rationale: str,
     dry_run: bool,
+    confirm: bool,
+    risk_ack: bool,
 ) -> None:
     """Submit ONE DEMO order through the gate (or dry-run it)."""
     from decimal import Decimal
+
+    if not dry_run and not (confirm and risk_ack):
+        click.echo(
+            "DEMO order refused: explicit operator confirmation and risk acknowledgement are required "
+            "(--confirm --risk-ack); use --dry-run for a no-order preview",
+            err=True,
+        )
+        raise SystemExit(2)
 
     from qts.lifecycle.demo_registry import load_registry, resolve_entry
 

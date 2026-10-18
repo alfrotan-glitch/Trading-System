@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -541,6 +542,221 @@ def _guide_pin_state(report: dict[str, Any]) -> dict[str, Any]:
     return {"recorded": pinned, "confirmed": confirmed, "verified": verified, "status": status or None, "detail": detail}
 
 
+def _decimal_or_none(value: Any) -> Decimal | None:
+    try:
+        number = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    return number if number.is_finite() else None
+
+
+def _strategy_preview(session: Any, entry: Any | None, *, connected_demo: bool) -> dict[str, Any]:
+    """Read-only strategy, default-size and stop-risk facts for the operator UI."""
+    unavailable_signal: dict[str, Any] = {
+        "status": "UNAVAILABLE",
+        "trend_state": "UNAVAILABLE",
+        "latest_completed_cross": "UNAVAILABLE",
+        "last_completed_bar": None,
+        "fast_ema": None,
+        "slow_ema": None,
+        "actionable_signal": False,
+        "reason": "No registered strategy snapshot is available.",
+        "note": "This snapshot never emits an order signal.",
+    }
+    if entry is None:
+        return {
+            "plan": {
+                "strategy_id": None,
+                "status": "No registered DEMO policy",
+                "validated_edge": False,
+                "label": "No registered DEMO policy",
+                "timeframe_minutes": None,
+                "fast_ema": None,
+                "slow_ema": None,
+                "stop_distance_price": None,
+                "max_hold_seconds": None,
+            },
+            "signal": unavailable_signal,
+            "order": {
+                "default_size": None,
+                "size_basis": "UNAVAILABLE",
+                "broker_size_check": "UNAVAILABLE",
+                "volume_min": None,
+                "volume_max": None,
+                "volume_step": None,
+                "stop_required": None,
+                "stop_distance_price": None,
+                "risk_estimate": {"status": "UNAVAILABLE", "amount": None, "currency": None},
+            },
+            "research_boundary": "No DEMO plan is registered. Paper research is not an order authorization.",
+        }
+
+    params = entry.params or {}
+    policy = getattr(entry, "policy", None)
+    size_policy = entry.size_policy or {}
+    size_mode = str(size_policy.get("mode") or "broker_minimum").lower()
+    stop_distance = _decimal_or_none(
+        policy.stop_distance_price() if policy is not None else (entry.stop_policy or {}).get("distance_price")
+    )
+    stop_required = (
+        bool(policy.stop_required())
+        if policy is not None
+        else bool((entry.stop_policy or {}).get("required", True))
+    )
+    max_hold = _decimal_or_none(
+        policy.max_hold_seconds() if policy is not None else (entry.exit_policy or {}).get("max_hold_seconds")
+    )
+
+    spec = None
+    if connected_demo:
+        try:
+            spec = session.adapter.get_symbol_spec(session.canonical_symbol)
+        except Exception:
+            spec = None
+
+    if size_mode in {"minimum", "min", "broker_minimum"}:
+        default_size = _decimal_or_none(getattr(spec, "volume_min", None))
+        size_basis = "Current broker minimum lot" if default_size is not None else "UNAVAILABLE — broker minimum not readable"
+    else:
+        default_size = _decimal_or_none(size_policy.get("lots"))
+        size_basis = "Registered fixed lot size" if default_size is not None else "UNAVAILABLE — registered size is missing"
+        if default_size is None and spec is not None:
+            default_size = _decimal_or_none(getattr(spec, "volume_min", None))
+            if default_size is not None:
+                size_basis = "Broker minimum fallback in the registered policy"
+
+    volume_min = _decimal_or_none(getattr(spec, "volume_min", None))
+    volume_max = _decimal_or_none(getattr(spec, "volume_max", None))
+    volume_step = _decimal_or_none(getattr(spec, "volume_step", None))
+    broker_size_check = "UNAVAILABLE"
+    if default_size is not None and volume_min is not None and volume_max is not None and volume_step is not None:
+        step_count = (default_size - volume_min) / volume_step if volume_step > 0 else Decimal("-1")
+        broker_size_check = (
+            "PASS"
+            if volume_min <= default_size <= volume_max and step_count >= 0 and step_count == step_count.to_integral_value()
+            else "FAIL"
+        )
+
+    if default_size is not None and stop_distance is not None and connected_demo:
+        risk_estimate = session.estimate_stop_risk(lots=default_size, distance=stop_distance)
+    else:
+        risk_estimate = {
+            "status": "UNAVAILABLE",
+            "amount": None,
+            "currency": None,
+            "account_equity_pct": None,
+            "basis": "abs(stop distance) × broker contract size × lots",
+            "maximum_loss_guaranteed": False,
+            "excludes": ["spread", "commission", "slippage", "financing", "gaps", "stop execution differences"],
+            "reason": "A connected DEMO account, registered size and stop distance are required.",
+        }
+
+    provider = str(entry.signal_provider or "")
+    strategy = entry.strategy_id
+    signal = dict(unavailable_signal)
+    if provider != "qts.research.demo_trend_tsmom:TrendTimeSeriesMomentum":
+        signal["reason"] = "This registered provider does not publish a read-only indicator snapshot."
+    elif not connected_demo:
+        signal["reason"] = "A connected DEMO account is required to read completed M15 bars."
+    else:
+        try:
+            from qts.research.demo_trend_snapshot import completed_bar_snapshot
+
+            timeframe = int(params.get("bar_timeframe_minutes") or 0)
+            needed = int(params.get("slow_ema") or 0) + 1
+            window = session.recent_completed_bars(timeframe_minutes=timeframe, count=needed)
+            if not isinstance(window, dict) or not window.get("ok"):
+                signal["reason"] = str((window or {}).get("error") or "Completed M15 history is unavailable.")
+            else:
+                basis_source = f"mt5-m{timeframe}-completed-history/{window.get('basis') or 'unknown'}"
+                signal = completed_bar_snapshot(params, list(window.get("bars") or []), source=basis_source)
+                signal["source"] = {
+                    "kind": "BROKER_COMPLETED_BAR_HISTORY",
+                    "timeframe_minutes": timeframe,
+                    "clock_basis": window.get("basis"),
+                    "forming_bar_excluded": bool(window.get("forming_bar_excluded")),
+                }
+        except Exception as exc:
+            signal["reason"] = f"Read-only indicator snapshot failed: {type(exc).__name__}: {exc}"
+
+    plan_label = (
+        "XAUUSD M15 EMA(12/48) DEMO diagnostic"
+        if provider == "qts.research.demo_trend_tsmom:TrendTimeSeriesMomentum"
+        else f"Registered DEMO diagnostic: {strategy}"
+    )
+    validated_edge = bool(getattr(entry, "validated_edge", False))
+    return {
+        "plan": {
+            "strategy_id": strategy,
+            "status": "Validated edge" if validated_edge else "Diagnostic only — no validated edge",
+            "validated_edge": validated_edge,
+            "label": plan_label,
+            "timeframe_minutes": params.get("bar_timeframe_minutes"),
+            "fast_ema": params.get("fast_ema"),
+            "slow_ema": params.get("slow_ema"),
+            "stop_distance_price": str(stop_distance) if stop_distance is not None else None,
+            "max_hold_seconds": str(max_hold) if max_hold is not None else None,
+            "fixed_lots": str(default_size) if default_size is not None else None,
+        },
+        "signal": signal,
+        "order": {
+            "default_size": str(default_size) if default_size is not None else None,
+            "size_basis": size_basis,
+            "broker_size_check": broker_size_check,
+            "volume_min": str(volume_min) if volume_min is not None else None,
+            "volume_max": str(volume_max) if volume_max is not None else None,
+            "volume_step": str(volume_step) if volume_step is not None else None,
+            "stop_required": stop_required,
+            "stop_distance_price": str(stop_distance) if stop_distance is not None else None,
+            "risk_estimate": risk_estimate,
+        },
+        "research_boundary": (
+            "No validated edge. The separate monthly ts9_lo/veto9 research candidates are paper-only "
+            "and are not this DEMO order provider."
+        ),
+    }
+
+
+def _guide_blockers(guide: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return the unsatisfied DEMO workflow gates in the guide's precedence order."""
+    items: list[dict[str, Any]] = []
+
+    def add(title: str, action: str) -> None:
+        items.append({"priority": len(items) + 1, "title": title, "action": action})
+
+    if not guide.get("mode_ok"):
+        add("DEMO execution mode is not active", "Review the mode declaration on the controlled workstation; never select LIVE.")
+    if not guide.get("authorization_ok"):
+        add("Owner authorization for DEMO execution is missing", "Obtain and verify the separate owner authorization; a UI action cannot grant it.")
+    if (guide.get("kill_switch") or {}).get("active"):
+        add("Trading is stopped", "Investigate the stop, record a reason when clearing it, then prepare DEMO again.")
+    connection = guide.get("connection") or {}
+    if not connection.get("connected"):
+        add("MetaTrader 5 is not connected", "Open MT5 on the intended DEMO account and rerun the read-only connection check.")
+    elif connection.get("account_type") != "Demo":
+        add("The connected account is not confirmed DEMO", "Stop; connect only an authorized DEMO account. Do not use a LIVE account.")
+    identity = guide.get("identity") or {}
+    if connection.get("account_type") == "Demo" and not identity.get("recorded"):
+        add("The DEMO account identity is not recorded", "Review the broker/server first; recording a pin changes local state.")
+    elif connection.get("account_type") == "Demo" and not identity.get("confirmed"):
+        add("The recorded DEMO identity awaits owner review", "Verify the login, broker and server, then explicitly confirm the identity pin.")
+    elif connection.get("account_type") == "Demo" and not identity.get("verified"):
+        add("The connected account differs from the confirmed identity", "Stop and review the new account identity before any order.")
+    if not (guide.get("readiness") or {}).get("ready"):
+        add("Fresh terminal and market-data checks have not passed", str((guide.get("readiness") or {}).get("reason") or "Run the read-only readiness check; do not bypass unknown checks."))
+    if not (guide.get("reconciliation") or {}).get("clean"):
+        add("Broker and QTS state are not reconciled", "Inspect broker positions and order history; do not resubmit an ambiguous order.")
+    if (guide.get("execution_barrier") or {}).get("active"):
+        add("An order outcome or execution barrier is unresolved", "Reconcile the broker state and clear the barrier before any new order.")
+    if not guide.get("stage_allows_orders"):
+        add("DEMO execution has not been explicitly prepared", "Only after read-only checks and separate owner authorization, prepare through the staged workflow.")
+    if not (guide.get("permission") or {}).get("permitted"):
+        add("Current DEMO execution permission is not active", "Only after authorization, explicitly re-prove readiness and refresh permission.")
+    if not guide.get("plan_registered"):
+        add("No frozen DEMO diagnostic policy is registered", "Wait for an eligible frozen DEMO policy; paper-only research is not an order plan.")
+    return items
+
+
 def _build_guide(session: Any | None = None) -> dict[str, Any]:
     """One aggregated, plain-language DEMO workflow state (read-only).
 
@@ -650,15 +866,26 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
     guide["plan_reasons"] = list(entry_reasons or [])
     guide["plan_id"] = entry.strategy_id if entry else None
 
-    # Order defaults for the ticket — measured from the broker spec, never
-    # invented. UNAVAILABLE keeps the ticket honest when the terminal is gone.
-    size_default = None
-    try:
-        spec = session.adapter.get_symbol_spec(session.canonical_symbol)
-        size_default = str(spec.volume_min)
-    except Exception:
-        size_default = None
-    guide["order_defaults"] = {"size": size_default, "stop_required": True}
+    # Strategy/size/risk facts are derived from the registered policy and
+    # read-only broker metadata. A history snapshot never emits a signal.
+    strategy_preview = _strategy_preview(
+        session,
+        entry,
+        connected_demo=conn["connected"] and conn["account_type"] == "Demo",
+    )
+    guide["strategy_preview"] = strategy_preview
+    registered_order = strategy_preview["order"]
+    guide["order_defaults"] = {
+        "size": registered_order["default_size"],
+        "size_basis": registered_order["size_basis"],
+        "broker_size_check": registered_order["broker_size_check"],
+        "volume_min": registered_order["volume_min"],
+        "volume_max": registered_order["volume_max"],
+        "volume_step": registered_order["volume_step"],
+        "stop_required": registered_order["stop_required"],
+        "stop_distance_price": registered_order["stop_distance_price"],
+        "risk_estimate": registered_order["risk_estimate"],
+    }
 
     # ------------------------------------------------- steps + the ONE next
     steps: list[dict[str, Any]] = []
@@ -681,9 +908,14 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
     )
     step(
         "plan",
-        "Approved trading plan",
+        "Registered DEMO diagnostic",
         entry is not None,
-        f"Plan {entry.strategy_id} is registered." if entry else "No approved trading plan is registered yet. QTS will not trade without one.",
+        (
+            f"{strategy_preview['plan']['label']} is registered for DEMO measurement; "
+            "it is not a validated trading edge."
+            if entry
+            else "No eligible frozen DEMO diagnostic policy is registered. Paper research is not an order plan."
+        ),
     )
     guide["steps"] = steps
 
@@ -796,20 +1028,21 @@ def _build_guide(session: Any | None = None) -> dict[str, Any]:
             "requires_confirmation": True,
         }
     elif entry is None:
-        headline, reason = "Not ready", "There is no approved trading plan yet."
+        headline, reason = "Not ready", "There is no eligible frozen DEMO diagnostic policy."
         next_action = {
             "action": "none",
-            "label": "Waiting for research",
-            "description": "QTS only trades a plan that passed the research gates. Until one is registered, no order is possible — this is safety, not an error.",
+            "label": "Waiting for an eligible DEMO policy",
+            "description": "Paper-only research is not an order plan. No order is possible until an eligible frozen DEMO policy is registered.",
         }
     else:
-        headline, reason = "Ready for demo trading", None
+        headline, reason = "Ready for a DEMO diagnostic", None
         next_action = None
 
     guide["status"] = "ready" if can_trade else ("stopped" if guide["kill_switch"]["active"] else "blocked")
     guide["headline"] = headline
     guide["reason"] = reason
     guide["next"] = next_action
+    guide["blockers"] = _guide_blockers(guide)
 
     guide["technical"] = {
         "stage": stage_record.as_dict(),

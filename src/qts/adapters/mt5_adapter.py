@@ -1046,6 +1046,7 @@ class MT5Adapter(BrokerAdapter):
         execution_mode = _required_int(info, "execution_mode", symbol, min_value=0)
         stops_level = _required_int(info, "stops_level", symbol, min_value=0)
         freeze_level = _required_int(info, "freeze_level", symbol, min_value=0)
+        profit_currency = getattr(info, "currency_profit", None)
         if trade_mode == 0:
             raise RuntimeError(f"MT5 symbol {symbol} trade disabled (mode 0)")
         # Contradiction guard: volume bounds must be coherent
@@ -1083,6 +1084,7 @@ class MT5Adapter(BrokerAdapter):
                 "execution_mode": execution_mode,
                 "stops_level": stops_level,
                 "freeze_level": freeze_level,
+                "currency_profit": str(profit_currency) if profit_currency else None,
                 "source": "MT5 SymbolInfo (authoritative)",
             },
         )

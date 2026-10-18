@@ -50,7 +50,9 @@ PRODUCT_KEYS = (
     "plan_registered",
     "plan_reasons",
     "plan_id",
+    "strategy_preview",
     "order_defaults",
+    "blockers",
     "steps",
     "can_trade",
     "status",
@@ -118,6 +120,8 @@ def test_guide_fails_closed_without_a_terminal(client):
     assert body["status"] == "blocked"
     assert body["headline"] == "Not connected"
     assert body["next"]["action"] == "check_connection"
+    assert any(item["title"] == "MetaTrader 5 is not connected" for item in body["blockers"])
+    assert [item["priority"] for item in body["blockers"]] == list(range(1, len(body["blockers"]) + 1))
     assert body["live_locked"] is True
     assert body["real_capital_exposure_usd"] == 0
     _assert_product_surface_is_plain(body)
@@ -143,12 +147,20 @@ def test_guide_is_ready_with_an_armed_session_and_plan(client, api_env, monkeypa
 
     body = client.get("/api/demo/guide").json()
     assert body["status"] == "ready", body
-    assert body["headline"] == "Ready for demo trading"
+    assert body["headline"] == "Ready for a DEMO diagnostic"
     assert body["can_trade"] is True
     assert body["next"] is None
+    assert body["blockers"] == []
     assert [s["state"] for s in body["steps"]] == ["done", "done", "done", "done"]
-    # Order ticket default is measured from the broker spec, never invented.
-    assert body["order_defaults"]["size"] == str(FakeTerminal().symbol_spec.volume_min)
+    # The registered fixed size wins over the broker minimum default.
+    assert body["order_defaults"]["size"] == "0.01"
+    assert body["order_defaults"]["size_basis"] == "Registered fixed lot size"
+    assert body["order_defaults"]["broker_size_check"] == "PASS"
+    assert body["order_defaults"]["risk_estimate"]["status"] == "ESTIMATED"
+    assert body["order_defaults"]["risk_estimate"]["amount"] == "5"
+    assert body["strategy_preview"]["plan"]["validated_edge"] is False
+    assert body["strategy_preview"]["signal"]["status"] == "UNAVAILABLE"
+    assert body["strategy_preview"]["signal"]["actionable_signal"] is False
     assert body["plan_id"] == provider_fixture.registry_entry()["strategy_id"]
     _assert_product_surface_is_plain(body)
     # Engineering internals remain available for Advanced views.
