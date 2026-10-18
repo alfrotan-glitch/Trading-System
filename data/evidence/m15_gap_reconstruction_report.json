@@ -1,0 +1,14 @@
+{
+  "reconstructed_from": "https://github.com/vudo805/forex-price-simulator (commit 4d6f155)",
+  "files_processed": 0,
+  "total_rows": 0,
+  "date_range_start": null,
+  "date_range_end": null,
+  "expected_interval_s": 900,
+  "unexpected_gap_count": 278,
+  "max_gap_duration_s": 102600,
+  "unexpected_gap_percentage": 5.42,
+  "quality_gate_2pct": false,
+  "reconstructed_file": "data/raw/xauusd_dukascopy_15m_reconstructed.csv",
+  "note": "Reconstructed from upstream JSON (not original parquet). Gaps count unexpected intervals only; recognized closures not yet separated."
+}
