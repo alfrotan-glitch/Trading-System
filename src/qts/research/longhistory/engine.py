@@ -67,6 +67,8 @@ class CostModel:
     basis: str = "ASSUMED"
     spread_usd_per_oz: float = 0.0
     slippage_usd_per_oz_side: float = 0.0
+    financing_long_bps_per_day: float | None = None
+    financing_short_bps_per_day: float | None = None
 
     def __post_init__(self) -> None:
         components = {
@@ -81,8 +83,22 @@ class CostModel:
         for name, value in components.items():
             if not math.isfinite(value) or value < 0.0:
                 raise ValueError(f"{name} must be finite and non-negative")
+        for dir_name, dir_val in (
+            ("financing_long_bps_per_day", self.financing_long_bps_per_day),
+            ("financing_short_bps_per_day", self.financing_short_bps_per_day),
+        ):
+            if dir_val is not None and not math.isfinite(dir_val):
+                raise ValueError(f"{dir_name} must be finite when provided")
         if not isinstance(self.basis, str) or not self.basis.strip():
             raise ValueError("basis must be a non-empty string")
+
+    def daily_financing_bps(self, direction: int) -> float:
+        """Signed daily financing cost in bps of notional (+ = charge, - = credit)."""
+        if direction > 0 and self.financing_long_bps_per_day is not None:
+            return self.financing_long_bps_per_day
+        if direction < 0 and self.financing_short_bps_per_day is not None:
+            return self.financing_short_bps_per_day
+        return self.financing_bps_per_day
 
     @classmethod
     def from_price_units(
@@ -127,19 +143,40 @@ class CostModel:
             basis=self.basis,
             spread_usd_per_oz=self.spread_usd_per_oz,
             slippage_usd_per_oz_side=self.slippage_usd_per_oz_side,
+            financing_long_bps_per_day=self.financing_long_bps_per_day,
+            financing_short_bps_per_day=self.financing_short_bps_per_day,
         )
 
     def describe(self) -> dict[str, float | str]:
+        directional = (
+            self.financing_long_bps_per_day is not None
+            or self.financing_short_bps_per_day is not None
+        )
         out: dict[str, float | str] = {
             "basis": self.basis,
             "spread_bps_full": self.spread_bps,
             "slippage_bps_per_side": self.slippage_bps,
             "commission_usd_per_lot_side": self.commission_usd_per_lot_side,
             "financing_bps_per_day": self.financing_bps_per_day,
-            "financing_convention": FINANCING_CONVENTION,
+            "financing_convention": (
+                "directional_time_prorated_bps_per_calendar_day"
+                if directional
+                else FINANCING_CONVENTION
+            ),
             "cost_multiplier": self.multiplier,
             "round_turn_bps_at_1300": round(2 * self.side_rate(1300.0) * 1e4, 3),
         }
+        if directional:
+            out["financing_long_bps_per_day"] = (
+                self.financing_long_bps_per_day
+                if self.financing_long_bps_per_day is not None
+                else self.financing_bps_per_day
+            )
+            out["financing_short_bps_per_day"] = (
+                self.financing_short_bps_per_day
+                if self.financing_short_bps_per_day is not None
+                else self.financing_bps_per_day
+            )
         if self.spread_usd_per_oz != 0.0 or self.slippage_usd_per_oz_side != 0.0:
             out["spread_usd_per_oz"] = self.spread_usd_per_oz
             out["slippage_usd_per_oz_side"] = self.slippage_usd_per_oz_side
@@ -422,7 +459,8 @@ def run_plan(
                 # here). Do not charge a later weekend/data gap outside the run.
                 interval_days = typical_duration_days
             notional = abs(units * c)
-            fin = notional * costs.financing_bps_per_day * costs.multiplier * interval_days / 1e4
+            fin_bps = costs.daily_financing_bps(pos)
+            fin = notional * fin_bps * costs.multiplier * interval_days / 1e4
             E -= fin
             tr_cost += fin
             financing += fin

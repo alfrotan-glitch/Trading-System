@@ -138,7 +138,7 @@ def sha256_file(path: Path) -> str:
 
 
 def _git(args: list[str], cwd: Path) -> None:
-    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "-c", "core.autocrlf=false", *args], cwd=cwd, check=True, capture_output=True, text=True)
 
 
 def fetch_source(src: Source, dest_root: Path) -> Path:

@@ -105,7 +105,33 @@ def simulate(
     }
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+    import subprocess
+    import sys
+
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--ensure-data",
+        action="store_true",
+        help="fetch and build the canonical monthly dataset first if missing",
+    )
+    args = parser.parse_args(argv)
+    if args.ensure_data and not CSV_FILE.is_file():
+        subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts" / "build_longhistory_monthly_dataset.py"),
+                "--ensure-sources",
+            ],
+            check=True,
+        )
+    if not CSV_FILE.is_file():
+        raise SystemExit(
+            f"missing {CSV_FILE}; run:\n"
+            "  python scripts/build_longhistory_monthly_dataset.py --ensure-sources\n"
+            "(or pass --ensure-data)"
+        )
     dates, close, usd = load()
     st = states(close, usd)
     windows = {"evaluation_2000_2026": ("2000-01-01", "2026-09-30")}

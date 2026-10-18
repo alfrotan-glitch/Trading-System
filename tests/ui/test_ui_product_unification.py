@@ -199,6 +199,37 @@ def test_research_validation_translates_opportunity_disposition():
     assert "READY FOR DEMO" not in research_src
 
 
+def test_measured_costs_and_longhistory_summary_api_endpoints(client):
+    """API exposes measured vs assumed execution costs and long-history research state honestly."""
+    r_costs = client.get("/api/demo/measured-costs")
+    assert r_costs.status_code == 200
+    body_costs = r_costs.json()
+    assert body_costs["live_locked"] is True
+    assert body_costs["orders_submitted"] == 0
+    assert body_costs["measured_cost_model"]["claim_eligible"] is False
+    comps = body_costs["assumed_vs_measured"]["components"]
+    for name in ("spread", "commission", "slippage", "financing"):
+        assert comps[name]["live_terminal"]["status"] == "UNMEASURED"
+        assert comps[name]["live_terminal"]["value"] is None
+
+    # Probing symbol terms without an MT5 terminal fails closed with 503 UNMEASURED
+    r_probe = client.post("/api/demo/measure-symbol-terms", json={})
+    assert r_probe.status_code == 503
+    assert r_probe.json()["detail"]["status"] == "UNMEASURED"
+    assert r_probe.json()["detail"]["orders_submitted"] == 0
+
+    r_lh = client.get("/api/research/longhistory-summary")
+    assert r_lh.status_code == 200
+    body_lh = r_lh.json()
+    assert body_lh["overall_verdict"] == "NO_VALIDATED_EDGE"
+    assert body_lh["live_locked"] is True
+    assert body_lh["real_capital_exposure_usd"] == 0
+    assert body_lh["n_trials_cumulative"] >= 355
+    assert "ts9_lo" in body_lh["frozen_champions"]
+    assert "veto9" in body_lh["frozen_champions"]
+    assert body_lh["independent_verification"]["verdict"] == "AGREE"
+
+
 # ---------------------------------------------------------------------------
 # 5. Data Completeness & Quality UX
 # ---------------------------------------------------------------------------

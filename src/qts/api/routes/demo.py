@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Any
 
@@ -1086,6 +1087,145 @@ def demo_guide_resume(payload: dict[str, Any] | None = None) -> Any:
         "The stop was cleared.",
         "The demo account still needs to be prepared again before an order. Trading did not resume by itself.",
     )
+
+
+def _assemble_measured_costs_payload(session: Any) -> dict[str, Any]:
+    """Assemble measured vs assumed execution costs and champion re-evaluation (read-only)."""
+    from qts.config.paths import state_root
+    from qts.execution.measured_model import (
+        assumed_vs_measured_comparison,
+        build_measured_cost_model,
+        reevaluate_frozen_champions,
+    )
+    from qts.execution.reality import ExecutionRealityStore
+    from qts.execution.spread_profile import summarize_spread_profile
+
+    sroot = state_root()
+    terms_file = sroot / "symbol_terms.json"
+    spread_file = sroot / "spread_profile.json"
+
+    symbol_terms: dict[str, Any] | None = None
+    if terms_file.is_file():
+        try:
+            doc = json.loads(terms_file.read_text(encoding="utf-8"))
+            symbol_terms = doc.get("terms") if isinstance(doc, dict) and "terms" in doc else doc
+        except Exception:
+            symbol_terms = None
+
+    spread_profile: dict[str, Any] | None = None
+    if spread_file.is_file():
+        try:
+            spread_profile = json.loads(spread_file.read_text(encoding="utf-8"))
+        except Exception:
+            spread_profile = None
+    elif symbol_terms and symbol_terms.get("spread_bps_of_mid") is not None:
+        spread_profile = summarize_spread_profile(
+            [symbol_terms],
+            symbol=session.canonical_symbol,
+            source="qts.demo.symbol_terms (single-sample quote snapshot)",
+        )
+
+    deals: list[Any] = []
+    store_verified = True
+    store = getattr(session, "cost_evidence_store", None)
+    if store is not None:
+        try:
+            ok, _problems = store.verify_chain()
+            store_verified = bool(ok)
+            if ok:
+                deals = store.deals()
+        except Exception:
+            store_verified = False
+
+    try:
+        slippage_bps = ExecutionRealityStore().summary().get("avg_abs_slippage_bps")
+    except Exception:
+        slippage_bps = None
+
+    model = build_measured_cost_model(
+        spread_profile=spread_profile,
+        symbol_terms=symbol_terms,
+        deals=deals,
+        slippage_bps=slippage_bps,
+        direction="long",
+        instrument=session.canonical_symbol,
+    )
+    return {
+        "schema": "qts.api.measured_costs.v1",
+        "generated_at": datetime.now(UTC).isoformat(),
+        "symbol": session.canonical_symbol,
+        "broker_symbol": session.broker_symbol,
+        "live_locked": True,
+        "orders_submitted": 0,
+        "cost_store_verified": store_verified,
+        "symbol_terms": symbol_terms,
+        "spread_profile": spread_profile,
+        "measured_cost_model": model,
+        "assumed_vs_measured": assumed_vs_measured_comparison(model),
+        "champion_reevaluation": reevaluate_frozen_champions(model),
+    }
+
+
+@router.get("/api/demo/measured-costs")
+def demo_measured_costs() -> dict[str, Any]:
+    """Return measured vs assumed execution costs and frozen-champion re-evaluation (read-only)."""
+    server = _bind()
+    session = server._demo_session()
+    return _assemble_measured_costs_payload(session)
+
+
+@router.post("/api/demo/measure-symbol-terms")
+def demo_measure_symbol_terms() -> dict[str, Any]:
+    """Read-only probe of connected DEMO terminal symbol cost terms (directional swap, spread, spec).
+
+    Submits zero orders. Refuses non-DEMO accounts or unreachable terminals.
+    """
+    from qts.config.paths import state_root
+
+    server = _bind()
+    session = server._demo_session()
+    try:
+        identity = session.adapter.broker_identity().as_dict()
+    except Exception as exc:
+        raise HTTPException(
+            503,
+            {
+                "status": "UNMEASURED",
+                "headline": "MetaTrader 5 DEMO terminal is not connected.",
+                "detail": (
+                    f"Broker cost measurement requires a connected MetaTrader 5 DEMO terminal ({type(exc).__name__}: {exc}). "
+                    "Open MetaTrader 5 on Windows, sign in to your DEMO account, and try again. No order is ever sent by this check."
+                ),
+                "orders_submitted": 0,
+            },
+        ) from exc
+    if identity.get("is_demo") is not True:
+        raise HTTPException(
+            403,
+            {
+                "status": "REFUSED",
+                "headline": "Connected account is not verified as a DEMO account.",
+                "detail": f"Refusing to record symbol cost terms from non-DEMO account (is_demo={identity.get('is_demo')}).",
+                "orders_submitted": 0,
+            },
+        )
+    terms = session.adapter.symbol_cost_terms(session.broker_symbol)
+    doc = {
+        "schema": "qts.demo_symbol_terms.v1",
+        "generated_at": datetime.now(UTC).isoformat(),
+        "symbol": session.canonical_symbol,
+        "broker_symbol": session.broker_symbol,
+        "server": identity.get("server"),
+        "login": identity.get("login"),
+        "terms": terms,
+        "orders_submitted": 0,
+    }
+    sroot = state_root()
+    sroot.mkdir(parents=True, exist_ok=True)
+    (sroot / "symbol_terms.json").write_text(json.dumps(doc, indent=2, default=str), encoding="utf-8")
+    out = _assemble_measured_costs_payload(session)
+    out["measured_now"] = True
+    return out
 
 
 # Mount static UI if exists

@@ -34,10 +34,32 @@ RESEARCH_FILE = (
 EVIDENCE = REPO_ROOT / "data/evidence/longhistory/forward_champions_state.json"
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    import subprocess
+
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--record", action="store_true", help="write the evidence JSON")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--ensure-data",
+        action="store_true",
+        help="fetch and build the canonical monthly dataset first if missing",
+    )
+    args = parser.parse_args(argv)
+    if args.ensure_data and not RESEARCH_FILE.is_file():
+        subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts" / "build_longhistory_monthly_dataset.py"),
+                "--ensure-sources",
+            ],
+            check=True,
+        )
+    if not RESEARCH_FILE.is_file():
+        raise SystemExit(
+            f"missing {RESEARCH_FILE}; run:\n"
+            "  python scripts/build_longhistory_monthly_dataset.py --ensure-sources\n"
+            "(or pass --ensure-data)"
+        )
 
     raw = pd.read_csv(RESEARCH_FILE)
     index = pd.to_datetime(raw["date"], utc=True).dt.tz_convert(None)

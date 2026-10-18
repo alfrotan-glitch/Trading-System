@@ -942,6 +942,51 @@ class MT5Adapter(BrokerAdapter):
                 terms["swap_long_usd_per_lot_night"] is None or terms["swap_short_usd_per_lot_night"] is None
             ):
                 unavailable.append("swap_derived_usd")
+        # Proportional daily carry rate in bps of 1-lot notional (positive = cost, negative = credit)
+        terms["swap_long_bps_per_day_of_notional"] = None
+        terms["swap_short_bps_per_day_of_notional"] = None
+        if (
+            contract_size is not None
+            and contract_size > 0
+            and bid
+            and ask
+            and terms.get("swap_long_usd_per_lot_night") is not None
+            and terms.get("swap_short_usd_per_lot_night") is not None
+        ):
+            with contextlib.suppress(InvalidOperation, ValueError, TypeError, ZeroDivisionError):
+                mid_px = (Decimal(str(bid)) + Decimal(str(ask))) / 2
+                notional_1lot = contract_size * mid_px
+                if notional_1lot > 0:
+                    sl_usd = Decimal(str(terms["swap_long_usd_per_lot_night"]))
+                    ss_usd = Decimal(str(terms["swap_short_usd_per_lot_night"]))
+                    terms["swap_long_bps_per_day_of_notional"] = str(
+                        ((-sl_usd) / notional_1lot * Decimal("10000")).quantize(Decimal("0.0001"))
+                    )
+                    terms["swap_short_bps_per_day_of_notional"] = str(
+                        ((-ss_usd) / notional_1lot * Decimal("10000")).quantize(Decimal("0.0001"))
+                    )
+        # Optional symbol-specification & margin metadata when exposed by the terminal
+        optional_spec: dict[str, Any] = {}
+        for opt_key, attr_names in (
+            ("volume_min", ("volume_min",)),
+            ("volume_max", ("volume_max",)),
+            ("volume_step", ("volume_step",)),
+            ("stops_level", ("trade_stops_level", "stops_level")),
+            ("freeze_level", ("trade_freeze_level", "freeze_level")),
+            ("filling_mode", ("filling_mode",)),
+            ("trade_mode", ("trade_mode",)),
+            ("trade_calc_mode", ("trade_calc_mode",)),
+            ("margin_initial", ("margin_initial",)),
+            ("margin_maintenance", ("margin_maintenance",)),
+            ("currency_margin", ("currency_margin",)),
+        ):
+            for attr in attr_names:
+                val = getattr(info, attr, None)
+                if val is not None:
+                    optional_spec[opt_key] = str(val) if isinstance(val, (float, Decimal)) else val
+                    break
+        if optional_spec:
+            terms["symbol_spec_details"] = optional_spec
         terms["unavailable_fields"] = unavailable
         terms["unavailable"] = bool(unavailable)
         _ = contract_size  # reported raw above; conversion uses tick geometry

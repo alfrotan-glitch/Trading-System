@@ -351,10 +351,11 @@ Slippage accrues in the execution-reality store from DEMO fills
 (`avg_abs_slippage_bps`). With no fills it is `UNKNOWN` — that is the honest
 state, not a gap to paper over.
 
-### 8.5 Assemble the measured cost model
+### 8.5 Assemble the measured cost model and re-evaluate frozen champions
 
 ```bat
 qts demo measured-model --spread-profile artifacts\spread_london.json --symbol-terms artifacts\symbol_terms.json --direction long --json-out artifacts\measured_cost_model.json
+qts demo evaluate-champions --spread-profile artifacts\spread_london.json --symbol-terms artifacts\symbol_terms.json --direction long --json-out artifacts\champion_cost_evaluation.json
 ```
 
 The output tags every component (`spread`, `commission`, `slippage`,
@@ -362,5 +363,11 @@ The output tags every component (`spread`, `commission`, `slippage`,
 component MEASURED — before any research number may cite measured costs.
 Anything less is sensitivity material only. A measured model is specific to
 one broker + account type; re-measure when either changes, and compare
-`swap_long` against the financing break-even published in the research audit
-before trusting any long-horizon result at that broker.
+`swap_long` (`swap_long_bps_per_day_of_notional`) against the financing
+break-even published in the research audit (`~3.35 bps/day` for `ts9_lo`,
+`~2.38 bps/day` for `veto9`) before trusting any long-horizon result at that
+broker.
+
+You can also view the measured vs assumed cost table and trigger a read-only
+symbol-terms probe directly from the Desktop UI on the **Reports** page
+(`http://127.0.0.1:8000/#/reports` → **"Check broker symbol terms (read-only)"**).

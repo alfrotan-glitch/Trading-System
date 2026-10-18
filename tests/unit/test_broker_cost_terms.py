@@ -74,3 +74,25 @@ def test_non_usd_profit_currency_blocks_derivation():
     )
     assert terms["swap_long_usd_per_lot_night"] is None
     assert "swap_derived_usd" in terms["unavailable_fields"]
+
+
+def test_swap_bps_per_day_and_optional_symbol_spec_details():
+    info = _info(
+        volume_min=0.01,
+        volume_max=50.0,
+        volume_step=0.01,
+        trade_stops_level=20,
+        filling_mode=1,
+        margin_initial=0.0,
+        currency_margin="USD",
+    )
+    terms = MT5Adapter._symbol_cost_terms(_mt5(info, SimpleNamespace(bid=2650.10, ask=2650.45)), "XAUUSD")
+    # -55.30 USD/lot/night on 100 oz * 2650.275 mid = +2.0866 bps/day cost
+    assert terms["swap_long_bps_per_day_of_notional"] == "2.0866"
+    # +12.10 USD/lot/night on 100 oz * 2650.275 mid = -0.4566 bps/day (credit)
+    assert terms["swap_short_bps_per_day_of_notional"] == "-0.4566"
+    spec = terms.get("symbol_spec_details") or {}
+    assert spec["volume_min"] == "0.01"
+    assert spec["volume_step"] == "0.01"
+    assert spec["stops_level"] == 20
+    assert spec["filling_mode"] == 1
