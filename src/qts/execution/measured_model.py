@@ -364,8 +364,8 @@ def reevaluate_frozen_champions(
                 "veto9": {"net_usd": 49897.43, "sharpe": 0.6618, "round_turns": 45, "max_drawdown": -0.3597},
             },
             "g9_financed_0_25bps_per_day": {
-                "ts9_lo": {"net_usd": 59931.0, "g9_pass": True},
-                "veto9": {"net_usd": 39392.0, "g9_pass": True},
+                "ts9_lo": {"net_usd": 59931.0, "g9_positive": True},
+                "veto9": {"net_usd": 39392.0, "g9_positive": True},
             },
         },
         "claim_grade_measured": None,
