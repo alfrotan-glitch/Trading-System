@@ -65,11 +65,40 @@ cumulative trial count; G6 ≥100 out-of-sample round turns; G7 regime stability
 | Wave-8 (discovery only) | — | ≤1989 (10 cfg) | 337 | no cycle frozen |
 | Wave-9 (discovery only) | — | ≤1989 (6 cfg) | 343 | no cycle frozen |
 | Wave-10 (discovery + dev only) | — | ≤1989 + 1990–99 dev (12 cfg: US 10Y yield & real rate) | 355 | no cycle frozen |
+| CMR 2026-10-19 | `LH-XAUUSD-CMR-2026-10-19` | 1973–1983 selection + 1984–1989 confirmation + 1990–99 development (1 cross-metal cfg; no evaluation) | 356 | REJECTED — no validated edge |
+| Brent gate 2026-10-19 | `LH-XAUUSD-BRENT-GATE-2026-10-19` | 1973–1983 selection + 1984–1989 confirmation + 1990–99 development (1 lagged Brent macro gate; no evaluation) | 357 | REJECTED — no validated edge |
+| FX-dispersion gate 2026-10-19 | `LH-XAUUSD-FX-DISPERSION-GATE-2026-10-19` | 1973–1983 selection + 1984–1989 confirmation + 1990–99 development (1 lagged cross-sectional FX-dispersion gate; no evaluation) | 358 | INCONCLUSIVE for intended hypothesis — runner rejected, quote-convention conflict |
+| Commodity-breadth gate 2026-10-19 | `LH-XAUUSD-COMMODITY-BREADTH-GATE-2026-10-19` | 1973–1983 selection + 1984–1989 confirmation + 1990–99 development (1 raw non-energy commodity-breadth gate; no evaluation) | 359 | REJECTED — no validated edge |
+| CPI-acceleration attempt 2026-10-19 | `LH-XAUUSD-CPI-ACCELERATION-GATE-2026-10-19` | registered at N=359; source schema failed before feature/outcome calculation (0 evaluated configs) | 359 | INCONCLUSIVE; full-repo audit found prior Wave-9 inflation-gating family — do not repair or retry |
 
-The next gated cycle must use **N = 355** in its DSR. Per-cycle evidence:
+The next gated long-history cycle inherits **N = 359** in its DSR, before counting any new candidate. Per-cycle evidence:
 `data/evidence/longhistory/{ensemble,weekly,hybrid,weekly_hybrid,volmanaged}_research_final.json`;
-Wave-10 discovery/dev evidence: `data/evidence/longhistory/wave10_treasury_real_rate.json`;
+Wave-10 evidence: `data/evidence/longhistory/wave10_treasury_real_rate.json`;
+CMR evidence: `data/evidence/longhistory/crossmetal_relative_discovery_dev.json`;
+Brent-gate evidence: `data/evidence/longhistory/brent_gate_discovery_dev.json`;
+FX-dispersion evidence: `data/evidence/longhistory/fx_dispersion_gate_discovery_dev.json`;
+commodity-breadth evidence: `data/evidence/longhistory/commodity_breadth_gate_discovery_dev.json`;
+CPI-acceleration input-failure evidence: `data/evidence/longhistory/cpi_acceleration_gate_discovery_dev.json`;
 preregistrations and results under `docs/research/`.
+
+**COT source feasibility (2026-10-19; not a trial).** A metadata-only GitHub
+audit found no source satisfying the governed discovery window and provenance
+requirements. The pinned CC-BY-4.0 `closeofbusiness/market-plumbing` raw CFTC
+extracts declare `report_date >= 2010-01-01`. An MIT-licensed replication bundle
+claims CFTC Legacy/Yahoo weekly data for 1994–2017, but only 1994–1999 is
+pre-cutoff, so it cannot provide a 1986–1989 discovery slice; Yahoo price terms/vintages
+are also unresolved. Other mirrors are fetcher code without data, post-2000,
+or have unresolved provenance/licensing. A mixed third-party source document
+exposed unrelated outcome summaries; that repository is quarantined from
+candidate selection. No COT or price rows were inspected, no hypothesis was
+preregistered or tested; **N was 356 at that audit**. The separately
+preregistered Brent-gate, FX-dispersion, and commodity-breadth screens have since been evaluated, so
+current long-history **N = 359**. A subsequent CPI-acceleration attempt failed before feature/outcome calculation on a pinned CSV/schema mismatch and did not add a trial; repository-wide review also found it was within the already closed Wave-9 inflation-gating family, so do not repair or retry it. Next step for the COT mechanism requires provenance-clear CFTC
+Legacy gold COT with release metadata for a preregistered 1986–1989 discovery
+slice and the 1990–1999 development period, plus appropriately timed,
+provenance-clear gold prices; preregister before viewing feature values. Full
+audit:
+`docs/research/cot_source_feasibility_2026-10-19.md`.
 
 ## 5. The champions (best candidates; still unvalidated)
 
@@ -145,8 +174,12 @@ recorded DSR `num_trials` matches its cycle (149/193/237/262/285; monthly
 ledger and their discovery outputs. The DSR denominators are not
 hand-edited.
 
-## 7. Falsified branches — do not retry
+## 7. Rejected or closed branches — do not retry without a new protocol
 
+- **Gold relative strength vs a 50/50 silver/platinum basket (CMR, 2026-10-19):** the frozen 12-month long-or-flat candidate (`cmr12_longflat`, one configuration; cumulative N=356) failed selection against both champions, was negative in 1984–1989 and 1990–1999, and had negative 1990s bootstrap lower bounds with Holm p=1.000; only the 1973–1983 positive-net subgate passed. Development net was −$2,628 / Sharpe −0.485, with 8 round turns and 2/10 positive years; 2× costs and financing were also negative. Do not tune the basket, lookback, sign, threshold, or sizing on these reused partitions. Any distinct follow-up requires a new preregistration and genuinely independent/forward evidence. Result: `docs/research/crossmetal_relative_results_2026-10-19.md`.
+- **Lagged Brent gate on gold trend (2026-10-19):** the single frozen 12-month lagged Brent-positive gate on `ts9_lo` passed selection only; confirmation was −$151 / Sharpe −0.036 and 1990s development was −$1,658 / Sharpe −0.674 (DSR 0.000 at N=357, 8 turns, 1/10 positive years). Paired lower bounds were negative and Holm p=1.000 against both champions; 2× costs and financing stayed negative. `REJECTED`; do not tune the oil series, lag, sign, threshold, or combination. Result: `docs/research/brent_gate_results_2026-10-19.md`.
+- **Lagged FX-dispersion gate on gold trend (2026-10-19):** the frozen runner failed its gates (1990s development −$1,000 / Sharpe −0.216; DSR 0.0001 at N=358, 14 turns, 2/10 positive years), but a post-run repo audit found its README-based inversion of Australia, New Zealand, and UK conflicts with `scripts/build_longhistory_monthly_dataset.py`, which treats all eight H.10 series as currency-per-USD and flags the README mismatch. Therefore the intended dispersion hypothesis is **INCONCLUSIVE**, not a clean rejection. Preserve runner evidence; do not correct the orientation or rerun on reused partitions. Result and caveat: `docs/research/fx_dispersion_gate_results_2026-10-19.md`.
+- **Broad non-energy commodity-breadth gate on gold trend (2026-10-19):** the one frozen raw-price 42-series breadth rule passed some development net/Sharpe, `ts9_lo`, and cost gates but failed selection/confirmation, turnover/year-count, `veto9`, and paired-bootstrap gates; development was +$118 / Sharpe +0.117, DSR 0.0017 at N=359, 3 turns, 2/10 positive years. `REJECTED`; do not change the 42-series panel, exclusions, lag, threshold, or rule on reused partitions. This source snapshot has no historical release vintages. Result: `docs/research/commodity_breadth_gate_results_2026-10-19.md`.
 - **Weekly translations** of the champion mechanism (W1, WHYB): twice weak
   (best Sharpe 0.562, DSR ≤ 0.144). The mechanism is monthly-horizon-specific.
 - **Faster ensembles / blends:** dilute Sharpe (equal-sleeve blend 0.737,
@@ -183,6 +216,11 @@ hand-edited.
   longs there were disinflationary-grind longs the gate forbids); pure
   inflation-momentum timing is negative (−0.57/−0.73 check). "Gold as
   inflation-hedge timing" is folklore at monthly frequency; do not retry.
+  A later preregistered annual-CPI-acceleration attempt (2026-10-19) stopped
+  before feature/outcome calculation on a pinned CSV/schema mismatch; a full
+  repo review confirmed it re-entered this closed family. It is INCONCLUSIVE,
+  not a new edge test, adds no DSR trial, and must not be repaired/re-run.
+  Record: `docs/research/cpi_acceleration_gate_results_2026-10-19.md`.
 - **Wave 10 — US 10Y Treasury nominal & real interest-rate conditioning**
   (`N = 343 + 12 = 355`, discovery `<=1989` + `1990–1999` dev walk-forward;
   `datasets/bond-yields-us-10y@2383155` Fed H.15 GS10 combined with 1m-lagged

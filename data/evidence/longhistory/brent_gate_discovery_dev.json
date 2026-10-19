@@ -1,0 +1,2176 @@
+{
+  "frozen_parameters": {
+    "annualized_volatility_target": 0.1,
+    "bootstrap": {
+      "block_months": 12,
+      "comparisons": 2,
+      "draws": 9999,
+      "holm_alpha": 0.05,
+      "method": "paired circular block bootstrap of monthly net-return differences",
+      "seed": 20261019
+    },
+    "candidate": {
+      "brent_gate": "long allowed if ln(Brent_(t-1) / Brent_(t-13)) > 0",
+      "brent_lookback_months": 12,
+      "brent_publication_lag_months": 1,
+      "gold_lookback_months": 9,
+      "gold_rule": "long if ln(Gold_t / Gold_(t-9)) > 0",
+      "id": "brent12_lag1_ts9_longflat",
+      "position": "long if both rules pass; otherwise flat"
+    },
+    "comparators": {
+      "ts9_lo": "frozen 9-month gold momentum, long-or-flat",
+      "veto9": "frozen 9-month gold trend with 12-month USD veto"
+    },
+    "cost_models": {
+      "2x_base": {
+        "basis": "ASSUMED",
+        "commission_usd_per_lot_side": 7.0,
+        "cost_multiplier": 2.0,
+        "financing_bps_per_day": 0.0,
+        "financing_convention": "symmetric_time_prorated_bps_per_calendar_day",
+        "round_turn_bps_at_1300": 12.154,
+        "slippage_bps_per_side": 1.0,
+        "spread_bps_full": 3.0
+      },
+      "3x_base": {
+        "basis": "ASSUMED",
+        "commission_usd_per_lot_side": 7.0,
+        "cost_multiplier": 3.0,
+        "financing_bps_per_day": 0.0,
+        "financing_convention": "symmetric_time_prorated_bps_per_calendar_day",
+        "round_turn_bps_at_1300": 18.231,
+        "slippage_bps_per_side": 1.0,
+        "spread_bps_full": 3.0
+      },
+      "base": {
+        "basis": "ASSUMED",
+        "commission_usd_per_lot_side": 7.0,
+        "cost_multiplier": 1.0,
+        "financing_bps_per_day": 0.0,
+        "financing_convention": "symmetric_time_prorated_bps_per_calendar_day",
+        "round_turn_bps_at_1300": 6.077,
+        "slippage_bps_per_side": 1.0,
+        "spread_bps_full": 3.0
+      },
+      "financing": {
+        "basis": "ASSUMED",
+        "commission_usd_per_lot_side": 7.0,
+        "cost_multiplier": 1.0,
+        "financing_bps_per_day": 0.25,
+        "financing_convention": "symmetric_time_prorated_bps_per_calendar_day",
+        "round_turn_bps_at_1300": 6.077,
+        "slippage_bps_per_side": 1.0,
+        "spread_bps_full": 3.0
+      }
+    },
+    "cumulative_trials": 357,
+    "initial_equity_usd_per_window": 10000.0,
+    "maximum_notional_fraction": 1.0,
+    "periods_per_year": 12,
+    "volatility_lookback_months": 12,
+    "window_bounds": {
+      "development": [
+        "1990-01-01",
+        "1999-12-31"
+      ],
+      "discovery_confirmation": [
+        "1984-01-01",
+        "1989-12-31"
+      ],
+      "discovery_selection": [
+        "1973-01-01",
+        "1983-12-31"
+      ]
+    }
+  },
+  "generated_at_utc": "2026-10-19T10:02:19.225573+00:00",
+  "hypothesis_id": "LH-XAUUSD-BRENT-GATE-2026-10-19",
+  "identity": {
+    "preregistration_freeze_commit": "038ecfbf55838ad21dfce7d8a79bc893bbc2c5bd",
+    "runner_checkout_commit": "674d0453c3c5faaffdbba6b2a999787724120cdf"
+  },
+  "inputs": {
+    "commodity_source": {
+      "eligible_end": "1999-12-31",
+      "eligible_months_by_series": {
+        "Crude oil, Brent": 480,
+        "Gold": 480
+      },
+      "eligible_start": "1960-01-31",
+      "post_1999_price_values_converted": 0,
+      "post_1999_rows_skipped_by_series_using_date_name_only": {
+        "Crude oil, Brent": 314,
+        "Gold": 300
+      },
+      "source_commit": "c4a9f734d92df0d0a6c4744a2d7c34417ecd074b",
+      "source_file_sha256": "3328bdff6156eb9ae11173ca2d52a8b207218cdd913ee0fa986be17d16e92aaf",
+      "source_path": "data/raw/xauusd_crossmetal_source/data/wb_commodity_price_intelligence_1960_2026.csv"
+    },
+    "fx_source": {
+      "eligible_rows_by_country": {
+        "Australia": 7266,
+        "Canada": 7279,
+        "Denmark": 7272,
+        "Japan": 7267,
+        "New Zealand": 7257,
+        "Sweden": 7272,
+        "Switzerland": 7273,
+        "United Kingdom": 7273
+      },
+      "missing_eligible_rate_rows_skipped_by_country": {
+        "Australia": 299,
+        "Canada": 286,
+        "Denmark": 293,
+        "Japan": 298,
+        "New Zealand": 308,
+        "Sweden": 293,
+        "Switzerland": 292,
+        "United Kingdom": 292
+      },
+      "post_1999_rate_values_converted": 0,
+      "post_1999_rows_skipped_by_country_using_date_name_only": {
+        "Australia": 6985,
+        "Canada": 6985,
+        "Denmark": 6985,
+        "Japan": 6985,
+        "New Zealand": 6985,
+        "Sweden": 6985,
+        "Switzerland": 6985,
+        "United Kingdom": 6985
+      },
+      "source_commit": "c023dd8b8f879610641a7391c0394c3bbb42d0f7",
+      "source_file_sha256": "68349ef41ecc0cf35fa00ba0d9d63ec93b45a5182c37d2bb9a368fcd654bfeaa",
+      "source_path": "data/raw/fx/data/daily.csv"
+    },
+    "input_months": 337,
+    "input_window_end": "1999-12-31",
+    "input_window_start": "1971-12-31",
+    "post_1999_fx_values_converted": 0,
+    "post_1999_price_values_converted": 0
+  },
+  "preregistration_path": "docs/research/preregistration_longhistory_brent_inflation_gate_2026-10-19.md",
+  "preregistration_sha256": "764a31ab214877ca41c5692704f9eff6358861939cab20aa916072e5d02d9f5b",
+  "schema": "qts.longhistory.brent_gate_screen.v1",
+  "screen": {
+    "all_gates_pass": false,
+    "cumulative_trials": 357,
+    "decision_scope": "discovery_and_development_only_not_validation",
+    "development_cost_stresses": {
+      "2x_base": {
+        "accounting_model_version": "fixed_units.v2",
+        "annual_returns": {
+          "1990": -0.095576,
+          "1991": -0.002268,
+          "1992": 0.0,
+          "1993": 0.0,
+          "1994": -0.020056,
+          "1995": 0.017558,
+          "1996": -0.060159,
+          "1997": 0.0,
+          "1998": 0.0,
+          "1999": -0.019807
+        },
+        "avg_loss_usd": -373.2115,
+        "avg_win_usd": 51.7531,
+        "bars": 120,
+        "cagr": -0.0186,
+        "cost_basis": "ASSUMED",
+        "cost_to_gross": null,
+        "cost_usd": 113.51,
+        "end": "1999-12-31",
+        "expectancy_usd": -213.8498,
+        "exposure": 0.1667,
+        "final_equity": 8289.2,
+        "financing_usd": 0.0,
+        "forced_exit_count": 1,
+        "gross_usd": -1597.29,
+        "gross_usd_trades": -1597.2869,
+        "initial_equity": 10000.0,
+        "max_drawdown": -0.1818,
+        "mean_bars_held": 2.5,
+        "net_usd": -1710.8,
+        "profit_factor": 0.0832,
+        "round_turns": 8,
+        "round_turns_per_year": 0.8,
+        "sharpe": -0.6967,
+        "start": "1990-01-31",
+        "stop_exit_share": 0.0,
+        "turnover_per_year": 1.451,
+        "win_rate": 0.375
+      },
+      "3x_base": {
+        "accounting_model_version": "fixed_units.v2",
+        "annual_returns": {
+          "1990": -0.096342,
+          "1991": -0.002912,
+          "1992": 0.0,
+          "1993": 0.0,
+          "1994": -0.020903,
+          "1995": 0.014927,
+          "1996": -0.060974,
+          "1997": 0.0,
+          "1998": 0.0,
+          "1999": -0.020334
+        },
+        "avg_loss_usd": -378.994,
+        "avg_win_usd": 43.8952,
+        "bars": 120,
+        "cagr": -0.0192,
+        "cost_basis": "ASSUMED",
+        "cost_to_gross": null,
+        "cost_usd": 169.8,
+        "end": "1999-12-31",
+        "expectancy_usd": -220.4106,
+        "exposure": 0.1667,
+        "final_equity": 8236.72,
+        "financing_usd": 0.0,
+        "forced_exit_count": 1,
+        "gross_usd": -1593.49,
+        "gross_usd_trades": -1593.4881,
+        "initial_equity": 10000.0,
+        "max_drawdown": -0.1867,
+        "mean_bars_held": 2.5,
+        "net_usd": -1763.28,
+        "profit_factor": 0.0695,
+        "round_turns": 8,
+        "round_turns_per_year": 0.8,
+        "sharpe": -0.7194,
+        "start": "1990-01-31",
+        "stop_exit_share": 0.0,
+        "turnover_per_year": 1.451,
+        "win_rate": 0.375
+      },
+      "financing_0_25_bps_day": {
+        "accounting_model_version": "fixed_units.v2",
+        "annual_returns": {
+          "1990": -0.097297,
+          "1991": -0.002188,
+          "1992": 0.0,
+          "1993": 0.0,
+          "1994": -0.020718,
+          "1995": 0.017075,
+          "1996": -0.065136,
+          "1997": 0.0,
+          "1998": 0.0,
+          "1999": -0.020093
+        },
+        "avg_loss_usd": -386.4418,
+        "avg_win_usd": 50.2037,
+        "bars": 120,
+        "cagr": -0.0194,
+        "cost_basis": "ASSUMED",
+        "cost_to_gross": null,
+        "cost_usd": 56.6,
+        "end": "1999-12-31",
+        "expectancy_usd": -222.6998,
+        "exposure": 0.1667,
+        "final_equity": 8218.4,
+        "financing_usd": 131.91,
+        "forced_exit_count": 1,
+        "gross_usd": -1593.08,
+        "gross_usd_trades": -1593.0836,
+        "initial_equity": 10000.0,
+        "max_drawdown": -0.1881,
+        "mean_bars_held": 2.5,
+        "net_usd": -1781.6,
+        "profit_factor": 0.0779,
+        "round_turns": 8,
+        "round_turns_per_year": 0.8,
+        "sharpe": -0.7203,
+        "start": "1990-01-31",
+        "stop_exit_share": 0.0,
+        "turnover_per_year": 1.452,
+        "win_rate": 0.375
+      }
+    },
+    "development_paired_bootstrap": {
+      "ts9_lo": {
+        "comparator": "ts9_lo",
+        "holm_adjusted_p": 1.0,
+        "monthly_return_differences": [
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.00035834386047850497,
+            "comparator_net_return": -0.00035834386047850497,
+            "month": "1990-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.013901798114847042,
+            "comparator_net_return": 0.013901798114847042,
+            "month": "1990-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.05129691151900517,
+            "comparator_net_return": -0.05129691151900517,
+            "month": "1990-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.04728039921553284,
+            "comparator_net_return": -0.04728039921553284,
+            "month": "1990-04-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.011891330862504823,
+            "comparator_net_return": -0.011891330862504823,
+            "month": "1990-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0003580304984286409,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0003580304984286409,
+            "month": "1990-06-30"
+          },
+          {
+            "candidate_minus_comparator": -0.022745636712369066,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.022745636712369066,
+            "month": "1990-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1990-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.00027196924682793,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.00027196924682793,
+            "month": "1990-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.014217823529944495,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.014217823529944495,
+            "month": "1990-10-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1990-11-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1990-12-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1991-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.00032199889081652167,
+            "comparator_net_return": -0.00032199889081652167,
+            "month": "1991-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.0013024285948246561,
+            "comparator_net_return": -0.0013024285948246561,
+            "month": "1991-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0003342905560236309,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0003342905560236309,
+            "month": "1991-04-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0033299586107822243,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0033299586107822243,
+            "month": "1991-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1991-06-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1991-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1991-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1991-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1991-10-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1991-11-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1991-12-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-02-29"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-04-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-06-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-10-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-11-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-12-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1993-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1993-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1993-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1993-04-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1993-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.00043822770173973513,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.00043822770173973513,
+            "month": "1993-06-30"
+          },
+          {
+            "candidate_minus_comparator": -0.05460977724774607,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.05460977724774607,
+            "month": "1993-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.034061945640796676,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.034061945640796676,
+            "month": "1993-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.05889550913341057,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.05889550913341057,
+            "month": "1993-09-30"
+          },
+          {
+            "candidate_minus_comparator": -0.02303969866032607,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.02303969866032607,
+            "month": "1993-10-31"
+          },
+          {
+            "candidate_minus_comparator": -0.02030727703112256,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.02030727703112256,
+            "month": "1993-11-30"
+          },
+          {
+            "candidate_minus_comparator": -0.01916291861404007,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.01916291861404007,
+            "month": "1993-12-31"
+          },
+          {
+            "candidate_minus_comparator": -0.007253334224570418,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.007253334224570418,
+            "month": "1994-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.009956257398985646,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.009956257398985646,
+            "month": "1994-02-28"
+          },
+          {
+            "candidate_minus_comparator": -0.004629614381837621,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.004629614381837621,
+            "month": "1994-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.01399308548218614,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.01399308548218614,
+            "month": "1994-04-30"
+          },
+          {
+            "candidate_minus_comparator": -0.008311504254450153,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.008311504254450153,
+            "month": "1994-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.00039676795526566444,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.00039676795526566444,
+            "month": "1994-06-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0003582071197929526,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0003582071197929526,
+            "month": "1994-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.012288027891970144,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.012288027891970144,
+            "month": "1994-08-31"
+          },
+          {
+            "candidate_minus_comparator": -0.02992814475695682,
+            "candidate_net_return": -0.00042876296031457706,
+            "comparator_net_return": 0.029499381796642243,
+            "month": "1994-09-30"
+          },
+          {
+            "candidate_minus_comparator": -2.166920274104811e-06,
+            "candidate_net_return": -0.004624466395929283,
+            "comparator_net_return": -0.004622299475655178,
+            "month": "1994-10-31"
+          },
+          {
+            "candidate_minus_comparator": -0.0004261449744910051,
+            "candidate_net_return": -0.014229157007317306,
+            "comparator_net_return": -0.0138030120328263,
+            "month": "1994-11-30"
+          },
+          {
+            "candidate_minus_comparator": 0.01326777491610076,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.01326777491610076,
+            "month": "1994-12-31"
+          },
+          {
+            "candidate_minus_comparator": 0.002385081336180761,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.002385081336180761,
+            "month": "1995-01-31"
+          },
+          {
+            "candidate_minus_comparator": 1.1102230246251565e-16,
+            "candidate_net_return": -0.00043585386576039387,
+            "comparator_net_return": -0.0004358538657605049,
+            "month": "1995-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.014116364014222116,
+            "comparator_net_return": 0.014116364014222116,
+            "month": "1995-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1995-04-30"
+          },
+          {
+            "candidate_minus_comparator": 1.1102230246251565e-16,
+            "candidate_net_return": -0.00043171434504951645,
+            "comparator_net_return": -0.00043171434504962747,
+            "month": "1995-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0060768885394215655,
+            "comparator_net_return": 0.0060768885394215655,
+            "month": "1995-06-30"
+          },
+          {
+            "candidate_minus_comparator": 1.1102230246251565e-16,
+            "candidate_net_return": -0.003861486677299908,
+            "comparator_net_return": -0.003861486677300019,
+            "month": "1995-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1995-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1995-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0004327008404237942,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0004327008404237942,
+            "month": "1995-10-31"
+          },
+          {
+            "candidate_minus_comparator": -0.006097662847938112,
+            "candidate_net_return": -0.0004316719005477143,
+            "comparator_net_return": 0.005665990947390398,
+            "month": "1995-11-30"
+          },
+          {
+            "candidate_minus_comparator": -0.0004308545498470373,
+            "candidate_net_return": 0.005097162799682087,
+            "comparator_net_return": 0.005528017349529124,
+            "month": "1995-12-31"
+          },
+          {
+            "candidate_minus_comparator": -0.03099834813375657,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.03099834813375657,
+            "month": "1996-01-31"
+          },
+          {
+            "candidate_minus_comparator": -0.013716220247919964,
+            "candidate_net_return": -0.0004229419903152287,
+            "comparator_net_return": 0.013293278257604735,
+            "month": "1996-02-29"
+          },
+          {
+            "candidate_minus_comparator": -9.118384506345834e-06,
+            "candidate_net_return": -0.021132747201583868,
+            "comparator_net_return": -0.021123628817077522,
+            "month": "1996-03-31"
+          },
+          {
+            "candidate_minus_comparator": -1.6430210525442135e-09,
+            "candidate_net_return": -0.008480352971862115,
+            "comparator_net_return": -0.008480351328841063,
+            "month": "1996-04-30"
+          },
+          {
+            "candidate_minus_comparator": -2.2071233729548112e-13,
+            "candidate_net_return": -0.002341860761325476,
+            "comparator_net_return": -0.0023418607611047637,
+            "month": "1996-05-31"
+          },
+          {
+            "candidate_minus_comparator": 1.1102230246251565e-16,
+            "candidate_net_return": -0.016992830352359434,
+            "comparator_net_return": -0.016992830352359545,
+            "month": "1996-06-30"
+          },
+          {
+            "candidate_minus_comparator": -1.1102230246251565e-16,
+            "candidate_net_return": -0.004672048174007903,
+            "comparator_net_return": -0.004672048174007792,
+            "month": "1996-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.010118131796490237,
+            "comparator_net_return": 0.010118131796490237,
+            "month": "1996-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.010868723376791456,
+            "comparator_net_return": -0.010868723376791456,
+            "month": "1996-09-30"
+          },
+          {
+            "candidate_minus_comparator": 1.1102230246251565e-16,
+            "candidate_net_return": -0.0058340750117451545,
+            "comparator_net_return": -0.0058340750117452655,
+            "month": "1996-10-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1996-11-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1996-12-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-04-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-06-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-10-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-11-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1997-12-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1998-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1998-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1998-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1998-04-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1998-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1998-06-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1998-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1998-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1998-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0004412660229191623,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0004412660229191623,
+            "month": "1998-10-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0055649064534604165,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0055649064534604165,
+            "month": "1998-11-30"
+          },
+          {
+            "candidate_minus_comparator": 0.007686597194300204,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.007686597194300204,
+            "month": "1998-12-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-04-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-06-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-10-31"
+          },
+          {
+            "candidate_minus_comparator": 1.1102230246251565e-16,
+            "candidate_net_return": -0.0002658045806624987,
+            "comparator_net_return": -0.0002658045806626097,
+            "month": "1999-11-30"
+          },
+          {
+            "candidate_minus_comparator": -1.1102230246251565e-16,
+            "candidate_net_return": -0.01901968238500895,
+            "comparator_net_return": -0.01901968238500884,
+            "month": "1999-12-31"
+          }
+        ],
+        "observed_mean_monthly_excess_return": -0.0005249166337987813,
+        "one_sided_95_lower_bound": -0.0014945753903226932,
+        "one_sided_p": 0.8298
+      },
+      "veto9": {
+        "comparator": "veto9",
+        "holm_adjusted_p": 1.0,
+        "monthly_return_differences": [
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.00035834386047850497,
+            "comparator_net_return": -0.00035834386047850497,
+            "month": "1990-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.013901798114847042,
+            "comparator_net_return": 0.013901798114847042,
+            "month": "1990-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.05129691151900517,
+            "comparator_net_return": -0.05129691151900517,
+            "month": "1990-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.04728039921553284,
+            "comparator_net_return": -0.04728039921553284,
+            "month": "1990-04-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.011891330862504823,
+            "comparator_net_return": -0.011891330862504823,
+            "month": "1990-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0003580304984286409,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0003580304984286409,
+            "month": "1990-06-30"
+          },
+          {
+            "candidate_minus_comparator": -0.022745636712369066,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.022745636712369066,
+            "month": "1990-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1990-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.00027196924682793,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.00027196924682793,
+            "month": "1990-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.014217823529944495,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.014217823529944495,
+            "month": "1990-10-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1990-11-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1990-12-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1991-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.00032199889081652167,
+            "comparator_net_return": -0.00032199889081652167,
+            "month": "1991-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.0013024285948246561,
+            "comparator_net_return": -0.0013024285948246561,
+            "month": "1991-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0003342905560236309,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0003342905560236309,
+            "month": "1991-04-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0033299586107822243,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0033299586107822243,
+            "month": "1991-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1991-06-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0003722222029923783,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0003722222029923783,
+            "month": "1991-07-31"
+          },
+          {
+            "candidate_minus_comparator": -0.026137436349643384,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.026137436349643384,
+            "month": "1991-08-31"
+          },
+          {
+            "candidate_minus_comparator": -0.018386027567449892,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.018386027567449892,
+            "month": "1991-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.028558841537512536,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.028558841537512536,
+            "month": "1991-10-31"
+          },
+          {
+            "candidate_minus_comparator": 0.004129912305075867,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.004129912305075867,
+            "month": "1991-11-30"
+          },
+          {
+            "candidate_minus_comparator": 0.004335147632769432,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.004335147632769432,
+            "month": "1991-12-31"
+          },
+          {
+            "candidate_minus_comparator": -0.020107575435727165,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.020107575435727165,
+            "month": "1992-01-31"
+          },
+          {
+            "candidate_minus_comparator": -0.001522157466157914,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.001522157466157914,
+            "month": "1992-02-29"
+          },
+          {
+            "candidate_minus_comparator": -0.027016295798301337,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.027016295798301337,
+            "month": "1992-03-31"
+          },
+          {
+            "candidate_minus_comparator": -0.01659672204010132,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.01659672204010132,
+            "month": "1992-04-30"
+          },
+          {
+            "candidate_minus_comparator": -0.004071702763834617,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.004071702763834617,
+            "month": "1992-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.011046187616285397,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.011046187616285397,
+            "month": "1992-06-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1992-10-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0004589427496866083,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0004589427496866083,
+            "month": "1992-11-30"
+          },
+          {
+            "candidate_minus_comparator": -0.000596915813085408,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.000596915813085408,
+            "month": "1992-12-31"
+          },
+          {
+            "candidate_minus_comparator": -0.017336553208678884,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.017336553208678884,
+            "month": "1993-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0009126916573514166,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0009126916573514166,
+            "month": "1993-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.0023403855742701873,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0023403855742701873,
+            "month": "1993-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.03660021893397514,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.03660021893397514,
+            "month": "1993-04-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0732220613632647,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0732220613632647,
+            "month": "1993-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.013704680000599656,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.013704680000599656,
+            "month": "1993-06-30"
+          },
+          {
+            "candidate_minus_comparator": -0.05460977724774585,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.05460977724774585,
+            "month": "1993-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.034061945640796676,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.034061945640796676,
+            "month": "1993-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.05889550913341057,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.05889550913341057,
+            "month": "1993-09-30"
+          },
+          {
+            "candidate_minus_comparator": -0.02303969866032607,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.02303969866032607,
+            "month": "1993-10-31"
+          },
+          {
+            "candidate_minus_comparator": -0.020307277031122783,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.020307277031122783,
+            "month": "1993-11-30"
+          },
+          {
+            "candidate_minus_comparator": -0.019162918614040292,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.019162918614040292,
+            "month": "1993-12-31"
+          },
+          {
+            "candidate_minus_comparator": -0.007253334224570418,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.007253334224570418,
+            "month": "1994-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.009956257398985646,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.009956257398985646,
+            "month": "1994-02-28"
+          },
+          {
+            "candidate_minus_comparator": -0.004629614381837843,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.004629614381837843,
+            "month": "1994-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.013993085482186252,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.013993085482186252,
+            "month": "1994-04-30"
+          },
+          {
+            "candidate_minus_comparator": -0.00797015651545352,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.00797015651545352,
+            "month": "1994-05-31"
+          },
+          {
+            "candidate_minus_comparator": 0.009356006752702761,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.009356006752702761,
+            "month": "1994-06-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0003582071197929526,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0003582071197929526,
+            "month": "1994-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.012288027891970366,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.012288027891970366,
+            "month": "1994-08-31"
+          },
+          {
+            "candidate_minus_comparator": -0.02992814475695682,
+            "candidate_net_return": -0.00042876296031457706,
+            "comparator_net_return": 0.029499381796642243,
+            "month": "1994-09-30"
+          },
+          {
+            "candidate_minus_comparator": -2.1669202742158333e-06,
+            "candidate_net_return": -0.004624466395929283,
+            "comparator_net_return": -0.004622299475655067,
+            "month": "1994-10-31"
+          },
+          {
+            "candidate_minus_comparator": -0.0004261449744910051,
+            "candidate_net_return": -0.014229157007317306,
+            "comparator_net_return": -0.0138030120328263,
+            "month": "1994-11-30"
+          },
+          {
+            "candidate_minus_comparator": 0.01326777491610076,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.01326777491610076,
+            "month": "1994-12-31"
+          },
+          {
+            "candidate_minus_comparator": 0.002385081336180872,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.002385081336180872,
+            "month": "1995-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.00043585386576039387,
+            "comparator_net_return": -0.00043585386576039387,
+            "month": "1995-02-28"
+          },
+          {
+            "candidate_minus_comparator": 2.220446049250313e-16,
+            "candidate_net_return": 0.014116364014222116,
+            "comparator_net_return": 0.014116364014221894,
+            "month": "1995-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1995-04-30"
+          },
+          {
+            "candidate_minus_comparator": 1.1102230246251565e-16,
+            "candidate_net_return": -0.00043171434504951645,
+            "comparator_net_return": -0.00043171434504962747,
+            "month": "1995-05-31"
+          },
+          {
+            "candidate_minus_comparator": 2.220446049250313e-16,
+            "candidate_net_return": 0.0060768885394215655,
+            "comparator_net_return": 0.0060768885394213434,
+            "month": "1995-06-30"
+          },
+          {
+            "candidate_minus_comparator": 1.1102230246251565e-16,
+            "candidate_net_return": -0.003861486677299908,
+            "comparator_net_return": -0.003861486677300019,
+            "month": "1995-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1995-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1995-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0004327008404239052,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0004327008404239052,
+            "month": "1995-10-31"
+          },
+          {
+            "candidate_minus_comparator": -0.006097662847938112,
+            "candidate_net_return": -0.0004316719005477143,
+            "comparator_net_return": 0.005665990947390398,
+            "month": "1995-11-30"
+          },
+          {
+            "candidate_minus_comparator": -0.0004308545498470373,
+            "candidate_net_return": 0.005097162799682087,
+            "comparator_net_return": 0.005528017349529124,
+            "month": "1995-12-31"
+          },
+          {
+            "candidate_minus_comparator": -0.03099834813375657,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.03099834813375657,
+            "month": "1996-01-31"
+          },
+          {
+            "candidate_minus_comparator": -0.013716220247919741,
+            "candidate_net_return": -0.0004229419903152287,
+            "comparator_net_return": 0.013293278257604513,
+            "month": "1996-02-29"
+          },
+          {
+            "candidate_minus_comparator": -9.118384506456856e-06,
+            "candidate_net_return": -0.021132747201583868,
+            "comparator_net_return": -0.02112362881707741,
+            "month": "1996-03-31"
+          },
+          {
+            "candidate_minus_comparator": -1.6430210525442135e-09,
+            "candidate_net_return": -0.008480352971862115,
+            "comparator_net_return": -0.008480351328841063,
+            "month": "1996-04-30"
+          },
+          {
+            "candidate_minus_comparator": -2.206013149930186e-13,
+            "candidate_net_return": -0.002341860761325476,
+            "comparator_net_return": -0.0023418607611048747,
+            "month": "1996-05-31"
+          },
+          {
+            "candidate_minus_comparator": -1.1102230246251565e-16,
+            "candidate_net_return": -0.016992830352359434,
+            "comparator_net_return": -0.016992830352359323,
+            "month": "1996-06-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.004672048174007903,
+            "comparator_net_return": -0.004672048174007903,
+            "month": "1996-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.010118131796490237,
+            "comparator_net_return": 0.010118131796490237,
+            "month": "1996-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": -0.010868723376791456,
+            "comparator_net_return": -0.010868723376791456,
+            "month": "1996-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0004311630855434734,
+            "candidate_net_return": -0.0058340750117451545,
+            "comparator_net_return": -0.006265238097288628,
+            "month": "1996-10-31"
+          },
+          {
+            "candidate_minus_comparator": -0.008446387229084085,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.008446387229084085,
+            "month": "1996-11-30"
+          },
+          {
+            "candidate_minus_comparator": -0.023401564976649247,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.023401564976649247,
+            "month": "1996-12-31"
+          },
+          {
+            "candidate_minus_comparator": -0.03760938085571519,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.03760938085571519,
+            "month": "1997-01-31"
+          },
+          {
+            "candidate_minus_comparator": -0.023999805531008667,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.023999805531008667,
+            "month": "1997-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.01510419084348047,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.01510419084348047,
+            "month": "1997-03-31"
+          },
+          {
+            "candidate_minus_comparator": -0.020844916367046995,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.020844916367046995,
+            "month": "1997-04-30"
+          },
+          {
+            "candidate_minus_comparator": -0.001827279691577921,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.001827279691577921,
+            "month": "1997-05-31"
+          },
+          {
+            "candidate_minus_comparator": -0.008949511172870572,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.008949511172870572,
+            "month": "1997-06-30"
+          },
+          {
+            "candidate_minus_comparator": -0.048845549143005984,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.048845549143005984,
+            "month": "1997-07-31"
+          },
+          {
+            "candidate_minus_comparator": -0.00027746553364904614,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.00027746553364904614,
+            "month": "1997-08-31"
+          },
+          {
+            "candidate_minus_comparator": -0.003669297992652476,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.003669297992652476,
+            "month": "1997-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.006356223139860506,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.006356223139860506,
+            "month": "1997-10-31"
+          },
+          {
+            "candidate_minus_comparator": -0.05790649789883617,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.05790649789883617,
+            "month": "1997-11-30"
+          },
+          {
+            "candidate_minus_comparator": -0.05647587350042871,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.05647587350042871,
+            "month": "1997-12-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0012481152625930525,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0012481152625930525,
+            "month": "1998-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.02904930502052261,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.02904930502052261,
+            "month": "1998-02-28"
+          },
+          {
+            "candidate_minus_comparator": -0.005205354352285196,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.005205354352285196,
+            "month": "1998-03-31"
+          },
+          {
+            "candidate_minus_comparator": 0.04177146125250997,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.04177146125250997,
+            "month": "1998-04-30"
+          },
+          {
+            "candidate_minus_comparator": -0.029794300063532342,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.029794300063532342,
+            "month": "1998-05-31"
+          },
+          {
+            "candidate_minus_comparator": -0.020592146091714447,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.020592146091714447,
+            "month": "1998-06-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0016897344152225768,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0016897344152225768,
+            "month": "1998-07-31"
+          },
+          {
+            "candidate_minus_comparator": -0.026627374122941472,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.026627374122941472,
+            "month": "1998-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.01634349157174919,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.01634349157174919,
+            "month": "1998-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.023421390751570237,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.023421390751570237,
+            "month": "1998-10-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0055649064534605275,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0055649064534605275,
+            "month": "1998-11-30"
+          },
+          {
+            "candidate_minus_comparator": 0.00817281987507712,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.00817281987507712,
+            "month": "1998-12-31"
+          },
+          {
+            "candidate_minus_comparator": -0.015292154260446278,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.015292154260446278,
+            "month": "1999-01-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-02-28"
+          },
+          {
+            "candidate_minus_comparator": 0.0004947894810463094,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": -0.0004947894810463094,
+            "month": "1999-03-31"
+          },
+          {
+            "candidate_minus_comparator": -0.011674352016768141,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.011674352016768141,
+            "month": "1999-04-30"
+          },
+          {
+            "candidate_minus_comparator": -0.02184506151740173,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.02184506151740173,
+            "month": "1999-05-31"
+          },
+          {
+            "candidate_minus_comparator": -0.05467608682156189,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.05467608682156189,
+            "month": "1999-06-30"
+          },
+          {
+            "candidate_minus_comparator": -0.01950271272151638,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.01950271272151638,
+            "month": "1999-07-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-08-31"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-09-30"
+          },
+          {
+            "candidate_minus_comparator": 0.0,
+            "candidate_net_return": 0.0,
+            "comparator_net_return": 0.0,
+            "month": "1999-10-31"
+          },
+          {
+            "candidate_minus_comparator": 1.1102230246251565e-16,
+            "candidate_net_return": -0.0002658045806624987,
+            "comparator_net_return": -0.0002658045806626097,
+            "month": "1999-11-30"
+          },
+          {
+            "candidate_minus_comparator": -1.1102230246251565e-16,
+            "candidate_net_return": -0.01901968238500895,
+            "comparator_net_return": -0.01901968238500884,
+            "month": "1999-12-31"
+          }
+        ],
+        "observed_mean_monthly_excess_return": -0.0030977165205757725,
+        "one_sided_95_lower_bound": -0.006192107835156183,
+        "one_sided_p": 0.9501
+      }
+    },
+    "gates": {
+      "development_at_least_20_round_turns": false,
+      "development_at_least_6_positive_years": false,
+      "development_beats_ts9_lo_by_500_usd": false,
+      "development_beats_ts9_lo_sharpe_by_0_10": false,
+      "development_beats_veto9_by_500_usd": false,
+      "development_beats_veto9_sharpe_by_0_10": false,
+      "development_candidate_net_positive": false,
+      "development_candidate_sharpe_positive": false,
+      "development_positive_at_2x_cost": false,
+      "development_positive_with_financing_assumption": false,
+      "development_ts9_lo_bootstrap_lower_95_positive": false,
+      "development_ts9_lo_holm_p_le_0_05": false,
+      "development_veto9_bootstrap_lower_95_positive": false,
+      "development_veto9_holm_p_le_0_05": false,
+      "discovery_confirmation_beats_ts9_lo_sharpe_by_0_10": false,
+      "discovery_confirmation_beats_veto9_sharpe_by_0_10": false,
+      "discovery_confirmation_candidate_net_positive": false,
+      "discovery_selection_beats_ts9_lo_sharpe_by_0_10": true,
+      "discovery_selection_beats_veto9_sharpe_by_0_10": true,
+      "discovery_selection_candidate_net_positive": true
+    },
+    "held_out_span_opened": false,
+    "live": "LOCKED",
+    "orders_submitted": 0,
+    "status": "REJECTED",
+    "strategy_promoted": false,
+    "windows": {
+      "development": {
+        "brent12_lag1_ts9_longflat": {
+          "accounting_model_version": "fixed_units.v2",
+          "annual_returns": {
+            "1990": -0.094809,
+            "1991": -0.001624,
+            "1992": 0.0,
+            "1993": 0.0,
+            "1994": -0.019209,
+            "1995": 0.020193,
+            "1996": -0.059344,
+            "1997": 0.0,
+            "1998": 0.0,
+            "1999": -0.01928
+          },
+          "avg_loss_usd": -367.3998,
+          "avg_win_usd": 59.6612,
+          "bars": 120,
+          "cagr": -0.018,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": null,
+          "cost_usd": 56.91,
+          "deflated": {
+            "dsr": 0.0,
+            "kurtosis": 29.023,
+            "n": 120,
+            "num_trials": 357,
+            "sharpe_annual": -0.6737,
+            "skew": -4.4763
+          },
+          "end": "1999-12-31",
+          "expectancy_usd": -207.2519,
+          "exposure": 0.1667,
+          "final_equity": 8341.98,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": -1601.1,
+          "gross_usd_trades": -1601.1022,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.1769,
+          "mean_bars_held": 2.5,
+          "net_usd": -1658.02,
+          "profit_factor": 0.0974,
+          "round_turns": 8,
+          "round_turns_per_year": 0.8,
+          "sharpe": -0.6737,
+          "start": "1990-01-31",
+          "stop_exit_share": 0.0,
+          "turnover_per_year": 1.451,
+          "win_rate": 0.375
+        },
+        "ts9_lo": {
+          "accounting_model_version": "fixed_units.v2",
+          "annual_returns": {
+            "1990": -0.087957,
+            "1991": -0.005281,
+            "1992": 0.0,
+            "1993": 0.019426,
+            "1994": -0.019713,
+            "1995": 0.023964,
+            "1996": -0.016868,
+            "1997": 0.0,
+            "1998": -0.013644,
+            "1999": -0.01928
+          },
+          "avg_loss_usd": -206.6472,
+          "avg_win_usd": 120.4833,
+          "bars": 120,
+          "cagr": -0.0124,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": null,
+          "cost_usd": 84.37,
+          "deflated": {
+            "dsr": 0.0001,
+            "kurtosis": 11.8647,
+            "n": 120,
+            "num_trials": 357,
+            "sharpe_annual": -0.2579,
+            "skew": -0.8064
+          },
+          "end": "1999-12-31",
+          "expectancy_usd": -97.6037,
+          "exposure": 0.3667,
+          "final_equity": 8828.76,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": -1086.87,
+          "gross_usd_trades": -1086.8739,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.1422,
+          "mean_bars_held": 3.6667,
+          "net_usd": -1171.24,
+          "profit_factor": 0.2915,
+          "round_turns": 12,
+          "round_turns_per_year": 1.2,
+          "sharpe": -0.2579,
+          "start": "1990-01-31",
+          "stop_exit_share": 0.0,
+          "turnover_per_year": 2.078,
+          "win_rate": 0.3333
+        },
+        "veto9": {
+          "accounting_model_version": "fixed_units.v2",
+          "annual_returns": {
+            "1990": -0.087957,
+            "1991": 0.000896,
+            "1992": 0.059334,
+            "1993": -0.089278,
+            "1994": -0.028828,
+            "1995": 0.023964,
+            "1996": 0.014197,
+            "1997": 0.262718,
+            "1998": -0.046715,
+            "1999": 0.106252
+          },
+          "avg_loss_usd": -283.4259,
+          "avg_win_usd": 582.777,
+          "bars": 120,
+          "cagr": 0.0169,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": 0.0745,
+          "cost_usd": 147.13,
+          "deflated": {
+            "dsr": 0.0186,
+            "kurtosis": 5.2568,
+            "n": 120,
+            "num_trials": 357,
+            "sharpe_annual": 0.2678,
+            "skew": -0.1994
+          },
+          "end": "1999-12-31",
+          "expectancy_usd": 101.5531,
+          "exposure": 0.7667,
+          "final_equity": 11827.96,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": 1975.09,
+          "gross_usd_trades": 1975.0894,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.1832,
+          "mean_bars_held": 5.1111,
+          "net_usd": 1827.96,
+          "profit_factor": 1.645,
+          "round_turns": 18,
+          "round_turns_per_year": 1.8,
+          "sharpe": 0.2678,
+          "start": "1990-01-31",
+          "stop_exit_share": 0.0,
+          "turnover_per_year": 3.404,
+          "win_rate": 0.4444
+        }
+      },
+      "discovery_confirmation": {
+        "brent12_lag1_ts9_longflat": {
+          "accounting_model_version": "fixed_units.v2",
+          "annual_returns": {
+            "1984": 0.0,
+            "1985": -0.000368,
+            "1986": 0.037526,
+            "1987": 0.042066,
+            "1988": -0.088046,
+            "1989": -0.000771
+          },
+          "avg_loss_usd": -261.4471,
+          "avg_win_usd": 371.4384,
+          "bars": 72,
+          "cagr": -0.0025,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": null,
+          "cost_usd": 24.78,
+          "end": "1989-12-31",
+          "expectancy_usd": -50.4853,
+          "exposure": 0.1667,
+          "final_equity": 9848.54,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": -126.68,
+          "gross_usd_trades": -126.6803,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.0908,
+          "mean_bars_held": 4.0,
+          "net_usd": -151.46,
+          "profit_factor": 0.7104,
+          "round_turns": 3,
+          "round_turns_per_year": 0.5,
+          "sharpe": -0.0355,
+          "start": "1984-01-31",
+          "stop_exit_share": 0.0,
+          "turnover_per_year": 0.957,
+          "win_rate": 0.3333
+        },
+        "ts9_lo": {
+          "accounting_model_version": "fixed_units.v2",
+          "annual_returns": {
+            "1984": 0.0,
+            "1985": -0.009953,
+            "1986": 0.22365,
+            "1987": 0.158272,
+            "1988": -0.088237,
+            "1989": -0.000771
+          },
+          "avg_loss_usd": -6.2728,
+          "avg_win_usd": 2796.6514,
+          "bars": 72,
+          "cagr": 0.0418,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": 0.0124,
+          "cost_usd": 34.9,
+          "end": "1989-12-31",
+          "expectancy_usd": 928.0352,
+          "exposure": 0.4167,
+          "final_equity": 12784.11,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": 2819.0,
+          "gross_usd_trades": 2819.0027,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.0908,
+          "mean_bars_held": 10.0,
+          "net_usd": 2784.11,
+          "profit_factor": 222.9179,
+          "round_turns": 3,
+          "round_turns_per_year": 0.5,
+          "sharpe": 0.5615,
+          "start": "1984-01-31",
+          "stop_exit_share": 0.0,
+          "turnover_per_year": 1.122,
+          "win_rate": 0.3333
+        },
+        "veto9": {
+          "accounting_model_version": "fixed_units.v2",
+          "annual_returns": {
+            "1984": 0.135822,
+            "1985": -0.046551,
+            "1986": 0.22365,
+            "1987": 0.158272,
+            "1988": -0.088237,
+            "1989": -0.026352
+          },
+          "avg_loss_usd": -111.791,
+          "avg_win_usd": 2036.4349,
+          "bars": 72,
+          "cagr": 0.0529,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": 0.0199,
+          "cost_usd": 73.79,
+          "end": "1989-12-31",
+          "expectancy_usd": 604.2843,
+          "exposure": 0.8472,
+          "final_equity": 13625.71,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": 3699.49,
+          "gross_usd_trades": 3699.4914,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.1239,
+          "mean_bars_held": 10.1667,
+          "net_usd": 3625.71,
+          "profit_factor": 9.1082,
+          "round_turns": 6,
+          "round_turns_per_year": 1.0,
+          "sharpe": 0.5498,
+          "start": "1984-01-31",
+          "stop_exit_share": 0.0,
+          "turnover_per_year": 2.25,
+          "win_rate": 0.3333
+        }
+      },
+      "discovery_selection": {
+        "brent12_lag1_ts9_longflat": {
+          "accounting_model_version": "fixed_units.v2",
+          "annual_returns": {
+            "1973": 0.321359,
+            "1974": 0.204485,
+            "1975": -0.010164,
+            "1976": 0.0,
+            "1977": 0.12811,
+            "1978": 0.255229,
+            "1979": 0.500994,
+            "1980": 0.237756,
+            "1981": 0.0,
+            "1982": 0.0,
+            "1983": 0.0
+          },
+          "avg_loss_usd": 0.0,
+          "avg_win_usd": 15722.586,
+          "bars": 132,
+          "cagr": 0.138,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": 0.0019,
+          "cost_usd": 59.44,
+          "end": "1983-12-31",
+          "expectancy_usd": 15722.586,
+          "exposure": 0.5379,
+          "final_equity": 41445.17,
+          "financing_usd": 0.0,
+          "forced_exit_count": 0,
+          "gross_usd": 31504.61,
+          "gross_usd_trades": 31504.6128,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.0879,
+          "mean_bars_held": 35.5,
+          "net_usd": 31445.17,
+          "profit_factor": null,
+          "round_turns": 2,
+          "round_turns_per_year": 0.1818,
+          "sharpe": 1.1585,
+          "start": "1973-01-31",
+          "stop_exit_share": 0.0,
+          "turnover_per_year": 0.428,
+          "win_rate": 1.0
+        },
+        "ts9_lo": {
+          "accounting_model_version": "fixed_units.v2",
+          "annual_returns": {
+            "1973": 0.321359,
+            "1974": 0.204485,
+            "1975": -0.109204,
+            "1976": 0.0,
+            "1977": 0.12811,
+            "1978": 0.255229,
+            "1979": 0.500994,
+            "1980": 0.224067,
+            "1981": -0.000638,
+            "1982": 0.018217,
+            "1983": -0.043354
+          },
+          "avg_loss_usd": -326.4152,
+          "avg_win_usd": 13442.8804,
+          "bars": 132,
+          "cagr": 0.1232,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": 0.0035,
+          "cost_usd": 91.44,
+          "end": "1983-12-31",
+          "expectancy_usd": 5181.303,
+          "exposure": 0.6742,
+          "final_equity": 35906.52,
+          "financing_usd": 0.0,
+          "forced_exit_count": 0,
+          "gross_usd": 25997.95,
+          "gross_usd_trades": 25997.9541,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.1096,
+          "mean_bars_held": 17.8,
+          "net_usd": 25906.52,
+          "profit_factor": 27.4556,
+          "round_turns": 5,
+          "round_turns_per_year": 0.4545,
+          "sharpe": 1.0103,
+          "start": "1973-01-31",
+          "stop_exit_share": 0.0,
+          "turnover_per_year": 0.654,
+          "win_rate": 0.4
+        },
+        "veto9": {
+          "accounting_model_version": "fixed_units.v2",
+          "annual_returns": {
+            "1973": 0.321359,
+            "1974": 0.204485,
+            "1975": -0.093993,
+            "1976": 0.113973,
+            "1977": 0.135471,
+            "1978": 0.255229,
+            "1979": 0.500994,
+            "1980": 0.224067,
+            "1981": 0.069518,
+            "1982": -0.022602,
+            "1983": -0.045743
+          },
+          "avg_loss_usd": -350.9236,
+          "avg_win_usd": 4816.3891,
+          "bars": 132,
+          "cagr": 0.1393,
+          "cost_basis": "ASSUMED",
+          "cost_to_gross": 0.0072,
+          "cost_usd": 230.64,
+          "end": "1983-12-31",
+          "expectancy_usd": 2663.3421,
+          "exposure": 0.9621,
+          "final_equity": 41960.11,
+          "financing_usd": 0.0,
+          "forced_exit_count": 1,
+          "gross_usd": 32190.75,
+          "gross_usd_trades": 32190.7472,
+          "initial_equity": 10000.0,
+          "max_drawdown": -0.1735,
+          "mean_bars_held": 10.5833,
+          "net_usd": 31960.11,
+          "profit_factor": 19.2148,
+          "round_turns": 12,
+          "round_turns_per_year": 1.0909,
+          "sharpe": 1.0469,
+          "start": "1973-01-31",
+          "stop_exit_share": 0.0,
+          "turnover_per_year": 1.412,
+          "win_rate": 0.5833
+        }
+      }
+    }
+  }
+}

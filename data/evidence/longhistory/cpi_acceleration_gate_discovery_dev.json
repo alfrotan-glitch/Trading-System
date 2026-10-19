@@ -1,0 +1,20 @@
+{
+  "candidate_outcomes_calculated": false,
+  "cumulative_trials": 359,
+  "generated_at_utc": "2026-10-19T10:41:03.845177+00:00",
+  "held_out_span_opened": false,
+  "hypothesis_id": "LH-XAUUSD-CPI-ACCELERATION-GATE-2026-10-19",
+  "identity": {
+    "branch": "arena/0c685e3b-trading-system",
+    "preregistration_freeze_commit": "82638f7175e7620d5086b504b0bd72c1e2ac0af3",
+    "runner_checkout_commit": "0cdf928538a5682b835d9745457839796490d2a7"
+  },
+  "live": "LOCKED",
+  "orders_submitted": 0,
+  "preregistration_path": "docs/research/preregistration_longhistory_cpi_acceleration_gate_2026-10-19.md",
+  "preregistration_sha256": "3045b7be5b834b5e5815f74f11cf34dc7c0d4cf844c0ee100509aec7ea23f8d1",
+  "reason": "CPI CSV schema does not match the frozen World Bank datapackage",
+  "schema": "qts.longhistory.cpi_acceleration_gate_screen.v1",
+  "status": "INCONCLUSIVE",
+  "strategy_promoted": false
+}
