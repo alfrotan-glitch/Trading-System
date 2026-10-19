@@ -20,6 +20,20 @@ repository.
 | [`unbalancedparentheses/forex-centuries@f79a85bf6ae0dbad8d79ea56902caef43c7bd947`](https://github.com/unbalancedparentheses/forex-centuries/tree/f79a85bf6ae0dbad8d79ea56902caef43c7bd947) | The MIT-licensed repository README identifies an `lbma_gold_daily.csv` file and describes daily LBMA PM gold prices in USD/GBP/EUR for 1968–2025. The README explicitly says each source dataset has its own license; it does not establish the applicable LBMA data-reuse terms. Only README metadata and the file path/size were checked; no CSV rows were opened. | Potential price-history lead, **not admitted**. Verify the official source's terms and the mirror's lineage before any use. If cleared, pre-register a distinct hypothesis and use only eligible pre-2000 prices. The 2000+ portion remains off-limits. |
 | [`MohammadrezaAmani/Precious-Base-Metals-Historical-Dataset@efa7f451be871c4a28b818c2d8719cfaa1395dd8`](https://github.com/MohammadrezaAmani/Precious-Base-Metals-Historical-Dataset/tree/efa7f451be871c4a28b818c2d8719cfaa1395dd8) | GitHub reports an MIT license for the repository; its README presents the data as a Kaggle dataset and lists COMEX gold-contract JSON files, but does not establish an underlying source, historical coverage, or a separate license for the bundled observations. Only metadata, README, and file paths/sizes were inspected; no JSON data values were opened. | Excluded pending source, coverage, vintage, and data-rights evidence. The code license alone is not treated as a data license. |
 
+## Short-rate macro source lead (not admitted)
+
+[`OpenSourceEcon/FedFundsPlot@167fd89006994f09f482b9e3c1ad23fecf276416`](https://github.com/OpenSourceEcon/FedFundsPlot/tree/167fd89006994f09f482b9e3c1ad23fecf276416)
+contains a generated `data/ffrates_2022-07-29.csv` snapshot. Its code identifies
+FRED series `DFF`, `DFEDTAR`, `DFEDTARL`, and `DFEDTARU`, and supports history
+from 1954-07 onward. This is a potentially usable **macro short-rate** input,
+not a gold-price source, and the repo bundle makes it distinct from the
+API-only `fecon235` lead. However, GitHub reports no license and there is no
+LICENSE file; source-specific reuse/vintage terms have not been verified, and
+the primary FRED host is outside this sandbox's network allowlist. No CSV rows
+or rate values were opened. No Fed-funds hypothesis was preregistered or
+measured; only eligible pre-2000 values could be used if the rights and
+point-in-time handling are resolved.
+
 ## Research gate
 
 These leads do not resolve the existing COT/price-data blocker. Before a new
