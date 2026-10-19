@@ -56,6 +56,20 @@ features.
 | `axb0306/cme-futures-ohlc` | README identifies TopstepX API as the source; visible file names cover March–April 2026 and GitHub reports no license. | Not an eligible pre-2000 source. Its README's generic MNQ sample row was incidentally visible during triage but was not ingested into an analysis or used; no gold data or holdout was accessed. |
 | `MOHAMED-EL-HADDIOUI/Gold-Futures-Historical-Data-Analysis-and-Prediction` | Tree contains a gold-futures CSV, but no verified license, source lineage, point-in-time vintage, or eligible date coverage was established from repository metadata. | Excluded; the CSV was not downloaded or opened. |
 
+## Further COT archive search — metadata only
+
+| Source | Metadata finding | Decision |
+|---|---|---|
+| [`edulongo18/cftc-cot-data-archive@71fedc343b685c350b861ea8c3ae7edef5fc3d1f`](https://github.com/edulongo18/cftc-cot-data-archive/tree/71fedc343b685c350b861ea8c3ae7edef5fc3d1f) | File names show annual workbooks and Disaggregated-report ZIPs for 2020–2026; no license is declared. | Post-2000 archive only; not eligible for the frozen pre-2000 discovery/development path. No contents opened. |
+| [`hikarus211/cot-data@91dd6a5d403d2f3c43aa73350f6fbf065b59446e`](https://github.com/hikarus211/cot-data/tree/91dd6a5d403d2f3c43aa73350f6fbf065b59446e) | Auto-updated CFTC mirror with visible weekly files for 2026; no license is declared. | Current-year mirror, not pre-2000 coverage. No data rows opened. |
+| [`Gembot-ai/cot-data-visualization@791a6e0a6255a2df918b798d06b84f48c7d083fe`](https://github.com/Gembot-ai/cot-data-visualization/tree/791a6e0a6255a2df918b798d06b84f48c7d083fe) | Repository description claims 19 years of CFTC history, but the pinned tree has no CSV/Excel/Parquet archive and GitHub reports no license; the exact source, date range, and vintage handling were not established. | Application/software lead only; not an auditable pre-2000 dataset. |
+| [`ghler/CFTC-cot-weekly@bb04f5fae7f65a8a3714fe6a4581b20fc52be6ad`](https://github.com/ghler/CFTC-cot-weekly/tree/bb04f5fae7f65a8a3714fe6a4581b20fc52be6ad) | Tree includes a database and workbook but has no declared license or source/coverage manifest; it also contains mixed agent/session artifacts. No database or workbook contents were opened. | Excluded pending provenance, rights, and clean data lineage. |
+
+The `MFlab-inc/CFTC-COT` README and backfill script set the default start year
+to 2005 while noting that official CFTC Legacy annual ZIPs extend to 1986.
+Reaching the earlier period requires fetching directly from `cftc.gov`, which is
+outside the sandbox's allowed network hosts. No CFTC data files were fetched.
+
 ## Gate to any next experiment
 
 A suitable source must establish, before feature inspection, (1) rights to use
