@@ -70,6 +70,16 @@ to 2005 while noting that official CFTC Legacy annual ZIPs extend to 1986.
 Reaching the earlier period requires fetching directly from `cftc.gov`, which is
 outside the sandbox's allowed network hosts. No CFTC data files were fetched.
 
+## More gold-history repository leads — metadata only
+
+| Source | Metadata/provenance finding | Decision |
+|---|---|---|
+| [`Wangxian111/xaudaily-gold-data@6b6a350bfd122e2591142087c5520b1000a7f2e4`](https://github.com/Wangxian111/xaudaily-gold-data/tree/6b6a350bfd122e2591142087c5520b1000a7f2e4) | CC-BY-4.0 repository for an MCP/API client that points to `xaudaily.com`; the tree contains no historical gold-price archive. The upstream host is outside this sandbox's allowed network hosts. | API/service lead, not a locally auditable history. No endpoint or data file fetched. |
+| [`adriandecola/gold_futures@e88567d1fd9504cafda47a5af61a9da2c446a93a`](https://github.com/adriandecola/gold_futures/tree/e88567d1fd9504cafda47a5af61a9da2c446a93a) | MIT repository includes a `fredgraph.csv` and an existing research paper, but metadata inspected here does not establish the FRED series ID, original data rights/vintage, or eligible date range. | Quarantined from candidate design because it is an existing empirical study; no CSV or paper contents opened. |
+| [`cappelchi/GC@f2ebae4f40f808247218b05b72936342dca4acbd`](https://github.com/cappelchi/GC/tree/f2ebae4f40f808b05b72936342dca4acbd) | Tree includes large gold-futures JSON files, but GitHub reports no license and filenames alone do not establish source or date coverage. README and data values were not opened. | Excluded pending rights and provenance. |
+| [`akhdandann/goldFuturePrice-Forecasting@0cd56881c5bbf755fab9f588a1040a04a8e01dd1`](https://github.com/akhdandann/goldFuturePrice-Forecasting/tree/0cd56881c5bbf755fab9f588a1040a04a8e01dd1) | README identifies Investing.com data for 2011–2021. Repository code is MIT, but the dataset's provider terms are not established. | Period is post-cutoff and cannot support this pre-2000 research path. No CSV values opened. |
+| [`domzack/mgc-ohlcv-data@bf75ac4587e7995ceae64c3d696e076c37be12cc`](https://github.com/domzack/mgc-ohlcv-data/tree/bf75ac4587e7995ceae64c3d696e076c37be12cc) | README identifies a Databento source and a 2023–2026 MGC history; GitHub reports no license. | Too recent for the frozen partitions; no rows opened. |
+
 ## Gate to any next experiment
 
 A suitable source must establish, before feature inspection, (1) rights to use
