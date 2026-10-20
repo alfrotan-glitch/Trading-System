@@ -72,8 +72,10 @@ jobs:
         shell: pwsh
         run: |
           if (Test-Path dist\QTS\QTS.exe) { $exe = "dist\QTS\QTS.exe" } elseif (Test-Path dist\QTS.exe) { $exe = "dist\QTS.exe" } else { throw "QTS.exe not found" }
-          & $exe --help | Out-Null
-          if ($LASTEXITCODE -ne 0) { throw "QTS.exe --help failed" }
+          # A windowed executable ignores --help and would launch the GUI; --version
+          # returns immediately and still proves the frozen import graph works.
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { throw "QTS.exe --version failed with exit code $LASTEXITCODE" }
       - name: Package
         shell: pwsh
         run: |

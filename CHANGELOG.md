@@ -76,6 +76,10 @@ suite rather than compile checks alone.
   pandas 3 defaults to microseconds. The fixture now uses `as_unit("s")`, so the
   test is resolution-independent on pandas 2 and 3.
 - Two dead `Decimal` imports in the demo routes (ruff F401).
+- The packaged desktop launcher ignored `--version`/`--help` and started the
+  server instead, so a release smoke test would hang. It now answers both and
+  exits; the Windows release job uses `--version`, and the bootstrap fixture is
+  bundled into the frozen build.
 
 ### Verification
 
