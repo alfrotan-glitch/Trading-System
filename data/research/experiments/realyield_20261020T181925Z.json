@@ -1,0 +1,106 @@
+{
+  "generated_at": "2026-10-20T18:19:25.508057+00:00",
+  "round": 9,
+  "family": "real_yield_residual",
+  "dev": [
+    "2004-01-01",
+    "2014-12-31"
+  ],
+  "val": [
+    "2015-01-01",
+    "2019-12-31"
+  ],
+  "holdout": {
+    "block_a_basemax": [
+      "2024-06-01",
+      "2025-02-28"
+    ],
+    "block_b_dukascopy": [
+      "2025-08-06",
+      "2026-09-16"
+    ]
+  },
+  "cost_model": "ecn_realistic",
+  "cost_bps_per_side": 0.925,
+  "cost_is_measured": false,
+  "trials": 9,
+  "prior_trials": 5,
+  "data_check": {
+    "real_gt_nominal_share": 0.0,
+    "dfii10_span": [
+      "2003-01-02",
+      "2026-10-16"
+    ]
+  },
+  "provenance_selfcheck": {
+    "label": "self-check",
+    "overlap_obs": 16183,
+    "overlap_from": "1962-01-02",
+    "overlap_to": "2026-10-16",
+    "corr": 1.0,
+    "max_abs_diff": 0.0,
+    "mean_abs_diff": 0.0,
+    "identical": true
+  },
+  "rows": [
+    {
+      "name": "ry_z252",
+      "dev_alpha": 0.1021435756,
+      "dev_alpha_t": 2.1967314746,
+      "dev_hac_t": 2.186742719,
+      "dev_sharpe": 0.4219905377,
+      "dev_turnover": 30.0627768703,
+      "dev_exposure": 1.0,
+      "dsr": 0.4520841036,
+      "stress_alpha_t": 2.2168057865,
+      "val_alpha": 0.0819993984,
+      "val_alpha_t": 1.8917448251,
+      "floor_sr": 0.7528284198
+    },
+    {
+      "name": "ry_z252_long",
+      "dev_alpha": 0.0426710912,
+      "dev_alpha_t": 1.8432872843,
+      "dev_hac_t": 1.8263783385,
+      "dev_sharpe": 0.7781769942,
+      "dev_turnover": 12.9809679224,
+      "dev_exposure": 0.3091039942,
+      "dsr": 0.8572960658,
+      "stress_alpha_t": 1.8582745614,
+      "val_alpha": 0.0225824985,
+      "val_alpha_t": 1.0226854146,
+      "floor_sr": 0.7528284198
+    },
+    {
+      "name": "ry_z504",
+      "dev_alpha": 0.0178523761,
+      "dev_alpha_t": 0.3819779317,
+      "dev_hac_t": 0.3776258612,
+      "dev_sharpe": -0.0998110834,
+      "dev_turnover": 19.4017425957,
+      "dev_exposure": 0.9100395826,
+      "dsr": 0.032019759,
+      "stress_alpha_t": 0.3931253243,
+      "val_alpha": 0.0565496868,
+      "val_alpha_t": 1.2421373613,
+      "floor_sr": 0.7528284198
+    },
+    {
+      "name": "ry_z252_sign",
+      "dev_alpha": 0.1248257074,
+      "dev_alpha_t": 2.1873944766,
+      "dev_hac_t": 2.1901387903,
+      "dev_sharpe": 0.4405226021,
+      "dev_turnover": 32.4634760705,
+      "dev_exposure": 1.0,
+      "dsr": 0.4767107818,
+      "stress_alpha_t": 2.2048142153,
+      "val_alpha": 0.0780177707,
+      "val_alpha_t": 1.4628278654,
+      "floor_sr": 0.7528284198
+    }
+  ],
+  "survivors": [],
+  "val_confirmed": [],
+  "holdout_results": {}
+}

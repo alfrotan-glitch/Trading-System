@@ -29,6 +29,10 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
   negative-control decomposition.
 - `scripts/edgelab_xl001_holdout.py` — round 8 post-sample holdout, including the
   dollar-index substitution checks and the feed-completeness report.
+- `qts.research.edgelab.realyield` — rolling-OLS residual of gold against the
+  10-year TIPS yield, with the residual scale taken from each window's own fit.
+- `scripts/edgelab_realyield_run.py` — round 9 screen; deliberately does not read
+  the 2024-2026 window when nothing clears DEV.
 
 - `qts.research.edgelab` — a vectorised, cost-charged research harness with an
   explicit execution convention, alpha-vs-beta attribution, deflated Sharpe and a
@@ -93,6 +97,11 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
   column**, and therefore a strategy that never took a position while reporting a
   flat line with no error. Timezones are now normalised and the index sorted and
   de-duplicated before filling; two tests pin the behaviour.
+- The FRED loader rejected `DFII10` for containing non-positive values. Real
+  yields were negative for most of 2011-2021, so the positivity check — right for
+  a price level — rejected the actual history; it is now opt-in per series.
+- Long-only real-yield sizing clipped only the lower bound, so a `|z| > 1` signal
+  requested leverage a spot product cannot take. Both bounds are now clipped.
 - `CostModel`'s docstring claimed **4.0 bps/side** while `per_side_bps()` computed
   **0.40** — a factor-of-ten gap that made every reported cost assumption 10x
   stricter than what was actually charged. The formula is authoritative; the
