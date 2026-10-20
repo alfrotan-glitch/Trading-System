@@ -3,7 +3,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from click.testing import CliRunner
 
+from qts.cli.research import research
 from qts.research.longhistory.adaptive_backtest import build_adaptive_plan
 from qts.research.longhistory.adaptive_router import (
     AdaptiveRoutingConfig,
@@ -172,3 +174,45 @@ def test_adaptive_backtest_uses_costed_engine_and_returns_a_valid_routed_plan():
     assert diagnostics["selected_strategy"].iloc[:6].isna().all()
     assert (diagnostics["selected_strategy"].iloc[6:] == "long").all()
     assert (routed.target[6:] == 1.0).all()
+
+
+
+def test_adaptive_xauusd_cli_writes_diagnostic_report(tmp_path):
+    n = 360
+    index = pd.date_range("2023-01-01", periods=n, freq="D")
+    close = 1900.0 + np.arange(n, dtype=float) * 0.4 + np.sin(np.arange(n) / 5.0)
+    bars = pd.DataFrame(
+        {
+            "timestamp": index.astype(str),
+            "open": close - 0.1,
+            "high": close + 0.8,
+            "low": close - 0.8,
+            "close": close,
+        }
+    )
+    source = tmp_path / "xauusd.csv"
+    output = tmp_path / "adaptive.json"
+    bars.to_csv(source, index=False)
+
+    result = CliRunner().invoke(
+        research,
+        [
+            "adaptive-xauusd",
+            "--input",
+            str(source),
+            "--out",
+            str(output),
+            "--lookback",
+            "20",
+            "--min-observations",
+            "5",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    report = __import__("json").loads(output.read_text(encoding="utf-8"))
+    assert report["mode"] == "RESEARCH_DIAGNOSTIC_ONLY"
+    assert report["symbol"] == "XAUUSD"
+    assert report["data"]["bars"] == n
+    assert report["routing_config"]["candidate_count"] == 6
+    assert "adaptive_router" in report
+    assert "candidate_strategies" in report
