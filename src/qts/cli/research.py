@@ -206,9 +206,16 @@ def research_adaptive_xauusd(
     train_fraction: float,
 ) -> None:
     """Run causal regime-aware XAUUSD routing on an OHLC CSV (diagnostic only)."""
+    from collections import Counter
+    from datetime import timedelta
+    from decimal import Decimal
+
     import numpy as np
     import pandas as pd
 
+    from qts.data.quality import MAX_UNEXPECTED_MISSING_FRACTION, analyze_gap_semantics
+    from qts.data.sessions import closure_intervals
+    from qts.domain.value_objects import AssetClass, Bar, Instrument
     from qts.research.longhistory.adaptive_backtest import build_adaptive_plan
     from qts.research.longhistory.adaptive_router import AdaptiveRoutingConfig
     from qts.research.longhistory.engine import CostModel, RunResult, run_plan
@@ -261,6 +268,49 @@ def research_adaptive_xauusd(
         if (bars["low"] > bars[["open", "close", "high"]].min(axis=1)).any():
             raise ValueError("low is inconsistent with open/close/high")
 
+        deltas = bars.index.to_series().diff().dropna().dt.total_seconds().astype(int)
+        cadence_seconds = Counter(deltas).most_common(1)[0][0]
+        timeframe_by_seconds = {
+            60: "1m", 300: "5m", 900: "15m", 1800: "30m",
+            3600: "1H", 14400: "4H", 86400: "1D",
+        }
+        timeframe = timeframe_by_seconds.get(cadence_seconds)
+        if timeframe is None:
+            raise ValueError(
+                f"unsupported inferred bar cadence {cadence_seconds}s; "
+                "supported cadences are 1m, 5m, 15m, 30m, 1H, 4H, and 1D"
+            )
+        instrument = Instrument(symbol="XAUUSD", venue="CSV", asset_class=AssetClass.METAL)
+        bar_records = [
+            Bar(
+                instrument=instrument,
+                open=Decimal(str(row["open"])),
+                high=Decimal(str(row["high"])),
+                low=Decimal(str(row["low"])),
+                close=Decimal(str(row["close"])),
+                open_time=timestamp.to_pydatetime(),
+                close_time=(timestamp + pd.Timedelta(seconds=cadence_seconds)).to_pydatetime(),
+                source="CSV",
+            )
+            for timestamp, row in bars.iterrows()
+        ]
+        quality_end = (bars.index[-1] + pd.Timedelta(seconds=cadence_seconds)).to_pydatetime()
+        known_closures = closure_intervals(
+            bars.index[0].to_pydatetime(), quality_end, symbol="XAUUSD"
+        )
+        gap_quality = analyze_gap_semantics(
+            bar_records, timeframe, closure_intervals=known_closures
+        ).as_dict()
+        missing_fraction = gap_quality["active_span_missing_fraction"]
+        if missing_fraction is None or missing_fraction > MAX_UNEXPECTED_MISSING_FRACTION:
+            measured_pct = "UNAVAILABLE" if missing_fraction is None else f"{missing_fraction:.2%}"
+            raise ValueError(
+                f"data completeness gate blocked this dataset: unexpected active-span "
+                f"missing intervals={measured_pct}; maximum allowed="
+                f"{MAX_UNEXPECTED_MISSING_FRACTION:.2%}. Do not interpolate or forward-fill "
+                "gaps to bypass this gate."
+            )
+
         candidates = {
             "ma_10_30": ma_cross(bars, 10, 30, 2.0),
             "ma_20_50": ma_cross(bars, 20, 50, 2.0),
@@ -311,7 +361,7 @@ def research_adaptive_xauusd(
             "data": {
                 "path": str(input_path), "bars": len(bars),
                 "start": bars.index[0].isoformat(), "end": bars.index[-1].isoformat(),
-                "timestamp_column": timestamp_name, "data_quality": "basic OHLC validation passed",
+                "timestamp_column": timestamp_name, "timeframe": timeframe, "data_quality": {"ohlc": "passed", "gap_gate": "passed", "gap_semantics": gap_quality},
                 "train_bars": split, "holdout_bars": len(bars) - split,
                 "train_end": bars.index[split - 1].isoformat(),
                 "holdout_start": bars.index[split].isoformat(),
