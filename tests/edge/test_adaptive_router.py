@@ -237,3 +237,28 @@ def test_adaptive_cli_cannot_label_assumed_costs_as_measured():
     assert result.exit_code == 2
     assert "MEASURED" in result.output
 
+def test_adaptive_cli_rejects_duplicate_market_timestamps(tmp_path):
+    n = 360
+    index = pd.date_range("2023-01-01", periods=n, freq="D")
+    close = 1900.0 + np.arange(n, dtype=float) * 0.2
+    bars = pd.DataFrame(
+        {
+            "time": index.astype(str),
+            "open": close - 0.1,
+            "high": close + 0.8,
+            "low": close - 0.8,
+            "close": close,
+        }
+    )
+    bars = pd.concat([bars, bars.iloc[[10]]], ignore_index=True)
+    source = tmp_path / "duplicate_xauusd.csv"
+    output = tmp_path / "adaptive.json"
+    bars.to_csv(source, index=False)
+
+    result = CliRunner().invoke(
+        research,
+        ["adaptive-xauusd", "--input", str(source), "--out", str(output)],
+    )
+    assert result.exit_code == 1
+    assert "duplicate timestamps" in result.output
+
