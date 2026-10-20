@@ -209,6 +209,14 @@ def test_adaptive_xauusd_cli_writes_diagnostic_report(tmp_path):
             "20",
             "--min-observations",
             "5",
+            "--spread-bps",
+            "0",
+            "--spread-usd-per-oz",
+            "0.24",
+            "--financing-long-bps-per-day",
+            "1.5",
+            "--financing-short-bps-per-day",
+            "-0.5",
         ],
     )
     assert result.exit_code == 0, result.output
@@ -221,6 +229,9 @@ def test_adaptive_xauusd_cli_writes_diagnostic_report(tmp_path):
     assert report["data"]["holdout_bars"] == 108
     assert report["evaluation"].startswith("chronological holdout")
     assert report["routing_config"]["candidate_count"] == 6
+    assert report["cost_model"]["spread_usd_per_oz"] == 0.24
+    assert report["cost_model"]["financing_long_bps_per_day"] == 1.5
+    assert report["cost_model"]["financing_short_bps_per_day"] == -0.5
     assert "adaptive_router" in report
     assert "candidate_strategies" in report
 
@@ -262,4 +273,33 @@ def test_adaptive_cli_rejects_duplicate_market_timestamps(tmp_path):
     )
     assert result.exit_code == 1
     assert "duplicate timestamps" in result.output
+
+def test_adaptive_cli_rejects_double_counted_spread_units(tmp_path):
+    n = 360
+    index = pd.date_range("2023-01-01", periods=n, freq="D")
+    close = 1900.0 + np.arange(n, dtype=float) * 0.2
+    bars = pd.DataFrame(
+        {
+            "time": index.astype(str),
+            "open": close - 0.1,
+            "high": close + 0.8,
+            "low": close - 0.8,
+            "close": close,
+        }
+    )
+    source = tmp_path / "xauusd.csv"
+    bars.to_csv(source, index=False)
+
+    result = CliRunner().invoke(
+        research,
+        [
+            "adaptive-xauusd",
+            "--input",
+            str(source),
+            "--spread-usd-per-oz",
+            "0.24",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "choose either --spread-bps or --spread-usd-per-oz" in result.output
 
