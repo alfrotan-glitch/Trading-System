@@ -215,3 +215,23 @@ def test_deflated_sharpe_gets_harder_with_more_trials_at_realistic_sharpe():
     many = deflated_sharpe(sr_annualised=0.6, n_trials=45, n_obs=4481, bars_per_year=252)
     assert few > 0.95
     assert many < few
+
+
+def test_cost_model_documented_rate_matches_the_formula():
+    """Regression: the docstring once claimed 4.0 bps/side while the formula
+    computed 0.40 — a factor-of-ten gap that made every reported cost assumption
+    10x stricter than what was actually charged. Pinning both keeps the prose
+    honest and makes a future default change fail loudly.
+    """
+    ecn = CostModel()
+    assert ecn.per_side_bps() == pytest.approx(0.40, abs=1e-6)
+    realistic = CostModel.realistic_ecn()
+    assert realistic.per_side_bps() == pytest.approx(0.925, abs=1e-6)
+    # The realistic model must be strictly harsher, or it is decorative.
+    assert realistic.per_side_bps() > ecn.per_side_bps() * 2
+
+
+def test_cost_scales_inversely_with_price():
+    """Basis-point cost falls as notional rises: same spread, bigger denominator."""
+    c = CostModel()
+    assert c.per_side_bps(1000.0) > c.per_side_bps(2000.0) > c.per_side_bps(4000.0)

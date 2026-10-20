@@ -523,3 +523,55 @@ def research_longhistory_summary() -> dict[str, Any]:
 
 
 
+
+
+@router.get("/api/research/edgelab-forward")
+def research_edgelab_forward() -> dict[str, Any]:
+    """Edge Lab forward-observation status for registered candidates.
+
+    This is the honest answer to "is anything actually proven". A candidate that
+    cleared the development gate still shows ``validated: false`` until the forward
+    ledger accumulates enough observations; the response reports exactly how many
+    and refuses to extrapolate a result.
+    """
+    from qts.research.edgelab import CostModel, forward
+    from qts.research.edgelab.candidates import candidates
+
+    reg = forward.registered()
+    ledger = forward.load_ledger()
+    scored = forward.score(ledger)
+
+    rows = []
+    for c in candidates():
+        score_row = {}
+        if not scored.empty and c.id in set(scored["candidate_id"]):
+            score_row = scored[scored["candidate_id"] == c.id].iloc[0].to_dict()
+            score_row = {k: (None if isinstance(v, float) and v != v else v) for k, v in score_row.items()}
+        rows.append(
+            {
+                "id": c.id,
+                "name": c.name,
+                "family": c.family,
+                "rationale": c.rationale,
+                "registered": c.id in reg,
+                "registered_at": (reg.get(c.id) or {}).get("registered_at"),
+                "definition_hash": c.definition_hash(),
+                "forward": score_row,
+                # No candidate may claim validation without forward evidence.
+                "validated": bool(score_row.get("alpha_t") and score_row["alpha_t"] >= forward.MIN_ALPHA_T),
+            }
+        )
+
+    return {
+        "schema": "qts.research.edgelab_forward.v1",
+        "candidates": rows,
+        "observations": int(len(ledger)),
+        "cost_basis": f"ASSUMED {CostModel().per_side_bps():.2f} bps/side (not measured)",
+        "threshold_alpha_t": forward.MIN_ALPHA_T,
+        "live_locked": True,
+        "real_capital_exposure_usd": 0,
+        "note": (
+            "Registration is not validation. A backtest holdout can be read once; "
+            "afterwards only forward observation adds evidence."
+        ),
+    }

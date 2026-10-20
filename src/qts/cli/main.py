@@ -11,6 +11,7 @@ from qts.cli.demo import demo
 from qts.cli.desktop import desktop
 from qts.cli.edge import edge
 from qts.cli.evidence import evidence
+from qts.cli.forward import forward_group
 from qts.cli.mode import mode
 from qts.cli.ops import backtest, health, run_cmd, validate_cmd
 from qts.cli.research import research
@@ -38,6 +39,7 @@ main.add_command(health)
 main.add_command(audit)
 main.add_command(evidence)
 main.add_command(research)
+main.add_command(forward_group, name="forward")
 main.add_command(edge)
 main.add_command(run_cmd)
 main.add_command(desktop)

@@ -25,6 +25,14 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 - `qts.research.edgelab.power` — detection floors (`min_detectable_sr`,
   `years_needed`, `detection_summary`), so a `NO_VALIDATED_EDGE` verdict is
   reported alongside the smallest effect the sample could have detected.
+- `qts.research.edgelab.forward` + `qts.research.edgelab.candidates` — the first
+  gate-passing candidate (`XL-001`, easing financial conditions) with a frozen,
+  hash-verified definition, an append-only forward ledger, and honest scoring. New
+  CLI group `qts forward {candidates,register,log,score}` and
+  `GET /api/research/edgelab-forward`. No candidate is reported validated without
+  forward evidence.
+- `scripts/edgelab_candidate_run.py` — reproduces the candidate across five cost
+  models and three periods; machine verdict `CANDIDATE`.
 - `qts.research.edgelab.longgold` + `scripts/edgelab_prepare_longgold.py` — a
   51-year daily gold store (LBMA AM fix 1969-2019) with a release-lagged real-yield
   proxy, plus 16 economically-reasoned hypotheses. Cuts the detection floor from
@@ -54,6 +62,12 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Fixed
 
+- `CostModel`'s docstring claimed **4.0 bps/side** while `per_side_bps()` computed
+  **0.40** — a factor-of-ten gap that made every reported cost assumption 10x
+  stricter than what was actually charged. The formula is authoritative; the
+  docstring now states the computed value, a test pins the two together, and
+  `realistic_ecn()` (0.925 bps/side) was added because 0.40 bps is optimistic for
+  retail gold.
 - `deflated_sharpe` returned 1.0 for every input, for two independent reasons:
   `norm.ppf(1 - 1/1)` is `-inf`, and an **annualised** Sharpe was fed to a per-bar
   formula, inflating the t-statistic by `sqrt(252) ≈ 15.9x`. Corrected, `tsmom_d5`

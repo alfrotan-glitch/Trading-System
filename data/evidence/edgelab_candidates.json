@@ -1,0 +1,17 @@
+{
+  "candidates": {
+    "XL-001": {
+      "id": "XL-001",
+      "name": "easing_conditions_6m",
+      "family": "macro",
+      "rationale": "Gold is a zero-coupon asset quoted in dollars. Its two opportunity-cost proxies are the dollar (its numeraire) and the nominal 10-year yield (the competing risk-free return). When both are trending down, financial conditions are loosening and the cost of holding gold is falling. Averaging the two indicators diversifies their independent noise.",
+      "params": {
+        "usd_lookback_months": 6,
+        "yield_lookback_months": 6,
+        "combination": "mean"
+      },
+      "definition_hash": "2c25b9fda8eebf01",
+      "registered_at": "2026-10-20T17:24:19.140283+00:00"
+    }
+  }
+}
