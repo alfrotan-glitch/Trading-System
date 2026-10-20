@@ -1,0 +1,81 @@
+QTS — Quantitative Trading System
+Proprietary License
+
+Copyright (c) 2026 the QTS project owner. All rights reserved.
+
+--------------------------------------------------------------------------
+1. PROPRIETARY SOFTWARE
+--------------------------------------------------------------------------
+
+This software, including its source code, documentation, configuration,
+schemas, data definitions, evidence records and any accompanying materials
+(together, the "Software"), is proprietary and confidential.
+
+No license or right is granted except as expressly set out in a separate
+written agreement signed by the copyright holder. Without such an agreement,
+you may not:
+
+  (a) copy, reproduce or distribute the Software or any part of it;
+  (b) modify, adapt, translate or create derivative works from it;
+  (c) sublicense, rent, lease, lend, sell or otherwise transfer it;
+  (d) reverse engineer, decompile or disassemble it, except where that
+      restriction is prohibited by applicable law;
+  (e) remove or alter any copyright, licence or attribution notice; or
+  (f) use the Software to provide a service to third parties.
+
+--------------------------------------------------------------------------
+2. NO TRADING PERMISSION IS GRANTED
+--------------------------------------------------------------------------
+
+This license grants no authority to trade, and none can be derived from the
+Software's behaviour. The Software ships with live trading structurally
+locked and real-capital exposure fixed at zero. No setting, environment
+variable, API payload, demo result or research artefact in this repository
+unlocks live trading. Any use of the Software with real capital is outside
+the scope of this license and is unsupported by the copyright holder.
+
+--------------------------------------------------------------------------
+3. NOT INVESTMENT ADVICE
+--------------------------------------------------------------------------
+
+The Software is a research and measurement tool. It does not provide
+financial, investment, legal or tax advice, and it makes no representation
+that any strategy is profitable. The project's own research record states
+NO_VALIDATED_EDGE. Figures produced on synthetic, demo or reconstructed data
+demonstrate mechanism only; they are not evidence of market behaviour.
+
+--------------------------------------------------------------------------
+4. NO WARRANTY
+--------------------------------------------------------------------------
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, ACCURACY AND NON-INFRINGEMENT. THE ENTIRE
+RISK OF USE, PERFORMANCE AND DATA ACCURACY RESTS WITH THE USER.
+
+--------------------------------------------------------------------------
+5. LIMITATION OF LIABILITY
+--------------------------------------------------------------------------
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE COPYRIGHT HOLDER
+SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING, WITHOUT LIMITATION, TRADING
+LOSSES, LOSS OF PROFITS, LOSS OF DATA OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, ARISING IN ANY WAY OUT OF THE USE OF
+OR INABILITY TO USE THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGE.
+
+--------------------------------------------------------------------------
+6. THIRD-PARTY COMPONENTS
+--------------------------------------------------------------------------
+
+The Software depends on third-party packages (listed in
+`requirements-prod.lock` and `pyproject.toml`) that are distributed under
+their own licenses. Those licenses govern those components.
+
+--------------------------------------------------------------------------
+7. RESERVATION
+--------------------------------------------------------------------------
+
+All rights not expressly granted in a separate written agreement are
+reserved by the copyright holder.

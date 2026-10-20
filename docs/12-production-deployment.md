@@ -22,7 +22,8 @@ operational; it does not authorize a trade.
 | `requirements-prod.lock` | clean `pip freeze` | Exact runtime dependency matrix |
 
 The UI is inside the wheel (`qts/desktop/ui`), together with the SYNTHETIC
-bootstrap fixture and the declarable environment YAMLs. If they are missing, the
+bootstrap fixture, the declarable environment YAMLs and `LICENSE`
+(`.dist-info/licenses/LICENSE`). If they are missing, the
 build is broken — `scripts/verify_release.sh` refuses to pass.
 
 ### Release gate (must pass before a tag)
@@ -239,6 +240,48 @@ binary only with its matching backup.
 
 ---
 
+## 7b. Audit retention
+
+The audit log is evidence and it grows. Two sinks exist: the authoritative SQLite
+table `audit_events` in `data/sqlite/qts.db`, and the derived JSONL mirror
+`logs/audit.jsonl` (append-only, shipped by `qts audit ship`).
+
+Measure first — the report includes size, age and the retention policy:
+
+```bash
+qts audit stats                       # rows, age, bytes, policy
+qts audit stats --json-out audit.json # machine-readable for monitoring
+```
+
+Bound the database (dry run by default; nothing is deleted without `--confirm`):
+
+```bash
+qts audit prune --older-than-days 90              # preview
+qts audit prune --older-than-days 90 --confirm --vacuum
+```
+
+**Safety evidence is never pruned.** Only high-volume market observations
+(`BarReceived`, `TickReceived`, `SignalGenerated`, `NoTrade`, `PositionUpdate`,
+`AccountUpdate`) can be removed. Kill switches, risk vetoes, order intents, order
+events, fills, reconciliations, lifecycle transitions and data-quality alerts are
+excluded in SQL at any age; there is no flag that removes them. Every prune writes
+its own `LifecycleTransition` record with the real counts, so a deletion leaves a
+trace.
+
+Bound the JSONL mirror without destroying history — rotation moves the live file to
+a timestamped archive:
+
+```bash
+qts audit prune --older-than-days 90 --rotate-jsonl --archive-dir /var/lib/qts/archive
+```
+
+Suggested routine: `qts audit stats` weekly, prune market observations at 30–90
+days, archive/ship the JSONL monthly, and alert when `db_bytes` exceeds a threshold
+you chose. The audit tables are intentionally append-only; pruning is an explicit
+operator action, not an automatic background job.
+
+---
+
 ## 8. Upgrade and rollback
 
 1. Run the release gate on the candidate (`scripts/verify_release.sh`).
@@ -275,9 +318,13 @@ trading, and no command in this repository can.
 
 - One writer per state root; SQLite is not a cluster database.
 - One MT5 terminal per Windows host; the adapter talks to the logged-in terminal.
-- `uvicorn` workers > 1 is supported only for read-heavy use; the DEMO journal
-  and risk engine assume a single process. Leave `--workers 1` for any host that
-  can submit demo orders.
+- **One worker.** `qts serve` refuses `--workers > 1` unless `QTS_ALLOW_MULTIWORKER=1`
+  is set, because the observe collector, the DEMO authority and the submission lock
+  are process-local: a `POST /api/observe/start` handled by worker A is invisible to a
+  `GET /api/observe/status` handled by worker B, which honestly reports `STOPPED`
+  while a collector runs. That is a misreporting hazard, not a tuning choice. Scale
+  read-only traffic at the proxy; never enable it on a host that observes or submits
+  DEMO orders.
 - The local API is not rate-limited; put limits at the proxy if exposed.
 - The DEMO readiness gate, pre-trade gate and reconciliation remain fail-closed
   regardless of deployment choice.

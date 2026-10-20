@@ -74,6 +74,8 @@ RELATIVE_DEFAULTS: dict[str, str] = {
     "benchmark_candidates": "data/evidence/benchmark_candidates.json",
     #: Actual (broker-reported) execution cost evidence — append-only JSONL.
     "cost_evidence": "data/evidence/demo_cost_evidence.jsonl",
+    #: Broker symbol cost terms recorded by POST /api/demo/measure-symbol-terms.
+    "symbol_terms": "symbol_terms.json",
 }
 
 #: Environment override per artefact (highest precedence, used verbatim).

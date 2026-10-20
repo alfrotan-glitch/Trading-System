@@ -197,4 +197,8 @@ For detailed architecture, operational runbooks, and risk specifications, consul
 
 ## License & Safety Notice
 
-QTS is for research and a locked demo account. Live trading cannot be opened from this repository. Real-money exposure stays at `$0.00`.
+QTS is proprietary software; see [LICENSE](LICENSE). It is for research and a
+locked demo account. Live trading cannot be opened from this repository and no
+part of this licence grants permission to trade. Real-money exposure stays at
+`$0.00`. Research figures produced on synthetic or demo data demonstrate
+mechanism only — they are not evidence of edge.

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from qts.config.paths import artifact_path
 from qts.db import connect as db_connect
 from qts.domain.events import DomainEvent, EventType
 
@@ -19,6 +21,24 @@ from qts.domain.events import DomainEvent, EventType
 _CREDENTIAL_KEY_RE = re.compile(r"(password|passwd|token|secret|api_?key|credential)", re.I)
 _LOGIN_KEY_RE = re.compile(r"login", re.I)
 _REDACTED = "***REDACTED***"
+
+#: High-volume market observations. These may be pruned by age.
+#:
+#: Everything NOT listed here is safety evidence — kill switches, risk vetoes,
+#: order/fill/reconcile records, lifecycle transitions, data-quality alerts — and
+#: ``qts audit prune`` never deletes it at any age. The default is PROTECTED, so a
+#: future EventType added without a decision here cannot be silently destroyed.
+PRUNABLE_EVENT_TYPES: frozenset[EventType] = frozenset(
+    {
+        EventType.BAR,
+        EventType.TICK,
+        EventType.SIGNAL,
+        EventType.NO_TRADE,
+        EventType.POSITION_UPDATE,
+        EventType.ACCOUNT_UPDATE,
+    }
+)
+PROTECTED_EVENT_TYPES: frozenset[EventType] = frozenset(set(EventType) - PRUNABLE_EVENT_TYPES)
 
 
 def _mask_login(value: Any) -> str:
@@ -92,11 +112,17 @@ class InMemoryAuditLog:
 class SqliteAuditLog:
     def __init__(
         self,
-        db_path: Path | str = "data/sqlite/qts.db",
-        jsonl_path: Path | str | None = "logs/audit.jsonl",
+        db_path: Path | str | None = None,
+        jsonl_path: Path | str | None = None,
     ):
-        self.db_path = Path(db_path)
-        self.jsonl_path = Path(jsonl_path) if jsonl_path else None
+        # ``None`` = the ONE anchored state location (`qts demo paths`), never the
+        # process working directory. The old ``data/sqlite/qts.db`` literal made
+        # `qts audit` read a different database depending on where it was invoked.
+        self.db_path = Path(db_path) if db_path is not None else artifact_path("db")
+        # An explicit empty string keeps the JSONL sink disabled.
+        self.jsonl_path = (
+            artifact_path("audit_jsonl") if jsonl_path is None else (Path(jsonl_path) if str(jsonl_path) else None)
+        )
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         if self.jsonl_path:
             self.jsonl_path.parent.mkdir(parents=True, exist_ok=True)
@@ -227,3 +253,137 @@ class SqliteAuditLog:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    # ------------------------------------------------------------------ #
+    # Retention: measure, archive, prune — never erase safety evidence.   #
+    # ------------------------------------------------------------------ #
+
+    def stats(self) -> dict[str, Any]:
+        """Size and age of both audit sinks, with the retention policy applied."""
+        rows = 0
+        oldest: str | None = None
+        newest: str | None = None
+        by_type: dict[str, int] = {}
+        with db_connect(self.db_path) as con:
+            rows = int(con.execute("SELECT COUNT(*) FROM audit_events").fetchone()[0])
+            oldest = con.execute("SELECT MIN(event_time) FROM audit_events").fetchone()[0]
+            newest = con.execute("SELECT MAX(event_time) FROM audit_events").fetchone()[0]
+            by_type = {
+                str(t): int(c)
+                for t, c in con.execute(
+                    "SELECT event_type, COUNT(*) FROM audit_events GROUP BY event_type ORDER BY COUNT(*) DESC"
+                ).fetchall()
+            }
+        jsonl_bytes = 0
+        jsonl_lines = 0
+        if self.jsonl_path and self.jsonl_path.exists():
+            jsonl_bytes = self.jsonl_path.stat().st_size
+            with open(self.jsonl_path, encoding="utf-8", errors="replace") as f:
+                jsonl_lines = sum(1 for _ in f)
+        return {
+            "db_path": str(self.db_path),
+            "db_bytes": self.db_path.stat().st_size if self.db_path.exists() else 0,
+            "rows": rows,
+            "oldest_event_time": oldest,
+            "newest_event_time": newest,
+            "rows_by_type": by_type,
+            "jsonl_path": str(self.jsonl_path) if self.jsonl_path else None,
+            "jsonl_bytes": jsonl_bytes,
+            "jsonl_lines": jsonl_lines,
+            "prunable_types": sorted(t.value for t in PRUNABLE_EVENT_TYPES),
+            "protected_types": sorted(t.value for t in PROTECTED_EVENT_TYPES),
+        }
+
+    def prune(
+        self,
+        *,
+        before: datetime,
+        dry_run: bool = True,
+        vacuum: bool = False,
+        batch_size: int = 1000,
+        source: str = "qts.audit.prune",
+    ) -> dict[str, Any]:
+        """Delete prunable events older than ``before``; protect everything else.
+
+        ``dry_run`` is the default on purpose: this is evidence, and deletion is an
+        explicit operator act. The prunable set is applied in Python by enum
+        membership (never by interpolating SQL), so a protected type cannot be
+        reached by any flag, and a future event type is protected until someone
+        classifies it. Rows are handled in bounded batches so a large history does
+        not have to be materialised in memory.
+        """
+        if before.tzinfo is None:
+            raise ValueError("prune cutoff must be timezone-aware")
+        cutoff = before.astimezone(UTC).isoformat()
+        prunable = {t.value for t in PRUNABLE_EVENT_TYPES}
+        matched = 0
+        protected = 0
+        deleted = 0
+        last_id = ""
+        with db_connect(self.db_path) as con:
+            while True:
+                batch = con.execute(
+                    "SELECT event_id, event_type FROM audit_events "
+                    "WHERE event_time < ? AND event_id > ? ORDER BY event_id LIMIT ?",
+                    (cutoff, last_id, batch_size),
+                ).fetchall()
+                if not batch:
+                    break
+                last_id = str(batch[-1][0])
+                doomed = [str(event_id) for event_id, event_type in batch if event_type in prunable]
+                protected += len(batch) - len(doomed)
+                matched += len(doomed)
+                if doomed and not dry_run:
+                    con.executemany("DELETE FROM audit_events WHERE event_id = ?", [(i,) for i in doomed])
+                    deleted += len(doomed)
+
+        result: dict[str, Any] = {
+            "cutoff": cutoff,
+            "dry_run": dry_run,
+            "matched_prunable": matched,
+            "deleted": deleted,
+            "protected_kept": protected,
+            "protected_types": sorted(t.value for t in PROTECTED_EVENT_TYPES),
+        }
+        if vacuum and not dry_run:
+            # VACUUM cannot run inside a transaction; no write precedes it here.
+            with db_connect(self.db_path) as con:
+                con.execute("VACUUM")
+            result["vacuumed"] = True
+            result["db_bytes"] = self.db_path.stat().st_size
+        if not dry_run:
+            # The act of pruning is itself evidence. Recorded AFTER the delete so
+            # the count is real, and dated "now" so the next prune cannot remove it.
+            self.emit(
+                DomainEvent(
+                    event_type=EventType.LIFECYCLE,
+                    source=source,
+                    payload={
+                        "action": "audit_prune",
+                        "cutoff": cutoff,
+                        "deleted": deleted,
+                        "protected_kept": protected,
+                        "prunable_types": sorted(prunable),
+                        "note": "safety events are never pruned",
+                    },
+                )
+            )
+        return result
+
+    def rotate_jsonl(self, *, archive_dir: Path | str | None = None) -> Path | None:
+        """Move the derived JSONL sink aside, preserving it; the live file restarts.
+
+        Rotation bounds the live file without destroying history: the archive is
+        still shippable/archivable evidence. Returns the archive path, or ``None``
+        when there is nothing to rotate.
+        """
+        if not self.jsonl_path or not self.jsonl_path.exists() or self.jsonl_path.stat().st_size == 0:
+            return None
+        target_dir = Path(archive_dir) if archive_dir else self.jsonl_path.parent
+        target_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        target = target_dir / f"{self.jsonl_path.stem}-{stamp}{self.jsonl_path.suffix}"
+        os.replace(self.jsonl_path, target)
+        return target
+
+

@@ -1444,7 +1444,7 @@ def demo_measure_symbol_terms() -> dict[str, Any]:
 
     Submits zero orders. Refuses non-DEMO accounts or unreachable terminals.
     """
-    from qts.config.paths import state_root
+    from qts.config.paths import artifact_path
 
     server = _bind()
     session = server._demo_session()
@@ -1484,9 +1484,11 @@ def demo_measure_symbol_terms() -> dict[str, Any]:
         "terms": terms,
         "orders_submitted": 0,
     }
-    sroot = state_root()
-    sroot.mkdir(parents=True, exist_ok=True)
-    (sroot / "symbol_terms.json").write_text(json.dumps(doc, indent=2, default=str), encoding="utf-8")
+    # One resolved location, published by `qts demo paths` — not a bare filename
+    # at the state root that no inventory lists.
+    terms_path = artifact_path("symbol_terms")
+    terms_path.parent.mkdir(parents=True, exist_ok=True)
+    terms_path.write_text(json.dumps(doc, indent=2, default=str), encoding="utf-8")
     out = _assemble_measured_costs_payload(session)
     out["measured_now"] = True
     return out
