@@ -4,7 +4,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from qts.research.longhistory.adaptive_router import AdaptiveRoutingConfig, route_by_regime
+from qts.research.longhistory.adaptive_router import (
+    AdaptiveRoutingConfig,
+    classify_market_regime,
+    route_by_regime,
+)
 
 
 def sample_inputs(n: int = 40):
@@ -73,3 +77,38 @@ def test_missing_target_fails_flat_not_into_another_candidate():
     )
     assert result.loc[regimes.index[15], "selected_strategy"] == "winner"
     assert result.loc[regimes.index[15], "target"] == 0.0
+
+
+
+def test_regime_classifier_is_causal_and_labels_warmup():
+    index = pd.date_range("2020-01-01", periods=150, freq="D")
+    close = pd.Series(np.linspace(100.0, 130.0, len(index)), index=index)
+    bars = pd.DataFrame(
+        {"open": close, "high": close + 1.0, "low": close - 1.0, "close": close},
+        index=index,
+    )
+    kwargs = {
+        "trend_lookback": 10,
+        "trend_threshold": 0.3,
+        "range_threshold": 0.2,
+        "atr_lookback": 5,
+        "volatility_window": 10,
+    }
+    baseline = classify_market_regime(bars, **kwargs)
+    changed = bars.copy()
+    changed.iloc[-1, changed.columns.get_loc("close")] = 1000.0
+    altered = classify_market_regime(changed, **kwargs)
+    assert baseline.iloc[:40].equals(altered.iloc[:40])
+    assert (baseline.iloc[:15] == "warming_up").all()
+    assert baseline.iloc[-1].startswith("trend_up_")
+
+
+def test_regime_classifier_rejects_invalid_thresholds():
+    index = pd.date_range("2020-01-01", periods=20, freq="D")
+    close = pd.Series(np.linspace(100.0, 110.0, len(index)), index=index)
+    bars = pd.DataFrame(
+        {"high": close + 1.0, "low": close - 1.0, "close": close},
+        index=index,
+    )
+    with pytest.raises(ValueError, match="thresholds"):
+        classify_market_regime(bars, trend_threshold=0.2, range_threshold=0.3)
