@@ -40,6 +40,8 @@ def test_malicious_cross_origin_mutation_is_rejected():
     client = TestClient(server.app)
 
     malicious_origins = [
+        "null",  # sandboxed iframe / data: / file:// pages send a literal null origin
+        "https://12345-sandbox.e2b.app",  # remote preview hosts are opt-in only
         "https://evil.com",
         "http://attacker.example.org",
         "https://malicious-script.xyz:8080",
@@ -85,7 +87,6 @@ def test_trusted_origins_and_local_ui_can_mutate():
         "http://localhost:3000",
         "http://127.0.0.1:8000",
         "https://127.0.0.1:8000",
-        "https://12345-sandbox.e2b.app",
         "tauri://localhost",
         "vscode-webview://",
     ]
@@ -98,6 +99,36 @@ def test_trusted_origins_and_local_ui_can_mutate():
             headers={"Origin": origin, "X-QTS-Operator": "local-ui"},
         )
         assert response.status_code != 403, f"Trusted origin {origin} was unexpectedly blocked with 403"
+
+
+def test_remote_preview_origin_is_trusted_only_when_explicitly_listed(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("QTS_ALLOWED_ORIGINS", "https://12345-sandbox.e2b.app")
+    client = TestClient(server.app)
+    response = client.post(
+        "/api/setup/mt5",
+        json={"symbol": "XAUUSD", "symbol_map": {"XAUUSD": "XAUUSD@"}},
+        headers={"Origin": "https://12345-sandbox.e2b.app"},
+    )
+    assert response.status_code != 403
+
+
+def test_dns_rebinding_host_header_mutation_is_rejected():
+    """A rebinding page reaches 127.0.0.1 under an attacker hostname; mutations must refuse it."""
+    client = TestClient(server.app)
+    response = client.post("/api/demo/kill", json={}, headers={"Host": "attacker.example.com:8000"})
+    assert response.status_code == 403
+    assert response.json()["error"] == "FORBIDDEN_MUTATION"
+
+
+@pytest.mark.parametrize("bad", ["NaN", "Infinity", "-0.01", "0", "abc", True, "1e999999999"])
+def test_demo_order_rejects_malformed_numeric_input_before_any_gate(bad):
+    client = TestClient(server.app)
+    for field in ("lots", "stop_loss", "take_profit"):
+        response = client.post(
+            "/api/demo/order",
+            json={"side": "BUY", "confirmed": True, "risk_ack": True, field: bad},
+        )
+        assert response.status_code == 400, (field, bad, response.status_code)
 
 
 def test_read_only_get_endpoints_are_not_blocked_by_origin():
@@ -223,3 +254,102 @@ def test_kill_switch_vetoes_all_demo_orders():
     assert r.status_code in (400, 403, 409, 422)
     # Cleans up kill switch
     engine.reset_kill()
+
+
+# ---------------------------------------------------------------------------
+# 5. Production response contract (headers, version, body ceiling)
+# ---------------------------------------------------------------------------
+
+
+def test_security_headers_are_present_on_ui_and_api():
+    """The local surface must not be framable, sniffable, or referrer-leaky by default."""
+    client = TestClient(server.app)
+    for path in ("/api/health/live", "/api/version"):
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert response.headers["referrer-policy"] == "no-referrer"
+        assert response.headers["x-frame-options"] == "DENY"
+        csp = response.headers["content-security-policy"]
+        assert "default-src 'self'" in csp
+        assert "frame-ancestors 'none'" in csp
+        assert "object-src 'none'" in csp
+
+
+def test_liveness_probe_is_cheap_and_reports_locked_live():
+    from qts import __version__
+
+    client = TestClient(server.app)
+    response = client.get("/api/health/live")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["version"] == __version__
+    assert body["live_trading"] == "LOCKED"
+    assert body["real_capital_exposure"] == 0.0
+
+
+def test_version_endpoint_reports_product_identity():
+    from qts import __version__
+
+    client = TestClient(server.app)
+    body = client.get("/api/version").json()
+    assert body["product"] == "QTS"
+    assert body["version"] == __version__
+    assert body["api"] == "v1"
+    assert body["live_trading"] == "LOCKED"
+    assert body["real_capital_exposure"] == 0.0
+    assert body["code_version"].startswith(__version__)
+
+
+def test_oversized_mutation_body_is_rejected_before_routing(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("QTS_MAX_BODY_BYTES", "64")
+    client = TestClient(server.app)
+    response = client.post("/api/demo/kill", json={"reason": "x" * 500})
+    assert response.status_code == 413
+    assert response.json()["error"] == "REQUEST_BODY_TOO_LARGE"
+
+
+def test_frame_ancestors_is_opt_in_and_drops_x_frame_options(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("QTS_FRAME_ANCESTORS", "https://preview.example")
+    client = TestClient(server.app)
+    response = client.get("/api/version")
+    assert "frame-ancestors https://preview.example" in response.headers["content-security-policy"]
+    assert "x-frame-options" not in response.headers
+
+
+# ---------------------------------------------------------------------------
+# 6. Production serve command guards
+# ---------------------------------------------------------------------------
+
+
+def test_serve_refuses_public_bind_without_explicit_opt_in(monkeypatch: pytest.MonkeyPatch):
+    from click.testing import CliRunner
+
+    from qts.cli.serve import serve
+
+    monkeypatch.delenv("QTS_ALLOW_REMOTE", raising=False)
+    result = CliRunner().invoke(serve, ["--host", "0.0.0.0"])
+    assert result.exit_code != 0
+    assert "QTS_ALLOW_REMOTE=1" in result.output
+
+
+def test_serve_loopback_uses_hardened_uvicorn_config(monkeypatch: pytest.MonkeyPatch):
+    import uvicorn
+    from click.testing import CliRunner
+
+    from qts.cli.serve import serve
+
+    captured: dict[str, object] = {}
+
+    def fake_run(app, **kwargs):
+        captured["app"] = app
+        captured.update(kwargs)
+
+    monkeypatch.setattr(uvicorn, "run", fake_run)
+    result = CliRunner().invoke(serve, ["--host", "127.0.0.1", "--port", "8123"])
+    assert result.exit_code == 0, result.output
+    assert captured["app"] == "qts.api.server:app"
+    assert captured["server_header"] is False
+    assert captured["timeout_graceful_shutdown"] == 10
+    assert captured["host"] == "127.0.0.1"

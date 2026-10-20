@@ -57,6 +57,7 @@ replacement, so registering a policy is not a route to a looser gate.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from dataclasses import fields as dataclass_fields
 from datetime import UTC, datetime
@@ -100,7 +101,20 @@ def _dec(value: Any) -> Decimal | None:
     if value is None:
         return None
     try:
-        return Decimal(str(value))
+        number = Decimal(str(value))
+    except Exception:
+        return None
+    # NaN/Infinity are not measurements. NaN also raises on ordered comparison, so
+    # treat them as unknown here and let the owning check fail closed.
+    return number if number.is_finite() else None
+
+
+def _finite_or_none(value: Any) -> Any:
+    """``value`` unchanged if it is a finite number, else ``None`` (unknown)."""
+    if value is None:
+        return None
+    try:
+        return value if Decimal(str(value)).is_finite() else None
     except Exception:
         return None
 
@@ -244,6 +258,13 @@ def _spread_bps(bid: Decimal | None, ask: Decimal | None) -> float | None:
 
 def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
     """Evaluate every DEMO safeguard for one intended order (fail closed)."""
+    # A non-finite quote is not a price: Decimal NaN raises on ordered comparison and
+    # Infinity would pass range checks. Treat it as absent so each check reports UNKNOWN.
+    safe_bid, safe_ask = _finite_or_none(ctx.bid), _finite_or_none(ctx.ask)
+    if safe_bid is not ctx.bid or safe_ask is not ctx.ask:
+        from dataclasses import replace
+
+        ctx = replace(ctx, bid=safe_bid, ask=safe_ask)
     checks: dict[str, CheckResult] = {}
 
     def record(name: str, status: str, detail: str) -> None:
@@ -345,7 +366,7 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
     # ------------------------------------------------------------------ #4
     if ctx.tick is None:
         record("market_data_fresh", CHECK_UNKNOWN, "no tick available — feed state unknown")
-    elif ctx.tick_age_s is None:
+    elif ctx.tick_age_s is None or not math.isfinite(float(ctx.tick_age_s)):
         record("market_data_fresh", CHECK_UNKNOWN, "tick age could not be computed (no usable timestamp)")
     else:
         limit = ctx.max_tick_age_s if ctx.max_tick_age_s is not None else 60.0
@@ -364,8 +385,14 @@ def run_pretrade_gate(ctx: DemoPretradeContext) -> PretradeVerdict:
         record("spread_available", CHECK_UNKNOWN, "bid/ask unavailable — spread not measurable")
     elif bid <= 0 or ask <= 0 or ask < bid:
         record("spread_available", CHECK_FAIL, f"invalid quote bid={bid} ask={ask}")
-    elif spread is None:
+    elif spread is None or not math.isfinite(float(spread)):
         record("spread_available", CHECK_UNKNOWN, "spread could not be computed from the quote")
+    elif spread <= 0 or ask <= bid:
+        record(
+            "spread_available",
+            CHECK_FAIL,
+            f"zero/locked spread (bid={bid} ask={ask}, {spread}bps) is invalid cost data, not free execution",
+        )
     else:
         max_spread = _cap(ctx, "max_spread_bps", 100.0)
         if spread > float(max_spread):

@@ -347,16 +347,36 @@ def demo_preflight(side: str = "BUY", lots: str | None = None, stop_loss: str | 
 
 
 
+def _positive_decimal(value: Any, name: str) -> Decimal | None:
+    """Parse an operator-supplied number. Absent -> None; malformed, non-finite,
+    boolean or non-positive -> 400. Never let a hostile body reach the gate as NaN/Infinity."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        raise HTTPException(400, f"{name} must be a positive number")
+    try:
+        number = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError) as err:
+        raise HTTPException(400, f"{name} must be a positive number") from err
+    if not number.is_finite() or number <= 0 or number > Decimal("10000000"):
+        raise HTTPException(400, f"{name} must be a positive, finite, plausible number")
+    return number
+
+
+
 @router.post("/api/demo/order")
 def demo_order(payload: dict[str, Any]) -> Any:
     """Submit ONE DEMO order through the gate (409 on any failed safeguard)."""
-    from decimal import Decimal
 
     side = str(payload.get("side") or "").upper()
     if side not in ("BUY", "SELL"):
         raise HTTPException(400, "side must be BUY or SELL")
     if not payload.get("confirmed") or not payload.get("risk_ack"):
         raise HTTPException(400, "DEMO order requires explicit confirmed=true and risk_ack=true")
+    # Validate operator numbers first: malformed input is a 400 before any broker/session work.
+    lots = _positive_decimal(payload.get("lots"), "lots")
+    stop_loss = _positive_decimal(payload.get("stop_loss"), "stop_loss")
+    take_profit = _positive_decimal(payload.get("take_profit"), "take_profit")
 
     session = _bind()._demo_session(payload.get("symbol"))
     # Resolve the registered experiment HERE, per request: the registry is
@@ -381,15 +401,15 @@ def demo_order(payload: dict[str, Any]) -> Any:
     if payload.get("dry_run"):
         return session.preflight(
             side=side,
-            lots=Decimal(str(payload["lots"])) if payload.get("lots") else None,
-            stop_loss=Decimal(str(payload["stop_loss"])) if payload.get("stop_loss") else None,
+            lots=lots,
+            stop_loss=stop_loss,
             entry=entry,
         )
     result = session.submit(
         side=side,
-        lots=Decimal(str(payload["lots"])) if payload.get("lots") else None,
-        stop_loss=Decimal(str(payload["stop_loss"])) if payload.get("stop_loss") else None,
-        take_profit=Decimal(str(payload["take_profit"])) if payload.get("take_profit") else None,
+        lots=lots,
+        stop_loss=stop_loss,
+        take_profit=take_profit,
         rationale=str(payload.get("rationale") or "RESEARCH_DEMO_ORDER via API"),
         entry=entry,
     )
@@ -420,7 +440,6 @@ def demo_positions() -> dict[str, Any]:
 @router.post("/api/demo/close")
 def demo_close(payload: dict[str, Any]) -> dict[str, Any]:
     """Close an open DEMO position by ticket (requires confirmed=true and risk_ack=true)."""
-    from decimal import Decimal
 
     ticket = payload.get("ticket")
     if ticket is None:
@@ -434,7 +453,7 @@ def demo_close(payload: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(400, "closing a DEMO position requires explicit confirmed=true and risk_ack=true")
 
     volume_str = payload.get("volume")
-    volume = Decimal(str(volume_str)) if volume_str is not None else None
+    volume = _positive_decimal(volume_str, "volume")
     reason = str(payload.get("reason") or "operator-close via API")
 
     session = _bind()._demo_session(payload.get("symbol"))

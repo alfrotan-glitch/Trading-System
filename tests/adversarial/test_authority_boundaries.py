@@ -223,3 +223,16 @@ def test_live_report_exposes_proof_tiers():
     # connectivity is a hard blocker unless a REAL terminal answered
     if not rpt["mt5_connectivity"]["passed"]:
         assert "mt5_connectivity" in rpt["blocked_reasons"]
+
+
+def test_assert_demo_limits_rejects_nan_and_negative_inputs():
+    nan = float("nan")
+    for kwargs in (
+        {"volume": nan, "exposure": 0.0, "spread_bps": 10, "slippage_bps": 1},
+        {"volume": 0.01, "exposure": nan, "spread_bps": 10, "slippage_bps": 1},
+        {"volume": 0.01, "exposure": 0.0, "spread_bps": nan, "slippage_bps": 1},
+        {"volume": 0.01, "exposure": 0.0, "spread_bps": 10, "slippage_bps": float("inf")},
+        {"volume": -0.01, "exposure": 0.0, "spread_bps": 10, "slippage_bps": 1},
+    ):
+        ok, why = assert_demo_limits(**kwargs)
+        assert ok is False, (kwargs, why)

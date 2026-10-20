@@ -131,7 +131,13 @@ def load_settings(path: str | Path | None = None, env: str | None = None) -> Set
         if cand.exists():
             path = cand
         else:
-            return Settings(env=env)  # type: ignore[arg-type]
+            # A wheel install has no repository configs directory. Ship the same
+            # declarable environments inside the package (read-only defaults).
+            packaged = Path(__file__).resolve().parent / "configs" / f"{env}.yaml"
+            if packaged.exists():
+                path = packaged
+            else:
+                return Settings(env=env)  # type: ignore[arg-type]
     p = Path(path)
     if not p.exists():
         return Settings()

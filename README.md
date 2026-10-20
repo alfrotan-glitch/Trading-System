@@ -7,11 +7,20 @@
 
 ## Product Mission
 
-QTS is a gold research workstation. It can watch a demo account. It cannot open live trading.
+QTS is a gold research workstation. It can watch a demo account and submit
+explicitly-confirmed DEMO orders through a fail-closed gate. It cannot open live
+trading.
 
 There is no validated trading opportunity. Real-money trading stays locked. `REAL_CAPITAL_EXPOSURE` must stay 0. There is no multi-party unlock in this repository, and a demo result cannot create one.
 
 Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating guides](docs/README.md). Research records in `docs/` are evidence, not operating instructions.
+
+**Release 1.0.0.** This is the production release of the research workstation:
+reproducible dependencies (`requirements-prod.lock`), a hardened local API,
+health/version probes, a container image, a systemd unit, and a one-command
+release gate. It does not change the safety posture — see
+[Production Deployment](docs/12-production-deployment.md) and the
+[CHANGELOG](CHANGELOG.md).
 
 ---
 
@@ -92,7 +101,21 @@ python -m qts.desktop.launcher
 ### 4. Verify System Status via CLI
 ```bash
 qts demo verify
+qts demo paths     # where every machine-local artefact resolves
 ```
+
+### 5. Production Server
+```bash
+qts serve --host 127.0.0.1 --port 8000
+curl -fsS http://127.0.0.1:8000/api/health/live
+curl -fsS http://127.0.0.1:8000/api/version
+```
+
+`qts serve` is the supported production entry point. It binds loopback by
+default, requires `QTS_ALLOW_REMOTE=1` before binding a public address, shuts down
+gracefully and suppresses the server banner. Container, systemd and TLS-proxy
+deployments are documented in
+[12. Production Deployment](docs/12-production-deployment.md).
 
 ---
 
@@ -103,7 +126,7 @@ qts demo verify
 ├── data/
 │   ├── evidence/       # Preregistration artifacts, validation registries, order journals
 │   └── setup/          # Machine-local wizard setup (symbol maps, terminal paths)
-├── docs/               # 10 Canonical product documentation guides
+├── docs/               # 12 Canonical product documentation guides
 ├── scripts/            # History acquisition, diagnostics, and setup tools
 ├── src/qts/
 │   ├── adapters/       # MT5 broker adapter and IPC bridges
@@ -147,6 +170,9 @@ pytest
 
 # Full verification
 pytest --run-integration --run-research
+
+# Release gate (all of the above + build + packaged-wheel assertion)
+scripts/verify_release.sh
 ```
 
 ---
@@ -165,6 +191,7 @@ For detailed architecture, operational runbooks, and risk specifications, consul
 - [**08. Live Trading Governance**](docs/08-live-trading-governance.md)
 - [**09. Troubleshooting & Diagnostics**](docs/09-troubleshooting.md)
 - [**10. Developer Guide**](docs/10-developer-guide.md)
+- [**12. Production Deployment**](docs/12-production-deployment.md)
 
 ---
 

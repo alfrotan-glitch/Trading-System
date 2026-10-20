@@ -40,6 +40,10 @@ DATA_CLASSES = (
 )
 
 FIXTURE_RELPATH = Path("fixtures/XAUUSD_1H_500.csv")
+#: The same SYNTHETIC fixture shipped inside the installed package, so a wheel
+#: install can bootstrap deterministically without a source checkout. It is
+#: labelled SYNTHETIC exactly like the repository copy and is never claim-bearing.
+PACKAGED_FIXTURE = Path(__file__).resolve().parent / FIXTURE_RELPATH
 # Kept for backward compatibility (repo-CWD default). bootstrap_data() itself
 # resolves the fixture RELATIVE TO `root` so non-default roots never silently
 # read the repository's fixture.
@@ -161,6 +165,9 @@ def bootstrap_data(
     """
     store = store if store is not None else SqliteParquetDataStore(root=root)
     if fixture is None:
+        # No implicit substitution: a caller that did not supply a fixture gets
+        # exactly <root>/fixtures/... and a FAILED result when it is absent.
+        # The CLI opts into the packaged SYNTHETIC copy explicitly.
         fixture = Path(root) / FIXTURE_RELPATH
     fixture = Path(fixture)
     result = BootstrapResult(status="FAILED")

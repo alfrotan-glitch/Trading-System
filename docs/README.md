@@ -1,6 +1,6 @@
 # QTS Documentation
 
-These ten guides are the operating documentation. Read [`QTS_PROJECT_CONTROL.md`](../QTS_PROJECT_CONTROL.md) before changing architecture.
+These guides are the operating documentation. Read [`QTS_PROJECT_CONTROL.md`](../QTS_PROJECT_CONTROL.md) before changing architecture.
 
 Files that remain beside these guides are cited by code or by an operator setup path. Dated research records live in [evidence/](evidence/README.md). They are not operating manuals, and they do not authorize a trade.
 
@@ -37,6 +37,12 @@ Files that remain beside these guides are cited by code or by an operator setup 
 
 10. [**10. Developer Guide**](10-developer-guide.md)  
     Directory structure, strategy implementation standards, and testing procedures.
+
+11. [**11. Edge Discovery v2**](11-edge-discovery-v2.md)  
+    Capital-preservation gates and the real-edge discovery programme.
+
+12. [**12. Production Deployment**](12-production-deployment.md)  
+    Release gate, wheel/container/systemd install, TLS proxy, health probes, backup, upgrade and rollback.
 
 ---
 

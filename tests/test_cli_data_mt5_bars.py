@@ -42,7 +42,9 @@ def _fake_mt5(*, demo: bool = True) -> ModuleType:
                 ("real_volume", "i8"),
             ],
         )
-        rows["time"] = times.astype("int64") // 10**9
+        # Resolution-independent epoch seconds. pandas 3 defaults DatetimeIndex to
+        # microseconds, so astype("int64") is us there but ns on pandas 2.
+        rows["time"] = times.as_unit("s").astype("int64")
         rows["open"] = 2000.0
         rows["high"] = 2001.0
         rows["low"] = 1999.0

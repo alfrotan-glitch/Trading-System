@@ -1,0 +1,51 @@
+# QTS container deployment.
+#
+# Default posture: the API is published on loopback only. Put an authenticated,
+# TLS-terminating proxy in front before exposing it to anything else, and list the
+# public origin in QTS_ALLOWED_ORIGINS (see docs/12-production-deployment.md).
+#
+#   docker compose up -d --build
+#   docker compose logs -f qts
+#
+# The state volume holds journals, the SQLite risk/authority databases and the
+# broker identity pin. Back it up; never commit it.
+
+services:
+  qts:
+    build:
+      context: .
+    image: qts:1.0.0
+    container_name: qts
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      QTS_ENV: dev
+      QTS_MT5_MODE: MOCK
+      QTS_LOG_LEVEL: info
+      # Public origin(s) for the operator UI, comma separated. Empty = local only.
+      QTS_ALLOWED_ORIGINS: ""
+      # Set only if you deliberately embed the UI in an allowed parent page:
+      # QTS_FRAME_ANCESTORS: "https://ops.example.com"
+    volumes:
+      - qts-state:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health/live', timeout=3).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3
+
+volumes:
+  qts-state:

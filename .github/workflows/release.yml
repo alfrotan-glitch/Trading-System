@@ -1,0 +1,135 @@
+name: QTS Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  python-artifacts:
+    name: Wheel + sdist
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install build tooling
+        run: pip install -e ".[dev,packaging]"
+      - name: Static checks
+        run: |
+          ruff check src/ tests/
+          mypy src
+          bandit -q -r src
+      - name: Python fast suite
+        run: pytest -q --ignore=tests/integration --ignore=tests/research
+      - name: Python extended suite
+        run: pytest -q --run-integration --run-research tests/integration tests/research
+      - name: Build artifacts
+        run: python -m build --outdir dist
+      - name: Verify wheel contents
+        run: |
+          python - <<'PY'
+          import glob, zipfile, qts
+          wheel = glob.glob("dist/*.whl")[0]
+          names = set(zipfile.ZipFile(wheel).namelist())
+          required = {
+              "qts/api/server.py",
+              "qts/desktop/ui/index.html",
+              f"qts-{qts.__version__}.dist-info/METADATA",
+          }
+          missing = sorted(required - names)
+          assert not missing, missing
+          print(f"{wheel}: {len(names)} files, version {qts.__version__}")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qts-python-${{ github.ref_name }}
+          path: dist/*
+          if-no-files-found: error
+
+  windows-desktop:
+    name: Windows desktop executable
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install product + PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[packaging]"
+      - name: Build QTS.exe
+        run: pyinstaller packaging/qts.spec --clean --noconfirm
+      - name: Smoke test the executable
+        shell: pwsh
+        run: |
+          if (Test-Path dist\QTS\QTS.exe) { $exe = "dist\QTS\QTS.exe" } elseif (Test-Path dist\QTS.exe) { $exe = "dist\QTS.exe" } else { throw "QTS.exe not found" }
+          & $exe --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "QTS.exe --help failed" }
+      - name: Package
+        shell: pwsh
+        run: |
+          $dir = if (Test-Path dist\QTS\QTS.exe) { "dist\QTS" } else { "dist" }
+          Compress-Archive -Path "$dir\*" -DestinationPath "QTS-${{ github.ref_name }}-windows.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qts-windows-${{ github.ref_name }}
+          path: QTS-${{ github.ref_name }}-windows.zip
+          if-no-files-found: error
+
+  container:
+    name: Container image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  github-release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [python-artifacts, windows-desktop]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          body: |
+            QTS ${{ github.ref_name }} — research workstation release.
+
+            Live trading remains structurally locked and `REAL_CAPITAL_EXPOSURE` is 0.
+            There is no validated trading edge. See `CHANGELOG.md` and
+            `docs/12-production-deployment.md`.

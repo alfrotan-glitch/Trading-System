@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import contextlib
 import json
+import platform
+import sys
 from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from qts import __version__
 from qts.api.deps import (
     _demo_policy,
     _env,
@@ -23,12 +26,59 @@ from qts.domain.modes import effective_mode_report
 
 router = APIRouter()
 
+#: Set once when the API module is imported; used by the liveness probe.
+_PROCESS_STARTED_AT = datetime.now(UTC)
+
 
 def _bind():
     """Late lookup so tests can patch seams on ``qts.api.server``."""
     import qts.api.server as server
 
     return server
+
+
+@router.get("/api/health/live")
+def health_live() -> dict[str, Any]:
+    """Liveness probe: the process is up and serving HTTP.
+
+    Deliberately does NOT touch the broker, SQLite, or the data store. A liveness
+    check that depends on an external system turns an outage into a restart loop.
+    Use ``/api/health`` for the deep, honest readiness report.
+    """
+    return {
+        "status": "ok",
+        "version": __version__,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "uptime_s": round((datetime.now(UTC) - _PROCESS_STARTED_AT).total_seconds(), 3),
+        "live_trading": "LOCKED",
+        "real_capital_exposure": 0.0,
+    }
+
+
+@router.get("/api/version")
+def version_info() -> dict[str, Any]:
+    """Build identity for an operator, a log line, or a deployment manifest."""
+    try:
+        from qts.observability.lineage import code_version
+
+        revision = code_version()
+    except Exception as exc:  # pragma: no cover - defensive; lineage is local-only
+        revision = f"{__version__}+unknown ({type(exc).__name__})"
+    return {
+        "product": "QTS",
+        "version": __version__,
+        "code_version": revision,
+        "api": "v1",
+        "python": platform.python_version(),
+        "implementation": platform.python_implementation(),
+        "platform": platform.platform(),
+        "pid": __import__("os").getpid(),
+        "started_at": _PROCESS_STARTED_AT.isoformat(),
+        "env": _env(),
+        "live_trading": "LOCKED",
+        "real_capital_exposure": 0.0,
+        "python_version_full": sys.version.split()[0],
+    }
 
 
 @router.get("/api/health")

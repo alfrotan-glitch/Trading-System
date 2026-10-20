@@ -24,7 +24,15 @@ def start_api_server(host: str = "127.0.0.1", port: int = 8000):
 
     from qts.api.server import app
 
-    config = uvicorn.Config(app, host=host, port=port, log_level="info", loop="asyncio")
+    config = uvicorn.Config(
+        app,
+        host=host,
+        port=port,
+        log_level="info",
+        loop="asyncio",
+        server_header=False,
+        timeout_graceful_shutdown=10,
+    )
     server = uvicorn.Server(config)
     # run in thread
     thread = threading.Thread(target=server.run, daemon=True)

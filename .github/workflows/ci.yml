@@ -51,3 +51,56 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Integration + research only
         run: pytest -q --run-integration --run-research tests/integration tests/research
+
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install build tooling
+        run: pip install -e ".[packaging]"
+      - name: Build wheel + sdist
+        run: python -m build --outdir dist
+      - name: Verify packaged artefacts
+        run: |
+          python - <<'PY'
+          import glob, zipfile, qts
+          wheel = glob.glob("dist/*.whl")[0]
+          names = set(zipfile.ZipFile(wheel).namelist())
+          required = {
+              "qts/api/server.py",
+              "qts/desktop/ui/index.html",
+              "qts/desktop/ui/js/main.js",
+              f"qts-{qts.__version__}.dist-info/METADATA",
+          }
+          missing = sorted(required - names)
+          assert not missing, missing
+          print(f"{wheel}: {len(names)} files, version {qts.__version__}")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qts-dist
+          path: dist/*
+          if-no-files-found: error
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build image
+        run: docker build -t qts:ci .
+      - name: Smoke test image
+        run: |
+          docker run -d --name qts-ci -p 127.0.0.1:18000:8000 qts:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18000/api/health/live >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:18000/api/health/live
+          curl -fsS http://127.0.0.1:18000/api/version
+          docker logs qts-ci
+          docker rm -f qts-ci

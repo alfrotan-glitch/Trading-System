@@ -13,29 +13,41 @@ from qts.config.paths import artifact_path
 DEFAULT_TRUSTED_HOSTS = frozenset({"localhost", "127.0.0.1", "testserver"})
 
 
+def _extra_allowed() -> set[str]:
+    raw = os.getenv("QTS_ALLOWED_ORIGINS", "")
+    return {x.strip().lower() for x in raw.split(",") if x.strip()}
+
+
 def _is_trusted_origin(origin_or_url: str | None) -> bool:
+    """Is this browser Origin/Referer a local operator surface?
+
+    The literal ``null`` origin is NOT trusted: sandboxed iframes, ``data:`` pages and
+    ``file://`` documents all send it, so trusting it would let any web page post to
+    the local trading API. Remote hosts (e.g. sandbox preview proxies) are trusted only
+    when listed explicitly in ``QTS_ALLOWED_ORIGINS``.
+    """
     if not origin_or_url:
         return False
     val = origin_or_url.strip().lower()
-    if val in ("null", "tauri://localhost", "vscode-webview://"):
+    if val in ("tauri://localhost", "vscode-webview://"):
         return True
     try:
-        parsed = urlparse(val)
-        host = (parsed.hostname or "").lower()
+        host = (urlparse(val).hostname or "").lower()
         if host in DEFAULT_TRUSTED_HOSTS:
             return True
-        if host.endswith(".e2b.app"):  # Sandbox live preview proxy host
-            return True
-        extra = os.getenv("QTS_ALLOWED_ORIGINS", "")
-        if extra:
-            allowed = {x.strip().lower() for x in extra.split(",") if x.strip()}
-            if val in allowed or host in allowed:
-                return True
+        extra = _extra_allowed()
+        return bool(extra) and (val in extra or host in extra)
     except Exception:
         return False
-    return False
 
 
+def _is_trusted_host_header(host_header: str | None) -> bool:
+    """Reject DNS-rebinding: the Host a browser used must be a local name (or opted in)."""
+    if not host_header:
+        return True  # non-browser HTTP/1.0 style clients; Origin/Referer checks still apply
+    host = host_header.strip().lower()
+    host = host.rsplit("]", 1)[0].lstrip("[") if host.startswith("[") else host.split(":", 1)[0]
+    return host in DEFAULT_TRUSTED_HOSTS or host in {"::1"} or host in _extra_allowed()
 
 
 def _env() -> str:
