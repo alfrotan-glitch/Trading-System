@@ -184,3 +184,144 @@ def research_run_hypothesis(ctx: click.Context, hypothesis_id: str) -> None:
     raise SystemExit(dispatch_hypothesis(hypothesis_id, list(ctx.args)))
 
 
+
+
+@research.command("adaptive-xauusd")
+@click.option("--input", "input_path", required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--timestamp-column", default="timestamp", show_default=True)
+@click.option("--out", "out_path", default=Path("data/evidence/adaptive_xauusd.json"), type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--initial-equity", default=10000.0, type=float, show_default=True)
+@click.option("--spread-bps", default=3.0, type=float, show_default=True, help="Full spread in basis points; an assumption unless measured.")
+@click.option("--slippage-bps", default=2.0, type=float, show_default=True, help="Slippage per side in basis points; an assumption unless measured.")
+@click.option("--commission-per-lot-side", default=7.0, type=float, show_default=True)
+@click.option("--financing-bps-per-day", default=0.0, type=float, show_default=True)
+@click.option("--cost-basis", default="ASSUMED", show_default=True)
+@click.option("--lookback", default=252, type=int, show_default=True)
+@click.option("--min-observations", default=30, type=int, show_default=True)
+def research_adaptive_xauusd(
+    input_path: Path, timestamp_column: str, out_path: Path, initial_equity: float,
+    spread_bps: float, slippage_bps: float, commission_per_lot_side: float,
+    financing_bps_per_day: float, cost_basis: str, lookback: int, min_observations: int,
+) -> None:
+    """Run causal regime-aware XAUUSD routing on an OHLC CSV (diagnostic only)."""
+    import numpy as np
+    import pandas as pd
+
+    from qts.research.longhistory.adaptive_backtest import build_adaptive_plan
+    from qts.research.longhistory.adaptive_router import AdaptiveRoutingConfig
+    from qts.research.longhistory.engine import CostModel, run_plan
+    from qts.research.longhistory.signals import donchian, ma_cross, rsi2
+
+    if not np.isfinite(initial_equity) or initial_equity <= 0:
+        raise click.ClickException("--initial-equity must be finite and positive")
+    if lookback < 2 or min_observations < 2 or min_observations > lookback:
+        raise click.ClickException("require lookback >= min-observations >= 2")
+    if not cost_basis.strip():
+        raise click.ClickException("--cost-basis cannot be empty")
+
+    try:
+        raw = pd.read_csv(input_path)
+        timestamp_name = timestamp_column
+        if timestamp_name not in raw.columns:
+            matches = [str(c) for c in raw.columns if str(c).lower() == timestamp_column.lower()]
+            if len(matches) != 1:
+                raise ValueError(f"timestamp column {timestamp_column!r} not found")
+            timestamp_name = matches[0]
+        raw = raw.rename(columns={c: str(c).lower() for c in raw.columns if c != timestamp_name})
+        raw = raw.rename(columns={timestamp_name: "timestamp"})
+        raw["timestamp"] = pd.to_datetime(raw["timestamp"], utc=True, errors="raise")
+        bars = raw.set_index("timestamp").sort_index()
+        bars.index = pd.DatetimeIndex(bars.index)
+        bars = bars.loc[~bars.index.duplicated(keep="last")]
+        required = ["open", "high", "low", "close"]
+        missing = [c for c in required if c not in bars.columns]
+        if missing:
+            raise ValueError(f"missing OHLC columns: {', '.join(missing)}")
+        bars = bars[required].astype(float)
+        if len(bars) < 300:
+            raise ValueError(f"only {len(bars)} bars available; at least 300 are required")
+        values = bars.to_numpy()
+        if not np.isfinite(values).all() or (values <= 0).any():
+            raise ValueError("OHLC data must be finite and positive")
+        if (bars["high"] < bars[["open", "close", "low"]].max(axis=1)).any():
+            raise ValueError("high is inconsistent with open/close/low")
+        if (bars["low"] > bars[["open", "close", "high"]].min(axis=1)).any():
+            raise ValueError("low is inconsistent with open/close/high")
+
+        candidates = {
+            "ma_10_30": ma_cross(bars, 10, 30, 2.0),
+            "ma_20_50": ma_cross(bars, 20, 50, 2.0),
+            "donchian_20_10": donchian(bars, 20, 10, 2.0),
+            "donchian_55_20": donchian(bars, 55, 20, 2.5),
+            "rsi2_oversold_10": rsi2(bars, 10.0, False, 5),
+            "rsi2_trend_10": rsi2(bars, 10.0, True, 5),
+        }
+        costs = CostModel(
+            spread_bps=spread_bps, slippage_bps=slippage_bps,
+            commission_usd_per_lot_side=commission_per_lot_side,
+            financing_bps_per_day=financing_bps_per_day, basis=cost_basis,
+        )
+        config = AdaptiveRoutingConfig(lookback=lookback, min_observations=min_observations)
+        adaptive_plan, routing, _ = build_adaptive_plan(
+            bars, candidates, costs, routing_config=config, initial_equity=initial_equity
+        )
+        routed_result = run_plan(
+            bars, adaptive_plan, 0, len(bars), costs,
+            initial_equity=initial_equity, force_close_end=True,
+        )
+
+        def summarize(result: object) -> dict[str, object]:
+            equity = np.asarray(result.equity, dtype=float)
+            peaks = np.maximum.accumulate(equity)
+            drawdown = np.divide(equity, peaks, out=np.ones_like(equity), where=peaks != 0) - 1.0
+            return {
+                "final_equity": result.final_equity, "net_usd": result.net_usd,
+                "gross_usd": result.gross_usd, "execution_cost_usd": result.cost_usd,
+                "financing_usd": result.financing_usd, "trades": len(result.trades),
+                "exposure_fraction": result.exposure,
+                "max_drawdown_fraction": float(drawdown.min()), "cost_basis": result.cost_basis,
+            }
+
+        candidate_metrics = {}
+        for name, candidate in candidates.items():
+            result = run_plan(
+                bars, candidate, 0, len(bars), costs,
+                initial_equity=initial_equity, force_close_end=True,
+            )
+            candidate_metrics[name] = summarize(result)
+
+        report = {
+            "mode": "RESEARCH_DIAGNOSTIC_ONLY", "symbol": "XAUUSD",
+            "data": {
+                "path": str(input_path), "bars": len(bars),
+                "start": bars.index[0].isoformat(), "end": bars.index[-1].isoformat(),
+                "timestamp_column": timestamp_column, "data_quality": "basic OHLC validation passed",
+            },
+            "cost_model": costs.describe(),
+            "routing_config": {
+                "lookback": lookback, "min_observations": min_observations,
+                "candidate_count": len(candidates), "same_regime_only": True,
+                "current_bar_return_excluded_from_selection": True,
+            },
+            "adaptive_router": summarize(routed_result),
+            "candidate_strategies": candidate_metrics,
+            "selection_counts": {str(k): int(v) for k, v in routing["selected_strategy"].value_counts(dropna=False).items()},
+            "regime_counts": {str(k): int(v) for k, v in routing["regime"].value_counts().items()},
+            "limitations": [
+                "Single chronological run; not an out-of-sample validation.",
+                "Cost assumptions must be replaced with broker-measured spread, slippage, commission and directional rollover.",
+                "No profitability guarantee; no broker orders are sent and live eligibility is unchanged.",
+                "OHLC bar backtests cannot model all intrabar price paths.",
+            ],
+        }
+    except (ValueError, KeyError, TypeError, OSError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+    metrics = report["adaptive_router"]
+    click.echo(f"data: XAUUSD bars={len(bars)} {bars.index[0]} -> {bars.index[-1]}")
+    click.echo(f"cost basis: {cost_basis}; spread={spread_bps}bps; slippage={slippage_bps}bps/side; commission={commission_per_lot_side} USD/lot/side")
+    click.echo(f"adaptive: net={metrics['net_usd']:.2f} USD; gross={metrics['gross_usd']:.2f} USD; costs={metrics['execution_cost_usd']:.2f} USD; trades={metrics['trades']}; maxDD={metrics['max_drawdown_fraction']:.2%}")
+    click.echo(f"evidence: {out_path}")
+    click.echo("verdict: DIAGNOSTIC ONLY — no out-of-sample edge validation and no live trading authorization")
