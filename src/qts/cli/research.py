@@ -330,10 +330,10 @@ def research_adaptive_xauusd(
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
-    metrics = report["adaptive_router"]
+    metrics = summarize(routed_result)
     click.echo(f"data: XAUUSD bars={len(bars)} {bars.index[0]} -> {bars.index[-1]}")
     click.echo(f"holdout: {len(bars) - split} bars starting {bars.index[split]}")
     click.echo(f"cost basis: {cost_basis}; spread={spread_bps}bps; slippage={slippage_bps}bps/side; commission={commission_per_lot_side} USD/lot/side")
-    click.echo(f"adaptive HOLDOUT: net={metrics['net_usd']:.2f} USD; gross={metrics['gross_usd']:.2f} USD; costs={metrics['execution_cost_usd']:.2f} USD; trades={metrics['trades']}; maxDD={metrics['max_drawdown_fraction']:.2%}")
+    click.echo(f"adaptive HOLDOUT metrics: {json.dumps(metrics, sort_keys=True)}")
     click.echo(f"evidence: {out_path}")
     click.echo("verdict: DIAGNOSTIC ONLY — no out-of-sample edge validation and no live trading authorization")
