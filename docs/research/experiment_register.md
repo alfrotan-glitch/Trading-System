@@ -247,6 +247,43 @@ definition but existed before the operator fetched them; the append-only ledger
 remains the only place forward observations live, and the script does not write to
 it. Reproduce: `python scripts/edgelab_xl001_holdout.py`.
 
+## Round 9 — Real-yield residual (4 configurations, 9 cumulative trials)
+
+A different use of a familiar driver. Rounds 3, 5 and 6 bet on the *direction of
+travel* of macro series; this bets on gold's **distance from its own recent fair
+value given the real yield**. For each date, `log gold` is regressed on the
+10-year TIPS yield over a rolling 252-day window; the residual, scaled by that
+window's own residual standard error, becomes the position (`-z`, clipped).
+
+The window's residual scale is computed from the same fit, not from the rolling
+standard deviation of the residual series — the latter mixes residuals produced by
+different coefficient sets and gave a materially different z (0.908 vs 0.891 on a
+synthetic window). A test pins the rolling-sums implementation to
+`numpy.linalg.lstsq` to 1e-8.
+
+Data: DFII10 daily 2003-01-02..2026-10-16 (5,952 obs), span-checked (real yield
+never exceeded nominal on any overlapping day, as it must not). DEV 2004-2014,
+VAL 2015-2019, **2020-2024 excluded**, 2024-06..2026-09 reserved.
+
+| Configuration | DEV alpha | a_t | HAC t | Sharpe | Turnover | DSR | VAL alpha | VAL t |
+|---|---|---|---|---|---|---|---|---|
+| `ry_z252` (continuous, long/short) | **+10.2%** | 2.20 | 2.19 | 0.42 | 30/yr | 0.452 | **+8.2%** | 1.89 |
+| `ry_z252_long` (long/flat) | +4.3% | 1.84 | 1.83 | 0.78 | 13/yr | 0.857 | +2.3% | 1.02 |
+| `ry_z504` (two-year window) | +1.8% | 0.38 | 0.38 | −0.10 | 19/yr | 0.032 | +5.7% | 1.24 |
+| `ry_z252_sign` (discrete) | +12.5% | 2.19 | 2.19 | 0.44 | 32/yr | 0.477 | +7.8% | 1.46 |
+
+**Zero survivors.** All four are positive on both DEV and VAL — the sign test that
+killed most earlier families passes comfortably — but the best DEV t is **2.20
+against a 2.5 gate**, and DSR is 0.45 at 9 trials. The DEV window is 11 years, so
+the detection floor is Sharpe 0.753 and the achieved Sharpe is 0.42: this family
+is **underpowered, not refuted**.
+
+Because nothing cleared DEV, the 2024-2026 window was **not read**. That is the
+point of holding it: a family that cannot clear the gate does not get to spend the
+only post-sample data the project has left.
+
+Reproduce: `python scripts/edgelab_realyield_run.py`.
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
@@ -258,7 +295,7 @@ it. Reproduce: `python scripts/edgelab_xl001_holdout.py`.
 
 ## What the register implies
 
-Eight rounds, ~92 configurations, every family from price, macro, calendar,
+Nine rounds, ~96 configurations, every family from price, macro, calendar,
 relative-value, cross-sectional and intraday-clock information. Not one survives
 DEV→VAL→TEST→holdout on tradable prices. The two that cleared DEV died in
 identifiable ways: one on a regime that ended in 1980, one on a fixing artifact
@@ -272,6 +309,13 @@ because a daily flip costs 9%/yr. That is why the only candidate the project has
 ever produced trades 6.7 times a year. Future effort is therefore directed at
 low-turnover constructions, and any high-frequency idea must demonstrate gross
 alpha above roughly 9%/yr before it is worth implementing at all.
+
+Round 9 added a second low-turnover family that nearly clears the bar (real-yield
+residual, DEV t 2.20, positive on both DEV and VAL) and left the 2024-2026 window
+unspent because it did not clear it. Two families now sit in the same place: a
+credible mechanism, a consistent sign, and too few years to prove it. That is the
+honest state of the search, and it is a better state than a validated claim built
+on a window that has already been read.
 
 One candidate now exists (XL-001) with a coherent economic mechanism, low turnover
 and independent significance on two disjoint periods. Round 8 gave it its first
