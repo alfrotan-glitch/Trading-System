@@ -92,13 +92,13 @@ export async function renderReports(root) {
           label: "Spread (live terminal)",
           value: spLive.status === "MEASURED" ? `$${fmtNum(spLive.value, 2)}/oz` : "UNMEASURED",
           tone: spLive.status === "MEASURED" ? "ok" : "warn",
-          hint: "Assumed in research: 3.0 bps ($0.30/oz on 15m). Archive DEMO mean: 0.72 bps ($0.24/oz median).",
+          hint: "Research assumption: 3.0 bps ($0.30/oz on 15m). Historical quote archives are not this account’s fill costs.",
         }),
         stat({
           label: "Commission",
           value: cmLive.status === "MEASURED" ? `$${fmtNum(cmLive.value, 2)}/lot` : "UNMEASURED",
           tone: cmLive.status === "MEASURED" ? "ok" : "warn",
-          hint: "Assumed in research: $7.00/lot/side. Measured only from recorded broker deals.",
+          hint: "Research assumption: $7.00/lot/side. Published broker specifications are references, not account measurements.",
         }),
         stat({
           label: "Slippage",
@@ -131,19 +131,40 @@ export async function renderReports(root) {
     ),
   }));
 
-  // ---- Forward-validation watch (frozen monthly champions) ------------------
-  const fwdChamps = lhSummary?.forward_champions_state?.champions || {};
-  const ts9 = fwdChamps.ts9_lo || {};
-  const veto9 = fwdChamps.veto9 || {};
+  // ---- Current research status ---------------------------------------------
+  const recentScreens = lhSummary?.recent_screens || [];
+  const champions = lhSummary?.frozen_champions || {};
+  const sahmScreen = recentScreens.find((item) => item.hypothesis_id === "LH-XAUUSD-SAHM-U3-GATE-2026-10-20");
+  const screenNames = {
+    "LH-XAUUSD-YC-INVERSION-GATE-2026-10-19": "Yield-curve inversion",
+    "LH-XAUUSD-GOLD-CALENDAR-SEASONALITY-2026-10-19": "Gold calendar seasonality",
+    "LH-XAUUSD-SAHM-U3-GATE-2026-10-20": "Sahm/U-3 labor-stress gate",
+  };
+  const recentScreenText = recentScreens.map((item) => {
+    const name = screenNames[item.hypothesis_id] || item.hypothesis_id;
+    const count = item.cumulative_trials == null ? "" : ` (N=${fmtInt(item.cumulative_trials)})`;
+    return `${name}: ${item.status}${count}`;
+  }).join("; ");
+  const sahmDataLimit = sahmScreen
+    ? [
+        sahmScreen.source_vintage_status ? "U-3 is a revised historical snapshot without point-in-time vintages." : null,
+        sahmScreen.post_1999_gold_prices_accessed === false ? "No post-1999 Gold price values were accessed." : null,
+        sahmScreen.post_1999_u3_values_accessed === false ? "No post-1999 U-3 values were accessed." : null,
+        sahmScreen.holdout_accessed === false ? "The locked holdout remains untouched." : null,
+      ].filter(Boolean).join(" ")
+    : null;
   host.appendChild(card({
-    title: "Forward-validation watch — frozen monthly research candidates", icon: "eye",
-    sub: `Paper observation only · ${fmtInt(lhSummary?.n_trials_cumulative ?? 355)} cumulative trials tested · overall verdict: NO_VALIDATED_EDGE`,
+    title: "Research status — frozen candidates", icon: "eye",
+    sub: `Paper-only · ${fmtInt(lhSummary?.n_trials_cumulative ?? 362)} cumulative trials · verdict: NO_VALIDATED_EDGE`,
     body: h("div", { class: "stack" },
       kv([
-        ["Primary candidate (ts9_lo)", `9-month gold trend (long-or-flat) · State at ${ts9.as_of || "2026-09-30"}: ${ts9.position_label || "LONG"} (size ${fmtNum((ts9.size_fraction ?? 0.4728) * 100, 1)}%, since ${ts9.since || "2023-02-28"}) · 2000–2026 Sharpe 0.837 (+$70,989)`],
-        ["Decade-robust companion (veto9)", `9-month trend, shorts require 12-month USD rise · State at ${veto9.as_of || "2026-09-30"}: ${veto9.position_label || "LONG"} (size ${fmtNum((veto9.size_fraction ?? 0.4728) * 100, 1)}%, since ${veto9.since || "2023-02-28"}) · Positive in every decade (2000–2026 Sharpe 0.662, +$49,897)`],
-        ["Independent verification", `${lhSummary?.independent_verification?.verdict || "AGREE"} (zero-shared-code stdlib+numpy verifier matches engine within <0.01%)`],
-        ["Why not promoted to live?", "Fails G3 (walk-forward positive-year count), G5 (DSR 0.941 < 0.95 at N=355), and G6 (16–45 OOS turns < 100), plus broker overnight swap remains UNMEASURED."],
+        ["ts9_lo", `${champions.ts9_lo?.rule || "9-month Gold trend, long-or-flat"} · research-only; not validated`],
+        ["veto9", `${champions.veto9?.rule || "9-month Gold trend with USD-conditioned shorts"} · research-only; not validated`],
+        ["Promotion / LIVE", "No candidate is promoted. LIVE remains locked; passing a readiness check does not grant permission."],
+        ["Historical performance", "Archived figures are not recalculated or shown as current performance in this status view."],
+        ["Independent calculation audit", `${lhSummary?.independent_verification?.verdict || "UNAVAILABLE"} · arithmetic reproduction only; not evidence of profitability.`],
+        ["Recent preregistered screens", recentScreenText || "—"],
+        ["Sahm/U-3 data limitation", sahmDataLimit || "No current Sahm/U-3 evidence available."],
       ]),
     ),
   }));

@@ -1,0 +1,62 @@
+{
+  "schema": "qts.broker_cost_reference.documented.v2",
+  "status": "DOCUMENTED_REFERENCE_ONLY",
+  "instrument": "XAUUSD",
+  "account_specific": false,
+  "deal_level_measurement": false,
+  "actual_account_cost_status": "UNMEASURED",
+  "source_scope": "Indicative published specifications from multiple brokers and account types; values do not describe one coherent account and are not transferable to the active trading account.",
+  "broker_documentation_sources": [
+    "https://roboforex.com/forex-trading/trading/specifications/card/pro-stan-ecn/XAUUSD/",
+    "https://get.exness.help/hc/en-us/articles/17854173039388-Commodities",
+    "https://www.fibogroup.com/products/account-types/mt5/specifications/",
+    "https://www.vantagemarkets.com/media/vantage-xauusd-trading-conditions-geo/",
+    "https://forexvitals.com/articles/xauusd-lot-size/",
+    "https://fxnx.com/en/blog/mt5-symbol-specification-contract-size-tick-value-swaps/"
+  ],
+  "contract_size_oz": 100,
+  "tick_size_usd": 0.01,
+  "pip_size_usd_per_oz": 1.0,
+  "contract_value_usd_per_pip": 100,
+  "spread": {
+    "standard_account_pips": 18.0,
+    "standard_account_usd_per_lot": 18.0,
+    "ecn_raw_pips": 5.0,
+    "ecn_raw_usd_per_lot": 5.0,
+    "basis": "DOCUMENTED_REFERENCE_ONLY"
+  },
+  "commission": {
+    "standard_account": 0.0,
+    "raw_spread_usd_per_lot_per_side": 3.5,
+    "raw_spread_usd_round_turn": 7.0,
+    "ecn_usd_per_lot_per_side": 5.5,
+    "zero_account_usd_per_lot_per_side": 5.5,
+    "basis": "DOCUMENTED_REFERENCE_ONLY"
+  },
+  "swap_long_pips": -60,
+  "swap_short_pips": 19,
+  "swap_long_usd_per_lot_per_night": -60.0,
+  "swap_short_usd_per_lot_per_night": 19.0,
+  "triple_swap_day_reference": "Wednesday",
+  "margin_percentage_reference": 1.0,
+  "leverage_reference": "1:100 to 1:Unlimited (broker dependent)",
+  "minimum_lot_reference": 0.01,
+  "maximum_lot_reference": 200,
+  "volume_step_reference": 0.01,
+  "stops_level_points_reference": 20,
+  "freeze_level_points_reference": 0,
+  "filling_mode_reference": "IOC / FOK / Return",
+  "trade_mode_reference": "Full Access",
+  "trading_hours_reference": "01:05 - 23:55 server time (Mon-Fri); triple swap Wednesday",
+  "legacy_unverified_spread_stat": {
+    "value_bps": 7.2,
+    "original_field": "measured_median_bps",
+    "status": "QUARANTINED",
+    "reason": "No traceable broker/account/source/method mapping was retained; not interpreted as an actual measurement or used for evaluation."
+  },
+  "basis": "DOCUMENTED_REFERENCE_ONLY",
+  "claim_eligible": false,
+  "reference_reviewed_on": "2026-10-20",
+  "source_documentation_captured_on": "2026-10-18",
+  "note": "These are public-documentation examples, not live terminal symbol terms, deal-level costs, or an actual trading-account measurement. The legacy 7.2 bps field is quarantined for missing lineage. Do not replace research assumptions or claim a net edge from this record. The actual account remains UNMEASURED until current terminal quotes, symbol terms, and realized DEMO deal charges are captured and reconciled."
+}

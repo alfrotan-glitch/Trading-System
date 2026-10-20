@@ -457,7 +457,7 @@ def research_statistical() -> dict[str, Any]:
 
 @router.get("/api/research/longhistory-summary")
 def research_longhistory_summary() -> dict[str, Any]:
-    """Consolidated summary of the 53-year long-history XAUUSD research programme and frozen forward champions."""
+    """Consolidated long-history XAUUSD research summary and frozen forward champions."""
     from pathlib import Path
 
     lh_dir = Path(__file__).resolve().parents[4] / "data" / "evidence" / "longhistory"
@@ -471,18 +471,54 @@ def research_longhistory_summary() -> dict[str, Any]:
                 return {}
         return {}
 
-    forward_state = _read_json("forward_champions_state.json")
-    verification = _read_json("champion_independent_verification.json")
-    financing = _read_json("champion_financing_sensitivity.json")
-    monthly_quality = _read_json("monthly_data_quality.json")
-    xmetal = _read_json("xmetal_replication.json")
+    verification_record = _read_json("champion_independent_verification.json")
+    monthly_quality_record = _read_json("monthly_data_quality.json")
+    primary_series = monthly_quality_record.get("primary_series") or {}
+    replicate_series = monthly_quality_record.get("replicate_series") or {}
+    recent_screens = []
+    for evidence_name, report_name in (
+        (
+            "yield_curve_inversion_gate_discovery_dev.json",
+            "docs/research/yield_curve_inversion_gate_results_2026-10-19.md",
+        ),
+        (
+            "gold_calendar_seasonality_discovery_dev.json",
+            "docs/research/gold_calendar_seasonality_results_2026-10-19.md",
+        ),
+        (
+            "sahm_u3_gate_discovery_dev.json",
+            "docs/research/sahm_u3_gate_results_2026-10-20.md",
+        ),
+    ):
+        record = _read_json(evidence_name)
+        if record:
+            screen = record.get("screen", {})
+            inputs = record.get("inputs") or {}
+            u3_source = inputs.get("u3_source") or {}
+            recent_screens.append(
+                {
+                    "hypothesis_id": record.get("hypothesis_id"),
+                    "status": record.get("status") or screen.get("status", "UNKNOWN"),
+                    "candidate_outcomes_calculated": screen.get(
+                        "candidate_outcomes_calculated", record.get("candidate_outcomes_calculated", False)
+                    ),
+                    "cumulative_trials": screen.get("cumulative_trials", record.get("cumulative_trials")),
+                    "all_gates_pass": screen.get("all_gates_pass"),
+                    "holdout_accessed": inputs.get("holdout_accessed"),
+                    "post_1999_gold_prices_accessed": inputs.get("post_1999_gold_prices_accessed"),
+                    "post_1999_u3_values_accessed": inputs.get("post_1999_u3_values_accessed"),
+                    "source_vintage_status": u3_source.get("vintage_status"),
+                    "report_path": report_name,
+                }
+            )
 
     return {
-        "schema": "qts.research.longhistory_summary.v1",
+        "schema": "qts.research.longhistory_summary.v2",
         "overall_verdict": "NO_VALIDATED_EDGE",
         "live_locked": True,
         "real_capital_exposure_usd": 0,
-        "n_trials_cumulative": 355,
+        "n_trials_cumulative": 362,
+        "recent_screens": recent_screens,
         "trial_waves": [
             {"wave": "Cycles 1-4 (D1/M15/Seasonal/Monthly)", "trials": 136, "verdict": "NO_VALIDATED_EDGE"},
             {"wave": "Cycles 5-8 (ENS/W1/HYB/WHYB)", "trials": 149, "verdict": "NO_VALIDATED_EDGE (ts9_lo & veto9 frozen for forward observation)"},
@@ -496,29 +532,28 @@ def research_longhistory_summary() -> dict[str, Any]:
         "frozen_champions": {
             "ts9_lo": {
                 "rule": "9-month TSMOM sign, long-or-flat, 10% vol target (12m vol), max 1.0x equity, no leverage",
-                "evaluation_2000_2026_sharpe": 0.8365,
-                "evaluation_2000_2026_net_usd": 70988.62,
-                "evaluation_2000_2026_max_dd": -0.3098,
-                "evaluation_2000_2026_turns": 16,
-                "dsr_at_n237": 0.945,
-                "dsr_at_n355": 0.941,
-                "financing_break_even_bps_per_day": 3.35,
+                "status": "PAPER_ONLY",
+                "claim_eligible": False,
             },
             "veto9": {
                 "rule": "9-month TSMOM sign; longs unconditioned, shorts only while 8-FX equal-weight USD index rose over 12 months",
-                "evaluation_2000_2026_sharpe": 0.6618,
-                "evaluation_2000_2026_net_usd": 49897.43,
-                "evaluation_2000_2026_max_dd": -0.3597,
-                "evaluation_2000_2026_turns": 45,
-                "positive_in_every_decade": True,
-                "financing_break_even_bps_per_day": 2.38,
+                "status": "PAPER_ONLY",
+                "claim_eligible": False,
             },
         },
-        "forward_champions_state": forward_state,
-        "independent_verification": verification,
-        "financing_sensitivity": financing,
-        "monthly_data_quality": monthly_quality,
-        "cross_metal_replication": xmetal,
+        "independent_verification": {
+            "verdict": verification_record.get("verdict", "UNAVAILABLE"),
+            "scope": "Arithmetic reproduction only; not validation of an economic edge.",
+        },
+        "cost_status": {
+            "account_costs": "UNMEASURED",
+            "historical_metrics": "ARCHIVED_NOT_RECALCULATED",
+        },
+        "monthly_data_quality": {
+            "primary_series": {"sha256": primary_series.get("sha256")},
+            "replicate_series": {"sha256": replicate_series.get("sha256")},
+            "scope": "Source identity only; no price values or performance metrics are exposed here.",
+        },
     }
 
 

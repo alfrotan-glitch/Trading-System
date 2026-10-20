@@ -1,3 +1,5 @@
+> **Historical analysis only.** This quote-gap disposition is not current DEMO or account-fill cost evidence. The current account-cost status remains `UNMEASURED`; do not treat archived quote comparisons as live execution costs.
+
 # MT5 long-gap disposition
 
 Run on the Windows operator machine; the dataset path is local and gitignored:

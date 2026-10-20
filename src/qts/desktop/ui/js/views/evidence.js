@@ -79,14 +79,16 @@ export async function renderExplorer(root) {
   ]);
   if (lhSummary) {
     host.appendChild(card({
-      title: `Long-history XAUUSD programme (1973–2026) — ${lhSummary.n_trials_cumulative ?? 355} cumulative trials — verdict: ${lhSummary.overall_verdict ?? "NO_VALIDATED_EDGE"}`,
-      sub: "Frozen forward-validation champions (ts9_lo, veto9), independent verification, financing sensitivity, and data SHA-256 pins",
+      title: `Long-history XAUUSD programme (1973–2026) — ${lhSummary.n_trials_cumulative ?? 362} cumulative trials — verdict: ${lhSummary.overall_verdict ?? "NO_VALIDATED_EDGE"}`,
+      sub: "Frozen research-only candidates, recent pre-2000 screen status, verifier scope, and source SHA-256 identities",
       icon: "fileCheck",
       body: h("div", { class: "stack" },
         kv([
           ["Programme verdict", badge(lhSummary.overall_verdict || "NO_VALIDATED_EDGE")],
-          ["Cumulative trials (N_TRIALS)", String(lhSummary.n_trials_cumulative ?? 355)],
-          ["Independent verifier", badge(lhSummary.independent_verification?.verdict || "AGREE", "ok")],
+          ["Cumulative trials (N_TRIALS)", String(lhSummary.n_trials_cumulative ?? 362)],
+          ["Latest pre-2000 screens", (lhSummary.recent_screens || []).map((item) => `${item.hypothesis_id}: ${item.status}`).join("; ") || "—"],
+          ["Independent verifier", badge(lhSummary.independent_verification?.verdict || "UNAVAILABLE", "neutral")],
+          ["Verification scope", lhSummary.independent_verification?.scope || "Arithmetic only; no edge validation."],
           ["Primary monthly SHA-256", h("span", { class: "mono small" }, lhSummary.monthly_data_quality?.primary_series?.sha256 || "—")],
           ["Replicate monthly SHA-256", h("span", { class: "mono small" }, lhSummary.monthly_data_quality?.replicate_series?.sha256 || "—")],
           ["ts9_lo (2000–2026 eval)", `Sharpe 0.8365 · Net +$70,988.62 · DSR@355=0.941 · Financing break-even ~3.35 bps/day`],

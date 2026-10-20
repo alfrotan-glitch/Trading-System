@@ -249,23 +249,14 @@ def assumed_vs_measured_comparison(measured_model: dict[str, Any] | None = None)
                     "spread_usd_per_oz": 0.30,
                     "note": "$0.30/oz ($30/lot round-turn)",
                 },
-                "repository_measured_archive": {
-                    "wm_markets_demo_730d": {
-                        "status": "MEASURED",
-                        "provenance_class": "DEMO",
-                        "ticks": 139_930_971,
-                        "mean_bps": 0.720,
-                        "normal_median_usd_per_oz": 0.24,
-                        "rollover_median_usd_per_oz": 0.39,
-                    },
-                    "dukascopy_macro_events_23w": {
-                        "status": "MEASURED",
-                        "provenance_class": "REAL",
-                        "ticks": 368_326,
-                        "median_bps": 1.732,
-                        "p95_bps": 3.037,
-                        "max_bps": 36.633,
-                    },
+                "historical_quote_archives": {
+                    "status": "ARCHIVE_REFERENCE_ONLY",
+                    "account_specific": False,
+                    "eligible_for_live_cost_gate": False,
+                    "note": (
+                        "Historical quote archives are not this account's realized execution costs; "
+                        "they are excluded from the live cost comparison."
+                    ),
                 },
                 "live_terminal": spread_live,
             },
@@ -301,10 +292,13 @@ def assumed_vs_measured_comparison(measured_model: dict[str, Any] | None = None)
                     "financing_bps_per_day": 0.25,
                     "note": "0.25 bps/calendar day symmetric carry (~0.91%/yr; ~$6.63/lot/night at $2,650 gold)",
                 },
-                "champion_break_even_ceilings": {
-                    "ts9_lo_break_even_bps_per_day": 3.35,
-                    "veto9_break_even_bps_per_day": 2.38,
-                    "note": "Evaluation window (2000-01..2026-09) net P&L reaches $0 at ~3.35 bps/day (ts9_lo) and ~2.38 bps/day (veto9)",
+                "historical_break_even_reference": {
+                    "status": "ARCHIVED_NOT_RECALCULATED",
+                    "claim_eligible": False,
+                    "note": (
+                        "Archived break-even figures are not current account-cost measurements and are not "
+                        "recalculated or surfaced in the operator cost summary."
+                    ),
                 },
                 "live_terminal": fin_live,
             },
@@ -316,16 +310,15 @@ def reevaluate_frozen_champions(
     measured_model: dict[str, Any] | None = None,
     *,
     monthly_csv_path: Any = None,
+    allow_explicit_research_evaluation: bool = False,
 ) -> dict[str, Any]:
-    """Re-evaluate frozen candidates (ts9_lo, veto9) without retuning.
+    """Return cost status; run an offline reevaluation only by explicit opt-in.
 
-    Distinguishes strictly between:
-    - ``baseline_assumed``: the canonical research cost model (ASSUMED),
-    - ``partial_measurement_sensitivity``: measured components combined with
-      baseline conservative assumptions for any still-UNMEASURED component
-      (labelled sensitivity-only, never claim-eligible), and
-    - ``claim_grade_measured``: populated ONLY when all 4 cost components are
-      MEASURED (``claim_eligible == True``).
+    The operator API/CLI calls this without an input path or opt-in and therefore
+    never opens the repository's historical market-data file. Explicit research
+    use requires both a caller-supplied path and
+    ``allow_explicit_research_evaluation=True``. A cost-model result alone is
+    never a strategy validation or permission to trade.
     """
     from pathlib import Path
 
@@ -350,23 +343,18 @@ def reevaluate_frozen_champions(
     claim_eligible = bool((measured_model or {}).get("claim_eligible")) and not unmeasured_names
 
     out: dict[str, Any] = {
-        "schema": "qts.champion_cost_reevaluation.v1",
+        "schema": "qts.champion_cost_reevaluation.v2",
         "candidates": ["ts9_lo", "veto9"],
-        "window": "2000-01-01..2026-09-30",
+        "evaluation_status": "NOT_RUN",
+        "evaluation_scope": "EXPLICIT_RESEARCH_INPUT_REQUIRED",
         "retuned": False,
         "claim_eligible": claim_eligible,
         "measured_components": measured_names,
         "unmeasured_components": unmeasured_names,
-        "baseline_assumed": {
-            "cost_basis": "ASSUMED",
-            "unfinanced_0bps": {
-                "ts9_lo": {"net_usd": 70988.62, "sharpe": 0.8365, "round_turns": 16, "max_drawdown": -0.3098},
-                "veto9": {"net_usd": 49897.43, "sharpe": 0.6618, "round_turns": 45, "max_drawdown": -0.3597},
-            },
-            "g9_financed_0_25bps_per_day": {
-                "ts9_lo": {"net_usd": 59931.0, "g9_positive": True},
-                "veto9": {"net_usd": 39392.0, "g9_positive": True},
-            },
+        "historical_metrics": {
+            "status": "ARCHIVED_NOT_SURFACED",
+            "claim_eligible": False,
+            "note": "Historical evaluation figures are not recalculated or presented as current performance.",
         },
         "claim_grade_measured": None,
         "partial_measurement_sensitivity": None,
@@ -375,21 +363,27 @@ def reevaluate_frozen_champions(
             "Unmeasured cost components remain (" + ", ".join(unmeasured_names) + "); "
             "no candidate may be promoted on assumed or partial costs. Overall verdict stays NO_VALIDATED_EDGE."
             if unmeasured_names
-            else "All four cost components are MEASURED; see claim_grade_measured for directional evaluation."
+            else "All four cost components are MEASURED, but this status request does not run a strategy evaluation. "
+            "Overall verdict remains NO_VALIDATED_EDGE."
         ),
     }
 
     if not measured_names:
+        out["evaluation_status"] = "BLOCKED_UNMEASURED_COSTS"
         return out
 
-    repo_root = Path(__file__).resolve().parents[3]
-    csv_path = (
-        Path(monthly_csv_path)
-        if monthly_csv_path is not None
-        else repo_root / "data" / "raw" / "longhistory" / "processed" / "xauusd_worldbank_monthly_utc_197301_202609.csv"
-    )
+    if monthly_csv_path is None or not allow_explicit_research_evaluation:
+        out["evaluation_status"] = "NOT_RUN_EXPLICIT_OPT_IN_REQUIRED"
+        out["decision_summary"] += (
+            " Supply an explicitly approved research input and opt in through a governed offline workflow; "
+            "the operator API/CLI never loads a default historical dataset."
+        )
+        return out
+
+    csv_path = Path(monthly_csv_path)
     if not csv_path.is_file():
-        out["decision_summary"] += " (Monthly dataset CSV not built locally yet; run scripts/build_longhistory_monthly_dataset.py --ensure-sources to compute dynamic re-evaluation.)"
+        out["evaluation_status"] = "EXPLICIT_DATASET_MISSING"
+        out["decision_summary"] += " The explicitly supplied research dataset is unavailable; no data were read."
         return out
 
     raw = pd.read_csv(csv_path)
@@ -473,6 +467,7 @@ def reevaluate_frozen_champions(
         },
     }
 
+    out["evaluation_status"] = "EXPLICIT_INPUT_EVALUATED"
     if claim_eligible:
         out["claim_grade_measured"] = eval_payload
         both_pos = eval_payload["ts9_lo"]["financed_positive_g9"] and eval_payload["veto9"]["financed_positive_g9"]

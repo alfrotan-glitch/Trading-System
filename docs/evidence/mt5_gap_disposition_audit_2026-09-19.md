@@ -1,3 +1,5 @@
+> **Historical audit only.** This archived quote-gap analysis is not current DEMO or account-fill cost evidence. Actual account spread, commission, slippage, and financing remain `UNMEASURED`; do not use archived quote comparisons as live costs.
+
 # WM Markets XAUUSD 730-day gap evidence audit
 
 ## Result

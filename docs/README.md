@@ -4,6 +4,10 @@ These ten guides are the operating documentation. Read [`QTS_PROJECT_CONTROL.md`
 
 Files that remain beside these guides are cited by code or by an operator setup path. Dated research records live in [evidence/](evidence/README.md). They are not operating manuals, and they do not authorize a trade.
 
+## Repository-wide assessment
+
+- [Whole-repository assessment, 2026-10-20](../reports/complete_repository_report_2026-10-20.md): product state, architecture, evidence and data provenance, execution boundaries, operator surfaces, verification, documentation gaps, and prioritized actions. Research-only; not a trading authorization.
+
 ---
 
 ## Canonical Guides

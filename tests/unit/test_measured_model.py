@@ -134,8 +134,21 @@ def test_reevaluate_frozen_champions_unmeasured_and_measured(tmp_path):
     measured = build_measured_cost_model(
         spread_profile=PROFILE, symbol_terms=TERMS, deals=_deals(), slippage_bps=0.75, direction="long"
     )
-    res_m = reevaluate_frozen_champions(measured, monthly_csv_path=csv_path)
+    res_default = reevaluate_frozen_champions(measured)
+    assert res_default["claim_eligible"] is True
+    assert res_default["evaluation_status"] == "NOT_RUN_EXPLICIT_OPT_IN_REQUIRED"
+    assert res_default["historical_metrics"]["status"] == "ARCHIVED_NOT_SURFACED"
+    assert res_default["claim_grade_measured"] is None
+
+    # Only an explicitly supplied synthetic fixture can exercise the offline
+    # calculation path; the operator API/CLI never reads a default dataset.
+    res_m = reevaluate_frozen_champions(
+        measured,
+        monthly_csv_path=csv_path,
+        allow_explicit_research_evaluation=True,
+    )
     assert res_m["claim_eligible"] is True
+    assert res_m["evaluation_status"] == "EXPLICIT_INPUT_EVALUATED"
     assert res_m["unmeasured_components"] == []
     assert res_m["claim_grade_measured"] is not None
     assert res_m["claim_grade_measured"]["cost_model_used"]["financing_convention"] == (

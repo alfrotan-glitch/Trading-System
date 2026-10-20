@@ -1,3 +1,5 @@
+> **HISTORICAL NOTE (2026-10-20):** This dated authorization review is not a current runtime verdict. Later code/register changes implemented `max_drawdown_pct`; confirm authorization and readiness on the operator host before any DEMO use. Current authoritative status is in `QTS_PROJECT_CONTROL.md` and `docs/windows_demo_runbook.md`.
+
 # DEMO Execution — Authorization and Safety Contract (2026-09-23)
 
 **Status:** `DEMO_EXECUTION = ENABLED_AUTHORIZED` when the owner artifact validates (the shipped

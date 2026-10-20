@@ -1,9 +1,11 @@
 # QTS Long-History XAUUSD Edge Research — Expert Handbook
 
-Date: 2026-10-17. Status: **RESEARCH-ONLY — `NO_VALIDATED_EDGE`** — LIVE LOCKED,
+Date: 2026-10-17; last updated 2026-10-20. Status: **RESEARCH-ONLY — `NO_VALIDATED_EDGE`; long-history `N=362`** — LIVE LOCKED,
 `REAL_CAPITAL_EXPOSURE = 0`, costs **ASSUMED** (not MEASURED). This handbook
 consolidates everything the 2026-10-17 edge hunt established so the knowledge
 survives independently of any single cycle document. It promotes nothing.
+
+> **Archive boundary:** numerical performance tables below are historical research records, not current account-cost results and not new validation. They have not been recomputed at the current trial count in this update. The current operator UI does not surface those old performance figures as current results.
 
 ---
 
@@ -39,6 +41,11 @@ cumulative trial count; G6 ≥100 out-of-sample round turns; G7 regime stability
   (`replicate_with_context`) so warm-up/USD context matches.
 - Provenance detail: `docs/research/longhistory_data_provenance_2026-10-10.md`.
 
+**Current access boundary (2026-10-20):** only authorized pre-2000 numerical
+inputs may be read for research. Do not read or use post-1999 Gold price values
+or the locked 730-day holdout. The broader file spans listed above and older
+result tables are provenance/history, not authorization to access those values.
+
 ## 3. Engine and frozen conventions (`fixed_units.v2`)
 
 - Fixed signed ounces between fills; fill costs charged on traded notional;
@@ -70,8 +77,11 @@ cumulative trial count; G6 ≥100 out-of-sample round turns; G7 regime stability
 | FX-dispersion gate 2026-10-19 | `LH-XAUUSD-FX-DISPERSION-GATE-2026-10-19` | 1973–1983 selection + 1984–1989 confirmation + 1990–99 development (1 lagged cross-sectional FX-dispersion gate; no evaluation) | 358 | INCONCLUSIVE for intended hypothesis — runner rejected, quote-convention conflict |
 | Commodity-breadth gate 2026-10-19 | `LH-XAUUSD-COMMODITY-BREADTH-GATE-2026-10-19` | 1973–1983 selection + 1984–1989 confirmation + 1990–99 development (1 raw non-energy commodity-breadth gate; no evaluation) | 359 | REJECTED — no validated edge |
 | CPI-acceleration attempt 2026-10-19 | `LH-XAUUSD-CPI-ACCELERATION-GATE-2026-10-19` | registered at N=359; source schema failed before feature/outcome calculation (0 evaluated configs) | 359 | INCONCLUSIVE; full-repo audit found prior Wave-9 inflation-gating family — do not repair or retry |
+| Yield-curve inversion gate 2026-10-19 | `LH-XAUUSD-YC-INVERSION-GATE-2026-10-19` | 1973–1983 selection + 1984–1989 confirmation + 1990–1999 development (1 lagged GS10-DFF inversion gate; no evaluation) | 360 | REJECTED; development −$967 / Sharpe −0.437, 2 turns, 0/10 positive years — no tuning or rerun |
+| Gold calendar-seasonality gate 2026-10-19 | `LH-XAUUSD-GOLD-CALENDAR-SEASONALITY-2026-10-19` | 1973–1983 selection + 1984–1989 confirmation + 1990–1999 development (1 fixed Jan–Mar/Aug–Sep calendar candidate; no evaluation) | 361 | REJECTED; development +$451 / Sharpe 0.095, 20 turns, 4/10 positive years; bootstrap inconclusive — do not adjust mask |
+| Sahm/U3 labor-stress gate 2026-10-20 | `LH-XAUUSD-SAHM-U3-GATE-2026-10-20` | 1973–1983 selection + 1984–1989 confirmation + 1990–1999 development (1 lagged U3 threshold gate; no evaluation) | 362 | REJECTED; development −$53 / Sharpe −0.466, 2 turns, 0/10 positive years; do not tune or rerun |
 
-The next gated long-history cycle inherits **N = 359** in its DSR, before counting any new candidate. Per-cycle evidence:
+The 2026-10-20 Sahm/U3 screen inherited **N = 361** and, after its single candidate's outcomes were calculated, moved the current long-history count to **N = 362**. The next gated cycle inherits N=362 before evaluating any new candidate. Per-cycle evidence:
 `data/evidence/longhistory/{ensemble,weekly,hybrid,weekly_hybrid,volmanaged}_research_final.json`;
 Wave-10 evidence: `data/evidence/longhistory/wave10_treasury_real_rate.json`;
 CMR evidence: `data/evidence/longhistory/crossmetal_relative_discovery_dev.json`;
@@ -79,6 +89,9 @@ Brent-gate evidence: `data/evidence/longhistory/brent_gate_discovery_dev.json`;
 FX-dispersion evidence: `data/evidence/longhistory/fx_dispersion_gate_discovery_dev.json`;
 commodity-breadth evidence: `data/evidence/longhistory/commodity_breadth_gate_discovery_dev.json`;
 CPI-acceleration input-failure evidence: `data/evidence/longhistory/cpi_acceleration_gate_discovery_dev.json`;
+yield-curve inversion evidence: `data/evidence/longhistory/yield_curve_inversion_gate_discovery_dev.json` and report `docs/research/yield_curve_inversion_gate_results_2026-10-19.md`;
+gold calendar-seasonality evidence: `data/evidence/longhistory/gold_calendar_seasonality_discovery_dev.json` and report `docs/research/gold_calendar_seasonality_results_2026-10-19.md`;
+Sahm/U3 evidence: `data/evidence/longhistory/sahm_u3_gate_discovery_dev.json`, report `docs/research/sahm_u3_gate_results_2026-10-20.md`, and frozen protocol `docs/research/preregistration_longhistory_sahm_unemployment_gate_2026-10-20.md`;
 preregistrations and results under `docs/research/`.
 
 **COT source feasibility (2026-10-19; not a trial).** A metadata-only GitHub
@@ -92,8 +105,7 @@ or have unresolved provenance/licensing. A mixed third-party source document
 exposed unrelated outcome summaries; that repository is quarantined from
 candidate selection. No COT or price rows were inspected, no hypothesis was
 preregistered or tested; **N was 356 at that audit**. The separately
-preregistered Brent-gate, FX-dispersion, and commodity-breadth screens have since been evaluated, so
-current long-history **N = 359**. A subsequent CPI-acceleration attempt failed before feature/outcome calculation on a pinned CSV/schema mismatch and did not add a trial; repository-wide review also found it was within the already closed Wave-9 inflation-gating family, so do not repair or retry it. Next step for the COT mechanism requires provenance-clear CFTC
+preregistered Brent-gate, FX-dispersion, and commodity-breadth screens have since been evaluated; the later CPI-acceleration attempt failed before feature/outcome calculation and added no trial; and the preregistered yield-curve inversion gate was evaluated once and rejected. At that point long-history **N = 361**; the separate 2026-10-20 Sahm/U3 screen inherited that count, was evaluated once, and moved current long-history **N = 362**. The CPI attempt remains closed because it also re-entered the Wave-9 inflation-gating family; do not repair or retry it. Next step for the COT mechanism requires provenance-clear CFTC
 Legacy gold COT with release metadata for a preregistered 1986–1989 discovery
 slice and the 1990–1999 development period, plus appropriately timed,
 provenance-clear gold prices; preregister before viewing feature values. Full
@@ -180,6 +192,9 @@ hand-edited.
 - **Lagged Brent gate on gold trend (2026-10-19):** the single frozen 12-month lagged Brent-positive gate on `ts9_lo` passed selection only; confirmation was −$151 / Sharpe −0.036 and 1990s development was −$1,658 / Sharpe −0.674 (DSR 0.000 at N=357, 8 turns, 1/10 positive years). Paired lower bounds were negative and Holm p=1.000 against both champions; 2× costs and financing stayed negative. `REJECTED`; do not tune the oil series, lag, sign, threshold, or combination. Result: `docs/research/brent_gate_results_2026-10-19.md`.
 - **Lagged FX-dispersion gate on gold trend (2026-10-19):** the frozen runner failed its gates (1990s development −$1,000 / Sharpe −0.216; DSR 0.0001 at N=358, 14 turns, 2/10 positive years), but a post-run repo audit found its README-based inversion of Australia, New Zealand, and UK conflicts with `scripts/build_longhistory_monthly_dataset.py`, which treats all eight H.10 series as currency-per-USD and flags the README mismatch. Therefore the intended dispersion hypothesis is **INCONCLUSIVE**, not a clean rejection. Preserve runner evidence; do not correct the orientation or rerun on reused partitions. Result and caveat: `docs/research/fx_dispersion_gate_results_2026-10-19.md`.
 - **Broad non-energy commodity-breadth gate on gold trend (2026-10-19):** the one frozen raw-price 42-series breadth rule passed some development net/Sharpe, `ts9_lo`, and cost gates but failed selection/confirmation, turnover/year-count, `veto9`, and paired-bootstrap gates; development was +$118 / Sharpe +0.117, DSR 0.0017 at N=359, 3 turns, 2/10 positive years. `REJECTED`; do not change the 42-series panel, exclusions, lag, threshold, or rule on reused partitions. This source snapshot has no historical release vintages. Result: `docs/research/commodity_breadth_gate_results_2026-10-19.md`.
+- **Lagged US yield-curve inversion gate on gold trend (2026-10-19):** the single frozen `GS10 − DFF < 0` prior-month gate passed only the 1973–1983 positive-net subgate; confirmation net was −$8 / Sharpe −0.408 and 1990–1999 development was −$967 / Sharpe −0.437, DSR 0.000 at N=360, two turns and 0/10 positive years. It failed both comparator Sharpe margins, minimum activity, development profitability, cost robustness, and both paired-bootstrap gates. `REJECTED`; do not change spread sign, threshold, lag, averaging, comparators, or rerun on these partitions. DFF snapshot has unresolved source rights and vintage, so remains internal-research-only. Result: `docs/research/yield_curve_inversion_gate_results_2026-10-19.md`.
+- **Annual physical-demand calendar seasonality (2026-10-19):** the one fixed January–March/August–September long-only calendar rule passed positive net in both discovery slices and positive development net/Sharpe, beat `ts9_lo` in the 1990s, and remained positive at 2× costs and the financing assumption. It did not beat `veto9`, had only 4/10 positive years, and neither paired 95% lower bound was positive (Holm p-values 0.434/0.660); DSR was 0.0024 at N=361. `REJECTED`; do not change the calendar mask, sizing, or timing and do not rerun. Result: `docs/research/gold_calendar_seasonality_results_2026-10-19.md`.
+- **Lagged Sahm/U3 labor-stress gate on gold trend (2026-10-20):** one frozen threshold rule triggered when the three-month U-3 average was at least 0.50 percentage points above the minimum of its preceding twelve three-month averages, with a two-month lag, then gated frozen `ts9_lo`. The pinned BLS U-3 snapshot is revised history without point-in-time vintages. Selection was −$512 / Sharpe −0.1185 (5 turns, 3/11 positive years); confirmation was $0 / 0 turns; 1990–1999 development was −$53 / Sharpe −0.466 (2 turns, 0/10 positive years) at N=362. It beat `ts9_lo` on development net only, but had lower Sharpe and lost to `veto9`; 2×/3× cost and financing stresses were negative, and both paired-bootstrap lower bounds were negative. `REJECTED`; do not tune or rerun. No post-1999 price/U-3 values or holdout were accessed. Result: `docs/research/sahm_u3_gate_results_2026-10-20.md`.
 - **Weekly translations** of the champion mechanism (W1, WHYB): twice weak
   (best Sharpe 0.562, DSR ≤ 0.144). The mechanism is monthly-horizon-specific.
 - **Faster ensembles / blends:** dilute Sharpe (equal-sleeve blend 0.737,
@@ -288,28 +303,43 @@ checkpoint criteria govern regardless.
 
 ## 9. What could change the verdict
 
-1. **Genuinely new data:** forward months as they accrue (already frozen), or
-   an independent long-history price source never used for selection.
+1. **Genuinely new authorized data:** a rights- and provenance-cleared,
+   independent *pre-2000* gold-price history not used for selection. The current
+   instruction prohibits reading or using post-1999 price observations and the
+   locked 730-day holdout; the files listed above do not override that boundary.
 2. **MEASURED costs** from a Windows MT5 demo terminal (also unblocks the
    claim-eligibility question and the M15 cost-sensitivity blocker).
-3. A *new mechanism* (not a re-parameterisation) discovered on ≤1989 (or
-   weekly 2004-2009) partitions only, frozen under N ≥ 355, that beats the
-   champions on discovery and survives the 1990–1999 dev walk-forward by a
-   margin large enough to matter — Waves 6–10 showed the plausible mechanism
-   tweaks (hysteresis, relative trend, vol-regime and extension gates,
-   extreme mean reversion, USD-momentum, real-price deflation,
-   inflation-regime conditioning, and US 10Y Treasury nominal/real-rate
-   conditioning) do not.
+3. A *distinct, preregistered mechanism* (not a re-parameterisation or rescue)
+   may be tested only on the authorized 1973–1983 selection, 1984–1989
+   confirmation, and 1990–1999 development partitions, with causal features
+   and pre-2000 price values only. Freeze the protocol before inspecting its
+   feature values; the next denominator starts at N=362. Do not use
+   precomputed commodity-panel features; if such a panel is considered, use
+   only eligible pre-2000 `price_nominal_usd` rows and compute features
+   causally. It must beat the champions on discovery and survive the
+   1990–1999 walk-forward by a margin
+   large enough to matter. Waves 6–10 and the later screens—including CMR,
+   Brent, commodity breadth, yield-curve inversion, calendar seasonality, and
+   the 2026-10-20 Sahm/U3 gate—show the tested mechanism families failed or
+   were inconclusive; do not reopen or re-parameterize any closed branch.
 Nothing else. In particular: re-running existing cycles, loosening G6 for
 slow trend, or cherry-picking lookbacks 10–11 m post-hoc are prohibited.
 
 ## 10. Operator runbook
 
+The current authorization boundary prohibits reading or using post-1999 Gold
+price observations and the locked 730-day holdout. The historical commands
+`forward_champion_state.py --record` and any long-history `--stage final`
+invocation are **not authorized** under this boundary; do not run them. Future
+research requires a distinct preregistration before feature inspection and may
+use only specifically authorized pre-2000 partitions. For broker/demo work,
+follow `docs/windows_demo_runbook.md`; LIVE remains locked.
+
+For this screen, the synthetic-only checks are:
+
 ```bash
-.venv/bin/python scripts/verify_champions_independent.py   # engine cross-check (expect AGREE)
-.venv/bin/python scripts/forward_champion_state.py --record  # extend forward record (paper only)
-.venv/bin/python scripts/run_longhistory_<cycle>.py --stage final  # frozen cycles only; do not re-run to "improve"
-.venv/bin/ruff check src tests scripts; .venv/bin/mypy src; .venv/bin/pytest -q
+.venv/bin/ruff check src/qts/research/longhistory/sahm_u3_gate.py scripts/run_longhistory_sahm_unemployment_gate.py tests/unit/test_longhistory_sahm_u3_gate.py tests/unit/test_longhistory_sahm_u3_runner.py
+.venv/bin/pytest -q tests/unit/test_longhistory_sahm_u3_gate.py tests/unit/test_longhistory_sahm_u3_runner.py
 ```
 
 ## 11. Safety invariants (binding)

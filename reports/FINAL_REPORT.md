@@ -1,5 +1,7 @@
 FINAL REPORT — QTS Trading System Edge Integration (main branch, 2026-10-18)
 
+> **Historical snapshot; superseded for current status by `QTS_PROJECT_CONTROL.md`.** The branch/push and verification statements below describe the 2026-10-18 state, not the current checkout. Correction (2026-10-20): `MEASURED_FROM_DOCUMENTATION` was an invalid label for published specifications. Those values are documentation references only; actual trading-account spread, commission, slippage, and swap remain **UNMEASURED**. See `data/evidence/broker_cost_reference_documented_2026-10-20.json` and `QTS_PROJECT_CONTROL.md` ARCH-094. Historical performance figures in this report are retained as archive text, are not recalculated here, and are not current evidence.
+
 Status: COMPLETE — mechanism verified, dataset reconstructed, cost model documented, contradictions resolved, no fabricated profitability, LIVE locked, audit intact.
 Branch: main (commit to be pushed after final verification)
 

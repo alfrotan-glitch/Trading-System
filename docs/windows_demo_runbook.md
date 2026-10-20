@@ -2,7 +2,7 @@
 
 **Audience:** an operator on the authorized Windows workstation with MetaTrader 5.
 **Boundary:** DEMO only; LIVE stays locked; this runbook does not authorize an order.
-**Reviewed:** 2026-10-18.
+**Reviewed:** 2026-10-20.
 
 The order-capable DEMO path exists, but a checklist, a passing readiness probe, a strategy snapshot or a simulated test is not permission to trade. This guide separates read-only inspection from actions that persist identity, grant permission or can submit an order. Nothing in this audit connected to MT5 or sent an order.
 
@@ -105,26 +105,23 @@ qts demo cost-check --record --json-out "%LOCALAPPDATA%\QTS\cost-audit\cost_chec
 
 ### 3.4 Slippage and offline cost evaluation
 
-Slippage is measured from actual DEMO fill records. Without such fills it is unavailable; do not substitute zero. Once the read-only artifacts and any existing deal evidence are available, assemble the component-wise model and re-evaluate the frozen monthly champions without retuning:
+Slippage is measured from actual DEMO fill records. Without such fills it is unavailable; do not substitute zero. `qts demo measured-model` assembles component-wise cost evidence and labels each component separately:
 
 ```bat
 qts demo measured-model --spread-profile "%LOCALAPPDATA%\QTS\cost-audit\spread_overlap.json" --symbol-terms "%LOCALAPPDATA%\QTS\cost-audit\symbol_terms.json" --direction long --json-out "%LOCALAPPDATA%\QTS\cost-audit\measured_cost_model.json"
-qts demo evaluate-champions --spread-profile "%LOCALAPPDATA%\QTS\cost-audit\spread_overlap.json" --symbol-terms "%LOCALAPPDATA%\QTS\cost-audit\symbol_terms.json" --direction long --json-out "%LOCALAPPDATA%\QTS\cost-audit\champion_cost_evaluation.json"
 ```
 
-Each component has its own basis. Unless the result says **`claim_eligible: true`** with every cost component measured, it is sensitivity analysis only. Missing commission, slippage or financing cannot be filled with historical averages or zeros.
+The operator API/CLI does not automatically re-evaluate strategies or load the repository's historical market dataset. `qts demo evaluate-champions` is cost-status only and reports a blocked or `NOT_RUN` evaluation status; the operator CLI has no offline-evaluation input option. Any future offline evaluation requires separate review and an approved input, and it is not an operator workflow. Any future offline evaluation requires separate review and an approved dataset. Do not use post-1999 prices or the locked holdout. A measured cost component is not a measured net edge; missing commission, slippage, or financing cannot be filled with documentation, historical averages, or zero.
 
 ## 4. Research status and cost limitations
 
-The current research verdict is **`NO_VALIDATED_EDGE`** (`N_TRIALS = 355`). The monthly `ts9_lo` and `veto9` candidates remain in research; the separate DEMO EMA policy is not one of those monthly candidates.
+The governed result is **`NO_VALIDATED_EDGE`** (`N_TRIALS = 362`). No strategy is promoted; `LIVE` stays locked. `ts9_lo` and `veto9` are frozen research/forward-observation candidates, not validated DEMO or LIVE strategies. The CMR, Brent, commodity-breadth, yield-curve, calendar-seasonality, and Sahm/U-3 screens were rejected; FX-dispersion is inconclusive; the CPI attempt stopped before outcome calculation. Preserve each disposition and do not tune, substitute, or rerun a rejected family on reused partitions.
 
-For context only, the saved 2000-01–2026-09 monthly evaluation reports `ts9_lo` net about `+$70,989` (16 round turns, max drawdown `−30.98%`, exposure `71.65%`) and `veto9` about `+$49,897` (26 round turns, max drawdown `−35.97%`, exposure `93.46%`) under an **ASSUMED** base cost model. The research report's required gates fail and passive buy-and-hold outperformed the active candidates. A separate stdlib/NumPy calculation agrees with the saved accounting; it reuses the same input lineage and does not provide independent market-data validation.
+The one-run Sahm/U-3 candidate was rejected on the authorized pre-2000 partitions. Its pinned revised U-3 snapshot lacks point-in-time vintages. Do not treat it as a real-time signal or repair/rerun it. No post-1999 Gold price values or locked 730-day holdout rows are to be accessed for this workflow.
 
-Financing is a material unknown: a post-hoc symmetric financing sensitivity (assumed bps per calendar day, not broker swap) reduces `ts9_lo` / `veto9` to about `+$59,931` / `+$39,392` at 0.25 bps/day, and `+$3,822` / `−$4,129` at 3 bps/day. The broker's actual directional XAUUSD swaps were not measured. Do not interpret these assumed scenarios as a WM Markets quote or a promise of future performance.
+Historical post-1999 performance summaries and historical tick-archive summaries are archived records, not current account measurements or current validation. This operator runbook does not repeat or recalculate those figures. The M15 source record is also historical: its data-quality gate failed and licensing remains unresolved, so it is not claim-eligible.
 
-The older Dukascopy-derived M15 snapshot has a recorded completeness result of **6.42% unexpected missing active-span intervals**, above the unchanged 2% quality threshold; its quality gate is `FAIL`, upstream licensing is not cleared, and the planned OOS evaluation was not executed. The old acquisition instructions that expected `Ready for claims: YES` are obsolete. Do not rerun or use that data for claims unless new source, licensing and completeness evidence resolves the blockers. See `data/evidence/xauusd_completeness_disposition.json` and `data/evidence/xauusd_dukascopy_new_quality.json`.
-
-Historical WM tick-archive spread measurements documented in the 2026-10-11 audit are not current broker quotes, account-specific fees or a reproducible raw sample from this checkout. Treat them as historical context only. Current XAUUSD spread, commission, swap, slippage, contract details and account eligibility remain unverified until measured/confirmed on an authorized account.
+`data/evidence/broker_cost_reference_documented_2026-10-20.json` contains public specification examples only. The legacy `measured_broker_costs.json` path is a superseded-name notice. Neither represents this account. Current account-specific spread, commission, slippage, and swap remain **UNMEASURED** until verified from the authorized terminal and, where applicable, existing DEMO deals. Do not place an order solely to obtain a cost sample.
 
 ## 5. DEMO state changes and orders — separately authorized only
 

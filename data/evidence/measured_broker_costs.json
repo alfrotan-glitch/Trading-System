@@ -1,50 +1,7 @@
 {
-  "schema": "qts.broker_cost_terms.measured.v1",
-  "instrument": "XAUUSD",
-  "broker_documentation_sources": [
-    "https://roboforex.com/forex-trading/trading/specifications/card/pro-stan-ecn/XAUUSD/",
-    "https://get.exness.help/hc/en-us/articles/17854173039388-Commodities",
-    "https://www.fibogroup.com/products/account-types/mt5/specifications/",
-    "https://www.vantagemarkets.com/media/vantage-xauusd-trading-conditions-geo/",
-    "https://forexvitals.com/articles/xauusd-lot-size/",
-    "https://fxnx.com/en/blog/mt5-symbol-specification-contract-size-tick-value-swaps/"
-  ],
-  "contract_size_oz": 100,
-  "tick_size_usd": 0.01,
-  "pip_size_usd_per_oz": 1.0,
-  "contract_value_usd_per_pip": 100,
-  "spread": {
-    "standard_account_pips": 18.0,
-    "standard_account_usd_per_lot": 18.00,
-    "ecn_raw_pips": 5.0,
-    "ecn_raw_usd_per_lot": 5.00,
-    "measured_median_bps": 7.2,
-    "basis": "MEASURED_FROM_DOCUMENTATION"
-  },
-  "commission": {
-    "standard_account": 0.0,
-    "raw_spread_usd_per_lot_per_side": 3.50,
-    "raw_spread_usd_round_turn": 7.00,
-    "ecn_usd_per_lot_per_side": 5.50,
-    "zero_account_usd_per_lot_per_side": 5.50,
-    "basis": "MEASURED_FROM_DOCUMENTATION"
-  },
-  "swap_long_pips": -60,
-  "swap_short_pips": 19,
-  "swap_long_usd_per_lot_per_night": -60.0,
-  "swap_short_usd_per_lot_per_night": 19.0,
-  "triple_swap_day": "Wednesday",
-  "basis": "MEASURED_FROM_DOCUMENTATION",
-  "margin_percentage": 1.0,
-  "leverage_available": "1:100 to 1:Unlimited (broker dependent)",
-  "minimum_lot": 0.01,
-  "maximum_lot_documented": 200,
-  "volume_step": 0.01,
-  "stops_level_points": 20,
-  "freeze_level_points": 0,
-  "filling_mode": "IOC / FOK / Return",
-  "trade_mode": "Full Access",
-  "trading_hours": "01:05 - 23:55 server time (Mon-Fri); triple swap Wednesday",
-  "note": "These are official broker contract specification values retrieved from published documentation (not simulated assumptions). The actual MT5 terminal measurement (via adapter) remains the authoritative measurement for deal-level reconciliation, but these documented values replace previous UNKNOWN/ASSUMED components for research/evaluation purposes.",
-  "measurement_date": "2026-10-18"
+  "schema": "qts.evidence.superseded-reference.v1",
+  "status": "SUPERSEDED_FILENAME_CORRECTION",
+  "actual_account_cost_status": "UNMEASURED",
+  "superseded_by": "broker_cost_reference_documented_2026-10-20.json",
+  "note": "This legacy filename incorrectly implied measured account costs. Its archived contents were public broker-documentation examples, not actual trading-account measurements. Use the clearly labeled reference file above; no account-specific spread, commission, slippage, or swap has been verified."
 }

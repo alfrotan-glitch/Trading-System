@@ -1,3 +1,5 @@
+> **Historical archive — not current account-cost evidence.** This 2026-10-11 analysis is retained for provenance only; any archived quote/spread statistics are not current account fills, are not eligible for the live cost gate, and must not be presented as current results. Actual account spread, commission, slippage, and financing remain `UNMEASURED`. See `data/evidence/broker_cost_reference_documented_2026-10-20.json` for the explicitly documented-reference-only source.
+
 # Data & Execution Costs Audit — Agent 2 Report (2026-10-11)
 
 **Agent:** Agent 2 (Data and Execution Costs)

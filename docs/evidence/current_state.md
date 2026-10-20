@@ -1,5 +1,7 @@
 This file is a dated status record. It does not override `QTS_PROJECT_CONTROL.md`.
 
+> **SUPERSEDED (2026-10-20):** The September 2026 branch, posture, and sequencing statements below are historical, not current authority. Use the latest `QTS_PROJECT_CONTROL.md` record and the operator runbook. Current cost-reference correction: published broker specifications are references only; actual account costs remain `UNMEASURED`.
+
 # QTS Current State and Research Roadmap
 
 **Status:** canonical current-state summary

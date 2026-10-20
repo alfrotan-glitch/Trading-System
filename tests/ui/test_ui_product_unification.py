@@ -213,6 +213,12 @@ def test_measured_costs_and_longhistory_summary_api_endpoints(client, tmp_path, 
     for name in ("spread", "commission", "slippage", "financing"):
         assert comps[name]["live_terminal"]["status"] == "UNMEASURED"
         assert comps[name]["live_terminal"]["value"] is None
+    assert comps["spread"]["historical_quote_archives"]["account_specific"] is False
+    assert comps["spread"]["historical_quote_archives"]["eligible_for_live_cost_gate"] is False
+    reevaluation = body_costs["champion_reevaluation"]
+    assert reevaluation["evaluation_status"] == "BLOCKED_UNMEASURED_COSTS"
+    assert reevaluation["historical_metrics"]["status"] == "ARCHIVED_NOT_SURFACED"
+    assert "baseline_assumed" not in reevaluation
 
     # Probing symbol terms without an MT5 terminal fails closed with 503 UNMEASURED
     r_probe = client.post("/api/demo/measure-symbol-terms", json={})
@@ -226,10 +232,31 @@ def test_measured_costs_and_longhistory_summary_api_endpoints(client, tmp_path, 
     assert body_lh["overall_verdict"] == "NO_VALIDATED_EDGE"
     assert body_lh["live_locked"] is True
     assert body_lh["real_capital_exposure_usd"] == 0
-    assert body_lh["n_trials_cumulative"] >= 355
+    assert body_lh["n_trials_cumulative"] == 362
+    assert [item["status"] for item in body_lh["recent_screens"]] == ["REJECTED", "REJECTED", "REJECTED"]
+    assert all(item["candidate_outcomes_calculated"] is True for item in body_lh["recent_screens"])
+    sahm = body_lh["recent_screens"][-1]
+    assert sahm["hypothesis_id"] == "LH-XAUUSD-SAHM-U3-GATE-2026-10-20"
+    assert sahm["cumulative_trials"] == 362
+    assert sahm["all_gates_pass"] is False
+    assert sahm["holdout_accessed"] is False
+    assert sahm["post_1999_gold_prices_accessed"] is False
+    assert sahm["post_1999_u3_values_accessed"] is False
+    assert "point-in-time vintages unavailable" in sahm["source_vintage_status"]
+    reports_src = (JS_DIR / "views" / "reports.js").read_text(encoding="utf-8")
+    assert "Sahm/U-3 labor-stress gate" in reports_src
+    assert "The locked holdout remains untouched." in reports_src
+    assert "no post-1999 gold price values" in reports_src.lower()
+    evidence_src = (JS_DIR / "views" / "evidence.js").read_text(encoding="utf-8")
+    assert "n_trials_cumulative ?? 362" in evidence_src
     assert "ts9_lo" in body_lh["frozen_champions"]
     assert "veto9" in body_lh["frozen_champions"]
+    assert body_lh["frozen_champions"]["ts9_lo"]["claim_eligible"] is False
+    assert body_lh["frozen_champions"]["veto9"]["claim_eligible"] is False
     assert body_lh["independent_verification"]["verdict"] == "AGREE"
+    assert "Arithmetic reproduction only" in body_lh["independent_verification"]["scope"]
+    assert body_lh["cost_status"]["account_costs"] == "UNMEASURED"
+    assert "evaluation_2000_2026_" not in str(body_lh)
 
 
 # ---------------------------------------------------------------------------
