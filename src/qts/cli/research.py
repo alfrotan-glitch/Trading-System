@@ -198,10 +198,12 @@ def research_run_hypothesis(ctx: click.Context, hypothesis_id: str) -> None:
 @click.option("--cost-basis", default="ASSUMED", show_default=True)
 @click.option("--lookback", default=252, type=int, show_default=True)
 @click.option("--min-observations", default=30, type=int, show_default=True)
+@click.option("--train-fraction", default=0.70, type=click.FloatRange(min=0.5, max=0.9), show_default=True, help="Chronological training fraction; remaining bars are held out.")
 def research_adaptive_xauusd(
     input_path: Path, timestamp_column: str, out_path: Path, initial_equity: float,
     spread_bps: float, slippage_bps: float, commission_per_lot_side: float,
     financing_bps_per_day: float, cost_basis: str, lookback: int, min_observations: int,
+    train_fraction: float,
 ) -> None:
     """Run causal regime-aware XAUUSD routing on an OHLC CSV (diagnostic only)."""
     import numpy as np
@@ -265,8 +267,11 @@ def research_adaptive_xauusd(
         adaptive_plan, routing, _ = build_adaptive_plan(
             bars, candidates, costs, routing_config=config, initial_equity=initial_equity
         )
+        split = int(len(bars) * train_fraction)
+        if split < max(lookback, 100) or len(bars) - split < 50:
+            raise ValueError("dataset too short for the requested chronological train/holdout split")
         routed_result = run_plan(
-            bars, adaptive_plan, 0, len(bars), costs,
+            bars, adaptive_plan, split, len(bars), costs,
             initial_equity=initial_equity, force_close_end=True,
         )
 
@@ -285,7 +290,7 @@ def research_adaptive_xauusd(
         candidate_metrics = {}
         for name, candidate in candidates.items():
             result = run_plan(
-                bars, candidate, 0, len(bars), costs,
+                bars, candidate, split, len(bars), costs,
                 initial_equity=initial_equity, force_close_end=True,
             )
             candidate_metrics[name] = summarize(result)
@@ -296,7 +301,12 @@ def research_adaptive_xauusd(
                 "path": str(input_path), "bars": len(bars),
                 "start": bars.index[0].isoformat(), "end": bars.index[-1].isoformat(),
                 "timestamp_column": timestamp_column, "data_quality": "basic OHLC validation passed",
+                "train_bars": split, "holdout_bars": len(bars) - split,
+                "train_end": bars.index[split - 1].isoformat(),
+                "holdout_start": bars.index[split].isoformat(),
+                "train_fraction": train_fraction,
             },
+            "evaluation": "chronological holdout; parameters and candidate set fixed before the holdout; router may adapt causally using prior holdout outcomes",
             "cost_model": costs.describe(),
             "routing_config": {
                 "lookback": lookback, "min_observations": min_observations,
@@ -308,7 +318,8 @@ def research_adaptive_xauusd(
             "selection_counts": {str(k): int(v) for k, v in routing["selected_strategy"].value_counts(dropna=False).items()},
             "regime_counts": {str(k): int(v) for k, v in routing["regime"].value_counts().items()},
             "limitations": [
-                "Single chronological run; not an out-of-sample validation.",
+                "Holdout is one chronological split, not proof of robustness across multiple market cycles.",
+                "Router adapts during the holdout using only previously realized returns; candidate parameters remain fixed.",
                 "Cost assumptions must be replaced with broker-measured spread, slippage, commission and directional rollover.",
                 "No profitability guarantee; no broker orders are sent and live eligibility is unchanged.",
                 "OHLC bar backtests cannot model all intrabar price paths.",
@@ -321,7 +332,8 @@ def research_adaptive_xauusd(
     out_path.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
     metrics = report["adaptive_router"]
     click.echo(f"data: XAUUSD bars={len(bars)} {bars.index[0]} -> {bars.index[-1]}")
+    click.echo(f"holdout: {len(bars) - split} bars starting {bars.index[split]}")
     click.echo(f"cost basis: {cost_basis}; spread={spread_bps}bps; slippage={slippage_bps}bps/side; commission={commission_per_lot_side} USD/lot/side")
-    click.echo(f"adaptive: net={metrics['net_usd']:.2f} USD; gross={metrics['gross_usd']:.2f} USD; costs={metrics['execution_cost_usd']:.2f} USD; trades={metrics['trades']}; maxDD={metrics['max_drawdown_fraction']:.2%}")
+    click.echo(f"adaptive HOLDOUT: net={metrics['net_usd']:.2f} USD; gross={metrics['gross_usd']:.2f} USD; costs={metrics['execution_cost_usd']:.2f} USD; trades={metrics['trades']}; maxDD={metrics['max_drawdown_fraction']:.2%}")
     click.echo(f"evidence: {out_path}")
     click.echo("verdict: DIAGNOSTIC ONLY — no out-of-sample edge validation and no live trading authorization")
