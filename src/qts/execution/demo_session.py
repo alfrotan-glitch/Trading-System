@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import threading
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -197,6 +198,10 @@ class DemoSession:
         self._risk: Any = None
         self._idempotency: Any = None
         self._market_data: Any = None
+        # Serializes in-process submissions. Cross-process safety is the journal's
+        # atomic BEGIN IMMEDIATE claim; this lock keeps two threads that share one
+        # session from racing the shared engine/idempotency objects.
+        self._submit_lock = threading.RLock()
         self._last_reconcile_at: datetime | None = None
         self._last_reconcile: Any = None
         self._reconcile_attempted: bool = False
@@ -1759,6 +1764,36 @@ class DemoSession:
         return Decimal(str(fixed)) if fixed else broker_min
 
     def submit(
+        self,
+        *,
+        side: str,
+        lots: Decimal | None = None,
+        stop_loss: Decimal | None = None,
+        take_profit: Decimal | None = None,
+        rationale: str = "",
+        entry: Any | None = None,
+        signal_id: str | None = None,
+        autonomous: bool = False,
+    ) -> SubmissionResult:
+        """Submit one DEMO order, serialized within this process.
+
+        Cross-process exclusivity comes from the journal's atomic claim; this lock
+        additionally makes two threads sharing one session deterministic instead of
+        racing shared engine/idempotency objects.
+        """
+        with self._submit_lock:
+            return self._submit_serialized(
+                side=side,
+                lots=lots,
+                stop_loss=stop_loss,
+                take_profit=take_profit,
+                rationale=rationale,
+                entry=entry,
+                signal_id=signal_id,
+                autonomous=autonomous,
+            )
+
+    def _submit_serialized(
         self,
         *,
         side: str,

@@ -82,6 +82,10 @@ suite rather than compile checks alone.
   `--version`, and the bootstrap fixture is bundled into the frozen build.
 - The release workflow pushed an invalid GHCR tag because `github.repository`
   preserves the uppercase repository name. The image name is lowercased now.
+- In-process DEMO submissions are serialized per session (RLock). Cross-process
+  exclusivity remains the journal's atomic claim; the lock removes a
+  thread-safety race across the shared engine/idempotency objects that made the
+  "exactly one broker order" invariant timing-dependent in CI.
 
 ### Verification
 
