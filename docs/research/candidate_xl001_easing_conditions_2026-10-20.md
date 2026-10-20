@@ -161,12 +161,57 @@ without forward evidence.
 4. **Cost reality worse than 5x assumed.** At 2 bps/side the effect is already
    below threshold.
 
+## 7a. Addendum, 2026-10-20 — first post-sample reading (round 8)
+
+The blocker stated in section 7 was that the drivers stop on 2024-05-17. A FRED
+mirror supplying `DGS10`, `DFII10` and `DTWEXBGS` through 2026-10-16 removes it, on
+two conditions that were checked before the holdout was run:
+
+* **The mirror is verified.** Its DGS10 file reproduces the independently obtained
+  copy **exactly** over 15,580 overlapping observations spanning 62 years
+  (max |difference| 0.0).
+* **The dollar substitution is measured.** DXY and DTWEXBGS agree on 88.1% of
+  "dollar lower than six months ago" flags; re-running this exact rule on
+  2006-2019 under both indices gives alpha_t **2.69** (DXY) and **2.93** (broad),
+  so the index choice is not doing the work.
+
+The rule was then evaluated **unchanged** — same registered hash `2c25b9fda8eebf01`,
+same 126-day lookback, same averaging, same 0.925 bps/side — on windows starting
+after 2024-05-17:
+
+| Block | n | Alpha/yr | a_t | HAC t | Sharpe | Beta | Exposure |
+|---|---|---|---|---|---|---|---|
+| A 2024-06 .. 2025-02 (BaseMax feed) | 233 | **−2.9%** | −0.80 | −0.81 | 0.56 | 0.24 | 0.47 |
+| B 2025-08 .. 2026-09 (Dukascopy replay feed) | 346 | **+5.4%** | 0.61 | 0.64 | 0.95 | 0.65 | 0.77 |
+| pooled | 579 | net +12.3%/yr | — | — | — | — | — |
+
+**Verdict: MIXED. No upgrade, no downgrade.** Neither block is significant, and at
+2.3 years it could not be: the detection floor at this length is a Sharpe above
+1.2. Two things are nonetheless worth recording.
+
+**Block A is the weakest evidence this candidate has produced.** Gold rose 12.8%
+while the rule was 47% exposed and returned 2.4%. That is not a small-sample miss;
+it is the rule being *on the wrong side of a strong trend*, and it is the first
+concrete evidence for the drift worry raised in section 7.3.
+
+**Block B is comfortably positive but proves nothing at that length.** The pooled
++12.3%/yr is a return, not an alpha, and it should not be quoted as evidence.
+
+This is a **holdout, not forward evidence**: the observations post-date the frozen
+definition, but they existed before the operator fetched them. The append-only
+ledger remains the only place forward observations live, and the holdout script
+deliberately does not write to it. Correspondingly the status is unchanged:
+**`CANDIDATE`, not validated, `validated: false`**.
+
+Reproduce: `python scripts/edgelab_xl001_holdout.py`.
+
 ## 8. Reproduction
 
 ```bash
 python scripts/edgelab_prepare_longgold.py            # 51-year store
 python scripts/edgelab_macro_daily_run.py             # round 5: the components
 python scripts/edgelab_candidate_run.py               # this candidate, all costs
+python scripts/edgelab_xl001_holdout.py               # round 8: post-sample reading
 qts forward register && qts forward log               # begin forward evidence
 qts forward score
 ```
