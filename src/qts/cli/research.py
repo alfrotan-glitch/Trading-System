@@ -267,7 +267,7 @@ def research_adaptive_xauusd(
         adaptive_plan, routing, _ = build_adaptive_plan(
             bars, candidates, costs, routing_config=config, initial_equity=initial_equity
         )
-        split = int(len(bars) * train_fraction)
+        split = int(round(len(bars) * train_fraction))
         if split < max(lookback, 100) or len(bars) - split < 50:
             raise ValueError("dataset too short for the requested chronological train/holdout split")
         routed_result = run_plan(
