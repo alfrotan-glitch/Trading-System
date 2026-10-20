@@ -216,6 +216,9 @@ def test_adaptive_xauusd_cli_writes_diagnostic_report(tmp_path):
     assert report["mode"] == "RESEARCH_DIAGNOSTIC_ONLY"
     assert report["symbol"] == "XAUUSD"
     assert report["data"]["bars"] == n
+    assert report["data"]["train_bars"] == 252
+    assert report["data"]["holdout_bars"] == 108
+    assert report["evaluation"].startswith("chronological holdout")
     assert report["routing_config"]["candidate_count"] == 6
     assert "adaptive_router" in report
     assert "candidate_strategies" in report
