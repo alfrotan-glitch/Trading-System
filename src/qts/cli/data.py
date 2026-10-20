@@ -169,6 +169,132 @@ def data_mt5_depth(symbol: str | None, json_out: str | None) -> None:
         click.echo(f"report written to {json_out}")
 
 
+@data.command("mt5-bars")
+@click.option("--symbol", default=None, help="Broker symbol (default: from the setup file).")
+@click.option("--timeframe", default="M15", type=click.Choice(["M1", "M5", "M15", "M30", "H1", "H4", "D1"], case_sensitive=False))
+@click.option("--count", default=20000, type=click.IntRange(min=300, max=100000), show_default=True)
+@click.option("--out", "out_path", default="data/raw/mt5_xauusd_m15.csv", type=click.Path(dir_okay=False))
+@click.option("--json-out", default="data/evidence/mt5_bars_acquisition.json", type=click.Path(dir_okay=False))
+def data_mt5_bars(
+    symbol: str | None, timeframe: str, count: int, out_path: str, json_out: str
+) -> None:
+    """Export real broker OHLC bars from the connected DEMO terminal (read-only)."""
+    import json
+    from datetime import UTC, datetime, timedelta
+
+    import pandas as pd
+
+    from qts.config.wizard import load_setup
+    from qts.data.mt5_history_acquisition import AcquisitionRefused, require_read_only_demo, resolve_symbol
+
+    saved = load_setup()
+    requested = symbol or saved.get("symbol") or "XAUUSD"
+    symbol_map = saved.get("symbol_map")
+    if isinstance(symbol_map, dict):
+        from qts.adapters.mt5_adapter import broker_symbol as to_broker
+
+        requested = to_broker(requested, symbol_map)
+
+    try:
+        import MetaTrader5 as mt5  # type: ignore[import-not-found]
+    except ImportError:
+        raise click.ClickException(
+            "MetaTrader5 package unavailable; run this command on the Windows host with MT5 installed."
+        ) from None
+
+    initialized = mt5.initialize(path=saved.get("terminal_path") or None)
+    if not initialized:
+        raise click.ClickException(f"MT5 initialize failed: {mt5.last_error()}")
+    try:
+        identity = require_read_only_demo(mt5)
+        actual_symbol = resolve_symbol(mt5, requested)
+        tf_name = timeframe.upper()
+        tf_constant_name = f"TIMEFRAME_{tf_name}"
+        tf_constant = getattr(mt5, tf_constant_name, None)
+        if tf_constant is None:
+            raise click.ClickException(f"MT5 does not expose {tf_constant_name}")
+        rates = mt5.copy_rates_from_pos(actual_symbol, tf_constant, 0, count)
+        if rates is None:
+            raise click.ClickException(f"MT5 bar query failed: {mt5.last_error()}")
+        if len(rates) == 0:
+            raise click.ClickException("MT5 returned zero bars; no dataset was written")
+        frame = pd.DataFrame(rates)
+        required = {"time", "open", "high", "low", "close"}
+        if not required.issubset(frame.columns):
+            raise click.ClickException(f"MT5 bars missing fields: {sorted(required - set(frame.columns))}")
+        frame["timestamp"] = pd.to_datetime(frame["time"], unit="s", utc=True, errors="raise")
+        duration_seconds = {
+            "M1": 60, "M5": 300, "M15": 900, "M30": 1800,
+            "H1": 3600, "H4": 14400, "D1": 86400,
+        }[tf_name]
+        now = datetime.now(UTC)
+        complete = frame["timestamp"] + pd.to_timedelta(duration_seconds, unit="s") <= now
+        dropped_incomplete = int((~complete).sum())
+        frame = frame.loc[complete].copy()
+        if len(frame) < 300:
+            raise click.ClickException(
+                f"only {len(frame)} closed bars remain after excluding the current incomplete bar; "
+                "at least 300 are required"
+            )
+        if frame["timestamp"].duplicated().any() or not frame["timestamp"].is_monotonic_increasing:
+            raise click.ClickException("broker bars have duplicate or non-monotonic timestamps; refusing export")
+        prices = frame[["open", "high", "low", "close"]].to_numpy(dtype=float)
+        if not __import__("numpy").isfinite(prices).all() or (prices <= 0).any():
+            raise click.ClickException("broker OHLC contains non-finite or non-positive prices")
+        if (frame["high"] < frame[["open", "close", "low"]].max(axis=1)).any():
+            raise click.ClickException("broker OHLC high invariant failed")
+        if (frame["low"] > frame[["open", "close", "high"]].min(axis=1)).any():
+            raise click.ClickException("broker OHLC low invariant failed")
+
+        output = frame.rename(columns={"tick_volume": "tick_volume", "real_volume": "real_volume"})
+        output = output[["timestamp", "time", "open", "high", "low", "close"] + [
+            name for name in ("tick_volume", "spread", "real_volume") if name in output.columns
+        ]]
+        target = Path(out_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        output.to_csv(target, index=False)
+        report = {
+            "schema": "qts.mt5_ohlc_acquisition.v1",
+            "status": "COMPLETE",
+            "data_class": "REAL_BROKER_DEMO_OHLC",
+            "instrument": "XAUUSD",
+            "requested_symbol": requested,
+            "broker_symbol": actual_symbol,
+            "timeframe": tf_name,
+            "bars_requested": count,
+            "bars_exported": len(output),
+            "incomplete_bars_excluded": dropped_incomplete,
+            "start_timestamp": output["timestamp"].iloc[0].isoformat(),
+            "end_timestamp": output["timestamp"].iloc[-1].isoformat(),
+            "timestamp_convention": "MT5 rates time epoch converted using the MetaTrader5 Python API UTC convention; raw epoch retained in CSV column 'time'.",
+            "ohlc_validated": True,
+            "tick_volume_is_not_real_volume": True,
+            "spread_field_units": "broker points; not converted to USD/oz",
+            "identity": identity,
+            "read_only": True,
+            "order_apis_called": [],
+            "orders_submitted": 0,
+            "csv_path": str(target),
+            "limitations": [
+                "The most recent incomplete bar is excluded.",
+                "OHLC history does not establish executable bid/ask spread or slippage.",
+                "Commission, swap and fee must be measured separately; this command does not infer them.",
+                "MT5 history depth depends on terminal settings and broker retention.",
+            ],
+        }
+        report_path = Path(json_out)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        click.echo(f"bars: {len(output)} {tf_name} {report['start_timestamp']} -> {report['end_timestamp']}")
+        click.echo(f"broker symbol: {actual_symbol}; DEMO verified; read-only; orders submitted: 0")
+        click.echo(f"CSV: {target}")
+        click.echo(f"evidence: {report_path}")
+    except AcquisitionRefused as exc:
+        raise click.ClickException(f"MT5 history export refused: {exc}") from exc
+    finally:
+        mt5.shutdown()
+
+
 @data.command("validate")
 @click.option("--version", required=True)
 def data_validate(version: str) -> None:
