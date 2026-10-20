@@ -107,7 +107,8 @@ def test_regime_classifier_is_causal_and_labels_warmup():
     changed.iloc[-1, changed.columns.get_loc("close")] = 1000.0
     altered = classify_market_regime(changed, **kwargs)
     assert baseline.iloc[:40].equals(altered.iloc[:40])
-    assert (baseline.iloc[:15] == "warming_up").all()
+    assert (baseline.iloc[:14] == "warming_up").all()
+    assert baseline.iloc[14] != "warming_up"
     assert baseline.iloc[-1].startswith("trend_up_")
 
 
