@@ -193,17 +193,23 @@ def research_run_hypothesis(ctx: click.Context, hypothesis_id: str) -> None:
 @click.option("--initial-equity", default=10000.0, type=float, show_default=True)
 @click.option("--spread-bps", default=3.0, type=float, show_default=True, help="Full spread in basis points; an assumption unless measured.")
 @click.option("--slippage-bps", default=2.0, type=float, show_default=True, help="Slippage per side in basis points; an assumption unless measured.")
-@click.option("--commission-per-lot-side", default=7.0, type=float, show_default=True)
-@click.option("--financing-bps-per-day", default=0.0, type=float, show_default=True)
-@click.option("--cost-basis", default="ASSUMED", type=click.Choice(["ASSUMED", "SENSITIVITY"], case_sensitive=False), show_default=True, help="Label for the supplied costs; MEASURED is reserved for broker-evidence-backed models.")
+@click.option("--commission-per-lot-side", default=7.0, type=float, show_default=True, help="Commission in USD per 100-oz lot per side.")
+@click.option("--spread-usd-per-oz", default=0.0, type=click.FloatRange(min=0.0), show_default=True, help="Full bid/ask spread in USD/oz; set --spread-bps 0 to avoid double counting.")
+@click.option("--slippage-usd-per-oz-side", default=0.0, type=click.FloatRange(min=0.0), show_default=True, help="Slippage in USD/oz per side.")
+@click.option("--financing-bps-per-day", default=0.0, type=float, show_default=True, help="Fallback financing charge; signed directional overrides can model credits.")
+@click.option("--financing-long-bps-per-day", default=None, type=float, help="Optional signed long carry in bps/day.")
+@click.option("--financing-short-bps-per-day", default=None, type=float, help="Optional signed short carry in bps/day.")
+@click.option("--cost-basis", default="ASSUMED", type=click.Choice(["ASSUMED", "SENSITIVITY"], case_sensitive=False), show_default=True, help="Label for supplied costs; this diagnostic never asserts broker costs are measured.")
 @click.option("--lookback", default=252, type=int, show_default=True)
 @click.option("--min-observations", default=30, type=int, show_default=True)
 @click.option("--train-fraction", default=0.70, type=click.FloatRange(min=0.5, max=0.9), show_default=True, help="Chronological training fraction; remaining bars are held out.")
 def research_adaptive_xauusd(
     input_path: Path, timestamp_column: str, out_path: Path, initial_equity: float,
     spread_bps: float, slippage_bps: float, commission_per_lot_side: float,
-    financing_bps_per_day: float, cost_basis: str, lookback: int, min_observations: int,
-    train_fraction: float,
+    spread_usd_per_oz: float, slippage_usd_per_oz_side: float,
+    financing_bps_per_day: float, financing_long_bps_per_day: float | None,
+    financing_short_bps_per_day: float | None, cost_basis: str, lookback: int,
+    min_observations: int, train_fraction: float,
 ) -> None:
     """Run causal regime-aware XAUUSD routing on an OHLC CSV (diagnostic only)."""
     from collections import Counter
@@ -335,10 +341,17 @@ def research_adaptive_xauusd(
             "rsi2_oversold_10": rsi2(bars, 10.0, False, 5),
             "rsi2_trend_10": rsi2(bars, 10.0, True, 5),
         }
+        if spread_usd_per_oz > 0.0 and spread_bps > 0.0:
+            raise ValueError("choose either --spread-bps or --spread-usd-per-oz; set --spread-bps 0 when using price-unit spread")
         costs = CostModel(
             spread_bps=spread_bps, slippage_bps=slippage_bps,
+            spread_usd_per_oz=spread_usd_per_oz,
+            slippage_usd_per_oz_side=slippage_usd_per_oz_side,
             commission_usd_per_lot_side=commission_per_lot_side,
-            financing_bps_per_day=financing_bps_per_day, basis=cost_basis,
+            financing_bps_per_day=financing_bps_per_day,
+            financing_long_bps_per_day=financing_long_bps_per_day,
+            financing_short_bps_per_day=financing_short_bps_per_day,
+            basis=cost_basis,
         )
         config = AdaptiveRoutingConfig(lookback=lookback, min_observations=min_observations)
         adaptive_plan, routing, _ = build_adaptive_plan(
@@ -410,7 +423,13 @@ def research_adaptive_xauusd(
     metrics = summarize(routed_result)
     click.echo(f"data: XAUUSD bars={len(bars)} {bars.index[0]} -> {bars.index[-1]}")
     click.echo(f"holdout: {len(bars) - split} bars starting {bars.index[split]}")
-    click.echo(f"cost basis: {cost_basis}; spread={spread_bps}bps; slippage={slippage_bps}bps/side; commission={commission_per_lot_side} USD/lot/side")
+    click.echo(
+        f"cost basis: {cost_basis}; spread={spread_bps}bps + {spread_usd_per_oz}USD/oz; "
+        f"slippage={slippage_bps}bps + {slippage_usd_per_oz_side}USD/oz/side; "
+        f"commission={commission_per_lot_side} USD/lot/side; "
+        f"carry_fallback={financing_bps_per_day}bps/day; "
+        f"carry_long={financing_long_bps_per_day}; carry_short={financing_short_bps_per_day}"
+    )
     click.echo(f"adaptive HOLDOUT metrics: {json.dumps(metrics, sort_keys=True)}")
     click.echo(f"evidence: {out_path}")
     click.echo("verdict: DIAGNOSTIC ONLY — no out-of-sample edge validation and no live trading authorization")
