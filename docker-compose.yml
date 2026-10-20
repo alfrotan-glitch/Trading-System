@@ -14,7 +14,7 @@ services:
   qts:
     build:
       context: .
-    image: qts:1.0.0
+    image: qts:1.0.1
     container_name: qts
     restart: unless-stopped
     ports:

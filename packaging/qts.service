@@ -5,7 +5,7 @@
 #   sudo mkdir -p /opt/qts /etc/qts /var/lib/qts
 #   sudo cp -a <release>/ /opt/qts/
 #   sudo -u qts python3 -m venv /opt/qts/.venv
-#   sudo -u qts /opt/qts/.venv/bin/pip install --no-index --find-links <wheels> qts==1.0.0
+#   sudo -u qts /opt/qts/.venv/bin/pip install --no-index --find-links <wheels> qts==1.0.1
 #   sudo cp packaging/qts.service /etc/systemd/system/qts.service
 #   sudo systemctl daemon-reload && sudo systemctl enable --now qts
 #

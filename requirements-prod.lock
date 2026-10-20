@@ -1,4 +1,4 @@
-# Verified runtime lock for QTS 1.0.0.
+# Verified runtime lock for QTS 1.0.1.
 # Generated 2026-10-20 from a clean 'pip install .' on Python 3.11 (Linux x86_64).
 # Regenerate: python -m venv /tmp/prod && /tmp/prod/bin/pip install . && /tmp/prod/bin/pip freeze
 # Docker and production installs use this file; application code still declares compatible ranges.

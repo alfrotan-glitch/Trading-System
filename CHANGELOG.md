@@ -6,7 +6,7 @@ versioning. **No release changes the safety posture:** `LIVE` is locked,
 `REAL_CAPITAL_EXPOSURE` is `0`, and `NO_VALIDATED_EDGE` stands unless a future
 release says otherwise with evidence.
 
-## [Unreleased]
+## [1.0.1] — 2026-10-20
 
 Operational hardening found by auditing the 1.0.0 release. No trading behaviour,
 gate, risk limit or lock changes.
