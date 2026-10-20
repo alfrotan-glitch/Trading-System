@@ -16,6 +16,7 @@ a = Analysis(
     datas=[
         (str(ROOT / 'src' / 'qts' / 'desktop' / 'ui'), 'qts/desktop/ui'),
         (str(ROOT / 'configs'), 'configs'),
+        (str(ROOT / 'data' / 'fixtures'), 'data/fixtures'),
     ],
     hiddenimports=[
         'qts.api.server',

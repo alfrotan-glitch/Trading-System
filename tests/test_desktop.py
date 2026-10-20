@@ -1087,3 +1087,21 @@ def test_startup_health_real_mode_probe_unlocks_nothing(
 
     readiness = demo_forward_readiness_report(symbol="XAUUSD", symbol_map={"XAUUSD": "XAUUSD@"})
     assert readiness["passed"] is False
+
+
+def test_launcher_version_and_help_exit_without_starting_the_server(monkeypatch, capsys):
+    """A packaged EXE must answer --version/--help, not open a desktop window."""
+    import sys
+
+    from qts import __version__
+    from qts.desktop import launcher
+
+    monkeypatch.setattr(sys, "argv", ["QTS", "--version"])
+    launcher.main()
+    assert f"QTS {__version__}" in capsys.readouterr().out
+
+    monkeypatch.setattr(sys, "argv", ["QTS", "--help"])
+    launcher.main()
+    out = capsys.readouterr().out
+    assert "Usage: QTS" in out
+    assert "Live trading is locked" in out

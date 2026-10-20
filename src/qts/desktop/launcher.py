@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import threading
 import time
 import webbrowser
@@ -85,7 +86,34 @@ def open_desktop_window(host: str, port: int):
         shutdown_procedure()
 
 
+def _handle_cli(argv: list[str] | None = None) -> bool:
+    """Answer ``--version``/``--help`` without starting a server or a window.
+
+    A packaged (windowed) executable has no console, but the exit code still
+    proves the frozen import graph and bootstrap succeeded — which is exactly
+    what the release workflow smoke-tests.
+    """
+    args = list(sys.argv[1:] if argv is None else argv)
+    if "--version" in args or "-V" in args:
+        from qts import __version__
+
+        print(f"QTS {__version__}")
+        return True
+    if "--help" in args or "-h" in args:
+        print(
+            "QTS — gold research workstation\n\n"
+            "Usage: QTS [--version] [--help]\n\n"
+            "Without arguments QTS runs startup health, serves the local API on\n"
+            "127.0.0.1:8000 and opens the workstation window.\n"
+            "Live trading is locked; real-capital exposure is 0."
+        )
+        return True
+    return False
+
+
 def main():
+    if _handle_cli():
+        return
     print("[launcher] QTS Desktop starting — startup health check")
     from qts.desktop.health import startup_health_check
 
