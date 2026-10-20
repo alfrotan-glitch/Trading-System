@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 
+from click.testing import CliRunner
+
 import numpy as np
 import pandas as pd
 import pytest
-from click.testing import CliRunner
 
 from qts.cli.research import research
 from qts.research.longhistory.adaptive_backtest import build_adaptive_plan
