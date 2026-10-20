@@ -6,6 +6,31 @@ versioning. **No release changes the safety posture:** `LIVE` is locked,
 `REAL_CAPITAL_EXPOSURE` is `0`, and `NO_VALIDATED_EDGE` stands unless a future
 release says otherwise with evidence.
 
+## [Unreleased]
+
+Research harness and the acceptance gate for XAUUSD edge search. No trading
+behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
+`NO_VALIDATED_EDGE` stands.
+
+### Added
+
+- `qts.research.edgelab` — a vectorised, cost-charged research harness with an
+  explicit execution convention, alpha-vs-beta attribution, deflated Sharpe and a
+  pre-registered acceptance gate (`gate.py`).
+- `scripts/edgelab_prepare_data.py`, `scripts/edgelab_screen.py`,
+  `scripts/edgelab_report.py` — data build, alpha-ranked screen, and the only
+  script permitted to declare an edge.
+- `docs/research/xauusd_edge_lab_verdict_2026-10-20.md` — the first gated run:
+  0 of 39 D1 and 0 of 46 H1 strategies survive. Holdout untouched.
+
+### Fixed
+
+- `deflated_sharpe` returned 1.0 for every input: `norm.ppf(1 - 1/1)` is `-inf`,
+  so the multiple-testing guard passed anything, including pure noise.
+- `realized_vol` annualised with `sqrt(bars_per_day)`, returning *daily* sigma on
+  daily bars. Every volatility-scaled strategy was silently clipped to full size
+  and had never actually been vol-targeted.
+
 ## [1.0.1] — 2026-10-20
 
 Operational hardening found by auditing the 1.0.0 release. No trading behaviour,
