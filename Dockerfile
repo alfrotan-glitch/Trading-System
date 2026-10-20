@@ -3,8 +3,8 @@
 # Live trading is structurally locked in the code. This image adds no trading
 # permission; it packages the same fail-closed product.
 #
-# Build:  docker build -t qts:1.0.0 .
-# Run:    docker run --rm -p 127.0.0.1:8000:8000 -v qts-state:/data qts:1.0.0
+# Build:  docker build -t qts:1.0.1 .
+# Run:    docker run --rm -p 127.0.0.1:8000:8000 -v qts-state:/data qts:1.0.1
 # Open:   http://127.0.0.1:8000/
 
 # syntax=docker/dockerfile:1

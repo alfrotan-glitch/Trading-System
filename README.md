@@ -15,7 +15,7 @@ There is no validated trading opportunity. Real-money trading stays locked. `REA
 
 Start with [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and the [operating guides](docs/README.md). Research records in `docs/` are evidence, not operating instructions.
 
-**Release 1.0.0.** This is the production release of the research workstation:
+**Release 1.0.1.** Production release of the research workstation:
 reproducible dependencies (`requirements-prod.lock`), a hardened local API,
 health/version probes, a container image, a systemd unit, and a one-command
 release gate. It does not change the safety posture — see

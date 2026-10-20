@@ -15,10 +15,10 @@ operational; it does not authorize a trade.
 
 | Artifact | Built by | Use |
 |---|---|---|
-| `qts-1.0.0-py3-none-any.whl` | `python -m build` | Installed product (API, CLI, desktop UI) |
-| `qts-1.0.0.tar.gz` | `python -m build` | Source distribution / audit |
-| `qts:1.0.0` image | `docker build .` | Containerised workstation |
-| `QTS-v1.0.0-windows.zip` | `pyinstaller packaging/qts.spec` | One-click Windows desktop |
+| `qts-1.0.1-py3-none-any.whl` | `python -m build` | Installed product (API, CLI, desktop UI) |
+| `qts-1.0.1.tar.gz` | `python -m build` | Source distribution / audit |
+| `qts:1.0.1` image | `docker build .` | Containerised workstation |
+| `QTS-v1.0.1-windows.zip` | `pyinstaller packaging/qts.spec` | One-click Windows desktop |
 | `requirements-prod.lock` | clean `pip freeze` | Exact runtime dependency matrix |
 
 The UI is inside the wheel (`qts/desktop/ui`), together with the SYNTHETIC
@@ -108,7 +108,7 @@ and additionally requires Windows SmartScreen approval on first run.
 
 ```bash
 python -m venv /opt/qts/.venv
-/opt/qts/.venv/bin/pip install --no-index --find-links /srv/wheels qts==1.0.0
+/opt/qts/.venv/bin/pip install --no-index --find-links /srv/wheels qts==1.0.1
 QTS_STATE_ROOT=/var/lib/qts /opt/qts/.venv/bin/qts data bootstrap
 QTS_STATE_ROOT=/var/lib/qts /opt/qts/.venv/bin/qts serve --host 127.0.0.1 --port 8000
 ```
