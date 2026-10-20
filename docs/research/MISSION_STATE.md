@@ -49,7 +49,9 @@ All raw data is gitignored (`data/raw/`) and must be re-fetched in a new sandbox
 | Gold M15 (Dukascopy replay) | `data/research/xauusd_m15_vudo.parquet` | 2025-08-06 .. 2026-09-16 | real Dukascopy feed, 5 symbols incl. 4 FX pairs |
 
 Refetch: `bash scripts/fetch_longhistory.sh` is **not** the path for the FRED
-mirror; use the tarball approach recorded in §6.
+mirror; use the tarball approach recorded in §6. The FRED files must be
+re-downloaded before any script in §6 can run — the loaders fail with the file
+name and the expected source rather than a bare `FileNotFoundError`.
 
 ---
 
