@@ -222,3 +222,18 @@ def test_adaptive_xauusd_cli_writes_diagnostic_report(tmp_path):
     assert report["routing_config"]["candidate_count"] == 6
     assert "adaptive_router" in report
     assert "candidate_strategies" in report
+
+def test_adaptive_cli_cannot_label_assumed_costs_as_measured():
+    result = CliRunner().invoke(
+        research,
+        [
+            "adaptive-xauusd",
+            "--input",
+            "data/fixtures/XAUUSD_1H_500.csv",
+            "--cost-basis",
+            "MEASURED",
+        ],
+    )
+    assert result.exit_code == 2
+    assert "MEASURED" in result.output
+
