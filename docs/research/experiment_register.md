@@ -80,6 +80,35 @@ Both directions declared in advance, because theory supports each.
 
 0 DEV survivors. Reproduce: `python scripts/edgelab_gsr_run.py`.
 
+## Round 5 — Daily macro drivers, 1971-2024 (4 configurations)
+
+DXY daily from 1971-01-04 and the 10-year constant-maturity yield daily from
+1962-01-02 — genuinely external series with their own dynamics, unlike every
+price-derived rule tested so far. Hypotheses concern direction of travel, not the
+well-known contemporaneous correlation (which is not predictive).
+
+| Hypothesis | DEV 1971-2000 | VAL 2001-2010 | TEST 2011-2019 | 2020-24 | Verdict |
+|---|---|---|---|---|---|
+| `usd_falling_6m` | +4.8% (t=2.41) | +0.6% (0.20) | +2.8% (1.18) | +3.6% (1.00) | positive 4/4, **misses DEV gate by 0.09** |
+| `usd_falling_12m` | +6.7% (**t=3.34**) | −1.3% (−0.42) | +0.7% (0.35) | −2.3% (−0.77) | passes DEV, **fails sign test 1/3** |
+| `yield_falling_6m` | +2.3% (1.21) | +3.4% (1.10) | +6.4% (**2.62**) | +3.8% (1.24) | positive 4/4, **fails DEV** |
+| `yield_falling_12m` | −0.4% (−0.22) | −0.0% | −0.9% | −1.4% | no |
+
+0 candidates holding sign out of sample. Reproduce: `python scripts/edgelab_macro_daily_run.py`.
+
+**Holdout status: spent.** 2020-2024 was consumed rejecting `tsmom_1m` in Round 3.
+Once read, a window is in-sample for every later hypothesis, so `usd_falling_6m`
+and `yield_falling_6m` — both positive across all four windows — **cannot** be
+called validated here. They are interesting and underpowered; nothing more.
+
+Two near-misses worth noting precisely, because they are the most consistent
+signals found in the entire project and still do not clear the bar:
+`usd_falling_6m` is positive in 4/4 windows with DEV t=2.41 (gate: 2.5), and
+`yield_falling_6m` is positive in 4/4 with TEST t=2.62 but DEV t=1.21. Each fails
+a different criterion. That pattern — consistency without a decisive period — is
+what a small real effect looks like, and also what a mild overfit looks like. With
+the holdout spent, this dataset cannot distinguish them.
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
@@ -91,7 +120,7 @@ Both directions declared in advance, because theory supports each.
 
 ## What the register implies
 
-Four rounds, ~75 configurations, every family from price, macro, calendar,
+Five rounds, ~80 configurations, every family from price, macro, calendar,
 relative-value and cross-sectional information. Not one survives DEV→VAL→TEST→holdout
 on tradable prices. The two that cleared DEV died in identifiable ways: one on a
 regime that ended in 1980, one on a fixing artifact plus post-2019 decay.
