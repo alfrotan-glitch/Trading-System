@@ -51,6 +51,10 @@ RELATIVE_DEFAULTS: dict[str, str] = {
     "stage_db": "data/sqlite/qts.db",
     "observatory_db": "data/sqlite/forward_observatory.db",
     "edge_validation": "data/evidence/edge_validation.json",
+    # Edge Lab forward observation: the only source of genuinely unseen evidence
+    # once a backtest holdout has been consumed.
+    "edgelab_candidates": "data/evidence/edgelab_candidates.json",
+    "edgelab_forward_ledger": "data/evidence/edgelab_forward_ledger.jsonl",
     "dry_run": "data/evidence/dry_run.json",
     "micro": "data/evidence/micro.json",
     "paper_trades": "data/evidence/paper_trades.json",

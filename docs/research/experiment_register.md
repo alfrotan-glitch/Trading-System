@@ -5,7 +5,8 @@ here feed the deflated-Sharpe correction, so nothing is silently dropped — fai
 and discarded experiments are the expensive part of the evidence and are listed
 with the same care as survivors.
 
-**Standing conclusion: `NO_VALIDATED_EDGE`.** `LIVE` locked, `REAL_CAPITAL_EXPOSURE = 0`.
+**Standing conclusion: `CANDIDATE` (XL-001), not validated.** `LIVE` locked,
+`REAL_CAPITAL_EXPOSURE = 0`.
 All costs ASSUMED in basis points, never measured.
 
 Acceptance gate (frozen 2026-10-20, `qts/research/edgelab/gate.py`): `alpha_t >= 2.5`
@@ -109,6 +110,46 @@ a different criterion. That pattern — consistency without a decisive period �
 what a small real effect looks like, and also what a mild overfit looks like. With
 the holdout spent, this dataset cannot distinguish them.
 
+## Round 6 — Easing-conditions composite (3 configurations) → **first candidate**
+
+The round-5 finding that `usd_falling_6m` and `yield_falling_6m` were both positive
+in all four windows suggested they measure one factor with independent noise.
+Combining them is a single economic hypothesis (loosening financial conditions),
+so the combination rule was fixed by reasoning, not by fitting.
+
+| Variant | DEV alpha t | Note |
+|---|---|---|
+| conjunction (both falling) | 1.27 | **worse** — requiring agreement discards information |
+| **average of the two (6m)** | **2.70** | `XL-001` — all gate criteria pass |
+| disjunction either falling (12m) | — | fails VAL (t=−2.03) |
+
+### XL-001 under realistic costs (0.925 bps/side)
+
+| Period | Alpha/yr | alpha_t | Sharpe | Max DD | Beta |
+|---|---|---|---|---|---|
+| DEV 1971-2000 | +3.3% | **2.70** | 0.62 | 24.6% | 0.46 |
+| VAL 2001-2010 | +1.4% | 0.65 | 0.92 | 16.5% | 0.58 |
+| TEST 2011-2019 | +4.9% | **2.94** | 0.66 | 14.6% | 0.50 |
+
+Positive in all five decades (+4.8, +6.0, +0.2, +1.6, +5.0 %/yr). DSR 0.962 at 11
+trials, 0.978 at 7. Survives 2x cost stress; falls below threshold only at 5x.
+Turnover 6.7/yr — costs are not doing the work. Reproduce:
+`python scripts/edgelab_candidate_run.py`.
+
+**Status `CANDIDATE`, not validated:** the 2020-2024 holdout was spent in round 3,
+and the macro drivers end 2024-05 so the rule cannot be computed over the genuinely
+unseen vudo 2025-26 series. Forward observation is the only remaining evidence.
+Full write-up: `candidate_xl001_easing_conditions_2026-10-20.md`.
+
+### Cost-model correction (integrity)
+
+The `CostModel` docstring claimed **4.0 bps/side** while the formula computed
+**0.40** — a factor-of-ten gap, so every cost assumption reported in rounds 1-5 was
+10x stricter than what was actually charged. The docstring is corrected, the
+formula is authoritative, and `realistic_ecn()` (0.925 bps/side) was added because
+0.40 bps is optimistic for retail gold. XL-001 is reported under both, and a test
+now pins the documented rate to the computed one.
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
@@ -120,11 +161,13 @@ the holdout spent, this dataset cannot distinguish them.
 
 ## What the register implies
 
-Five rounds, ~80 configurations, every family from price, macro, calendar,
+Six rounds, ~83 configurations, every family from price, macro, calendar,
 relative-value and cross-sectional information. Not one survives DEV→VAL→TEST→holdout
 on tradable prices. The two that cleared DEV died in identifiable ways: one on a
 regime that ended in 1980, one on a fixing artifact plus post-2019 decay.
 
-Continuing to add price-derived variants would raise the trial count while the
-detection floor stays at SR 0.35 — that is arithmetic, not pessimism. The inputs
-that would change the answer are the ones listed as unavailable above.
+One candidate now exists (XL-001) with a coherent economic mechanism, low turnover
+and independent significance on two disjoint periods. What it lacks is genuinely
+unseen confirmation, which no further analysis of the same data can provide. The
+forward ledger (`qts forward log`, `qts forward score`) is the mechanism that
+accumulates it.

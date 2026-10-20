@@ -29,16 +29,20 @@ import pandas as pd
 class CostModel:
     """Round-trip trading cost, expressed per side in basis points of notional.
 
-    Defaults describe a competitive ECN-style gold account and are explicitly
-    ASSUMED, not measured on the configured broker:
+    Defaults are explicitly ASSUMED, not measured on the configured broker. At the
+    ``reference_price`` of 2000 USD/oz they work out to:
 
-    * spread 0.05 USD/oz on ~2000 USD/oz  ≈ 2.5 bps round trip  → 1.25 bps/side
-    * commission 3.50 USD per 100 oz lot per side ≈ 1.75 bps    → 1.75 bps/side
-    * slippage 0.02 USD/oz ≈ 1.0 bps per side                   → 1.00 bps/side
+    * half-spread   0.025 USD/oz on 2000 USD/oz  = 0.125 bps/side
+    * commission    3.50 USD per 100 oz lot      = 0.175 bps/side
+    * slippage      0.02 USD/oz                  = 0.100 bps/side
+    * **total 0.40 bps/side, 0.80 bps round trip**
 
-    ``per_side_bps`` = 4.0 bps, i.e. ~8 bps round trip. The standard-account default
-    (18 pips spread, no commission) is materially worse; ``standard_account()``
-    models it and every result must survive it.
+    An earlier version of this docstring claimed 4.0 bps/side — a factor-of-ten
+    error between the prose and the formula. The formula is authoritative and the
+    number above is what it computes. Because 0.40 bps is optimistic for retail
+    gold (typical ECN spreads are 10-30 cents, not 5), ``realistic_ecn()`` models a
+    wider spread and heavier slippage and **every candidate must be reported under
+    both**. ``standard_account()`` models an 18-pip spread with no commission.
     """
 
     name: str = "ecn_assumed"
@@ -67,6 +71,22 @@ class CostModel:
             spread_usd=0.18,
             commission_usd_per_lot_side=0.0,
             slippage_usd=0.02,
+        )
+
+    @classmethod
+    def realistic_ecn(cls) -> CostModel:
+        """A deliberately less flattering ECN model than the optimistic default.
+
+        0.20 USD spread (typical retail ECN is 10-30 cents on gold) and 0.05 USD
+        slippage. At 2000 USD/oz this costs ~0.925 bps/side, i.e. 2.3x the default.
+        Use this whenever a result is close enough that the cost assumption could
+        be doing the work.
+        """
+        return cls(
+            name="ecn_realistic",
+            spread_usd=0.20,
+            commission_usd_per_lot_side=3.50,
+            slippage_usd=0.05,
         )
 
     @classmethod
