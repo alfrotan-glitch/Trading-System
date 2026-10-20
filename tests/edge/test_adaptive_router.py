@@ -9,6 +9,9 @@ from qts.research.longhistory.adaptive_router import (
     classify_market_regime,
     route_by_regime,
 )
+from qts.research.longhistory.adaptive_backtest import build_adaptive_plan
+from qts.research.longhistory.engine import CostModel
+from qts.research.longhistory.signals import Plan
 
 
 def sample_inputs(n: int = 40):
@@ -113,3 +116,60 @@ def test_regime_classifier_rejects_invalid_thresholds():
     )
     with pytest.raises(ValueError, match="thresholds"):
         classify_market_regime(bars, trend_threshold=0.2, range_threshold=0.3)
+
+
+
+def test_adaptive_backtest_uses_costed_engine_and_returns_a_valid_routed_plan():
+    n = 80
+    index = pd.date_range("2024-01-01", periods=n, freq="D")
+    close = pd.Series(2000.0 + np.arange(n, dtype=float), index=index)
+    bars = pd.DataFrame(
+        {
+            "open": close,
+            "high": close + 0.5,
+            "low": close - 0.5,
+            "close": close,
+        },
+        index=index,
+    )
+    long_plan = Plan(
+        target=np.ones(n),
+        size=np.full(n, 0.5),
+        stop_dist=np.full(n, np.nan),
+        rebalance=np.zeros(n, dtype=bool),
+        family="test_long",
+        params={},
+    )
+    short_plan = Plan(
+        target=-np.ones(n),
+        size=np.full(n, 0.5),
+        stop_dist=np.full(n, np.nan),
+        rebalance=np.zeros(n, dtype=bool),
+        family="test_short",
+        params={},
+    )
+    config = AdaptiveRoutingConfig(lookback=20, min_observations=3)
+    routed, diagnostics, candidate_returns = build_adaptive_plan(
+        bars,
+        {"long": long_plan, "short": short_plan},
+        CostModel(
+            spread_bps=0.0,
+            slippage_bps=0.0,
+            commission_usd_per_lot_side=0.0,
+            financing_bps_per_day=0.0,
+            basis="TEST_ZERO_COST",
+        ),
+        routing_config=config,
+        trend_lookback=3,
+        trend_threshold=0.3,
+        range_threshold=0.2,
+        atr_lookback=2,
+        volatility_window=2,
+    )
+    assert routed.family == "adaptive_regime_router"
+    assert len(routed.target) == n
+    assert candidate_returns.index.equals(index)
+    assert set(candidate_returns.columns) == {"long", "short"}
+    assert diagnostics["selected_strategy"].iloc[:10].isna().all()
+    assert (diagnostics["selected_strategy"].iloc[10:] == "long").all()
+    assert (routed.target[10:] == 1.0).all()
