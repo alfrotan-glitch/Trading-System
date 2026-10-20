@@ -25,6 +25,13 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 - `qts.research.edgelab.power` — detection floors (`min_detectable_sr`,
   `years_needed`, `detection_summary`), so a `NO_VALIDATED_EDGE` verdict is
   reported alongside the smallest effect the sample could have detected.
+- `qts.research.edgelab.crosssection` + `scripts/edgelab_cross_section.py` —
+  replication of gold findings on an independent broker feed and across 12
+  instruments. Confirms the signals are not vendor artefacts, and that
+  volatility-managed exposure is *reliably* alpha-negative (2/12 instruments).
+- `docs/research/xauusd_replication_and_cross_section_2026-10-20.md` — the
+  replication study: `tsmom_d5` is positive on 6/12 instruments (a coin flip) and
+  `volman_15_d60` earns its whole apparent alpha in 2004-2011 only.
 - `docs/research/xauusd_edge_lab_verdict_2026-10-20.md` — the first gated run:
   0 of 45 D1 and 0 of 52 H1 strategies survive, across 12 families spanning
   price-derived and macro inputs. Holdout untouched.
