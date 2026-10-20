@@ -34,6 +34,7 @@ from qts.research.edgelab import (
     split,
     yearly_table,
 )
+from qts.research.edgelab.macro import attach_macro
 from qts.research.edgelab.specs import BARS_PER_YEAR, build_specs
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -117,6 +118,13 @@ def main() -> None:
     base = base[base.index <= pd.Timestamp("2024-12-31", tz="UTC")]
     bars = base if args.timeframe == "M15" else resample(base, args.timeframe)
     bpy = BARS_PER_YEAR.get(args.timeframe, 252.0)
+
+    # Macro conditioning is optional: without it the macro family raises and is
+    # reported as a skipped hypothesis rather than silently dropping out.
+    try:
+        bars = attach_macro(bars)
+    except FileNotFoundError as exc:
+        print(f"  ! macro data unavailable: {exc}")
 
     spans = split(bars.index)
     period_idx = spans[args.period]

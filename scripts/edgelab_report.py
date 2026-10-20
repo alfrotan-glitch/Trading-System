@@ -45,6 +45,7 @@ from qts.research.edgelab import (
     split,
 )
 from qts.research.edgelab.gate import MAX_COST_STRESS_FACTOR, MIN_ALPHA_T_DEV, MIN_DSR, survivors, val_confirms
+from qts.research.edgelab.macro import attach_macro
 from qts.research.edgelab.specs import BARS_PER_YEAR, build_specs
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -134,6 +135,7 @@ def main() -> None:
 
     base = load_bars("basemax")
     base = base[base.index <= pd.Timestamp("2024-12-31", tz="UTC")]
+    macro_available = True
     specs = build_specs()
     ecn = CostModel()
     stress = CostModel.stressed(GATE["max_cost_stress_factor"])
@@ -148,6 +150,14 @@ def main() -> None:
 
     for tf in [t.strip() for t in args.timeframes.split(",") if t.strip()]:
         bars = base if tf == "M15" else resample(base, tf)
+        # Attach macro *after* resampling: resample() rebuilds OHLCV and would drop
+        # any extra column, which silently turned every macro hypothesis into a skip.
+        if macro_available:
+            try:
+                bars = attach_macro(bars)
+            except FileNotFoundError as exc:
+                macro_available = False
+                print(f"! macro data unavailable, macro family will be skipped: {exc}")
         bpy = BARS_PER_YEAR.get(tf, 252.0)
         spans = split(bars.index)
 

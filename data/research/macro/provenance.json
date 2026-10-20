@@ -1,0 +1,22 @@
+{
+  "series": "FRED DFII10 \u2014 10-Year Treasury Inflation-Indexed Security, constant maturity",
+  "source": {
+    "repository": "AsjalAbdullahButt/Gold_Forecast_Results",
+    "commit": "caf4a1e012954880363e399234a8e9bad5a62237",
+    "path": "data/raw/fred_DFII10.csv",
+    "fetch": "https://codeload.github.com/AsjalAbdullahButt/Gold_Forecast_Results/tar.gz/caf4a1e012954880363e399234a8e9bad5a62237"
+  },
+  "source_file": "data/raw/macro/Gold_Forecast_Results-caf4a1e012954880363e399234a8e9bad5a62237/data/raw/fred_DFII10.csv",
+  "sha256": "351dceb9e09866e5c2aa40445761e5fd6358f48f7a264283d8c4feb245922d12",
+  "rows": 5380,
+  "dropped_non_numeric": 0,
+  "duplicates": 0,
+  "span": [
+    "2005-01-03",
+    "2026-07-06"
+  ],
+  "max_abs_daily_change_pp": 0.6199999999999999,
+  "min": -1.19,
+  "max": 3.15,
+  "note": "US government data redistributed by FRED. Used only as a conditioning variable. Values are lagged one business day before use so a bar's signal cannot contain that same day's close."
+}

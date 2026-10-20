@@ -77,6 +77,33 @@ is ~1%/yr with a t-stat near 1.0: this is **risk management of a long-gold
 position, not a return edge**. It is not promoted, and it must not be described as
 alpha.
 
+## 3b. Macro conditioning: the real yield
+
+Price-derived signals failing is not the same as "no edge exists" — it only
+retires one information set. The strongest prior for gold is the **real yield**:
+gold pays no coupon, so the inflation-adjusted Treasury yield is its opportunity
+cost. FRED `DFII10` (10-Year TIPS, constant maturity) covers 2005-01-03 → 2026-07-06,
+5,380 daily observations, with a maximum daily change of 0.62pp — no splice
+artefacts.
+
+Values are lagged one business day before use. A same-day real yield is not
+knowable at that day's close, and attaching it would manufacture a backtest rather
+than measure one; `align_to_bars` refuses `lag_days=0` outright.
+
+| Strategy | Period | CAGR | Sharpe | Max DD | Alpha (ann) | Alpha t |
+|---|---|---|---|---|---|---|
+| `realyield_mom_d60` (L/S) | DEV | 0.2% | 0.095 | 46.0% | +1.8% | 0.48 |
+| `realyield_long_d60` (long only) | DEV | 4.4% | 0.439 | 34.2% | +1.2% | 0.60 |
+| `realyield_long_d20` (long only) | VAL | 7.0% | 0.649 | 12.5% | +0.5% | 0.14 |
+| `realyield_long_d60` (long only) | VAL | 6.1% | 0.550 | 16.1% | −1.2% | −0.37 |
+| `realyield_long_d120` (long only) | VAL | 4.5% | 0.421 | 18.9% | −2.8% | −0.89 |
+
+Every variant underperforms buy-and-hold in **both** periods (DEV 4.4% vs 7.0%;
+VAL 6.1% vs 10.0%). Long-only is the economically sensible implementation —
+shorting gold costs borrow and fights a positive drift — but choosing it after
+seeing the shorts lose money is a degree of freedom, so it had to clear a higher
+bar, not a lower one. It did not clear the ordinary one.
+
 ## 4. Acceptance gate (pre-registered)
 
 `qts/research/edgelab/gate.py` fixes the criteria before results are read:
@@ -88,8 +115,8 @@ alpha.
 
 A candidate failing any one of them stays `NO_VALIDATED_EDGE`.
 
-**Outcome: 0 survivors out of 39 evaluable D1 strategies (46 defined, 11 families)
-and 0 of 46 on H1.** The best DEV alpha t-stat was 2.11 (D1) and 2.14 (H1) — and
+**Outcome: 0 survivors out of 45 evaluable D1 strategies (52 defined, 12 families)
+and 0 of 52 on H1.** The best DEV alpha t-stat was 2.11 (D1) and 2.14 (H1) — and
 it is the *same* signal at two resolutions, so those are not independent
 observations.
 
@@ -113,16 +140,16 @@ number. None of them were visible from the output — only from reading the code
 
 ## 6. What this does and does not establish
 
-**Established:** over 2004-2021, in this dataset, none of 46 price-based
-configurations in 11 families produces alpha that survives costs, multiple-testing
-correction and a validation period. This corroborates §20-22 from an independent
-implementation.
+**Established:** over 2004-2021, in this dataset, none of 52 configurations across
+12 families — price-derived *and* macro-conditioned — produces alpha that survives
+costs, multiple-testing correction and a validation period. This corroborates
+§20-22 from an independent implementation.
 
 **Not established:** that no XAUUSD edge exists. This study tests *price-derived*
-signals on one instrument. It says nothing about:
+signals plus one macro driver on one instrument. It says nothing about:
 
 * signals using data this harness does not have — order flow, options-implied
-  volatility, real yields, ETF flows, positioning;
+  volatility, ETF flows, positioning;
 * execution-level edges (maker/taker, latency, spread capture);
 * portfolio construction across several instruments.
 
@@ -133,11 +160,13 @@ holdout on a strategy that already failed DEV and VAL would destroy it for nothi
 
 ```bash
 python scripts/edgelab_prepare_data.py     # build parquet + quality report
+python scripts/edgelab_prepare_macro.py    # real-yield series + provenance
 python scripts/edgelab_screen.py --timeframe D1 --period DEV    # rank by alpha
 python scripts/edgelab_report.py --timeframes D1,H1             # gate + verdict
 ```
 
 Artifacts: `data/research/experiments/` (per-run CSVs and `verdict_*.json`).
 
-Tests pinning the above: `tests/unit/test_edgelab_engine.py` (14 invariants) and
-`tests/unit/test_edgelab_gate.py` (7 gate behaviours).
+Tests pinning the above: `tests/unit/test_edgelab_engine.py` (14 invariants),
+`tests/unit/test_edgelab_gate.py` (7 gate behaviours) and
+`tests/unit/test_edgelab_macro.py` (6 alignment / look-ahead checks).

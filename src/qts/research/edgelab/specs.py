@@ -11,6 +11,7 @@ from __future__ import annotations
 import pandas as pd
 
 from qts.research.edgelab import StrategySpec
+from qts.research.edgelab import macro as M
 from qts.research.edgelab import signals as S
 
 BARS_PER_YEAR = {"D1": 252.0, "H4": 252.0 * 6, "H1": 252.0 * 24, "M15": 252.0 * 96, "M30": 252.0 * 48}
@@ -159,6 +160,35 @@ def build_specs() -> list[StrategySpec]:
                 params={"n": n, "k": k},
                 fn=S.bollinger_reversion,
                 rationale="Fade k-sigma extensions on intraday bars.",
+            )
+        )
+
+    # ---- Family 10: macro conditioning (real yields) ------------------------------
+    # Orthogonal information to every price-derived rule above: the opportunity cost
+    # of holding a zero-coupon asset. Fails loudly if the macro series is absent.
+    for lb in (20, 60, 120):
+        specs.append(
+            StrategySpec(
+                name=f"realyield_mom_d{lb}",
+                family="macro",
+                params={"lookback_days": lb},
+                fn=M.real_yield_momentum,
+                rationale="Gold is a zero-coupon asset: long when the real yield falls, short when it rises.",
+            )
+        )
+
+    # Long-only variants. Shorting gold costs borrow and fights a positive drift, so
+    # long-only is the economically sensible implementation — but it is also chosen
+    # *after* seeing that the shorts lost money on DEV, which is a degree of freedom
+    # that must be paid for by a stricter holdout, not by a claim.
+    for lb in (20, 60, 120):
+        specs.append(
+            StrategySpec(
+                name=f"realyield_long_d{lb}",
+                family="macro",
+                params={"lookback_days": lb, "allow_short": False},
+                fn=M.real_yield_momentum,
+                rationale="Real-yield timing, long-only: hold gold only while its opportunity cost is falling.",
             )
         )
 

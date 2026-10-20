@@ -20,8 +20,11 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 - `scripts/edgelab_prepare_data.py`, `scripts/edgelab_screen.py`,
   `scripts/edgelab_report.py` — data build, alpha-ranked screen, and the only
   script permitted to declare an edge.
+- `qts.research.edgelab.macro` — FRED `DFII10` real-yield conditioning, lagged one
+  business day, with a provenance manifest and hard-failing quality checks.
 - `docs/research/xauusd_edge_lab_verdict_2026-10-20.md` — the first gated run:
-  0 of 39 D1 and 0 of 46 H1 strategies survive. Holdout untouched.
+  0 of 45 D1 and 0 of 52 H1 strategies survive, across 12 families spanning
+  price-derived and macro inputs. Holdout untouched.
 
 ### Fixed
 
