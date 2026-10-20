@@ -88,7 +88,7 @@ def classify_market_regime(
     efficiency_values = efficiency.to_numpy(dtype=float)
     baseline_values = prior_atr_median.to_numpy(dtype=float)
     atr_values = atr.to_numpy(dtype=float)
-    direction_values = direction.to_numpy(dtype=float)
+    direction_values = np.asarray(direction, dtype=float)
 
     labels: list[str] = []
     for i in range(len(bars)):
