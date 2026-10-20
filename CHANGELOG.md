@@ -22,14 +22,21 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
   script permitted to declare an edge.
 - `qts.research.edgelab.macro` — FRED `DFII10` real-yield conditioning, lagged one
   business day, with a provenance manifest and hard-failing quality checks.
+- `qts.research.edgelab.power` — detection floors (`min_detectable_sr`,
+  `years_needed`, `detection_summary`), so a `NO_VALIDATED_EDGE` verdict is
+  reported alongside the smallest effect the sample could have detected.
 - `docs/research/xauusd_edge_lab_verdict_2026-10-20.md` — the first gated run:
   0 of 45 D1 and 0 of 52 H1 strategies survive, across 12 families spanning
   price-derived and macro inputs. Holdout untouched.
 
 ### Fixed
 
-- `deflated_sharpe` returned 1.0 for every input: `norm.ppf(1 - 1/1)` is `-inf`,
-  so the multiple-testing guard passed anything, including pure noise.
+- `deflated_sharpe` returned 1.0 for every input, for two independent reasons:
+  `norm.ppf(1 - 1/1)` is `-inf`, and an **annualised** Sharpe was fed to a per-bar
+  formula, inflating the t-statistic by `sqrt(252) ≈ 15.9x`. Corrected, `tsmom_d5`
+  scores DSR 0.741 rather than 1.000 and fails the gate on this criterion too. The
+  function now takes `bars_per_year` explicitly and delegates to the tested
+  `qts.validation.metrics.deflated_sharpe_ratio` instead of duplicating it.
 - `realized_vol` annualised with `sqrt(bars_per_day)`, returning *daily* sigma on
   daily bars. Every volatility-scaled strategy was silently clipped to full size
   and had never actually been vol-targeted.

@@ -397,27 +397,45 @@ def side_attribution(net_returns: np.ndarray, position: np.ndarray) -> dict:
 # --------------------------------------------------------------------------- stats
 
 
-def deflated_sharpe(sr: float, n_trials: int, n_obs: int, skew: float = 0.0, kurt: float = 3.0) -> float:
-    """Bailey & López de Prado deflated Sharpe probability that SR > 0.
+def deflated_sharpe(
+    sr_annualised: float,
+    n_trials: int,
+    n_obs: int,
+    bars_per_year: float,
+    skew: float = 0.0,
+    kurt: float = 3.0,
+) -> float:
+    """Bailey & López de Prado deflated Sharpe: P(true SR > 0) after N trials.
 
-    Accounts for the number of configurations tried and non-normal returns. A
-    value below ~0.95 is not evidence of skill after multiple testing.
+    A value below ~0.95 is not evidence of skill once multiple testing is counted.
+
+    **Units are a parameter, not an assumption.** The deflation benchmark is
+    ``E[max SR] * sqrt(P / (n - 1))``, which is only correct if the Sharpe and the
+    period count describe the same frequency. An earlier version of this function
+    took an *annualised* Sharpe and multiplied it by ``sqrt(n_obs)`` as though it
+    were per-bar, inflating the t-statistic by ``sqrt(252) ≈ 15.9x`` and returning
+    ~1.0 for every input — a guard that passed everything is indistinguishable
+    from no guard.
+
+    ``bars_per_year`` is therefore required, and this delegates to the tested
+    implementation in :mod:`qts.validation.metrics` rather than re-deriving the
+    formula. Two copies of a statistic is how they drift apart.
     """
-    from scipy.stats import norm
+    from qts.validation.metrics import deflated_sharpe_ratio
 
     if n_obs < 3 or n_trials < 1:
         return 0.0
-    if n_trials == 1:
-        # No selection happened, so the expected maximum of one draw is zero.
-        # (norm.ppf(1 - 1/1) is -inf, which previously made this return 1.0 always.)
-        e_max = 0.0
-    else:
-        emc = 0.5772156649
-        e_max = (1 - emc) * norm.ppf(1 - 1 / n_trials) + emc * norm.ppf(1 - 1 / (n_trials * np.e))
-    sr0 = e_max / np.sqrt(n_obs)
-    num = (sr - sr0) * np.sqrt(n_obs - 1)
-    den = np.sqrt(1 - skew * sr + (kurt - 1) / 4 * sr**2)
-    return float(norm.cdf(num / den)) if den > 0 else 0.0
+    return float(
+        deflated_sharpe_ratio(
+            observed_sr=sr_annualised,
+            num_trials=n_trials,
+            n=n_obs,
+            skewness=skew,
+            kurtosis=kurt,
+            periods_per_year=int(round(bars_per_year)),
+            annualized=True,
+        )
+    )
 
 
 def yearly_table(ret: pd.Series) -> pd.DataFrame:

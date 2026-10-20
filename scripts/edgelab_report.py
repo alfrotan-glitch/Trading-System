@@ -46,6 +46,7 @@ from qts.research.edgelab import (
 )
 from qts.research.edgelab.gate import MAX_COST_STRESS_FACTOR, MIN_ALPHA_T_DEV, MIN_DSR, survivors, val_confirms
 from qts.research.edgelab.macro import attach_macro
+from qts.research.edgelab.power import detection_summary
 from qts.research.edgelab.specs import BARS_PER_YEAR, build_specs
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -121,7 +122,7 @@ def evaluate_period(
     # Multiple testing: each family is its own search, so count trials per family.
     trials = df.groupby("family")["name"].transform("count").to_numpy()
     df["dsr"] = [
-        deflated_sharpe(sr, int(n), int(obs), skew=sk, kurt=ku)
+        deflated_sharpe(sr, int(n), int(obs), bars_per_year=bpy, skew=sk, kurt=ku)
         for sr, n, obs, sk, ku in zip(df["sharpe"], trials, df["n_obs"], df["skew"], df["kurt"], strict=True)
     ]
     return df.sort_values("alpha_t", ascending=False)
@@ -170,6 +171,7 @@ def main() -> None:
         dev_survivors = survivors(merged)
         tf_block = {
             "bars": int(len(bars)),
+            "power": detection_summary(len(spans["DEV"]), bpy, MIN_ALPHA_T_DEV),
             "strategies": int(len(merged)),
             "dev_best_by_alpha": merged.head(5)[
                 ["name", "sharpe", "alpha_ann", "alpha_t", "dsr", "beta", "cagr", "max_dd"]

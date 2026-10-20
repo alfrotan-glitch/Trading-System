@@ -115,19 +115,20 @@ def test_split_periods_are_chronological_and_disjoint():
 def test_deflated_sharpe_punishes_more_trials():
     """Same Sharpe, more configurations tried -> less evidence of skill.
 
-    The Sharpe must be marginal *relative to the sample*, otherwise it saturates
-    at 1.0 regardless of trials and the test proves nothing. SR 0.1 over 1000
-    bars is a t-stat of ~3.2, which survives a handful of trials but not 500.
+    Uses a Sharpe that looks respectable (0.6 over 17.8 years is t=2.5): it is
+    convincing as a single pre-registered test and unconvincing as the best of 500.
+    The earlier version of this test used SR 0.1, whose "pass" was an artefact of
+    the annualised/per-bar units bug rather than a property of the statistic.
     """
-    few = deflated_sharpe(sr=0.1, n_trials=1, n_obs=1000)
-    many = deflated_sharpe(sr=0.1, n_trials=500, n_obs=1000)
+    few = deflated_sharpe(sr_annualised=0.6, n_trials=1, n_obs=4481, bars_per_year=252)
+    many = deflated_sharpe(sr_annualised=0.6, n_trials=500, n_obs=4481, bars_per_year=252)
     assert few > many
     assert few > 0.99, "a single trial needs no deflation"
     assert many < 0.95, "500 trials must demote a marginal Sharpe"
 
 
 def test_deflated_sharpe_rejects_short_samples():
-    assert deflated_sharpe(sr=3.0, n_trials=1, n_obs=2) == 0.0
+    assert deflated_sharpe(sr_annualised=3.0, n_trials=1, n_obs=2, bars_per_year=252) == 0.0
 
 
 def _market(n: int = 2000, seed: int = 7) -> pd.Series:
@@ -180,3 +181,37 @@ def test_realized_vol_is_annualised_on_daily_bars():
     vol = realized_vol(close, n=60).dropna()
     # sigma 1%/day -> ~15.9% annualised.
     assert vol.iloc[-1] == pytest.approx(0.01 * np.sqrt(252), rel=0.15)
+
+
+def test_deflated_sharpe_does_not_saturate_on_annualised_input():
+    """Regression: an annualised Sharpe was fed to a per-bar formula.
+
+    The benchmark is `E[max SR] * sqrt(P/(n-1))`, so mixing frequencies inflated
+    the t-statistic by sqrt(252) and returned ~1.0 for every input. The guard then
+    passed pure noise. These are tsmom_d5's real DEV numbers (SR 0.513, 4481 bars,
+    9 trials in its family): it must be judged insufficiently proven, not certain.
+    """
+    dsr = deflated_sharpe(sr_annualised=0.513, n_trials=9, n_obs=4481, bars_per_year=252)
+    assert dsr < 0.95, "a Sharpe of 0.513 over 17.8 years is not proof after 9 trials"
+    assert dsr == pytest.approx(0.74, abs=0.02)
+
+
+def test_deflated_sharpe_units_are_self_consistent():
+    """Annualised and per-bar inputs must agree when each is scaled correctly.
+
+    If the two conventions disagree, one of them is wrong — which is exactly the
+    bug this pins.
+    """
+    annual = deflated_sharpe(sr_annualised=1.0, n_trials=20, n_obs=2000, bars_per_year=252)
+    per_bar = deflated_sharpe(
+        sr_annualised=1.0 / np.sqrt(252), n_trials=20, n_obs=2000, bars_per_year=1
+    )
+    assert annual == pytest.approx(per_bar, abs=1e-9)
+
+
+def test_deflated_sharpe_gets_harder_with_more_trials_at_realistic_sharpe():
+    """The deflation must bite where it matters: a plausible, mid-range Sharpe."""
+    few = deflated_sharpe(sr_annualised=0.6, n_trials=1, n_obs=4481, bars_per_year=252)
+    many = deflated_sharpe(sr_annualised=0.6, n_trials=45, n_obs=4481, bars_per_year=252)
+    assert few > 0.95
+    assert many < few
