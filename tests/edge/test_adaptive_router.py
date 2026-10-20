@@ -185,7 +185,7 @@ def test_adaptive_xauusd_cli_writes_diagnostic_report(tmp_path):
     close = 1900.0 + np.arange(n, dtype=float) * 0.4 + np.sin(np.arange(n) / 5.0)
     bars = pd.DataFrame(
         {
-            "timestamp": index.astype(str),
+            "time": index.astype(str),
             "open": close - 0.1,
             "high": close + 0.8,
             "low": close - 0.8,
@@ -215,6 +215,7 @@ def test_adaptive_xauusd_cli_writes_diagnostic_report(tmp_path):
     assert report["mode"] == "RESEARCH_DIAGNOSTIC_ONLY"
     assert report["symbol"] == "XAUUSD"
     assert report["data"]["bars"] == n
+    assert report["data"]["timestamp_column"] == "time"
     assert report["data"]["train_bars"] == 252
     assert report["data"]["holdout_bars"] == 108
     assert report["evaluation"].startswith("chronological holdout")
