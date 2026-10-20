@@ -199,7 +199,7 @@ def research_run_hypothesis(ctx: click.Context, hypothesis_id: str) -> None:
 @click.option("--financing-bps-per-day", default=0.0, type=float, show_default=True, help="Fallback financing charge; signed directional overrides can model credits.")
 @click.option("--financing-long-bps-per-day", default=None, type=float, help="Optional signed long carry in bps/day.")
 @click.option("--financing-short-bps-per-day", default=None, type=float, help="Optional signed short carry in bps/day.")
-@click.option("--cost-basis", default="ASSUMED", type=click.Choice(["ASSUMED", "SENSITIVITY"], case_sensitive=False), show_default=True, help="Label for supplied costs; this diagnostic never asserts broker costs are measured.")
+@click.option("--cost-basis", default="ASSUMED", type=click.Choice(["ASSUMED"], case_sensitive=False), show_default=True, help="This workflow accepts assumed costs only; broker-measured execution costs require a separate evidence-backed model.")
 @click.option("--lookback", default=252, type=int, show_default=True)
 @click.option("--min-observations", default=30, type=int, show_default=True)
 @click.option("--train-fraction", default=0.70, type=click.FloatRange(min=0.5, max=0.9), show_default=True, help="Chronological training fraction; remaining bars are held out.")
