@@ -85,12 +85,17 @@ def classify_market_regime(
     efficiency = net_move / path.replace(0.0, np.nan)
     direction = np.sign(close - close.shift(trend_lookback))
 
+    efficiency_values = efficiency.to_numpy(dtype=float)
+    baseline_values = prior_atr_median.to_numpy(dtype=float)
+    atr_values = atr.to_numpy(dtype=float)
+    direction_values = direction.to_numpy(dtype=float)
+
     labels: list[str] = []
     for i in range(len(bars)):
-        er = efficiency.iloc[i]
-        baseline = prior_atr_median.iloc[i]
-        current_atr = atr.iloc[i]
-        move = direction.iloc[i]
+        er = efficiency_values[i]
+        baseline = baseline_values[i]
+        current_atr = atr_values[i]
+        move = direction_values[i]
         if not np.isfinite(er) or not np.isfinite(baseline) or not np.isfinite(current_atr):
             labels.append("warming_up")
             continue
