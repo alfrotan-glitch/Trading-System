@@ -160,6 +160,21 @@ def state_root_source() -> str:
     return f"no repository detected — user state directory {_USER_ROOT}"
 
 
+def data_root() -> Path:
+    """The curated dataset store root (parquet + manifest SQLite).
+
+    ``QTS_DATA_ROOT`` wins when set. Otherwise it is ``<state_root>/data`` — the
+    same anchor every other machine-local artefact uses, never the process working
+    directory. A checkout/editable install therefore still resolves to
+    ``<repo>/data``; a wheel install resolves to ``~/.qts/data``; a container with
+    ``QTS_STATE_ROOT=/data`` resolves to ``/data/data``.
+    """
+    raw = (os.getenv("QTS_DATA_ROOT") or "").strip()
+    if raw:
+        return Path(raw).expanduser()
+    return state_root() / "data"
+
+
 def artifact_path(name: str, explicit: str | Path | None = None) -> Path:
     """Resolve one machine-local artefact path (never cwd-relative by default).
 

@@ -1,0 +1,54 @@
+# QTS production service unit (Linux/systemd).
+#
+# Install:
+#   sudo useradd --system --home /var/lib/qts --shell /usr/sbin/nologin qts
+#   sudo mkdir -p /opt/qts /etc/qts /var/lib/qts
+#   sudo cp -a <release>/ /opt/qts/
+#   sudo -u qts python3 -m venv /opt/qts/.venv
+#   sudo -u qts /opt/qts/.venv/bin/pip install --no-index --find-links <wheels> qts==1.0.0
+#   sudo cp packaging/qts.service /etc/systemd/system/qts.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now qts
+#
+# /etc/qts/qts.env (mode 0600, owner qts) holds QTS_ENV, QTS_STATE_ROOT and any
+# QTS_ALLOWED_ORIGINS. The unit binds loopback: terminate TLS in nginx/Caddy and
+# require authentication there.
+[Unit]
+Description=QTS — quantitative research workstation and local operator API
+Documentation=file:/opt/qts/docs/12-production-deployment.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=qts
+Group=qts
+WorkingDirectory=/opt/qts
+EnvironmentFile=-/etc/qts/qts.env
+Environment=QTS_STATE_ROOT=/var/lib/qts
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/opt/qts/.venv/bin/qts data bootstrap
+ExecStart=/opt/qts/.venv/bin/qts serve --host 127.0.0.1 --port 8000 --workers 1 --log-level info
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+# Hardening: the service needs its state directory and nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ReadWritePaths=/var/lib/qts
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

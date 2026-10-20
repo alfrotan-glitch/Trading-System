@@ -8,6 +8,8 @@ boundary and never represent broker account state or authorize orders.
 
 from __future__ import annotations
 
+import math
+
 from qts.domain.modes import ExecutionMode
 from qts.risk.authority import demo_forward_limits_from, resolve_risk_limits
 
@@ -82,6 +84,10 @@ SAFETY_BOUNDARY = {
 
 def assert_demo_limits(volume: float, exposure: float, spread_bps: float, slippage_bps: float) -> tuple[bool, str]:
     lim = DEMO_FORWARD_DEFAULTS
+    for name, value in (("volume", volume), ("exposure", exposure), ("spread", spread_bps), ("slippage", slippage_bps)):
+        # NaN compares False against every limit, so an unchecked NaN would read as "within limits".
+        if not math.isfinite(value) or value < 0:
+            return False, f"{name} {value!r} is not a finite non-negative number — fail closed"
     if volume > lim.max_volume_per_order:
         return False, f"volume {volume} > demo limit {lim.max_volume_per_order}"
     if exposure > lim.max_simultaneous_exposure:

@@ -1,0 +1,66 @@
+# QTS behind nginx: TLS termination + operator authentication.
+#
+# QTS itself has no user accounts. It is a single-operator local workstation.
+# Do not expose it to a network without an authenticating proxy in front.
+#
+# Required QTS settings when using this file (/etc/qts/qts.env):
+#   QTS_ALLOW_REMOTE=1
+#   QTS_ALLOWED_ORIGINS=https://qts.example.com
+# The public hostname must be listed because the API rejects mutations whose Host
+# is not a known operator address (DNS-rebinding guard).
+#
+#   sudo htpasswd -c /etc/nginx/qts.htpasswd operator
+#   sudo nginx -t && sudo systemctl reload nginx
+
+upstream qts_backend {
+    server 127.0.0.1:8000;
+    keepalive 8;
+}
+
+server {
+    listen 80;
+    server_name qts.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name qts.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/qts.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/qts.example.com/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # The largest legitimate operator request is a small JSON ticket.
+    client_max_body_size 1m;
+
+    # Require an operator credential for every path, including the UI.
+    auth_basic           "QTS operator";
+    auth_basic_user_file /etc/nginx/qts.htpasswd;
+
+    location / {
+        proxy_pass http://qts_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+        # No request buffering of large bodies: the API caps them anyway.
+        proxy_request_buffering on;
+    }
+
+    # Health is useful for the proxy but must not leak beyond the operator.
+    location = /api/health/live {
+        auth_basic off;
+        allow 127.0.0.1;
+        deny all;
+        proxy_pass http://qts_backend;
+        proxy_set_header Host $host;
+    }
+}

@@ -18,11 +18,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from qts import __version__
 from qts.api.deps import (
     _connection_adapter,
     _db_path,
     _demo_policy,
     _env_mode,
+    _is_trusted_host_header,
     _is_trusted_origin,
     _reconciliation_status,
     _resolve_observe_symbol,
@@ -36,38 +38,137 @@ from qts.api.routes.risk import router as risk_router
 from qts.api.routes.system import router as system_router
 from qts.api.routes.trading import router as trading_router
 
-app = FastAPI(title="QTS Desktop API", version="0.1.0")
+app = FastAPI(
+    title="QTS Desktop API",
+    version=__version__,
+    description=(
+        "Local operator API for the QTS gold research workstation. "
+        "Live trading is structurally locked; real-capital exposure is 0."
+    ),
+)
+
+#: Hard ceiling for a mutating request body. Every operator action in this API is a
+#: small JSON document; anything larger is a mistake or an attempt to exhaust memory.
+DEFAULT_MAX_BODY_BYTES = 1_048_576
+UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+
+def _max_body_bytes() -> int:
+    raw = os.getenv("QTS_MAX_BODY_BYTES", "").strip()
+    if not raw:
+        return DEFAULT_MAX_BODY_BYTES
+    try:
+        value = int(raw)
+    except ValueError:
+        return DEFAULT_MAX_BODY_BYTES
+    return value if value > 0 else DEFAULT_MAX_BODY_BYTES
+
+
+def _security_headers() -> dict[str, str]:
+    """Headers for a local, no-third-party-content operator surface.
+
+    ``QTS_FRAME_ANCESTORS`` exists for two legitimate deployments only: an explicit
+    embedding proxy (e.g. a sandbox preview) and a signed desktop webview. The default
+    forbids framing entirely, so a hostile page cannot clickjack the trading controls.
+    """
+    frame_ancestors = (os.getenv("QTS_FRAME_ANCESTORS", "'none'").strip() or "'none'")
+    headers = {
+        "Content-Security-Policy": (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "font-src 'self'; "
+            "connect-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'none'; "
+            "form-action 'self'; "
+            f"frame-ancestors {frame_ancestors}"
+        ),
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Resource-Policy": "same-origin",
+    }
+    if frame_ancestors == "'none'":
+        headers["X-Frame-Options"] = "DENY"
+    return headers
+
+
+def _with_security_headers(response):
+    for name, value in _security_headers().items():
+        response.headers.setdefault(name, value)
+    return response
 
 
 @app.middleware("http")
 async def local_operator_boundary_middleware(request: Request, call_next):
-    """Reject state-changing requests from untrusted browser origins."""
-    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+    """Reject state-changing requests from untrusted browser origins.
+
+    Also enforces the local ``Host`` guard (DNS rebinding), a body-size ceiling, and
+    the response security headers. Fail closed: every rejection is explicit.
+    """
+    if request.method in UNSAFE_METHODS:
         origin = request.headers.get("origin")
         referer = request.headers.get("referer")
+        if not _is_trusted_host_header(request.headers.get("host")):
+            return _with_security_headers(
+                JSONResponse(
+                    status_code=403,
+                    content={
+                        "error": "FORBIDDEN_MUTATION",
+                        "detail": "Request Host is not a local operator address (possible DNS rebinding); untrusted host rejected.",
+                    },
+                )
+            )
+        declared = request.headers.get("content-length")
+        try:
+            body_bytes = int(declared) if declared is not None else 0
+        except ValueError:
+            return _with_security_headers(
+                JSONResponse(
+                    status_code=400,
+                    content={"error": "INVALID_CONTENT_LENGTH", "detail": "Content-Length is not an integer."},
+                )
+            )
+        if body_bytes > _max_body_bytes():
+            return _with_security_headers(
+                JSONResponse(
+                    status_code=413,
+                    content={
+                        "error": "REQUEST_BODY_TOO_LARGE",
+                        "detail": f"Body exceeds the {_max_body_bytes()} byte operator limit.",
+                    },
+                )
+            )
         if origin and not _is_trusted_origin(origin):
-            return JSONResponse(
-                status_code=403,
-                content={
-                    "error": "FORBIDDEN_MUTATION",
-                    "detail": (
-                        f"Cross-origin state mutation rejected from untrusted origin {origin!r}. "
-                        "Only local operator origins and verified proxies are permitted."
-                    ),
-                },
+            return _with_security_headers(
+                JSONResponse(
+                    status_code=403,
+                    content={
+                        "error": "FORBIDDEN_MUTATION",
+                        "detail": (
+                            f"Cross-origin state mutation rejected from untrusted origin {origin!r}. "
+                            "Only local operator origins and verified proxies are permitted."
+                        ),
+                    },
+                )
             )
         if referer and not _is_trusted_origin(referer):
-            return JSONResponse(
-                status_code=403,
-                content={
-                    "error": "FORBIDDEN_MUTATION",
-                    "detail": f"Cross-origin state mutation rejected from untrusted referer {referer!r}.",
-                },
+            return _with_security_headers(
+                JSONResponse(
+                    status_code=403,
+                    content={
+                        "error": "FORBIDDEN_MUTATION",
+                        "detail": f"Cross-origin state mutation rejected from untrusted referer {referer!r}.",
+                    },
+                )
             )
     response = await call_next(request)
     if request.method == "GET" and not request.url.path.startswith("/api/"):
         response.headers["Cache-Control"] = "no-store"
-    return response
+    return _with_security_headers(response)
 
 
 _use_wildcard_cors = os.getenv("QTS_CORS_WILDCARD") == "1"
@@ -82,7 +183,7 @@ if _use_wildcard_cors:
 else:
     app.add_middleware(
         CORSMiddleware,
-        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$|^https://.*\.e2b\.app$|^tauri://localhost$|^vscode-webview://.*$",
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$|^tauri://localhost$|^vscode-webview://.*$",
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "X-QTS-Operator"],

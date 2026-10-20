@@ -65,7 +65,7 @@ def main() -> None:
     print("      Prerequisites not met: (1) reconstructed dataset quality FAIL at 5.42% unexpected gaps (>2% gate); (2) deal-level broker cost measurement unavailable (Linux sandbox, no MT5 terminal connection).")
     print("  - BENCH-B-BREAKOUT-DONCHIAN-20: claim_eligible=FALSE. Negative net PNL (-2157 USD), weak Sharpe (-5.23), high drawdown (0.93). Control candidate not promoted.")
     print("  - BENCH-C-MEANREV-BOLLINGER-20-2.0 (falsification CONTROL): claim_eligible=FALSE. Negative net PNL (-1527 USD). Expected failure — the control's failure confirms the gates measure something real.")
-    print("  - Cost components: MEASURED_FROM_DOCUMENTATION (official broker docs: spread 18/5 pips, commission $3.50-$5.50/side, swap -60/+19 pips, contract 100 oz, session 01:05-23:55, triple swap Wednesday). NOT deal-level MT5 measurement.")
+    print("  - Cost components: ASSUMED (third-party pages of other brokers, unverified for the configured broker: spread 18/5 pips, commission $3.50-$5.50/side, swap -60/+19 pips, contract 100 oz, session 01:05-23:55, triple swap Wednesday). NOT deal-level MT5 measurement.")
     print("  - Dataset: reconstructed M15 CSV rebuilt from upstream source (github.com/vudo805/forex-price-simulator, commit 4d6f155). 26,038 rows, Aug 2025 - Sep 2026. Unexpected gap rate 5.42% — FAIL against 2% gate. Raw original file missing. Evidence inventory independently verifies statistics.")
     print("  - No validated economic edge exists for M15. Mechanism verified only. LIVE remains LOCKED. REAL_CAPITAL_EXPOSURE = 0. No live orders submitted.")
     print()

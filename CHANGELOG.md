@@ -1,0 +1,106 @@
+# Changelog
+
+All notable changes to QTS are recorded here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use semantic
+versioning. **No release changes the safety posture:** `LIVE` is locked,
+`REAL_CAPITAL_EXPOSURE` is `0`, and `NO_VALIDATED_EDGE` stands unless a future
+release says otherwise with evidence.
+
+## [1.0.0] — 2026-10-20
+
+First production release: a verifiable research workstation with a hardened local
+operator API, reproducible dependencies, and deployable packaging. This release
+integrates the fixes recorded as ARCH-077 and ARCH-078 in
+[`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md) and verifies them with the full
+suite rather than compile checks alone.
+
+### Security
+
+- Mutating requests now require a trusted `Origin`/`Referer` **and** a local (or
+  explicitly listed) `Host`; the literal `null` origin and implicit `*.e2b.app`
+  trust were removed. Remote preview hosts are opt-in via `QTS_ALLOWED_ORIGINS`.
+- Added response hardening: CSP (`default-src 'self'`, `object-src 'none'`,
+  configurable `frame-ancestors`), `X-Frame-Options: DENY` by default,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, COOP/CORP,
+  a permissions policy, and no `Server` banner.
+- Mutating request bodies are capped (`QTS_MAX_BODY_BYTES`, default 1 MiB) and
+  rejected with `413` before routing.
+- `POST /api/demo/order` and `/api/demo/close` parse lots, stop-loss, take-profit
+  and volume strictly: non-finite, negative, boolean or implausible values return
+  `400` before any broker/session work.
+- Pre-trade gate: non-finite `bid`/`ask`/`tick_age_s`/`spread` are `UNKNOWN`;
+  a zero or locked spread is `FAIL` (invalid cost data is not free execution);
+  `assert_demo_limits` rejects non-finite and negative inputs.
+- Removed unreproducible swap figures from the broker cost file and relabelled it
+  `ASSUMED`, `claim_eligible: false`, `applies_to_configured_broker: false`.
+  Account identity is redacted from readiness evidence; fresh snapshots are
+  git-ignored.
+
+### Added
+
+- `qts serve` — the supported production entry point (loopback default,
+  graceful shutdown, no server banner, `QTS_ALLOW_REMOTE=1` required for a
+  non-loopback bind, explicit warning when no public origin is configured).
+- `GET /api/health/live` (cheap liveness, no broker/SQLite access) and
+  `GET /api/version` (version, code revision, Python/platform, uptime, locked
+  live state). `GET /api/health` remains the deep readiness probe.
+- Deployment assets: `Dockerfile` (non-root, read-only, tini, lockfile install,
+  healthcheck), `docker/entrypoint.sh`, `docker-compose.yml`,
+  `packaging/qts.service` (systemd hardening), and
+  `packaging/nginx-qts.conf.example` (TLS + basic auth + HSTS).
+- `scripts/verify_release.sh` — one fail-fast gate (ruff, mypy, bandit, fast and
+  extended pytest suites, JS syntax, `npm test`, wheel/sdist build, packaged-wheel
+  import and UI-content assertion).
+- `.github/workflows/release.yml` — on `v*` tags: wheel/sdist, Windows
+  PyInstaller build, GHCR image, GitHub release.
+- CI package and container jobs; `requirements-prod.lock` (21 packages, verified
+  from a clean install).
+- `docs/12-production-deployment.md`, `SECURITY.md`, `.env.example` (expanded).
+- Tests: production response contract, liveness/version, body ceiling, framing
+  opt-in, serve guards, NaN/Infinity and zero-spread gate behaviour, cost-label
+  and identity-redaction guards.
+
+### Changed
+
+- Version is `1.0.0` in `pyproject.toml` and `qts.__version__`; the API reports
+  it instead of a hardcoded string.
+- Runtime dependencies gained upper bounds (`pandas<4`, `numpy<3`, `pydantic<3`,
+  `fastapi<1`, …) so a new major is a compatibility event, not a surprise patch.
+- `qts data bootstrap` is wired into the container entrypoint and the systemd
+  `ExecStartPre`, matching the documented first-launch requirement.
+- README and documentation index now describe the production path.
+
+### Fixed
+
+- `tests/test_cli_data_mt5_bars.py` assumed nanosecond `DatetimeIndex` resolution;
+  pandas 3 defaults to microseconds. The fixture now uses `as_unit("s")`, so the
+  test is resolution-independent on pandas 2 and 3.
+- Two dead `Decimal` imports in the demo routes (ruff F401).
+
+### Verification
+
+Recorded at release time in [`QTS_PROJECT_CONTROL.md`](QTS_PROJECT_CONTROL.md)
+(ARCH-079):
+
+- ruff, mypy (201 files), bandit: clean
+- fast Python suite: **1,638 passed, 6 skipped, 0 failed** (1,644 collected)
+- integration + research suites: **344 passed, 0 failed**
+- UI suite: **48/48**
+- wheel: **237 files**, including `qts/desktop/ui`, packaged fixture and configs
+- clean-venv wheel install: `qts data bootstrap` (SYNTHETIC, labeled),
+  `qts serve` → `/api/health/live`, `/api/version`, UI, security headers verified
+
+The six fast-suite skips are declared, environment-dependent skips (Chromium
+unavailable, long-history raw inputs not in this checkout, no events for one
+impulse family); none hides a failure.
+
+### Safety (unchanged)
+
+`LIVE LOCKED`; `REAL_CAPITAL_EXPOSURE = 0`; `NO_VALIDATED_EDGE`; demo P&L is a
+measurement, not proof of edge; no order path was loosened.
+
+## [0.1.0] — 2026-09-16
+
+Initial internal research build: domain model, backtest engine, validation
+pipeline, DEMO lifecycle, risk engine, desktop UI, CLI, and evidence framework.
+Never released as a production version.

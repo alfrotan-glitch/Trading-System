@@ -195,6 +195,7 @@ def test_cli_bootstrap_exit_codes_and_output(tmp_path, monkeypatch):
 
 
 def test_cli_bootstrap_fails_closed_missing_fixture(tmp_path, monkeypatch):
+    """An explicit missing fixture is a failure; the packaged copy is not a licence to guess."""
     from click.testing import CliRunner
 
     from qts.cli import main
@@ -202,9 +203,27 @@ def test_cli_bootstrap_fails_closed_missing_fixture(tmp_path, monkeypatch):
     (tmp_path / "data").mkdir()
     monkeypatch.chdir(tmp_path)
     runner = CliRunner()
-    result = runner.invoke(main, ["data", "bootstrap"])
+    result = runner.invoke(main, ["data", "bootstrap", "--fixture", str(tmp_path / "does_not_exist.csv")])
     assert result.exit_code == 1
     assert "FAILED" in result.output
+
+
+def test_packaged_fixture_fallback_bootstraps_as_synthetic(tmp_path, monkeypatch):
+    """A wheel install with no checkout bootstraps the SAME synthetic fixture, announced.
+
+    The library keeps its fail-closed contract (``bootstrap_data`` never substitutes
+    a fixture); only the CLI opts in, and it prints the substitution.
+    """
+    from click.testing import CliRunner
+
+    from qts.cli import main
+
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(main, ["data", "bootstrap", "--root", str(tmp_path / "fresh-state")])
+    assert result.exit_code == 0, result.output
+    assert "packaged SYNTHETIC fixture" in result.output
+    assert "INGESTED" in result.output
+    assert "class=SYNTHETIC" in result.output
 
 
 def test_cli_health_reports_truthful_usability(tmp_path, monkeypatch):

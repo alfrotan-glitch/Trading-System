@@ -33,6 +33,8 @@ data/raw/xauusd_discovery_view/
 # Secrets / env
 .env
 .env.*
+# ...but the documented template is source, not a secret.
+!.env.example
 *.key
 configs/live.yaml
 configs/*live*.yaml
@@ -93,3 +95,9 @@ data/raw/longhistory/
 # cross-checks) stays machine-local. Only manifests and bounded summaries are committed.
 data/raw/
 scratch/
+
+# Readiness-gate snapshots embed the broker account identity (login/name) — machine-local only.
+data/evidence/demo_readiness_gate_*.json
+
+# Local artifact drop (e.g. downloaded release zips) — never source.
+google_drive/

@@ -14,6 +14,7 @@ from qts.cli.mode import mode
 from qts.cli.ops import backtest, health, run_cmd, validate_cmd
 from qts.cli.research import research
 from qts.cli.risk import risk
+from qts.cli.serve import serve
 
 
 @click.group()
@@ -34,3 +35,4 @@ main.add_command(run_cmd)
 main.add_command(desktop)
 main.add_command(mode)
 main.add_command(demo)
+main.add_command(serve)

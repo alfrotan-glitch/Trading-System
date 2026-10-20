@@ -13,6 +13,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from pydantic import BaseModel
 
+from qts.config.paths import data_root
 from qts.data.quality import dataset_missing_stats
 from qts.db import connect as db_connect
 from qts.domain.value_objects import Bar, Instrument
@@ -94,8 +95,10 @@ def _checksum_bars(bars: list[Bar]) -> str:
 class SqliteParquetDataStore:
     """Parquet partitioned by date + SQLite manifest index."""
 
-    def __init__(self, root: Path | str = "data", db_path: Path | str | None = None):
-        self.root = Path(root)
+    def __init__(self, root: Path | str | None = None, db_path: Path | str | None = None):
+        # None = the anchored data root. A relative string is still taken relative
+        # to the caller's cwd on purpose (portable workspaces and tests).
+        self.root = Path(root) if root is not None else data_root()
         self.curated = self.root / "curated"
         self.manifests_dir = self.root / "manifests"
         self.curated.mkdir(parents=True, exist_ok=True)

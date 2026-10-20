@@ -74,12 +74,12 @@ def data_ingest(
 
 
 @data.command("bootstrap")
-@click.option("--root", default="data", help="data root directory")
+@click.option("--root", default=None, help="data root directory (default: the anchored QTS data root)")
 @click.option("--fixture", default=None, help="fixture CSV (default: data/fixtures/XAUUSD_1H_500.csv)")
 @click.option("--instrument", default="XAUUSD")
 @click.option("--timeframe", default="1H")
 @click.option("--venue", default="MT5")
-def data_bootstrap(root: str, fixture: str | None, instrument: str, timeframe: str, venue: str) -> None:
+def data_bootstrap(root: str | None, fixture: str | None, instrument: str, timeframe: str, venue: str) -> None:
     """Deterministic clean-clone data bootstrap — truthful, idempotent, never fabricates.
 
     Exit codes: 0 = usable data present (READY or INGESTED), 1 = FAILED (missing or
@@ -87,11 +87,22 @@ def data_bootstrap(root: str, fixture: str | None, instrument: str, timeframe: s
     """
     from pathlib import Path as _P
 
-    from qts.data.bootstrap import bootstrap_data
+    from qts.config.paths import data_root
+    from qts.data.bootstrap import FIXTURE_RELPATH, PACKAGED_FIXTURE, bootstrap_data
 
-    # fixture=None resolves RELATIVE TO root (default: <root>/fixtures/XAUUSD_1H_500.csv)
-    fx = _P(fixture) if fixture else None
-    res = bootstrap_data(root=_P(root), fixture=fx, instrument=instrument, timeframe=timeframe, venue=venue)
+    # fixture=None resolves RELATIVE TO root: <root>/fixtures/XAUUSD_1H_500.csv.
+    # A wheel install has no repository data tree; in that case the CLI uses the
+    # SYNTHETIC copy shipped inside the package and SAYS SO. An explicit
+    # --fixture never falls back, so a mistyped path still fails closed.
+    root_p = _P(root) if root else data_root()
+    if fixture:
+        fx = _P(fixture)
+    elif (root_p / FIXTURE_RELPATH).exists() or not PACKAGED_FIXTURE.exists():
+        fx = None
+    else:
+        fx = PACKAGED_FIXTURE
+        click.echo(f"note: no fixture at {root_p / FIXTURE_RELPATH}; using packaged SYNTHETIC fixture {fx}")
+    res = bootstrap_data(root=root_p, fixture=fx, instrument=instrument, timeframe=timeframe, venue=venue)
     for msg in res.messages:
         click.echo(msg)
     if res.ok:

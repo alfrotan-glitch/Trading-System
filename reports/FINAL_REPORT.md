@@ -16,7 +16,7 @@ Branch: main (commit to be pushed after final verification)
 - Mechanism verified: yes (scripts/find_edge.py executed on reconstructed dataset; concrete result produced)
 - Economic validation for M15: FAIL — Sharpe -5.425 (<0 gate), profit factor 0.898 (<1 gate), win rate 0.098, max drawdown 0.29 (29%), dataset quality FAIL (5.42% unexpected gaps >2% gate)
 - Dataset claim eligible: FALSE (provenance REAL:dukascopy:vudo805... does not start with MT5/BROKER/DUKASCOPY/HISTORICAL; reconstructed from upstream source, not original broker file)
-- Broker cost measurement: MEASURED_FROM_DOCUMENTATION (official spec docs for 6 brokers), NOT deal-level MT5 measurement (Linux sandbox has no MetaTrader5 package)
+- Broker cost measurement: ASSUMED (third-party documentation of other brokers; unverified for WM Markets), NOT deal-level MT5 measurement (Linux sandbox has no MetaTrader5 package)
 - Conclusion: NO VALIDATED ECONOMIC EDGE EXISTS FOR M15. Mechanism works; prerequisites not met. Product is usable for DEMO mechanism diagnostics only.
 
 3. DATASET (RECONSTRUCTED — VERIFIED — QUALITY FAIL HONESTLY DOCUMENTED)
@@ -29,8 +29,8 @@ Branch: main (commit to be pushed after final verification)
 - No fabricated bars: reconstructed directly from upstream JSON; no interpolation or synthetic gap filling
 - Original raw file: missing (evidence references a file that does not exist — documented honestly)
 
-4. COST MODEL (MEASURED FROM DOCUMENTATION — NOT DEAL-LEVEL)
-- File: data/evidence/measured_broker_costs.json (official docs: RoboForex, Exness, FiboGroup, Vantage, ForexVitas, FXNX; retrieved 2026-10-18)
+4. COST MODEL (ASSUMED — THIRD-PARTY DOCUMENTATION, NOT MEASURED)
+- File: data/evidence/measured_broker_costs.json (third-party pages: RoboForex, Exness, FiboGroup, Vantage, ForexVitas, FXNX; retrieved 2026-10-18)
 - Components: spread 18/5 pips; commission $3.50-$5.50/side; slippage $0.10/side; financing swap -60 long / +19 short; contract 100 oz; session 01:05-23:55 Mon-Fri; triple swap Wednesday
 - Benchmark cost: benchmark_candidates.json shows gross +8655 USD, cost 7562 USD, measured cost 7562 USD
 - Not deal-level MT5 measurement: Linux sandbox has no MetaTrader5 package; command sequence preserved (setup_windows.bat -> run_qts.bat -> qts demo measured-model)
@@ -40,7 +40,7 @@ Branch: main (commit to be pushed after final verification)
 - BENCH-B-BREAKOUT-DONCHIAN-20: claim_eligible=False (negative net PNL -2157 USD, weak Sharpe)
 - BENCH-C-MEANREV-BOLLINGER-20-2.0 (CONTROL): claim_eligible=False (expected failure as falsification control — confirms gates work)
 - Frozen verified: True (no parameter changes)
-- Cost model claim_eligible: True (all components documented)
+- Cost model claim_eligible: False (costs are ASSUMED; no component measured on the configured broker)
 - Economic gates applied honestly (positive PNL is not sufficient; risk-adjusted metrics must pass)
 
 6. INTEGRATION & EXECUTION WORKFLOW (VERIFIED)

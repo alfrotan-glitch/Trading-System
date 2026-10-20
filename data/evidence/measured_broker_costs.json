@@ -1,5 +1,5 @@
 {
-  "schema": "qts.broker_cost_terms.measured.v1",
+  "schema": "qts.broker_cost_terms.third_party_documentation.v1",
   "instrument": "XAUUSD",
   "broker_documentation_sources": [
     "https://roboforex.com/forex-trading/trading/specifications/card/pro-stan-ecn/XAUUSD/",
@@ -15,26 +15,26 @@
   "contract_value_usd_per_pip": 100,
   "spread": {
     "standard_account_pips": 18.0,
-    "standard_account_usd_per_lot": 18.00,
+    "standard_account_usd_per_lot": 18.0,
     "ecn_raw_pips": 5.0,
-    "ecn_raw_usd_per_lot": 5.00,
+    "ecn_raw_usd_per_lot": 5.0,
     "measured_median_bps": 7.2,
-    "basis": "MEASURED_FROM_DOCUMENTATION"
+    "basis": "ASSUMED"
   },
   "commission": {
     "standard_account": 0.0,
-    "raw_spread_usd_per_lot_per_side": 3.50,
-    "raw_spread_usd_round_turn": 7.00,
-    "ecn_usd_per_lot_per_side": 5.50,
-    "zero_account_usd_per_lot_per_side": 5.50,
-    "basis": "MEASURED_FROM_DOCUMENTATION"
+    "raw_spread_usd_per_lot_per_side": 3.5,
+    "raw_spread_usd_round_turn": 7.0,
+    "ecn_usd_per_lot_per_side": 5.5,
+    "zero_account_usd_per_lot_per_side": 5.5,
+    "basis": "ASSUMED"
   },
-  "swap_long_pips": -60,
-  "swap_short_pips": 19,
-  "swap_long_usd_per_lot_per_night": -60.0,
-  "swap_short_usd_per_lot_per_night": 19.0,
+  "swap_long_pips": null,
+  "swap_short_pips": null,
+  "swap_long_usd_per_lot_per_night": null,
+  "swap_short_usd_per_lot_per_night": null,
   "triple_swap_day": "Wednesday",
-  "basis": "MEASURED_FROM_DOCUMENTATION",
+  "basis": "ASSUMED",
   "margin_percentage": 1.0,
   "leverage_available": "1:100 to 1:Unlimited (broker dependent)",
   "minimum_lot": 0.01,
@@ -45,6 +45,10 @@
   "filling_mode": "IOC / FOK / Return",
   "trade_mode": "Full Access",
   "trading_hours": "01:05 - 23:55 server time (Mon-Fri); triple swap Wednesday",
-  "note": "These are official broker contract specification values retrieved from published documentation (not simulated assumptions). The actual MT5 terminal measurement (via adapter) remains the authoritative measurement for deal-level reconciliation, but these documented values replace previous UNKNOWN/ASSUMED components for research/evaluation purposes.",
-  "measurement_date": "2026-10-18"
+  "note": "NOT a measurement and NOT verified for the configured DEMO broker (WM Markets). Values were read from public pages of OTHER brokers (RoboForex, Exness, FiboGroup, Vantage) and general articles. They are reference ranges for sensitivity analysis only. Authoritative sources are, in order: (1) symbol_info()/account terms read from the actual terminal via 'qts demo symbol-terms'; (2) quote-derived spread via 'qts demo spread-profile'; (3) deal-level commission/swap via 'qts demo cost-check --record'. Until those exist the cost basis is ASSUMED and no strategy may be claim-eligible.",
+  "measurement_date": "2026-10-18",
+  "status": "UNVERIFIED_THIRD_PARTY_DOCUMENTATION_OTHER_BROKERS",
+  "applies_to_configured_broker": false,
+  "claim_eligible": false,
+  "swap_note": "Removed: the previous -60/+19 figures came from mixed third-party pages, are not reproducible for this broker, and were presented as measured."
 }

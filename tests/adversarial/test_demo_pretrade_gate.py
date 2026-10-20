@@ -311,6 +311,35 @@ def test_unknown_tick_age_blocks(tmp_path: Path):
     assert "market_data_fresh" in verdict.unknown
 
 
+def test_nan_tick_age_is_unknown_not_fresh(tmp_path: Path):
+    """NaN > limit is False, so an unchecked NaN age would have read as a fresh quote."""
+    for bad in (float("nan"), float("inf")):
+        verdict = run_pretrade_gate(healthy_ctx(tmp_path, tick_age_s=bad))
+        assert not verdict.passed
+        assert "market_data_fresh" in verdict.unknown
+
+
+def test_nan_spread_is_unknown_not_within_limit(tmp_path: Path):
+    for bad in (float("nan"), float("inf")):
+        verdict = run_pretrade_gate(healthy_ctx(tmp_path, spread_bps=bad))
+        assert not verdict.passed
+        assert "spread_available" in verdict.unknown
+
+
+def test_zero_or_locked_spread_is_invalid_cost_data_not_free_execution(tmp_path: Path):
+    verdict = run_pretrade_gate(
+        healthy_ctx(tmp_path, bid=Decimal("2000.00"), ask=Decimal("2000.00"), spread_bps=0.0)
+    )
+    assert not verdict.passed
+    assert "spread_available" in verdict.failed
+
+
+def test_non_finite_quote_prices_never_pass(tmp_path: Path):
+    for field_name in ("bid", "ask"):
+        verdict = run_pretrade_gate(healthy_ctx(tmp_path, **{field_name: Decimal("NaN")}))
+        assert not verdict.passed
+
+
 def test_wide_spread_blocks(tmp_path: Path):
     verdict = run_pretrade_gate(healthy_ctx(tmp_path, spread_bps=95.0))
     assert not verdict.passed
