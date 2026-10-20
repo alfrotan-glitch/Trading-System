@@ -224,6 +224,9 @@ def data_mt5_bars(
         if not required.issubset(frame.columns):
             raise click.ClickException(f"MT5 bars missing fields: {sorted(required - set(frame.columns))}")
         frame["timestamp"] = pd.to_datetime(frame["time"], unit="s", utc=True, errors="raise")
+        # MT5 copy_rates_from_pos returns bars newest-first (position 0 is the current bar).
+        # Normalize to chronological order before completeness and integrity checks.
+        frame = frame.sort_values("timestamp", kind="stable").reset_index(drop=True)
         duration_seconds = {
             "M1": 60, "M5": 300, "M15": 900, "M30": 1800,
             "H1": 3600, "H4": 14400, "D1": 86400,
