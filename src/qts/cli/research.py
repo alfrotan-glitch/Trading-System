@@ -252,7 +252,8 @@ def research_adaptive_xauusd(
         raw["timestamp"] = pd.to_datetime(raw["timestamp"], utc=True, errors="raise")
         bars = raw.set_index("timestamp").sort_index()
         bars.index = pd.DatetimeIndex(bars.index)
-        bars = bars.loc[~bars.index.duplicated(keep="last")]
+        if bars.index.has_duplicates:
+            raise ValueError("duplicate timestamps found; refusing to silently discard market bars")
         required = ["open", "high", "low", "close"]
         missing = [c for c in required if c not in bars.columns]
         if missing:
