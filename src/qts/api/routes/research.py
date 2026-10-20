@@ -566,7 +566,15 @@ def research_edgelab_forward() -> dict[str, Any]:
         "schema": "qts.research.edgelab_forward.v1",
         "candidates": rows,
         "observations": int(len(ledger)),
-        "cost_basis": f"ASSUMED {CostModel().per_side_bps():.2f} bps/side (not measured)",
+        # Two rates matter and they are not interchangeable: 0.40 bps/side is the
+        # optimistic default the harness was built with, 0.925 is what candidates
+        # are actually reported against. Naming only the first here would tell a
+        # reader the scores were produced under a cost they were not.
+        "cost_basis": (
+            f"ASSUMED, not measured: {CostModel().per_side_bps():.2f} bps/side (optimistic default) "
+            f"and {CostModel.realistic_ecn().per_side_bps():.2f} bps/side (realistic ECN, used for candidate reporting)"
+        ),
+        "validated_any": any(r["validated"] for r in rows),
         "threshold_alpha_t": forward.MIN_ALPHA_T,
         "live_locked": True,
         "real_capital_exposure_usd": 0,

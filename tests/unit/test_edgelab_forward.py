@@ -143,6 +143,11 @@ def test_api_reports_unvalidated_without_forward_evidence():
     assert body["live_locked"] is True
     assert body["real_capital_exposure_usd"] == 0
     assert "ASSUMED" in body["cost_basis"]
+    # Both rates must be named: the harness default and the realistic ECN rate the
+    # candidate is actually reported against. Naming only the optimistic one would
+    # tell a reader the scores were produced under a cost they were not.
+    assert "0.40" in body["cost_basis"] and "0.93" in body["cost_basis"]
+    assert body["validated_any"] is False
     for cand in body["candidates"]:
         if not cand["forward"] or cand["forward"].get("observations", 0) < 3:
             assert cand["validated"] is False
