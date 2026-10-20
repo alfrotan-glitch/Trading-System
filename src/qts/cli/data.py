@@ -180,8 +180,9 @@ def data_mt5_bars(
 ) -> None:
     """Export real broker OHLC bars from the connected DEMO terminal (read-only)."""
     import json
-    from datetime import UTC, datetime, timedelta
+    from datetime import UTC, datetime
 
+    import numpy as np
     import pandas as pd
 
     from qts.config.wizard import load_setup
@@ -239,14 +240,14 @@ def data_mt5_bars(
         if frame["timestamp"].duplicated().any() or not frame["timestamp"].is_monotonic_increasing:
             raise click.ClickException("broker bars have duplicate or non-monotonic timestamps; refusing export")
         prices = frame[["open", "high", "low", "close"]].to_numpy(dtype=float)
-        if not __import__("numpy").isfinite(prices).all() or (prices <= 0).any():
+        if not np.isfinite(prices).all() or (prices <= 0).any():
             raise click.ClickException("broker OHLC contains non-finite or non-positive prices")
         if (frame["high"] < frame[["open", "close", "low"]].max(axis=1)).any():
             raise click.ClickException("broker OHLC high invariant failed")
         if (frame["low"] > frame[["open", "close", "high"]].min(axis=1)).any():
             raise click.ClickException("broker OHLC low invariant failed")
 
-        output = frame.rename(columns={"tick_volume": "tick_volume", "real_volume": "real_volume"})
+        output = frame.copy()
         output = output[["timestamp", "time", "open", "high", "low", "close"] + [
             name for name in ("tick_volume", "spread", "real_volume") if name in output.columns
         ]]
