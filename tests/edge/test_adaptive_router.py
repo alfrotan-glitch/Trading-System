@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -209,7 +211,7 @@ def test_adaptive_xauusd_cli_writes_diagnostic_report(tmp_path):
         ],
     )
     assert result.exit_code == 0, result.output
-    report = __import__("json").loads(output.read_text(encoding="utf-8"))
+    report = json.loads(output.read_text(encoding="utf-8"))
     assert report["mode"] == "RESEARCH_DIAGNOSTIC_ONLY"
     assert report["symbol"] == "XAUUSD"
     assert report["data"]["bars"] == n
