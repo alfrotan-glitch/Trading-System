@@ -70,6 +70,8 @@ def build_adaptive_plan(
 
     returns_by_candidate: dict[str, np.ndarray] = {}
     states_by_candidate: dict[str, np.ndarray] = {}
+    sizes_by_candidate: dict[str, np.ndarray] = {}
+    stops_by_candidate: dict[str, np.ndarray] = {}
     for name, candidate in candidate_plans.items():
         if not isinstance(name, str) or not name:
             raise ValueError("candidate names must be non-empty strings")
@@ -90,6 +92,12 @@ def build_adaptive_plan(
         states_by_candidate[name] = (
             pd.Series(candidate.target, index=index, dtype=float).ffill().fillna(0.0).to_numpy()
         )
+        sizes_by_candidate[name] = (
+            pd.Series(candidate.size, index=index, dtype=float).ffill().to_numpy()
+        )
+        stops_by_candidate[name] = (
+            pd.Series(candidate.stop_dist, index=index, dtype=float).ffill().to_numpy()
+        )
 
     net_returns = pd.DataFrame(returns_by_candidate, index=index, dtype=float)
     targets = pd.DataFrame(states_by_candidate, index=index, dtype=float)
@@ -104,12 +112,13 @@ def build_adaptive_plan(
             continue
         candidate = candidate_plans[str(selected)]
         target = float(states_by_candidate[str(selected)][i])
-        size = float(candidate.size[i])
+        size = float(sizes_by_candidate[str(selected)][i])
+        stop = float(stops_by_candidate[str(selected)][i])
         if target != 0.0 and (not np.isfinite(size) or size <= 0.0):
             continue
         routed_target[i] = target
         routed_size[i] = size
-        routed_stop[i] = float(candidate.stop_dist[i])
+        routed_stop[i] = stop
         routed_rebalance[i] = bool(candidate.rebalance[i])
 
     plan = Plan(
