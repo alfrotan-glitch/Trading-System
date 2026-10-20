@@ -78,8 +78,10 @@ suite rather than compile checks alone.
 - Two dead `Decimal` imports in the demo routes (ruff F401).
 - The packaged desktop launcher ignored `--version`/`--help` and started the
   server instead, so a release smoke test would hang. It now answers both and
-  exits; the Windows release job uses `--version`, and the bootstrap fixture is
-  bundled into the frozen build.
+  exits even when a windowed build has no stdout; the Windows release job uses
+  `--version`, and the bootstrap fixture is bundled into the frozen build.
+- The release workflow pushed an invalid GHCR tag because `github.repository`
+  preserves the uppercase repository name. The image name is lowercased now.
 
 ### Verification
 

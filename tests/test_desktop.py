@@ -1105,3 +1105,14 @@ def test_launcher_version_and_help_exit_without_starting_the_server(monkeypatch,
     out = capsys.readouterr().out
     assert "Usage: QTS" in out
     assert "Live trading is locked" in out
+
+
+def test_launcher_version_survives_a_windowed_build_with_no_stdout(monkeypatch):
+    """Windowed PyInstaller provides no stdout; --version must still exit cleanly."""
+    import sys
+
+    from qts.desktop import launcher
+
+    monkeypatch.setattr(sys, "argv", ["QTS", "--version"])
+    monkeypatch.setattr(sys, "stdout", None)
+    assert launcher._handle_cli(["--version"]) is True  # no raise
