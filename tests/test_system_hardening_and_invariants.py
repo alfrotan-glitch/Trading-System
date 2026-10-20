@@ -353,3 +353,54 @@ def test_serve_loopback_uses_hardened_uvicorn_config(monkeypatch: pytest.MonkeyP
     assert captured["server_header"] is False
     assert captured["timeout_graceful_shutdown"] == 10
     assert captured["host"] == "127.0.0.1"
+
+
+# ---------------------------------------------------------------------------
+# 7. Process-model contract: multi-worker is opt-in and states its cost
+# ---------------------------------------------------------------------------
+
+
+def test_serve_refuses_multiple_workers_without_opt_in(monkeypatch: pytest.MonkeyPatch):
+    """Observe/DEMO state is per-process; a second worker would misreport it."""
+    from click.testing import CliRunner
+
+    from qts.cli.serve import serve
+
+    monkeypatch.delenv("QTS_ALLOW_MULTIWORKER", raising=False)
+    result = CliRunner().invoke(serve, ["--workers", "2"])
+    assert result.exit_code != 0
+    assert "QTS_ALLOW_MULTIWORKER=1" in result.output
+    assert "per-process state" in result.output
+
+
+def test_serve_allows_multiple_workers_only_with_a_loud_warning(monkeypatch: pytest.MonkeyPatch):
+    import uvicorn
+    from click.testing import CliRunner
+
+    from qts.cli.serve import serve
+
+    monkeypatch.setenv("QTS_ALLOW_MULTIWORKER", "1")
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **k: None)
+    result = CliRunner().invoke(serve, ["--workers", "2"])
+    assert result.exit_code == 0, result.output
+    assert "warning" in result.output.lower()
+    assert "authoritative for the worker that handled the request" in result.output
+
+
+def test_cli_reports_its_version_and_safety_posture():
+    from click.testing import CliRunner
+
+    from qts import __version__
+    from qts.cli import main
+
+    result = CliRunner().invoke(main, ["--version"])
+    assert result.exit_code == 0
+    assert __version__ in result.output
+    assert "LIVE LOCKED" in result.output
+
+
+def test_symbol_terms_artifact_is_inventoried():
+    """The measured-cost probe writes a file; `qts demo paths` must list it."""
+    report = paths_report()
+    assert "symbol_terms" in report["artifacts"]
+    assert report["artifacts"]["symbol_terms"]["path"].endswith("symbol_terms.json")

@@ -6,6 +6,47 @@ versioning. **No release changes the safety posture:** `LIVE` is locked,
 `REAL_CAPITAL_EXPOSURE` is `0`, and `NO_VALIDATED_EDGE` stands unless a future
 release says otherwise with evidence.
 
+## [Unreleased]
+
+Operational hardening found by auditing the 1.0.0 release. No trading behaviour,
+gate, risk limit or lock changes.
+
+### Security
+
+- `qts serve` now refuses `--workers > 1` unless `QTS_ALLOW_MULTIWORKER=1`, and warns
+  explicitly when it is enabled. The observe collector, DEMO authority and submission
+  lock are process-local; a status request routed to another worker reported `STOPPED`
+  while a collector was running. The previous documentation called this "supported for
+  read-heavy use", which understated a misreporting hazard.
+
+### Added
+
+- `qts audit stats` — rows, age, byte size and per-type counts for both audit sinks,
+  with the retention policy and a `--json-out` for monitoring.
+- `qts audit prune` — age out high-volume market events (dry run by default, `--confirm`
+  to apply, `--vacuum` to compact). Safety evidence (kill switch, risk veto, order
+  intent/event, fill, reconcile, lifecycle, data-quality) is excluded in SQL at any age
+  and cannot be removed by any flag. Each prune records itself with real counts.
+- `qts audit prune --rotate-jsonl` — archive the live JSONL sink to a timestamped file
+  instead of deleting history.
+- `qts --version` (`-V`) reporting the release and the safety posture.
+
+### Fixed
+
+- `SqliteAuditLog` defaulted to the cwd-relative literals `data/sqlite/qts.db` and
+  `logs/audit.jsonl`, so `qts audit` read a different database depending on where it was
+  invoked. Both now resolve through the anchored state root; `jsonl_path=""` still
+  disables the derived sink.
+- `symbol_terms.json`, written by `POST /api/demo/measure-symbol-terms`, was a bare file
+  at the state root that no inventory listed. It is now a declared artefact
+  (`qts demo paths`).
+
+### Legal
+
+- Added `LICENSE` (proprietary; no trading permission granted, no warranty) and shipped
+  it in the wheel via `license-files`. `pyproject.toml` already declared
+  `LicenseRef-Proprietary` while no licence text shipped with the product.
+
 ## [1.0.0] — 2026-10-20
 
 First production release: a verifiable research workstation with a hardened local

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import click
 
+from qts import __version__
 from qts.cli.audit import audit
 from qts.cli.data import data
 from qts.cli.demo import demo
@@ -18,6 +19,13 @@ from qts.cli.serve import serve
 
 
 @click.group()
+@click.version_option(
+    __version__,
+    "-V",
+    "--version",
+    prog_name="qts",
+    message="%(prog)s %(version)s — LIVE LOCKED, REAL_CAPITAL_EXPOSURE=0, NO_VALIDATED_EDGE",
+)
 def main() -> None:
     """QTS — research, risk, and DEMO-forward trading."""
 

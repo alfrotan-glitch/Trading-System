@@ -9,6 +9,7 @@ description = "Autonomous Quant Research & Trading System — XAUUSD/MT5 modular
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 license = "LicenseRef-Proprietary"
+license-files = ["LICENSE"]
 keywords = ["quantitative-research", "gold", "xauusd", "metatrader5", "risk-management"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",

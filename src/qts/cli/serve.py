@@ -62,6 +62,27 @@ def serve(host: str, port: int, workers: int, log_level: str, proxy_headers: boo
         )
     if proxy_headers and not remote_allowed:
         click.echo("warning: --proxy-headers on a loopback bind trusts headers nobody forwards.", err=True)
+    if workers > 1:
+        # Observe/DEMO state is per-process by design: the collector, the DEMO
+        # authority and the submission lock live in module globals, and the
+        # journal assumes one writer. With several workers a start request can
+        # land in worker A while a status request lands in worker B, which
+        # answers STOPPED while a collector is running — the UI would misreport
+        # exactly the thing this product exists to report honestly.
+        if os.getenv("QTS_ALLOW_MULTIWORKER") != "1":
+            raise click.ClickException(
+                f"Refusing --workers {workers}: observe/DEMO endpoints keep per-process state "
+                "(collector, DEMO authority, submission lock), so a status request handled by "
+                "another worker reports STOPPED while a collector is running. Scale read-only "
+                "traffic at the proxy instead, or set QTS_ALLOW_MULTIWORKER=1 to accept that "
+                "the observe/DEMO routes are unreliable in this mode."
+            )
+        click.echo(
+            "warning: --workers > 1 — /api/observe/* and /api/demo/* hold per-process state; "
+            "their status is only authoritative for the worker that handled the request. "
+            "Leave workers=1 for any host that observes or submits DEMO orders.",
+            err=True,
+        )
 
     import uvicorn
 
