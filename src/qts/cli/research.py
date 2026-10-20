@@ -195,7 +195,7 @@ def research_run_hypothesis(ctx: click.Context, hypothesis_id: str) -> None:
 @click.option("--slippage-bps", default=2.0, type=float, show_default=True, help="Slippage per side in basis points; an assumption unless measured.")
 @click.option("--commission-per-lot-side", default=7.0, type=float, show_default=True)
 @click.option("--financing-bps-per-day", default=0.0, type=float, show_default=True)
-@click.option("--cost-basis", default="ASSUMED", show_default=True)
+@click.option("--cost-basis", default="ASSUMED", type=click.Choice(["ASSUMED", "SENSITIVITY"], case_sensitive=False), show_default=True, help="Label for the supplied costs; MEASURED is reserved for broker-evidence-backed models.")
 @click.option("--lookback", default=252, type=int, show_default=True)
 @click.option("--min-observations", default=30, type=int, show_default=True)
 @click.option("--train-fraction", default=0.70, type=click.FloatRange(min=0.5, max=0.9), show_default=True, help="Chronological training fraction; remaining bars are held out.")
