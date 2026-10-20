@@ -209,7 +209,7 @@ def research_adaptive_xauusd(
 
     from qts.research.longhistory.adaptive_backtest import build_adaptive_plan
     from qts.research.longhistory.adaptive_router import AdaptiveRoutingConfig
-    from qts.research.longhistory.engine import CostModel, run_plan
+    from qts.research.longhistory.engine import CostModel, RunResult, run_plan
     from qts.research.longhistory.signals import donchian, ma_cross, rsi2
 
     if not np.isfinite(initial_equity) or initial_equity <= 0:
@@ -270,7 +270,7 @@ def research_adaptive_xauusd(
             initial_equity=initial_equity, force_close_end=True,
         )
 
-        def summarize(result: object) -> dict[str, object]:
+        def summarize(result: RunResult) -> dict[str, object]:
             equity = np.asarray(result.equity, dtype=float)
             peaks = np.maximum.accumulate(equity)
             drawdown = np.divide(equity, peaks, out=np.ones_like(equity), where=peaks != 0) - 1.0
