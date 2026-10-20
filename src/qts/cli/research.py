@@ -208,6 +208,7 @@ def research_adaptive_xauusd(
     """Run causal regime-aware XAUUSD routing on an OHLC CSV (diagnostic only)."""
     from collections import Counter
     from decimal import Decimal
+    from typing import cast
 
     import numpy as np
     import pandas as pd
@@ -288,8 +289,10 @@ def research_adaptive_xauusd(
                 high=Decimal(str(row["high"])),
                 low=Decimal(str(row["low"])),
                 close=Decimal(str(row["close"])),
-                open_time=timestamp.to_pydatetime(),
-                close_time=(timestamp + pd.Timedelta(seconds=cadence_seconds)).to_pydatetime(),
+                open_time=cast(pd.Timestamp, timestamp).to_pydatetime(),
+                close_time=(
+                    cast(pd.Timestamp, timestamp) + pd.Timedelta(seconds=cadence_seconds)
+                ).to_pydatetime(),
                 source="CSV",
             )
             for timestamp, row in bars.iterrows()
