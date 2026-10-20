@@ -32,6 +32,79 @@ class AdaptiveRoutingConfig:
             raise ValueError("min_mean_return must be finite")
 
 
+def classify_market_regime(
+    bars: pd.DataFrame,
+    *,
+    trend_lookback: int = 20,
+    trend_threshold: float = 0.30,
+    range_threshold: float = 0.20,
+    atr_lookback: int = 14,
+    volatility_window: int = 60,
+    high_volatility_ratio: float = 1.50,
+) -> pd.Series:
+    """Label trend direction, range, transition, and relative volatility causally.
+
+    Labels at t use only OHLC data through t. The volatility reference is the
+    median ATR from bars strictly before t, avoiding self-normalization by the
+    current bar. Warm-up rows are labeled explicitly so the router can remain
+    flat until enough same-regime history exists.
+    """
+    if not isinstance(bars, pd.DataFrame):
+        raise TypeError("bars must be a pandas DataFrame")
+    if not isinstance(bars.index, pd.DatetimeIndex):
+        raise ValueError("bars must use a DatetimeIndex")
+    if bars.index.hasnans or bars.index.has_duplicates or not bars.index.is_monotonic_increasing:
+        raise ValueError("bar index must be unique, non-null, and increasing")
+    required = ("high", "low", "close")
+    missing = [column for column in required if column not in bars.columns]
+    if missing:
+        raise ValueError(f"bars are missing required columns: {', '.join(missing)}")
+    if trend_lookback < 2 or atr_lookback < 2 or volatility_window < 2:
+        raise ValueError("lookback windows must be >= 2")
+    if not 0.0 <= range_threshold < trend_threshold <= 1.0:
+        raise ValueError("thresholds must satisfy 0 <= range_threshold < trend_threshold <= 1")
+    if not np.isfinite(high_volatility_ratio) or high_volatility_ratio <= 0.0:
+        raise ValueError("high_volatility_ratio must be finite and positive")
+
+    high = bars["high"].astype(float)
+    low = bars["low"].astype(float)
+    close = bars["close"].astype(float)
+    if not np.isfinite(bars[list(required)].to_numpy(dtype=float)).all():
+        raise ValueError("OHLC values must be finite")
+    if (bars[list(required)].to_numpy(dtype=float) <= 0.0).any():
+        raise ValueError("OHLC values must be positive")
+
+    prior_close = close.shift(1)
+    true_range = pd.concat(
+        [(high - low), (high - prior_close).abs(), (low - prior_close).abs()], axis=1
+    ).max(axis=1)
+    atr = true_range.ewm(alpha=1.0 / atr_lookback, adjust=False, min_periods=atr_lookback).mean()
+    prior_atr_median = atr.shift(1).rolling(volatility_window, min_periods=volatility_window).median()
+    net_move = (close - close.shift(trend_lookback)).abs()
+    path = close.diff().abs().rolling(trend_lookback, min_periods=trend_lookback).sum()
+    efficiency = net_move / path.replace(0.0, np.nan)
+    direction = np.sign(close - close.shift(trend_lookback))
+
+    labels: list[str] = []
+    for i in range(len(bars)):
+        er = efficiency.iloc[i]
+        baseline = prior_atr_median.iloc[i]
+        current_atr = atr.iloc[i]
+        move = direction.iloc[i]
+        if not np.isfinite(er) or not np.isfinite(baseline) or not np.isfinite(current_atr):
+            labels.append("warming_up")
+            continue
+        if er >= trend_threshold:
+            state = "trend_up" if move > 0 else "trend_down" if move < 0 else "transition"
+        elif er <= range_threshold:
+            state = "range"
+        else:
+            state = "transition"
+        volatility = "high_vol" if current_atr > baseline * high_volatility_ratio else "normal_vol"
+        labels.append(f"{state}_{volatility}")
+    return pd.Series(labels, index=bars.index, name="regime", dtype="object")
+
+
 def route_by_regime(
     regimes: pd.Series,
     net_returns: pd.DataFrame,
