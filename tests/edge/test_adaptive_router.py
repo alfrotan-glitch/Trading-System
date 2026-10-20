@@ -4,12 +4,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from qts.research.longhistory.adaptive_backtest import build_adaptive_plan
 from qts.research.longhistory.adaptive_router import (
     AdaptiveRoutingConfig,
     classify_market_regime,
     route_by_regime,
 )
-from qts.research.longhistory.adaptive_backtest import build_adaptive_plan
 from qts.research.longhistory.engine import CostModel
 from qts.research.longhistory.signals import Plan
 
@@ -116,7 +116,6 @@ def test_regime_classifier_rejects_invalid_thresholds():
     )
     with pytest.raises(ValueError, match="thresholds"):
         classify_market_regime(bars, trend_threshold=0.2, range_threshold=0.3)
-
 
 
 def test_adaptive_backtest_uses_costed_engine_and_returns_a_valid_routed_plan():
