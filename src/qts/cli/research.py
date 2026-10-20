@@ -226,9 +226,20 @@ def research_adaptive_xauusd(
         timestamp_name = timestamp_column
         if timestamp_name not in raw.columns:
             matches = [str(c) for c in raw.columns if str(c).lower() == timestamp_column.lower()]
-            if len(matches) != 1:
+            if len(matches) == 1:
+                timestamp_name = matches[0]
+            elif not matches and timestamp_column == "timestamp":
+                common_time_columns = [
+                    str(c) for c in raw.columns if str(c).lower() in {"time", "open_time"}
+                ]
+                if len(common_time_columns) != 1:
+                    raise ValueError(
+                        "timestamp column not found; provide --timestamp-column "
+                        "or include exactly one of 'time'/'open_time'"
+                    )
+                timestamp_name = common_time_columns[0]
+            else:
                 raise ValueError(f"timestamp column {timestamp_column!r} not found")
-            timestamp_name = matches[0]
         raw = raw.rename(columns={c: str(c).lower() for c in raw.columns if c != timestamp_name})
         raw = raw.rename(columns={timestamp_name: "timestamp"})
         raw["timestamp"] = pd.to_datetime(raw["timestamp"], utc=True, errors="raise")
@@ -300,7 +311,7 @@ def research_adaptive_xauusd(
             "data": {
                 "path": str(input_path), "bars": len(bars),
                 "start": bars.index[0].isoformat(), "end": bars.index[-1].isoformat(),
-                "timestamp_column": timestamp_column, "data_quality": "basic OHLC validation passed",
+                "timestamp_column": timestamp_name, "data_quality": "basic OHLC validation passed",
                 "train_bars": split, "holdout_bars": len(bars) - split,
                 "train_end": bars.index[split - 1].isoformat(),
                 "holdout_start": bars.index[split].isoformat(),
