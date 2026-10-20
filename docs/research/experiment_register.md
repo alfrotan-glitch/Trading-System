@@ -284,6 +284,13 @@ only post-sample data the project has left.
 
 Reproduce: `python scripts/edgelab_realyield_run.py`.
 
+## Where the programme stands
+
+Current state, spent windows, the ranked experiment queue and the recovery
+commands are maintained in a single place: **`MISSION_STATE.md`**. Read it before
+designing the next hypothesis — in particular, it records that **no untouched
+historical window remains**, which changes what "confirmation" can mean from here.
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
