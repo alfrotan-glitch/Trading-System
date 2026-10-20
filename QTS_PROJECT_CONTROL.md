@@ -411,3 +411,12 @@ Not accepted: no real browser exists in this sandbox (Playwright CDN and Debian 
 * Verdict: **NO_VALIDATED_EDGE**, now at a 0.35 Sharpe detection floor. ~75 configurations across four rounds, no family survives DEV→VAL→TEST→holdout on tradable prices.
 * Unavailable inputs, each attempted and logged: CFTC COT history (site unreachable, no long GitHub mirror), broker tick archive (release download fails), measured broker costs (no terminal), GVZ options vol (no verified series). Costs remain **ASSUMED**, never reported as measured.
 * Architecture: research package only (`edgelab/longgold.py`, `edgelab/metals.py`, 3 scripts, 12 tests). Nothing in the execution path, DEMO policy registry or risk layer changed. `LIVE = LOCKED`, `REAL_CAPITAL_EXPOSURE = 0`.
+
+## 26. DAILY MACRO DRIVERS: DOLLAR AND NOMINAL YIELDS, 2026-10-20
+
+* Scope: the two canonical gold drivers at daily frequency — DXY (1971-01-04 onward) and the US 10-year constant-maturity yield (1962-01-02 onward). Hypotheses test direction of travel, not the contemporaneous level correlation, which is not predictive.
+* Protocol: 4 configurations, 2 drivers x 2 horizons. DEV 1971-2000 (30 yrs, floor SR 0.456), VAL 2001-2010, TEST 2011-2019. Reproduce: `scripts/edgelab_macro_daily_run.py`.
+* Results: `usd_falling_12m` cleared DEV (alpha +6.7%/yr, t=3.34, DSR 0.998) but was **positive in only 1 of 3 later windows** (VAL -1.3%, TEST +0.7%, 2020-24 -2.3%) and is rejected on the sign test. `usd_falling_6m` is positive in **4/4** windows but DEV t=2.41 misses the 2.5 gate by 0.09. `yield_falling_6m` is positive in 4/4 with TEST t=2.62 but DEV t=1.21.
+* **Holdout spent:** 2020-2024 was consumed rejecting `tsmom_1m` in §25. Once read, a window is in-sample for later hypotheses, so the two near-misses cannot be called validated. This is the conservative reading and it costs the study its only modern holdout.
+* Verdict: **NO_VALIDATED_EDGE**. The two 4/4-consistent signals each fail a different criterion — consistency without a decisive period is equally consistent with a small real effect and with mild overfitting, and with the holdout spent this dataset cannot separate them.
+* Architecture: research package only (`edgelab/macro_daily.py`, 1 script, 5 tests). Nothing in the execution path changed. `LIVE = LOCKED`, `REAL_CAPITAL_EXPOSURE = 0`.

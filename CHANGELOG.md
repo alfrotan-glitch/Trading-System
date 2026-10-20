@@ -31,6 +31,10 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
   Sharpe 0.59 to **0.35**.
 - `qts.research.edgelab.metals` + `scripts/edgelab_gsr_run.py` — gold/silver ratio
   relative value (1968-2024) with both directions declared in advance.
+- `qts.research.edgelab.macro_daily` + `scripts/edgelab_macro_daily_run.py` —
+  daily DXY (1971+) and 10-year yield (1962+) drivers. Two configurations are
+  positive across all four windows but each misses a different gate criterion, and
+  the 2020-2024 holdout is spent, so neither is promoted.
 - `docs/research/experiment_register.md` — persistent register of every tested
   hypothesis and every attempted-but-unavailable input feed.
 - `docs/research/longhistory_51y_2026-10-20.md` — the 51-year study. `tsmom_1m`
