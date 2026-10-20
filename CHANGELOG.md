@@ -14,6 +14,22 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Added
 
+- `qts.research.edgelab.intraday` — session-clock signals (fixed UTC windows,
+  overnight reversal, late-New-York momentum, path-dependent opening-range
+  breakout) with an explicit no-look-ahead contract.
+- `qts.research.edgelab.fred_drivers` — mirror-backed `DGS10`, `DFII10` and
+  `DTWEXBGS` through 2026-10, with provenance validation against an independent
+  copy and `align_to_index`, which fixes the mixed-timezone forward-fill that
+  could silently flatten a driver column to a constant.
+- `qts.research.edgelab.hac_alpha` — Newey-West alpha and t-statistic, because the
+  plain OLS error overstates significance for anything that trades often.
+- `qts.research.edgelab.reporting` — one shared period-evaluation path, so the
+  frozen scorecard and the holdout script cannot drift apart.
+- `scripts/edgelab_intraday_run.py` — round 7 session screen with cost, gap and
+  negative-control decomposition.
+- `scripts/edgelab_xl001_holdout.py` — round 8 post-sample holdout, including the
+  dollar-index substitution checks and the feed-completeness report.
+
 - `qts.research.edgelab` — a vectorised, cost-charged research harness with an
   explicit execution convention, alpha-vs-beta attribution, deflated Sharpe and a
   pre-registered acceptance gate (`gate.py`).
@@ -60,8 +76,23 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
   0 of 45 D1 and 0 of 52 H1 strategies survive, across 12 families spanning
   price-derived and macro inputs. Holdout untouched.
 
+### Changed
+
+- Candidate evaluation logic moved out of `scripts/edgelab_candidate_run.py` into
+  `qts.research.edgelab.reporting.evaluate_period`. The numbers are unchanged and
+  verified identical (DEV alpha_t 2.70, TEST alpha_t 2.94), so the frozen
+  scorecard and the holdout script now measure the same way by construction.
+- Deflated Sharpe for the session family uses the **cumulative** trial count
+  (52 prior round-1 configurations plus 9 in round 7) rather than the count of the
+  current run alone.
+
 ### Fixed
 
+- `qts.research.edgelab.fred_drivers.align_to_index` — forward-filling a
+  naive-index driver frame onto a tz-aware bar index produced a **constant
+  column**, and therefore a strategy that never took a position while reporting a
+  flat line with no error. Timezones are now normalised and the index sorted and
+  de-duplicated before filling; two tests pin the behaviour.
 - `CostModel`'s docstring claimed **4.0 bps/side** while `per_side_bps()` computed
   **0.40** — a factor-of-ten gap that made every reported cost assumption 10x
   stricter than what was actually charged. The formula is authoritative; the
@@ -174,6 +205,13 @@ suite rather than compile checks alone.
   and identity-redaction guards.
 
 ### Changed
+
+- Candidate evaluation logic moved out of `scripts/edgelab_candidate_run.py` into
+  `qts.research.edgelab.reporting.evaluate_period`. Numbers are unchanged and
+  verified identical (DEV alpha_t 2.70, TEST alpha_t 2.94).
+- Deflated Sharpe for the session family now uses the **cumulative** trial count
+  (52 prior round-1 configurations + 9 in round 7) instead of the current run only.
+
 
 - Version is `1.0.0` in `pyproject.toml` and `qts.__version__`; the API reports
   it instead of a hardcoded string.

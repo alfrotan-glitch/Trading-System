@@ -150,6 +150,103 @@ formula is authoritative, and `realistic_ecn()` (0.925 bps/side) was added becau
 0.40 bps is optimistic for retail gold. XL-001 is reported under both, and a test
 now pins the documented rate to the computed one.
 
+## Round 7 — Session clock on M15 (9 configurations, 61 cumulative trials)
+
+A materially different question from every earlier round: not *which direction*
+but *when*. Gold's marginal buyer is Asian physical demand and its price-setter is
+the New York futures book, so the intraday clock is a real information source that
+costs nothing to condition on.
+
+Design: M15 XAUUSD 2004-06-11..2025-09-30 (BaseMax). DEV 2004-2014, VAL 2015-2019,
+**2020-2024 excluded from both fitting and validation** (consumed in round 3), OOS
+2024-10..2025-09 left untouched. Inference on **daily-aggregated** returns with
+Newey-West (5 lag) standard errors — a naive t-statistic on 480,717 M15 bars would
+be inflated several-fold. Two of the nine configurations are deliberate negative
+controls.
+
+| Configuration | DEV gross alpha | DEV net alpha | DEV net a_t | Turnover/yr |
+|---|---|---|---|---|
+| `sess_asia_2206` (long 22-06) | +3.9% (t 2.24) | **−5.2%** | −2.96 | 551 |
+| `sess_asia_2307` | +3.7% | −5.4% | −2.93 | 551 |
+| `sess_london_only` *(control)* | −5.8% (t −2.91) | −14.9% | −7.53 | 553 |
+| `sess_newyork_only` *(control)* | +0.5% | −8.7% | −3.64 | 552 |
+| `overrev_asia` (fade the overnight move) | −3.1% | −12.0% | −3.47 | 544 |
+| `momclose_asia` (overnight → NY close) | +2.5% (t 2.24) | −6.0% | −5.40 | 523 |
+| `orb_asia` (Asian-range breakout) | **+10.3%** (t 2.44) | +1.3% | 0.30 | 545 |
+| `orb_asia_buf10` | +9.6% (t 2.40) | +0.8% | 0.20 | 529 |
+| `tsmom_m15_96` (1-day trend at M15) | **+20.9%** (t 4.76) | −14.3% | −2.93 | **2 158** |
+
+Zero survivors; the two negative controls behave as controls.
+
+### The number this round actually produced: the cost of a daily flip
+
+At 0.925 bps/side, one position change per day (≈550 sides/yr) costs **9.1%/yr**.
+Every gross edge found here is smaller than that toll except the fastest-trading
+one, which pays 35%/yr. `tsmom_m15_96` is the crispest case in the project: a
+**+20.9%/yr gross alpha at t 4.76** — a statistic that would pass any screen that
+ignored costs — turned into −14.3% by its own turnover.
+
+The operating rule that follows, and that governs every later round: **a strategy
+trading daily needs >9%/yr of gross alpha merely to break even; only strategies
+below roughly 100 sides/yr can survive retail costs at all.** XL-001's turnover is
+6.7/yr.
+
+### Why the descriptive session effect looked so good
+
+Compounding the 22:00-06:00 window gives **+4.7 bps/day at 8.0% annualised vol**
+(DEV) against +4.1 bps/day at 18.1% for the full day — an apparently free 2.3x
+improvement in Sharpe. It is not tradable. Splitting the 22:00 bar by the length of
+the preceding gap:
+
+| Preceding gap | n | Mean return | t |
+|---|---|---|---|
+| ≤ 30 min | 7 430 | **−0.17 bps** | −1.47 |
+| > 30 min (daily halt / weekend) | 2 693 | **+2.34 bps** | 4.96 |
+
+The drift lives in the reopening gap, which a strategy entering *at* the reopen
+never earns. The executable version keeps the risk and loses the return. This is a
+useful general lesson: a session statistic computed on close-to-close bars silently
+credits the holder with moves that happened while the market was shut.
+
+Reproduce: `python scripts/edgelab_intraday_run.py`.
+
+## Round 8 — XL-001 holdout on data that continues past 2024-05 (no new trials)
+
+The candidate's blocker was that its drivers stopped on 2024-05-17. A FRED mirror
+(`sgdividends/fred-macro-data`) supplies `treasury_10y.csv`, `treasury_10y_real.csv`
+and `broad_dollar.csv` through **2026-10-16**, and the mirror is *checked* rather
+than trusted: its DGS10 file reproduces the independently obtained copy **exactly
+over 15,580 overlapping observations spanning 62 years** (max |difference| 0.0).
+
+Two substitutions were measured before use:
+
+| Check | Result | Consequence |
+|---|---|---|
+| DXY → DTWEXBGS (broad dollar) | level corr 0.969, 6-month-change corr 0.918, **flag agreement 88.1%** | not free — quantified |
+| Same rule, both indices, 2006-2019 | alpha_t **2.69** (DXY) vs **2.93** (broad) | index choice does not drive it |
+| BaseMax M15 tail | 0 bars Aug-2025, 2 in Sep-2025 | holdout split into two blocks |
+
+With the swap validated, XL-001 was evaluated unchanged (same hash, same 126-day
+lookback, same 0.925 bps/side) on windows that start after 2024-05-17:
+
+| Block | n | Alpha/yr | a_t | HAC t | Sharpe | Beta | Exposure |
+|---|---|---|---|---|---|---|---|
+| A 2024-06..2025-02 (BaseMax) | 233 | −2.9% | −0.80 | −0.81 | 0.56 | 0.24 | 0.47 |
+| B 2025-08..2026-09 (Dukascopy) | 346 | +5.4% | 0.61 | 0.64 | 0.95 | 0.65 | 0.77 |
+| pooled | 579 | net +12.3%/yr | — | — | — | — | — |
+
+**Read: MIXED — no upgrade, no downgrade.** Neither block is significant, which is
+what the sample length guarantees: at 2.3 years the detection floor is a Sharpe
+well above 1.2. Block A is the weakest reading in the project's history for this
+candidate (gold +12.8% while the rule was 47% exposed and returned +2.4%), and it
+is the first evidence that the 2022+ drivers may be drifting. Block B is
+comfortably positive but proves nothing at that length.
+
+**This is a holdout, not forward evidence.** The observations post-date the frozen
+definition but existed before the operator fetched them; the append-only ledger
+remains the only place forward observations live, and the script does not write to
+it. Reproduce: `python scripts/edgelab_xl001_holdout.py`.
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
@@ -161,13 +258,24 @@ now pins the documented rate to the computed one.
 
 ## What the register implies
 
-Six rounds, ~83 configurations, every family from price, macro, calendar,
-relative-value and cross-sectional information. Not one survives DEV→VAL→TEST→holdout
-on tradable prices. The two that cleared DEV died in identifiable ways: one on a
-regime that ended in 1980, one on a fixing artifact plus post-2019 decay.
+Eight rounds, ~92 configurations, every family from price, macro, calendar,
+relative-value, cross-sectional and intraday-clock information. Not one survives
+DEV→VAL→TEST→holdout on tradable prices. The two that cleared DEV died in
+identifiable ways: one on a regime that ended in 1980, one on a fixing artifact
+plus post-2019 decay.
+
+Round 7 added the structural explanation for the whole pattern, which is worth
+more than any single rejected strategy: **at retail costs the search is bounded by
+turnover, not by signal quality.** Intraday rules with gross alphas of +10% to
++21%/yr at t-stats up to 4.8 lose money once their own trading costs are charged,
+because a daily flip costs 9%/yr. That is why the only candidate the project has
+ever produced trades 6.7 times a year. Future effort is therefore directed at
+low-turnover constructions, and any high-frequency idea must demonstrate gross
+alpha above roughly 9%/yr before it is worth implementing at all.
 
 One candidate now exists (XL-001) with a coherent economic mechanism, low turnover
-and independent significance on two disjoint periods. What it lacks is genuinely
-unseen confirmation, which no further analysis of the same data can provide. The
-forward ledger (`qts forward log`, `qts forward score`) is the mechanism that
-accumulates it.
+and independent significance on two disjoint periods. Round 8 gave it its first
+post-sample reading and the answer was "indistinguishable from zero, both
+directions" — the honest outcome for 2.3 years. What it still lacks is genuinely
+unseen confirmation accumulated over time, and the forward ledger
+(`qts forward log`, `qts forward score`) is the only mechanism that can supply it.

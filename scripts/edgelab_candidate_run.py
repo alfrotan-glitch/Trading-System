@@ -17,16 +17,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from qts.research.edgelab import (
-    CostModel,
-    alpha_decomposition,
-    benchmark_returns,
-    deflated_sharpe,
-    run_vector,
-)
+from qts.research.edgelab import CostModel, deflated_sharpe
 from qts.research.edgelab.candidates import build_signal_frame, candidates
 from qts.research.edgelab.gate import MIN_ALPHA_T_DEV, MIN_DSR
 from qts.research.edgelab.power import detection_summary
+from qts.research.edgelab.reporting import evaluate_period
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -47,24 +42,11 @@ COSTS = (
 
 
 def evaluate(sub: pd.DataFrame, sig: pd.Series, cost: CostModel, name: str, family: str) -> dict:
-    r = run_vector(sub, sig, cost, name=name, family=family, bars_per_year=BPY, keep_equity=True)
-    if r.net_returns is None:
-        raise RuntimeError("keep_equity required")
-    st = alpha_decomposition(r.net_returns, benchmark_returns(sub), BPY)
-    return {
-        "cagr": r.cagr,
-        "sharpe": r.sharpe,
-        "max_dd": r.max_dd,
-        "trades": r.trades,
-        "exposure": r.exposure,
-        "turnover_per_year": r.turnover_per_year,
-        "alpha_ann": st["alpha_ann"],
-        "alpha_t": st["alpha_t"],
-        "beta": st["beta"],
-        "skew": float(r.net_returns.skew()),
-        "kurt": float(r.net_returns.kurt()) + 3.0,
-        "n_obs": int(len(r.net_returns)),
-    }
+    """Delegate to the shared path so the holdout script computes the same thing."""
+    m = evaluate_period(sub, sig, cost, name, family, bars_per_year=BPY)
+    m.pop("net_returns", None)
+    m.pop("bench_returns", None)
+    return m
 
 
 def main() -> None:

@@ -402,6 +402,77 @@ def alpha_decomposition(
     }
 
 
+def as_float(value: object) -> float:
+    """Coerce a pandas/numpy scalar to ``float``.
+
+    ``float(x)`` is correct at runtime for every numpy scalar but is rejected by
+    the pandas type stubs, which type reductions as a broad union that includes
+    strings and dates. Going through ``np.asarray(...).item()`` states the
+    intent — this is a numeric scalar — and satisfies both.
+    """
+    arr = np.asarray(value, dtype=float)
+    if arr.size != 1:
+        raise TypeError(f"expected a scalar, got shape {arr.shape}")
+    return float(arr.reshape(()).item())
+
+
+def hac_alpha(
+    strategy_returns: pd.Series,
+    bench_returns: pd.Series,
+    bars_per_year: float,
+    lags: int = 5,
+) -> dict:
+    """Alpha and its Newey-West t-statistic, robust to autocorrelated returns.
+
+    ``alpha_decomposition`` uses the plain OLS standard error, which assumes
+    independent observations. That assumption is fine for a monthly-cadence rule
+    but badly wrong for anything that trades every day: overlapping exposures and
+    a position that persists across bars make the residuals serially correlated,
+    and the plain t-statistic then overstates significance.
+
+    This computes ``s = a + b*g + e`` and a Bartlett-kernel HAC covariance of
+    ``(a, b)`` with ``lags`` autocovariances. The alpha t-statistic is the
+    intercept divided by its HAC standard error. ``bars_per_year`` converts the
+    per-bar intercept to an annual figure, so passing daily returns with 252 gives
+    an annualised alpha.
+
+    Raises on constant benchmarks: a zero-variance regressor makes the intercept
+    unidentified, and returning 0.0 would silently hide that.
+    """
+    joined = pd.concat([strategy_returns.rename("s"), bench_returns.rename("b")], axis=1).dropna()
+    n = len(joined)
+    if n < 3 * (lags + 1):
+        raise ValueError(f"need at least {3 * (lags + 1)} observations for a HAC fit, got {n}")
+    y = joined["s"].to_numpy(dtype=float)
+    g = joined["b"].to_numpy(dtype=float)
+    if float(np.var(g)) <= 0:
+        raise ValueError("benchmark has zero variance — alpha is unidentified")
+    X = np.column_stack([np.ones(n), g])
+    xtx_inv = np.linalg.inv(X.T @ X)
+    coef = xtx_inv @ X.T @ y
+    resid = y - X @ coef
+    # Bartlett-kernel HAC meat, then bread-meat-bread.
+    u = X * resid[:, None]
+    meat = u.T @ u
+    for lag in range(1, lags + 1):
+        w = 1.0 - lag / (lags + 1.0)
+        gamma = u[lag:].T @ u[:-lag]
+        meat += w * (gamma + gamma.T)
+    cov = xtx_inv @ meat @ xtx_inv
+    se = float(np.sqrt(cov[0, 0]))
+    if se <= 0:
+        raise ValueError("degenerate HAC standard error")
+    alpha_per_bar = float(coef[0])
+    return {
+        "alpha_per_bar": alpha_per_bar,
+        "alpha_ann": alpha_per_bar * bars_per_year,
+        "alpha_t": alpha_per_bar / se,
+        "beta": float(coef[1]),
+        "n_obs": n,
+        "lags": lags,
+    }
+
+
 def side_attribution(net_returns: np.ndarray, position: np.ndarray) -> dict:
     """P&L contributed while long vs while short."""
     long_mask = position > 0
