@@ -25,6 +25,18 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 - `qts.research.edgelab.power` — detection floors (`min_detectable_sr`,
   `years_needed`, `detection_summary`), so a `NO_VALIDATED_EDGE` verdict is
   reported alongside the smallest effect the sample could have detected.
+- `qts.research.edgelab.longgold` + `scripts/edgelab_prepare_longgold.py` — a
+  51-year daily gold store (LBMA AM fix 1969-2019) with a release-lagged real-yield
+  proxy, plus 16 economically-reasoned hypotheses. Cuts the detection floor from
+  Sharpe 0.59 to **0.35**.
+- `qts.research.edgelab.metals` + `scripts/edgelab_gsr_run.py` — gold/silver ratio
+  relative value (1968-2024) with both directions declared in advance.
+- `docs/research/experiment_register.md` — persistent register of every tested
+  hypothesis and every attempted-but-unavailable input feed.
+- `docs/research/longhistory_51y_2026-10-20.md` — the 51-year study. `tsmom_1m`
+  reached alpha t=2.91 over 51 years and positive in 6/6 decades, then returned
+  −2.1% on the untouched holdout; roughly half its apparent edge was an artifact of
+  using 10:30 London fixings rather than tradable closes.
 - `qts.research.edgelab.crosssection` + `scripts/edgelab_cross_section.py` —
   replication of gold findings on an independent broker feed and across 12
   instruments. Confirms the signals are not vendor artefacts, and that

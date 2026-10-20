@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-10-20T16:35:50.152836+00:00",
+  "bars": 12894,
+  "span": [
+    "1969-01-02",
+    "2019-12-31"
+  ],
+  "years": 51.0,
+  "macro_lag_months": 2,
+  "sources": {
+    "gold": {
+      "series": "FRED GOLDAMGBD228NLBM \u2014 LBMA Gold Price AM fix, USD/oz",
+      "file": "data/raw/longgold/gold/GOLDAMGBD228NLBM_1969-2020.csv",
+      "sha256": "c6dfb47e56994d60549d3f002543bbcc9925734b602bda683cafce53c35a0d28",
+      "note": "Benchmark fixing, not an executable quote."
+    },
+    "gs10": {
+      "series": "FRED GS10 \u2014 10-Year Treasury constant maturity, monthly",
+      "file": "data/raw/longgold/gs10/GS10.csv",
+      "sha256": "640f8c4e86ca2d3ecd6ebc7b15b162460385f50ce46da99b3bf36241eedff264"
+    },
+    "cpi": {
+      "series": "FRED CPIAUCSL \u2014 CPI-U all items, SA, monthly",
+      "file": "data/raw/longgold/cpi/CPIAUCSL.csv",
+      "sha256": "bf91e263463cb117065df478391d5dba432c6cbdd63245ed723faa69c1a63b13"
+    }
+  },
+  "construction": "real_yield = GS10 - CPI_YoY, then index shifted +2 months. Ex-post realised real yield, deliberately lagged; can understate a real-time signal but cannot create one.",
+  "cost_note": "All trading costs are ASSUMED (bps), never measured."
+}
