@@ -207,7 +207,6 @@ def research_adaptive_xauusd(
 ) -> None:
     """Run causal regime-aware XAUUSD routing on an OHLC CSV (diagnostic only)."""
     from collections import Counter
-    from datetime import timedelta
     from decimal import Decimal
 
     import numpy as np
