@@ -59,7 +59,8 @@ def test_router_uses_only_history_from_matching_regime():
     result = route_by_regime(
         regimes, returns, targets, AdaptiveRoutingConfig(lookback=20, min_observations=10)
     )
-    assert result["selected_strategy"].iloc[20:].isna().all()
+    assert result["selected_strategy"].iloc[20:30].isna().all()
+    assert (result["selected_strategy"].iloc[30:] == "winner").all()
 
 
 def test_invalid_position_states_are_rejected():
