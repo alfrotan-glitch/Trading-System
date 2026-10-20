@@ -109,7 +109,8 @@ bar, not a lower one. It did not clear the ordinary one.
 `qts/research/edgelab/gate.py` fixes the criteria before results are read:
 
 1. `alpha_t >= 2.5` on DEV (higher than 2.0 because ~46 configurations were tried)
-2. deflated Sharpe `>= 0.95`, counted per family
+2. deflated Sharpe `>= 0.95` on the annualised Sharpe, counted per family and
+   deflated at the correct bar frequency
 3. alpha stays **positive** under 2× assumed costs
 4. alpha keeps the **same sign** on VAL
 
@@ -120,18 +121,60 @@ and 0 of 52 on H1.** The best DEV alpha t-stat was 2.11 (D1) and 2.14 (H1) — a
 it is the *same* signal at two resolutions, so those are not independent
 observations.
 
-Honest caveat: the deflated Sharpe saturates at 1.000 for anything with a Sharpe
-near 0.5 over 4,481 daily bars, because the t-statistic is enormous. DSR is not
-the binding constraint here — the alpha regression and the VAL sign test are. That
-is worth knowing before treating DSR as the guard against overfitting: on a long
-sample it will wave through almost everything.
+### Correction: the deflated Sharpe was inert, and this document said so wrongly
+
+An earlier revision of this section claimed DSR "saturates at 1.000 because the
+t-statistic is enormous." **That explanation was false.** The cause was a units
+bug at the call site: `_metrics_from_returns` produces an **annualised** Sharpe
+(`mean/sd * sqrt(252)`), but the deflation benchmark is
+`E[max SR] * sqrt(P / (n-1))`, which is only correct when the Sharpe and the count
+describe the same frequency. Feeding annualised into a per-bar formula inflated the
+t-statistic by `sqrt(252) ≈ 15.9x`, so the guard returned ~1.0 for every input —
+including pure noise.
+
+Corrected, and now delegated to the tested implementation in
+`qts.validation.metrics` with `periods_per_year` passed explicitly:
+
+| Strategy (D1, DEV) | Sharpe | DSR as reported (buggy) | DSR corrected |
+|---|---|---|---|
+| `tsmom_d5` | 0.513 | 1.000 ✓ pass | **0.741** ✗ fail |
+| `ensemble_tsmom` | 0.408 | 1.000 ✓ pass | 0.886 ✗ fail |
+| `ma_50_200` | 0.472 | 1.000 ✓ pass | 0.823 ✗ fail |
+| `tsmom_d10` | 0.345 | 1.000 ✓ pass | 0.474 ✗ fail |
+
+The verdict does not change — `tsmom_d5` was already rejected on `alpha_t` 2.11 vs
+the 2.5 threshold — but **two** criteria now reject it instead of one, and the
+gate no longer has a component that passes everything. A guard that cannot fail is
+worse than no guard, because it invites misplaced confidence in the others.
+
+### What this sample could actually have detected
+
+`alpha_t = SR * sqrt(years)`, so on 17.8 years of daily data the 2.5 threshold has
+a hard detection floor:
+
+| | D1 | H1 |
+|---|---|---|
+| Effective years on DEV | 17.8 | 13.9 |
+| Smallest detectable Sharpe | **0.593** | **0.671** |
+| Years needed for SR 0.5 | 25.0 | 25.0 |
+| Years needed for SR 0.3 | 69.4 | 69.4 |
+
+`NO_VALIDATED_EDGE` therefore means **"no edge with SR ≳ 0.6"**, not "no edge". An
+SR 0.3 strategy is a good real-world result and is *statistically invisible* on
+this sample. The distinction matters, and stating the verdict without it would
+overstate what was ruled out.
+
+Note also that the floor is independent of bar frequency — which is precisely why
+the same signal scoring t=2.11 on D1 and t=2.14 on H1 is **one** observation
+sampled twice, not two confirmations. Only independent instruments or disjoint
+periods add evidence.
 
 ## 5. Defects found and fixed while doing this
 
 | Defect | Consequence if shipped | Fix |
 |---|---|---|
 | Unshifted `held` array in `run_vector` | Credited a signal with the move that preceded it: `tsmom_d5` showed Sharpe 5.46 / 88% a year | Explicit execution conventions; buy-and-hold matches to 1e-12; regression tests |
-| `deflated_sharpe` returned **1.0 for every input** | The multiple-testing guard passed anything, including pure noise | `norm.ppf(1 - 1/1) = -inf` special-cased; test now pins that 500 trials demote a marginal Sharpe |
+| `deflated_sharpe` returned **1.0 for every input** | The multiple-testing guard passed anything, including pure noise | Two separate faults: `norm.ppf(1 - 1/1) = -inf`, and an annualised Sharpe fed to a per-bar formula (15.9x inflation). Now delegates to `qts.validation.metrics` with `periods_per_year` explicit; tests pin both the N=1 case and the units conversion |
 | `realized_vol` annualised with bars-per-*day* | Vol targeting never engaged; every "vol-scaled" result was actually unscaled | `infer_bars_per_year()` from median bar spacing; regression test asserts daily bars annualise with sqrt(252) |
 | Strategy catalogue lived in `scripts/` | The gate could evaluate different code than the screen that produced the candidate | Moved to `qts/research/edgelab/specs.py`, imported by both |
 
@@ -144,6 +187,10 @@ number. None of them were visible from the output — only from reading the code
 12 families — price-derived *and* macro-conditioned — produces alpha that survives
 costs, multiple-testing correction and a validation period. This corroborates
 §20-22 from an independent implementation.
+
+**Bounded by power:** the smallest alpha any such strategy could have shown and
+still passed is SR ≈ 0.59. Anything weaker is indistinguishable from zero here,
+so this is a statement about effects of a certain size, not about all effects.
 
 **Not established:** that no XAUUSD edge exists. This study tests *price-derived*
 signals plus one macro driver on one instrument. It says nothing about:
@@ -167,6 +214,7 @@ python scripts/edgelab_report.py --timeframes D1,H1             # gate + verdict
 
 Artifacts: `data/research/experiments/` (per-run CSVs and `verdict_*.json`).
 
-Tests pinning the above: `tests/unit/test_edgelab_engine.py` (14 invariants),
-`tests/unit/test_edgelab_gate.py` (7 gate behaviours) and
-`tests/unit/test_edgelab_macro.py` (6 alignment / look-ahead checks).
+Tests pinning the above: `tests/unit/test_edgelab_engine.py` (17 invariants),
+`tests/unit/test_edgelab_gate.py` (7 gate behaviours),
+`tests/unit/test_edgelab_macro.py` (6 alignment / look-ahead checks) and
+`tests/unit/test_edgelab_power.py` (5 detection-floor checks).
