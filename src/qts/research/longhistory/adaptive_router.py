@@ -36,7 +36,7 @@ def route_by_regime(
     regimes: pd.Series,
     net_returns: pd.DataFrame,
     targets: pd.DataFrame,
-    config: AdaptiveRoutingConfig = AdaptiveRoutingConfig(),
+    config: AdaptiveRoutingConfig | None = None,
 ) -> pd.DataFrame:
     """Route to the strongest eligible candidate using past returns in this regime.
 
@@ -50,6 +50,8 @@ def route_by_regime(
     force the routed position flat. net_returns must already reflect the
     intended spread, slippage, commission, and financing assumptions.
     """
+    if config is None:
+        config = AdaptiveRoutingConfig()
     if not isinstance(regimes, pd.Series):
         raise TypeError("regimes must be a pandas Series")
     if not isinstance(net_returns, pd.DataFrame) or not isinstance(targets, pd.DataFrame):
