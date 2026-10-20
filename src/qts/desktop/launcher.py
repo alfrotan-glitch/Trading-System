@@ -86,6 +86,20 @@ def open_desktop_window(host: str, port: int):
         shutdown_procedure()
 
 
+def _emit(message: str) -> None:
+    """Write to stdout when one exists.
+
+    A windowed PyInstaller build can have ``sys.stdout is None``; a bare print()
+    then raises and turns ``--version`` into a non-zero exit.
+    """
+    if getattr(sys, "stdout", None) is None:
+        return
+    try:
+        print(message)
+    except Exception:
+        return
+
+
 def _handle_cli(argv: list[str] | None = None) -> bool:
     """Answer ``--version``/``--help`` without starting a server or a window.
 
@@ -97,10 +111,10 @@ def _handle_cli(argv: list[str] | None = None) -> bool:
     if "--version" in args or "-V" in args:
         from qts import __version__
 
-        print(f"QTS {__version__}")
+        _emit(f"QTS {__version__}")
         return True
     if "--help" in args or "-h" in args:
-        print(
+        _emit(
             "QTS — gold research workstation\n\n"
             "Usage: QTS [--version] [--help]\n\n"
             "Without arguments QTS runs startup health, serves the local API on\n"
