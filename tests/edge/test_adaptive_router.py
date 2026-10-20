@@ -170,6 +170,6 @@ def test_adaptive_backtest_uses_costed_engine_and_returns_a_valid_routed_plan():
     assert len(routed.target) == n
     assert candidate_returns.index.equals(index)
     assert set(candidate_returns.columns) == {"long", "short"}
-    assert diagnostics["selected_strategy"].iloc[:10].isna().all()
-    assert (diagnostics["selected_strategy"].iloc[10:] == "long").all()
-    assert (routed.target[10:] == 1.0).all()
+    assert diagnostics["selected_strategy"].iloc[:7].isna().all()
+    assert (diagnostics["selected_strategy"].iloc[7:] == "long").all()
+    assert (routed.target[7:] == 1.0).all()
