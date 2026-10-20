@@ -301,9 +301,22 @@ def research_adaptive_xauusd(
         gap_quality = analyze_gap_semantics(
             bar_records, timeframe, closure_intervals=known_closures
         ).as_dict()
-        missing_fraction = gap_quality["active_span_missing_fraction"]
-        if missing_fraction is None or missing_fraction > MAX_UNEXPECTED_MISSING_FRACTION:
-            measured_pct = "UNAVAILABLE" if missing_fraction is None else f"{missing_fraction:.2%}"
+        raw_missing_fraction = gap_quality["active_span_missing_fraction"]
+        missing_fraction = (
+            float(raw_missing_fraction)
+            if isinstance(raw_missing_fraction, (int, float))
+            else None
+        )
+        if (
+            missing_fraction is None
+            or not np.isfinite(missing_fraction)
+            or missing_fraction > MAX_UNEXPECTED_MISSING_FRACTION
+        ):
+            measured_pct = (
+                f"{missing_fraction:.2%}"
+                if missing_fraction is not None and np.isfinite(missing_fraction)
+                else "UNAVAILABLE"
+            )
             raise ValueError(
                 f"data completeness gate blocked this dataset: unexpected active-span "
                 f"missing intervals={measured_pct}; maximum allowed="
