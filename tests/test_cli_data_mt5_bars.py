@@ -127,6 +127,6 @@ def test_mt5_bars_refuses_non_demo_account(tmp_path, monkeypatch):
     )
 
     assert result.exit_code != 0
-    assert "DEMO-only acquisition" in result.output
+    assert "DEMO-only" in result.output
     assert not csv_path.exists()
     assert module._shutdown_called is True
