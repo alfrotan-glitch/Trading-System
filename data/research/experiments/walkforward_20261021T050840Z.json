@@ -1,0 +1,705 @@
+{
+  "generated_at": "2026-10-21T05:08:40.298460+00:00",
+  "round": 19,
+  "family": "walk_forward_selection",
+  "window": [
+    "1972-01-01",
+    "2019-12-31"
+  ],
+  "lookback": 756,
+  "rebalance": 252,
+  "cost_model": "ecn_realistic",
+  "cost_is_measured": false,
+  "rows": [
+    {
+      "label": "WF_top1",
+      "cagr": 0.0213000937,
+      "sharpe": 0.2272519929,
+      "max_dd": 0.4377224199,
+      "calmar": 0.0486611896,
+      "alpha_ann": -0.0087351069,
+      "alpha_t": -0.6047225813,
+      "alpha_t_hac": -0.6239544881,
+      "turnover": 4.4232385661,
+      "avg_size": 0.37813118,
+      "selections": 46
+    },
+    {
+      "label": "WF_top3",
+      "cagr": 0.0263401586,
+      "sharpe": 0.280501936,
+      "max_dd": 0.4377224199,
+      "calmar": 0.0601754842,
+      "alpha_ann": -0.0062993967,
+      "alpha_t": -0.5394043195,
+      "alpha_t_hac": -0.5645720063,
+      "turnover": 5.8353522868,
+      "avg_size": 0.3747253351,
+      "selections": 46
+    },
+    {
+      "label": "WF_top5",
+      "cagr": 0.032545938,
+      "sharpe": 0.3344621873,
+      "max_dd": 0.4377224199,
+      "calmar": 0.0743529153,
+      "alpha_ann": -0.0006419575,
+      "alpha_t": -0.0566701508,
+      "alpha_t_hac": -0.0589383585,
+      "turnover": 5.6858343634,
+      "avg_size": 0.382185234,
+      "selections": 46
+    },
+    {
+      "label": "B_fixed_blend",
+      "cagr": 0.0472093605,
+      "sharpe": 0.524448317,
+      "max_dd": 0.2895424825,
+      "calmar": 0.1630481305,
+      "alpha_ann": 0.0104526776,
+      "alpha_t": 1.7139687199,
+      "alpha_t_hac": 1.7325613911,
+      "turnover": 5.8706551298,
+      "avg_size": 0.358281147,
+      "selections": 0
+    },
+    {
+      "label": "A_buy_hold",
+      "cagr": 0.0764229084,
+      "sharpe": 0.4626621348,
+      "max_dd": 0.7,
+      "calmar": 0.1091755834,
+      "alpha_ann": -8.39114e-05,
+      "alpha_t": -0.9687304777,
+      "alpha_t_hac": -1.0002000899,
+      "turnover": 0.0,
+      "avg_size": 1.0,
+      "selections": 0
+    }
+  ],
+  "vs_fixed_blend": [
+    {
+      "policy": "top1",
+      "sharpe_diff": -0.29719632408391977,
+      "ci_lo": -0.534940365310641,
+      "ci_hi": -0.08428668805751421,
+      "p_two_sided": 0.008
+    },
+    {
+      "policy": "top3",
+      "sharpe_diff": -0.24394638103394634,
+      "ci_lo": -0.43611467273470733,
+      "ci_hi": -0.06924783230944304,
+      "p_two_sided": 0.002
+    },
+    {
+      "policy": "top5",
+      "sharpe_diff": -0.18998612972207468,
+      "ci_lo": -0.3652779398892421,
+      "ci_hi": -0.032026923387829184,
+      "p_two_sided": 0.018
+    }
+  ],
+  "selection_stability": 0.4444444444444442,
+  "distinct_selected": 19,
+  "selections_top3": [
+    {
+      "date": "1974-12-23",
+      "chosen": [
+        "infl_above_3pct",
+        "excess_money_growth",
+        "ry_chg_3m"
+      ],
+      "sharpes": {
+        "ry_chg_3m": 1.352,
+        "infl_above_3pct": 1.755,
+        "excess_money_growth": 1.403
+      }
+    },
+    {
+      "date": "1975-12-19",
+      "chosen": [
+        "tsmom_12m",
+        "infl_accel_12m",
+        "ry_chg_3m"
+      ],
+      "sharpes": {
+        "ry_chg_3m": 1.123,
+        "infl_accel_12m": 1.159,
+        "tsmom_12m": 1.188
+      }
+    },
+    {
+      "date": "1976-12-16",
+      "chosen": [
+        "tsmom_3m",
+        "trend_falling_yield",
+        "ry_chg_3m"
+      ],
+      "sharpes": {
+        "ry_chg_3m": 0.747,
+        "tsmom_3m": 1.178,
+        "trend_falling_yield": 0.846
+      }
+    },
+    {
+      "date": "1977-12-15",
+      "chosen": [
+        "tsmom_3m",
+        "gold_m2_ratio",
+        "seasonal_sep_nov"
+      ],
+      "sharpes": {
+        "tsmom_3m": 0.929,
+        "seasonal_sep_nov": 0.624,
+        "gold_m2_ratio": 0.88
+      }
+    },
+    {
+      "date": "1978-12-14",
+      "chosen": [
+        "gold_m2_ratio",
+        "excess_money_growth",
+        "ma_trend_12m"
+      ],
+      "sharpes": {
+        "ma_trend_12m": 1.06,
+        "gold_m2_ratio": 1.47,
+        "excess_money_growth": 1.192
+      }
+    },
+    {
+      "date": "1979-12-13",
+      "chosen": [
+        "tsmom_12m",
+        "infl_above_3pct",
+        "ma_trend_12m"
+      ],
+      "sharpes": {
+        "infl_above_3pct": 1.931,
+        "tsmom_12m": 1.998,
+        "ma_trend_12m": 1.931
+      }
+    },
+    {
+      "date": "1980-12-11",
+      "chosen": [
+        "ry_chg_3m",
+        "tsmom_1m",
+        "excess_money_growth"
+      ],
+      "sharpes": {
+        "ry_chg_3m": 1.948,
+        "tsmom_1m": 1.508,
+        "excess_money_growth": 1.466
+      }
+    },
+    {
+      "date": "1981-12-14",
+      "chosen": [
+        "ry_chg_3m",
+        "tsmom_1m",
+        "ry_chg_12m"
+      ],
+      "sharpes": {
+        "ry_chg_12m": 1.353,
+        "ry_chg_3m": 1.97,
+        "tsmom_1m": 1.409
+      }
+    },
+    {
+      "date": "1982-12-13",
+      "chosen": [
+        "ry_chg_3m",
+        "gold_m2_ratio",
+        "tsmom_6m"
+      ],
+      "sharpes": {
+        "ry_chg_3m": 1.064,
+        "tsmom_6m": 0.742,
+        "gold_m2_ratio": 1.002
+      }
+    },
+    {
+      "date": "1983-12-12",
+      "chosen": [
+        "gold_m2_ratio",
+        "tsmom_6m",
+        "ma_trend_12m"
+      ],
+      "sharpes": {
+        "tsmom_6m": 0.484,
+        "ma_trend_12m": 0.239,
+        "gold_m2_ratio": 0.766
+      }
+    },
+    {
+      "date": "1984-12-10",
+      "chosen": [
+        "trend_lowvol",
+        "gold_m2_ratio",
+        "tsmom_6m"
+      ],
+      "sharpes": {
+        "tsmom_6m": 0.327,
+        "trend_lowvol": 0.473,
+        "gold_m2_ratio": 0.332
+      }
+    },
+    {
+      "date": "1985-12-10",
+      "chosen": [
+        "trend_lowvol",
+        "trend_falling_yield",
+        "tsmom_12m"
+      ],
+      "sharpes": {
+        "tsmom_12m": 0.104,
+        "trend_lowvol": 0.175,
+        "trend_falling_yield": 0.133
+      }
+    },
+    {
+      "date": "1986-12-09",
+      "chosen": [
+        "tsmom_12m",
+        "trend_lowvol",
+        "trend_falling_yield"
+      ],
+      "sharpes": {
+        "tsmom_12m": 0.628,
+        "trend_lowvol": 0.628,
+        "trend_falling_yield": 0.549
+      }
+    },
+    {
+      "date": "1987-12-08",
+      "chosen": [
+        "ry_level_5y",
+        "ry_chg_12m",
+        "tsmom_12m"
+      ],
+      "sharpes": {
+        "ry_level_5y": 0.844,
+        "ry_chg_12m": 0.798,
+        "tsmom_12m": 0.763
+      }
+    },
+    {
+      "date": "1988-12-06",
+      "chosen": [
+        "m2_growth",
+        "claims_trend",
+        "ry_chg_12m"
+      ],
+      "sharpes": {
+        "ry_chg_12m": 0.834,
+        "m2_growth": 0.947,
+        "claims_trend": 0.9
+      }
+    },
+    {
+      "date": "1989-12-05",
+      "chosen": [
+        "seasonal_sep_nov",
+        "ma_trend_12m",
+        "m2_growth"
+      ],
+      "sharpes": {
+        "ma_trend_12m": 0.614,
+        "seasonal_sep_nov": 1.0,
+        "m2_growth": 0.595
+      }
+    },
+    {
+      "date": "1990-12-04",
+      "chosen": [
+        "tsmom_1m",
+        "seasonal_sep_nov",
+        "tsmom_3m"
+      ],
+      "sharpes": {
+        "tsmom_1m": 0.702,
+        "tsmom_3m": 0.508,
+        "seasonal_sep_nov": 0.564
+      }
+    },
+    {
+      "date": "1991-12-03",
+      "chosen": [
+        "seasonal_sep_nov",
+        "tsmom_1m",
+        "m2_growth"
+      ],
+      "sharpes": {
+        "tsmom_1m": 0.542,
+        "seasonal_sep_nov": 0.969,
+        "m2_growth": 0.385
+      }
+    },
+    {
+      "date": "1992-12-01",
+      "chosen": [
+        "tsmom_1m",
+        "m2_growth",
+        "seasonal_sep_nov"
+      ],
+      "sharpes": {
+        "tsmom_1m": 0.404,
+        "seasonal_sep_nov": 0.106,
+        "m2_growth": 0.385
+      }
+    },
+    {
+      "date": "1993-11-30",
+      "chosen": [
+        "tsmom_1m",
+        "trend_falling_yield",
+        "infl_above_3pct"
+      ],
+      "sharpes": {
+        "infl_above_3pct": 0.386,
+        "tsmom_1m": 0.681,
+        "trend_falling_yield": 0.511
+      }
+    },
+    {
+      "date": "1994-11-29",
+      "chosen": [
+        "infl_above_3pct",
+        "infl_accel_12m",
+        "tsmom_1m"
+      ],
+      "sharpes": {
+        "infl_accel_12m": 0.614,
+        "infl_above_3pct": 0.65,
+        "tsmom_1m": 0.486
+      }
+    },
+    {
+      "date": "1995-11-28",
+      "chosen": [
+        "infl_above_3pct",
+        "ry_chg_12m",
+        "ry_chg_3m"
+      ],
+      "sharpes": {
+        "ry_chg_12m": 0.614,
+        "ry_chg_3m": 0.554,
+        "infl_above_3pct": 0.934
+      }
+    },
+    {
+      "date": "1996-11-26",
+      "chosen": [
+        "claims_trend",
+        "ry_chg_12m",
+        "gold_m2_ratio"
+      ],
+      "sharpes": {
+        "ry_chg_12m": 0.218,
+        "gold_m2_ratio": 0.02,
+        "claims_trend": 0.238
+      }
+    },
+    {
+      "date": "1997-11-25",
+      "chosen": [
+        "tsmom_3m",
+        "tsmom_1m",
+        "tsmom_6m"
+      ],
+      "sharpes": {
+        "tsmom_1m": 0.257,
+        "tsmom_3m": 0.421,
+        "tsmom_6m": 0.211
+      }
+    },
+    {
+      "date": "1998-11-24",
+      "chosen": [
+        "trend_lowvol",
+        "tsmom_12m",
+        "tsmom_1m"
+      ],
+      "sharpes": {
+        "tsmom_1m": 0.352,
+        "tsmom_12m": 0.638,
+        "trend_lowvol": 0.961
+      }
+    },
+    {
+      "date": "1999-11-23",
+      "chosen": [
+        "trend_lowvol",
+        "tsmom_1m",
+        "seasonal_sep_nov"
+      ],
+      "sharpes": {
+        "tsmom_1m": 0.396,
+        "seasonal_sep_nov": 0.298,
+        "trend_lowvol": 0.785
+      }
+    },
+    {
+      "date": "2000-11-22",
+      "chosen": [
+        "seasonal_sep_nov",
+        "tsmom_1m",
+        "trend_falling_yield"
+      ],
+      "sharpes": {
+        "tsmom_1m": 0.292,
+        "seasonal_sep_nov": 0.389,
+        "trend_falling_yield": 0.019
+      }
+    },
+    {
+      "date": "2001-11-21",
+      "chosen": [
+        "seasonal_sep_nov",
+        "infl_above_3pct",
+        "tsmom_1m"
+      ],
+      "sharpes": {
+        "infl_above_3pct": 0.135,
+        "tsmom_1m": 0.133,
+        "seasonal_sep_nov": 0.373
+      }
+    },
+    {
+      "date": "2002-11-21",
+      "chosen": [
+        "sahm_signal",
+        "claims_trend",
+        "m2_growth"
+      ],
+      "sharpes": {
+        "m2_growth": 0.329,
+        "claims_trend": 0.538,
+        "sahm_signal": 0.672
+      }
+    },
+    {
+      "date": "2003-11-20",
+      "chosen": [
+        "sahm_signal",
+        "gold_m2_ratio",
+        "excess_money_growth"
+      ],
+      "sharpes": {
+        "gold_m2_ratio": 0.968,
+        "excess_money_growth": 0.968,
+        "sahm_signal": 1.052
+      }
+    },
+    {
+      "date": "2004-11-18",
+      "chosen": [
+        "ry_level_5y",
+        "gold_m2_ratio",
+        "excess_money_growth"
+      ],
+      "sharpes": {
+        "ry_level_5y": 1.315,
+        "gold_m2_ratio": 1.148,
+        "excess_money_growth": 1.148
+      }
+    },
+    {
+      "date": "2005-11-17",
+      "chosen": [
+        "ry_level_5y",
+        "seasonal_sep_nov",
+        "ry_chg_12m"
+      ],
+      "sharpes": {
+        "ry_level_5y": 1.176,
+        "ry_chg_12m": 1.049,
+        "seasonal_sep_nov": 1.142
+      }
+    },
+    {
+      "date": "2006-11-16",
+      "chosen": [
+        "trend_lowvol",
+        "ry_level_5y",
+        "seasonal_sep_nov"
+      ],
+      "sharpes": {
+        "ry_level_5y": 1.079,
+        "seasonal_sep_nov": 0.992,
+        "trend_lowvol": 1.1
+      }
+    },
+    {
+      "date": "2007-11-15",
+      "chosen": [
+        "trend_lowvol",
+        "seasonal_sep_nov",
+        "tsmom_12m"
+      ],
+      "sharpes": {
+        "tsmom_12m": 1.255,
+        "seasonal_sep_nov": 1.422,
+        "trend_lowvol": 1.489
+      }
+    },
+    {
+      "date": "2008-11-13",
+      "chosen": [
+        "trend_lowvol",
+        "ma_trend_12m",
+        "tsmom_12m"
+      ],
+      "sharpes": {
+        "tsmom_12m": 0.736,
+        "ma_trend_12m": 0.838,
+        "trend_lowvol": 1.534
+      }
+    },
+    {
+      "date": "2009-11-12",
+      "chosen": [
+        "trend_lowvol",
+        "claims_trend",
+        "excess_money_growth"
+      ],
+      "sharpes": {
+        "trend_lowvol": 1.167,
+        "excess_money_growth": 0.921,
+        "claims_trend": 0.994
+      }
+    },
+    {
+      "date": "2010-11-11",
+      "chosen": [
+        "excess_money_growth",
+        "ma_trend_12m",
+        "ry_chg_3m"
+      ],
+      "sharpes": {
+        "ry_chg_3m": 0.736,
+        "ma_trend_12m": 0.737,
+        "excess_money_growth": 0.784
+      }
+    },
+    {
+      "date": "2011-11-11",
+      "chosen": [
+        "excess_money_growth",
+        "ry_chg_12m",
+        "ma_trend_12m"
+      ],
+      "sharpes": {
+        "ry_chg_12m": 1.264,
+        "ma_trend_12m": 1.237,
+        "excess_money_growth": 1.447
+      }
+    },
+    {
+      "date": "2012-11-12",
+      "chosen": [
+        "turn_of_month",
+        "tsmom_1m",
+        "excess_money_growth"
+      ],
+      "sharpes": {
+        "tsmom_1m": 0.815,
+        "turn_of_month": 1.522,
+        "excess_money_growth": 0.792
+      }
+    },
+    {
+      "date": "2013-11-11",
+      "chosen": [
+        "trend_lowvol",
+        "gold_m2_ratio",
+        "tsmom_1m"
+      ],
+      "sharpes": {
+        "tsmom_1m": 0.718,
+        "trend_lowvol": 1.192,
+        "gold_m2_ratio": 0.738
+      }
+    },
+    {
+      "date": "2014-11-10",
+      "chosen": [
+        "trend_lowvol",
+        "tsmom_1m",
+        "tsmom_3m"
+      ],
+      "sharpes": {
+        "tsmom_1m": 0.461,
+        "tsmom_3m": 0.396,
+        "trend_lowvol": 1.124
+      }
+    },
+    {
+      "date": "2015-11-09",
+      "chosen": [
+        "trend_lowvol",
+        "tsmom_12m",
+        "tsmom_6m"
+      ],
+      "sharpes": {
+        "tsmom_12m": 0.612,
+        "tsmom_6m": 0.314,
+        "trend_lowvol": 0.887
+      }
+    },
+    {
+      "date": "2016-11-07",
+      "chosen": [
+        "ry_chg_3m",
+        "ry_chg_12m",
+        "tsmom_6m"
+      ],
+      "sharpes": {
+        "ry_chg_12m": 0.525,
+        "ry_chg_3m": 0.572,
+        "tsmom_6m": 0.469
+      }
+    },
+    {
+      "date": "2017-11-06",
+      "chosen": [
+        "ry_chg_12m",
+        "turn_of_month",
+        "infl_accel_12m"
+      ],
+      "sharpes": {
+        "ry_chg_12m": 0.731,
+        "infl_accel_12m": 0.506,
+        "turn_of_month": 0.569
+      }
+    },
+    {
+      "date": "2018-11-05",
+      "chosen": [
+        "turn_of_month",
+        "tsmom_6m",
+        "ry_chg_3m"
+      ],
+      "sharpes": {
+        "ry_chg_3m": 0.453,
+        "tsmom_6m": 0.529,
+        "turn_of_month": 0.605
+      }
+    },
+    {
+      "date": "2019-11-04",
+      "chosen": [
+        "tsmom_3m",
+        "tsmom_6m",
+        "gold_m2_ratio"
+      ],
+      "sharpes": {
+        "tsmom_3m": 0.632,
+        "tsmom_6m": 0.606,
+        "gold_m2_ratio": 0.498
+      }
+    }
+  ]
+}

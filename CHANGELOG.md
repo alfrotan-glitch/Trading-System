@@ -14,6 +14,11 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Added
 
+- `scripts/edgelab_walkforward_run.py` — round 19. Annual re-selection of the
+  catalogue by trailing 3-year Sharpe, 1972-2019, charged on every switch. Result:
+  selection is **significantly worse** than a fixed blend at every concentration
+  (top-3 ΔSharpe −0.244, p 0.002), with 44% year-on-year stability and 19 of 20
+  signals selected at least once. The product therefore does not performance-chase.
 - `qts.research.edgelab.miners` — cross-market signal reading listed gold miners
   relative to gold, to time XAUUSD@. Round 18 found the effect is entirely a
   price-snapshot artifact (miners close ~11 hours after the LBMA fix): DEV t 5.57 at

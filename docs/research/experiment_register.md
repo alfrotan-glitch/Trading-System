@@ -692,6 +692,52 @@ someone remembering.
 
 **Family closed.**
 
+## Round 19 — Walk-forward selection: choosing strategies destroys value
+
+Every evaluation so far fixed the signal set in advance. A real multi-strategy system
+does not: it ranks recent performance, keeps what works, drops what does not. That
+selection loop is what the product would actually run, and it had never been tested.
+
+Method: re-select annually between 1972 and 2019 using only information available at
+each date — rank the 21 signals by trailing 3-year Sharpe, keep the top *k* with
+positive trailing alpha, hold equal-weight for the following year. Costs are charged
+on every position change, so switching churn is paid for.
+
+| policy | CAGR | Sharpe | max DD | alpha | alpha t | turnover |
+|---|---|---|---|---|---|---|
+| re-select top 1 | 2.13% | 0.227 | 43.8% | −0.87% | −0.61 | 4.4 |
+| re-select top 3 | 2.63% | 0.281 | 43.8% | −0.63% | −0.54 | 5.8 |
+| re-select top 5 | 3.25% | 0.334 | 43.8% | −0.06% | −0.06 | 5.7 |
+| **fixed equal-weight blend** | **4.72%** | **0.524** | **28.9%** | **+1.05%** | **1.71** | 5.9 |
+| buy & hold | 7.64% | 0.463 | 70.0% | — | — | 0.0 |
+
+Block-bootstrap Sharpe difference versus the fixed blend:
+
+| policy | ΔSharpe | 95% CI | p |
+|---|---|---|---|
+| top 1 | **−0.297** | [−0.535, −0.084] | **0.008** |
+| top 3 | **−0.244** | [−0.436, −0.069] | **0.002** |
+| top 5 | **−0.190** | [−0.365, −0.032] | **0.018** |
+
+**Performance chasing is significantly worse than not choosing at all**, at every
+concentration. The mechanism is visible in the log: selection stability is 44% year
+on year, and **19 of 20 signals were selected at least once** — the ranker is not
+identifying persistent quality, it is re-drawing from noise and paying the turnover
+to do it.
+
+### Consequence for the architecture
+
+The portfolio layer must not select on trailing performance. The product default is
+therefore a *fixed, pre-registered* equal-weight allocation over the catalogue, with
+the no-trade state retained as a tail-risk control and the regime layer available but
+not enabled by default. That is now an evidence-based decision rather than a taste.
+
+This is the fourth architecture question answered negatively after the strategies
+themselves: signals have no persistence (round 14), forward data cannot settle it in
+less than 29 years (round 16), regime and volatility layers add nothing beyond
+de-risking (round 17), and selecting on performance actively destroys value (round
+19). Together they define what the product can honestly be.
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
