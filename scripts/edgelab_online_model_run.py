@@ -38,7 +38,7 @@ from qts.research.edgelab.causal_ml import (
     prequential_monthly_predictions,
     trailing_feature_frame,
 )
-from edgelab_vix_curve_run import (
+from scripts.edgelab_vix_curve_run import (
     FINANCING_STRESS_BPS_PER_CALENDAR_DAY,
     BOUNDS,
     load_curve,
