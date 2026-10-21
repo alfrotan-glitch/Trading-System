@@ -72,7 +72,8 @@ def fixed_cadence_signal(
         raise ValueError("direction must be contango or backwardation")
     if smooth_days < 2 or rebalance_days < 1:
         raise ValueError("invalid sampling windows")
-    slope = np.log(curve["VIX3M"].astype(float) / curve["VIX"].astype(float))
+    ratio = curve["VIX3M"].astype(float) / curve["VIX"].astype(float)
+    slope = pd.Series(np.log(ratio.to_numpy(dtype=float)), index=curve.index, name="vix_curve_slope")
     signal = slope.rolling(smooth_days, min_periods=smooth_days).mean()
     sign = 1.0 if direction == "contango" else -1.0
     desired = (signal * sign > 0).astype(float).where(signal.notna())
