@@ -18,10 +18,10 @@ function heroContent(g) {
   }
   if (g.can_trade) {
     return {
-      headline: "Ready",
-      reason: "QTS is ready for Demo trading. Every order still passes the safety checks.",
+      headline: "DEMO diagnostics ready",
+      reason: "The account may run authorized DEMO measurements. No profitable trading edge has been validated; every order still passes the safety checks.",
       tone: "ok",
-      action: { label: "Start a trade", run: () => navigate("#/trading") },
+      action: { label: "Open DEMO diagnostics", run: () => navigate("#/trading") },
     };
   }
   if (g.kill_switch?.active) {
