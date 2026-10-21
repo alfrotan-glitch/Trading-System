@@ -14,6 +14,16 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Added
 
+- `qts.research.edgelab.quantity` — money-stock and labour-market signals
+  (`gold_m2_ratio`, `m2_growth`, `excess_money_growth`, `claims_trend`,
+  `sahm_signal`), each stamped at its publication date so nothing is visible before
+  it is printed. Round 13 found no tradable edge, and found that gold/M2 valuation
+  and Sahm-rule buying are *negative* over 51 years.
+- `scripts/edgelab_meta_run.py` — round 14, the pooled-evidence study. It puts every
+  catalogue signal on one frame and runs White's reality check on the maximum alpha
+  t-statistic. Result: 2/21 signals persist on DEV+VAL+TEST against 2.6 expected by
+  chance, and p = 0.056. This is the measurement that ends single-signal
+  enumeration over daily gold.
 - `qts.research.edgelab.stress` — the stress complex as a signal family: VIX trend
   and regime, the BAA–10y default-risk premium, the Chicago Fed NFCI and the St
   Louis Fed Financial Stress Index, plus a four-leg composite. `stress_frame()`
@@ -128,6 +138,12 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Fixed
 
+- **Double-lag bug in the round-11 and round-12 runners.** `run_vector` already
+  applies one bar of lag, and both runners shifted the signal again, imposing two.
+  Both were re-run at the correct lag: round 11 is unchanged (zero survivors),
+  round 12 is stronger (composite DEV t −2.48 → −2.78; the reverse hypothesis still
+  fails at DEV t 2.23). Round 10 used a hand-rolled explicit lag and is unaffected;
+  round 13 was written after the fix.
 - `scripts/edgelab_prepare_longgold.py` read a FRED mirror layout that no longer
   exists, so the 52-year daily gold store was unbuildable and round 3 was not
   reproducible from scratch. It now reads `metals/AU.csv` + `fred/{treasury_10y,cpi}.csv`

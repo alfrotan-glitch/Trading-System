@@ -1,6 +1,6 @@
 # Mission state — XAUUSD@ validated-edge program
 
-**Updated:** 2026-10-21, after round 12 (stress complex).
+**Updated:** 2026-10-21, after round 14 (pooled evidence).
 **Status:** `NO_CANDIDATE` — `XL-001` **rejected** (round 10), **zero validated edges**,
 `active_candidates: []`, forward ledger empty.
 `LIVE` locked, `REAL_CAPITAL_EXPOSURE = 0`.
@@ -121,19 +121,22 @@ Nothing logged so far is forward; everything available today predates the freeze
 
 ## 5. Experiment queue (ranked, with the reason)
 
-Every family in rounds 1-12 has now failed. The queue is therefore ordered by
-*how much new information each test brings*, not by how promising it looks.
+**The standing rule from round 14: a new round must bring new information, not a
+new transformation of information already in hand.** Round 14 measured the
+persistence of the whole catalogue: 2 of 21 signals stayed positive on
+DEV+VAL+TEST, against 2.6 expected from chance alone, and White's reality check on
+the best of them gave p 0.056. Single-signal enumeration over daily gold is over.
 
-1. **Money and labour-market quantities (round 13, running).** `M2` and weekly
-   jobless claims are long-history (1959 / 1967) and were never used by any round:
-   round 3 used CPI, the *price* of money, never the *quantity*. Gold versus the
-   money stock is the oldest valuation model in the asset class and it trades at
-   most a few times a year, so it is not exposed to the turnover law.
-2. **Structural-break study on the dollar/yield → gold relationship.** Round 8
-   block A and the 2022+ breakdown suggest the relationship changed. Note that
-   round 10 killed the *level* version of this hypothesis outright, so any
-   successor must be built on the tradable close with a publication lag and must
-   clear the same gate.
+1. **Acquire gold-specific flow and positioning data (round 15, next).** ETF
+   holdings, COMEX open interest and inventories, central-bank purchases. These
+   are *quantities of metal*, a channel absent from every round so far (which used
+   prices, macro aggregates and financial conditions). A flows → price-pressure
+   mechanism is also the only remaining one with a plausible low-turnover
+   expression. Data acquisition is the gate: if no verified history can be fetched
+   from the reachable hosts, record that and move on rather than fabricating one.
+2. **Re-scope the product claim.** If no edge materialises, the honest product is a
+   risk-managed gold allocation with a measured, *unvalidated* timing overlay —
+   and the docs must say exactly that. Do not relabel it.
 3. **Anything above ~500 sides/yr is not worth running** unless its gross alpha
    clears 9%/yr by a wide margin.
 
@@ -171,6 +174,10 @@ curl -sSL -o /tmp/vu.tgz https://codeload.github.com/vudo805/forex-price-simulat
 .venv/bin/python scripts/edgelab_intraday_run.py         # round 7 sessions
 .venv/bin/python scripts/edgelab_realyield_run.py        # round 9 real-yield residual
 qts forward score
+
+# 3b. rounds 13-14
+.venv/bin/python scripts/edgelab_quantity_run.py    # round 13: money + labour
+.venv/bin/python scripts/edgelab_meta_run.py        # round 14: reality check, ~5 s
 
 # 4. verification before any PR
 .venv/bin/pytest tests/ -q && .venv/bin/ruff check src/ tests/ && .venv/bin/mypy src/qts/research

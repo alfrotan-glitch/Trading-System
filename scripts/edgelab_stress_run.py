@@ -38,7 +38,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 OUT = Path("data/research/experiments")
 BPY = 252.0
-TRIALS = 5
+TRIALS = 6  # five directional configs plus the reverse hypothesis
 GATE_T = 2.5
 
 WINDOWS = {
@@ -54,11 +54,25 @@ CONFIGS = {
     "credit_trend": lambda idx: S.credit_trend(idx),
     "credit_regime": lambda idx: S.credit_regime(idx),
     "stress_composite": lambda idx: S.stress_composite(idx),
+    # Declared *after* the five directional configs all came out negative, so it is
+    # a data-derived hypothesis and the weakest evidence in the round. It is a
+    # sixth trial, not a free second look at the same five.
+    "stress_composite_reverse": lambda idx: 1.0 - S.stress_composite(idx),
 }
 
 
 def score(bars: pd.DataFrame, sig: pd.Series, cost: CostModel, label: str, lag: int) -> dict:
-    delayed = sig.shift(lag) if lag else sig
+    """Score one configuration at a stated lag.
+
+    ``run_vector`` already applies exactly one bar of lag (``held[1:] = pos[:-1]``),
+    so ``lag=1`` — "decide on today's close, earn tomorrow's move" — means passing
+    the signal unchanged. Only additional lag is an explicit shift. Getting this
+    wrong silently doubles the lag; an earlier version of this file did.
+    """
+    # lag=0 is a diagnostic only: it undoes the engine's own one-bar lag so the
+    # position can see the bar it is earning. That is look-ahead by construction and
+    # exists solely to show how much of a result is timing artifact.
+    delayed = sig.shift(-1) if lag == 0 else (sig.shift(lag - 1) if lag > 1 else sig)
     m = evaluate_period(bars, delayed.reindex(bars.index).ffill().fillna(0.0), cost, label, "stress", BPY)
     net, bench = m["net_returns"], m["bench_returns"]
     hac = hac_alpha(net, bench, BPY, lags=5)

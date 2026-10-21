@@ -76,8 +76,10 @@ def main() -> int:
 
     rows = []
     for name, kw in CONFIGS.items():
-        # Correct basis + correct lag.
-        sig_fixed = residual_signal(tradable, real10, **kw).shift(1)
+        # Correct basis + correct lag. ``evaluate_period`` already lags one bar
+        # internally, so "DFII10 lag 1" is the unshifted signal; shifting again
+        # would impose two days and understate the family.
+        sig_fixed = residual_signal(tradable, real10, **kw)
         # Original basis + original lag, for comparison only.
         sig_orig = residual_signal(lbma, real10, **kw)
         lbma_win = lbma.loc["2004-06-11":"2019-12-31"]

@@ -399,6 +399,94 @@ reproducible from scratch. It now reads `metals/AU.csv` + `fred/{treasury_10y,cp
 truncates at 2019-12-31 so the spent 2020-2024 holdout stays unreachable, and
 reproduces round 3 exactly (`tsmom_1m` again clears DEV/VAL/TEST).
 
+## Round 13 — Money and labour quantities (5 configurations)
+
+New information, not a new transform: rounds 1-12 used the *price* of money
+(yields, real yields, CPI, inflation expectations) and the *price* of risk (credit,
+volatility). No round had ever loaded the *quantity* of money or the quantity of
+labour slack. `us_m2` (1959+), `initial_claims_4wk` (1967+) and `sahm_realtime`
+(1959+) were untouched by every earlier script in this repository.
+
+Every input is stamped at its publication date (M2 and CPI +2 months, unemployment
++1 month, Sahm +2 months, claims +7 days), which can only understate a real-time
+signal. Signals are monthly, so turnover is 13-123 position changes in 51 years —
+the round-7 turnover law cannot bind.
+
+51-year LBMA basis, executable lag, HAC(5), `ecn_realistic`, 5 trials:
+
+| config | flips | DEV alpha | DEV t | DEV SR | DSR | VAL t | TEST t |
+|---|---|---|---|---|---|---|---|
+| `gold_m2_ratio` (10y z) | 13 | −1.54% | −0.91 | 0.071 | 0.214 | 0.47 | 1.17 |
+| `m2_growth` | 42 | −0.63% | −0.34 | 0.208 | 0.495 | −0.63 | −2.37 |
+| `excess_money_growth` | 22 | −0.03% | −0.02 | 0.276 | 0.645 | −1.02 | −1.02 |
+| `claims_trend` | 123 | +1.90% | 1.02 | 0.406 | 0.868 | −0.54 | −1.01 |
+| `sahm_signal` | 20 | −2.91% | −1.79 | −0.083 | 0.048 | −0.63 | 0.00 |
+
+**Zero survivors.** The two most popular retail gold models — gold cheap relative
+to the money stock, and buying gold when the Sahm rule fires — are *negative* over
+51 years. That is a useful product fact in itself: neither is a timing rule.
+
+Artifact: `data/research/experiments/quantity_*.json`.
+
+## Round 14 — Pooled evidence: is there any edge in the search at all? (White reality check)
+
+Thirteen rounds, ~110 configurations, thirteen dead families, and every round
+corrected for multiple testing *within* itself. Nobody had tested the collection.
+At the detection floor this programme can reach (SR 0.44 on 32 years of DEV), a
+real edge of SR 0.2-0.3 is individually invisible, so rejecting forty such signals
+one at a time is not the same experiment as asking whether the collection is
+centred on zero.
+
+21 signals (all 16 `long_specs` plus the 5 round-13 quantity rules) on one frame:
+52-year LBMA basis, one cost model, one lag, `ecn_realistic`. Alpha is the OLS
+intercept against buy-and-hold — the statistic every earlier round reports.
+
+| Test | Result |
+|---|---|
+| positive on DEV | 13/21 |
+| **positive on DEV + VAL + TEST** | **2/21** (2.6 expected if the signals were independent) |
+| equal-weight blend, DEV alpha | +1.19%/yr, t 1.66 (HAC 1.69) |
+| best DEV alpha t across the catalogue | 2.64 (`ma_trend_12m`) |
+| White reality check, null = zero alpha everywhere | **p = 0.056**, null 95% = 2.65 |
+
+The single number that matters is **2/21**. Twenty-one signals, thirteen of which
+look positive in the window that selected them, and only two stay positive out of
+sample — *fewer than the 2.6 expected from pure chance*. The catalogue is not
+merely unprofitable; it has no out-of-sample persistence at all.
+
+The reality check lands at p = 0.056: the best of 21 signals sits exactly at the
+95th percentile of what a 21-signal search produces when nothing is real. It does
+not reject, but it does not cleanly exonerate either.
+
+### Two findings that change earlier records
+
+1. **Round 3's survivor list was cost-model dependent.** `tsmom_1m` cleared DEV at
+   t 2.59 on the cheaper default cost model (0.400 bps/side) but only **t 1.78** at
+   `ecn_realistic` (0.925 bps/side). It has ~21 trades a year, so a 2.3× cost
+   assumption is not a detail. Under the honest model, **no signal in the catalogue
+   clears t 2.5 on DEV except `ma_trend_12m`** — which round 3 had already rejected
+   as a 1969-1979 artefact.
+2. **A lag bug was found and fixed during this round.** `run_vector` already
+   applies one bar of lag (`held[1:] = pos[:-1]`); the round-11 and round-12
+   runners shifted the signal again, imposing *two* bars. Both were re-run at the
+   correct lag. Round 11's conclusion is unchanged (`ry_z252` DEV t 0.50 → 0.63,
+   still zero survivors). Round 12's is *stronger*: `stress_composite` DEV t
+   −2.48 → −2.78, and the reverse hypothesis still fails (DEV t 2.23 < 2.5, VAL
+   −0.40). Round 10 is unaffected — it used a hand-rolled loop with an explicit
+   lag. Round 13 was written after the fix and never shifted.
+
+### What this means for the programme
+
+The question "which gold timing signal works?" has now been asked of price,
+trend, volatility, calendar, relative value, real yields, inflation, the money
+stock, the labour market, credit and financial conditions. The answer is
+consistent and, at this power, final: **none of them, on daily data, at retail
+costs.** Further single-signal enumeration in this space is not research, it is
+noise generation, and the 2/21 persistence number is the evidence for saying so.
+
+A new round must therefore bring **new information**, not a new transformation of
+information already in hand. That is the standing rule from here.
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
