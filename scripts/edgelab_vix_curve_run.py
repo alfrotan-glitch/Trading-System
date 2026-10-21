@@ -168,9 +168,8 @@ def load_gold_bars_from_basemax(*, min_bars_per_day: int = 80) -> pd.DataFrame:
     is the real first executable OPEN, not a fabricated midnight quote. Days
     with fewer than 80 M15 candles are removed rather than price-filled.
     """
-    from scripts.edgelab_prepare_data import load_basemax
-
     from qts.research.edgelab.intraday import daily_bars
+    from scripts.edgelab_prepare_data import load_basemax
 
     m15, quality, source = load_basemax()
     if quality.rows_out < 50_000 or quality.bad_ohlc > 0 or quality.non_positive > 0:
