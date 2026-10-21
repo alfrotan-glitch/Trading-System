@@ -1138,3 +1138,15 @@ def test_startup_health_reads_canonical_database_from_unrelated_cwd(tmp_path, mo
     durable = next(x for x in health["checks"] if x["name"] == "load_durable_state")
     assert durable["passed"], durable
     assert durable["detail"] == "durable state loaded"
+
+
+def test_packaged_smoke_checks_real_backend_and_ui_without_starting_server(monkeypatch):
+    """One-click Windows executable verification must never create an order."""
+    from qts.desktop import launcher
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("smoke must not bind a socket or launch a browser")
+
+    monkeypatch.setattr(launcher, "start_api_server", forbidden)
+    monkeypatch.setattr(launcher, "open_desktop_window", forbidden)
+    assert launcher._handle_cli(["--smoke"]) is True
