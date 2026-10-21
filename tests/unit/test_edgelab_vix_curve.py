@@ -120,3 +120,19 @@ def test_backtest_financing_refuses_negative_and_nonfinite_rates():
     for invalid in (-1.0, float("nan"), float("inf")):
         with pytest.raises(ValueError, match="funding"):
             evaluate(bars, position, "bad", financing_bps_per_calendar_day=invalid)
+
+
+def test_exposure_matched_paired_hac_detects_only_incremental_return():
+    from scripts.edgelab_vix_curve_run import paired_hac_difference
+
+    idx = pd.bdate_range("2014-01-02", periods=1000, tz="UTC")
+    rng = np.random.default_rng(441)
+    common = pd.Series(rng.normal(0.0001, 0.009, len(idx)), index=idx)
+    incremental = pd.Series(0.0002 + rng.normal(0.0, 0.0004, len(idx)), index=idx)
+    better = paired_hac_difference(common + incremental, common)
+    worse = paired_hac_difference(common, common + incremental)
+    assert better["n"] == len(idx)
+    assert better["annualized_net_difference"] == pytest.approx(float(incremental.mean()) * 252.0)
+    assert better["t_hac"] > 3.0
+    assert worse["t_hac"] < -3.0
+    assert better["exploratory_only"] is True
