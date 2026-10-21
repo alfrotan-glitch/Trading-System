@@ -39,8 +39,8 @@ from qts.research.edgelab.causal_ml import (
     trailing_feature_frame,
 )
 from scripts.edgelab_vix_curve_run import (
-    FINANCING_STRESS_BPS_PER_CALENDAR_DAY,
     BOUNDS,
+    FINANCING_STRESS_BPS_PER_CALENDAR_DAY,
     load_curve,
     load_gold_bars_from_basemax,
     paired_hac_difference,
