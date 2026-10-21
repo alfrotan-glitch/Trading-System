@@ -631,11 +631,28 @@ def research_regime() -> dict[str, Any]:
     summary = regime_summary(out)
     alloc = AllocationConfig()
 
+    # A historical feed must never be labelled as a current trading signal.
+    # Five calendar days accommodate weekends/holidays, but a feed that ended
+    # months ago (as the BaseMax sample does) is explicitly stale and fail-closed.
+    from datetime import UTC, datetime
+
+    as_of = pd.Timestamp(out.index[-1])
+    if as_of.tzinfo is None:
+        as_of = as_of.tz_localize("UTC")
+    else:
+        as_of = as_of.tz_convert("UTC")
+    source_age_days = max(0.0, (datetime.now(UTC) - as_of.to_pydatetime()).total_seconds() / 86400.0)
+    stale = source_age_days > 5.0
+
     return {
         "available": True,
         "as_of": str(out.index[-1].date()),
+        "source_age_days": round(source_age_days, 2),
+        "stale": stale,
+        "current": not stale,
+        "data_warning": "Historical price data; not usable for a current trade decision" if stale else None,
         "regime": str(latest["regime"]),
-        "allow_trade": bool(latest["allow_trade"]),
+        "allow_trade": bool(latest["allow_trade"]) and not stale,
         "efficiency_ratio": _finite(latest["efficiency_ratio"]),
         "trend_percentile": _finite(latest["trend_percentile"]),
         "realized_vol_ann": _finite(latest["realized_vol"]),
