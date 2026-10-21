@@ -1,6 +1,6 @@
 # Mission state — XAUUSD@ validated-edge program
 
-**Updated:** 2026-10-21, after round 15 (positioning).
+**Updated:** 2026-10-21, after round 16 (power and horizon).
 **Status:** `NO_CANDIDATE` — `XL-001` **rejected** (round 10), **zero validated edges**,
 `active_candidates: []`, forward ledger empty.
 `LIVE` locked, `REAL_CAPITAL_EXPOSURE = 0`.
@@ -127,6 +127,10 @@ persistence of the whole catalogue: 2 of 21 signals stayed positive on
 DEV+VAL+TEST, against 2.6 expected from chance alone, and White's reality check on
 the best of them gave p 0.056. Single-signal enumeration over daily gold is over.
 
+0. **Read round 16 before designing anything.** The horizon to validate the best
+   signal is 28.9 years of forward data (blend: 73; median 94.6). Forward
+   observation is therefore not a route to validation either. See
+   `scripts/edgelab_power_horizon.py`.
 1. **The classical data channels are now exhausted.** Round 15 closed positioning
    (8.7 years only, no CI excluding zero). Every dataset reachable from this
    sandbox has been tested: price, trend, volatility, calendar, relative value,

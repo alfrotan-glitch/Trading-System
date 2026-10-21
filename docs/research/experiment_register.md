@@ -522,6 +522,60 @@ Positioning is therefore closed as a *historically confirmable* channel. It
 remains the one thing that could be re-examined later with a genuinely longer
 history if the CFTC archive ever becomes reachable from this environment.
 
+## Round 16 — Power and horizon: could forward observation ever settle this?
+
+Round 14 closed the historical search. The standing answer to that was "then collect
+forward data", and the ledger was built for exactly that. Nobody had checked whether
+forward observation is *feasible*. It is not, and the arithmetic is short.
+
+For any signal, the t-statistic grows as ``IR * sqrt(years)``, so the horizon needed
+to reach a target t is ``(t / IR) ** 2``, where IR is the annualised alpha divided by
+the annualised standard deviation of the alpha residual. Using the measured DEV
+(1969-2000, 32.1 years) effect sizes at `ecn_realistic`:
+
+| signal | DEV alpha | DEV IR | years of forward data to t = 2.5 |
+|---|---|---|---|
+| `ma_trend_12m` | +4.39% | 0.47 | **28.9** |
+| `tsmom_12m` | +6.94% | 0.36 | 49.5 |
+| `trend_falling_yield` | +4.39% | 0.33 | 56.1 |
+| `tsmom_1m` | +6.59% | 0.32 | 62.5 |
+| `ry_chg_3m` | +3.18% | 0.30 | 69.4 |
+| **equal-weight blend** | +1.25% | 0.29 | **73.2** |
+| `trend_lowvol` | +2.67% | 0.26 | 92.4 |
+| `tsmom_6m` | +4.98% | 0.25 | 96.9 |
+
+Median across the 14 signals with positive IR: **94.6 years**. Signals that would
+clear t = 2.5 within ten years of forward data: **zero**.
+
+### What this settles
+
+1. **Forward observation cannot validate an alpha edge here either.** The best of
+   21 signals would need 29 years of live data, and it is `ma_trend_12m` — the one
+   round 3 already rejected as a 1969-1979 artefact. The blend needs 73.
+2. **The binding constraint is effect size, not evidence quantity.** Every route to
+   more evidence has now been measured and closed: more history (52 years, spent),
+   more signals (21 in the catalogue, no persistence), more correction (White's
+   reality check, p 0.056), and now more time (29+ years). None of them reaches the
+   gate.
+3. **This is not a reason to lower the gate.** An edge whose IR is 0.3 is not a
+   defect in the test; it is an edge too small to pay a retail spread and still be
+   distinguishable from luck in a product lifetime. Lowering the threshold would
+   manufacture a "validated" label for something the data does not support, which is
+   the one failure mode this programme exists to prevent.
+
+### The honest position the product can take
+
+The programme can state, with evidence, that **no timing overlay on daily XAUUSD
+produces alpha distinguishable from zero at retail costs over 1969-2025**, and can
+quantify how small the best candidate effect is (IR ≈ 0.3). That is a real,
+defensible research result — and the reason the product ships with `LIVE` locked,
+`REAL_CAPITAL_EXPOSURE = 0` and `NO_VALIDATED_EDGE`.
+
+A further round may not invent a family, a window, or a lower bar. It must either
+bring a data source with materially larger effects (a different venue, a different
+frequency where costs are not retail-sized, or a structural positioning dataset with
+real predictive content) or it must stop claiming to search for alpha.
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
