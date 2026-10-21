@@ -231,10 +231,11 @@ def main(argv: list[str] | None = None) -> int:
         "cost_is_measured": False,
         "financing_stress_bps_per_calendar_day": list(FINANCING_STRESS_BPS_PER_CALENDAR_DAY),
         "overnight_financing_is_measured": False,
-        "overnight_financing_included": False,
+        "overnight_financing_stress_included": True,
         "financing_warning": (
-            "Spot/CFD gold financing and broker swaps are NOT in this cost model. "
-            "Positive backtests cannot be promoted without verified holding costs."
+            "Explicit hypothetical financing scenarios are charged, but actual "
+            "broker swap and rollover terms are NOT measured. Positive historical "
+            "results cannot be promoted without verified broker holding costs."
         ),
         "results": results,
     }
