@@ -1,0 +1,66 @@
+name: QTS Windows Desktop Package
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/windows-desktop.yml"
+      - ".github/workflows/release.yml"
+      - "packaging/qts.spec"
+      - "src/qts/desktop/launcher.py"
+      - "src/qts/desktop/ui/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qts-windows-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-application:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install packaged application toolchain
+        run: python -m pip install -e ".[packaging]"
+      - name: Build one-click Windows executable
+        run: pyinstaller packaging/qts.spec --clean --noconfirm
+      - name: Smoke-test frozen API routes and bundled UI
+        shell: pwsh
+        run: |
+          $exe = "dist\QTS\QTS.exe"
+          if (!(Test-Path $exe)) { throw "QTS.exe missing from packaged output" }
+          foreach ($flag in @("--version", "--smoke")) {
+            $p = Start-Process -FilePath $exe -ArgumentList $flag -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "QTS.exe $flag exit=$($p.ExitCode)" }
+          }
+      - name: Prepare no-terminal product instructions
+        shell: pwsh
+        run: |
+          @'
+          QTS Trading System for Windows
+          ==============================
+          1. Extract the entire ZIP into a folder you own. Do NOT run from inside the ZIP.
+          2. Double-click QTS.exe. No Python, Git, Docker or terminal is needed.
+          3. The browser opens QTS on THIS computer. If MetaTrader 5 is installed,
+             use the in-app Setup to connect an eligible DEMO account.
+          4. REVIEW all status, freshness, spread and safety warnings before
+             authorizing DEMO diagnostics. The bundled sample data are synthetic.
+          5. There is NO validated profitable strategy. LIVE MONEY stays locked.
+          6. Keep your Windows data and account credentials private. Never share
+             account reports or passwords with a support chat.
+          This build is a candidate, not a certified release.
+          '@ | Set-Content "dist\QTS\START-HERE.txt" -Encoding ASCII
+          Compress-Archive -Path "dist\QTS\*" -DestinationPath "QTS-Windows-Preview.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qts-windows-desktop-${{ github.run_id }}
+          path: QTS-Windows-Preview.zip
+          if-no-files-found: error
+          retention-days: 14
