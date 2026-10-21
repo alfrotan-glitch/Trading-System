@@ -1,0 +1,163 @@
+{
+  "generated_at": "2026-10-21T03:47:00.351607+00:00",
+  "round": 16,
+  "family": "power_analysis",
+  "dev_window": [
+    "1969-01-02",
+    "2000-12-31"
+  ],
+  "dev_years": 32.12698412698413,
+  "t_target": 2.5,
+  "cost_model": "ecn_realistic",
+  "rows": [
+    {
+      "name": "ma_trend_12m",
+      "dev_alpha": 0.0438874725,
+      "dev_ir": 0.4650782777,
+      "years_to_t": 28.8953464738,
+      "t_now": 2.6360948634
+    },
+    {
+      "name": "tsmom_12m",
+      "dev_alpha": 0.0694082501,
+      "dev_ir": 0.3554733985,
+      "years_to_t": 49.4613316581,
+      "t_now": 2.0148470585
+    },
+    {
+      "name": "trend_falling_yield",
+      "dev_alpha": 0.0439331593,
+      "dev_ir": 0.3339422422,
+      "years_to_t": 56.0450550112,
+      "t_now": 1.8928070206
+    },
+    {
+      "name": "tsmom_1m",
+      "dev_alpha": 0.0658797273,
+      "dev_ir": 0.316339671,
+      "years_to_t": 62.4557891368,
+      "t_now": 1.7930344671
+    },
+    {
+      "name": "ry_chg_3m",
+      "dev_alpha": 0.031845147,
+      "dev_ir": 0.3001084366,
+      "years_to_t": 69.3942695184,
+      "t_now": 1.7010347421
+    },
+    {
+      "name": "EQUAL_WEIGHT_BLEND",
+      "dev_alpha": 0.0124862328,
+      "dev_ir": 0.2923083688,
+      "years_to_t": 73.1471683672,
+      "t_now": 1.6568234346
+    },
+    {
+      "name": "trend_lowvol",
+      "dev_alpha": 0.0266502059,
+      "dev_ir": 0.2600599492,
+      "years_to_t": 92.4130003455,
+      "t_now": 1.4740372301
+    },
+    {
+      "name": "tsmom_6m",
+      "dev_alpha": 0.0498048042,
+      "dev_ir": 0.254004279,
+      "years_to_t": 96.8719297933,
+      "t_now": 1.4397132856
+    },
+    {
+      "name": "ry_chg_12m",
+      "dev_alpha": 0.0237089324,
+      "dev_ir": 0.2271172897,
+      "years_to_t": 121.165679914,
+      "t_now": 1.2873160269
+    },
+    {
+      "name": "infl_above_3pct",
+      "dev_alpha": 0.0135474639,
+      "dev_ir": 0.197765304,
+      "years_to_t": 159.8011186074,
+      "t_now": 1.1209470039
+    },
+    {
+      "name": "claims_trend",
+      "dev_alpha": 0.0190124941,
+      "dev_ir": 0.1807972938,
+      "years_to_t": 191.2036445398,
+      "t_now": 1.0247711844
+    },
+    {
+      "name": "tsmom_3m",
+      "dev_alpha": 0.032353826,
+      "dev_ir": 0.1587505097,
+      "years_to_t": 247.9989035989,
+      "t_now": 0.8998085336
+    },
+    {
+      "name": "infl_accel_12m",
+      "dev_alpha": 0.0047787482,
+      "dev_ir": 0.0466127309,
+      "years_to_t": 2876.5433422439,
+      "t_now": 0.2642040843
+    },
+    {
+      "name": "seasonal_sep_nov",
+      "dev_alpha": 0.0040486557,
+      "dev_ir": 0.044582746,
+      "years_to_t": 3144.4622703323,
+      "t_now": 0.2526979938
+    },
+    {
+      "name": "excess_money_growth",
+      "dev_alpha": -0.0003128069,
+      "dev_ir": -0.0029535001,
+      "years_to_t": null,
+      "t_now": -0.0167406369
+    },
+    {
+      "name": "m2_growth",
+      "dev_alpha": -0.0062816039,
+      "dev_ir": -0.0596069613,
+      "years_to_t": null,
+      "t_now": -0.3378562538
+    },
+    {
+      "name": "ry_level_5y",
+      "dev_alpha": -0.007475469,
+      "dev_ir": -0.0723821654,
+      "years_to_t": null,
+      "t_now": -0.4102669669
+    },
+    {
+      "name": "gold_m2_ratio",
+      "dev_alpha": -0.0154282125,
+      "dev_ir": -0.1600133347,
+      "years_to_t": null,
+      "t_now": -0.9069663106
+    },
+    {
+      "name": "sahm_signal",
+      "dev_alpha": -0.0291445748,
+      "dev_ir": -0.3166768848,
+      "years_to_t": null,
+      "t_now": -1.7949458177
+    },
+    {
+      "name": "turn_of_month",
+      "dev_alpha": -0.0356085805,
+      "dev_ir": -0.448127616,
+      "years_to_t": null,
+      "t_now": -2.5400173762
+    },
+    {
+      "name": "reversal_1m",
+      "dev_alpha": -0.0848829837,
+      "dev_ir": -0.8170613686,
+      "years_to_t": null,
+      "t_now": -4.6311586245
+    }
+  ],
+  "blend_ir": 0.2923083687726177,
+  "blend_years_to_t": 73.14716836722693
+}

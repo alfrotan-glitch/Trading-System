@@ -14,6 +14,11 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Added
 
+- `scripts/edgelab_power_horizon.py` — round 16. Converts the measured effect sizes
+  into the forward-data horizon needed to reach t = 2.5. Answer: 28.9 years for the
+  best of 21 signals, 73 for the blend, median 94.6, and zero signals inside ten
+  years. This closes the last proposed route to validation (collect forward data)
+  with arithmetic rather than opinion.
 - `qts.research.edgelab.cot` — CFTC Commitments of Traders positioning for gold.
   374 weekly reports (2018-2025) recovered from a scraper repository after the
   CFTC site itself proved unreachable. The loader re-sorts by parsed date because
