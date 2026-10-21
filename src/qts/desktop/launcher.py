@@ -114,9 +114,15 @@ def _smoke_packaged_application() -> None:
     available_routes = {getattr(route, "path", "") for route in app.routes}
     missing = sorted(required_routes - available_routes)
     if missing:
+        # Distinguish an incomplete API import from routers that were loaded
+        # but had their declarations stripped (e.g. packaging/circular import).
+        from qts.api.routes.demo import router as demo_router
+        from qts.api.routes.system import router as system_router
+
         raise RuntimeError(
             f"Packaged backend missing routes: {missing}; "
-            f"registered={len(available_routes)} paths={sorted(available_routes)[:18]}"
+            f"registered={len(available_routes)} paths={sorted(available_routes)[:18]}; "
+            f"system_router={len(system_router.routes)} demo_router={len(demo_router.routes)}"
         )
     ui_path = _get_ui_dir() / "index.html"
     if not ui_path.is_file() or ui_path.stat().st_size < 100:
