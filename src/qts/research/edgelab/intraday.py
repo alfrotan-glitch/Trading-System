@@ -134,24 +134,57 @@ def hold_window(bars: pd.DataFrame, start: int = 22, end: int = 6) -> pd.Series:
     return within_window(bars, start, end)
 
 
-def overnight_reversal(bars: pd.DataFrame, start: int = 22, end: int = 6, day_start: int = 12, day_end: int = 20) -> pd.Series:
-    """Fade the previous overnight move during the Western session.
 
-    The overnight leg is measured from the last bar before ``day_end`` on the
-    previous day to the last bar before ``day_start`` today — information that is
-    fully known when the day session opens.
+def _completed_overnight_move(bars: pd.DataFrame, start: int, end: int) -> pd.Series:
+    """Return each *completed* overnight session's return, keyed by its end date.
+
+    For a session 22:00..06:00, the 22:00 prices belong to the following
+    morning, not to the calendar day they are stamped with. A session is only
+    eligible when BOTH its evening and morning portions exist. This prevents
+    today's 22:00 price from leaking into a decision made today at 19:00.
     """
+    if not 0 < end < start < 24:
+        raise ValueError("overnight window must wrap midnight: 0 < end < start < 24")
     idx = _dt_index(bars)
-    close = bars["close"]
-    # Last close of the overnight window, per day, then reindexed onto every bar.
-    night = hour_mask(idx, start, end)
-    night_close = close.where(night).groupby(idx.date).last()
-    night_open = close.where(night).groupby(idx.date).first()
-    move = (night_close / night_open - 1.0).shift(1)  # yesterday's overnight move
-    move_by_bar = pd.Series(idx.date, index=idx).map(move)
-    in_day = hour_mask(idx, day_start, day_end).astype(bool).to_numpy()
-    sig = np.where(in_day, -np.sign(move_by_bar.to_numpy(dtype=float)), 0.0)
-    return pd.Series(np.nan_to_num(sig), index=idx, dtype=float)
+    is_evening = np.asarray(idx.hour >= start)
+    is_morning = np.asarray(idx.hour < end)
+    night_mask = is_evening | is_morning
+    session_end_date = idx.normalize() + pd.to_timedelta(is_evening.astype(int), unit="D")
+    night_bars = pd.DataFrame(
+        {
+            "close": bars["close"].to_numpy(dtype=float),
+            "session": session_end_date,
+            "evening": is_evening,
+            "morning": is_morning,
+        },
+        index=idx,
+    ).loc[night_mask]
+    group = night_bars.groupby("session", sort=True)
+    complete = group["evening"].any() & group["morning"].any()
+    result = (group["close"].last() / group["close"].first() - 1.0).where(complete)
+    return result.rename("completed_overnight_move")
+
+
+def overnight_reversal(
+    bars: pd.DataFrame,
+    start: int = 22,
+    end: int = 6,
+    day_start: int = 12,
+    day_end: int = 20,
+) -> pd.Series:
+    """Fade the *completed* overnight move in the following Western session.
+
+    A 22:00..06:00 overnight belongs to the date on which it ENDS. The signal
+    becomes knowable after 06:00; it cannot use tonight's 22:00 prices.
+    """
+    if not end <= day_start < day_end <= start:
+        raise ValueError("day session must occur after overnight end and before its next start")
+    idx = _dt_index(bars)
+    move = _completed_overnight_move(bars, start, end)
+    move_by_bar = pd.Series(idx.normalize(), index=idx).map(move).to_numpy(dtype=float)
+    in_day = hour_mask(idx, day_start, day_end).to_numpy()
+    signal = np.where(in_day, -np.sign(move_by_bar), 0.0)
+    return pd.Series(np.nan_to_num(signal), index=idx, dtype=float)
 
 
 def overnight_momentum_close(
@@ -161,22 +194,20 @@ def overnight_momentum_close(
     entry_hour: int = 19,
     exit_hour: int = 21,
 ) -> pd.Series:
-    """Trade the last stretch of the New York session in the overnight direction.
+    """Trade the late NY session using ONLY the overnight already completed.
 
-    ``entry_hour``..``exit_hour`` is held with the sign of the overnight move that
-    ended earlier the same day. Nothing here uses a price observed after the
-    position is set.
+    For date D the usable signal comes from D-1 22:00 through D 06:00.
+    Today's D 22:00..23:45 prices are future information at D 19:00 and
+    must never appear in the signal calculation.
     """
+    if not end <= entry_hour < exit_hour <= start:
+        raise ValueError("entry/exit must be after overnight end and before the next start")
     idx = _dt_index(bars)
-    close = bars["close"]
-    night = hour_mask(idx, start, end)
-    night_close = close.where(night).groupby(idx.date).last()
-    night_open = close.where(night).groupby(idx.date).first()
-    move = (night_close / night_open - 1.0)
-    move_by_bar = pd.Series(idx.date, index=idx).map(move)
-    in_window = hour_mask(idx, entry_hour, exit_hour).astype(bool).to_numpy()
-    sig = np.where(in_window, np.sign(move_by_bar.to_numpy(dtype=float)), 0.0)
-    return pd.Series(np.nan_to_num(sig), index=idx, dtype=float)
+    move = _completed_overnight_move(bars, start, end)
+    move_by_bar = pd.Series(idx.normalize(), index=idx).map(move).to_numpy(dtype=float)
+    in_window = hour_mask(idx, entry_hour, exit_hour).to_numpy()
+    signal = np.where(in_window, np.sign(move_by_bar), 0.0)
+    return pd.Series(np.nan_to_num(signal), index=idx, dtype=float)
 
 
 def opening_range_breakout(
@@ -200,7 +231,16 @@ def opening_range_breakout(
     """
     idx = _dt_index(bars)
     close = bars["close"].to_numpy(dtype=float)
-    day = np.asarray(idx.date)
+    # An overnight range belongs to the morning it ends, NOT its calendar
+    # evening. Resetting at midnight silently discarded the 22:00-23:45 highs
+    # and lows and changed the breakout threshold.
+    if range_start > range_end:
+        session_day = idx.normalize() + pd.to_timedelta(
+            np.asarray(idx.hour >= range_start, dtype=int), unit="D"
+        )
+    else:
+        session_day = idx.normalize()
+    day = np.asarray(session_day)
     in_range = hour_mask(idx, range_start, range_end).to_numpy()
     in_trade = hour_mask(idx, range_end, trade_end).to_numpy()
 
