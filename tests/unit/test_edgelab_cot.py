@@ -65,6 +65,10 @@ def test_signals_are_binary_and_do_not_peek():
         pd.testing.assert_series_equal(full.loc[:cut], fn(bars.loc[:cut]), check_names=False)
 
 
+@pytest.mark.skipif(
+    __import__("importlib").util.find_spec("openpyxl") is None,
+    reason="openpyxl is required to read/write the COT workbook",
+)
 def test_corrupt_spacing_is_refused(tmp_path):
     """A file with two reports three days apart must fail loudly."""
     rows = [("01-02-24", 1, 2, 3, 4, 5, 6), ("01-03-24", 1, 2, 3, 4, 5, 6)]

@@ -50,7 +50,10 @@ def load_cot(path: Path | None = None) -> pd.DataFrame:
     p = path or XLSX
     if not p.exists():
         raise FileNotFoundError(f"{p} missing — refetch the gold COT mirror")
-    df = pd.read_excel(p)
+    try:
+        df = pd.read_excel(p)
+    except ImportError as exc:  # pragma: no cover - environment guard
+        raise ImportError("reading the COT workbook needs openpyxl: pip install openpyxl") from exc
     if len(df.columns) != len(COLUMNS):
         raise ValueError(f"unexpected COT columns: {list(df.columns)}")
     df.columns = COLUMNS
