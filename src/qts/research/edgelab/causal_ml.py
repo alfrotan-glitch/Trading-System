@@ -55,7 +55,9 @@ def trailing_feature_frame(daily_gold_close: pd.Series, cboe_curve: pd.DataFrame
     lag the exogenous variable is only carried forward a maximum of 5 days.
     """
     gold = daily_gold_close.astype(float).sort_index()
-    if gold.index.tz is None or cboe_curve.index.tz is None:
+    gold_idx = pd.DatetimeIndex(gold.index)
+    cboe_idx = pd.DatetimeIndex(cboe_curve.index)
+    if gold_idx.tz is None or cboe_idx.tz is None:
         raise ValueError("gold and Cboe indices require explicit UTC timezone")
     if bool(gold.index.duplicated().any()) or bool((gold <= 0).any()):
         raise ValueError("duplicate gold timestamps or nonpositive gold close")
@@ -65,22 +67,22 @@ def trailing_feature_frame(daily_gold_close: pd.Series, cboe_curve: pd.DataFrame
     daily_vol = gold.pct_change().rolling(21, min_periods=21).std(ddof=1) * np.sqrt(252.0)
     # Keep true timestamp of the last observed trading bar, not a synthetic
     # month-end calendar stamp that could predate or postdate available prices.
-    month_label = gold.index.tz_convert("UTC").to_period("M")
+    month_label = gold_idx.tz_convert("UTC").to_period("M")
     sampled = pd.DataFrame({"close": gold, "realized_vol_21d": daily_vol})
     monthly = sampled.groupby(month_label, sort=True).tail(1).copy()
     monthly["mom_1m"] = monthly["close"].pct_change()
     monthly["mom_3m"] = monthly["close"].pct_change(3)
 
-    slope = np.log(cboe_curve["VIX3M"].astype(float) / cboe_curve["VIX"].astype(float))
+    slope_ratio = cboe_curve["VIX3M"].astype(float) / cboe_curve["VIX"].astype(float)
     # An additional complete Cboe *published observation* must pass before the
     # signal can be used for a gold decision. Cross-venue timestamps otherwise
     # recreate the historical XL-001 look-ahead failure.
     past_slope = pd.Series(
-        slope.shift(1).to_numpy(dtype=float),
-        index=cboe_curve.index,
+        np.log(slope_ratio.to_numpy(dtype=float)),
+        index=cboe_idx,
         name="vix_slope",
-    ).dropna()
-    past_slope.index = past_slope.index.tz_convert("UTC")
+    ).shift(1).dropna()
+    past_slope.index = pd.DatetimeIndex(past_slope.index).tz_convert("UTC")
     month_idx = pd.DatetimeIndex(monthly.index).tz_convert("UTC")
     aligned = past_slope.reindex(month_idx, method="ffill", tolerance=pd.Timedelta(days=5))
     monthly["vix_slope"] = aligned.to_numpy(dtype=float)
@@ -120,7 +122,7 @@ def prequential_monthly_predictions(
     """
     config = cfg or OnlineModelConfig()
     f = features.sort_index().copy()
-    if f.index.tz is None:
+    if pd.DatetimeIndex(f.index).tz is None:
         raise ValueError("monthly features must be timezone-aware")
     if bool(f.index.duplicated().any()):
         raise ValueError("monthly feature timestamps must be unique")
@@ -158,7 +160,7 @@ def daily_long_position(monthly_predictions: pd.DataFrame, gold_index: pd.Dateti
     """
     idx = pd.DatetimeIndex(gold_index)
     monthly = monthly_predictions["target_long"].astype(float).sort_index()
-    if monthly.index.tz is None or idx.tz is None:
+    if pd.DatetimeIndex(monthly.index).tz is None or idx.tz is None:
         raise ValueError("explicit time zones are required")
     positions = monthly.reindex(idx, method="ffill").fillna(0.0).clip(0.0, 1.0)
     return positions.rename("online_gold_ridge_long")
