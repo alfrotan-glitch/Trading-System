@@ -1,6 +1,6 @@
 # Mission state — XAUUSD@ validated-edge program
 
-**Updated:** 2026-10-21, after round 17 (regime + allocation layer).
+**Updated:** 2026-10-21, after round 18 (cross-market miners).
 **Status:** `NO_CANDIDATE` — `XL-001` **rejected** (round 10), **zero validated edges**,
 `active_candidates: []`, forward ledger empty.
 `LIVE` locked, `REAL_CAPITAL_EXPOSURE = 0`.

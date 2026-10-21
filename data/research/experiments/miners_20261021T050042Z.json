@@ -1,0 +1,115 @@
+{
+  "generated_at": "2026-10-21T05:00:42.338082+00:00",
+  "round": 18,
+  "family": "cross_market_miners",
+  "source": "AU_MINERS_ETF.csv from teofiloxyz/precious-metals-price",
+  "windows": {
+    "DEV": [
+      "2006-05-22",
+      "2014-12-31"
+    ],
+    "VAL": [
+      "2015-01-01",
+      "2019-12-31"
+    ],
+    "DIAG": [
+      "2020-01-01",
+      "2024-05-17"
+    ]
+  },
+  "cost_model": "ecn_realistic",
+  "cost_is_measured": false,
+  "trials": 4,
+  "rows": [
+    {
+      "name": "miner_dip",
+      "flips": 446,
+      "DEV_alpha": -0.15617691,
+      "DEV_t": -4.8803314169,
+      "DEV_sr": -0.509885667,
+      "DEV_hac": -4.7874042414,
+      "DEV_n": 2177,
+      "VAL_alpha": -0.0871465184,
+      "VAL_t": -3.3056555848,
+      "VAL_sr": -0.8772089907,
+      "VAL_hac": -3.2243941589,
+      "VAL_n": 1263,
+      "DIAG_alpha": -0.1072453133,
+      "DIAG_t": -2.9761264185,
+      "DIAG_sr": -0.5805862353,
+      "DIAG_hac": -2.8287404093,
+      "DIAG_n": 1103,
+      "floor_sr": 0.8505719657,
+      "dsr": 0.0053896028
+    },
+    {
+      "name": "miner_stress",
+      "flips": 306,
+      "DEV_alpha": -0.1994631622,
+      "DEV_t": -5.717260206,
+      "DEV_sr": -1.1673512624,
+      "DEV_hac": -5.4121580375,
+      "DEV_n": 2177,
+      "VAL_alpha": -0.0356905127,
+      "VAL_t": -2.0953567776,
+      "VAL_sr": -0.7267503197,
+      "VAL_hac": -2.0535527313,
+      "VAL_n": 1263,
+      "DIAG_alpha": -0.1091188872,
+      "DIAG_t": -3.7206929069,
+      "DIAG_sr": -1.2391958265,
+      "DIAG_hac": -3.028016793,
+      "DIAG_n": 1103,
+      "floor_sr": 0.8505719657,
+      "dsr": 3.7962e-06
+    },
+    {
+      "name": "miner_momentum",
+      "flips": 253,
+      "DEV_alpha": 0.1073911272,
+      "DEV_t": 5.5663653824,
+      "DEV_sr": 1.942999885,
+      "DEV_hac": 5.2764286126,
+      "DEV_n": 2177,
+      "VAL_alpha": 0.0491772869,
+      "VAL_t": 1.8674848069,
+      "VAL_sr": 0.948804404,
+      "VAL_hac": 1.9008815233,
+      "VAL_n": 1263,
+      "DIAG_alpha": 0.0901353988,
+      "DIAG_t": 3.0922823507,
+      "DIAG_sr": 1.6566031219,
+      "DIAG_hac": 3.1451179442,
+      "DIAG_n": 1103,
+      "floor_sr": 0.8505719657,
+      "dsr": 0.9999982586
+    },
+    {
+      "name": "miner_dip_fast",
+      "flips": 532,
+      "DEV_alpha": -0.2708672114,
+      "DEV_t": -7.8951000792,
+      "DEV_sr": -1.3319554402,
+      "DEV_hac": -7.6398697534,
+      "DEV_n": 2177,
+      "VAL_alpha": -0.1114597157,
+      "VAL_t": -4.4530091367,
+      "VAL_sr": -1.3903673859,
+      "VAL_hac": -4.344595138,
+      "VAL_n": 1263,
+      "DIAG_alpha": -0.1644028013,
+      "DIAG_t": -4.5421709262,
+      "DIAG_sr": -1.0401861231,
+      "DIAG_hac": -4.4433358408,
+      "DIAG_n": 1103,
+      "floor_sr": 0.8505719657,
+      "dsr": 3.572e-07
+    }
+  ],
+  "survivors": [
+    "miner_momentum"
+  ],
+  "val_confirmed": [
+    "miner_momentum"
+  ]
+}

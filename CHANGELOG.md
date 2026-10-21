@@ -14,6 +14,12 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Added
 
+- `qts.research.edgelab.miners` — cross-market signal reading listed gold miners
+  relative to gold, to time XAUUSD@. Round 18 found the effect is entirely a
+  price-snapshot artifact (miners close ~11 hours after the LBMA fix): DEV t 5.57 at
+  lag 0, **t 0.01** at the executable lag.
+- `miners_equity_close` registered in `timing.DRIVER_SNAPSHOTS`, so the snapshot
+  guardrail covers cross-market equity drivers automatically.
 - `qts.research.edgelab.regime` — causal market-regime classifier (trend strength by
   Kaufman efficiency ratio ranked in its own trailing window, volatility percentile,
   explicit no-trade state). Every quantity at bar `t` uses only bars up to `t`.

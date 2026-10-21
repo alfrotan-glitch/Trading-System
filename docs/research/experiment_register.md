@@ -651,6 +651,47 @@ was *required* by the specification rather than invented by the search, which ma
 it more useful than the others: the architecture now exists, is measured, and cannot
 silently become marketing.
 
+## Round 18 — Cross-market: gold miners as information (4 configurations)
+
+New information again: a *second market*. Every earlier round read gold's own price
+or a macro aggregate. Listed gold miners are a levered equity claim on the same
+metal, and their ratio to gold is a standard professional input.
+
+**The round produced the best number in the programme's history and then destroyed
+it, which is the most useful thing that has happened in several rounds.**
+
+Gold `AU.csv` is the LBMA 10:30 London fix. The miners ETF closes at 16:00 New
+York — roughly eleven hours *later* on the same calendar date. Using same-day
+miners data to trade the gold fix is look-ahead:
+
+| config | DEV alpha @ lag 0 | DEV t | DEV alpha @ executable lag | DEV t |
+|---|---|---|---|---|
+| `miner_momentum` | **+10.74%** | **5.57** | +0.02% | **0.01** |
+| `miner_dip` | −15.62% | −4.88 | −2.48% | −0.77 |
+| `miner_stress` | −19.95% | −5.72 | −0.23% | −0.06 |
+| `miner_dip_fast` | −27.09% | −7.90 | −2.76% | −0.81 |
+
+At the executable lag: **zero survivors**, zero confirmed on VAL, DSR ≤ 0.41 across
+the family. On the tradable 24-hour close the signal is +1.3%/yr at t 0.93 at lag 0
+and never better at any lag — it does not exist there either.
+
+### Why this matters more than another rejection
+
+This is the **third** independent occurrence of the price-snapshot artifact, after
+XL-001 (round 10) and the real-yield family (round 11). It is now the single most
+productive thing the audit programme has found: an effect of t 5.57 — five and a
+half sigma, Sharpe 1.94, deflated Sharpe 1.000, positive on DEV, VAL *and* the spent
+2020-2024 holdout — evaporates to t 0.01 with one day of honest delay. Any process
+without a snapshot check would have registered this as the programme's first
+validated edge and deployed capital against a clock discrepancy.
+
+`miners_equity_close` (21:00 London) is now registered in
+`qts.research.edgelab.timing.DRIVER_SNAPSHOTS`, so the guardrail answers this
+question automatically for any future cross-market signal rather than relying on
+someone remembering.
+
+**Family closed.**
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
