@@ -637,10 +637,7 @@ def research_regime() -> dict[str, Any]:
     from datetime import UTC, datetime
 
     as_of = pd.Timestamp(out.index[-1])
-    if as_of.tzinfo is None:
-        as_of = as_of.tz_localize("UTC")
-    else:
-        as_of = as_of.tz_convert("UTC")
+    as_of = as_of.tz_localize("UTC") if as_of.tzinfo is None else as_of.tz_convert("UTC")
     source_age_days = max(0.0, (datetime.now(UTC) - as_of.to_pydatetime()).total_seconds() / 86400.0)
     stale = source_age_days > 5.0
 
