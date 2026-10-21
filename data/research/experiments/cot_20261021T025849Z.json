@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-10-21T02:58:49.534626+00:00",
+  "round": 15,
+  "family": "positioning",
+  "source": "CFTC COT gold, yoseph-zemede/gold-cot-scraper via codeload",
+  "sample": [
+    "2018-03-13",
+    "2025-05-06"
+  ],
+  "reports": 374,
+  "release_lag_days": 4,
+  "cost_model": "ecn_realistic",
+  "cost_is_measured": false,
+  "trials": 4,
+  "detection_floor_sr": 0.8474634236626171,
+  "gate_testable": false,
+  "rows": [
+    {
+      "name": "spec_contrarian",
+      "alpha_ann": 0.0006064743,
+      "alpha_t": 0.0303489932,
+      "alpha_t_hac": 0.0310191705,
+      "alpha_ci_lo": -0.0386357099,
+      "alpha_ci_hi": 0.0309114764,
+      "ci_excludes_zero": false,
+      "sharpe": 0.4584340242,
+      "max_dd": 0.140535048,
+      "exposure": 0.2399635036,
+      "flips": 41,
+      "survives_costs": true
+    },
+    {
+      "name": "spec_momentum",
+      "alpha_ann": -0.0224727931,
+      "alpha_t": -0.9912106918,
+      "alpha_t_hac": -1.0018076528,
+      "alpha_ci_lo": -0.061474207,
+      "alpha_ci_hi": 0.0292869184,
+      "ci_excludes_zero": false,
+      "sharpe": 0.3655763905,
+      "max_dd": 0.1862175419,
+      "exposure": 0.5059306569,
+      "flips": 86,
+      "survives_costs": true
+    },
+    {
+      "name": "commercial_contrarian",
+      "alpha_ann": 0.0030861891,
+      "alpha_t": 0.1571851339,
+      "alpha_t_hac": 0.160516734,
+      "alpha_ci_lo": -0.0362014043,
+      "alpha_ci_hi": 0.0394115143,
+      "ci_excludes_zero": false,
+      "sharpe": 0.4837762581,
+      "max_dd": 0.1332338839,
+      "exposure": 0.2262773723,
+      "flips": 39,
+      "survives_costs": true
+    },
+    {
+      "name": "spec_oi_ratio",
+      "alpha_ann": 0.0326836968,
+      "alpha_t": 1.4502601071,
+      "alpha_t_hac": 1.4845746574,
+      "alpha_ci_lo": -0.0094323909,
+      "alpha_ci_hi": 0.0703394952,
+      "ci_excludes_zero": false,
+      "sharpe": 0.9505714326,
+      "max_dd": 0.1345262464,
+      "exposure": 0.4379562044,
+      "flips": 49,
+      "survives_costs": true
+    }
+  ]
+}

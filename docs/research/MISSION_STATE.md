@@ -1,6 +1,6 @@
 # Mission state — XAUUSD@ validated-edge program
 
-**Updated:** 2026-10-21, after round 14 (pooled evidence).
+**Updated:** 2026-10-21, after round 15 (positioning).
 **Status:** `NO_CANDIDATE` — `XL-001` **rejected** (round 10), **zero validated edges**,
 `active_candidates: []`, forward ledger empty.
 `LIVE` locked, `REAL_CAPITAL_EXPOSURE = 0`.
@@ -127,13 +127,12 @@ persistence of the whole catalogue: 2 of 21 signals stayed positive on
 DEV+VAL+TEST, against 2.6 expected from chance alone, and White's reality check on
 the best of them gave p 0.056. Single-signal enumeration over daily gold is over.
 
-1. **Acquire gold-specific flow and positioning data (round 15, next).** ETF
-   holdings, COMEX open interest and inventories, central-bank purchases. These
-   are *quantities of metal*, a channel absent from every round so far (which used
-   prices, macro aggregates and financial conditions). A flows → price-pressure
-   mechanism is also the only remaining one with a plausible low-turnover
-   expression. Data acquisition is the gate: if no verified history can be fetched
-   from the reachable hosts, record that and move on rather than fabricating one.
+1. **The classical data channels are now exhausted.** Round 15 closed positioning
+   (8.7 years only, no CI excluding zero). Every dataset reachable from this
+   sandbox has been tested: price, trend, volatility, calendar, relative value,
+   real yields, inflation, money stock, labour market, credit, financial
+   conditions, and positioning. A further round must either bring a genuinely new
+   data source or change the *question*, not add another transform.
 2. **Re-scope the product claim.** If no edge materialises, the honest product is a
    risk-managed gold allocation with a measured, *unvalidated* timing overlay —
    and the docs must say exactly that. Do not relabel it.

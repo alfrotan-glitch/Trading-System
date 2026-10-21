@@ -487,11 +487,46 @@ noise generation, and the 2/21 persistence number is the evidence for saying so.
 A new round must therefore bring **new information**, not a new transformation of
 information already in hand. That is the standing rule from here.
 
+## Round 15 — CFTC positioning, the last classical channel (4 configurations)
+
+New information again, and the final classical dataset the programme had not
+touched: *who holds the position*, rather than prices, macro aggregates or
+financial conditions. Source `yoseph-zemede/gold-cot-scraper` via `codeload`, 374
+weekly reports 2018-03-17 .. 2025-05-10, commercial / non-commercial /
+non-reportable long and short interest. The file is sorted by `MM-DD-YY` **string**,
+so the loader parses and re-sorts; reading it in file order would have scrambled
+seven years of positioning without any error.
+
+Reports cover Tuesday and publish Friday, so values are stamped four calendar days
+forward before they touch a bar.
+
+**This round cannot reach a gate-level verdict and does not claim one.** 2,193 bars
+(8.7 years) puts the detection floor at SR 0.85 for t = 2.5, far above anything a
+positioning signal plausibly delivers. The honest output is an effect size with a
+block-bootstrap confidence interval.
+
+| config | alpha | t | HAC t | 95% CI | SR | max DD | flips |
+|---|---|---|---|---|---|---|---|
+| `spec_contrarian` | +0.06% | 0.03 | 0.03 | −3.86 .. +3.09 | 0.458 | 14.1% | 41 |
+| `spec_momentum` | −2.25% | −0.99 | −1.00 | −6.15 .. +2.93 | 0.366 | 18.6% | 86 |
+| `commercial_contrarian` | +0.31% | 0.16 | 0.16 | −3.62 .. +3.94 | 0.484 | 13.3% | 39 |
+| `spec_oi_ratio` | +3.27% | 1.45 | 1.49 | −0.94 .. +7.03 | 0.951 | 13.5% | 49 |
+
+No confidence interval excludes zero. The best of the four, `spec_oi_ratio`
+(speculators' share of open interest below its one-year median), has the right
+sign, a Sharpe above the floor and an alpha of +3.3%/yr — but on 8.7 years that is
+a t of 1.45, and the interval spans zero. It is **not** a candidate, and registering
+it would be exactly the error round 14 was built to detect.
+
+Positioning is therefore closed as a *historically confirmable* channel. It
+remains the one thing that could be re-examined later with a genuinely longer
+history if the CFTC archive ever becomes reachable from this environment.
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
 |---|---|---|
-| CFTC COT positioning | GitHub code search for historical COT, `cftc.gov` direct | only single-snapshot JSON found; CFTC site unreachable from the sandbox |
+| CFTC COT positioning | GitHub code search, `cftc.gov` direct, two scraper repos | **partly resolved in round 15**: 374 weekly gold reports 2018-2025 recovered from a scraper repo; the pre-2018 archive remains unreachable, which caps the sample at 8.7 years |
 | Broker tick archive (1 GB) | `gh release download`, `release-assets.githubusercontent.com` | connection reset / EOF |
 | Measured broker costs | MT5 terminal records | not present in this environment; costs remain ASSUMED |
 | Options-implied vol (GVZ) | GitHub search | no verified long history; not used |

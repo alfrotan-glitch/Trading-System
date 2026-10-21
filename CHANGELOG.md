@@ -14,6 +14,13 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Added
 
+- `qts.research.edgelab.cot` — CFTC Commitments of Traders positioning for gold.
+  374 weekly reports (2018-2025) recovered from a scraper repository after the
+  CFTC site itself proved unreachable. The loader re-sorts by parsed date because
+  the upstream file is ordered by `MM-DD-YY` string; values are stamped four
+  calendar days forward to respect the Friday release. Round 15 measured four
+  configurations and found no confidence interval excluding zero on 8.7 years —
+  reported as an effect size, explicitly not as a gate verdict.
 - `qts.research.edgelab.quantity` — money-stock and labour-market signals
   (`gold_m2_ratio`, `m2_growth`, `excess_money_growth`, `claims_trend`,
   `sahm_signal`), each stamped at its publication date so nothing is visible before
