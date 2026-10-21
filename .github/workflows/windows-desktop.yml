@@ -33,12 +33,19 @@ jobs:
         run: pyinstaller packaging/qts.spec --clean --noconfirm
       - name: Smoke-test frozen API routes and bundled UI
         shell: pwsh
+        env:
+          QTS_SMOKE_RESULT_PATH: ${{ github.workspace }}\\qts-smoke-diagnostic.txt
         run: |
           $exe = "dist\QTS\QTS.exe"
           if (!(Test-Path $exe)) { throw "QTS.exe missing from packaged output" }
           foreach ($flag in @("--version", "--smoke")) {
             $p = Start-Process -FilePath $exe -ArgumentList $flag -Wait -PassThru
-            if ($p.ExitCode -ne 0) { throw "QTS.exe $flag exit=$($p.ExitCode)" }
+            if ($p.ExitCode -ne 0) {
+              if (Test-Path $env:QTS_SMOKE_RESULT_PATH) {
+                Get-Content $env:QTS_SMOKE_RESULT_PATH | Write-Host
+              }
+              throw "QTS.exe $flag exit=$($p.ExitCode)"
+            }
           }
       - name: Prepare no-terminal product instructions
         shell: pwsh
