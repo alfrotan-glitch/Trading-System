@@ -43,7 +43,11 @@ Cboe volatility term structure: https://www.cboe.com/tradable_products/vix/term_
   already** by prior gold research, so a positive value here cannot be an
   untouched out-of-sample validation.
 - Compare each timing rule to a *static, exposure-matched* gold allocation,
-  not only an unscaled buy-and-hold series.
+  not only an unscaled buy-and-hold series. Calculate the paired net daily
+  difference after identical financing and turnover assumptions, and report
+  its Newey–West/HAC statistic, **not only** a Sharpe difference. Even a
+  significant result here remains DISCOVERY because the historical windows
+  are spent.
 - Charge the existing `CostModel.realistic_ecn()` on turnover and report
   cost model as **ASSUMED**. Verify the price-dependent per-side costs.
 - Add explicit **hypothetical funding stress** at 0, 0.5, 1.0 and 2.0 basis
