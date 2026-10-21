@@ -149,13 +149,42 @@ def test_breakout_range_preserves_previous_evening_across_midnight():
 
 
 
-def test_window_return_per_day_matches_manual_compounding():
+def test_window_return_per_day_matches_compounding_within_completed_night():
     bars = synthetic_bars(days=10)
-    r = I.window_return_per_day(bars, 22, 6)
-    first_day = bars.index[0].date()
-    mask = I.hour_mask(bars.index, 22, 6) & pd.Series(bars.index.date == first_day, index=bars.index)
-    manual = (1 + bars["close"].pct_change()[mask].fillna(0)).prod() - 1
-    assert r.loc[first_day] == pytest.approx(manual)
+    idx = bars.index
+    session_end = pd.Timestamp("2024-01-04", tz="UTC")
+    inside = I.hour_mask(idx, 22, 6).to_numpy()
+    previous_inside = np.concatenate(([False], inside[:-1]))
+    seconds = idx.to_series().diff().dt.total_seconds().to_numpy()
+    completed_session = (idx >= session_end - pd.Timedelta(hours=2)) & (
+        idx < session_end + pd.Timedelta(hours=6)
+    )
+    earned = inside & previous_inside & (seconds <= 900.0) & completed_session
+    expected = (1 + bars["close"].pct_change().to_numpy()[earned]).prod() - 1
+    result = I.window_return_per_day(bars, 22, 6)
+    assert result.loc[session_end] == pytest.approx(expected)
+
+
+def test_window_return_per_day_excludes_reopening_gap_and_groups_across_midnight():
+    idx = pd.to_datetime(
+        [
+            "2024-01-01T20:45:00Z",
+            "2024-01-01T22:00:00Z",
+            "2024-01-01T22:15:00Z",
+            "2024-01-01T22:30:00Z",
+            "2024-01-01T22:45:00Z",
+            "2024-01-02T00:00:00Z",
+            "2024-01-02T00:15:00Z",
+        ],
+        utc=True,
+    )
+    bars = pd.DataFrame({"close": [100.0, 120.0, 121.0, 122.0, 123.0, 125.0, 126.0]}, index=idx)
+    result = I.window_return_per_day(bars, 22, 6)
+    # Price 100 -> 120 was the reopening gap and 123 -> 125 is an
+    # unobserved 75-minute interval. Neither is a fillable window return.
+    expected = (123.0 / 120.0) * (126.0 / 125.0) - 1.0
+    assert result.loc[pd.Timestamp("2024-01-02", tz="UTC")] == pytest.approx(expected)
+
 
 
 def test_hac_alpha_recovers_a_known_intercept():
