@@ -556,9 +556,18 @@ def research_edgelab_forward() -> dict[str, Any]:
                 "registered": c.id in reg,
                 "registered_at": (reg.get(c.id) or {}).get("registered_at"),
                 "definition_hash": c.definition_hash(),
+                "status": c.status,
+                "rejected_reason": c.rejected_reason,
                 "forward": score_row,
-                # No candidate may claim validation without forward evidence.
-                "validated": bool(score_row.get("alpha_t") and score_row["alpha_t"] >= forward.MIN_ALPHA_T),
+                # No candidate may claim validation without forward evidence, and
+                # a rejected candidate can never be validated at all — its
+                # definition has been shown not to hold up, so any forward sample
+                # is a measurement on a rule known to be broken.
+                "validated": bool(
+                    c.status != "rejected"
+                    and score_row.get("alpha_t")
+                    and score_row["alpha_t"] >= forward.MIN_ALPHA_T
+                ),
             }
         )
 
@@ -575,6 +584,8 @@ def research_edgelab_forward() -> dict[str, Any]:
             f"and {CostModel.realistic_ecn().per_side_bps():.2f} bps/side (realistic ECN, used for candidate reporting)"
         ),
         "validated_any": any(r["validated"] for r in rows),
+        "active_candidates": [r["id"] for r in rows if r["status"] == "candidate"],
+        "rejected_candidates": [r["id"] for r in rows if r["status"] == "rejected"],
         "threshold_alpha_t": forward.MIN_ALPHA_T,
         "live_locked": True,
         "real_capital_exposure_usd": 0,

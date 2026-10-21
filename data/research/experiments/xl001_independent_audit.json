@@ -1,0 +1,38 @@
+{
+  "results": {
+    "DEV_1971_2000": {
+      "alpha_ann": 0.03154484628445637,
+      "alpha_t": 2.5960634698205185,
+      "beta": 0.45985235755242204,
+      "n": 7586.0,
+      "sharpe": 0.6045648286982378,
+      "resid_sd": 0.004198297178820835
+    },
+    "VAL_2001_2010": {
+      "alpha_ann": 0.013576734308904678,
+      "alpha_t": 0.6509313703185982,
+      "beta": 0.5752231912884048,
+      "n": 2528.0,
+      "sharpe": 0.91669740810891,
+      "resid_sd": 0.004154148854517778
+    },
+    "TEST_2011_2019": {
+      "alpha_ann": 0.04941724431850087,
+      "alpha_t": 2.9393663706688202,
+      "beta": 0.49510877003390336,
+      "n": 2272.0,
+      "sharpe": 0.6599655492966551,
+      "resid_sd": 0.003179895064702278
+    }
+  },
+  "notes": [
+    "cost is charged at the bar's own price, so early-sample bps are much higher than the $2000 reference; this is correct (a fixed dollar spread is a larger fraction of a cheaper metal) but means the published 0.925 figure understates early-period cost.",
+    "XL-001 uses the same-day macro close, matching the harness. If FRED's date is the observation date and publication is later, a real implementation must trade one day later; that variant is measured in section 6.",
+    "DEV_1971_2000: n=7586, beta=0.46, HAC(5) t=2.69",
+    "VAL_2001_2010: n=2528, beta=0.58, HAC(5) t=0.65",
+    "TEST_2011_2019: n=2272, beta=0.50, HAC(5) t=2.86"
+  ],
+  "failures": [
+    "first valid signal is exactly LOOKBACK bars in: index position 879 (expected 126)"
+  ]
+}

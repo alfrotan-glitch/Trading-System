@@ -291,6 +291,43 @@ commands are maintained in a single place: **`MISSION_STATE.md`**. Read it befor
 designing the next hypothesis — in particular, it records that **no untouched
 historical window remains**, which changes what "confirmation" can mean from here.
 
+## Round 10 — Independent audit of XL-001 → **candidate rejected**
+
+Full write-up: `audit_xl001_2026-10-21.md`. Scripts:
+`scripts/audit_xl001_independent.py`, `scripts/audit_xl001_price_basis.py`.
+
+The audit reimplemented the candidate and the cost model from raw CSVs with no
+shared code, then tested a property no previous round had tested: **are the price
+and the signal sampled at times that make the trade executable?**
+
+They were not. Gold was measured on the **LBMA AM fix (10:30 London)** in every
+macro round; DXY and the 10-year yield are **close-of-day** series settling around
+22:00 London. The harness was crediting a position entered eleven hours before its
+information existed. The AM fix and a 24-hour tradable close share only 0.27 daily
+return correlation, so the two are genuinely different snapshots.
+
+| Price basis | Lag | Alpha/yr | alpha_t |
+|---|---|---|---|
+| LBMA AM fix | 0 (as scored) | +3.93% | **2.66** |
+| LBMA AM fix | 1 (implementable) | +1.02% | 0.70 |
+| **M15 tradable close** | **1** | **+1.55%** | **1.04** |
+
+On tradable prices over 2005-2025 the rule earns **+1.57%/yr at t 1.34**. The 2001-2010
+and 2020-2024 windows flip negative at the implementable lag.
+
+What the audit *confirmed*: the cost model computes exactly what it documents
+(0.400 / 0.925 / 0.800 / 0.550 bps per side), the signal does not look ahead in its
+own right (identical on truncated history at 6,059 dates), and the arithmetic
+reproduces to within edge effects (DEV alpha_t 2.60 vs 2.70).
+
+Also established: cost is charged at each bar's own price, so the realistic model
+runs 4.62 bps/side at 1971-2000 gold prices and 0.56 at 2025 prices. "0.925 bps/side"
+is a reference-point figure, not a constant.
+
+**Status change:** `candidate` → `rejected`, definition and hash preserved.
+`timing.py` now makes the failure mode a tested concept, and the forward API can
+never mark a rejected candidate validated.
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
@@ -302,7 +339,7 @@ historical window remains**, which changes what "confirmation" can mean from her
 
 ## What the register implies
 
-Nine rounds, ~96 configurations, every family from price, macro, calendar,
+Ten rounds, ~96 configurations, every family from price, macro, calendar,
 relative-value, cross-sectional and intraday-clock information. Not one survives
 DEV→VAL→TEST→holdout on tradable prices. The two that cleared DEV died in
 identifiable ways: one on a regime that ended in 1980, one on a fixing artifact

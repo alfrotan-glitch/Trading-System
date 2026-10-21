@@ -14,6 +14,24 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Added
 
+- `qts.research.edgelab.timing` — price-snapshot timing as a first-class, tested
+  concept: UTC strike hours for each price source and driver, `required_lag()`,
+  `verdict_at_lag()` and a misalignment pre-flight check. Added after XL-001's gate
+  pass was traced to gold (10:30 AM fix) and its drivers (22:00 close) being
+  sampled eleven hours apart.
+- `qts.research.edgelab.collect` — forward-observation planning and alignment:
+  forward-only (strictly after registration), complete-and-fresh drivers, and a
+  tradable 24-hour price basis.
+- `scripts/edgelab_collect_observations.py` — automated refresh of the FRED mirror
+  and the Dukascopy replay feed, plus ledger recording. Idempotent and
+  revision-refusing; writes nothing when no candidate is active.
+- `scripts/audit_xl001_independent.py` and `scripts/audit_xl001_price_basis.py` —
+  reimplementation of the candidate and cost model with no shared code, exiting
+  non-zero on any number that fails to reproduce.
+- `Candidate.status` / `Candidate.rejected_reason`, and
+  `active_candidates()`; the forward API exposes `active_candidates` and
+  `rejected_candidates` and never marks a rejected candidate validated.
+
 - `qts.research.edgelab.intraday` — session-clock signals (fixed UTC windows,
   overnight reversal, late-New-York momentum, path-dependent opening-range
   breakout) with an explicit no-look-ahead contract.
@@ -90,7 +108,22 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
   (52 prior round-1 configurations plus 9 in round 7) rather than the count of the
   current run alone.
 
+### Changed
+
+- **XL-001 status `candidate` → `rejected`.** Its gate pass does not survive an
+  independent audit: measured on the LBMA AM fix at a lag the data does not permit,
+  it reports alpha_t 2.66; on tradable 24-hour closes it is +1.57%/yr at t 1.34.
+  The definition and hash are preserved so the rejection is reproducible.
+- `daily_bars` now guarantees a timezone-aware index; a naive daily index silently
+  mis-joins against driver frames.
+
 ### Fixed
+
+- `collect.complete_dates` measured driver freshness on the *forward-filled* frame,
+  where every row is non-null by construction, so stale drivers were accepted as
+  observations. It now takes the raw frame, and a test pins the 7-day rule.
+- The replay-feed downloader dropped the timezone from the parquet index, which
+  would have broken every downstream join. The index is localised and asserted.
 
 - `qts.research.edgelab.fred_drivers.align_to_index` — forward-filling a
   naive-index driver frame onto a tz-aware bar index produced a **constant
