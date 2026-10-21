@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import sys
 import threading
@@ -113,7 +114,10 @@ def _smoke_packaged_application() -> None:
     available_routes = {getattr(route, "path", "") for route in app.routes}
     missing = sorted(required_routes - available_routes)
     if missing:
-        raise RuntimeError(f"Packaged backend missing routes: {missing}")
+        raise RuntimeError(
+            f"Packaged backend missing routes: {missing}; "
+            f"registered={len(available_routes)} paths={sorted(available_routes)[:18]}"
+        )
     ui_path = _get_ui_dir() / "index.html"
     if not ui_path.is_file() or ui_path.stat().st_size < 100:
         raise RuntimeError(f"Packaged desktop UI not accessible: {ui_path}")
@@ -140,10 +144,8 @@ def _handle_cli(argv: list[str] | None = None) -> bool:
             # never include account, environment, or machine identity here.
             diagnostic = (os.getenv("QTS_SMOKE_RESULT_PATH") or "").strip()
             if diagnostic:
-                try:
+                with contextlib.suppress(OSError):
                     Path(diagnostic).write_text(msg, encoding="utf-8")
-                except OSError:
-                    pass
             raise SystemExit(1) from exc
         return True
     if "--version" in args or "-V" in args:
