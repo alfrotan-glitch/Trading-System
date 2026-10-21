@@ -771,9 +771,20 @@ credible mechanism, a consistent sign, and too few years to prove it. That is th
 honest state of the search, and it is a better state than a validated claim built
 on a window that has already been read.
 
-One candidate now exists (XL-001) with a coherent economic mechanism, low turnover
-and independent significance on two disjoint periods. Round 8 gave it its first
-post-sample reading and the answer was "indistinguishable from zero, both
-directions" — the honest outcome for 2.3 years. What it still lacks is genuinely
-unseen confirmation accumulated over time, and the forward ledger
-(`qts forward log`, `qts forward score`) is the only mechanism that can supply it.
+Historical note (superseded by round 10): XL-001 was initially registered as
+a candidate following rounds 6-8. The round-10 independent timing audit
+**rejected** it: the signal used close-of-day macro inputs with the same day's
+earlier London AM gold fix. Its apparent edge did not survive executable
+timing on tradable closes. There are now **zero active candidates and zero
+validated edges**; the forward ledger is intentionally empty.
+
+Post-round-19 independent code audit (2026-10-21): additional round-7 session
+implementations had calendar-day timing defects. `overnight_momentum_close`
+used a future evening's prices at an earlier NY-session decision;
+`overnight_reversal` mixed two distinct overnight sessions;
+`opening_range_breakout` discarded the evening half of the range at midnight;
+and session descriptive returns included an unearned reopening gap.
+The implementations and regression tests are updated on `main`, but the
+historical round-7 comparisons must be re-run on verified raw data.
+Older results are retained as an audit trail, **not promotion evidence**.
+See `docs/research/MISSION_STATE.md` for the exact recovery tests.
