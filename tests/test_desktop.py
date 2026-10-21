@@ -1116,3 +1116,25 @@ def test_launcher_version_survives_a_windowed_build_with_no_stdout(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["QTS", "--version"])
     monkeypatch.setattr(sys, "stdout", None)
     assert launcher._handle_cli(["--version"]) is True  # no raise
+
+
+def test_startup_health_reads_canonical_database_from_unrelated_cwd(tmp_path, monkeypatch):
+    """A Windows EXE launched from Explorer must not inspect another folder's DB."""
+    from qts.db import connect
+    from qts.desktop.health import startup_health_check
+
+    root = tmp_path / "user-state"
+    db = root / "data" / "sqlite" / "qts.db"
+    db.parent.mkdir(parents=True)
+    with connect(db) as con:
+        con.execute("CREATE TABLE promotion_state (id INTEGER)")
+        con.execute("CREATE TABLE experiments (id INTEGER)")
+    unrelated = tmp_path / "elsewhere"
+    unrelated.mkdir()
+    monkeypatch.setenv("QTS_STATE_ROOT", str(root))
+    monkeypatch.chdir(unrelated)
+
+    health = startup_health_check()
+    durable = next(x for x in health["checks"] if x["name"] == "load_durable_state")
+    assert durable["passed"], durable
+    assert durable["detail"] == "durable state loaded"
