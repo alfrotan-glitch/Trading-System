@@ -69,9 +69,9 @@ jobs:
               print(f"Loaded pinned M15 data: {destination_file}, {member.size} bytes")
           PY
       - name: Execute preregistered VIX curve study on tradable M15 closes
-        run: python scripts/edgelab_vix_curve_run.py --gold-source basemax
+        run: python -m scripts.edgelab_vix_curve_run --gold-source basemax
       - name: Evaluate fixed-spec online gold learning model
-        run: python scripts/edgelab_online_model_run.py
+        run: python -m scripts.edgelab_online_model_run
       - name: Publish evidence only (no raw market data)
         if: always()
         uses: actions/upload-artifact@v4
