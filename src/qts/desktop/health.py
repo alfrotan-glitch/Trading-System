@@ -26,7 +26,12 @@ def startup_health_check(data_dir: Path | str = "data") -> dict[str, Any]:
 
     # 1 durable state
     def check_state():
-        p = Path("data/sqlite/qts.db")
+        from qts.config.paths import artifact_path
+
+        # A frozen Windows exe can launch from Explorer with any working
+        # directory. Its durable broker/risk state MUST use the same canonical
+        # root as the API/CLI, never a cwd-relative SQLite file.
+        p = artifact_path("db")
         if not p.exists():
             # Fresh installation: there is no durable state to load yet.
             # That is not a failure — the store is created on first use.
