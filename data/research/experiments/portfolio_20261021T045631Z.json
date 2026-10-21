@@ -1,0 +1,310 @@
+{
+  "generated_at": "2026-10-21T04:56:31.960137+00:00",
+  "round": 17,
+  "family": "portfolio_allocation",
+  "signals": 20,
+  "windows": {
+    "DEV": [
+      "1969-01-02",
+      "2000-12-31"
+    ],
+    "VAL": [
+      "2001-01-01",
+      "2010-12-31"
+    ],
+    "TEST": [
+      "2011-01-01",
+      "2019-12-31"
+    ]
+  },
+  "cost_model": "ecn_realistic",
+  "cost_is_measured": false,
+  "allocation_config": {
+    "target_vol": 0.12,
+    "max_leverage": 1.0,
+    "vol_window": 21
+  },
+  "regime_config": {
+    "trend_window": 63,
+    "trend_quantile": 0.7,
+    "high_vol_quantile": 0.8,
+    "no_trade_quantile": 0.95
+  },
+  "rows": [
+    {
+      "window": "DEV",
+      "config": "A_buy_hold",
+      "label": "DEV_A_buy_hold",
+      "cagr": 0.0599704689,
+      "sharpe": 0.3802137217,
+      "max_dd": 0.7,
+      "calmar": 0.0856720984,
+      "alpha_ann": -0.0001369378,
+      "alpha_t": -0.9962823833,
+      "alpha_t_hac": -1.0000728942,
+      "turnover": 0.0,
+      "exposure": 1.0
+    },
+    {
+      "window": "DEV",
+      "config": "B_static_blend",
+      "label": "DEV_B_static_blend",
+      "cagr": 0.0467886907,
+      "sharpe": 0.5051126026,
+      "max_dd": 0.2672039366,
+      "calmar": 0.1751047955,
+      "alpha_ann": 0.016078822,
+      "alpha_t": 2.144063187,
+      "alpha_t_hac": 2.1905300775,
+      "turnover": 5.7559975293,
+      "exposure": 0.9321803582
+    },
+    {
+      "window": "DEV",
+      "config": "C_regime_gated",
+      "label": "DEV_C_regime_gated",
+      "cagr": 0.0272111402,
+      "sharpe": 0.4277700261,
+      "max_dd": 0.2186698623,
+      "calmar": 0.1244393714,
+      "alpha_ann": 0.0075784413,
+      "alpha_t": 1.1334587888,
+      "alpha_t_hac": 1.1708189165,
+      "turnover": 5.2859295862,
+      "exposure": 0.9237801112
+    },
+    {
+      "window": "DEV",
+      "config": "D_vol_target",
+      "label": "DEV_D_vol_target",
+      "cagr": 0.0282949421,
+      "sharpe": 0.5671582624,
+      "max_dd": 0.1943555393,
+      "calmar": 0.1455834095,
+      "alpha_ann": 0.0134769146,
+      "alpha_t": 2.4842018683,
+      "alpha_t_hac": 2.4730004987,
+      "turnover": 5.5923989416,
+      "exposure": 0.9321803582
+    },
+    {
+      "window": "DEV",
+      "config": "E_full_system",
+      "label": "DEV_E_full_system",
+      "cagr": 0.0126200759,
+      "sharpe": 0.3158789676,
+      "max_dd": 0.2003903568,
+      "calmar": 0.0629774613,
+      "alpha_ann": 0.0013595409,
+      "alpha_t": 0.2716249442,
+      "alpha_t_hac": 0.275502701,
+      "turnover": 5.017839852,
+      "exposure": 0.9237801112
+    },
+    {
+      "window": "DEV",
+      "config": "F_same_exposure_control",
+      "label": "DEV_F_same_exposure_control",
+      "cagr": 0.0116510749,
+      "sharpe": 0.5051126026,
+      "max_dd": 0.0673720118,
+      "calmar": 0.1729364248,
+      "alpha_ann": 0.003756305,
+      "alpha_t": 2.144063187,
+      "alpha_t_hac": 2.1905300775,
+      "turnover": 1.3447056251,
+      "exposure": 0.9321803582
+    },
+    {
+      "window": "VAL",
+      "config": "A_buy_hold",
+      "label": "VAL_A_buy_hold",
+      "cagr": 0.1778478511,
+      "sharpe": 0.9431390165,
+      "max_dd": 0.3234000977,
+      "calmar": 0.5499313462,
+      "alpha_ann": -7.34574e-05,
+      "alpha_t": -1.0718085482,
+      "alpha_t_hac": -1.00062826,
+      "turnover": 0.0,
+      "exposure": 1.0
+    },
+    {
+      "window": "VAL",
+      "config": "B_static_blend",
+      "label": "VAL_B_static_blend",
+      "cagr": 0.0733349215,
+      "sharpe": 0.7560050667,
+      "max_dd": 0.2059091768,
+      "calmar": 0.3561517879,
+      "alpha_ann": -0.0154228798,
+      "alpha_t": -1.8385503356,
+      "alpha_t_hac": -1.9764014843,
+      "turnover": 5.6171677215,
+      "exposure": 1.0
+    },
+    {
+      "window": "VAL",
+      "config": "C_regime_gated",
+      "label": "VAL_C_regime_gated",
+      "cagr": 0.0757772331,
+      "sharpe": 1.0225796815,
+      "max_dd": 0.1557092702,
+      "calmar": 0.4866584563,
+      "alpha_ann": 0.0172563329,
+      "alpha_t": 1.3476904455,
+      "alpha_t_hac": 1.283325469,
+      "turnover": 6.7984177215,
+      "exposure": 0.9299841772
+    },
+    {
+      "window": "VAL",
+      "config": "D_vol_target",
+      "label": "VAL_D_vol_target",
+      "cagr": 0.0729419114,
+      "sharpe": 1.1377970333,
+      "max_dd": 0.0876084774,
+      "calmar": 0.8325896485,
+      "alpha_ann": 0.0186188411,
+      "alpha_t": 2.085501082,
+      "alpha_t_hac": 2.1545931748,
+      "turnover": 5.7104800338,
+      "exposure": 1.0
+    },
+    {
+      "window": "VAL",
+      "config": "E_full_system",
+      "label": "VAL_E_full_system",
+      "cagr": 0.0625092888,
+      "sharpe": 1.2162935211,
+      "max_dd": 0.0806892388,
+      "calmar": 0.7746917647,
+      "alpha_ann": 0.023713578,
+      "alpha_t": 2.4343343514,
+      "alpha_t_hac": 2.4108755693,
+      "turnover": 6.0732082995,
+      "exposure": 0.9299841772
+    },
+    {
+      "window": "VAL",
+      "config": "F_same_exposure_control",
+      "label": "VAL_F_same_exposure_control",
+      "cagr": 0.0209069733,
+      "sharpe": 0.7560050667,
+      "max_dd": 0.0596914645,
+      "calmar": 0.3502506337,
+      "alpha_ann": -0.0042885631,
+      "alpha_t": -1.8385503356,
+      "alpha_t_hac": -1.9764014843,
+      "turnover": 1.5619377628,
+      "exposure": 1.0
+    },
+    {
+      "window": "TEST",
+      "config": "A_buy_hold",
+      "label": "TEST_A_buy_hold",
+      "cagr": 0.0089298404,
+      "sharpe": 0.1345824982,
+      "max_dd": 0.4460321645,
+      "calmar": 0.0200206198,
+      "alpha_ann": -1.50552e-05,
+      "alpha_t": -1.0151920953,
+      "alpha_t_hac": -1.0013486281,
+      "turnover": 0.0,
+      "exposure": 1.0
+    },
+    {
+      "window": "TEST",
+      "config": "B_static_blend",
+      "label": "TEST_B_static_blend",
+      "cagr": 0.0104674861,
+      "sharpe": 0.193870973,
+      "max_dd": 0.1622986822,
+      "calmar": 0.0644952006,
+      "alpha_ann": 0.0056743691,
+      "alpha_t": 0.4273737004,
+      "alpha_t_hac": 0.430112167,
+      "turnover": 5.9450704225,
+      "exposure": 0.8160211268
+    },
+    {
+      "window": "TEST",
+      "config": "C_regime_gated",
+      "label": "TEST_C_regime_gated",
+      "cagr": 0.0044047184,
+      "sharpe": 0.1223849218,
+      "max_dd": 0.1342122928,
+      "calmar": 0.0328190382,
+      "alpha_ann": 0.0006254029,
+      "alpha_t": 0.0719970272,
+      "alpha_t_hac": 0.069534125,
+      "turnover": 5.5790492958,
+      "exposure": 0.951584507
+    },
+    {
+      "window": "TEST",
+      "config": "D_vol_target",
+      "label": "TEST_D_vol_target",
+      "cagr": 0.0089970266,
+      "sharpe": 0.2171036954,
+      "max_dd": 0.1193413012,
+      "calmar": 0.0753890443,
+      "alpha_ann": 0.0052555768,
+      "alpha_t": 0.5324202143,
+      "alpha_t_hac": 0.5175329168,
+      "turnover": 5.9876366316,
+      "exposure": 0.8160211268
+    },
+    {
+      "window": "TEST",
+      "config": "E_full_system",
+      "label": "TEST_E_full_system",
+      "cagr": 0.0019558927,
+      "sharpe": 0.0723597091,
+      "max_dd": 0.1227250042,
+      "calmar": 0.015937198,
+      "alpha_ann": -0.0011889484,
+      "alpha_t": -0.1598446945,
+      "alpha_t_hac": -0.1564579293,
+      "turnover": 5.4523290457,
+      "exposure": 0.951584507
+    },
+    {
+      "window": "TEST",
+      "config": "F_same_exposure_control",
+      "label": "TEST_F_same_exposure_control",
+      "cagr": 0.0027632846,
+      "sharpe": 0.193870973,
+      "max_dd": 0.0380303836,
+      "calmar": 0.0726599186,
+      "alpha_ann": 0.0013031502,
+      "alpha_t": 0.4273737004,
+      "alpha_t_hac": 0.430112167,
+      "turnover": 1.3653182421,
+      "exposure": 0.8160211268
+    }
+  ],
+  "e_vs_f": [
+    {
+      "window": "DEV",
+      "sharpe_diff": -0.1892336349351899,
+      "ci_lo": -0.4366595607736754,
+      "ci_hi": 0.047618194623650724,
+      "p_two_sided": 0.11
+    },
+    {
+      "window": "VAL",
+      "sharpe_diff": 0.46028845444590527,
+      "ci_lo": 0.10998582160149398,
+      "ci_hi": 0.8717152767901708,
+      "p_two_sided": 0.004
+    },
+    {
+      "window": "TEST",
+      "sharpe_diff": -0.12151126391058317,
+      "ci_lo": -0.47388437006201056,
+      "ci_hi": 0.22825148966734,
+      "p_two_sided": 0.468
+    }
+  ]
+}

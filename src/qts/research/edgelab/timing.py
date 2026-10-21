@@ -69,6 +69,11 @@ DRIVER_SNAPSHOTS: dict[str, Snapshot] = {
     # FRED stamps an observation with its observation date but publishes later;
     # one full day is the conservative assumption.
     "fred_observation_date": Snapshot("FRED observation", 24.0),
+    # A US equity close is 16:00 New York == 21:00 London under EDT, 22:00 under
+    # EST. Registered in round 18 after a miners-relative signal produced DEV alpha
+    # t 5.57 at lag 0 and exactly zero at lag 1 — the third occurrence of the
+    # snapshot artifact, and the reason this table exists.
+    "miners_equity_close": Snapshot("US equity close", 21.0),
 }
 
 

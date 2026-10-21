@@ -39,7 +39,10 @@ class VolatilityRegimeDetector:
         rets = np.diff(closes) / closes[:-1]
         vols = np.array([np.std(rets[max(0, i - self.window) : i]) for i in range(1, len(rets) + 1)])
         cur_vol = vols[-1]
-        thresh = np.quantile(vols, self.high_quantile)
+        # CAUSAL: the threshold may only use volatility observed so far. Taking
+        # ``np.quantile(vols, ...)`` over the whole array includes bars that have
+        # not happened yet, which makes the historical label depend on the future.
+        thresh = np.quantile(vols[:-1] if len(vols) > 1 else vols, self.high_quantile)
         self._conf = float(min(1.0, cur_vol / (thresh + 1e-12)))
         return Regime.HIGH_VOL if cur_vol >= thresh else Regime.LOW_VOL
 

@@ -6,6 +6,7 @@ import contextlib
 import json
 from typing import Any
 
+import pandas as pd
 from fastapi import APIRouter, HTTPException
 
 from qts.api.deps import (
@@ -594,3 +595,74 @@ def research_edgelab_forward() -> dict[str, Any]:
             "afterwards only forward observation adds evidence."
         ),
     }
+
+
+@router.get("/api/research/regime")
+def research_regime() -> dict[str, Any]:
+    """Current market regime and what the allocation policy would permit.
+
+    This exposes the regime layer as a *product* surface rather than a research
+    artefact: the same classifier and allocator the backtest uses, applied to the
+    latest available bars.
+
+    It is deliberately explicit about what it is not. Round 17 measured the layer
+    against exposure-matched controls and found no robust risk-adjusted gain, so the
+    response reports ``adds_value_vs_control: false`` and states the evidence rather
+    than presenting regime awareness as an edge. Nothing here authorises trading:
+    ``live_locked`` is always true and the strategy gate still governs everything.
+    """
+    from qts.research.edgelab.portfolio import AllocationConfig
+    from qts.research.edgelab.regime import RegimeConfig, classify, regime_summary
+    from qts.research.edgelab.stress import tradable_gold
+
+    try:
+        # The tradable 24-hour close, not the research store: ``load_long_gold``
+        # stops at 2019-12-31 on purpose (it must never expose the spent holdout),
+        # so using it here would present a 2019 regime as "current".
+        close = tradable_gold()
+    except FileNotFoundError:
+        return {"available": False, "reason": "price store not built; run scripts/edgelab_prepare_data.py"}
+    bars = pd.DataFrame({"open": close, "high": close, "low": close, "close": close}, index=close.index)
+    bars["volume"] = 0.0
+
+    cfg = RegimeConfig()
+    out = classify(bars, cfg)
+    latest = out.iloc[-1]
+    summary = regime_summary(out)
+    alloc = AllocationConfig()
+
+    return {
+        "available": True,
+        "as_of": str(out.index[-1].date()),
+        "regime": str(latest["regime"]),
+        "allow_trade": bool(latest["allow_trade"]),
+        "efficiency_ratio": _finite(latest["efficiency_ratio"]),
+        "trend_percentile": _finite(latest["trend_percentile"]),
+        "realized_vol_ann": _finite(latest["realized_vol"]),
+        "vol_percentile": _finite(latest["vol_percentile"]),
+        "regime_share": {str(k): round(float(v), 4) for k, v in summary["share"].items()},
+        "eligibility": {fam: sorted(regs) for fam, regs in alloc.eligibility.items()},
+        "policy": {
+            "target_vol": alloc.target_vol,
+            "max_leverage": alloc.max_leverage,
+            "no_trade_quantile": cfg.no_trade_quantile,
+        },
+        "adds_value_vs_control": False,
+        "evidence": (
+            "Round 17: against exposure-matched controls the regime + volatility layer beat "
+            "the control in 1 of 3 windows (VAL p=0.004; DEV p=0.110; TEST p=0.468), and "
+            "volatility targeting on gold improved Sharpe in 5 of 12 target-window pairs, "
+            "every win in the same window. Reported as risk management, not as edge."
+        ),
+        "live_locked": True,
+        "real_capital_exposure_usd": 0,
+    }
+
+
+def _finite(value: Any) -> float | None:
+    """JSON has no NaN; an absent measurement must be null, not a number."""
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if f != f or f in (float("inf"), float("-inf")) else f

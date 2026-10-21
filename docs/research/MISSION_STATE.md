@@ -1,6 +1,6 @@
 # Mission state — XAUUSD@ validated-edge program
 
-**Updated:** 2026-10-21, after round 16 (power and horizon).
+**Updated:** 2026-10-21, after round 18 (cross-market miners).
 **Status:** `NO_CANDIDATE` — `XL-001` **rejected** (round 10), **zero validated edges**,
 `active_candidates: []`, forward ledger empty.
 `LIVE` locked, `REAL_CAPITAL_EXPOSURE = 0`.
@@ -127,6 +127,10 @@ persistence of the whole catalogue: 2 of 21 signals stayed positive on
 DEV+VAL+TEST, against 2.6 expected from chance alone, and White's reality check on
 the best of them gave p 0.056. Single-signal enumeration over daily gold is over.
 
+0a. **The regime/portfolio layer exists and is measured (round 17).** It is wired
+   into `GET /api/research/regime`, and the measurement says it does **not** beat
+   exposure-matched controls (1 of 3 windows). Do not describe it as intelligent
+   allocation; it is de-risking plus a tail-risk no-trade state.
 0. **Read round 16 before designing anything.** The horizon to validate the best
    signal is 28.9 years of forward data (blend: 73; median 94.6). Forward
    observation is therefore not a route to validation either. See

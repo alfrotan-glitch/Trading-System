@@ -576,6 +576,122 @@ bring a data source with materially larger effects (a different venue, a differe
 frequency where costs are not retail-sized, or a structural positioning dataset with
 real predictive content) or it must stop claiming to search for alpha.
 
+## Round 17 — Regime layer and portfolio allocation: built, measured, and found not to add value
+
+The master specification asks for a regime-aware multi-strategy system. Rounds 1-16
+produced 21 signals and no allocation policy: nothing said *when* a rule may hold
+risk or *how much*. This round builds that layer and then tests it against the only
+control that can distinguish intelligence from arithmetic.
+
+### What was built
+
+* `qts.research.edgelab.regime` — a causal classifier over trend strength (Kaufman
+  efficiency ratio, ranked in its own trailing window) and volatility percentile.
+  States: `TREND_UP`, `TREND_DOWN`, `RANGE`, `HIGH_VOL`, plus an explicit no-trade
+  flag in the top 5% of volatility.
+* `qts.research.edgelab.portfolio` — pre-registered eligibility (trend rules only in
+  `TREND_UP`, mean-reversion only in `RANGE`, macro families regime-agnostic),
+  volatility targeting capped at 1.0x, and a no-trade override.
+* `GET /api/research/regime` — the layer as a product surface, reporting the current
+  state, the policy, and an explicit `adds_value_vs_control: false`.
+
+Two design errors were found and fixed while building it:
+
+1. **A fixed efficiency threshold does not transfer.** The first classifier used
+   `ER >= 0.30`, which labelled only **2.5%** of gold bars as trending — every trend
+   rule would have been permanently ineligible. A policy that never trades is not a
+   conservative policy, it is a broken one. Replaced with a causal trailing rank
+   (top 30%), giving a stable mix: RANGE 57.8%, HIGH_VOL 20.5%, TREND_UP 10.3%,
+   TREND_DOWN 10.4%.
+2. **The first control was not exposure-matched.** It scaled the raw blend by the
+   full system's average position, which is `avg(gross × scale)`, not
+   `avg(blend) × k` — so the "control" held about a third of the system's risk. A
+   control that is not matched to the thing it controls for cannot test anything.
+   Both controls (F and G) are now built from the object they are compared against
+   and their average position is asserted equal by construction.
+
+### Result — 52-year basis, `ecn_realistic`, charged on every position change
+
+| config | DEV SR | DEV maxDD | VAL SR | TEST SR |
+|---|---|---|---|---|
+| A buy & hold | 0.380 | 70.0% | 0.943 | 0.135 |
+| B static blend (21 signals) | **0.505** | 26.7% | 0.756 | **0.194** |
+| C regime-gated | 0.428 | 21.9% | 1.023 | 0.122 |
+| D vol-targeted | **0.567** | 19.4% | 1.138 | 0.217 |
+| E full system | 0.316 | 20.0% | **1.216** | 0.072 |
+| F gated, constant leverage (same avg exposure) | — | — | 1.023 | 0.122 |
+| G plain blend, constant leverage (same avg exposure) | — | — | 0.756 | 0.194 |
+
+Exposure-matched comparisons (block bootstrap, 1,000 reps):
+
+| comparison | DEV | VAL | TEST |
+|---|---|---|---|
+| E vs F (volatility timing) | −0.112, p 0.144 | +0.194, p **0.018** | −0.050, p 0.478 |
+| E vs G (whole layer) | −0.189, p 0.110 | +0.460, p **0.004** | −0.122, p 0.468 |
+
+**The layer wins in one window out of three, and loses in the other two.** That is
+the signature of noise, not of a mechanism. The separately measured core of the
+layer — volatility targeting on gold itself, with no signal at all — improved
+Sharpe versus an exposure-matched constant-leverage portfolio in **5 of 12**
+target-window pairs, and all five wins were in the same window (VAL, 2013-2019).
+
+### What this means for the product
+
+The layer is real, tested infrastructure and it is wired into the API, because a
+multi-strategy system needs an allocation policy whether or not that policy adds
+alpha. But **the evidence does not support describing it as intelligent
+allocation.** It is de-risking: it cuts exposure, and it cuts return roughly in
+proportion. The API therefore reports `adds_value_vs_control: false` beside the live
+regime, and the default policy is the simplest one consistent with the evidence —
+the static blend at capped exposure, with the no-trade state retained because it is
+a tail-risk control, not a return claim.
+
+This is the eighth consecutive family-level rejection. It is also the first one that
+was *required* by the specification rather than invented by the search, which makes
+it more useful than the others: the architecture now exists, is measured, and cannot
+silently become marketing.
+
+## Round 18 — Cross-market: gold miners as information (4 configurations)
+
+New information again: a *second market*. Every earlier round read gold's own price
+or a macro aggregate. Listed gold miners are a levered equity claim on the same
+metal, and their ratio to gold is a standard professional input.
+
+**The round produced the best number in the programme's history and then destroyed
+it, which is the most useful thing that has happened in several rounds.**
+
+Gold `AU.csv` is the LBMA 10:30 London fix. The miners ETF closes at 16:00 New
+York — roughly eleven hours *later* on the same calendar date. Using same-day
+miners data to trade the gold fix is look-ahead:
+
+| config | DEV alpha @ lag 0 | DEV t | DEV alpha @ executable lag | DEV t |
+|---|---|---|---|---|
+| `miner_momentum` | **+10.74%** | **5.57** | +0.02% | **0.01** |
+| `miner_dip` | −15.62% | −4.88 | −2.48% | −0.77 |
+| `miner_stress` | −19.95% | −5.72 | −0.23% | −0.06 |
+| `miner_dip_fast` | −27.09% | −7.90 | −2.76% | −0.81 |
+
+At the executable lag: **zero survivors**, zero confirmed on VAL, DSR ≤ 0.41 across
+the family. On the tradable 24-hour close the signal is +1.3%/yr at t 0.93 at lag 0
+and never better at any lag — it does not exist there either.
+
+### Why this matters more than another rejection
+
+This is the **third** independent occurrence of the price-snapshot artifact, after
+XL-001 (round 10) and the real-yield family (round 11). It is now the single most
+productive thing the audit programme has found: an effect of t 5.57 — five and a
+half sigma, Sharpe 1.94, deflated Sharpe 1.000, positive on DEV, VAL *and* the spent
+2020-2024 holdout — evaporates to t 0.01 with one day of honest delay. Any process
+without a snapshot check would have registered this as the programme's first
+validated edge and deployed capital against a clock discrepancy.
+
+`miners_equity_close` (21:00 London) is now registered in
+`qts.research.edgelab.timing.DRIVER_SNAPSHOTS`, so the guardrail answers this
+question automatically for any future cross-market signal rather than relying on
+someone remembering.
+
+**Family closed.**
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
