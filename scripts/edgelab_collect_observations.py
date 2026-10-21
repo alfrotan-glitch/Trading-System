@@ -162,7 +162,6 @@ def run(dry_run: bool, verbose: bool = True) -> dict:
             report["candidates"][cand.id] = {"skipped": "no driver declaration"}
             continue
         raw = drivers[[c for c in drivers.columns if c in cols]]
-        d = align_drivers(raw, bars.index)
         # Freshness is measured on the raw frame, not the filled one.
         usable = complete_dates(bars["close"], raw, bars.index)
         if len(usable) == 0:

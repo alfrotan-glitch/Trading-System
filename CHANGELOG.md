@@ -14,6 +14,15 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Added
 
+- `qts.research.edgelab.stress` — the stress complex as a signal family: VIX trend
+  and regime, the BAA–10y default-risk premium, the Chicago Fed NFCI and the St
+  Louis Fed Financial Stress Index, plus a four-leg composite. `stress_frame()`
+  hard-fails if any series is shorter than declared, so a mirror serving a rolling
+  window cannot silently turn a 25-year test into a 2-year one. Round 12 found the
+  family has **no** tradable edge in either direction, which is now on record with
+  the numbers rather than asserted.
+- `scripts/edgelab_stress_run.py` (round 12) and `scripts/edgelab_realyield_retest.py`
+  (round 11) — both write a JSON artifact under `data/research/experiments/`.
 - `qts.research.edgelab.timing` — price-snapshot timing as a first-class, tested
   concept: UTC strike hours for each price source and driver, `required_lag()`,
   `verdict_at_lag()` and a misalignment pre-flight check. Added after XL-001's gate
@@ -118,6 +127,16 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
   mis-joins against driver frames.
 
 ### Fixed
+
+- `scripts/edgelab_prepare_longgold.py` read a FRED mirror layout that no longer
+  exists, so the 52-year daily gold store was unbuildable and round 3 was not
+  reproducible from scratch. It now reads `metals/AU.csv` + `fred/{treasury_10y,cpi}.csv`
+  and truncates at 2019-12-31 so the spent 2020-2024 holdout cannot be reached
+  through `load_long_gold()`. Round 3 reproduces exactly (`tsmom_1m` clears again).
+- `tests/unit/test_edgelab_longgold.py::test_macro_is_release_lagged` read the same
+  dead paths and would have masked the breakage; it now reads the live files.
+- `stress.py` index handling: three separate `index.tz` checks were replaced by one
+  `_as_utc()` helper, after a tz-naive/tz-aware comparison slipped through.
 
 - `collect.complete_dates` measured driver freshness on the *forward-filled* frame,
   where every row is non-null by construction, so stale drivers were accepted as

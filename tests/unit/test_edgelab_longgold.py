@@ -63,8 +63,15 @@ def test_macro_is_release_lagged():
     d = bars.index[-1]
     # Recompute from raw the way a *zero-lag* build would, then confirm the stored
     # value corresponds to an older month.
-    gs10 = pd.read_csv("data/raw/longgold/gs10/GS10.csv", na_values=["."], parse_dates=["DATE"]).set_index("DATE")["GS10"]
-    cpi = pd.read_csv("data/raw/longgold/cpi/CPIAUCSL.csv", na_values=["."], parse_dates=["DATE"]).set_index("DATE")["CPIAUCSL"]
+    def _two_col(path: str) -> pd.Series:
+        df = pd.read_csv(path, na_values=["."])
+        df.columns = ["date", "value"]
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        df["value"] = pd.to_numeric(df["value"], errors="coerce")
+        return df.dropna().set_index("date")["value"].astype(float)
+
+    gs10 = _two_col("data/raw/longgold/fred/treasury_10y.csv")
+    cpi = _two_col("data/raw/longgold/fred/cpi.csv")
     yoy = (cpi / cpi.shift(12) - 1.0) * 100.0
     joint = pd.concat([gs10.rename("gs10"), yoy.rename("yoy")], axis=1, sort=True).dropna()
     joint["ry"] = joint["gs10"] - joint["yoy"]

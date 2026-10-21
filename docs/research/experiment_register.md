@@ -328,6 +328,77 @@ is a reference-point figure, not a constant.
 `timing.py` now makes the failure mode a tested concept, and the forward API can
 never mark a rejected candidate validated.
 
+## Round 11 — Real-yield residual re-tested on tradable closes (4 configurations)
+
+Round 9's family was built on the LBMA fix with same-day drivers, i.e. it carried
+the same price-snapshot artifact that killed XL-001. Re-tested on the tradable
+24-hour close (futures spliced to M15), DFII10 lagged one full bar, HAC(5),
+`ecn_realistic`:
+
+| config | DEV alpha (t) | VAL alpha (t) | round-9 DEV alpha (t) |
+|---|---|---|---|
+| `ry_z252` | +2.0% (0.50) | −0.3% (−0.08) | +8.5% (2.41) |
+| `ry_z252_long` | +1.0% (0.46) | −0.1% (−0.05) | +3.4% (1.94) |
+| `ry_z504` | +0.7% (0.17) | +0.4% (0.12) | +3.2% (0.89) |
+| `ry_z252_sign` | +0.6% (0.12) | +1.3% (0.30) | +9.9% (2.29) |
+
+**Zero survivors.** The DEV effect fell by a factor of four to seventeen. This is
+the third family killed by the same artifact and the strongest evidence that the
+artifact, not the mechanism, was producing round 9's numbers.
+Artifact: `data/research/experiments/realyield_retest_20261021T024717Z.json`.
+
+## Round 12 — The stress complex (5 configurations, 2 directions)
+
+Motivation for a new family: every non-stress macro channel had been used, and the
+stress complex (implied vol, credit spreads, financial-conditions indices) had
+never been touched by any round — genuinely new information rather than a new
+transform of old series.
+
+Data note, recorded rather than quietly made: the HY/IG/BB OAS files in this FRED
+mirror carry only a rolling 2023-onward window (≈850 obs), so the credit leg uses
+**BAA10Y** (Moody's BAA minus the 10-year Treasury, 1986+), the same
+default-risk premium with usable history. `MOVE` starts 2016 and was excluded for
+the same reason. `stress_frame()` now hard-fails if any required series starts
+later than declared, so a truncated mirror can never silently shorten a backtest.
+
+Gold 2000-08-30 .. 2025-09-30, executable lag 1, HAC(5), `ecn_realistic`, 5 trials.
+
+| config | DEV alpha | DEV t | DEV HAC t | DEV SR | DSR | VAL alpha (t) | 2020-24 (t) |
+|---|---|---|---|---|---|---|---|
+| `vix_trend` | −3.70% | −1.59 | −1.57 | 0.327 | 0.515 | +0.84% (0.38) | −4.96% (−1.75) |
+| `vix_regime` | −4.04% | −1.72 | −1.73 | 0.278 | 0.441 | +3.70% (1.68) | −0.12% (−0.04) |
+| `credit_trend` | −4.16% | −1.78 | −1.76 | 0.282 | 0.448 | −3.67% (−1.67) | +0.37% (0.14) |
+| `credit_regime` | −3.82% | −1.64 | −1.63 | 0.320 | 0.504 | −0.33% (−0.15) | −1.74% (−0.63) |
+| `stress_composite` | −4.28% | −2.48 | −2.50 | 0.312 | 0.493 | +0.05% (0.03) | −1.68% (−0.81) |
+
+All five lose. The sign is not noise: **buying gold as stress rises loses money
+consistently across every leg and every window** — the composite is negative at
+t −2.50 on DEV, i.e. significantly *wrong*, which is information rather than
+absence of information.
+
+So the reverse hypothesis was tested pre-registered on DEV with VAL as its
+out-of-sample check: *long gold while stress is easing*, `position = 1 − composite`.
+
+| window | alpha | t | HAC t | turnover | exposure |
+|---|---|---|---|---|---|
+| DEV 2000-2012 | +3.23% | 1.88 | 1.88 | 13.5 | 0.86 |
+| VAL 2013-2019 | −0.45% | −0.29 | −0.31 | 13.9 | 0.88 |
+| 2020-2024 | +1.43% | 0.69 | 0.66 | 13.0 | 0.89 |
+
+Fails the gate on DEV (1.88 < 2.5) and does not confirm on VAL. Yearly attribution
+shows why: it is long 86% of the time, so it is a beta-reduced proxy for gold
+itself and earns alpha only when gold's own drift is unusually strong (2002, 2006,
+2009). **Family closed in both directions.**
+Artifact: `data/research/experiments/stress_20261021T024821Z.json`.
+
+### Reproducibility repair (same commit)
+
+`scripts/edgelab_prepare_longgold.py` read a FRED mirror layout that no longer
+exists in the tree, so the 52-year store was unbuildable and round 3 was not
+reproducible from scratch. It now reads `metals/AU.csv` + `fred/{treasury_10y,cpi}.csv`,
+truncates at 2019-12-31 so the spent 2020-2024 holdout stays unreachable, and
+reproduces round 3 exactly (`tsmom_1m` again clears DEV/VAL/TEST).
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |

@@ -7,13 +7,21 @@ weakening the acceptance criteria.
 
 Sources, each pinned and hashed:
 
-* **Gold** — FRED ``GOLDAMGBD228NLBM``, the LBMA Gold Price AM fix, 1969-01-02 to
-  2019-12-31 (13,305 observations). This is a *benchmark fixing*, not a
-  continuously tradable quote: you cannot fill at the fix without being a fixing
-  member. It is used to measure whether an effect exists, not to claim an
-  executable price, and every result must survive the assumed bps cost anyway.
-* **GS10** — 10-year Treasury constant-maturity yield, monthly, 1953-04 onward.
-* **CPIAUCSL** — CPI-U all items, monthly, 1947-01 onward.
+* **Gold** — the LBMA Gold Price AM fix (10:30 London), from
+  ``data/raw/longgold/metals/AU.csv``: 1968-01-02 to 2024-05-17. This is a
+  *benchmark fixing*, not a continuously tradable quote: you cannot fill at the fix
+  without being a fixing member. It is used to measure whether an effect exists,
+  not to claim an executable price, and every result must survive the assumed bps
+  cost anyway. The file is **truncated at 2019-12-31** on purpose: the 2020-2024
+  window is a spent holdout and must not be reachable through ``load_long_gold``.
+* **GS10** — 10-year Treasury constant-maturity yield, monthly, from
+  ``data/raw/longgold/fred/treasury_10y.csv``.
+* **CPI** — CPI-U all items, monthly, from ``data/raw/longgold/fred/cpi.csv``.
+
+An earlier version of this script read a FRED mirror layout that no longer exists
+in the tree, which made the 51-year store unbuildable and every round-3 result
+unreproducible. It now reads the files that are actually present, and fails loudly
+if they are not.
 
 The real yield is built as ``GS10 - CPI_YoY``. It is a *proxy* for the true TIPS
 real yield (which only exists from 2003), because TIPS did not exist before 1997.
@@ -40,9 +48,12 @@ RAW = Path("data/raw/longgold")
 OUT = Path("data/research/longgold")
 MANIFEST = OUT / "provenance.json"
 
-GOLD_CSV = RAW / "gold" / "GOLDAMGBD228NLBM_1969-2020.csv"
-GS10_CSV = RAW / "gs10" / "GS10.csv"
-CPI_CSV = RAW / "cpi" / "CPIAUCSL.csv"
+GOLD_CSV = RAW / "metals" / "AU.csv"
+GS10_CSV = RAW / "fred" / "treasury_10y.csv"
+CPI_CSV = RAW / "fred" / "cpi.csv"
+
+#: The held-out window is deliberately excluded from the export.
+LAST_BUILD_DATE = "2019-12-31"
 
 #: Conservative macro release lag, in months. See module docstring.
 MACRO_LAG_MONTHS = 2
@@ -56,18 +67,27 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def _read_two_col(path: Path) -> pd.DataFrame:
+    """Read a two-column ``date,value`` CSV, tolerating upper-case headers."""
+    df = pd.read_csv(path, na_values=["."])
+    if len(df.columns) != 2:
+        raise SystemExit(f"expected 2 columns in {path}, got {list(df.columns)}")
+    df.columns = ["date", "value"]
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+    return df.dropna().sort_values("date")
+
+
 def load_gold() -> pd.Series:
-    """Daily LBMA AM fix. FRED uses '.' for missing observations."""
-    df = pd.read_csv(GOLD_CSV, na_values=["."])
-    if list(df.columns) != ["DATE", "GOLDAMGBD228NLBM"]:
-        raise SystemExit(f"unexpected gold columns: {list(df.columns)}")
-    df["DATE"] = pd.to_datetime(df["DATE"], errors="coerce")
-    df["GOLDAMGBD228NLBM"] = pd.to_numeric(df["GOLDAMGBD228NLBM"], errors="coerce")
-    df = df.dropna().sort_values("DATE")
-    dupes = int(df["DATE"].duplicated().sum())
+    """Daily LBMA AM fix, truncated before the spent holdout window."""
+    if not GOLD_CSV.exists():
+        raise SystemExit(f"{GOLD_CSV} missing — cannot build the long history")
+    df = _read_two_col(GOLD_CSV)
+    df = df[df["date"] <= pd.Timestamp(LAST_BUILD_DATE)]
+    dupes = int(df["date"].duplicated().sum())
     if dupes:
         raise SystemExit(f"{dupes} duplicated gold dates — refusing to build")
-    s = df.set_index("DATE")["GOLDAMGBD228NLBM"].astype(float)
+    s = df.set_index("date")["value"].astype(float)
     if (s <= 0).any():
         raise SystemExit("non-positive gold price present")
     jumps = s.pct_change().abs()
@@ -77,22 +97,19 @@ def load_gold() -> pd.Series:
     return s
 
 
-def load_monthly(path: Path, column: str) -> pd.Series:
-    df = pd.read_csv(path, na_values=["."])
-    if list(df.columns) != ["DATE", column]:
-        raise SystemExit(f"unexpected columns in {path}: {list(df.columns)}")
-    df["DATE"] = pd.to_datetime(df["DATE"], errors="coerce")
-    df[column] = pd.to_numeric(df[column], errors="coerce")
-    df = df.dropna().sort_values("DATE")
-    if df["DATE"].duplicated().any():
+def load_monthly(path: Path) -> pd.Series:
+    if not path.exists():
+        raise SystemExit(f"{path} missing — cannot build the long history")
+    df = _read_two_col(path)
+    if df["date"].duplicated().any():
         raise SystemExit(f"duplicated monthly dates in {path}")
-    return df.set_index("DATE")[column].astype(float)
+    return df.set_index("date")["value"].astype(float)
 
 
 def build_macro() -> pd.DataFrame:
     """Monthly real-yield proxy and CPI year-on-year, release-lagged."""
-    gs10 = load_monthly(GS10_CSV, "GS10")
-    cpi = load_monthly(CPI_CSV, "CPIAUCSL")
+    gs10 = load_monthly(GS10_CSV)
+    cpi = load_monthly(CPI_CSV)
     cpi_yoy = (cpi / cpi.shift(12) - 1.0) * 100.0
 
     idx = gs10.index.intersection(cpi_yoy.index)
@@ -146,18 +163,18 @@ def main() -> None:
         "macro_lag_months": MACRO_LAG_MONTHS,
         "sources": {
             "gold": {
-                "series": "FRED GOLDAMGBD228NLBM — LBMA Gold Price AM fix, USD/oz",
+                "series": "LBMA Gold Price AM fix (10:30 London), USD/oz",
                 "file": str(GOLD_CSV),
                 "sha256": _sha256(GOLD_CSV),
                 "note": "Benchmark fixing, not an executable quote.",
             },
             "gs10": {
-                "series": "FRED GS10 — 10-Year Treasury constant maturity, monthly",
+                "series": "10-Year Treasury constant maturity, monthly",
                 "file": str(GS10_CSV),
                 "sha256": _sha256(GS10_CSV),
             },
             "cpi": {
-                "series": "FRED CPIAUCSL — CPI-U all items, SA, monthly",
+                "series": "CPI-U all items, SA, monthly",
                 "file": str(CPI_CSV),
                 "sha256": _sha256(CPI_CSV),
             },

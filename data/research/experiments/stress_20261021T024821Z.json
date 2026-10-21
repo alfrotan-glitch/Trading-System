@@ -1,0 +1,129 @@
+{
+  "generated_at": "2026-10-21T02:48:21.327156+00:00",
+  "round": 12,
+  "family": "stress_complex",
+  "price_basis": "AU_FUTURES (2000-08-30+) then M15 24h close (2004-06-11+)",
+  "windows": {
+    "DEV": [
+      "2000-08-30",
+      "2012-12-31"
+    ],
+    "VAL": [
+      "2013-01-01",
+      "2019-12-31"
+    ],
+    "SPENT": [
+      "2020-01-01",
+      "2024-12-31"
+    ],
+    "OOS": [
+      "2025-01-01",
+      "2025-09-30"
+    ]
+  },
+  "required_lag": 1,
+  "cost_model": "ecn_realistic",
+  "cost_bps_per_side_reference": 0.925,
+  "cost_is_measured": false,
+  "trials": 5,
+  "rows": [
+    {
+      "name": "vix_trend",
+      "dev_alpha": -0.0370037947,
+      "dev_t": -1.5858701701,
+      "dev_hac": -1.5657482937,
+      "dev_sharpe": 0.3269579504,
+      "dev_dd": 0.2730573981,
+      "dev_turnover": 33.3217293655,
+      "dev_exposure": 0.4326221224,
+      "dsr": 0.5145844809,
+      "stress_alpha": -0.0354714257,
+      "stress_t": -1.5202866955,
+      "val_alpha": 0.0083600973,
+      "val_t": 0.3787850742,
+      "lag0_dev_t": -3.1581079732,
+      "spent_alpha": -0.0495617211,
+      "spent_t": -1.7537892883,
+      "floor_sr": 0.6649566315
+    },
+    {
+      "name": "vix_regime",
+      "dev_alpha": -0.0403944675,
+      "dev_t": -1.7225706833,
+      "dev_hac": -1.7287380373,
+      "dev_sharpe": 0.278097411,
+      "dev_dd": 0.23930111,
+      "dev_turnover": 20.3043234138,
+      "dev_exposure": 0.403144301,
+      "dsr": 0.4412613846,
+      "stress_alpha": -0.0394770175,
+      "stress_t": -1.6835899089,
+      "val_alpha": 0.037048016,
+      "val_t": 1.6776918519,
+      "lag0_dev_t": -2.1281101123,
+      "spent_alpha": -0.0012420128,
+      "spent_t": -0.0440019426,
+      "floor_sr": 0.6649566315
+    },
+    {
+      "name": "credit_trend",
+      "dev_alpha": -0.0415762906,
+      "dev_t": -1.7783669467,
+      "dev_hac": -1.7625078402,
+      "dev_sharpe": 0.2823945125,
+      "dev_dd": 0.3659181987,
+      "dev_turnover": 8.8433464346,
+      "dev_exposure": 0.4407636159,
+      "dsr": 0.4475986491,
+      "stress_alpha": -0.0411798234,
+      "stress_t": -1.7613971076,
+      "val_alpha": -0.036692541,
+      "val_t": -1.6748294157,
+      "lag0_dev_t": -1.7007458387,
+      "spent_alpha": 0.0037330746,
+      "spent_t": 0.1351712263,
+      "floor_sr": 0.6649566315
+    },
+    {
+      "name": "credit_regime",
+      "dev_alpha": -0.0382069895,
+      "dev_t": -1.6387746078,
+      "dev_hac": -1.6306364492,
+      "dev_sharpe": 0.3201300522,
+      "dev_dd": 0.3652359544,
+      "dev_turnover": 9.7630544638,
+      "dev_exposure": 0.4432902864,
+      "dsr": 0.5043371571,
+      "stress_alpha": -0.0377308239,
+      "stress_t": -1.6184020737,
+      "val_alpha": -0.0033378943,
+      "val_t": -0.1543434827,
+      "lag0_dev_t": -1.0454752922,
+      "spent_alpha": -0.0173911175,
+      "spent_t": -0.6345506386,
+      "floor_sr": 0.6649566315
+    },
+    {
+      "name": "stress_composite",
+      "dev_alpha": -0.0428239013,
+      "dev_t": -2.4839923205,
+      "dev_hac": -2.4950532541,
+      "dev_sharpe": 0.3124859102,
+      "dev_dd": 0.3119286487,
+      "dev_turnover": 13.4241998877,
+      "dev_exposure": 0.7487366648,
+      "dsr": 0.4928060128,
+      "stress_alpha": -0.0421907604,
+      "stress_t": -2.4473787667,
+      "val_alpha": 0.000482612,
+      "val_t": 0.0314153123,
+      "lag0_dev_t": -2.7821185922,
+      "spent_alpha": -0.0168435374,
+      "spent_t": -0.8057435034,
+      "floor_sr": 0.6649566315
+    }
+  ],
+  "survivors": [],
+  "val_confirmed": [],
+  "spent_window_used_for_selection": false
+}

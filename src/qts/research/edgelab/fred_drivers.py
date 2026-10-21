@@ -43,7 +43,7 @@ REFERENCE_DIR = Path("data/raw/longgold/macro_daily")
 LOOKBACK_DAYS = 126
 
 
-def _load_csv(path: Path, column: str = "value") -> pd.Series:
+def _load_csv(path: Path, column: str = "value", *, positive: bool = True) -> pd.Series:
     if not path.exists():
         raise FileNotFoundError(
             f"{path} missing — re-download sgdividends/fred-macro-data (data/fred/*.csv)"
@@ -53,8 +53,10 @@ def _load_csv(path: Path, column: str = "value") -> pd.Series:
         raise ValueError(f"{path} has no column {column!r}: {list(df.columns)}")
     s = df.set_index("date")[column].sort_index()
     s = s[~s.index.duplicated(keep="first")].dropna()
-    if (s <= 0).any():
+    if positive and (s <= 0).any():
         raise ValueError(f"{path} contains non-positive values")
+    if not positive and not np.isfinite(s.to_numpy()).all():
+        raise ValueError(f"{path} contains non-finite values")
     return s.astype(float)
 
 
@@ -64,8 +66,13 @@ def load_treasury_10y() -> pd.Series:
 
 
 def load_treasury_10y_real() -> pd.Series:
-    """10-year TIPS yield (DFII10), in percent — the real opportunity cost."""
-    return _load_csv(FRED_DIR / "treasury_10y_real.csv").rename("real10")
+    """10-year TIPS yield (DFII10), in percent — the real opportunity cost.
+
+    Real yields were **negative for most of 2011-2021**, so the positivity check
+    that is right for a price level is wrong here and would reject the actual
+    history. It is opt-out per series rather than global for that reason.
+    """
+    return _load_csv(FRED_DIR / "treasury_10y_real.csv", positive=False).rename("real10")
 
 
 def load_broad_dollar() -> pd.Series:
