@@ -52,6 +52,21 @@ fresh holdout evidence. All reported profitability remains unvalidated.
 repaired execution-aware screen when reliable data become accessible. No
 fabricated edge, no live-money unlock.
 
+**Next independent research channel implemented but not yet executed**:
+Cboe VIX/VIX3M implied-volatility **term-structure slope**, distinct from
+the rejected VIX-level/credit-stress experiments. The exact predeclared
+hypotheses, official-data collection, causal lag, monthly cadence, matched
+controls, incomplete CFD financing model, and runnable commands are in
+`docs/research/vix_curve_research_plan_2026-10-21.md`.
+`scripts/fetch_cboe_vix_curve.py` acquires the source and
+`scripts/edgelab_vix_curve_run.py` evaluates only *spent* historical
+windows; `tests/unit/test_edgelab_vix_curve.py` contains integrity
+regressions. **No actual download/backtest has run in this restricted
+environment.** Run acquisition, tests and rescore in a data-connected
+environment before interpreting a numerical result. Historical wins can
+be DISCOVERY ONLY; forward observation and real broker financing are
+needed for promotion. This source does not justify unlocking trading.
+
 ---
 
 ## 1. The one thing that changed the direction of the work
