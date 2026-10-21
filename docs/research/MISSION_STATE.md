@@ -1,6 +1,6 @@
 # Mission state — XAUUSD@ validated-edge program
 
-**Updated:** 2026-10-21, after round 18 (cross-market miners).
+**Updated:** 2026-10-21, after round 19 (walk-forward selection).
 **Status:** `NO_CANDIDATE` — `XL-001` **rejected** (round 10), **zero validated edges**,
 `active_candidates: []`, forward ledger empty.
 `LIVE` locked, `REAL_CAPITAL_EXPOSURE = 0`.
@@ -127,6 +127,10 @@ persistence of the whole catalogue: 2 of 21 signals stayed positive on
 DEV+VAL+TEST, against 2.6 expected from chance alone, and White's reality check on
 the best of them gave p 0.056. Single-signal enumeration over daily gold is over.
 
+0b. **Do not performance-chase (round 19).** Re-selecting strategies by trailing
+   Sharpe is significantly worse than a fixed blend at every concentration
+   (top-3 ΔSharpe −0.244, p 0.002). The default allocation is fixed and
+   pre-registered.
 0a. **The regime/portfolio layer exists and is measured (round 17).** It is wired
    into `GET /api/research/regime`, and the measurement says it does **not** beat
    exposure-matched controls (1 of 3 windows). Do not describe it as intelligent
