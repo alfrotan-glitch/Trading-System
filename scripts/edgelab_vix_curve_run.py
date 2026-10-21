@@ -16,6 +16,7 @@ Run:
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 from datetime import UTC, datetime
@@ -86,9 +87,42 @@ def evaluate(bars: pd.DataFrame, position: pd.Series, label: str) -> dict:
     }
 
 
-def main() -> int:
+def load_gold_from_basemax(*, min_bars_per_day: int = 80) -> pd.Series:
+    """Reconstruct an executable UTC-day close from verified M15 observations.
+
+    A day with too few bars is not a legitimate daily close. BaseMax carries a
+    nearly empty tail after early 2025; rejecting such days prevents a single
+    late stale print from becoming a bogus multi-month return.
+    """
+    from edgelab_prepare_data import load_basemax
+    from qts.research.edgelab.intraday import daily_bars
+
+    m15, quality, source = load_basemax()
+    if quality.rows_out < 50_000 or quality.bad_ohlc > 0 or quality.non_positive > 0:
+        raise ValueError(f"BaseMax quality gate failed: {quality}")
+    counts = m15["close"].resample("1D").count()
+    complete_days = counts[counts >= min_bars_per_day].index
+    prices = daily_bars(m15)["close"].reindex(complete_days).dropna()
+    if len(prices) < 500:
+        raise ValueError(f"Only {len(prices)} complete daily closes: need >=500")
+    if prices.index.tz is None:
+        raise ValueError("BaseMax UTC index absent after loader")
+    prices.attrs["source"] = f"BaseMax XAUUSD M15, verified SHA256 {source['sha256']}"
+    prices.attrs["min_bars_per_day"] = min_bars_per_day
+    return prices.rename("gold")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--gold-source",
+        choices=("basemax", "tradable_gold"),
+        default="basemax",
+        help="basemax uses pinned executable M15 daily close; tradable_gold uses futures splice",
+    )
+    args = parser.parse_args(argv)
     curve = load_curve()
-    gold = tradable_gold().sort_index()
+    gold = (load_gold_from_basemax() if args.gold_source == "basemax" else tradable_gold()).sort_index()
     if not isinstance(gold.index, pd.DatetimeIndex) or gold.index.tz is None:
         raise ValueError("tradable gold series needs a timezone-aware daily UTC index")
     if len(gold) < 500:
@@ -129,6 +163,9 @@ def main() -> int:
         "source": "Cboe VIX and VIX3M public daily history",
         "source_available_through": str(curve.index.max()),
         "gold_available_through": str(gold.index.max()),
+        "gold_source": args.gold_source,
+        "gold_source_details": gold.attrs.get("source", gold.attrs.get("sources", "unknown")),
+        "gold_min_bars_per_day": gold.attrs.get("min_bars_per_day"),
         "created_at": datetime.now(UTC).isoformat(),
         "windows_are_spent": True,
         "fresh_oos_confirmed": False,
