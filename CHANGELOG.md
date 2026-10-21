@@ -14,6 +14,17 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Added
 
+- `qts.research.edgelab.regime` — causal market-regime classifier (trend strength by
+  Kaufman efficiency ratio ranked in its own trailing window, volatility percentile,
+  explicit no-trade state). Every quantity at bar `t` uses only bars up to `t`.
+- `qts.research.edgelab.portfolio` — pre-registered allocation policy: family
+  eligibility by regime, volatility targeting capped at 1.0x, no-trade override.
+- `GET /api/research/regime` — the regime layer as a product surface. Reports the
+  live state, the policy, and `adds_value_vs_control: false` with the round-17
+  evidence attached, so regime awareness cannot be presented as an edge.
+- `scripts/edgelab_portfolio_run.py` — round 17. Compares six configurations and two
+  **exposure-matched** controls on the 52-year basis; block-bootstraps the Sharpe
+  differences.
 - `scripts/edgelab_power_horizon.py` — round 16. Converts the measured effect sizes
   into the forward-data horizon needed to reach t = 2.5. Answer: 28.9 years for the
   best of 21 signals, 73 for the blend, median 94.6, and zero signals inside ten
@@ -150,6 +161,20 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Fixed
 
+- **Look-ahead in `VolatilityRegimeDetector.label`.** The high-volatility threshold
+  was `np.quantile(vols, q)` over the *entire* volatility series, including bars that
+  had not happened yet, so every historical label depended on the future. It now
+  quantiles only the volatility observed so far.
+- **A regime classifier that would never have traded.** The first version of the new
+  classifier used a fixed efficiency ratio of 0.30, which labelled only 2.5% of gold
+  bars as trending — making every trend rule permanently ineligible. Replaced with a
+  causal trailing rank (top 30%), giving RANGE 57.8% / HIGH_VOL 20.5% / TREND_UP
+  10.3% / TREND_DOWN 10.4%.
+- **A control that was not exposure-matched.** Round 17's first control scaled the
+  raw blend by the full system's average position, which is `avg(gross x scale)` and
+  not `avg(blend) x k`, so it held roughly a third of the system's risk. Controls are
+  now built from the object under test and their average position is equal by
+  construction.
 - **Flaky integration test caused by a frozen clock.** The fake MetaTrader5 terminal
   in `tests/integration/test_demo_session_wiring.py` computed its tick timestamp
   once at construction, so the quote aged in real time while the test ran. On a
