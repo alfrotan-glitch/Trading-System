@@ -33,6 +33,7 @@ OUT = Path("data/research/experiments")
 BPY = 252.0
 COST = CostModel.realistic_ecn()
 DIRECTIONS = ("contango", "backwardation")
+FINANCING_STRESS_BPS_PER_CALENDAR_DAY = (0.0, 0.5, 1.0, 2.0)
 BOUNDS = {
     "DEV_SPENT": ("2008-01-01", "2015-12-31"),
     "VAL_SPENT": ("2016-01-01", "2021-12-31"),
@@ -50,8 +51,19 @@ def load_curve() -> pd.DataFrame:
     return curve_frame(series["VIX"], series["VIX3M"])
 
 
-def evaluate(bars: pd.DataFrame, position: pd.Series, label: str) -> dict:
-    """Compare against exposure-matched static gold to isolate timing from beta."""
+def evaluate(
+    bars: pd.DataFrame,
+    position: pd.Series,
+    label: str,
+    *,
+    financing_bps_per_calendar_day: float = 0.0,
+) -> dict:
+    """Compare against exposure-matched static gold and charge funding stress.
+
+    Financing is assessed on the position held during each elapsed calendar-day
+    interval; weekends therefore carry more than one day's funding. These are
+    *assumed* scenario rates, not measured broker swaps.
+    """
     if len(bars) < 250:
         return {"label": label, "status": "INSUFFICIENT", "observations": len(bars)}
     result = run_vector(
@@ -64,23 +76,52 @@ def evaluate(bars: pd.DataFrame, position: pd.Series, label: str) -> dict:
         keep_equity=True,
         execution="close",
     )
-    if result.net_returns is None:
-        raise RuntimeError("run_vector must return net returns")
+    if result.net_returns is None or result.held is None:
+        raise RuntimeError("run_vector must return held positions and net returns")
+    if financing_bps_per_calendar_day < 0 or not math.isfinite(financing_bps_per_calendar_day):
+        raise ValueError("funding stress must be finite and nonnegative")
+    elapsed = (
+        bars.index.to_series()
+        .diff()
+        .dt.total_seconds()
+        .div(86400.0)
+        .reindex(result.net_returns.index)
+        .fillna(0.0)
+    )
+    if bool((elapsed <= 0).any()):
+        raise ValueError("daily index must be strictly increasing")
+    funding = (
+        result.held.abs()
+        * elapsed
+        * (financing_bps_per_calendar_day / 1e4)
+    )
+    net = result.net_returns - funding
+    if bool((1.0 + net <= 0).any()):
+        raise ValueError("insolvent return series")
+    equity = (1.0 + net).cumprod()
+    years = len(net) / BPY
+    std = float(net.std(ddof=1))
+    sharpe = float(net.mean() / std * math.sqrt(BPY)) if std > 0 else 0.0
+    peak = equity.cummax()
+    max_dd = float((1.0 - equity / peak).max())
+    cagr = float(equity.iloc[-1] ** (1.0 / years) - 1.0)
     bench = benchmark_returns(bars)
-    decomposed = alpha_decomposition(result.net_returns, bench, BPY)
+    decomposed = alpha_decomposition(net, bench, BPY)
     try:
-        hac = hac_alpha(result.net_returns, bench, BPY, lags=10)
+        hac = hac_alpha(net, bench, BPY, lags=10)
         t = float(hac["alpha_t"])
     except ValueError:
         t = float("nan")
     return {
         "label": label,
         "status": "EVALUATED_SPENT_DATA",
-        "observations": len(result.net_returns),
+        "observations": len(net),
         "average_exposure": float(position.mean()),
-        "cagr": result.cagr,
-        "sharpe": result.sharpe,
-        "max_drawdown": result.max_dd,
+        "financing_bps_per_calendar_day_assumed": financing_bps_per_calendar_day,
+        "financing_drag_total": float(funding.sum()),
+        "cagr": cagr,
+        "sharpe": sharpe,
+        "max_drawdown": max_dd,
         "sides_per_year": result.turnover_per_year,
         "alpha_ann": decomposed.get("alpha_ann"),
         "alpha_t_hac": t if math.isfinite(t) else None,
@@ -138,25 +179,37 @@ def main(argv: list[str] | None = None) -> int:
             if sub.empty:
                 continue
             actual = pos.reindex(sub.index).fillna(0.0)
-            candidate = evaluate(sub, actual, f"{name}_{direction}")
-            # Diagnostic control, matched to the candidate's EX-POST average
+            # Diagnostic control, matched to candidate's EX-POST average
             # exposure. It is not a deployable allocation.
             matched = pd.Series(float(actual.mean()), index=sub.index)
-            reference = evaluate(sub, matched, f"{name}_matched_hold")
-            results.append(
-                {
-                    "window": name,
-                    "direction": direction,
-                    "candidate": candidate,
-                    "matched_control": reference,
-                    "sharpe_difference": (
-                        candidate["sharpe"] - reference["sharpe"]
-                        if candidate["status"] == "EVALUATED_SPENT_DATA"
-                        and reference["status"] == "EVALUATED_SPENT_DATA"
-                        else None
-                    ),
-                }
-            )
+            for funding_rate in FINANCING_STRESS_BPS_PER_CALENDAR_DAY:
+                candidate = evaluate(
+                    sub,
+                    actual,
+                    f"{name}_{direction}",
+                    financing_bps_per_calendar_day=funding_rate,
+                )
+                reference = evaluate(
+                    sub,
+                    matched,
+                    f"{name}_matched_hold",
+                    financing_bps_per_calendar_day=funding_rate,
+                )
+                results.append(
+                    {
+                        "window": name,
+                        "direction": direction,
+                        "financing_bps_per_calendar_day_assumed": funding_rate,
+                        "candidate": candidate,
+                        "matched_control": reference,
+                        "sharpe_difference": (
+                            candidate["sharpe"] - reference["sharpe"]
+                            if candidate["status"] == "EVALUATED_SPENT_DATA"
+                            and reference["status"] == "EVALUATED_SPENT_DATA"
+                            else None
+                        ),
+                    }
+                )
     payload = {
         "research_family": "equity_volatility_term_structure",
         "mechanism": "US equity option-implied volatility curve shape predicts gold risk premium",
@@ -176,6 +229,7 @@ def main(argv: list[str] | None = None) -> int:
         "cost_model": COST.name,
         "cost_bps_per_side_at_reference": COST.per_side_bps(),
         "cost_is_measured": False,
+        "financing_stress_bps_per_calendar_day": list(FINANCING_STRESS_BPS_PER_CALENDAR_DAY),
         "overnight_financing_is_measured": False,
         "overnight_financing_included": False,
         "financing_warning": (
