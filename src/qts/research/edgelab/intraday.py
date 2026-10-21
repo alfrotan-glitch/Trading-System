@@ -94,17 +94,32 @@ def within_window(bars: pd.DataFrame, start: int, end: int) -> pd.Series:
 
 
 def window_return_per_day(bars: pd.DataFrame, start: int, end: int) -> pd.Series:
-    """Compounded return earned inside ``[start, end)`` on each calendar day.
+    """Compound returns *earned inside* each complete UTC session.
 
-    Uses close-to-close returns of the bars *inside* the window, so the overnight
-    move from the previous session's last bar into the window's first bar is not
-    credited to the window. Exposed so the descriptive statistics behind a
-    hypothesis can be checked independently of any backtest.
+    Midnight-wrapping windows are labelled by their ending date: Monday 22:00
+    and Tuesday 00:00..06:00 are ONE Tuesday session. The first observed bar
+    on entering a window is not credited with a reopening gap accumulated
+    while the strategy was flat. Weekend/maintenance breaks are also excluded.
     """
-    mask = hour_mask(_dt_index(bars), start, end)
-    r = bars["close"].pct_change()
-    r = r.where(mask)
-    return (1.0 + r.fillna(0.0)).groupby(np.asarray(_dt_index(bars).date)).prod() - 1.0
+    idx = _dt_index(bars)
+    inside = hour_mask(idx, start, end).to_numpy()
+    previous_inside = np.concatenate(([False], inside[:-1]))
+    gaps = idx.to_series().diff().dt.total_seconds().to_numpy()
+    # Infer native cadence from positive gaps; no assumption that bars are M15.
+    finite_gaps = gaps[np.isfinite(gaps) & (gaps > 0)]
+    if len(finite_gaps) == 0:
+        raise ValueError("need at least two distinct timestamps")
+    native_seconds = float(np.median(finite_gaps))
+    continuous = gaps <= native_seconds * 1.5
+    r = bars["close"].pct_change().to_numpy(dtype=float)
+    earned = np.where(inside & previous_inside & continuous, r, 0.0)
+    if start > end:
+        labels = idx.normalize() + pd.to_timedelta(
+            np.asarray(idx.hour >= start, dtype=int), unit="D"
+        )
+    else:
+        labels = idx.normalize()
+    return (1.0 + pd.Series(earned, index=idx)).groupby(labels).prod() - 1.0
 
 
 def daily_bars(bars: pd.DataFrame) -> pd.DataFrame:
