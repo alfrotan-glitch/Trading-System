@@ -145,6 +145,14 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Fixed
 
+- **Flaky integration test caused by a frozen clock.** The fake MetaTrader5 terminal
+  in `tests/integration/test_demo_session_wiring.py` computed its tick timestamp
+  once at construction, so the quote aged in real time while the test ran. On a
+  loaded CI runner the freshness assertions then failed nondeterministically, and
+  which assertion broke depended on how slow the worker was — two consecutive runs
+  failed on two different tests while both passed locally in isolation. The tick is
+  now stamped per call. Verified by construction: the old code aged to 7.3 s over a
+  6-second sleep, the fix holds at 1.3 s.
 - **Double-lag bug in the round-11 and round-12 runners.** `run_vector` already
   applies one bar of lag, and both runners shifted the signal again, imposing two.
   Both were re-run at the correct lag: round 11 is unchanged (zero survivors),
