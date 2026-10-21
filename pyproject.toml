@@ -44,6 +44,7 @@ packaging = [
   "pyinstaller>=6.0; sys_platform == 'win32'",
 ]
 dev = [
+  "openpyxl>=3.1",  # reads the CFTC COT workbook (qts.research.edgelab.cot)
   "pytest>=8",
   "pytest-cov>=4",
   "pytest-xdist>=3.6",

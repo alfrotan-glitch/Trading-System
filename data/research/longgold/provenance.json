@@ -1,28 +1,28 @@
 {
-  "generated_at": "2026-10-20T16:35:50.152836+00:00",
-  "bars": 12894,
+  "generated_at": "2026-10-21T02:49:31.392289+00:00",
+  "bars": 13142,
   "span": [
-    "1969-01-02",
+    "1968-01-02",
     "2019-12-31"
   ],
-  "years": 51.0,
+  "years": 52.0,
   "macro_lag_months": 2,
   "sources": {
     "gold": {
-      "series": "FRED GOLDAMGBD228NLBM \u2014 LBMA Gold Price AM fix, USD/oz",
-      "file": "data/raw/longgold/gold/GOLDAMGBD228NLBM_1969-2020.csv",
-      "sha256": "c6dfb47e56994d60549d3f002543bbcc9925734b602bda683cafce53c35a0d28",
+      "series": "LBMA Gold Price AM fix (10:30 London), USD/oz",
+      "file": "data/raw/longgold/metals/AU.csv",
+      "sha256": "3bcd6829604406916e4ccc0cd0a302fa3a51d4a5639b3ba9e91b1b6dd0c39524",
       "note": "Benchmark fixing, not an executable quote."
     },
     "gs10": {
-      "series": "FRED GS10 \u2014 10-Year Treasury constant maturity, monthly",
-      "file": "data/raw/longgold/gs10/GS10.csv",
-      "sha256": "640f8c4e86ca2d3ecd6ebc7b15b162460385f50ce46da99b3bf36241eedff264"
+      "series": "10-Year Treasury constant maturity, monthly",
+      "file": "data/raw/longgold/fred/treasury_10y.csv",
+      "sha256": "4318d77476991f96c32d882683055b0fb5c559628d3145d75c861507e27cec7c"
     },
     "cpi": {
-      "series": "FRED CPIAUCSL \u2014 CPI-U all items, SA, monthly",
-      "file": "data/raw/longgold/cpi/CPIAUCSL.csv",
-      "sha256": "bf91e263463cb117065df478391d5dba432c6cbdd63245ed723faa69c1a63b13"
+      "series": "CPI-U all items, SA, monthly",
+      "file": "data/raw/longgold/fred/cpi.csv",
+      "sha256": "657739836c1e04227d08602c3918bc80bbc250c2e10afae8735abf3b10ceb0aa"
     }
   },
   "construction": "real_yield = GS10 - CPI_YoY, then index shifted +2 months. Ex-post realised real yield, deliberately lagged; can understate a real-time signal but cannot create one.",

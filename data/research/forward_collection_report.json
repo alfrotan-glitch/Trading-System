@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-10-21T02:44:40.470933+00:00",
+  "dry_run": false,
+  "fred": {
+    "broad_dollar": {
+      "last": "2026-10-16",
+      "rows": 5212
+    },
+    "treasury_10y": {
+      "last": "2026-10-16",
+      "rows": 16183
+    },
+    "treasury_10y_real": {
+      "last": "2026-10-16",
+      "rows": 5952
+    }
+  },
+  "gold": {
+    "rows": 27802,
+    "first": "2025-08-06 00:00:00+00:00",
+    "last": "2026-10-18 23:45:00+00:00"
+  },
+  "active_candidates": [],
+  "rejected_candidates": [
+    {
+      "id": "XL-001",
+      "reason": "Round-10 audit (2026-10-21): the gate pass was a price-snapshot artifact. Every macro round measured gold on the LBMA AM fix (10:30 London) while the drivers settle at the close (22:00 London), so the harness earned roughly 11 hours of return before the signal existed. With the decision lagged to the next fix, VAL flips sign (-1.09%) and TEST falls to 1.75; on genuinely tradable 24-hour M15 closes over 2005-2025 the alpha is +1.6%/yr, t 1.34. See docs/research/audit_xl001_2026-10-21.md."
+    }
+  ],
+  "outcome": "no active candidate: nothing can be recorded. XL-001 is rejected by the round-10 timing audit; registering a replacement now, after observing which constructions failed, would be hindsight fitting."
+}

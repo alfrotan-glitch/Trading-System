@@ -1,0 +1,546 @@
+{
+  "generated_at": "2026-10-21T02:54:58.789288+00:00",
+  "round": 14,
+  "family": "pooled_evidence",
+  "signals": 21,
+  "windows": {
+    "DEV": [
+      "1969-01-02",
+      "2000-12-31"
+    ],
+    "VAL": [
+      "2001-01-01",
+      "2010-12-31"
+    ],
+    "TEST": [
+      "2011-01-01",
+      "2019-12-31"
+    ]
+  },
+  "cost_model": "ecn_realistic",
+  "cost_is_measured": false,
+  "panel": [
+    {
+      "name": "ry_level_5y",
+      "family": "real_yield",
+      "window": "DEV",
+      "alpha_ann": -0.0376993089,
+      "t": -1.6432670773,
+      "n": 8095
+    },
+    {
+      "name": "ry_chg_12m",
+      "family": "real_yield",
+      "window": "DEV",
+      "alpha_ann": -0.0090506223,
+      "t": -0.3775495713,
+      "n": 8095
+    },
+    {
+      "name": "ry_chg_3m",
+      "family": "real_yield",
+      "window": "DEV",
+      "alpha_ann": -0.0031878529,
+      "t": -0.1291498019,
+      "n": 8095
+    },
+    {
+      "name": "infl_accel_12m",
+      "family": "inflation",
+      "window": "DEV",
+      "alpha_ann": -0.0275904114,
+      "t": -1.238775303,
+      "n": 8095
+    },
+    {
+      "name": "infl_above_3pct",
+      "family": "inflation",
+      "window": "DEV",
+      "alpha_ann": 0.0040231542,
+      "t": 0.3189613059,
+      "n": 8095
+    },
+    {
+      "name": "tsmom_1m",
+      "family": "trend",
+      "window": "DEV",
+      "alpha_ann": 0.0180085516,
+      "t": 0.3896095704,
+      "n": 8095
+    },
+    {
+      "name": "tsmom_3m",
+      "family": "trend",
+      "window": "DEV",
+      "alpha_ann": -0.0036402246,
+      "t": -0.0840400703,
+      "n": 8095
+    },
+    {
+      "name": "tsmom_12m",
+      "family": "trend",
+      "window": "DEV",
+      "alpha_ann": 0.0333181519,
+      "t": 0.7973830814,
+      "n": 8095
+    },
+    {
+      "name": "tsmom_6m",
+      "family": "trend",
+      "window": "DEV",
+      "alpha_ann": -0.0050361648,
+      "t": -0.1187097261,
+      "n": 8095
+    },
+    {
+      "name": "ma_trend_12m",
+      "family": "trend",
+      "window": "DEV",
+      "alpha_ann": 0.0167407191,
+      "t": 0.8603837987,
+      "n": 8095
+    },
+    {
+      "name": "pullback_12m_10",
+      "family": "meanrev",
+      "window": "DEV",
+      "alpha_ann": -0.08081102,
+      "t": -2.2212820778,
+      "n": 8095
+    },
+    {
+      "name": "reversal_1m",
+      "family": "meanrev",
+      "window": "DEV",
+      "alpha_ann": -0.1417807939,
+      "t": -5.0994904836,
+      "n": 8095
+    },
+    {
+      "name": "seasonal_sep_nov",
+      "family": "calendar",
+      "window": "DEV",
+      "alpha_ann": -0.0621737496,
+      "t": -1.9733691344,
+      "n": 8095
+    },
+    {
+      "name": "turn_of_month",
+      "family": "calendar",
+      "window": "DEV",
+      "alpha_ann": -0.0847461207,
+      "t": -2.5360183603,
+      "n": 8095
+    },
+    {
+      "name": "trend_lowvol",
+      "family": "regime",
+      "window": "DEV",
+      "alpha_ann": -0.0490335966,
+      "t": -1.2201674609,
+      "n": 8095
+    },
+    {
+      "name": "trend_falling_yield",
+      "family": "regime",
+      "window": "DEV",
+      "alpha_ann": -0.000308951,
+      "t": -0.0104079306,
+      "n": 8095
+    },
+    {
+      "name": "gold_m2_ratio",
+      "family": "quantity",
+      "window": "DEV",
+      "alpha_ann": -0.0748702422,
+      "t": -2.4389096569,
+      "n": 8095
+    },
+    {
+      "name": "m2_growth",
+      "family": "quantity",
+      "window": "DEV",
+      "alpha_ann": -0.0523365626,
+      "t": -1.9662163047,
+      "n": 8095
+    },
+    {
+      "name": "excess_money_growth",
+      "family": "quantity",
+      "window": "DEV",
+      "alpha_ann": -0.037830833,
+      "t": -1.5507261711,
+      "n": 8095
+    },
+    {
+      "name": "claims_trend",
+      "family": "quantity",
+      "window": "DEV",
+      "alpha_ann": -0.0212502442,
+      "t": -0.882622245,
+      "n": 8095
+    },
+    {
+      "name": "sahm_signal",
+      "family": "quantity",
+      "window": "DEV",
+      "alpha_ann": -0.0931588833,
+      "t": -3.0060999931,
+      "n": 8095
+    },
+    {
+      "name": "ry_level_5y",
+      "family": "real_yield",
+      "window": "VAL",
+      "alpha_ann": -0.0681249505,
+      "t": -2.3724888825,
+      "n": 2528
+    },
+    {
+      "name": "ry_chg_12m",
+      "family": "real_yield",
+      "window": "VAL",
+      "alpha_ann": -0.0828189414,
+      "t": -2.3349138357,
+      "n": 2528
+    },
+    {
+      "name": "ry_chg_3m",
+      "family": "real_yield",
+      "window": "VAL",
+      "alpha_ann": -0.1004580903,
+      "t": -2.7013393889,
+      "n": 2528
+    },
+    {
+      "name": "infl_accel_12m",
+      "family": "inflation",
+      "window": "VAL",
+      "alpha_ann": -0.0910269344,
+      "t": -2.6351761238,
+      "n": 2528
+    },
+    {
+      "name": "infl_above_3pct",
+      "family": "inflation",
+      "window": "VAL",
+      "alpha_ann": -0.1229038859,
+      "t": -3.170963708,
+      "n": 2528
+    },
+    {
+      "name": "tsmom_1m",
+      "family": "trend",
+      "window": "VAL",
+      "alpha_ann": -0.1694302426,
+      "t": -2.3646682427,
+      "n": 2528
+    },
+    {
+      "name": "tsmom_3m",
+      "family": "trend",
+      "window": "VAL",
+      "alpha_ann": -0.1628682605,
+      "t": -2.3575847768,
+      "n": 2528
+    },
+    {
+      "name": "tsmom_12m",
+      "family": "trend",
+      "window": "VAL",
+      "alpha_ann": -0.0905338391,
+      "t": -2.1265870322,
+      "n": 2528
+    },
+    {
+      "name": "tsmom_6m",
+      "family": "trend",
+      "window": "VAL",
+      "alpha_ann": -0.1141638452,
+      "t": -1.7542166949,
+      "n": 2528
+    },
+    {
+      "name": "ma_trend_12m",
+      "family": "trend",
+      "window": "VAL",
+      "alpha_ann": -0.0548853482,
+      "t": -1.8711345517,
+      "n": 2528
+    },
+    {
+      "name": "pullback_12m_10",
+      "family": "meanrev",
+      "window": "VAL",
+      "alpha_ann": -0.1825199462,
+      "t": -3.0807255353,
+      "n": 2528
+    },
+    {
+      "name": "reversal_1m",
+      "family": "meanrev",
+      "window": "VAL",
+      "alpha_ann": -0.1116615868,
+      "t": -2.3908041605,
+      "n": 2528
+    },
+    {
+      "name": "seasonal_sep_nov",
+      "family": "calendar",
+      "window": "VAL",
+      "alpha_ann": -0.0957320232,
+      "t": -1.9578543989,
+      "n": 2528
+    },
+    {
+      "name": "turn_of_month",
+      "family": "calendar",
+      "window": "VAL",
+      "alpha_ann": -0.1766827411,
+      "t": -3.2387959043,
+      "n": 2528
+    },
+    {
+      "name": "trend_lowvol",
+      "family": "regime",
+      "window": "VAL",
+      "alpha_ann": -0.1444939977,
+      "t": -2.5200332043,
+      "n": 2528
+    },
+    {
+      "name": "trend_falling_yield",
+      "family": "regime",
+      "window": "VAL",
+      "alpha_ann": -0.1437531372,
+      "t": -2.9569230887,
+      "n": 2528
+    },
+    {
+      "name": "gold_m2_ratio",
+      "family": "quantity",
+      "window": "VAL",
+      "alpha_ann": -0.1246211267,
+      "t": -2.4379686698,
+      "n": 2528
+    },
+    {
+      "name": "m2_growth",
+      "family": "quantity",
+      "window": "VAL",
+      "alpha_ann": -0.0862845254,
+      "t": -2.3415906517,
+      "n": 2528
+    },
+    {
+      "name": "excess_money_growth",
+      "family": "quantity",
+      "window": "VAL",
+      "alpha_ann": -0.0221730097,
+      "t": -1.856695839,
+      "n": 2528
+    },
+    {
+      "name": "claims_trend",
+      "family": "quantity",
+      "window": "VAL",
+      "alpha_ann": -0.0996596167,
+      "t": -2.6660333377,
+      "n": 2528
+    },
+    {
+      "name": "sahm_signal",
+      "family": "quantity",
+      "window": "VAL",
+      "alpha_ann": -0.1149920871,
+      "t": -2.6310176089,
+      "n": 2528
+    },
+    {
+      "name": "ry_level_5y",
+      "family": "real_yield",
+      "window": "TEST",
+      "alpha_ann": -0.0007145057,
+      "t": -0.0227509701,
+      "n": 2272
+    },
+    {
+      "name": "ry_chg_12m",
+      "family": "real_yield",
+      "window": "TEST",
+      "alpha_ann": 0.0110405584,
+      "t": 0.3250214136,
+      "n": 2272
+    },
+    {
+      "name": "ry_chg_3m",
+      "family": "real_yield",
+      "window": "TEST",
+      "alpha_ann": 0.0252510653,
+      "t": 0.7294680896,
+      "n": 2272
+    },
+    {
+      "name": "infl_accel_12m",
+      "family": "inflation",
+      "window": "TEST",
+      "alpha_ann": -0.0057157899,
+      "t": -0.1630026894,
+      "n": 2272
+    },
+    {
+      "name": "infl_above_3pct",
+      "family": "inflation",
+      "window": "TEST",
+      "alpha_ann": -0.0083612739,
+      "t": -0.1908044541,
+      "n": 2272
+    },
+    {
+      "name": "tsmom_1m",
+      "family": "trend",
+      "window": "TEST",
+      "alpha_ann": -0.0249201504,
+      "t": -0.3594920735,
+      "n": 2272
+    },
+    {
+      "name": "tsmom_3m",
+      "family": "trend",
+      "window": "TEST",
+      "alpha_ann": -0.0127213775,
+      "t": -0.1742377699,
+      "n": 2272
+    },
+    {
+      "name": "tsmom_12m",
+      "family": "trend",
+      "window": "TEST",
+      "alpha_ann": -0.0184738044,
+      "t": -0.2658245242,
+      "n": 2272
+    },
+    {
+      "name": "tsmom_6m",
+      "family": "trend",
+      "window": "TEST",
+      "alpha_ann": 0.0446570959,
+      "t": 0.6487186426,
+      "n": 2272
+    },
+    {
+      "name": "ma_trend_12m",
+      "family": "trend",
+      "window": "TEST",
+      "alpha_ann": -0.0006364645,
+      "t": -0.0180973908,
+      "n": 2272
+    },
+    {
+      "name": "pullback_12m_10",
+      "family": "meanrev",
+      "window": "TEST",
+      "alpha_ann": -0.020308278,
+      "t": -0.4109864298,
+      "n": 2272
+    },
+    {
+      "name": "reversal_1m",
+      "family": "meanrev",
+      "window": "TEST",
+      "alpha_ann": -0.014724194,
+      "t": -0.4209233485,
+      "n": 2272
+    },
+    {
+      "name": "seasonal_sep_nov",
+      "family": "calendar",
+      "window": "TEST",
+      "alpha_ann": -0.0698002247,
+      "t": -1.6509070831,
+      "n": 2272
+    },
+    {
+      "name": "turn_of_month",
+      "family": "calendar",
+      "window": "TEST",
+      "alpha_ann": -0.014562629,
+      "t": -0.3226754924,
+      "n": 2272
+    },
+    {
+      "name": "trend_lowvol",
+      "family": "regime",
+      "window": "TEST",
+      "alpha_ann": 0.0213400866,
+      "t": 0.3206717729,
+      "n": 2272
+    },
+    {
+      "name": "trend_falling_yield",
+      "family": "regime",
+      "window": "TEST",
+      "alpha_ann": -0.0224115918,
+      "t": -0.4790402461,
+      "n": 2272
+    },
+    {
+      "name": "gold_m2_ratio",
+      "family": "quantity",
+      "window": "TEST",
+      "alpha_ann": 0.0198049556,
+      "t": 0.5575173919,
+      "n": 2272
+    },
+    {
+      "name": "m2_growth",
+      "family": "quantity",
+      "window": "TEST",
+      "alpha_ann": -0.0714685345,
+      "t": -1.9846919993,
+      "n": 2272
+    },
+    {
+      "name": "excess_money_growth",
+      "family": "quantity",
+      "window": "TEST",
+      "alpha_ann": -1.48395e-05,
+      "t": -1.0002212739,
+      "n": 2272
+    },
+    {
+      "name": "claims_trend",
+      "family": "quantity",
+      "window": "TEST",
+      "alpha_ann": -0.0292587239,
+      "t": -0.6047391449,
+      "n": 2272
+    },
+    {
+      "name": "sahm_signal",
+      "family": "quantity",
+      "window": "TEST",
+      "alpha_ann": -0.020308278,
+      "t": -0.4109864298,
+      "n": 2272
+    }
+  ],
+  "pooled_mean_alpha_dev": -0.03392452405936789,
+  "pooled_t_dev": -1.485905751486504,
+  "reality_check": {
+    "observed_max_t": 0.8603837987061443,
+    "best_signal_index": 9,
+    "p_value": 0.7065,
+    "null_quantiles": {
+      "0.5": 1.2978145414221032,
+      "0.9": 2.3329613983913124,
+      "0.95": 2.633918158212894,
+      "0.99": 3.242540884577415
+    },
+    "reps": 2000,
+    "block": 20,
+    "seed": 20261021,
+    "best_signal": "ma_trend_12m"
+  },
+  "verdict": "DO NOT REJECT (no evidence of edge)"
+}

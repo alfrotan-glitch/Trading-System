@@ -1,7 +1,8 @@
 # Mission state — XAUUSD@ validated-edge program
 
-**Updated:** 2026-10-20, after round 9 (PR #42) and the forward-API honesty fix (PR #43).
-**Status:** `CANDIDATE` — one candidate (`XL-001`), **zero validated edges**.
+**Updated:** 2026-10-21, after round 15 (positioning).
+**Status:** `NO_CANDIDATE` — `XL-001` **rejected** (round 10), **zero validated edges**,
+`active_candidates: []`, forward ledger empty.
 `LIVE` locked, `REAL_CAPITAL_EXPOSURE = 0`.
 
 This file is the recovery document. If the session is interrupted, read this
@@ -79,7 +80,14 @@ read the same window because nothing survived DEV.
 
 ---
 
-## 4. Candidate XL-001
+## 4. Candidate XL-001 — REJECTED in round 10
+
+**Do not treat the table below as evidence of an edge.** Round 10 showed that the
+pass was bought by a price-snapshot artifact: `AU.csv` is the LBMA AM fix struck
+at 10:30 London, while both drivers are close-of-day values stamped 22:00 London.
+At the first executable lag the effect disappears (full 2005-2025: +1.57%, t 1.34).
+The original numbers are kept only so the reversal can be traced.
+Full audit: `docs/research/audit_xl001_2026-10-21.md`.
 
 `easing_conditions_6m`, hash `2c25b9fda8eebf01`.
 Signal: `usd = 1 if DXY < its level 126 days ago`, `yld` likewise,
@@ -113,29 +121,31 @@ Nothing logged so far is forward; everything available today predates the freeze
 
 ## 5. Experiment queue (ranked, with the reason)
 
-1. **Forward observation loop for XL-001.** The only path to validation left.
-   Refresh the three FRED mirror files, run `qts forward log`, and append. Needs a
-   date strictly after 2026-10-16 to count as forward. Automate with a cron-style
-   script; the ledger is append-only and refuses revisions.
-2. **Portfolio construction across the two credible families** (`XL-001` macro
-   easing, and the real-yield residual from round 9). Both are low-turnover, both
-   are positive on DEV and VAL, neither is validated. A combined book is worth
-   measuring because their drivers are related but not identical — but it must be
-   reported as a *combination of unvalidated signals*, never as a validated edge,
-   and the combination itself is a new trial that must be counted.
-3. **Structural-break study on the dollar/yield → gold relationship.** Round 8
-   block A and the known 2022+ breakdown suggest the relationship changed. A
-   regime-switching version of `XL-001` (exposure scaled by rolling correlation
-   strength) is the natural next hypothesis — low turnover, economically
-   motivated, and it addresses the identified failure mode rather than adding a
-   new bet.
-4. **Anything above ~500 sides/yr is not worth running** unless its gross alpha
+**The standing rule from round 14: a new round must bring new information, not a
+new transformation of information already in hand.** Round 14 measured the
+persistence of the whole catalogue: 2 of 21 signals stayed positive on
+DEV+VAL+TEST, against 2.6 expected from chance alone, and White's reality check on
+the best of them gave p 0.056. Single-signal enumeration over daily gold is over.
+
+1. **The classical data channels are now exhausted.** Round 15 closed positioning
+   (8.7 years only, no CI excluding zero). Every dataset reachable from this
+   sandbox has been tested: price, trend, volatility, calendar, relative value,
+   real yields, inflation, money stock, labour market, credit, financial
+   conditions, and positioning. A further round must either bring a genuinely new
+   data source or change the *question*, not add another transform.
+2. **Re-scope the product claim.** If no edge materialises, the honest product is a
+   risk-managed gold allocation with a measured, *unvalidated* timing overlay —
+   and the docs must say exactly that. Do not relabel it.
+3. **Anything above ~500 sides/yr is not worth running** unless its gross alpha
    clears 9%/yr by a wide margin.
 
 Explicitly closed — do not re-run: `tsmom_1m` (failed holdout), gold/silver ratio
 (3 hypotheses, 0 survivors), standalone `usd_falling_*` / `yield_falling_*` legs
 (round 5), conjunction of the easing legs (worse than the average), session-clock
-flips (round 7, cost-killed), M15 trend at intraday cadence (round 7).
+flips (round 7, cost-killed), M15 trend at intraday cadence (round 7), **XL-001
+(round 10, price-snapshot artifact)**, **real-yield residual (round 11, dead on
+tradable closes)**, **the stress complex — VIX / credit / NFCI / St Louis FSI —
+in both directions (round 12)**.
 
 ---
 
@@ -154,12 +164,19 @@ curl -sSL -o /tmp/vu.tgz https://codeload.github.com/vudo805/forex-price-simulat
 
 # 3. prepare and reproduce
 .venv/bin/python scripts/edgelab_prepare_data.py
-.venv/bin/python scripts/edgelab_prepare_longgold.py
+.venv/bin/python scripts/edgelab_prepare_longgold.py   # rebuilds the 52-year store; fixed 2026-10-21
+.venv/bin/python scripts/edgelab_longhistory_run.py    # round 3; must still find tsmom_1m
+.venv/bin/python scripts/edgelab_realyield_retest.py   # round 11
+.venv/bin/python scripts/edgelab_stress_run.py         # round 12
 .venv/bin/python scripts/edgelab_candidate_run.py        # XL-001 scorecard
 .venv/bin/python scripts/edgelab_xl001_holdout.py        # round 8 holdout
 .venv/bin/python scripts/edgelab_intraday_run.py         # round 7 sessions
 .venv/bin/python scripts/edgelab_realyield_run.py        # round 9 real-yield residual
 qts forward score
+
+# 3b. rounds 13-14
+.venv/bin/python scripts/edgelab_quantity_run.py    # round 13: money + labour
+.venv/bin/python scripts/edgelab_meta_run.py        # round 14: reality check, ~5 s
 
 # 4. verification before any PR
 .venv/bin/pytest tests/ -q && .venv/bin/ruff check src/ tests/ && .venv/bin/mypy src/qts/research

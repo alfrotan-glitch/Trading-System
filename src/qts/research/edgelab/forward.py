@@ -60,6 +60,12 @@ class Candidate:
     rationale: str
     params: dict
     signal: Callable[[pd.DataFrame], pd.Series]
+    #: Lifecycle status. ``candidate`` means it cleared the pre-registered gate on
+    #: development data and is accumulating evidence. ``rejected`` means later
+    #: analysis invalidated it; the definition and its history are kept so the
+    #: record is auditable, but no forward evidence should be collected for it.
+    status: str = "candidate"
+    rejected_reason: str = ""
 
     def definition_hash(self) -> str:
         """Hash of the callable's source plus parameters — the freeze mechanism."""
@@ -78,6 +84,8 @@ class Candidate:
             "rationale": self.rationale,
             "params": self.params,
             "definition_hash": self.definition_hash(),
+            "status": self.status,
+            "rejected_reason": self.rejected_reason,
         }
 
 

@@ -151,3 +151,34 @@ def test_api_reports_unvalidated_without_forward_evidence():
     for cand in body["candidates"]:
         if not cand["forward"] or cand["forward"].get("observations", 0) < 3:
             assert cand["validated"] is False
+
+
+def test_a_rejected_candidate_keeps_its_definition_but_cannot_be_validated():
+    """XL-001's gate pass turned out to be a timing artifact.
+
+    Rejecting it must not delete the record — the definition, hash and reason are
+    what make the rejection auditable — and the API must never report a rejected
+    candidate as validated, however good a later sample looks.
+    """
+    rejected = [c for c in candidates() if c.status == "rejected"]
+    assert rejected, "expected at least one rejected candidate in the catalogue"
+    for c in rejected:
+        assert c.rejected_reason and len(c.rejected_reason) > 40
+        # The definition is preserved verbatim so the rejection can be reproduced.
+        assert c.definition_hash()
+        assert c.signal is not None
+
+
+def test_rejected_status_is_exposed_by_the_api():
+    from fastapi.testclient import TestClient
+
+    from qts.api.server import app
+
+    body = TestClient(app).get("/api/research/edgelab-forward").json()
+    assert "rejected_candidates" in body and "active_candidates" in body
+    assert body["validated_any"] is False
+    for cand in body["candidates"]:
+        if cand["status"] == "rejected":
+            assert cand["validated"] is False
+            assert cand["rejected_reason"]
+            assert cand["id"] in body["rejected_candidates"]

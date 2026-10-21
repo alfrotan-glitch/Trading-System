@@ -1,0 +1,85 @@
+{
+  "generated_at": "2026-10-21T02:41:59.117089+00:00",
+  "window": [
+    "2005-06-01",
+    "2024-05-17"
+  ],
+  "n_common": 4778,
+  "rows": [
+    {
+      "basis": "LBMA AM fix",
+      "lag": 0,
+      "n": 4777,
+      "alpha_ann": 0.0392999827,
+      "alpha_t": 2.6569587863,
+      "beta": 0.495033349,
+      "sharpe": 0.8619486752,
+      "total_net": 4.1843042363,
+      "turnover_yr": 9.3616575973,
+      "exposure": 0.7444537463
+    },
+    {
+      "basis": "LBMA AM fix",
+      "lag": 1,
+      "n": 4777,
+      "alpha_ann": 0.0102315652,
+      "alpha_t": 0.7018607096,
+      "beta": 0.4984565999,
+      "sharpe": 0.5929246377,
+      "total_net": 2.0070105815,
+      "turnover_yr": 9.3616575973,
+      "exposure": 0.7442444537
+    },
+    {
+      "basis": "LBMA AM fix",
+      "lag": 2,
+      "n": 4777,
+      "alpha_ann": 0.0137829535,
+      "alpha_t": 0.9131377317,
+      "beta": 0.5045931388,
+      "sharpe": 0.6302452199,
+      "total_net": 2.2550102022,
+      "turnover_yr": 9.3352867308,
+      "exposure": 0.7440351612
+    },
+    {
+      "basis": "M15 tradable close",
+      "lag": 0,
+      "n": 4777,
+      "alpha_ann": 0.0181691307,
+      "alpha_t": 1.2289007334,
+      "beta": 0.4808470736,
+      "sharpe": 0.6690591339,
+      "total_net": 2.4082325236,
+      "turnover_yr": 9.3616575973,
+      "exposure": 0.7444537463
+    },
+    {
+      "basis": "M15 tradable close",
+      "lag": 1,
+      "n": 4777,
+      "alpha_ann": 0.0154727173,
+      "alpha_t": 1.0396927425,
+      "beta": 0.4990352924,
+      "sharpe": 0.6531341349,
+      "total_net": 2.352140394,
+      "turnover_yr": 9.3616575973,
+      "exposure": 0.7442444537
+    },
+    {
+      "basis": "M15 tradable close",
+      "lag": 2,
+      "n": 4777,
+      "alpha_ann": 0.0159166524,
+      "alpha_t": 1.0806754193,
+      "beta": 0.4830165127,
+      "sharpe": 0.6492190965,
+      "total_net": 2.2797117501,
+      "turnover_yr": 9.3352867308,
+      "exposure": 0.7440351612
+    }
+  ],
+  "verdict": "WEAKENED",
+  "cost_model": "ecn_realistic",
+  "note": "LBMA AM fix is 10:30 London. DXY and the 10y are close-of-day series, so the lag-0 harness earns part of its return before the signal exists. Lag 1 is the implementable version."
+}

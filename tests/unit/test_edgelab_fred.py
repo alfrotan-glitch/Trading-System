@@ -80,3 +80,25 @@ def test_loaders_raise_a_useful_error_when_data_is_absent(loader, tmp_path, monk
     monkeypatch.setattr(F, "FRED_DIR", tmp_path)
     with pytest.raises(FileNotFoundError, match="sgdividends"):
         getattr(F, loader)()
+
+
+def test_real_yield_loader_accepts_negative_yields(tmp_path, monkeypatch):
+    """Real yields were negative for most of 2011-2021.
+
+    The positivity guard is correct for a price level and wrong for a yield; it
+    rejected the actual DFII10 history and broke `scripts/edgelab_realyield_run.py`.
+    """
+    p = tmp_path / "treasury_10y_real.csv"
+    p.write_text("date,value\n2020-01-02,-0.15\n2020-01-03,-0.20\n2020-01-06,0.02\n", encoding="utf-8")
+    monkeypatch.setattr(F, "FRED_DIR", tmp_path)
+    s = F.load_treasury_10y_real()
+    assert s.min() == pytest.approx(-0.20)
+    assert len(s) == 3
+
+
+def test_price_level_loader_still_rejects_non_positive(tmp_path, monkeypatch):
+    p = tmp_path / "treasury_10y.csv"
+    p.write_text("date,value\n2020-01-02,1.5\n2020-01-03,0\n", encoding="utf-8")
+    monkeypatch.setattr(F, "FRED_DIR", tmp_path)
+    with pytest.raises(ValueError, match="non-positive"):
+        F.load_treasury_10y()

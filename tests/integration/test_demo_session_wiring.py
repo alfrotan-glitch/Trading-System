@@ -63,9 +63,13 @@ def _fake_mt5(*, trade_mode: int = 0, symbol: str = "XAUUSD@", tick_age_s: float
         stops_level=0,
         freeze_level=0,
     )
-    now_s = time.time() - tick_age_s
-
     def _tick():
+        # Computed per call, NOT once at construction. A frozen timestamp means the
+        # quote ages in real time while the test runs, so on a loaded CI runner any
+        # assertion of freshness fails nondeterministically — and which assertion
+        # breaks depends on how slow the worker happened to be. That is a clock
+        # dependency in the test, not a defect in the code under test.
+        now_s = time.time() - tick_age_s
         bid = 2000.00
         ask = round(bid + spread, 2)
         return SimpleNamespace(

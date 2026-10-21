@@ -14,6 +14,50 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
 
 ### Added
 
+- `qts.research.edgelab.cot` — CFTC Commitments of Traders positioning for gold.
+  374 weekly reports (2018-2025) recovered from a scraper repository after the
+  CFTC site itself proved unreachable. The loader re-sorts by parsed date because
+  the upstream file is ordered by `MM-DD-YY` string; values are stamped four
+  calendar days forward to respect the Friday release. Round 15 measured four
+  configurations and found no confidence interval excluding zero on 8.7 years —
+  reported as an effect size, explicitly not as a gate verdict.
+- `qts.research.edgelab.quantity` — money-stock and labour-market signals
+  (`gold_m2_ratio`, `m2_growth`, `excess_money_growth`, `claims_trend`,
+  `sahm_signal`), each stamped at its publication date so nothing is visible before
+  it is printed. Round 13 found no tradable edge, and found that gold/M2 valuation
+  and Sahm-rule buying are *negative* over 51 years.
+- `scripts/edgelab_meta_run.py` — round 14, the pooled-evidence study. It puts every
+  catalogue signal on one frame and runs White's reality check on the maximum alpha
+  t-statistic. Result: 2/21 signals persist on DEV+VAL+TEST against 2.6 expected by
+  chance, and p = 0.056. This is the measurement that ends single-signal
+  enumeration over daily gold.
+- `qts.research.edgelab.stress` — the stress complex as a signal family: VIX trend
+  and regime, the BAA–10y default-risk premium, the Chicago Fed NFCI and the St
+  Louis Fed Financial Stress Index, plus a four-leg composite. `stress_frame()`
+  hard-fails if any series is shorter than declared, so a mirror serving a rolling
+  window cannot silently turn a 25-year test into a 2-year one. Round 12 found the
+  family has **no** tradable edge in either direction, which is now on record with
+  the numbers rather than asserted.
+- `scripts/edgelab_stress_run.py` (round 12) and `scripts/edgelab_realyield_retest.py`
+  (round 11) — both write a JSON artifact under `data/research/experiments/`.
+- `qts.research.edgelab.timing` — price-snapshot timing as a first-class, tested
+  concept: UTC strike hours for each price source and driver, `required_lag()`,
+  `verdict_at_lag()` and a misalignment pre-flight check. Added after XL-001's gate
+  pass was traced to gold (10:30 AM fix) and its drivers (22:00 close) being
+  sampled eleven hours apart.
+- `qts.research.edgelab.collect` — forward-observation planning and alignment:
+  forward-only (strictly after registration), complete-and-fresh drivers, and a
+  tradable 24-hour price basis.
+- `scripts/edgelab_collect_observations.py` — automated refresh of the FRED mirror
+  and the Dukascopy replay feed, plus ledger recording. Idempotent and
+  revision-refusing; writes nothing when no candidate is active.
+- `scripts/audit_xl001_independent.py` and `scripts/audit_xl001_price_basis.py` —
+  reimplementation of the candidate and cost model with no shared code, exiting
+  non-zero on any number that fails to reproduce.
+- `Candidate.status` / `Candidate.rejected_reason`, and
+  `active_candidates()`; the forward API exposes `active_candidates` and
+  `rejected_candidates` and never marks a rejected candidate validated.
+
 - `qts.research.edgelab.intraday` — session-clock signals (fixed UTC windows,
   overnight reversal, late-New-York momentum, path-dependent opening-range
   breakout) with an explicit no-look-ahead contract.
@@ -90,7 +134,46 @@ behaviour, gate, risk limit or lock changes; `LIVE` stays locked and
   (52 prior round-1 configurations plus 9 in round 7) rather than the count of the
   current run alone.
 
+### Changed
+
+- **XL-001 status `candidate` → `rejected`.** Its gate pass does not survive an
+  independent audit: measured on the LBMA AM fix at a lag the data does not permit,
+  it reports alpha_t 2.66; on tradable 24-hour closes it is +1.57%/yr at t 1.34.
+  The definition and hash are preserved so the rejection is reproducible.
+- `daily_bars` now guarantees a timezone-aware index; a naive daily index silently
+  mis-joins against driver frames.
+
 ### Fixed
+
+- **Flaky integration test caused by a frozen clock.** The fake MetaTrader5 terminal
+  in `tests/integration/test_demo_session_wiring.py` computed its tick timestamp
+  once at construction, so the quote aged in real time while the test ran. On a
+  loaded CI runner the freshness assertions then failed nondeterministically, and
+  which assertion broke depended on how slow the worker was — two consecutive runs
+  failed on two different tests while both passed locally in isolation. The tick is
+  now stamped per call. Verified by construction: the old code aged to 7.3 s over a
+  6-second sleep, the fix holds at 1.3 s.
+- **Double-lag bug in the round-11 and round-12 runners.** `run_vector` already
+  applies one bar of lag, and both runners shifted the signal again, imposing two.
+  Both were re-run at the correct lag: round 11 is unchanged (zero survivors),
+  round 12 is stronger (composite DEV t −2.48 → −2.78; the reverse hypothesis still
+  fails at DEV t 2.23). Round 10 used a hand-rolled explicit lag and is unaffected;
+  round 13 was written after the fix.
+- `scripts/edgelab_prepare_longgold.py` read a FRED mirror layout that no longer
+  exists, so the 52-year daily gold store was unbuildable and round 3 was not
+  reproducible from scratch. It now reads `metals/AU.csv` + `fred/{treasury_10y,cpi}.csv`
+  and truncates at 2019-12-31 so the spent 2020-2024 holdout cannot be reached
+  through `load_long_gold()`. Round 3 reproduces exactly (`tsmom_1m` clears again).
+- `tests/unit/test_edgelab_longgold.py::test_macro_is_release_lagged` read the same
+  dead paths and would have masked the breakage; it now reads the live files.
+- `stress.py` index handling: three separate `index.tz` checks were replaced by one
+  `_as_utc()` helper, after a tz-naive/tz-aware comparison slipped through.
+
+- `collect.complete_dates` measured driver freshness on the *forward-filled* frame,
+  where every row is non-null by construction, so stale drivers were accepted as
+  observations. It now takes the raw frame, and a test pins the 7-day rule.
+- The replay-feed downloader dropped the timezone from the parquet index, which
+  would have broken every downstream join. The index is localised and asserted.
 
 - `qts.research.edgelab.fred_drivers.align_to_index` — forward-filling a
   naive-index driver frame onto a tz-aware bar index produced a **constant

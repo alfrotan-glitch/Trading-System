@@ -291,18 +291,249 @@ commands are maintained in a single place: **`MISSION_STATE.md`**. Read it befor
 designing the next hypothesis — in particular, it records that **no untouched
 historical window remains**, which changes what "confirmation" can mean from here.
 
+## Round 10 — Independent audit of XL-001 → **candidate rejected**
+
+Full write-up: `audit_xl001_2026-10-21.md`. Scripts:
+`scripts/audit_xl001_independent.py`, `scripts/audit_xl001_price_basis.py`.
+
+The audit reimplemented the candidate and the cost model from raw CSVs with no
+shared code, then tested a property no previous round had tested: **are the price
+and the signal sampled at times that make the trade executable?**
+
+They were not. Gold was measured on the **LBMA AM fix (10:30 London)** in every
+macro round; DXY and the 10-year yield are **close-of-day** series settling around
+22:00 London. The harness was crediting a position entered eleven hours before its
+information existed. The AM fix and a 24-hour tradable close share only 0.27 daily
+return correlation, so the two are genuinely different snapshots.
+
+| Price basis | Lag | Alpha/yr | alpha_t |
+|---|---|---|---|
+| LBMA AM fix | 0 (as scored) | +3.93% | **2.66** |
+| LBMA AM fix | 1 (implementable) | +1.02% | 0.70 |
+| **M15 tradable close** | **1** | **+1.55%** | **1.04** |
+
+On tradable prices over 2005-2025 the rule earns **+1.57%/yr at t 1.34**. The 2001-2010
+and 2020-2024 windows flip negative at the implementable lag.
+
+What the audit *confirmed*: the cost model computes exactly what it documents
+(0.400 / 0.925 / 0.800 / 0.550 bps per side), the signal does not look ahead in its
+own right (identical on truncated history at 6,059 dates), and the arithmetic
+reproduces to within edge effects (DEV alpha_t 2.60 vs 2.70).
+
+Also established: cost is charged at each bar's own price, so the realistic model
+runs 4.62 bps/side at 1971-2000 gold prices and 0.56 at 2025 prices. "0.925 bps/side"
+is a reference-point figure, not a constant.
+
+**Status change:** `candidate` → `rejected`, definition and hash preserved.
+`timing.py` now makes the failure mode a tested concept, and the forward API can
+never mark a rejected candidate validated.
+
+## Round 11 — Real-yield residual re-tested on tradable closes (4 configurations)
+
+Round 9's family was built on the LBMA fix with same-day drivers, i.e. it carried
+the same price-snapshot artifact that killed XL-001. Re-tested on the tradable
+24-hour close (futures spliced to M15), DFII10 lagged one full bar, HAC(5),
+`ecn_realistic`:
+
+| config | DEV alpha (t) | VAL alpha (t) | round-9 DEV alpha (t) |
+|---|---|---|---|
+| `ry_z252` | +2.0% (0.50) | −0.3% (−0.08) | +8.5% (2.41) |
+| `ry_z252_long` | +1.0% (0.46) | −0.1% (−0.05) | +3.4% (1.94) |
+| `ry_z504` | +0.7% (0.17) | +0.4% (0.12) | +3.2% (0.89) |
+| `ry_z252_sign` | +0.6% (0.12) | +1.3% (0.30) | +9.9% (2.29) |
+
+**Zero survivors.** The DEV effect fell by a factor of four to seventeen. This is
+the third family killed by the same artifact and the strongest evidence that the
+artifact, not the mechanism, was producing round 9's numbers.
+Artifact: `data/research/experiments/realyield_retest_20261021T024717Z.json`.
+
+## Round 12 — The stress complex (5 configurations, 2 directions)
+
+Motivation for a new family: every non-stress macro channel had been used, and the
+stress complex (implied vol, credit spreads, financial-conditions indices) had
+never been touched by any round — genuinely new information rather than a new
+transform of old series.
+
+Data note, recorded rather than quietly made: the HY/IG/BB OAS files in this FRED
+mirror carry only a rolling 2023-onward window (≈850 obs), so the credit leg uses
+**BAA10Y** (Moody's BAA minus the 10-year Treasury, 1986+), the same
+default-risk premium with usable history. `MOVE` starts 2016 and was excluded for
+the same reason. `stress_frame()` now hard-fails if any required series starts
+later than declared, so a truncated mirror can never silently shorten a backtest.
+
+Gold 2000-08-30 .. 2025-09-30, executable lag 1, HAC(5), `ecn_realistic`, 5 trials.
+
+| config | DEV alpha | DEV t | DEV HAC t | DEV SR | DSR | VAL alpha (t) | 2020-24 (t) |
+|---|---|---|---|---|---|---|---|
+| `vix_trend` | −3.70% | −1.59 | −1.57 | 0.327 | 0.515 | +0.84% (0.38) | −4.96% (−1.75) |
+| `vix_regime` | −4.04% | −1.72 | −1.73 | 0.278 | 0.441 | +3.70% (1.68) | −0.12% (−0.04) |
+| `credit_trend` | −4.16% | −1.78 | −1.76 | 0.282 | 0.448 | −3.67% (−1.67) | +0.37% (0.14) |
+| `credit_regime` | −3.82% | −1.64 | −1.63 | 0.320 | 0.504 | −0.33% (−0.15) | −1.74% (−0.63) |
+| `stress_composite` | −4.28% | −2.48 | −2.50 | 0.312 | 0.493 | +0.05% (0.03) | −1.68% (−0.81) |
+
+All five lose. The sign is not noise: **buying gold as stress rises loses money
+consistently across every leg and every window** — the composite is negative at
+t −2.50 on DEV, i.e. significantly *wrong*, which is information rather than
+absence of information.
+
+So the reverse hypothesis was tested pre-registered on DEV with VAL as its
+out-of-sample check: *long gold while stress is easing*, `position = 1 − composite`.
+
+| window | alpha | t | HAC t | turnover | exposure |
+|---|---|---|---|---|---|
+| DEV 2000-2012 | +3.23% | 1.88 | 1.88 | 13.5 | 0.86 |
+| VAL 2013-2019 | −0.45% | −0.29 | −0.31 | 13.9 | 0.88 |
+| 2020-2024 | +1.43% | 0.69 | 0.66 | 13.0 | 0.89 |
+
+Fails the gate on DEV (1.88 < 2.5) and does not confirm on VAL. Yearly attribution
+shows why: it is long 86% of the time, so it is a beta-reduced proxy for gold
+itself and earns alpha only when gold's own drift is unusually strong (2002, 2006,
+2009). **Family closed in both directions.**
+Artifact: `data/research/experiments/stress_20261021T024821Z.json`.
+
+### Reproducibility repair (same commit)
+
+`scripts/edgelab_prepare_longgold.py` read a FRED mirror layout that no longer
+exists in the tree, so the 52-year store was unbuildable and round 3 was not
+reproducible from scratch. It now reads `metals/AU.csv` + `fred/{treasury_10y,cpi}.csv`,
+truncates at 2019-12-31 so the spent 2020-2024 holdout stays unreachable, and
+reproduces round 3 exactly (`tsmom_1m` again clears DEV/VAL/TEST).
+
+## Round 13 — Money and labour quantities (5 configurations)
+
+New information, not a new transform: rounds 1-12 used the *price* of money
+(yields, real yields, CPI, inflation expectations) and the *price* of risk (credit,
+volatility). No round had ever loaded the *quantity* of money or the quantity of
+labour slack. `us_m2` (1959+), `initial_claims_4wk` (1967+) and `sahm_realtime`
+(1959+) were untouched by every earlier script in this repository.
+
+Every input is stamped at its publication date (M2 and CPI +2 months, unemployment
++1 month, Sahm +2 months, claims +7 days), which can only understate a real-time
+signal. Signals are monthly, so turnover is 13-123 position changes in 51 years —
+the round-7 turnover law cannot bind.
+
+51-year LBMA basis, executable lag, HAC(5), `ecn_realistic`, 5 trials:
+
+| config | flips | DEV alpha | DEV t | DEV SR | DSR | VAL t | TEST t |
+|---|---|---|---|---|---|---|---|
+| `gold_m2_ratio` (10y z) | 13 | −1.54% | −0.91 | 0.071 | 0.214 | 0.47 | 1.17 |
+| `m2_growth` | 42 | −0.63% | −0.34 | 0.208 | 0.495 | −0.63 | −2.37 |
+| `excess_money_growth` | 22 | −0.03% | −0.02 | 0.276 | 0.645 | −1.02 | −1.02 |
+| `claims_trend` | 123 | +1.90% | 1.02 | 0.406 | 0.868 | −0.54 | −1.01 |
+| `sahm_signal` | 20 | −2.91% | −1.79 | −0.083 | 0.048 | −0.63 | 0.00 |
+
+**Zero survivors.** The two most popular retail gold models — gold cheap relative
+to the money stock, and buying gold when the Sahm rule fires — are *negative* over
+51 years. That is a useful product fact in itself: neither is a timing rule.
+
+Artifact: `data/research/experiments/quantity_*.json`.
+
+## Round 14 — Pooled evidence: is there any edge in the search at all? (White reality check)
+
+Thirteen rounds, ~110 configurations, thirteen dead families, and every round
+corrected for multiple testing *within* itself. Nobody had tested the collection.
+At the detection floor this programme can reach (SR 0.44 on 32 years of DEV), a
+real edge of SR 0.2-0.3 is individually invisible, so rejecting forty such signals
+one at a time is not the same experiment as asking whether the collection is
+centred on zero.
+
+21 signals (all 16 `long_specs` plus the 5 round-13 quantity rules) on one frame:
+52-year LBMA basis, one cost model, one lag, `ecn_realistic`. Alpha is the OLS
+intercept against buy-and-hold — the statistic every earlier round reports.
+
+| Test | Result |
+|---|---|
+| positive on DEV | 13/21 |
+| **positive on DEV + VAL + TEST** | **2/21** (2.6 expected if the signals were independent) |
+| equal-weight blend, DEV alpha | +1.19%/yr, t 1.66 (HAC 1.69) |
+| best DEV alpha t across the catalogue | 2.64 (`ma_trend_12m`) |
+| White reality check, null = zero alpha everywhere | **p = 0.056**, null 95% = 2.65 |
+
+The single number that matters is **2/21**. Twenty-one signals, thirteen of which
+look positive in the window that selected them, and only two stay positive out of
+sample — *fewer than the 2.6 expected from pure chance*. The catalogue is not
+merely unprofitable; it has no out-of-sample persistence at all.
+
+The reality check lands at p = 0.056: the best of 21 signals sits exactly at the
+95th percentile of what a 21-signal search produces when nothing is real. It does
+not reject, but it does not cleanly exonerate either.
+
+### Two findings that change earlier records
+
+1. **Round 3's survivor list was cost-model dependent.** `tsmom_1m` cleared DEV at
+   t 2.59 on the cheaper default cost model (0.400 bps/side) but only **t 1.78** at
+   `ecn_realistic` (0.925 bps/side). It has ~21 trades a year, so a 2.3× cost
+   assumption is not a detail. Under the honest model, **no signal in the catalogue
+   clears t 2.5 on DEV except `ma_trend_12m`** — which round 3 had already rejected
+   as a 1969-1979 artefact.
+2. **A lag bug was found and fixed during this round.** `run_vector` already
+   applies one bar of lag (`held[1:] = pos[:-1]`); the round-11 and round-12
+   runners shifted the signal again, imposing *two* bars. Both were re-run at the
+   correct lag. Round 11's conclusion is unchanged (`ry_z252` DEV t 0.50 → 0.63,
+   still zero survivors). Round 12's is *stronger*: `stress_composite` DEV t
+   −2.48 → −2.78, and the reverse hypothesis still fails (DEV t 2.23 < 2.5, VAL
+   −0.40). Round 10 is unaffected — it used a hand-rolled loop with an explicit
+   lag. Round 13 was written after the fix and never shifted.
+
+### What this means for the programme
+
+The question "which gold timing signal works?" has now been asked of price,
+trend, volatility, calendar, relative value, real yields, inflation, the money
+stock, the labour market, credit and financial conditions. The answer is
+consistent and, at this power, final: **none of them, on daily data, at retail
+costs.** Further single-signal enumeration in this space is not research, it is
+noise generation, and the 2/21 persistence number is the evidence for saying so.
+
+A new round must therefore bring **new information**, not a new transformation of
+information already in hand. That is the standing rule from here.
+
+## Round 15 — CFTC positioning, the last classical channel (4 configurations)
+
+New information again, and the final classical dataset the programme had not
+touched: *who holds the position*, rather than prices, macro aggregates or
+financial conditions. Source `yoseph-zemede/gold-cot-scraper` via `codeload`, 374
+weekly reports 2018-03-17 .. 2025-05-10, commercial / non-commercial /
+non-reportable long and short interest. The file is sorted by `MM-DD-YY` **string**,
+so the loader parses and re-sorts; reading it in file order would have scrambled
+seven years of positioning without any error.
+
+Reports cover Tuesday and publish Friday, so values are stamped four calendar days
+forward before they touch a bar.
+
+**This round cannot reach a gate-level verdict and does not claim one.** 2,193 bars
+(8.7 years) puts the detection floor at SR 0.85 for t = 2.5, far above anything a
+positioning signal plausibly delivers. The honest output is an effect size with a
+block-bootstrap confidence interval.
+
+| config | alpha | t | HAC t | 95% CI | SR | max DD | flips |
+|---|---|---|---|---|---|---|---|
+| `spec_contrarian` | +0.06% | 0.03 | 0.03 | −3.86 .. +3.09 | 0.458 | 14.1% | 41 |
+| `spec_momentum` | −2.25% | −0.99 | −1.00 | −6.15 .. +2.93 | 0.366 | 18.6% | 86 |
+| `commercial_contrarian` | +0.31% | 0.16 | 0.16 | −3.62 .. +3.94 | 0.484 | 13.3% | 39 |
+| `spec_oi_ratio` | +3.27% | 1.45 | 1.49 | −0.94 .. +7.03 | 0.951 | 13.5% | 49 |
+
+No confidence interval excludes zero. The best of the four, `spec_oi_ratio`
+(speculators' share of open interest below its one-year median), has the right
+sign, a Sharpe above the floor and an alpha of +3.3%/yr — but on 8.7 years that is
+a t of 1.45, and the interval spans zero. It is **not** a candidate, and registering
+it would be exactly the error round 14 was built to detect.
+
+Positioning is therefore closed as a *historically confirmable* channel. It
+remains the one thing that could be re-examined later with a genuinely longer
+history if the CFTC archive ever becomes reachable from this environment.
+
 ## Unavailable inputs (attempted, with evidence)
 
 | Input | Attempt | Outcome |
 |---|---|---|
-| CFTC COT positioning | GitHub code search for historical COT, `cftc.gov` direct | only single-snapshot JSON found; CFTC site unreachable from the sandbox |
+| CFTC COT positioning | GitHub code search, `cftc.gov` direct, two scraper repos | **partly resolved in round 15**: 374 weekly gold reports 2018-2025 recovered from a scraper repo; the pre-2018 archive remains unreachable, which caps the sample at 8.7 years |
 | Broker tick archive (1 GB) | `gh release download`, `release-assets.githubusercontent.com` | connection reset / EOF |
 | Measured broker costs | MT5 terminal records | not present in this environment; costs remain ASSUMED |
 | Options-implied vol (GVZ) | GitHub search | no verified long history; not used |
 
 ## What the register implies
 
-Nine rounds, ~96 configurations, every family from price, macro, calendar,
+Ten rounds, ~96 configurations, every family from price, macro, calendar,
 relative-value, cross-sectional and intraday-clock information. Not one survives
 DEV→VAL→TEST→holdout on tradable prices. The two that cleared DEV died in
 identifiable ways: one on a regime that ended in 1980, one on a fixing artifact

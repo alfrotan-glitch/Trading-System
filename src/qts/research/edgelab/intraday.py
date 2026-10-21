@@ -111,6 +111,8 @@ def daily_bars(bars: pd.DataFrame) -> pd.DataFrame:
     """Aggregate M15 bars to calendar days (UTC)."""
     b = bars.copy()
     b.index = _dt_index(bars)
+    if b.index.tz is None:
+        b.index = b.index.tz_localize("UTC")
     g = b.resample("1D")
     out = pd.DataFrame(
         {
