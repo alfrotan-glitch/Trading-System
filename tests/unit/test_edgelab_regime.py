@@ -194,6 +194,25 @@ def test_real_gold_regime_mix_is_sane():
     assert 0.7 < float(out["allow_trade"].mean()) < 1.0
 
 
+def test_regime_endpoint_rejects_stale_prices_even_if_classifier_allows(monkeypatch):
+    """The local archive ending in 2025 cannot be used as an October 2026 signal."""
+    from qts.api.routes import research as routes
+    from qts.research.edgelab import stress
+
+    idx = pd.bdate_range("2022-01-03", periods=800, tz="UTC")
+    rng = np.random.default_rng(42)
+    close = pd.Series(2000.0 * np.exp(np.cumsum(rng.normal(0, 0.003, len(idx)))), index=idx)
+    monkeypatch.setattr(stress, "tradable_gold", lambda: close)
+    body = routes.research_regime()
+    assert body["available"] is True
+    assert body["stale"] is True
+    assert body["current"] is False
+    assert body["source_age_days"] > 5.0
+    assert body["allow_trade"] is False
+    assert "Historical" in body["data_warning"]
+
+
+
 @needs_data
 def test_regime_endpoint_reports_the_live_state_and_refuses_to_claim_an_edge():
     """The product surface must state what it is, including that it is not an edge."""
