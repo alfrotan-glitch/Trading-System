@@ -100,6 +100,26 @@ def _emit(message: str) -> None:
         return
 
 
+def _smoke_packaged_application() -> None:
+    """Read-only packaged-executable check; never opens UI or sends orders.
+
+    This is stronger than --version: it proves that the frozen API routes and
+    UI files survived packaging and can import within the executable. It never
+    binds a public port, probes a broker, changes permissions or trades.
+    """
+    from qts.api.server import app
+
+    required_routes = {"/api/health/live", "/api/version", "/api/demo/guide"}
+    available_routes = {getattr(route, "path", "") for route in app.routes}
+    missing = sorted(required_routes - available_routes)
+    if missing:
+        raise RuntimeError(f"Packaged backend missing routes: {missing}")
+    ui_path = _get_ui_dir() / "index.html"
+    if not ui_path.is_file() or ui_path.stat().st_size < 100:
+        raise RuntimeError(f"Packaged desktop UI not accessible: {ui_path}")
+    _emit("QTS packaged import, API routes and desktop UI: OK")
+
+
 def _handle_cli(argv: list[str] | None = None) -> bool:
     """Answer ``--version``/``--help`` without starting a server or a window.
 
@@ -108,6 +128,13 @@ def _handle_cli(argv: list[str] | None = None) -> bool:
     what the release workflow smoke-tests.
     """
     args = list(sys.argv[1:] if argv is None else argv)
+    if "--smoke" in args:
+        try:
+            _smoke_packaged_application()
+        except Exception as exc:
+            _emit(f"QTS packaged smoke FAILED: {type(exc).__name__}: {exc}")
+            raise SystemExit(1) from exc
+        return True
     if "--version" in args or "-V" in args:
         from qts import __version__
 
