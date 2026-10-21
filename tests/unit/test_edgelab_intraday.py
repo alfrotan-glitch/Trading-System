@@ -86,6 +86,69 @@ def test_overnight_reversal_uses_only_prior_days_move():
     assert (pos[~day.to_numpy()] == 0.0).all()
 
 
+
+def test_overnight_momentum_never_reads_tonights_future_prices():
+    """A mutation after 22:00 cannot change a decision made at 19:00."""
+    bars = synthetic_bars(days=8)
+    base = I.overnight_momentum_close(bars)
+    day = pd.Timestamp("2024-01-05", tz="UTC")
+    before_evening = (bars.index >= day) & (bars.index < day + pd.Timedelta(hours=22))
+    later = (bars.index >= day + pd.Timedelta(hours=22)) & (
+        bars.index < day + pd.Timedelta(days=1)
+    )
+    changed = bars.copy()
+    changed.loc[later, "close"] *= 1.6
+    after = I.overnight_momentum_close(changed)
+    assert base.loc[before_evening].equals(after.loc[before_evening])
+
+
+def test_overnight_reversal_and_momentum_use_last_completed_session():
+    """22:00 on Monday belongs to Tuesday's completed morning session."""
+    idx = pd.to_datetime(
+        [
+            "2024-01-01T22:00:00Z",
+            "2024-01-02T05:45:00Z",
+            "2024-01-02T12:00:00Z",
+            "2024-01-02T19:00:00Z",
+            "2024-01-02T22:00:00Z",
+            "2024-01-02T23:45:00Z",
+        ],
+        utc=True,
+    )
+    bars = pd.DataFrame({"close": [100.0, 105.0, 105.0, 105.0, 70.0, 70.0]}, index=idx)
+    momentum = I.overnight_momentum_close(bars)
+    reversal = I.overnight_reversal(bars)
+    assert momentum.loc[pd.Timestamp("2024-01-02T19:00:00Z")] == 1.0
+    assert reversal.loc[pd.Timestamp("2024-01-02T12:00:00Z")] == -1.0
+
+
+def test_incomplete_overnight_session_is_not_a_signal():
+    idx = pd.to_datetime(
+        ["2024-01-02T04:00:00Z", "2024-01-02T05:45:00Z", "2024-01-02T19:00:00Z"],
+        utc=True,
+    )
+    bars = pd.DataFrame({"close": [100.0, 105.0, 105.0]}, index=idx)
+    assert I.overnight_momentum_close(bars).iloc[-1] == 0.0
+
+
+def test_breakout_range_preserves_previous_evening_across_midnight():
+    """The Asian range contains BOTH the evening and next morning bars."""
+    idx = pd.to_datetime(
+        [
+            "2024-01-01T22:00:00Z",
+            "2024-01-01T23:45:00Z",
+            "2024-01-02T00:00:00Z",
+            "2024-01-02T06:45:00Z",
+            "2024-01-02T07:00:00Z",
+        ],
+        utc=True,
+    )
+    bars = pd.DataFrame({"close": [110.0, 110.0, 100.0, 100.0, 105.0]}, index=idx)
+    positions = I.opening_range_breakout(bars)
+    assert positions.iloc[-1] == 0.0  # 105 is still INSIDE the true 100..110 range
+
+
+
 def test_window_return_per_day_matches_manual_compounding():
     bars = synthetic_bars(days=10)
     r = I.window_return_per_day(bars, 22, 6)
