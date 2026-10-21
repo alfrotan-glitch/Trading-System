@@ -46,10 +46,11 @@ Cboe volatility term structure: https://www.cboe.com/tradable_products/vix/term_
   not only an unscaled buy-and-hold series.
 - Charge the existing `CostModel.realistic_ecn()` on turnover and report
   cost model as **ASSUMED**. Verify the price-dependent per-side costs.
-- **Missing cost:** CFD overnight swaps/financing are NOT included. This
-  omission can overwhelm any low-turnover strategy's apparent profitability.
-  Actual broker swap, rollover policy, triple-swap days and execution must be
-  recorded before a practical edge can be claimed.
+- Add explicit **hypothetical funding stress** at 0, 0.5, 1.0 and 2.0 basis
+  points per elapsed **calendar day** held, including weekends. These rates
+  are scenario assumptions, not current broker swaps. Actual broker swap,
+  rollover policy, triple-swap days and execution must still be measured
+  before any practical edge can be claimed.
 - Both orientations add to the multiple-testing register; do not select the
   best sign and report it as a pre-specified single trial.
 - Reject a strategy that fails positive net-of-all-cost evidence, HAC
@@ -59,7 +60,7 @@ Cboe volatility term structure: https://www.cboe.com/tradable_products/vix/term_
 
 ```bash
 python scripts/fetch_cboe_vix_curve.py
-python scripts/edgelab_vix_curve_run.py
+python scripts/edgelab_vix_curve_run.py --gold-source basemax
 pytest tests/unit/test_edgelab_vix_curve.py -q
 ```
 
@@ -82,3 +83,31 @@ and `validated_edge:false`. It cannot unlock live trading.
 4. Continue independent research, particularly futures basis/term structure,
    ETF physical flows, and scheduled-event information — but require data
    provenance, executable timestamps and rigorous comparisons.
+
+
+## Automated GitHub execution
+
+The repository also contains
+`.github/workflows/vix-curve-research.yml`, which is configured to run on
+relevant `main` pushes or through GitHub Actions' manual dispatch. It:
+
+1. Installs the project and runs timing, regime and VIX unit tests.
+2. Downloads official Cboe histories with hashes.
+3. Downloads the pinned BaseMax archive at commit
+   `43f4177e701fdf3643cc02413e4337932af57401`.
+4. Builds UTC daily closes only from M15 days with at least 80 bars, so the
+   BaseMax feed's almost-empty 2025 tail cannot contaminate returns.
+5. Executes all two frozen orientations and four predeclared financing stress
+   levels, and uploads **only** JSON research evidence, not raw price archives.
+
+Open the repository's **Actions → QTS VIX Curve Research** page and inspect
+the latest run and its `qts-vix-curve-research-*` artifact. A workflow
+definition committed to GitHub is *not* proof its job passed: until the
+associated run has been checked, test and experiment status remain
+**UNVERIFIED**. External data/network failures must be reported rather than
+replaced by synthetic prices.
+
+The historical gold feed used by this automated test is the pinned BaseMax
+M15 source (not the actual owner's WMMarkets `XAUUSD@` bid/ask execution feed).
+The live product therefore remains **locked** regardless of a promising
+research result.
