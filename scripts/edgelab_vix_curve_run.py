@@ -161,12 +161,12 @@ def paired_hac_difference(a: pd.Series, b: pd.Series, *, lags: int = 10) -> dict
     }
 
 
-def load_gold_from_basemax(*, min_bars_per_day: int = 80) -> pd.Series:
-    """Reconstruct an executable UTC-day close from verified M15 observations.
+def load_gold_bars_from_basemax(*, min_bars_per_day: int = 80) -> pd.DataFrame:
+    """Verified complete UTC-day gold OHLC, including executable daily opens.
 
-    A day with too few bars is not a legitimate daily close. BaseMax carries a
-    nearly empty tail after early 2025; rejecting such days prevents a single
-    late stale print from becoming a bogus multi-month return.
+    A 24h source can have gaps; the first observable bar after a daily break
+    is the real first executable OPEN, not a fabricated midnight quote. Days
+    with fewer than 80 M15 candles are removed rather than price-filled.
     """
     from edgelab_prepare_data import load_basemax
     from qts.research.edgelab.intraday import daily_bars
@@ -176,14 +176,22 @@ def load_gold_from_basemax(*, min_bars_per_day: int = 80) -> pd.Series:
         raise ValueError(f"BaseMax quality gate failed: {quality}")
     counts = m15["close"].resample("1D").count()
     complete_days = counts[counts >= min_bars_per_day].index
-    prices = daily_bars(m15)["close"].reindex(complete_days).dropna()
-    if len(prices) < 500:
-        raise ValueError(f"Only {len(prices)} complete daily closes: need >=500")
-    if prices.index.tz is None:
+    bars = daily_bars(m15).reindex(complete_days).dropna(subset=["open", "close"])
+    if len(bars) < 500:
+        raise ValueError(f"Only {len(bars)} complete daily bars: need >=500")
+    if bars.index.tz is None:
         raise ValueError("BaseMax UTC index absent after loader")
-    prices.attrs["source"] = f"BaseMax XAUUSD M15, verified SHA256 {source['sha256']}"
-    prices.attrs["min_bars_per_day"] = min_bars_per_day
-    return prices.rename("gold")
+    bars.attrs["source"] = f"BaseMax XAUUSD M15, verified SHA256 {source['sha256']}"
+    bars.attrs["min_bars_per_day"] = min_bars_per_day
+    return bars
+
+
+def load_gold_from_basemax(*, min_bars_per_day: int = 80) -> pd.Series:
+    """Legacy close-only view of the same complete bars, used by VIX study."""
+    bars = load_gold_bars_from_basemax(min_bars_per_day=min_bars_per_day)
+    result = bars["close"].rename("gold")
+    result.attrs.update(bars.attrs)
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
