@@ -22,6 +22,7 @@ import math
 from datetime import UTC, datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from qts.research.edgelab import CostModel, alpha_decomposition, benchmark_returns, hac_alpha, run_vector
@@ -57,6 +58,7 @@ def evaluate(
     label: str,
     *,
     financing_bps_per_calendar_day: float = 0.0,
+    include_net_series: bool = False,
 ) -> dict:
     """Compare against exposure-matched static gold and charge funding stress.
 
@@ -112,7 +114,7 @@ def evaluate(
         t = float(hac["alpha_t"])
     except ValueError:
         t = float("nan")
-    return {
+    summary = {
         "label": label,
         "status": "EVALUATED_SPENT_DATA",
         "observations": len(net),
@@ -125,6 +127,37 @@ def evaluate(
         "sides_per_year": result.turnover_per_year,
         "alpha_ann": decomposed.get("alpha_ann"),
         "alpha_t_hac": t if math.isfinite(t) else None,
+    }
+    if include_net_series:
+        summary["_net_returns"] = net
+    return summary
+
+
+def paired_hac_difference(a: pd.Series, b: pd.Series, *, lags: int = 10) -> dict:
+    """HAC test of net performance beyond an exposure-matched static control.
+
+    This compares paired net daily returns after the *same* financing assumption
+    and turnover charging. A positive raw Sharpe need not imply timing skill.
+    Statistical diagnostics on SPENT periods are discovery-only.
+    """
+    paired = pd.concat([a.rename("candidate"), b.rename("matched")], axis=1).dropna()
+    if len(paired) < 3 * (lags + 1):
+        return {"annualized_net_difference": None, "t_hac": None, "n": len(paired)}
+    diff = paired["candidate"].to_numpy(dtype=float) - paired["matched"].to_numpy(dtype=float)
+    n = len(diff)
+    mu = float(np.mean(diff))
+    z = diff - mu
+    long_run_var = float(np.dot(z, z) / n)
+    for lag in range(1, lags + 1):
+        weight = 1.0 - lag / (lags + 1.0)
+        long_run_var += 2.0 * weight * float(np.dot(z[lag:], z[:-lag]) / n)
+    se = math.sqrt(max(long_run_var, 0.0) / n)
+    return {
+        "annualized_net_difference": mu * BPY,
+        "t_hac": mu / se if se > 0 else None,
+        "n": n,
+        "lags": lags,
+        "exploratory_only": True,
     }
 
 
@@ -188,12 +221,22 @@ def main(argv: list[str] | None = None) -> int:
                     actual,
                     f"{name}_{direction}",
                     financing_bps_per_calendar_day=funding_rate,
+                    include_net_series=True,
                 )
                 reference = evaluate(
                     sub,
                     matched,
                     f"{name}_matched_hold",
                     financing_bps_per_calendar_day=funding_rate,
+                    include_net_series=True,
+                )
+                paired = (
+                    paired_hac_difference(
+                        candidate.pop("_net_returns"), reference.pop("_net_returns")
+                    )
+                    if candidate["status"] == "EVALUATED_SPENT_DATA"
+                    and reference["status"] == "EVALUATED_SPENT_DATA"
+                    else {"annualized_net_difference": None, "t_hac": None}
                 )
                 results.append(
                     {
@@ -202,6 +245,7 @@ def main(argv: list[str] | None = None) -> int:
                         "financing_bps_per_calendar_day_assumed": funding_rate,
                         "candidate": candidate,
                         "matched_control": reference,
+                        "net_timing_vs_exposure_matched_control": paired,
                         "sharpe_difference": (
                             candidate["sharpe"] - reference["sharpe"]
                             if candidate["status"] == "EVALUATED_SPENT_DATA"
