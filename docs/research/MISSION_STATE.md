@@ -1,3 +1,35 @@
+## Verified VIX curve research execution — Round 20 (2026-10-21)
+
+**GitHub Actions run 39593567233: SUCCESS.** Cboe VIX/VIX3M CSV acquisition,
+pinned BaseMax M15 historical data, unit checks, and the pre-registered
+two-direction experiment executed. Full log and JSON artifact are available at
+https://github.com/alfrotan-glitch/Trading-System/actions/runs/39593567233
+
+**Verdict: REJECT both directions as a stable executable edge.**
+All three windows were historically inspected in earlier studies; these figures
+are *not independent holdout evidence*. Under ECN trading costs and the zero-swap
+scenario, the paired excess net return versus an exposure-matched static gold
+control was (annualised):
+
+| Direction | DEV 2008-15 | VAL 2016-21 | DIAGNOSTIC 2022-25 |
+| --- | ---: | ---: | ---: |
+| VIX term contango | -1.20%, t(HAC) -0.31 | -1.84%, t -1.40 | -0.94%, t -0.72 |
+| VIX term backwardation | -1.21%, t -0.78 | +1.81%, t +1.39 | +0.93%, t +0.71 |
+
+Neither direction produced a robust, statistically decisive improvement across
+windows. The backwardation rule is rarely invested (about 2-8% exposure), so
+an impressive-looking portfolio Sharpe may simply be an artefact of being mostly
+flat. Funding scenarios at 0.5, 1.0 and 2.0 bp/calendar day were also executed;
+the actual broker swap remains unmeasured.
+
+**The collection job, not the Edge, succeeded.** No promotion, no live unlock.
+The older pre-execution plan below is retained as an audit trail, but its
+statement that the VIX experiment had not run is now superseded by this record.
+The research queue moves to one **genuinely different** mechanism/ML protocol,
+with prospective integrity tests and full execution-cost disclosure.
+
+---
+
 # Mission state — XAUUSD@ validated-edge program
 
 **Updated:** 2026-10-21, after round 19 (walk-forward selection).
