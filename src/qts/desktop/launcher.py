@@ -132,7 +132,18 @@ def _handle_cli(argv: list[str] | None = None) -> bool:
         try:
             _smoke_packaged_application()
         except Exception as exc:
-            _emit(f"QTS packaged smoke FAILED: {type(exc).__name__}: {exc}")
+            msg = f"QTS packaged smoke FAILED: {type(exc).__name__}: {exc}"
+            _emit(msg)
+            # Windowed PyInstaller has no stdout. The CI smoke probe supplies a
+            # path for a short, non-secret diagnostic rather than concealing the
+            # actual bootstrap failure. This is only a read-only self-test path;
+            # never include account, environment, or machine identity here.
+            diagnostic = (os.getenv("QTS_SMOKE_RESULT_PATH") or "").strip()
+            if diagnostic:
+                try:
+                    Path(diagnostic).write_text(msg, encoding="utf-8")
+                except OSError:
+                    pass
             raise SystemExit(1) from exc
         return True
     if "--version" in args or "-V" in args:
