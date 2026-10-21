@@ -67,6 +67,18 @@ environment before interpreting a numerical result. Historical wins can
 be DISCOVERY ONLY; forward observation and real broker financing are
 needed for promotion. This source does not justify unlocking trading.
 
+**Executable automation now configured:** `.github/workflows/vix-curve-research.yml`
+responds to relevant `main` pushes or manual dispatch. It checks the causal
+tests, acquires official Cboe data and the pinned BaseMax M15 archive, rejects
+incomplete UTC trading days, evaluates BOTH frozen VIX-curve hypotheses under
+four financing scenarios (0/0.5/1/2 bps per calendar day), and uploads only
+the research JSON/manifest. The latest workflow execution is **not yet
+independently verified from this connector**; do not claim tests passed or
+that a historical Edge exists. The study now also tests the *paired net return
+difference* relative to a static **exposure-matched** gold control with a HAC
+statistic, not just a gross/Sharpe improvement. Every window remains marked
+`SPENT`; independent validation cannot be manufactured.
+
 ---
 
 ## 1. The one thing that changed the direction of the work
