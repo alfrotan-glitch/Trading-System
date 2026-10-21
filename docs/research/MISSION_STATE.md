@@ -12,6 +12,48 @@ The full history lives in `experiment_register.md`; the project log is
 
 ---
 
+## Post-round-19 independent source-code audit (2026-10-21)
+
+**This is a code-integrity update, not a claimed new strategy or an edge.**
+Direct inspection of `src/qts/research/edgelab/intraday.py` discovered
+additional timing defects that the original round-7 tests did not cover:
+
+1. `overnight_momentum_close` grouped the 22:00..06:00 window by **calendar
+   date**, so the D 19:00 signal could incorporate D 22:00..23:45 **future**
+   prices. Fixed by grouping each overnight session by the date it *ends*,
+   using only sessions with observed evening and morning halves.
+2. `overnight_reversal` did not measure a completed overnight session; its
+   calendar-date grouping mixed the morning and following evening, then shifted
+   by a calendar day. It now trades against the latest *completed* overnight.
+3. `opening_range_breakout` reset its range at calendar midnight, silently
+   discarding the prior 22:00..23:45 portion of the Asian range. Its trading
+   day now runs from the overnight start to the following day.
+4. `window_return_per_day` credited the 22:00 reopening gap, which could not
+   be earned by a strategy flat before the reopen; it also combined unrelated
+   evening and morning sessions by calendar date. It now groups by the end
+   date and excludes reopening/maintenance gaps.
+5. `GET /api/research/regime` exposed old BaseMax prices as a purported
+   "current" regime. It now exposes staleness and `allow_trade: false`
+   whenever the source exceeds five calendar days.
+
+Regression tests have been committed for all five defects. **The full repository
+suite and historical re-scoring have not been run in this connector-only session**:
+the gitignored BaseMax/Vudo raw data are not mounted, and the local shell cannot
+download the repository. The committed source changes are not equivalent to a
+green CI result. Re-run
+`pytest tests/unit/test_edgelab_intraday.py tests/unit/test_edgelab_regime.py -q`,
+then `python scripts/edgelab_intraday_run.py` on verified raw data. Do not
+reuse old `overrev_asia`, `momclose_asia`, `orb_asia*` statistics as
+independent evidence; their definitions changed. The previously consumed
+historical windows remain spent, so repaired in-sample scores cannot become
+fresh holdout evidence. All reported profitability remains unvalidated.
+
+**Mission:** continue searching genuinely new information sets and run the
+repaired execution-aware screen when reliable data become accessible. No
+fabricated edge, no live-money unlock.
+
+---
+
 ## 1. The one thing that changed the direction of the work
 
 **Turnover, not signal quality, is the binding constraint.**
