@@ -17,6 +17,7 @@ Run:
 from __future__ import annotations
 
 import json
+import math
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -81,7 +82,7 @@ def evaluate(bars: pd.DataFrame, position: pd.Series, label: str) -> dict:
         "max_drawdown": result.max_dd,
         "sides_per_year": result.turnover_per_year,
         "alpha_ann": decomposed.get("alpha_ann"),
-        "alpha_t_hac": t,
+        "alpha_t_hac": t if math.isfinite(t) else None,
     }
 
 
@@ -138,6 +139,12 @@ def main() -> int:
         "cost_model": COST.name,
         "cost_bps_per_side_at_reference": COST.per_side_bps(),
         "cost_is_measured": False,
+        "overnight_financing_is_measured": False,
+        "overnight_financing_included": False,
+        "financing_warning": (
+            "Spot/CFD gold financing and broker swaps are NOT in this cost model. "
+            "Positive backtests cannot be promoted without verified holding costs."
+        ),
         "results": results,
     }
     OUT.mkdir(parents=True, exist_ok=True)
