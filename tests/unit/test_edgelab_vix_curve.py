@@ -81,3 +81,42 @@ def test_merge_requires_common_observations():
     assert len(combined) == 1
     assert combined.iloc[0]["VIX"] == 21
     assert combined.iloc[0]["VIX3M"] == 23
+
+
+def test_backtest_financing_sensitivity_is_charged_over_calendar_gaps():
+    """One funding bp/day must reduce returns, including weekend carry."""
+    from scripts.edgelab_vix_curve_run import evaluate
+
+    idx = pd.bdate_range("2018-01-02", periods=400, tz="UTC")
+    rng = np.random.default_rng(19)
+    close = pd.Series(
+        1300.0 * np.exp(np.cumsum(rng.normal(0.00015, 0.007, len(idx)))),
+        index=idx,
+    )
+    bars = pd.DataFrame({"close": close}, index=idx)
+    position = pd.Series(0.5, index=idx)
+
+    base = evaluate(bars, position, "test", financing_bps_per_calendar_day=0.0)
+    stressed = evaluate(bars, position, "test", financing_bps_per_calendar_day=1.0)
+
+    expected_calendar_days = (
+        idx.to_series().diff().dt.total_seconds().iloc[1:].sum() / 86400.0
+    )
+    expected_drag = 0.5 * expected_calendar_days / 1e4
+    assert base["financing_drag_total"] == pytest.approx(0.0)
+    assert stressed["financing_drag_total"] == pytest.approx(expected_drag)
+    assert stressed["cagr"] < base["cagr"]
+    assert stressed["alpha_ann"] < base["alpha_ann"]
+
+
+def test_backtest_financing_refuses_negative_and_nonfinite_rates():
+    from scripts.edgelab_vix_curve_run import evaluate
+
+    idx = pd.bdate_range("2018-01-02", periods=260, tz="UTC")
+    rng = np.random.default_rng(23)
+    prices = pd.Series(1400.0 * np.exp(np.cumsum(rng.normal(0, 0.006, len(idx)))), index=idx)
+    bars = pd.DataFrame({"close": prices}, index=idx)
+    position = pd.Series(0.5, index=idx)
+    for invalid in (-1.0, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="funding"):
+            evaluate(bars, position, "bad", financing_bps_per_calendar_day=invalid)
