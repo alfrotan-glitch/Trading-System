@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from qts.research.edgelab import cot as C
 
+_HAS_DATA = (Path(__file__).resolve().parents[2] / "data" / "raw" / "longgold").exists()
+needs_data = pytest.mark.skipif(not _HAS_DATA, reason="raw data not present (gitignored); see MISSION_STATE recovery")
 
+
+
+@needs_data
 def test_loader_sorts_chronologically_despite_lexical_file_order():
     """The source file is ordered by 'MM-DD-YY' string, which is not date order.
 
@@ -21,6 +28,7 @@ def test_loader_sorts_chronologically_despite_lexical_file_order():
     assert len(df) > 300
 
 
+@needs_data
 def test_release_stamp_is_after_the_observation():
     df = C.load_cot()
     # pub_date is the index; observation date is four calendar days earlier.
@@ -28,6 +36,7 @@ def test_release_stamp_is_after_the_observation():
     assert (obs < df.index).all()
 
 
+@needs_data
 def test_net_series_are_consistent():
     df = C.load_cot()
     assert np.allclose(df["spec_net"], df["spec_long"] - df["spec_short"])
@@ -35,6 +44,7 @@ def test_net_series_are_consistent():
     assert (df["oi"] > 0).all()
 
 
+@needs_data
 def test_signals_preserve_a_tz_aware_bar_index():
     idx = pd.date_range("2019-01-02", "2024-12-31", freq="B", tz="UTC")
     bars = pd.DataFrame({"close": np.linspace(1300, 2000, len(idx))}, index=idx)
@@ -44,6 +54,7 @@ def test_signals_preserve_a_tz_aware_bar_index():
         assert sig.notna().all(), f"{name} leaked NaN"
 
 
+@needs_data
 def test_signals_are_binary_and_do_not_peek():
     idx = pd.date_range("2019-01-02", "2024-12-31", freq="B")
     bars = pd.DataFrame({"close": np.linspace(1300, 2000, len(idx))}, index=idx)

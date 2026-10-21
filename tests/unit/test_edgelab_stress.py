@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -10,7 +12,12 @@ from qts.research.edgelab import stress as S
 
 INDEX = pd.bdate_range("2005-01-03", "2008-12-31")
 
+_HAS_DATA = (Path(__file__).resolve().parents[2] / "data" / "raw" / "longgold").exists()
+needs_data = pytest.mark.skipif(not _HAS_DATA, reason="raw data not present (gitignored); see MISSION_STATE recovery")
 
+
+
+@needs_data
 def test_stress_frame_rejects_a_truncated_mirror(monkeypatch):
     """A rolling-window CSV must fail loudly, not quietly shorten the backtest."""
     short = pd.Series(1.0, index=pd.date_range("2023-01-02", periods=400, tz="UTC"))
@@ -66,6 +73,7 @@ def test_composite_is_the_mean_of_its_four_legs(monkeypatch):
     assert comp.between(0.0, 1.0).all()
 
 
+@needs_data
 def test_tradable_gold_is_utc_positive_and_monotonic():
     g = S.tradable_gold()
     assert g.index.is_monotonic_increasing
@@ -77,6 +85,7 @@ def test_tradable_gold_is_utc_positive_and_monotonic():
         assert g.index.min() < splice < g.index.max()
 
 
+@needs_data
 def test_signals_are_defensive_on_short_history():
     """With fewer bars than the lookback, signals must return zeros, not NaN."""
     short_idx = pd.bdate_range("2005-01-03", periods=5)

@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from qts.research.edgelab import quantity as Q
+
+_HAS_DATA = (Path(__file__).resolve().parents[2] / "data" / "raw" / "longgold").exists()
+needs_data = pytest.mark.skipif(not _HAS_DATA, reason="raw data not present (gitignored); see MISSION_STATE recovery")
+
 
 
 def _bars(index: pd.DatetimeIndex) -> pd.DataFrame:
@@ -16,6 +22,7 @@ def _bars(index: pd.DatetimeIndex) -> pd.DataFrame:
     return out
 
 
+@needs_data
 def test_monthly_stamp_is_never_before_publication():
     """A value must not be visible on the bar before its stamped date."""
     s = Q.monthly("us_m2")
@@ -25,11 +32,13 @@ def test_monthly_stamp_is_never_before_publication():
     assert first >= pd.Timestamp("1959-03-31")
 
 
+@needs_data
 def test_weekly_stamp_moves_forward_by_one_week():
     s = Q.weekly("initial_claims_4wk")
     assert s.index.to_series().diff().dropna().min() > pd.Timedelta(0)
 
 
+@needs_data
 def test_signals_preserve_a_tz_aware_bar_index():
     """Regression: a tz-naive signal index makes every position zero, silently.
 
@@ -46,6 +55,7 @@ def test_signals_preserve_a_tz_aware_bar_index():
         assert float(pos.abs().sum()) >= 0.0  # must be computable, not all-NaN
 
 
+@needs_data
 def test_signals_are_bounded_and_non_negative():
     idx = pd.date_range("2005-01-03", "2015-12-31", freq="B")
     bars = _bars(idx)
@@ -55,6 +65,7 @@ def test_signals_are_bounded_and_non_negative():
         assert sig.isin([0.0, 1.0]).all(), f"{name} produced values outside {{0,1}}"
 
 
+@needs_data
 def test_signals_do_not_peek():
     """Truncating the bars must not change any earlier position."""
     idx = pd.date_range("1995-01-03", "2015-12-31", freq="B")
@@ -66,6 +77,7 @@ def test_signals_do_not_peek():
         pd.testing.assert_series_equal(full, part, check_names=False)
 
 
+@needs_data
 def test_declared_inputs_exist():
     missing = [k for k, ok in Q.available().items() if not ok]
     assert not missing, f"missing inputs: {missing}"
