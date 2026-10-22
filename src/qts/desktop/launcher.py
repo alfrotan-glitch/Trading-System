@@ -227,24 +227,53 @@ def _handle_cli(argv: list[str] | None = None) -> bool:
     return False
 
 
+def _show_startup_error() -> None:
+    """Give a nontechnical Windows operator a visible, credential-free error.
+
+    Windowed PyInstaller applications have no stdout or console. A failure
+    before the browser opens must therefore be a visible failure, not a silent
+    process exit. This dialog is only for the real GUI launch, never for
+    --smoke or --smoke-server tests.
+    """
+    message = (
+        "QTS could not start its local service.\n\n"
+        "Close any other running QTS window and launch QTS.exe again. "
+        "If the problem remains, restart Windows and check your local "
+        "security/firewall software.\n\n"
+        "No trading order was submitted."
+    )
+    if sys.platform == "win32":
+        import ctypes
+
+        user32 = getattr(getattr(ctypes, "windll", None), "user32", None)
+        if user32 is not None:
+            with contextlib.suppress(Exception):
+                user32.MessageBoxW(None, message, "QTS — Startup blocked", 0x10)
+                return
+    _emit(message)
+
+
 def main():
     if _handle_cli():
         return
-    _emit("[launcher] QTS Desktop starting — startup health check")
-    from qts.desktop.health import startup_health_check
+    try:
+        _emit("[launcher] QTS Desktop starting — startup health check")
+        from qts.desktop.health import startup_health_check
 
-    health = startup_health_check()
-    _emit(f"[launcher] health overall={health['overall']} status={health['system_status']}")
-    for c in health["checks"]:
-        _emit(f"  {c['name']}: {'PASS' if c['passed'] else 'FAIL'} {c['detail']}")
-    if not health["overall"]:
-        _emit("[launcher] BLOCKED — dashboard will show reasons, not auto-trading")
+        health = startup_health_check()
+        _emit(f"[launcher] health overall={health['overall']} status={health['system_status']}")
+        for c in health["checks"]:
+            _emit(f"  {c['name']}: {'PASS' if c['passed'] else 'FAIL'} {c['detail']}")
+        if not health["overall"]:
+            _emit("[launcher] BLOCKED — dashboard will show reasons, not auto-trading")
 
-    host, port = _get_api_host_port()
-    server, thread = start_api_server(host, port)
-    # give server a moment
-    time.sleep(1)
-    open_desktop_window(host, port)
+        host, port = _get_api_host_port()
+        start_api_server(host, port)
+        open_desktop_window(host, port)
+    except Exception as exc:
+        _emit(f"[launcher] startup FAILED: {type(exc).__name__}: {exc}")
+        _show_startup_error()
+        raise SystemExit(1) from exc
 
 
 if __name__ == "__main__":
