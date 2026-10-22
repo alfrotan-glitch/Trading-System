@@ -1180,3 +1180,25 @@ def test_frozen_entry_script_locates_bundled_ui(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
     assert launcher._get_ui_dir() == ui
     assert (launcher._get_ui_dir() / "index.html").is_file()
+
+
+def test_desktop_launcher_refuses_dead_api_instead_of_opening_stale_ui(monkeypatch):
+    """A failed Uvicorn process must never be called a healthy workstation."""
+    import uvicorn
+
+    from qts.desktop import launcher
+
+    class DeadServer:
+        started = False
+        should_exit = False
+
+        def __init__(self, config):
+            self.config = config
+
+        def run(self):
+            return
+
+    monkeypatch.setattr(uvicorn, "Server", DeadServer)
+    monkeypatch.setattr(launcher.time, "sleep", lambda _: None)
+    with pytest.raises(RuntimeError, match="did not start correctly"):
+        launcher.start_api_server("127.0.0.1", 0)
