@@ -277,12 +277,34 @@ def _demo_authority() -> Any:
 
 
 
-app.include_router(system_router)
-app.include_router(research_router)
-app.include_router(trading_router)
-app.include_router(risk_router)
-app.include_router(market_router)
-app.include_router(demo_router)
+_QTS_ROUTERS = (system_router, research_router, trading_router, risk_router, market_router, demo_router)
+
+
+def ensure_qts_api_routes() -> None:
+    """Register missing QTS routes idempotently, including in frozen builds.
+
+    The Windows --smoke test found the frozen app with only FastAPI's five
+    documentation routes even though individual QTS routers were populated.
+    Do not report the application healthy until all router paths are present.
+    Re-register only a wholly absent router; never duplicate existing routes
+    or change any order/risk authority.
+    """
+    present = {getattr(route, "path", None) for route in app.routes}
+    for router in _QTS_ROUTERS:
+        expected = {getattr(route, "path", None) for route in router.routes}
+        if not expected:
+            raise RuntimeError("A QTS API router contains no declared routes")
+        if expected.issubset(present):
+            continue
+        if expected.isdisjoint(present):
+            app.include_router(router)
+            present.update(expected)
+        else:
+            missing = sorted(str(path) for path in expected - present)
+            raise RuntimeError(f"Partially registered QTS API router: {missing}")
+
+
+ensure_qts_api_routes()
 
 __all__ = [
     "app",
