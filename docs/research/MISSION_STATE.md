@@ -1,3 +1,65 @@
+## Verified research and Windows delivery status — 2026-10-22
+
+**Mission verdict: ZERO validated profitable XAUUSD@ strategies. LIVE remains LOCKED.**
+A passing CI suite and packaged desktop do not demonstrate a profitable edge.
+
+### Round 21: causal adaptive AI strategy tested and rejected
+
+The verified research run 39597337813 completed on real historical gold and
+official Cboe VIX/VIX3M:
+https://github.com/alfrotan-glitch/Trading-System/actions/runs/39597337813
+
+The predeclared monthly prequential ridge model generated 131 usable monthly
+predictions from 254 months of observations. It used trailing gold features,
+lagged Cboe variables, next-open execution, transaction costs and calendar-day
+financing sensitivities. Against exposure-matched passive gold:
+
+| Historical window (all SPENT) | AI Sharpe | matched passive Sharpe | paired HAC t |
+| --- | ---: | ---: | ---: |
+| 2008-2015 | -0.221 | +0.237 | -0.94 |
+| 2016-2021 | +0.419 | +0.685 | -0.51 |
+| 2022-2025 diagnostic | +0.990 | +1.284 | +0.65 |
+
+The adaptive model did not show robust positive incremental value. REJECT for
+trading-system promotion. It remains research-only, and re-fitting its
+parameters on already-spent windows cannot validate it.
+
+### Windows packaged preview
+
+Windows build 39723415827 successfully produced and smoke-tested the frozen
+application and its bundled UI/API:
+https://github.com/alfrotan-glitch/Trading-System/actions/runs/39723415827
+
+The ZIP preview extracts to a folder and runs by double-clicking QTS.exe:
+no Python, Git or Docker required. This is not proof of the actual owner's
+terminal connection, measured execution, or profitable strategies. A stricter
+live localhost HTTP smoke has been added in later commits; check the latest
+Actions run for its pass/fail status.
+
+Two previously misleading smoke errors were corrected:
+- FastAPI >=0.137 includes routers lazily. The flattened app.routes property
+  is NOT a reliable route inventory; check OpenAPI and real HTTP instead.
+- Frozen PyInstaller entry scripts resolve from the bundle root; bundled UI
+  files live in qts/desktop/ui, not in a top-level ui folder.
+- Local QTS API startup now requires a healthy response from THIS process,
+  avoiding an apparent success when a different process already owns the port.
+
+### Priority work remaining
+
+1. Verify latest full CI and Windows loopback HTTP smoke; keep software
+   release acceptance distinct from strategy validation.
+2. Measure XAUUSD@ spread, slippage, overnight swaps and instrument terms from
+   the OWNER'S connected DEMO broker terminal.
+3. Accumulate genuinely new timestamp-aligned prospective XAUUSD@ observations
+   in the existing durable forward ledger, rather than reuse spent holdouts.
+4. Investigate independent mechanisms (futures basis, options, positioning,
+   order flow) as accessible data permits. Test matched-risk net improvement
+   with strict executable timestamps and explicit costs.
+5. Maintain simple daily Windows UX, fail-closed risk controls and no real-money
+   trading. No candidate is eligible for automatic trade registration today.
+
+---
+
 ## Verified VIX curve research execution — Round 20 (2026-10-21)
 
 **GitHub Actions run 39593567233: SUCCESS.** Cboe VIX/VIX3M CSV acquisition,
