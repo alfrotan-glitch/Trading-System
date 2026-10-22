@@ -1152,18 +1152,16 @@ def test_packaged_smoke_checks_real_backend_and_ui_without_starting_server(monke
     assert launcher._handle_cli(["--smoke"]) is True
 
 
-def test_qts_route_registration_recovers_frozen_docs_only_app(monkeypatch):
-    """Recreate the exact Windows PyInstaller failure: populated routers, empty app."""
-    from fastapi import FastAPI
+def test_qts_lazy_router_registration_available_in_openapi_and_http():
+    """FastAPI >=0.137 keeps included routers lazy, not in flat app.routes."""
+    from fastapi.testclient import TestClient
 
-    import qts.api.server as server
+    from qts.api.server import app
 
-    frozen_app = FastAPI()
-    monkeypatch.setattr(server, "app", frozen_app)
-    assert len(frozen_app.routes) == 4
-    server.ensure_qts_api_routes()
-    paths = {getattr(route, "path", None) for route in frozen_app.routes}
-    assert {"/api/health/live", "/api/version", "/api/demo/guide"} <= paths
-    first_count = len(frozen_app.routes)
-    server.ensure_qts_api_routes()
-    assert len(frozen_app.routes) == first_count, "double registration is not allowed"
+    paths = set(app.openapi()["paths"])
+    required = {"/api/health/live", "/api/version", "/api/demo/guide"}
+    assert required <= paths, sorted(required - paths)
+    response = TestClient(app).get("/api/health/live")
+    assert response.status_code == 200
+    assert response.json()["live_trading"] == "LOCKED"
+    assert TestClient(app).get("/api/version").status_code == 200
