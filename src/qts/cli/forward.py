@@ -108,7 +108,7 @@ def forward_score(as_json: bool) -> None:
     from qts.research.edgelab import CostModel
 
     click.echo(
-        f"\nCosts are ASSUMED (~{CostModel().per_side_bps():.2f} bps/side), not measured. "
+        f"\nCosts are ASSUMED (~{CostModel.realistic_ecn().per_side_bps():.2f} bps/side), not measured. "
         "`observations_for_significance` is the count needed to reach alpha_t=2.5 at the "
         "currently observed effect size — a projection, not a result."
     )
