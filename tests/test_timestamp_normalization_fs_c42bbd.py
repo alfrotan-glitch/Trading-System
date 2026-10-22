@@ -321,9 +321,13 @@ def test_dst_boundary_2h_to_3h_shift(tmp_path: Path):
         assert tick.event_time == datetime.fromtimestamp(now - 1, tz=UTC)
 
 
-def test_offset_grid_exactness_across_zones(tmp_path: Path):
+def test_offset_grid_exactness_across_zones(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """All real-world offsets are multiples of 15min; grid recovers exactly."""
     now = float(int(time.time()))
+    # The fixture encodes broker bars relative to this exact second. Freeze the
+    # clock so a long grid run cannot cross the next second and turn a 59-second
+    # forming-bar phase into an artificial one-minute offset shift.
+    monkeypatch.setattr(time, "time", lambda: now)
     for offset in (0, 900, 1800, 3600, 7200, 10800, 19800, -18000, -14400, 50400):  # includes +14h max
         for bar_phase in (0, 15, 30, 59):
             fake = FakeMT5(RawTick(time_s=now), bar_time=now + offset - bar_phase)
