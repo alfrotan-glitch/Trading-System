@@ -48,21 +48,36 @@ def start_api_server(host: str = "127.0.0.1", port: int = 8000):
     # run in thread
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
-    # wait for health
+    # A 200 from the lightweight health endpoint AND this Uvicorn instance
+    # reporting started are required. A different QTS process on the port must
+    # never be mistaken for the server started by this invocation.
+    import json
     import urllib.request
 
-    url = f"http://{host}:{port}/api/health"
+    url = f"http://{host}:{port}/api/health/live"
     for _ in range(30):
+        if not thread.is_alive():
+            break
         try:
-            # B310: health probe of local API, URL built from local host/port config
+            # Local probe only; safe on a machine with no broker/MT5 installed.
             with urllib.request.urlopen(url, timeout=1) as resp:  # nosec B310
-                if resp.status == 200:
-                    print(f"[launcher] API healthy at {url}")
-                    return server, thread
-        except Exception:
-            time.sleep(0.5)
-    print("[launcher] API not healthy after 15s, continuing anyway")
-    return server, thread
+                if resp.status != 200:
+                    continue
+                body = json.loads(resp.read(4096).decode("utf-8"))
+            if server.started and body.get("status") == "ok" and body.get("live_trading") == "LOCKED":
+                _emit(f"[launcher] QTS local API healthy at {url}")
+                return server, thread
+        except (OSError, ValueError):
+            pass
+        time.sleep(0.5)
+
+    server.should_exit = True
+    thread.join(timeout=2)
+    raise RuntimeError(
+        f"QTS local API did not start correctly on {host}:{port}. "
+        "Another process may already be using the port, or a runtime dependency is missing. "
+        "The desktop window was not opened against an unverified backend."
+    )
 
 
 def open_desktop_window(host: str, port: int):
@@ -138,6 +153,31 @@ def _smoke_packaged_application() -> None:
     _emit("QTS packaged import, API routes and desktop UI: OK")
 
 
+
+def _smoke_http_server() -> None:
+    """Run genuine loopback HTTP/API/UI probes, without touching a trading terminal."""
+    import socket
+    import urllib.request
+
+    # The OS selects a local ephemeral port. No public listener, account
+    # connection, order, or broker-dependent endpoint is involved.
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = int(sock.getsockname()[1])
+    server, thread = start_api_server("127.0.0.1", port)
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5) as resp:  # nosec B310
+            data = resp.read(1_000_000).lower()
+            if resp.status != 200 or b"</html>" not in data:
+                raise RuntimeError("QTS home page did not return valid HTML")
+        _emit("QTS local API and bundled desktop page HTTP smoke: OK")
+    finally:
+        server.should_exit = True
+        thread.join(timeout=10)
+        if thread.is_alive():
+            raise RuntimeError("QTS local API did not stop after HTTP smoke")
+
+
 def _handle_cli(argv: list[str] | None = None) -> bool:
     """Answer ``--version``/``--help`` without starting a server or a window.
 
@@ -146,9 +186,11 @@ def _handle_cli(argv: list[str] | None = None) -> bool:
     what the release workflow smoke-tests.
     """
     args = list(sys.argv[1:] if argv is None else argv)
-    if "--smoke" in args:
+    if "--smoke" in args or "--smoke-server" in args:
         try:
             _smoke_packaged_application()
+            if "--smoke-server" in args:
+                _smoke_http_server()
         except Exception as exc:
             msg = f"QTS packaged smoke FAILED: {type(exc).__name__}: {exc}"
             _emit(msg)
@@ -170,7 +212,7 @@ def _handle_cli(argv: list[str] | None = None) -> bool:
     if "--help" in args or "-h" in args:
         _emit(
             "QTS — gold research workstation\n\n"
-            "Usage: QTS [--version] [--help]\n\n"
+            "Usage: QTS [--version] [--help] [--smoke] [--smoke-server]\n\n"
             "Without arguments QTS runs startup health, serves the local API on\n"
             "127.0.0.1:8000 and opens the workstation window.\n"
             "Live trading is locked; real-capital exposure is 0."
