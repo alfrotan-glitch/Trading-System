@@ -93,25 +93,25 @@ def open_desktop_window(host: str, port: int):
     try:
         import webview  # type: ignore
 
-        print("[launcher] launching native webview")
+        _emit("[launcher] launching native webview")
         # webview must run on main thread; we already started server in background
         webview.create_window("QTS Trading System", url, width=1280, height=800, resizable=True)
         # start webview loop (blocking)
         webview.start()
         return
     except ImportError:
-        print("[launcher] pywebview not installed — falling back to browser")
+        _emit("[launcher] pywebview not installed — falling back to browser")
     except Exception as e:
-        print(f"[launcher] webview failed {e} — falling back to browser")
+        _emit(f"[launcher] webview failed {e} — falling back to browser")
     # Fallback: open browser
-    print(f"[launcher] opening browser at {url}")
+    _emit(f"[launcher] opening browser at {url}")
     webbrowser.open(url)
     # Keep main thread alive while server thread runs
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("[launcher] shutting down")
+        _emit("[launcher] shutting down")
         from qts.desktop.health import shutdown_procedure
 
         shutdown_procedure()
@@ -230,15 +230,15 @@ def _handle_cli(argv: list[str] | None = None) -> bool:
 def main():
     if _handle_cli():
         return
-    print("[launcher] QTS Desktop starting — startup health check")
+    _emit("[launcher] QTS Desktop starting — startup health check")
     from qts.desktop.health import startup_health_check
 
     health = startup_health_check()
-    print(f"[launcher] health overall={health['overall']} status={health['system_status']}")
+    _emit(f"[launcher] health overall={health['overall']} status={health['system_status']}")
     for c in health["checks"]:
-        print(f"  {c['name']}: {'PASS' if c['passed'] else 'FAIL'} {c['detail']}")
+        _emit(f"  {c['name']}: {'PASS' if c['passed'] else 'FAIL'} {c['detail']}")
     if not health["overall"]:
-        print("[launcher] BLOCKED — dashboard will show reasons, not auto-trading")
+        _emit("[launcher] BLOCKED — dashboard will show reasons, not auto-trading")
 
     host, port = _get_api_host_port()
     server, thread = start_api_server(host, port)
