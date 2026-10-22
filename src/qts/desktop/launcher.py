@@ -24,8 +24,9 @@ def _get_api_host_port() -> tuple[str, int]:
 def start_api_server(host: str = "127.0.0.1", port: int = 8000):
     import uvicorn
 
-    from qts.api.server import app
+    from qts.api.server import app, ensure_qts_api_routes
 
+    ensure_qts_api_routes()
     config = uvicorn.Config(
         app,
         host=host,
@@ -108,8 +109,9 @@ def _smoke_packaged_application() -> None:
     UI files survived packaging and can import within the executable. It never
     binds a public port, probes a broker, changes permissions or trades.
     """
-    from qts.api.server import app
+    from qts.api.server import app, ensure_qts_api_routes
 
+    ensure_qts_api_routes()
     required_routes = {"/api/health/live", "/api/version", "/api/demo/guide"}
     available_routes = {getattr(route, "path", "") for route in app.routes}
     missing = sorted(required_routes - available_routes)
