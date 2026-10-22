@@ -277,48 +277,15 @@ def _demo_authority() -> Any:
 
 
 
-_QTS_ROUTERS = (system_router, research_router, trading_router, risk_router, market_router, demo_router)
-
-
-def ensure_qts_api_routes() -> None:
-    """Register missing QTS routes idempotently, including in frozen builds.
-
-    The Windows --smoke test found the frozen app with only FastAPI's five
-    documentation routes even though individual QTS routers were populated.
-    Do not report the application healthy until all router paths are present.
-    Re-register only a wholly absent router; never duplicate existing routes
-    or change any order/risk authority.
-    """
-    present = {getattr(route, "path", None) for route in app.routes}
-    for router in _QTS_ROUTERS:
-        expected = {getattr(route, "path", None) for route in router.routes}
-        if not expected:
-            raise RuntimeError("A QTS API router contains no declared routes")
-        if expected.issubset(present):
-            continue
-        if expected.isdisjoint(present):
-            app.include_router(router)
-            observed = {getattr(route, "path", None) for route in app.routes}
-            if not expected.issubset(observed):
-                from fastapi.routing import APIRoute
-                from starlette.routing import Route
-
-                example = router.routes[0]
-                raise RuntimeError(
-                    "Router composition failed after include_router; "
-                    f"app_count={len(app.routes)}, internal_count={len(app.router.routes)}, "
-                    f"declared={len(router.routes)}, missing={sorted(str(p) for p in expected - observed)[:5]}, "
-                    f"first_type={type(example).__module__}.{type(example).__name__}, "
-                    f"fastapi_route={isinstance(example, APIRoute)}, "
-                    f"starlette_route={isinstance(example, Route)}"
-                )
-            present = observed
-        else:
-            missing = sorted(str(path) for path in expected - present)
-            raise RuntimeError(f"Partially registered QTS API router: {missing}")
-
-
-ensure_qts_api_routes()
+# FastAPI >=0.137 retains included routers as lazy _IncludedRouter nodes.
+# Do not inspect app.routes for all leaf endpoints: schema/routes are resolved
+# recursively by FastAPI, and flattening app.routes is not a supported API.
+app.include_router(system_router)
+app.include_router(research_router)
+app.include_router(trading_router)
+app.include_router(risk_router)
+app.include_router(market_router)
+app.include_router(demo_router)
 
 __all__ = [
     "app",
