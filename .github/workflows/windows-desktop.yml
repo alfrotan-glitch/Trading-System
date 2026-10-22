@@ -40,7 +40,7 @@ jobs:
         run: |
           $exe = "dist\QTS\QTS.exe"
           if (!(Test-Path $exe)) { throw "QTS.exe missing from packaged output" }
-          foreach ($flag in @("--version", "--smoke")) {
+          foreach ($flag in @("--version", "--smoke", "--smoke-server")) {
             $p = Start-Process -FilePath $exe -ArgumentList $flag -Wait -PassThru
             if ($p.ExitCode -ne 0) {
               if (Test-Path $env:QTS_SMOKE_RESULT_PATH) {
