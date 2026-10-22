@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import threading
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -126,6 +127,7 @@ class ForwardObservatory:
 
             self.db_path = resolve_state_path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._attempt_batch_local = threading.local()
         self._init()
 
     def _init(self):
@@ -512,30 +514,57 @@ class ForwardObservatory:
         }
         if extra:
             body["extra"] = extra
+        batch_connection = getattr(self._attempt_batch_local, "connection", None)
+        if batch_connection is not None:
+            self._insert_attempt(batch_connection, body)
+            return
         with db_connect(self.db_path) as con:
-            con.execute(
-                "INSERT INTO observation_attempts (session_id, seq, outcome, attempted_at, scheduled_at,"
-                " slot_index, interval_s, monotonic_s, record_id, dup_key, reason, persistence_ok,"
-                " deferred, gap_slots, payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (
-                    session_id,
-                    int(seq),
-                    outcome,
-                    attempted_at,
-                    scheduled_at,
-                    slot_index,
-                    interval_s,
-                    monotonic_s,
-                    record_id,
-                    dup_key,
-                    reason,
-                    None if persistence_ok is None else int(bool(persistence_ok)),
-                    int(bool(deferred)),
-                    int(gap_slots),
-                    json.dumps(body, sort_keys=True, default=str),
-                ),
-            )
-            con.commit()
+            self._insert_attempt(con, body)
+
+    @staticmethod
+    def _insert_attempt(con: Any, body: dict[str, Any]) -> None:
+        """Insert one prepared attempt into the caller's transaction."""
+        con.execute(
+            "INSERT INTO observation_attempts (session_id, seq, outcome, attempted_at, scheduled_at,"
+            " slot_index, interval_s, monotonic_s, record_id, dup_key, reason, persistence_ok,"
+            " deferred, gap_slots, payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                body["session_id"],
+                int(body["seq"]),
+                body["outcome"],
+                body["attempted_at"],
+                body["scheduled_at"],
+                body["slot_index"],
+                body["interval_s"],
+                body["monotonic_s"],
+                body["record_id"],
+                body["dup_key"],
+                body["reason"],
+                body["persistence_ok"],
+                body["deferred"],
+                body["gap_slots"],
+                json.dumps(body, sort_keys=True, default=str),
+            ),
+        )
+
+    @contextlib.contextmanager
+    def attempt_batch(self):
+        """Group append-only attempt rows in one rollback-safe transaction.
+
+        The context is thread-local because the observe collector owns its
+        journal flush on one worker thread. A failed batch rolls back as a
+        unit, allowing the caller to retain every pending row for a later
+        retry. The public ``record_attempt`` validation and append-only
+        primary key remain in force for every row.
+        """
+        if getattr(self._attempt_batch_local, "connection", None) is not None:
+            raise RuntimeError("nested acquisition-attempt batches are not supported")
+        with db_connect(self.db_path) as con:
+            self._attempt_batch_local.connection = con
+            try:
+                yield
+            finally:
+                self._attempt_batch_local.connection = None
 
     def list_attempts(self, session_id: str) -> list[dict[str, Any]]:
         """Ledger rows for one session, in acquisition order."""

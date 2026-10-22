@@ -597,12 +597,33 @@ class ObservationCollector:
                 else:
                     self._journal_dropped += 1
 
+    def _flush_pending_journal(self, pending: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Replay deferred rows atomically while preserving failure semantics."""
+        done: list[dict[str, Any]] = []
+        try:
+            with self.observatory.attempt_batch():
+                for row in pending:
+                    try:
+                        self._write_attempt(row, deferred=True)
+                    except sqlite3.IntegrityError:
+                        done.append(row)
+                        continue
+                    except Exception:
+                        break
+                    done.append(row)
+        except Exception:
+            return []
+        return done
+
     def _flush_journal(self, entry: dict[str, Any]) -> None:
         """Persist carried backlog rows (flagged ``deferred``) then this entry."""
         with self._lock:
             pending = list(self._journal_backlog)
             dropped = self._journal_dropped
         done: list[dict[str, Any]] = []
+        if pending:
+            done = self._flush_pending_journal(pending)
+            pending = []
         for row in pending:
             try:
                 self._write_attempt(row, deferred=True)
