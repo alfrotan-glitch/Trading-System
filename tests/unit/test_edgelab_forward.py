@@ -212,9 +212,8 @@ def test_freeze_hash_includes_function_literals_and_helper_implementations():
 
     # The same strategy function's referenced helper changed. The freeze
     # must reflect the new semantics rather than retain the old audit ID.
-    original = via_helper.__globals__.get("helper")
-    # Function-level closure rather than global symbols varies by scope;
-    # explicitly test the simple constant change above for all runtimes.
+    # Function-level closures and module globals are distinct cases;
+    # literal changes are still mandatory coverage for all signal types.
     assert before
     assert mk(helper_replacement).definition_hash() != mk(helper).definition_hash()
 
