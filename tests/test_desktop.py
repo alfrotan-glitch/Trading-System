@@ -1206,3 +1206,33 @@ def test_desktop_launcher_refuses_dead_api_instead_of_opening_stale_ui(monkeypat
     monkeypatch.setattr(launcher.time, "sleep", lambda _: None)
     with pytest.raises(RuntimeError, match="did not start correctly"):
         launcher.start_api_server("127.0.0.1", 0)
+
+
+def test_double_click_launcher_operates_without_console_streams(monkeypatch):
+    """A windowed PyInstaller main() cannot print to missing stdout/stderr."""
+    import sys
+
+    from qts.desktop import health, launcher
+
+    visited = []
+    monkeypatch.setattr(sys, "argv", ["QTS"])
+    monkeypatch.setattr(sys, "stdout", None)
+    monkeypatch.setattr(sys, "stderr", None)
+    monkeypatch.setattr(
+        health,
+        "startup_health_check",
+        lambda: {"overall": False, "system_status": "Blocked", "checks": []},
+    )
+    monkeypatch.setattr(
+        launcher,
+        "start_api_server",
+        lambda host, port: ("no-orders-server", "no-orders-thread"),
+    )
+    monkeypatch.setattr(
+        launcher,
+        "open_desktop_window",
+        lambda host, port: visited.append((host, port)),
+    )
+    monkeypatch.setattr(launcher.time, "sleep", lambda _: None)
+    launcher.main()
+    assert visited == [("127.0.0.1", 8000)]
