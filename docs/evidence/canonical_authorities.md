@@ -23,13 +23,17 @@ ONE canonical `ExecutionMode`:
 | `LIVE` | **yes** | yes (gated) | **yes** |
 
 Resolution precedence (highest wins): explicit argument → `QTS_MODE` →
-`QTS_ENV` → config file env → `DEVELOPMENT`. Unknown selections raise
-`ModeResolutionError` — they never silently become DEVELOPMENT. Legacy env
-aliases (`dev`, `demo`, `dry_run`, `micro`) map deterministically.
+machine-local setup declaration → `QTS_ENV` → config file env →
+`DEVELOPMENT`. Unknown selections raise `ModeResolutionError` — they never
+silently become DEVELOPMENT. Legacy aliases (`dev`, `demo`, `dry_run`,
+`micro`) map deterministically. The setup declaration may select only a
+non-LIVE mode and carries no execution permission; owner authorization and the
+DEMO stage/pre-trade gates remain separate.
 
-Restart semantics: the mode is never persisted by the app; a restart
-re-resolves from environment/arguments. There is no hidden sticky mode and
-no silent mid-session mode change.
+Restart semantics: the mode is re-resolved from these sources on every process
+start. The setup declaration makes the CLI and desktop backend agree across
+processes, but does not create a mid-session mode transition or unlock an
+order path.
 
 ## 2. DEMO execution-permission authority — `qts.lifecycle.demo_authority`
 

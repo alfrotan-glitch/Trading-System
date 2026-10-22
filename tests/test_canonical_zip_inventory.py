@@ -145,7 +145,13 @@ def test_backslash_member_is_read_without_rewriting_bytes(tmp_path: Path) -> Non
     payload = part_path.read_bytes()
     archive = tmp_path / "win.zip"
     with zipfile.ZipFile(archive, "w") as zf:
-        zf.writestr(zipfile.ZipInfo(r"parts\part-000000.parquet"), payload)
+        # Python 3.14 normalizes ZipInfo names at construction time.  Set the
+        # encoded member name after construction so this fixture still models
+        # a legacy Windows-created archive with a backslash in its raw bytes.
+        member = zipfile.ZipInfo("parts/part-000000.parquet")
+        member.filename = r"parts\part-000000.parquet"
+        member.orig_filename = member.filename
+        zf.writestr(member, payload)
         zf.writestr(
             "manifest.json",
             json.dumps({"parts": [{"part": "part-000000.parquet", "sha256": "unused", "rows": 2}], "row_count": 2}),

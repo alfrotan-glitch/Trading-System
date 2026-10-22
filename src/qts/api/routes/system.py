@@ -510,8 +510,9 @@ def runtime_state() -> dict[str, Any]:
             "reasons": authorization_status().reasons,
         },
         "note": (
-            "QTS_MODE/QTS_ENV override the persisted declaration; a real-capital mode can never be "
-            "declared in the setup file, and no API/UI call can write it. LIVE stays locked."
+            "QTS_MODE and QTS_ENV override the persisted non-LIVE declaration; a real-capital mode can "
+            "never be declared in the setup file. Selecting DEMO_EXECUTION does not grant order permission; "
+            "LIVE stays locked."
         ),
     }
 

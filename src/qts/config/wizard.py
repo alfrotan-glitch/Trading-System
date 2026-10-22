@@ -16,8 +16,8 @@ with ``QTS_SETUP_FILE`` (used by tests and portable installs).
 Precedence consumed by the readiness gate (see api/server.py):
 explicit request param > saved wizard file > QTS_MT5_PATH/QTS_MT5_SYMBOL
 env > MT5_PATH env > MT5 auto-detect. Fail-closed behavior of the gate is
-untouched: this store only supplies connection metadata, never gate
-decisions, env/mode selection, or safety limits.
+untouched: this store supplies connection metadata and an optional non-LIVE
+mode declaration, never gate decisions or safety limits.
 """
 
 from __future__ import annotations
@@ -143,8 +143,8 @@ def save_setup(payload: dict[str, Any], path: Path | str | None = None) -> dict[
         "stored_at": str(p),
         "rejected_fields": rejected,
         "mode_note": (
-            "the mode declaration is read from this file but cannot be written through the API/UI — "
-            "use `qts mode declare demo_execution` (LIVE can never be declared; it stays locked)"
+            "the allowlisted non-LIVE mode declaration is persisted for both the API/UI and CLI; "
+            "it changes capability labeling only, never order permission. LIVE can never be declared; it stays locked."
             if "mode" in payload
             else None
         ),

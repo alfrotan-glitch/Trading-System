@@ -1394,8 +1394,19 @@ def test_micro_full_lifecycle(cli_workspace):
                 main, ["run", "--mode", "micro", "--data-version", cli_workspace.version, "--confirm", "live"]
             )
             real_terminal, _detail = check_mt5_connectivity()
-            if not real_terminal:
-                assert result.exit_code == 2, "micro lifecycle must fail closed without REAL MT5"
+            real_opt_in = os.getenv("QTS_USE_REAL_MT5") == "true"
+            if not real_terminal or not real_opt_in:
+                # The CLI deliberately defaults to a labeled rehearsal even
+                # when a terminal is discoverable; attaching the real broker
+                # requires the separate explicit opt-in. Never turn that opt-in
+                # on from a test, because it could submit a real order.
+                if not real_terminal:
+                    assert result.exit_code == 2, "micro lifecycle must fail closed without REAL MT5"
+                else:
+                    assert result.exit_code == 0, "the un opted-in path is the labeled rehearsal"
+                    ev = json.loads(Path("data/evidence/micro.json").read_text(encoding="utf-8"))
+                    assert ev["is_mock"] is True
+                    assert ev["terminal_contacted"] is False
                 return
             ev = json.loads(Path("data/evidence/micro.json").read_text(encoding="utf-8"))
 

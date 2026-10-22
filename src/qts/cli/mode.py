@@ -15,10 +15,13 @@ def mode() -> None:
 @mode.command("show")
 def mode_show() -> None:
     """The effective mode, and exactly which source decided it."""
-    from qts.domain.modes import effective_mode_report, resolve_mode
+    from qts.domain.modes import effective_mode_report
 
     report = effective_mode_report()
-    click.echo(f"effective mode: {resolve_mode().value}")
+    # The report deliberately converts an invalid declaration to DEVELOPMENT
+    # capability while preserving the loud resolution_error. Do not resolve
+    # a second time and turn that useful diagnostic into a traceback.
+    click.echo(f"effective mode: {report['effective_mode']}")
     click.echo(f"decided by:     {report['mode_source']}")
     click.echo(f"declaration:    {report['persisted_mode_declaration'] or '<none>'}")
     click.echo(f"env:            QTS_MODE={report['mode_source_env'].get('QTS_MODE')} QTS_ENV={report['mode_source_env'].get('QTS_ENV')}")

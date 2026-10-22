@@ -185,9 +185,9 @@ def test_resolve_state_path_handles_relative_and_absolute():
     """resolve_state_path correctly expands relative paths against state root."""
     rel = resolve_state_path("data/evidence/test.json")
     assert rel.is_absolute()
-    assert str(rel).endswith("data/evidence/test.json")
+    assert rel == state_root() / "data/evidence/test.json"
 
-    abs_path = Path("/tmp/absolute_test.json")
+    abs_path = Path(state_root().anchor) / "absolute_test.json"
     assert resolve_state_path(abs_path) == abs_path
 
 

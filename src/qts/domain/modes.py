@@ -14,14 +14,14 @@ Resolution precedence (highest wins):
 
 1. Explicit argument (API call / CLI flag — audited at the call site)
 2. ``QTS_MODE`` environment variable (exact :class:`ExecutionMode` value)
-3. ``QTS_ENV`` environment variable (mapped; unknown values fail closed)
-4. Configuration file env selection (``configs/<env>.yaml``)
-5. Default: ``DEVELOPMENT`` (fail-safe)
+3. Persisted machine-local declaration
+4. ``QTS_ENV`` environment variable (mapped; unknown values fail closed)
+5. Configuration file env selection (``configs/<env>.yaml``)
+6. Default: ``DEVELOPMENT`` (fail-safe)
 
-Restart semantics are explicit: the mode is NOT persisted by the app. A
-restart re-resolves from the environment — there is no hidden sticky mode.
-Transitions between modes require a process restart with a different
-explicit selection (no silent mid-session mode change).
+The operator may persist a machine-local non-LIVE declaration. A restart
+re-resolves the mode from the ordered sources above; there is no silent
+mid-session mode change. LIVE cannot be selected by a persisted declaration.
 """
 
 from __future__ import annotations
@@ -109,10 +109,11 @@ def persisted_mode_declaration() -> tuple[str | None, str | None]:
     Two hard limits keep this from becoming a permission grant:
 
     * it can never select a real-capital mode — ``LIVE`` (or any alias of it)
-      in the file is refused and falls through to ``DEVELOPMENT``;
-    * the API/UI cannot write it (``wizard.save_setup`` rejects the key), so no
-      UI action can change the mode; it is an operator-edited, auditable file
-      declaration, and every resolution reports its provenance.
+      in the file is refused and falls through to lower-priority declarations
+      or ``DEVELOPMENT``;
+    * only the allowlisted non-LIVE modes can be written through the setup
+      API/UI or ``qts mode declare``; selecting a mode is not an execution
+      permission grant, and every resolution reports its provenance.
     """
     try:
         from qts.config.wizard import load_setup, setup_file
@@ -135,15 +136,8 @@ def _coerce_mode(raw: str) -> ExecutionMode | None:
         return None
 
 
-def resolve_mode(explicit: str | None = None, config_env: str | None = None) -> ExecutionMode:
-    """Resolve the canonical effective mode from the documented precedence.
-
-    explicit > ``QTS_MODE`` > persisted declaration > ``QTS_ENV`` >
-    ``config_env`` > ``DEVELOPMENT``.
-
-    Raises :class:`ModeResolutionError` (fail closed) on unknown values —
-    an unrecognised mode must never silently become DEVELOPMENT.
-    """
+def _mode_candidates(explicit: str | None = None, config_env: str | None = None) -> list[tuple[str, str]]:
+    """Return mode declarations in the one canonical resolution order."""
     candidates: list[tuple[str, str]] = []
     if explicit is not None:
         candidates.append((f"explicit:{explicit}", explicit))
@@ -158,15 +152,40 @@ def resolve_mode(explicit: str | None = None, config_env: str | None = None) -> 
         candidates.append((f"{ENV_ENV_VAR}={raw_env}", raw_env))
     if config_env:
         candidates.append((f"config:{config_env}", config_env))
+    return candidates
 
+
+def _is_allowed_live_source(source: str) -> bool:
+    """Whether a LIVE declaration came from an explicitly authorized source."""
+    return source.startswith(("explicit:", MODE_ENV_VAR, ENV_ENV_VAR))
+
+
+def _unknown_mode_error(source: str, raw: str) -> ModeResolutionError:
+    return ModeResolutionError(
+        f"unknown mode selection {source}={raw!r}; valid values: "
+        f"{sorted(set(_ENV_ALIASES))} or canonical {sorted(m.value for m in ExecutionMode)}"
+    )
+
+
+def resolve_mode(explicit: str | None = None, config_env: str | None = None) -> ExecutionMode:
+    """Resolve the canonical effective mode from the documented precedence.
+
+    explicit > ``QTS_MODE`` > persisted declaration > ``QTS_ENV`` >
+    ``config_env`` > ``DEVELOPMENT``.
+
+    Raises :class:`ModeResolutionError` (fail closed) on unknown values —
+    an unrecognised mode must never silently become DEVELOPMENT.
+    """
     refused: list[str] = []
-    unrecognized: list[tuple[str, str]] = []
-    for source, raw in candidates:
+    for source, raw in _mode_candidates(explicit=explicit, config_env=config_env):
         mode = _coerce_mode(raw)
         if mode is None:
-            unrecognized.append((source, raw))
-            continue
-        if mode.is_money_at_risk and source is not None and not source.startswith(("explicit:", MODE_ENV_VAR, ENV_ENV_VAR)):
+            # Never let a lower-priority valid declaration mask a typo in a
+            # higher-priority selection (especially an explicit API/CLI mode).
+            if refused:
+                _record_refused_declarations(refused)
+            raise _unknown_mode_error(source, raw)
+        if mode.is_money_at_risk and not _is_allowed_live_source(source):
             # A real-capital mode may never be selected from a persisted file or
             # a config default: LIVE stays locked behind its own gate.
             refused.append(f"{source}={raw} (real-capital modes cannot be declared there)")
@@ -176,12 +195,6 @@ def resolve_mode(explicit: str | None = None, config_env: str | None = None) -> 
         return mode
     if refused:
         _record_refused_declarations(refused)
-    if unrecognized:
-        # An explicit selection existed but matched nothing — never guess.
-        raise ModeResolutionError(
-            f"unknown mode selection {unrecognized!r}; valid values: "
-            f"{sorted(set(_ENV_ALIASES))} or canonical {sorted(m.value for m in ExecutionMode)}"
-        )
     return ExecutionMode.DEVELOPMENT
 
 
@@ -207,21 +220,17 @@ def mode_source(explicit: str | None = None, config_env: str | None = None) -> s
     otherwise "DEVELOPMENT here, DEMO_EXECUTION there" is indistinguishable from
     a backend that has quietly diverged.
     """
-    if explicit is not None and _coerce_mode(explicit) is not None:
-        return f"explicit:{explicit}"
-    raw_mode = os.getenv(MODE_ENV_VAR)
-    if raw_mode and _coerce_mode(raw_mode) is not None:
-        return f"{MODE_ENV_VAR}={raw_mode}"
-    declared, source = persisted_mode_declaration()
-    if declared and _coerce_mode(declared) is not None:
-        mode = _coerce_mode(declared)
-        if mode is not None and not mode.is_money_at_risk:
-            return f"{source}: mode={declared}"
-    raw_env = os.getenv(ENV_ENV_VAR)
-    if raw_env and _coerce_mode(raw_env) is not None:
-        return f"{ENV_ENV_VAR}={raw_env}"
-    if config_env and _coerce_mode(config_env) is not None:
-        return f"config:{config_env}"
+    for source, raw in _mode_candidates(explicit=explicit, config_env=config_env):
+        mode = _coerce_mode(raw)
+        if mode is None:
+            # Keep diagnostics aligned with resolve_mode(): an invalid higher
+            # priority declaration must not be hidden by a lower one.
+            return f"{source} (invalid selection)"
+        if mode.is_money_at_risk and not _is_allowed_live_source(source):
+            continue
+        if source.startswith("mode declaration in "):
+            return f"{source}: mode={raw}"
+        return source
     return "no mode declared — DEVELOPMENT (least capable, fail closed)"
 
 
@@ -247,7 +256,7 @@ def effective_mode_report(explicit: str | None = None, config_env: str | None = 
         "resolution_error": error,
         "restart_semantics": (
             "mode is re-resolved on every process start from explicit args, "
-            "QTS_MODE/QTS_ENV, then the persisted machine-local declaration; "
+            "QTS_MODE, the persisted machine-local declaration, then QTS_ENV; "
             "a real-capital mode can never come from the persisted declaration"
         ),
         "resolved_at": datetime.now(UTC).isoformat(),

@@ -201,8 +201,14 @@ def test_research_validation_translates_opportunity_disposition():
 
 def test_measured_costs_and_longhistory_summary_api_endpoints(client, tmp_path, monkeypatch):
     """API exposes measured vs assumed execution costs and long-history research state honestly."""
+    import sys
+
     monkeypatch.setenv("QTS_STATE_ROOT", str(tmp_path))
     monkeypatch.setenv("QTS_DB_PATH", str(tmp_path / "qts.db"))
+    # This endpoint contract asserts the UNMEASURED response when no terminal
+    # is available.  Make the absence deterministic on developer machines that
+    # happen to have MetaTrader5 installed and connected.
+    monkeypatch.setitem(sys.modules, "MetaTrader5", None)
     r_costs = client.get("/api/demo/measured-costs")
     assert r_costs.status_code == 200
     body_costs = r_costs.json()

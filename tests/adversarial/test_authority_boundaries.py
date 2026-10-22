@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from qts.domain.modes import ExecutionMode, ModeResolutionError, resolve_mode
+from qts.domain.modes import ExecutionMode, ModeResolutionError, effective_mode_report, mode_source, resolve_mode
 from qts.risk.authority import MODE_RESTRICTIONS, resolve_risk_limits
 from qts.risk.demo_limits import DEMO_FORWARD_DEFAULTS, SAFETY_BOUNDARY, assert_demo_limits, env_boundary_check
 
@@ -21,27 +21,45 @@ from qts.risk.demo_limits import DEMO_FORWARD_DEFAULTS, SAFETY_BOUNDARY, assert_
 # ---------------------------------------------------------------------------
 
 
-def test_unknown_explicit_mode_fails_closed(monkeypatch):
+def test_unknown_explicit_mode_fails_closed(monkeypatch, tmp_path):
     monkeypatch.delenv("QTS_MODE", raising=False)
     monkeypatch.delenv("QTS_ENV", raising=False)
+    _isolate_setup(monkeypatch, tmp_path, mode="demo_execution")
     with pytest.raises(ModeResolutionError):
         resolve_mode("banana-mode")
 
 
-def test_unknown_env_var_fails_closed(monkeypatch):
+def test_unknown_env_var_fails_closed(monkeypatch, tmp_path):
+    _isolate_setup(monkeypatch, tmp_path)
     monkeypatch.setenv("QTS_ENV", "staging")  # a plausible typo — must NOT silently resolve
     monkeypatch.delenv("QTS_MODE", raising=False)
     with pytest.raises(ModeResolutionError):
         resolve_mode()
 
 
-def test_no_selection_defaults_to_development(monkeypatch):
+def test_invalid_higher_priority_mode_is_not_hidden_in_diagnostics(monkeypatch, tmp_path):
+    _isolate_setup(monkeypatch, tmp_path, mode="demo_execution")
+    monkeypatch.setenv("QTS_MODE", "staging")
+    monkeypatch.setenv("QTS_ENV", "paper")
+
+    with pytest.raises(ModeResolutionError, match="QTS_MODE=staging"):
+        resolve_mode()
+
+    report = effective_mode_report()
+    assert report["effective_mode"] == "DEVELOPMENT"
+    assert "QTS_MODE=staging" in report["resolution_error"]
+    assert mode_source().startswith("QTS_MODE=staging (invalid selection)")
+
+
+def test_no_selection_defaults_to_development(monkeypatch, tmp_path):
+    _isolate_setup(monkeypatch, tmp_path)
     monkeypatch.delenv("QTS_MODE", raising=False)
     monkeypatch.delenv("QTS_ENV", raising=False)
     assert resolve_mode() is ExecutionMode.DEVELOPMENT
 
 
-def test_legacy_env_aliases_map_to_exactly_one_mode(monkeypatch):
+def test_legacy_env_aliases_map_to_exactly_one_mode(monkeypatch, tmp_path):
+    _isolate_setup(monkeypatch, tmp_path)
     monkeypatch.delenv("QTS_MODE", raising=False)
     for env_value, expected in [
         ("dev", ExecutionMode.DEVELOPMENT),
@@ -69,18 +87,48 @@ def test_mode_capability_matrix():
     assert ExecutionMode.LIVE.is_money_at_risk
 
 
-def test_mode_report_surfaces_resolution_error(monkeypatch):
-    from qts.domain.modes import effective_mode_report
-
+def test_mode_report_surfaces_resolution_error(monkeypatch, tmp_path):
+    _isolate_setup(monkeypatch, tmp_path)
     monkeypatch.setenv("QTS_ENV", "nonsense")
     rpt = effective_mode_report()
     assert rpt["effective_mode"] == "DEVELOPMENT"  # fail-safe capability
     assert rpt["resolution_error"]  # ...but the error is LOUD, not silent
 
 
+def test_refused_live_declaration_is_retained_when_a_lower_source_is_invalid(monkeypatch, tmp_path):
+    _isolate_setup(monkeypatch, tmp_path, mode="live")
+    monkeypatch.setenv("QTS_ENV", "nonsense")
+    report = effective_mode_report()
+
+    assert report["effective_mode"] == "DEVELOPMENT"
+    assert report["resolution_error"]
+    assert any("real-capital" in item for item in report["refused_real_capital_declarations"])
+
+
+def test_mode_show_reports_invalid_selection_without_traceback(monkeypatch, tmp_path):
+    from click.testing import CliRunner
+
+    from qts.cli import main
+
+    _isolate_setup(monkeypatch, tmp_path)
+    monkeypatch.setenv("QTS_ENV", "nonsense")
+    result = CliRunner().invoke(main, ["mode", "show"])
+
+    assert result.exit_code == 0, result.output
+    assert "effective mode: DEVELOPMENT" in result.output
+    assert "error:" in result.output
+
+
 # ---------------------------------------------------------------------------
 # Risk authority unity
 # ---------------------------------------------------------------------------
+
+
+def _isolate_setup(monkeypatch, tmp_path, mode=None):
+    setup = tmp_path / "mt5_setup.json"
+    if mode is not None:
+        setup.write_text(f'{{"mode": "{mode}"}}', encoding="utf-8")
+    monkeypatch.setenv("QTS_SETUP_FILE", str(setup))
 
 
 def test_mode_restrictions_never_loosen_base():

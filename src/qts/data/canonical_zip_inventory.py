@@ -94,6 +94,17 @@ def _normalized_member(name: str) -> str:
     return name.replace("\\", "/")
 
 
+def _archive_member_name(info: zipfile.ZipInfo) -> str:
+    """Return the member name as encoded in the archive when available.
+
+    Recent Python versions normalize backslashes while reading a ``ZipInfo``
+    object, but retain the original name in ``orig_filename``.  Inventory
+    must inspect that original spelling so a Windows-created archive still
+    records its path-separator defect.
+    """
+    return str(getattr(info, "orig_filename", info.filename))
+
+
 def _unsafe_member(name: str) -> bool:
     normalized = _normalized_member(name)
     if normalized.startswith("/") or ":" in normalized[:3]:
@@ -105,7 +116,7 @@ def _member_summary(zf: zipfile.ZipFile) -> dict[str, Any]:
     infos = zf.infolist()
     listed = [
         {
-            "name": info.filename,
+            "name": _archive_member_name(info),
             "compressed_bytes": info.compress_size,
             "uncompressed_bytes": info.file_size,
             "is_dir": info.is_dir(),
@@ -125,7 +136,7 @@ def _member_summary(zf: zipfile.ZipFile) -> dict[str, Any]:
 def _extract(zf: zipfile.ZipFile, dest: Path) -> None:
     dest.mkdir(parents=True, exist_ok=True)
     for info in zf.infolist():
-        relative = _normalized_member(info.filename)
+        relative = _normalized_member(_archive_member_name(info))
         if info.is_dir() or relative.endswith("/"):
             (dest / relative).mkdir(parents=True, exist_ok=True)
             continue
@@ -381,10 +392,17 @@ def inventory_zip(
     with zf:
         summary = _member_summary(zf)
         report["inventory"] = summary
-        unsafe = [item["name"] for item in summary["members"] if _unsafe_member(item["name"])]
         # members may be truncated; scan the full infolist for unsafe paths
-        unsafe = [info.filename for info in zf.infolist() if _unsafe_member(info.filename)]
-        backslash_members = [info.filename for info in zf.infolist() if "\\" in info.filename]
+        unsafe = [
+            _archive_member_name(info)
+            for info in zf.infolist()
+            if _unsafe_member(_archive_member_name(info))
+        ]
+        backslash_members = [
+            _archive_member_name(info)
+            for info in zf.infolist()
+            if "\\" in _archive_member_name(info)
+        ]
         if backslash_members:
             report["defects"].append(
                 _defect(

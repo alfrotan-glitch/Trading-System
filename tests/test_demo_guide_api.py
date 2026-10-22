@@ -112,8 +112,14 @@ def _inject(session, monkeypatch) -> None:
 # ------------------------------------------------------------------ read side
 
 
-def test_guide_fails_closed_without_a_terminal(client):
+def test_guide_fails_closed_without_a_terminal(client, monkeypatch):
     """No MT5 in the sandbox ⇒ honest 'Not connected', never a guess or a crash."""
+    import sys
+
+    # The product endpoint must remain honest on hosts that do have MT5
+    # installed.  Simulate the absent package at the import boundary instead
+    # of relying on the developer machine's terminal state.
+    monkeypatch.setitem(sys.modules, "MetaTrader5", None)
     body = client.get("/api/demo/guide").json()
     assert body["connection"]["connected"] is False
     assert body["can_trade"] is False
@@ -281,8 +287,11 @@ def test_record_and_confirm_identity_flow(client, api_env, monkeypatch, passing_
     assert confirmed.json()["guide"]["identity"]["verified"] is True
 
 
-def test_record_identity_refuses_without_a_terminal(client):
+def test_record_identity_refuses_without_a_terminal(client, monkeypatch):
     """Recording is evidence, not permission: no live identity ⇒ refusal."""
+    import sys
+
+    monkeypatch.setitem(sys.modules, "MetaTrader5", None)
     response = client.post("/api/demo/guide/record-identity", json={})
     assert response.status_code == 409
     body = response.json()

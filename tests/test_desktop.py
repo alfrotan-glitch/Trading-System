@@ -650,7 +650,14 @@ def test_live_status_checklist_is_derived_not_hardcoded(tmp_path, monkeypatch):
     ``/api/health``'s own hardcoded ``"Disconnected"``, so it could never be
     satisfied and reported an unmeasured connection as a measured absent one.
     """
+    import sys
+
     monkeypatch.chdir(tmp_path)
+    # This contract tests checklist derivation, not whether the developer's
+    # workstation happens to have a live MT5 terminal.  Make the infrastructure
+    # absence explicit so a real local terminal cannot satisfy the connectivity
+    # item and turn an environment assumption into a false regression.
+    monkeypatch.setitem(sys.modules, "MetaTrader5", None)
     j = _client().get("/api/live/status").json()
 
     assert j["live_trading"] == "LOCKED"
@@ -1026,9 +1033,13 @@ def test_startup_health_real_mode_fails_closed_without_ipc(
     """Missing module or a dead IPC link fails startup — with the real reason."""
     _real_probe_env(tmp_path, monkeypatch)
 
+    # 1) No MetaTrader5 module at all: make that environment explicit rather
+    # than depending on whether the host running pytest has MT5 installed.
+    import sys
+
     from qts.desktop.health import startup_health_check
 
-    # 1) No MetaTrader5 module at all (this environment): precise failure.
+    monkeypatch.setitem(sys.modules, "MetaTrader5", None)
     health = startup_health_check()
     mt5_check = next(c for c in health["checks"] if c["name"] == "verify_account_MT5")
     assert not mt5_check["passed"]
@@ -1083,8 +1094,14 @@ def test_startup_health_real_mode_probe_unlocks_nothing(
 
     # Readiness without an injected module still fails closed — the startup
     # probe does not stand in for the 14-check authorization probe.
+    import sys
+
     from qts.lifecycle.demo_gate import demo_forward_readiness_report
 
+    # Do not let an unrelated real MT5 installation satisfy this second probe.
+    # The startup probe's fake module is intentionally not reused here, so this
+    # verifies that a passing health check does not grant readiness authority.
+    monkeypatch.setitem(sys.modules, "MetaTrader5", None)
     readiness = demo_forward_readiness_report(symbol="XAUUSD", symbol_map={"XAUUSD": "XAUUSD@"})
     assert readiness["passed"] is False
 

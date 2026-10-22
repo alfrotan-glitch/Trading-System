@@ -65,16 +65,24 @@ def git_commit() -> str | None:
 
 
 def code_version() -> str:
-    """Human-auditable code identity, e.g. ``0.1.0+1b7fbed`` or ``0.1.0+unknown``."""
-    try:
-        from importlib.metadata import PackageNotFoundError, version
+    """Human-auditable code identity, using the loaded package release.
 
-        try:
-            base = version("qts")
-        except PackageNotFoundError:
-            base = "0.0.0-dev"
+    Editable/source checkouts can have stale distribution metadata left in the
+    virtual environment. The imported package version is the version the
+    running code actually declares; metadata is only a fallback for unusual
+    import contexts where ``qts`` cannot be imported.
+    """
+    try:
+        from qts import __version__ as source_version
+
+        base = source_version
     except Exception:
-        base = "0.0.0-dev"
+        try:
+            from importlib.metadata import version
+
+            base = version("qts")
+        except Exception:
+            base = "0.0.0-dev"
     commit = git_commit()
     dirty_suffix = "-dirty" if commit and commit.endswith("-dirty") else ""
     commit_value = commit or ""
