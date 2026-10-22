@@ -12,6 +12,15 @@ from pathlib import Path
 
 
 def _get_ui_dir() -> Path:
+    """Find UI assets in either an editable checkout or a frozen Windows EXE.
+
+    In a PyInstaller executable the launcher is the ENTRY SCRIPT, not an
+    imported qts.desktop module. Its __file__ resolves directly under
+    sys._MEIPASS, while packaged assets live under qts/desktop/ui.
+    """
+    if getattr(sys, "frozen", False):
+        bundle_root = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
+        return bundle_root / "qts" / "desktop" / "ui"
     return Path(__file__).parent / "ui"
 
 
