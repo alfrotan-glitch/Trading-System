@@ -1,0 +1,45 @@
+{
+  "schema": "qts.mt5_tick_cost_profile.v1",
+  "study": "MT5-TICK-COST-PROFILE-20261023",
+  "instrument": "XAUUSD",
+  "source_class": "configured_demo_terminal",
+  "dataset": {
+    "window_days": 7,
+    "rows": 935472,
+    "sha256": "f77a615dccba49e8501e56921d284abdebc7250e443957da924b15b2eddacf85",
+    "status": "COMPLETE",
+    "analysis_status": "PASS",
+    "non_monotonic_time_msc_count": 0,
+    "invalid_bid_count": 0,
+    "invalid_ask_count": 0,
+    "ask_below_bid_count": 0,
+    "zero_spread_count": 0,
+    "identical_full_row_excess_count": 0,
+    "same_time_msc_groups": 10949,
+    "same_time_msc_distinct_payload_rows": 10972
+  },
+  "quote_spread_bps": {
+    "count": 935472,
+    "min": 0.4788606946370657,
+    "median": 0.5802750019941675,
+    "mean": 0.5824295872244859,
+    "p95": 0.6534500346702112,
+    "max": 3.091033346936485
+  },
+  "limitations": {
+    "timestamp_basis_confirmed": false,
+    "commission_measured": false,
+    "slippage_measured": false,
+    "swap_measured": false,
+    "fill_evidence_present": false,
+    "historical_m15_spread_join_available": false,
+    "interpretation": "Measured quote spread only; not an executable round-trip cost and not a profitability claim"
+  },
+  "safety": {
+    "read_only": true,
+    "orders_submitted": 0,
+    "order_send_called": false,
+    "DEMO_EXECUTION": "DISABLED",
+    "LIVE": "LOCKED"
+  }
+}

@@ -1,3 +1,14 @@
+## Current continuation: measured broker quote-cost evidence (2026-10-23)
+
+**Round 24 executed locally:** the read-only MT5 acquisition workflow captured
+and quality-passed one complete seven-day bid/ask tick window. The sanitized
+profile in `docs/research/mt5_tick_cost_profile_2026-10-23.md` records a
+0.5803 bps median and 0.6535 bps p95 quoted spread over 935,472 rows, with no
+invalid quotes or backward raw timestamps. This is quote evidence only:
+commission, slippage, swaps, fills, and the historical server/UTC basis remain
+unmeasured or unverified. Raw tick data and acquisition manifests remain local
+and untracked. No order API was called; LIVE remains locked.
+
 ## Current continuation: conditioned-volatility discovery (2026-10-23)
 
 **Round 23 executed locally:** the preregistered conditioned-volatility M15
