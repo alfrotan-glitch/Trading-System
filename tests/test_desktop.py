@@ -1236,3 +1236,28 @@ def test_double_click_launcher_operates_without_console_streams(monkeypatch):
     monkeypatch.setattr(launcher.time, "sleep", lambda _: None)
     launcher.main()
     assert visited == [("127.0.0.1", 8000)]
+
+
+def test_double_click_failure_displays_error_instead_of_silent_exit(monkeypatch):
+    """A windowed QTS build must tell the owner if localhost HTTP fails."""
+    import sys
+
+    from qts.desktop import health, launcher
+
+    messages = []
+    monkeypatch.setattr(sys, "argv", ["QTS"])
+    monkeypatch.setattr(
+        health,
+        "startup_health_check",
+        lambda: {"overall": False, "system_status": "Blocked", "checks": []},
+    )
+    monkeypatch.setattr(
+        launcher,
+        "start_api_server",
+        lambda host, port: (_ for _ in ()).throw(RuntimeError("local port already used")),
+    )
+    monkeypatch.setattr(launcher, "_show_startup_error", lambda: messages.append("visible"))
+    with pytest.raises(SystemExit) as exit_code:
+        launcher.main()
+    assert exit_code.value.code == 1
+    assert messages == ["visible"]
