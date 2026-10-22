@@ -208,6 +208,101 @@ def log_observation(
     return entry
 
 
+
+#: Provenance classes that may support *prospective research*. An operator
+#: typing a price or replaying a historical CSV cannot self-attest to these.
+PROSPECTIVE_SOURCES = ("MT5_DEMO_COMPLETED_BAR", "VERIFIED_EXTERNAL_UTC_CLOSE")
+
+
+def prospective_integrity(
+    candidate: Candidate,
+    registration: dict | None,
+    entries: pd.DataFrame,
+) -> dict:
+    """Audit whether the ledger is actually prospective, NOT whether it has alpha.
+
+    Legacy unverified JSONL rows may still be used for exploratory statistics;
+    they may NOT turn into forward-validation evidence merely by raising a t.
+    This is an eligibility audit, not proof that a purported broker source is
+    genuine, that costs are measured, or that a strategy is profitable.
+    """
+    failures: list[str] = []
+    if candidate.status != "candidate":
+        failures.append("candidate is not active")
+    if not registration:
+        failures.append("candidate definition was never registered")
+    elif registration.get("definition_hash") != candidate.definition_hash():
+        failures.append("registered definition hash differs from current strategy")
+    registered_at: pd.Timestamp | None = None
+    if registration:
+        try:
+            registered_at = pd.Timestamp(registration["registered_at"])
+            if pd.isna(registered_at) or registered_at.tzinfo is None:
+                raise ValueError("missing time zone")
+            registered_at = registered_at.tz_convert("UTC")
+        except (KeyError, ValueError, TypeError):
+            failures.append("registration has no auditable UTC freeze timestamp")
+            registered_at = None
+
+    if entries.empty:
+        failures.append("no forward observations")
+        return {"eligible_for_review": False, "issues": failures, "verified_rows": 0}
+
+    if "candidate_id" in entries:
+        entries = entries.loc[entries["candidate_id"] == candidate.id]
+    if entries.empty:
+        failures.append("no observations for candidate")
+        return {"eligible_for_review": False, "issues": failures, "verified_rows": 0}
+
+    required = {
+        "date", "signal", "gold_close", "definition_hash", "logged_at",
+        "price_basis", "source_kind", "source_id",
+    }
+    missing = required.difference(entries.columns)
+    if missing:
+        failures.append(f"ledger lacks provenance fields: {sorted(missing)}")
+        return {"eligible_for_review": False, "issues": failures, "verified_rows": 0}
+
+    if entries["date"].duplicated().any():
+        failures.append("duplicate observation date")
+    verified_rows = 0
+    for row in entries.to_dict(orient="records"):
+        try:
+            day = pd.Timestamp(row["date"])
+            recorded = pd.Timestamp(row["logged_at"])
+            if pd.isna(day) or pd.isna(recorded) or recorded.tzinfo is None:
+                raise ValueError("missing UTC timestamp")
+            recorded = recorded.tz_convert("UTC")
+            day = day.tz_localize("UTC") if day.tzinfo is None else day.tz_convert("UTC")
+            if registered_at is None or day.date() <= registered_at.date():
+                raise ValueError("price date is not after the frozen registration")
+            if recorded < registered_at:
+                raise ValueError("entry predates candidate registration")
+            age = (recorded.date() - day.date()).days
+            if age < 0 or age > 3:
+                raise ValueError("price was logged retrospectively or before its date")
+            if row["definition_hash"] != candidate.definition_hash():
+                raise ValueError("ledger definition does not match frozen strategy")
+            if row["price_basis"] != "m15_utc_close":
+                raise ValueError("non-executable or unverified price basis")
+            if row["source_kind"] not in PROSPECTIVE_SOURCES or not str(row["source_id"]):
+                raise ValueError("missing recognised price-source identity")
+            signal, price = float(row["signal"]), float(row["gold_close"])
+            if not (math.isfinite(signal) and 0 <= signal <= 1):
+                raise ValueError("invalid signal")
+            if not (math.isfinite(price) and price > 0):
+                raise ValueError("invalid reference price")
+            verified_rows += 1
+        except (ValueError, TypeError, OverflowError, KeyError) as exc:
+            failures.append(f"invalid forward entry on {row.get('date')}: {exc}")
+    return {
+        "eligible_for_review": not failures and verified_rows >= 30,
+        "verified_rows": verified_rows,
+        "issues": failures + (["fewer than 30 attributable observations"] if verified_rows < 30 else []),
+        "note": "Passing this provenance audit is NOT profitability validation.",
+    }
+
+
 def load_ledger(path: str | Path | None = None) -> pd.DataFrame:
     p = _ledger_path(path)
     if not p.exists():
