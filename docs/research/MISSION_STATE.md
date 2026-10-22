@@ -1,3 +1,50 @@
+## Round 22: extended official CFTC gold positioning — 2026-10-22
+
+**Official source verified and historical experiment executed successfully.**
+GitHub Actions run 39725660921:
+https://github.com/alfrotan-glitch/Trading-System/actions/runs/39725660921
+
+The prior round-15 COT study used a nonofficial 374-report Legacy workbook
+covering only 2018-2025. The improved study queried the official CFTC
+Disaggregated Futures Only dataset 72hh-3qpy for the exact COMEX gold contract
+code 088691 and verified **1,062 weekly reports, 2006-06-13 to 2026-10-13**.
+These are Managed Money positions, *not* the Legacy non-commercial category;
+we did not silently substitute the new columns for the old ones.
+
+Two frozen hypotheses used measured historical open interest and managed-money
+net positions: long gold at unusually low positioning relative to 104 reports,
+or long when net positioning increased over 13 reports. Publication was
+conservatively ASSUMED available 14 days after Tuesday's as-of date, with an
+additional executable gold next-open lag. Exceptional CFTC report delays are
+not verified; this assumption is insufficient for strategy promotion.
+ECN turnover and calendar-day funding sensitivities were applied. Compared
+against static gold with matched average exposure:
+
+| Historical window (all SPENT) | Low-positioning reversal HAC t | Positioning trend HAC t |
+| --- | ---: | ---: |
+| 2008-2015 | -0.10 | -1.64 |
+| 2016-2021 | +0.93 | -1.56 |
+| 2022-2025 diagnostic | -0.88 | -1.04 |
+
+**Verdict: neither hypothesis demonstrates robust positive net incremental
+alpha. Both are REJECTED for trading promotion.** Repeating parameter sweeps
+over these windows cannot create fresh holdout evidence. The official source
+collector is reusable for future timestamp-correct observations, but no signal
+may be enabled in DEMO auto-execution or LIVE on this basis.
+
+Implementation: `src/qts/research/edgelab/cot_disaggregated.py`,
+`scripts/fetch_cftc_gold.py`, `scripts/edgelab_cot_official_run.py`,
+`tests/unit/test_edgelab_cot_disaggregated.py`. Automated execution and
+manifest are maintained in the independent gold research workflow.
+
+**Product state:** A real packaged Windows QTS executable now passes its
+API/UI loopback HTTP smoke (GitHub Actions run 39724414064). Later fixes
+ensure GUI startup failures are visibly reported rather than silently
+closing when Windows supplies no console streams. Risk/live gates remain
+unchanged, zero validated edges, real-capital exposure zero.
+
+---
+
 ## Verified research and Windows delivery status — 2026-10-22
 
 **Mission verdict: ZERO validated profitable XAUUSD@ strategies. LIVE remains LOCKED.**
