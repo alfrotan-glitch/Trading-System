@@ -1,0 +1,38 @@
+{
+  "schema": "qts.mt5_microstructure_scan_summary.v1",
+  "study": "MT5-MICROSTRUCTURE-SCAN-20261023",
+  "dataset": {
+    "window_days": 7,
+    "rows": 935472,
+    "sha256": "f77a615dccba49e8501e56921d284abdebc7250e443957da924b15b2eddacf85",
+    "status": "COMPLETE",
+    "timestamp_basis": "BLOCKED"
+  },
+  "scan": {
+    "engine_schema": "qts.xauusd_microstructure.v1",
+    "decision": "INCONCLUSIVE",
+    "edge_claim": "NOT ESTABLISHED",
+    "strategy_promoted": false,
+    "mutual_information_bits": 0.019795897644342093,
+    "hypothesis_statuses": {
+      "H-INT-01": "REJECTED",
+      "H-MV-01": "INCONCLUSIVE",
+      "H-QD-01": "INCONCLUSIVE",
+      "H-QD-02": "INCONCLUSIVE",
+      "H-SP-01": "INCONCLUSIVE",
+      "H-SPR-01": "INCONCLUSIVE",
+      "H-VOL-01": "INCONCLUSIVE"
+    }
+  },
+  "limitations": {
+    "interpretation": "This is a fixed microstructure discovery scan, not an executable strategy or profitability claim",
+    "timestamp_basis_reason": "historical raw tick server/UTC basis remains unverified",
+    "independent_oos": false,
+    "execution_costs": "quote spread measured separately; commission, slippage, swaps and fills unavailable"
+  },
+  "safety": {
+    "orders_submitted": 0,
+    "DEMO_EXECUTION": "DISABLED",
+    "LIVE": "LOCKED"
+  }
+}

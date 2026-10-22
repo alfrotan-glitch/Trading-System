@@ -1,3 +1,12 @@
+## Current continuation: microstructure scan (2026-10-23)
+
+**Round 25 executed locally:** the fixed microstructure discovery engine ran on
+the complete seven-day broker bid/ask dataset. The result is `INCONCLUSIVE`:
+one process-only hypothesis was rejected, the remaining fixed hypotheses were
+inconclusive, and the timestamp basis remained blocked. Mutual information was
+0.0198 bits. No strategy was built or promoted; the next useful step is longer
+unseen tick evidence with a confirmed clock basis, not threshold mining.
+
 ## Current continuation: measured broker quote-cost evidence (2026-10-23)
 
 **Round 24 executed locally:** the read-only MT5 acquisition workflow captured
