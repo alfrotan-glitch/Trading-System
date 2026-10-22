@@ -40,6 +40,12 @@ def start_api_server(host: str = "127.0.0.1", port: int = 8000):
         host=host,
         port=port,
         log_level="info",
+        # A PyInstaller console=False build has sys.stdout/stderr=None.
+        # Uvicorn's default logging formatter inspects isatty() on those
+        # streams and fails before binding HTTP. Disable that default
+        # configuration for the desktop launcher (not the server itself).
+        log_config=None,
+        access_log=False,
         loop="asyncio",
         server_header=False,
         timeout_graceful_shutdown=10,
