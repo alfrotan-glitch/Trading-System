@@ -20,7 +20,7 @@
       "environment": "DEVELOPMENT",
       "canonical_symbol": "XAUUSD@",
       "broker_symbol": "XAUUSD@",
-      "broker": "MT5",
+      "broker": "REDACTED",
       "data_source": "MT5Adapter.ticks -> MarketDataProvider.get_tick",
       "timestamp_basis": "broker-normalized(measured-m1-bar|assumed-utc-fallback)",
       "code_version": "0.1.0+cd7948b5b712",
