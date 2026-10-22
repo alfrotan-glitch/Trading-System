@@ -164,7 +164,7 @@ test("reports never manufacture a result", async () => {
   await waitUntil(() => document.body.textContent.includes("Strategy evidence — research only"), 20000, "research evidence");
   const body = document.body.textContent;
   assert.ok(body.includes("Locked"), "live lock reported");
-  assert.ok(body.includes("Current XAUUSD@ trade signal"), "operator sees current-signal status");
+  assert.match(body, /current XAUUSD@ trade signal/i, "operator sees current-signal status");
   assert.ok(body.includes("NOT VALIDATED"), "historical snapshots cannot authorize a current trade");
   assert.ok(!body.includes("+$70,989") && !body.includes("+$49,897"), "hardcoded profits were removed");
   assert.ok(!body.includes("Independent verificationAGREE"), "no invented verification fallback");
