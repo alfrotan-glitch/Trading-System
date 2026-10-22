@@ -18,11 +18,12 @@ export async function renderReports(root) {
   const host = h("div", { class: "section stack" });
   root.appendChild(host);
 
-  const [guide, journal, measuredCosts, lhSummary] = await Promise.all([
+  const [guide, journal, measuredCosts, lhSummary, forwardEvidence] = await Promise.all([
     api.get("/api/demo/guide").catch(() => null),
     api.get("/api/demo/journal").catch(() => null),
     api.get("/api/demo/measured-costs").catch(() => null),
     api.get("/api/research/longhistory-summary").catch(() => null),
+    api.get("/api/research/edgelab-forward").catch(() => null),
   ]);
 
   // ---- System -----------------------------------------------------------
@@ -92,7 +93,7 @@ export async function renderReports(root) {
           label: "Spread (live terminal)",
           value: spLive.status === "MEASURED" ? `$${fmtNum(spLive.value, 2)}/oz` : "UNMEASURED",
           tone: spLive.status === "MEASURED" ? "ok" : "warn",
-          hint: "Assumed in research: 3.0 bps ($0.30/oz on 15m). Archive DEMO mean: 0.72 bps ($0.24/oz median).",
+          hint: "A real broker quote is necessary. Research assumptions and archived spreads are not current execution costs.",
         }),
         stat({
           label: "Commission",
@@ -104,13 +105,13 @@ export async function renderReports(root) {
           label: "Slippage",
           value: slLive.status === "MEASURED" ? `${fmtNum(slLive.avg_abs_slippage_bps, 2)} bps` : "UNMEASURED",
           tone: slLive.status === "MEASURED" ? "ok" : "warn",
-          hint: "Assumed in research: 1.0 bps/side. Measured only from realized demo fills.",
+          hint: "Measured only from actual DEMO fills with reliable requested and executed prices.",
         }),
         stat({
           label: "Overnight swap (long)",
           value: fnLive.status === "MEASURED" ? `${fnLive.swap_long_usd_per_lot_night} USD/lot/night` : "UNMEASURED",
           tone: fnLive.status === "MEASURED" ? "ok" : "warn",
-          hint: "Assumed in research G9: 0.25 bps/day. Break-even: ~3.35 bps/day (ts9_lo) / ~2.38 bps/day (veto9).",
+          hint: "Symbol swap specifications are indicative; actual charged financing requires broker deal evidence.",
         }),
       ),
       h("p", { class: "small text-dim" },
@@ -131,24 +132,33 @@ export async function renderReports(root) {
     ),
   }));
 
-  // ---- Forward-validation watch (frozen monthly champions) ------------------
-  const fwdChamps = lhSummary?.forward_champions_state?.champions || {};
-  const ts9 = fwdChamps.ts9_lo || {};
-  const veto9 = fwdChamps.veto9 || {};
+  // ---- Research evidence, without synthetic current positions ----------------
+  const historical = lhSummary?.forward_champions_state?.champions || {};
+  const positions = Object.entries(historical)
+    .filter(([, entry]) => entry && entry.as_of && entry.position_label)
+    .map(([name, entry]) => `${name}: ${entry.position_label} on ${entry.as_of} (historical only)`);
+  const active = forwardEvidence?.active_candidates || [];
+  const observations = forwardEvidence?.observations;
+  const validated = forwardEvidence?.validated_any === true;
   host.appendChild(card({
-    title: "Forward-validation watch — frozen monthly research candidates", icon: "eye",
-    sub: `Paper observation only · ${fmtInt(lhSummary?.n_trials_cumulative ?? 355)} cumulative trials tested · overall verdict: NO_VALIDATED_EDGE`,
+    title: "Strategy evidence — research only", icon: "eye",
+    sub: "Historical backtests are not today's broker trade signals.",
     body: h("div", { class: "stack" },
       kv([
-        ["Primary candidate (ts9_lo)", `9-month gold trend (long-or-flat) · State at ${ts9.as_of || "2026-09-30"}: ${ts9.position_label || "LONG"} (size ${fmtNum((ts9.size_fraction ?? 0.4728) * 100, 1)}%, since ${ts9.since || "2023-02-28"}) · 2000–2026 Sharpe 0.837 (+$70,989)`],
-        ["Decade-robust companion (veto9)", `9-month trend, shorts require 12-month USD rise · State at ${veto9.as_of || "2026-09-30"}: ${veto9.position_label || "LONG"} (size ${fmtNum((veto9.size_fraction ?? 0.4728) * 100, 1)}%, since ${veto9.since || "2023-02-28"}) · Positive in every decade (2000–2026 Sharpe 0.662, +$49,897)`],
-        ["Independent verification", `${lhSummary?.independent_verification?.verdict || "AGREE"} (zero-shared-code stdlib+numpy verifier matches engine within <0.01%)`],
-        ["Why not promoted to live?", "Fails G3 (walk-forward positive-year count), G5 (DSR 0.941 < 0.95 at N=355), and G6 (16–45 OOS turns < 100), plus broker overnight swap remains UNMEASURED."],
+        ["Validated executable edge", validated ? "See independent validation evidence before using" : "NONE — no authorized trading strategy"],
+        ["Forward-research candidates", forwardEvidence ? String(active.length) : "UNAVAILABLE"],
+        ["Recorded candidate observations", Number.isFinite(Number(observations)) ? String(observations) : "UNAVAILABLE"],
+        ["Old research snapshots", positions.length ? positions.join("; ") : "No attributable dated snapshots"],
+        ["Current XAUUSD@ trade signal", "NOT VALIDATED — historical LONG/SHORT states are not live instructions"],
+        ["Proof required", "Genuinely new timestamped evidence, independent tests and measured broker spread, commission, slippage and swap"],
       ]),
+      h("p", { class: "small text-dim" },
+        "The research engine may display historical hypotheses. QTS does not infer today's position, profit or approval from an old saved report."),
     ),
   }));
 
+
   host.appendChild(h("details", null,
     h("summary", null, "Technical details"),
-    tech({ guide, journal, measuredCosts, lhSummary }, "Raw reports state")));
+    tech({ guide, journal, measuredCosts, lhSummary, forwardEvidence }, "Raw reports state")));
 }
