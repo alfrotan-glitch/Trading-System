@@ -239,7 +239,7 @@ def test_forward_audit_refuses_retroactive_and_unproven_observations(tmp_paths):
     from dataclasses import replace
 
     candidate = replace(EASING_6M, id="NEW-1", status="candidate", rejected_reason="")
-    record = forward.register(candidate)
+    forward.register(candidate)
     registration = forward.registered()[candidate.id]
 
     # A high historical alpha_t is not evidence that someone froze the
