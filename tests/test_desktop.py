@@ -1193,6 +1193,10 @@ def test_desktop_launcher_refuses_dead_api_instead_of_opening_stale_ui(monkeypat
         should_exit = False
 
         def __init__(self, config):
+            # Windowed PyInstaller has no stdout/stderr. Uvicorn must not
+            # configure its default tty-dependent logger in a GUI executable.
+            assert config.log_config is None
+            assert config.access_log is False
             self.config = config
 
         def run(self):
