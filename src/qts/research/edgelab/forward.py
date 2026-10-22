@@ -167,6 +167,11 @@ def log_observation(
     signal: float,
     gold_close: float,
     path: str | Path | None = None,
+    *,
+    price_basis: str | None = None,
+    source_kind: str | None = None,
+    source_id: str | None = None,
+    enforce_forward: bool = False,
 ) -> dict:
     """Append one frozen observation. Idempotent per (candidate, date).
 
@@ -174,10 +179,35 @@ def log_observation(
     silently rewriting history: the point of a forward ledger is that early
     entries cannot be revised after the outcome is known.
     """
-    if not 0.0 <= float(signal) <= 1.0:
-        raise ValueError(f"signal {signal!r} outside [0, 1]")
-    if not gold_close > 0:
-        raise ValueError("gold_close must be positive")
+    if not math.isfinite(float(signal)) or not 0.0 <= float(signal) <= 1.0:
+        raise ValueError(f"signal {signal!r} outside [0, 1] or non-finite")
+    if not math.isfinite(float(gold_close)) or not gold_close > 0:
+        raise ValueError("gold_close must be positive and finite")
+
+    if enforce_forward:
+        reg = registered().get(candidate.id)
+        if candidate.status != "candidate" or not reg:
+            raise ValueError("prospective logging requires an active, registered candidate")
+        if reg.get("definition_hash") != candidate.definition_hash():
+            raise ValueError("candidate definition was changed after registration")
+        try:
+            freeze = pd.Timestamp(reg["registered_at"])
+            if freeze.tzinfo is None:
+                raise ValueError("UTC freeze required")
+            freeze = freeze.tz_convert("UTC")
+        except (TypeError, ValueError, KeyError) as exc:
+            raise ValueError("candidate registration lacks a valid UTC freeze") from exc
+        obs_date = pd.Timestamp(as_of)
+        if pd.isna(obs_date):
+            raise ValueError("observation date is invalid")
+        observed = obs_date.date()
+        now = datetime.now(UTC).date()
+        if observed <= freeze.date() or observed > now or (now - observed).days > 3:
+            raise ValueError("only newly observed dates AFTER registration may be logged")
+        if price_basis != "m15_utc_close":
+            raise ValueError("forward observation requires executable M15 UTC close")
+        if source_kind not in PROSPECTIVE_SOURCES or not source_id:
+            raise ValueError("verified source identity required for prospective observation")
 
     p = _ledger_path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -190,6 +220,12 @@ def log_observation(
         "gold_close": round(float(gold_close), 6),
         "logged_at": datetime.now(UTC).isoformat(),
     }
+    if enforce_forward:
+        entry.update(
+            price_basis=price_basis,
+            source_kind=source_kind,
+            source_id=source_id,
+        )
 
     if p.exists():
         for line in p.read_text(encoding="utf-8").splitlines():
@@ -197,10 +233,19 @@ def log_observation(
                 continue
             prev = json.loads(line)
             if prev["date"] == date and prev["candidate_id"] == candidate.id:
-                if abs(prev["signal"] - entry["signal"]) > 1e-6:
+                if (
+                    abs(float(prev["signal"]) - entry["signal"]) > 1e-6
+                    or abs(float(prev.get("gold_close", 0)) - entry["gold_close"]) > 1e-6
+                    or prev.get("definition_hash") != entry["definition_hash"]
+                    or (enforce_forward and any(
+                        prev.get(k) != entry[k]
+                        for k in ("price_basis", "source_kind", "source_id")
+                    ))
+                ):
                     raise ValueError(
                         f"observation for {candidate.id} on {date} already recorded "
-                        f"with signal {prev['signal']}; refusing to revise history"
+                        "with different signal, price, definition or provenance; "
+                        "refusing to revise history"
                     )
                 return prev
     with p.open("a", encoding="utf-8") as fh:
