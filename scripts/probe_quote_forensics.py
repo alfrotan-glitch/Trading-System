@@ -20,6 +20,7 @@ account):
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from datetime import UTC, datetime
@@ -31,6 +32,7 @@ except ImportError:
     sys.exit(2)
 
 try:
+    from qts.adapters.mt5_adapter import mt5_initialize_kwargs
     from qts.lifecycle.demo_gate import FUTURE_TOLERANCE_S, MAX_TICK_AGE_S
 except Exception as exc:  # pragma: no cover - environment guard
     print(f"FATAL: cannot import qts.lifecycle.demo_gate ({exc}) — run via the QTS venv.")
@@ -50,7 +52,8 @@ def main() -> int:
     print("QTS read-only MT5 quote forensics probe — no orders, no writes")
     print("=" * 74)
 
-    if not mt5.initialize():
+    path = os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH")
+    if not mt5.initialize(**mt5_initialize_kwargs(path)):
         print("FATAL: mt5.initialize() failed:", mt5.last_error())
         return 2
 

@@ -129,8 +129,10 @@ def probe_broker_identity(mt5_module: Any | None = None, *, initialize: bool = T
     if initialize and hasattr(mt5_module, "initialize"):
         import os
 
+        from qts.adapters.mt5_adapter import mt5_initialize_kwargs
+
         path = os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH")
-        kwargs = {"path": path} if path else {}
+        kwargs = mt5_initialize_kwargs(path)
         try:
             initialized = bool(mt5_module.initialize(**kwargs))
         except Exception as exc:

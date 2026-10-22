@@ -63,6 +63,16 @@ from qts.domain.value_objects import (
 #: the comment only has to be accepted by the broker, not carry identity.
 MT5_COMMENT_MAX = 16
 
+# MetaTrader5.initialize() defaults to a long blocking wait when the terminal
+# is installed but its per-process IPC link is unavailable. That is a poor
+# desktop/CLI failure mode: readiness becomes indistinguishable from a hung
+# workstation. Keep the default bounded, while allowing an operator with a
+# slow terminal to opt into a larger bounded value.
+DEFAULT_MT5_INITIALIZE_TIMEOUT_MS = 10_000
+MIN_MT5_INITIALIZE_TIMEOUT_MS = 1_000
+MAX_MT5_INITIALIZE_TIMEOUT_MS = 120_000
+MT5_INITIALIZE_TIMEOUT_ENV = "QTS_MT5_INIT_TIMEOUT_MS"
+
 
 def mt5_comment_for(client_order_id: str) -> str:
     """Deterministic MT5-safe comment for a client_order_id (pure function).
@@ -297,6 +307,40 @@ def normalize_terminal_path(path: str | Path | None) -> str | None:
         return f"{cleaned}.exe"
     sep = "\\" if "\\" in cleaned else "/"
     return f"{cleaned.rstrip(sep)}{sep}terminal64.exe"
+
+
+def mt5_initialize_timeout_ms(raw: str | int | None = None) -> int:
+    """Resolve the bounded MT5 IPC initialization timeout in milliseconds.
+
+    The value is deliberately bounded so a typo cannot restore the library's
+    effectively unbounded wait or create an instant-failure loop. Invalid
+    configuration fails closed with an actionable error.
+    """
+    value = os.getenv(MT5_INITIALIZE_TIMEOUT_ENV) if raw is None else raw
+    if value is None or str(value).strip() == "":
+        return DEFAULT_MT5_INITIALIZE_TIMEOUT_MS
+    try:
+        timeout = int(str(value).strip())
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"{MT5_INITIALIZE_TIMEOUT_ENV} must be an integer between "
+            f"{MIN_MT5_INITIALIZE_TIMEOUT_MS} and {MAX_MT5_INITIALIZE_TIMEOUT_MS} ms"
+        ) from exc
+    if not MIN_MT5_INITIALIZE_TIMEOUT_MS <= timeout <= MAX_MT5_INITIALIZE_TIMEOUT_MS:
+        raise ValueError(
+            f"{MT5_INITIALIZE_TIMEOUT_ENV} must be between "
+            f"{MIN_MT5_INITIALIZE_TIMEOUT_MS} and {MAX_MT5_INITIALIZE_TIMEOUT_MS} ms"
+        )
+    return timeout
+
+
+def mt5_initialize_kwargs(path: str | Path | None = None) -> dict[str, Any]:
+    """Build the common, bounded keyword arguments for ``mt5.initialize``."""
+    kwargs: dict[str, Any] = {"timeout": mt5_initialize_timeout_ms()}
+    normalized = normalize_terminal_path(path)
+    if normalized:
+        kwargs["path"] = normalized
+    return kwargs
 
 
 def broker_symbol(symbol: str, symbol_map: dict[str, str] | None) -> str:
@@ -546,7 +590,7 @@ class MT5Adapter(BrokerAdapter):
             return self._session
 
         path = normalize_terminal_path(self.config.get("path") or os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH") or None)
-        kwargs: dict[str, Any] = {"path": path} if path else {}
+        kwargs = mt5_initialize_kwargs(path)
         hint = (
             f" (terminal_path={path!r})" if path else " (no terminal_path configured — MT5 auto-detect)"
         )
@@ -611,10 +655,8 @@ class MT5Adapter(BrokerAdapter):
         password = password or self.config.get("password")
         server = server or self.config.get("server")
         path = path or self.config.get("path")
-        kwargs: dict[str, Any] = {}
         normalized_path = normalize_terminal_path(path)
-        if normalized_path:
-            kwargs["path"] = normalized_path
+        kwargs = mt5_initialize_kwargs(normalized_path)
         if not mt5.initialize(**kwargs):
             raise MT5SessionError(_session_diagnosis(mt5.last_error(), normalized_path))
         if login and password and server and not mt5.login(login, password, server):
@@ -1234,10 +1276,8 @@ class MT5Adapter(BrokerAdapter):
         with contextlib.suppress(Exception):
             mt5.shutdown()
         self._session = None
-        kwargs: dict[str, Any] = {}
         path = normalize_terminal_path(self.config.get("path"))
-        if path:
-            kwargs["path"] = path
+        kwargs = mt5_initialize_kwargs(path)
         try:
             if not mt5.initialize(**kwargs):
                 return False

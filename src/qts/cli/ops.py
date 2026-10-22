@@ -777,7 +777,11 @@ def run_cmd(mode: str, strategy: str, data_version: str, confirm: str | None) ->
             with contextlib.suppress(Exception):
                 import MetaTrader5 as _real
 
-                if _real.initialize():
+                from qts.adapters.mt5_adapter import mt5_initialize_kwargs
+
+                if _real.initialize(
+                    **mt5_initialize_kwargs(_os.getenv("QTS_MT5_PATH") or _os.getenv("MT5_PATH"))
+                ):
                     broker = _MT5A(
                         mt5_module=_real,
                         config={

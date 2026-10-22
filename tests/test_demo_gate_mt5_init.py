@@ -28,6 +28,9 @@ from __future__ import annotations
 import time
 from typing import Any
 
+import pytest
+
+from qts.adapters.mt5_adapter import DEFAULT_MT5_INITIALIZE_TIMEOUT_MS, mt5_initialize_timeout_ms
 from qts.lifecycle.demo_gate import demo_forward_readiness_report
 
 TERMINAL_PATH = r"C:\Program Files\MetaTrader 5\terminal64.exe"
@@ -101,7 +104,7 @@ class FakeMT5:
 def test_initialize_called_with_explicit_terminal_path():
     fake = FakeMT5()
     rpt = demo_forward_readiness_report(mt5_module=fake, terminal_path=TERMINAL_PATH)
-    assert fake.init_calls == [{"path": TERMINAL_PATH}]
+    assert fake.init_calls == [{"path": TERMINAL_PATH, "timeout": DEFAULT_MT5_INITIALIZE_TIMEOUT_MS}]
     assert rpt["checks"]["terminal_running"] is True
     assert "initialize(path=configured)=True" in rpt["details"]["terminal_running"]
 
@@ -111,14 +114,14 @@ def test_initialize_path_from_env(monkeypatch):
     monkeypatch.delenv("MT5_PATH", raising=False)
     fake = FakeMT5()
     demo_forward_readiness_report(mt5_module=fake)
-    assert fake.init_calls == [{"path": TERMINAL_PATH}]
+    assert fake.init_calls == [{"path": TERMINAL_PATH, "timeout": DEFAULT_MT5_INITIALIZE_TIMEOUT_MS}]
 
     # MT5_PATH is the documented fallback
     monkeypatch.delenv("QTS_MT5_PATH", raising=False)
     monkeypatch.setenv("MT5_PATH", TERMINAL_PATH)
     fake2 = FakeMT5()
     demo_forward_readiness_report(mt5_module=fake2)
-    assert fake2.init_calls == [{"path": TERMINAL_PATH}]
+    assert fake2.init_calls == [{"path": TERMINAL_PATH, "timeout": DEFAULT_MT5_INITIALIZE_TIMEOUT_MS}]
 
 
 def test_initialize_without_path_uses_auto_discovery(monkeypatch):
@@ -126,7 +129,7 @@ def test_initialize_without_path_uses_auto_discovery(monkeypatch):
     monkeypatch.delenv("MT5_PATH", raising=False)
     fake = FakeMT5()
     rpt = demo_forward_readiness_report(mt5_module=fake)
-    assert fake.init_calls == [{}]  # initialize() still called, path auto-detected
+    assert fake.init_calls == [{"timeout": DEFAULT_MT5_INITIALIZE_TIMEOUT_MS}]  # path auto-detected
     assert "initialize(path=auto)=True" in rpt["details"]["terminal_running"]
 
 
@@ -139,6 +142,16 @@ def test_initialize_failure_is_fail_closed():
     assert "last_error=(-10003, 'IPC timeout')" in rpt["details"]["terminal_running"]
     assert rpt["checks"]["terminal_running"] is False
     assert rpt["checks"]["account_connected"] is False
+
+
+def test_initialize_timeout_is_bounded_and_configurable(monkeypatch):
+    monkeypatch.delenv("QTS_MT5_INIT_TIMEOUT_MS", raising=False)
+    assert mt5_initialize_timeout_ms() == DEFAULT_MT5_INITIALIZE_TIMEOUT_MS
+    monkeypatch.setenv("QTS_MT5_INIT_TIMEOUT_MS", "15000")
+    assert mt5_initialize_timeout_ms() == 15000
+    monkeypatch.setenv("QTS_MT5_INIT_TIMEOUT_MS", "999")
+    with pytest.raises(ValueError, match="between"):
+        mt5_initialize_timeout_ms()
 
 
 def test_broker_symbol_resolution_env_and_map(monkeypatch):

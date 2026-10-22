@@ -133,6 +133,7 @@ def data_mt5_depth(symbol: str | None, json_out: str | None) -> None:
 
     Submits nothing and calls no order API.
     """
+    from qts.adapters.mt5_adapter import mt5_initialize_kwargs
     from qts.config.wizard import load_setup
     from qts.data.mt5_depth import markdown, probe
 
@@ -149,7 +150,7 @@ def data_mt5_depth(symbol: str | None, json_out: str | None) -> None:
         import MetaTrader5 as mt5_module  # type: ignore[import-not-found]
 
         mt5 = mt5_module
-        initialized = mt5.initialize(path=saved.get("terminal_path") or None)
+        initialized = mt5.initialize(**mt5_initialize_kwargs(saved.get("terminal_path") or None))
         if not initialized:
             click.echo(
                 f"MT5 initialize failed: {mt5.last_error()} — this command must run "
@@ -196,6 +197,7 @@ def data_mt5_bars(
     import numpy as np
     import pandas as pd
 
+    from qts.adapters.mt5_adapter import mt5_initialize_kwargs
     from qts.config.wizard import load_setup
     from qts.data.mt5_history_acquisition import AcquisitionRefused, require_read_only_demo, resolve_symbol
 
@@ -214,7 +216,7 @@ def data_mt5_bars(
             "MetaTrader5 package unavailable; run this command on the Windows host with MT5 installed."
         ) from None
 
-    initialized = mt5.initialize(path=saved.get("terminal_path") or None)
+    initialized = mt5.initialize(**mt5_initialize_kwargs(saved.get("terminal_path") or None))
     if not initialized:
         raise click.ClickException(f"MT5 initialize failed: {mt5.last_error()}")
     try:

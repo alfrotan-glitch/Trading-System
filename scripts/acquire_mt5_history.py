@@ -54,6 +54,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from qts.adapters.mt5_adapter import mt5_initialize_kwargs  # noqa: E402
 from qts.data.mt5_history_acquisition import (  # noqa: E402
     DEFAULT_DATASET_ROOT,
     STATUS_COMPLETE,
@@ -173,7 +174,7 @@ def main(argv: list[str] | None = None) -> int:
 
     report = _base_report(args, "INITIALIZE_FAILED")
     path_env = os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH")
-    initialized = bool(mt5.initialize(path=path_env) if path_env else mt5.initialize())
+    initialized = bool(mt5.initialize(**mt5_initialize_kwargs(path_env)))
     if not initialized:
         report["detail"] = f"mt5.initialize() failed: {mt5.last_error()!r}. Nothing was queried."
         _write_json(args.evidence, report)

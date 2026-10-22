@@ -23,11 +23,16 @@ import contextlib
 import json
 import math
 import os
+import sys
 import time
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from qts.adapters.mt5_adapter import mt5_initialize_kwargs  # noqa: E402
 
 _REQUIRED_TICK_FIELDS = ("time", "time_msc", "bid", "ask")
 _OPTIONAL_TICK_FIELDS = ("last", "volume", "time", "time_msc", "flags", "volume_real")
@@ -397,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     path = os.getenv("QTS_MT5_PATH") or os.getenv("MT5_PATH")
-    initialized = bool(mt5.initialize(path=path) if path else mt5.initialize())
+    initialized = bool(mt5.initialize(**mt5_initialize_kwargs(path)))
     if not initialized:
         report = {
             "schema": "qts.mt5_history_capability_probe.v2",

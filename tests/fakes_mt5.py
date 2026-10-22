@@ -116,7 +116,7 @@ class FakeMT5:
 
     # -- driver lifecycle ------------------------------------------------------
 
-    def initialize(self, path: str | None = None) -> bool:
+    def initialize(self, path: str | None = None, **kwargs) -> bool:
         self.initialized += 1
         return True
 
