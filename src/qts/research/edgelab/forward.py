@@ -234,8 +234,8 @@ def log_observation(
             prev = json.loads(line)
             if prev["date"] == date and prev["candidate_id"] == candidate.id:
                 if (
-                    abs(float(prev["signal"]) - entry["signal"]) > 1e-6
-                    or abs(float(prev.get("gold_close", 0)) - entry["gold_close"]) > 1e-6
+                    abs(float(prev["signal"]) - float(entry["signal"])) > 1e-6
+                    or abs(float(prev.get("gold_close", 0)) - float(entry["gold_close"])) > 1e-6
                     or prev.get("definition_hash") != entry["definition_hash"]
                     or (enforce_forward and any(
                         prev.get(k) != entry[k]
