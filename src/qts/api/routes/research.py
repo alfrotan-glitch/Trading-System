@@ -548,6 +548,12 @@ def research_edgelab_forward() -> dict[str, Any]:
         if not scored.empty and c.id in set(scored["candidate_id"]):
             score_row = scored[scored["candidate_id"] == c.id].iloc[0].to_dict()
             score_row = {k: (None if isinstance(v, float) and v != v else v) for k, v in score_row.items()}
+        evidence_rows = (
+            ledger.loc[ledger["candidate_id"] == c.id]
+            if not ledger.empty and "candidate_id" in ledger
+            else ledger.iloc[:0]
+        )
+        audit = forward.prospective_integrity(c, reg.get(c.id), evidence_rows)
         rows.append(
             {
                 "id": c.id,
@@ -560,15 +566,17 @@ def research_edgelab_forward() -> dict[str, Any]:
                 "status": c.status,
                 "rejected_reason": c.rejected_reason,
                 "forward": score_row,
-                # No candidate may claim validation without forward evidence, and
-                # a rejected candidate can never be validated at all — its
-                # definition has been shown not to hold up, so any forward sample
-                # is a measurement on a rule known to be broken.
-                "validated": bool(
-                    c.status != "rejected"
-                    and score_row.get("alpha_t")
+                "evidence_integrity": audit,
+                "statistical_review_trigger": bool(
+                    audit["eligible_for_review"]
+                    and score_row.get("alpha_t") is not None
                     and score_row["alpha_t"] >= forward.MIN_ALPHA_T
                 ),
+                # A single forward t-stat is NOT independent confirmation,
+                # evidence of broker net costs, or an authorized strategy
+                # promotion. This endpoint reports research only. The real
+                # validation and execution gates are separate authorities.
+                "validated": False,
             }
         )
 
@@ -592,7 +600,8 @@ def research_edgelab_forward() -> dict[str, Any]:
         "real_capital_exposure_usd": 0,
         "note": (
             "Registration is not validation. A backtest holdout can be read once; "
-            "afterwards only forward observation adds evidence."
+            "forward observations may support review, but significance alone "
+            "never authorizes strategy promotion or trading."
         ),
     }
 
