@@ -1,3 +1,71 @@
+## Current continuation: prospective integrity and Windows delivery (2026-10-22)
+
+**Strategy outcome:** NO VALIDATED EXECUTABLE XAUUSD@ EDGE. This change set does
+not produce a new profitable strategy and does not authorize LIVE or unattended
+DEMO orders. Research candidates are not trade recommendations.
+
+**Critical independent findings now corrected in main:**
+
+1. Edge Lab's candidate freeze was previously just Python bytecode and
+   parameters. Two materially different constant values could produce the
+   SAME bytecode hash. The revised digest includes constants, function
+   defaults, local same-module helpers and simple referenced globals.
+   Existing freeze IDs written by older code should be reviewed, not
+   silently migrated or equated with a genuine new forward candidate.
+2. The low-level JSONL logger accepted a duplicate date with a DIFFERENT
+   gold price when the signal matched. It now rejects revisions to
+   price, signal, strategy hash or explicitly supplied provenance.
+3. The previous command-line forward log could consume the rejected XL-001
+   signal, backfill historical dates, and mix the LBMA AM fix with later
+   macroeconomic inputs. It now fails closed rather than manufacturing
+   forward observations. The older replay downloader avoids network work
+   when no active candidate exists, and cannot mark public historical replay
+   as authenticated broker-forward evidence.
+4. Forward research now has a separate `prospective_integrity` audit:
+   strategy registration, definition consistency, chronological logging,
+   executable price basis, source identity and minimum sample are all
+   required before even opening a review. The API's `validated` field
+   remains FALSE regardless of a standalone t-statistic. A statistical
+   threshold is not independent OOS validation, cost verification or
+   permission to trade.
+5. The forward scorer previously used the optimistic default transaction
+   cost while the API described the realistic ECN model. It now uses the
+   realistic ECN assumption consistently. Real WMMarkets-Demo spread,
+   commission, slippage, swaps and execution timing are still unmeasured.
+6. Desktop Reports contained fallback LONG signals and hardcoded historical
+   profit numbers even if the backend returned no fresh research data. Those
+   claims were removed. Reports now distinguishes dated research snapshots,
+   verified prospective evidence and **no current validated signal**.
+7. The Windows packaging workflow now rebuilds on changes anywhere within
+   the packaged QTS runtime source and dependency manifest, rather than
+   silently retaining an out-of-date ZIP when a research/forward module
+   changes. The workflow also smoke-tests the extracted ZIP on Windows.
+
+**Already available product workflow:** extract the GitHub Windows preview;
+open QTS.exe with an actual MT5 DEMO account; use the in-app OBSERVE-ONLY
+collector to record real broker ticks (zero orders), and use Reports'
+"Check broker symbol terms (read-only)" for an explicit source-labeled
+symbol specification / swap snapshot. Do not interpret a broker specification
+snapshot as measured slippage or realized rollover cost; those require
+broker fill/deal evidence.
+
+**Next scientific work:** develop an auditable completed-bar *broker* feed
+adapter from the existing canonical MT5 observation store for future,
+pre-frozen candidates. Preserve the quote receipt time, broker timestamp,
+bid/ask, UTC normalization and source metadata; never reconstruct missing
+bars as factual observations or backfill after outcomes. Only then can
+genuinely unseen forward signals be logged. In parallel, search materially
+new, accessible gold information sets, with a realistic net risk-matched
+control. Previous VIX, official CFTC and prequential AI studies were
+falsified; merely retuning them on spent historical data is not new OOS.
+
+**Verification:** the preceding pre-audit Windows ZIP and CI were green;
+the newest combined commits must be checked against their own GitHub
+Actions fast, extended, package, container and Windows jobs before being
+described as fully verified. Never replace a failed gate with a verbal claim.
+
+---
+
 ## Round 22: extended official CFTC gold positioning — 2026-10-22
 
 **Official source verified and historical experiment executed successfully.**
