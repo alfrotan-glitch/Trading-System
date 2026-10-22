@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 
 import click
-import numpy as np
 import pandas as pd
 
 from qts.research.edgelab import forward
@@ -63,34 +62,34 @@ def forward_register(candidate_id: str | None) -> None:
 @forward_group.command("log")
 @click.option("--as-of", default=None, help="date to record (default: latest available bar)")
 def forward_log(as_of: str | None) -> None:
-    """Record today's frozen signal for every candidate."""
-    from qts.research.edgelab.candidates import build_signal_frame
+    """Never transform old bars or rejected hypotheses into new evidence.
 
-    try:
-        bars = build_signal_frame()
-    except (FileNotFoundError, ValueError) as exc:
+    The former command attached same-day macro closes to an AM gold fix
+    (known look-ahead), and allowed --as-of historical rewrites. Genuinely
+    prospective input must instead go through a frozen, source-verified
+    completed-close collection path.
+    """
+    from qts.research.edgelab.candidates import active_candidates
+
+    active = active_candidates()
+    if not active:
+        click.echo(
+            "No active, validated-for-forward-research candidate exists. "
+            "The rejected XL-001 macro rule will not be recorded. "
+            "For market evidence without placing orders, use the Windows "
+            "'Start Observation (No Orders)' function with a verified MT5 DEMO account."
+        )
+        return
+    if as_of:
         raise click.ClickException(
-            f"market or macro data unavailable ({exc}). Refresh the DXY and 10-year "
-            "yield series before logging a forward observation."
-        ) from exc
-
-    ts = pd.Timestamp(as_of) if as_of else bars.index[-1]
-    if ts not in bars.index:
-        ts = bars.index[bars.index <= ts][-1]
-
-    last_macro = bars.index[-1]
-    warning = forward.staleness_warning(ts, last_macro)
-    if warning:
-        click.secho(f"WARNING: {warning}", fg="yellow")
-
-    gold_close = float(np.asarray(bars["close"], dtype=float)[bars.index.get_loc(ts)])
-    for c in candidates():
-        series = c.signal(bars)
-        # Index positionally: pandas stubs type .loc/.getitem as possibly returning
-        # a Series, and a scalar is what is required here.
-        signal = float(np.asarray(series, dtype=float)[series.index.get_loc(ts)])
-        entry = forward.log_observation(c, ts, signal, gold_close)
-        click.echo(f"{ts.date()} {entry['candidate_id']:8} signal={entry['signal']:.3f} gold={entry['gold_close']:.2f}")
+            "Manual historical --as-of logging is disabled: records created "
+            "after an outcome is known cannot count as forward evidence."
+        )
+    raise click.ClickException(
+        "Legacy manual signal logging is disabled because its AM-fix/macro "
+        "timing is non-executable. Register the frozen active rule and use a "
+        "timestamp-verified broker completed-bar collector. No records written."
+    )
 
 
 @forward_group.command("score")
