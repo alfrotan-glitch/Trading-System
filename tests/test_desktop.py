@@ -1165,3 +1165,18 @@ def test_qts_lazy_router_registration_available_in_openapi_and_http():
     assert response.status_code == 200
     assert response.json()["live_trading"] == "LOCKED"
     assert TestClient(app).get("/api/version").status_code == 200
+
+
+def test_frozen_entry_script_locates_bundled_ui(tmp_path, monkeypatch):
+    """PyInstaller entry scripts live at bundle root, not under qts/desktop."""
+    import sys
+
+    from qts.desktop import launcher
+
+    ui = tmp_path / "qts" / "desktop" / "ui"
+    ui.mkdir(parents=True)
+    (ui / "index.html").write_text("<!doctype html><title>QTS</title>", encoding="utf-8")
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
+    assert launcher._get_ui_dir() == ui
+    assert (launcher._get_ui_dir() / "index.html").is_file()
