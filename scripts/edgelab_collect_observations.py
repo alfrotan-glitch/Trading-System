@@ -17,11 +17,11 @@ plan made executable:
 4. **Record.** Entries go into the append-only ledger. Re-running is idempotent;
    a conflicting re-log raises rather than rewriting history.
 
-If no active candidate exists, the script says so and writes nothing. That is the
-current state: XL-001 is rejected, and inventing a replacement rule now — after
-seeing which constructions failed — would be exactly the hindsight fitting the
-gate exists to prevent. The fetcher still runs so the data is fresh the moment a
-legitimate candidate is registered.
+If no active candidate exists, the script says so and writes nothing.
+No network download is needed when there is no eligible rule. If a candidate
+is ever promoted into the forward *research* queue, the script may prepare a
+dry-run plan but will not claim external historical replay is authenticated
+broker evidence or silently backfill observations after their outcomes occurred.
 """
 
 from __future__ import annotations
@@ -131,10 +131,6 @@ def driver_frame() -> pd.DataFrame:
 
 def run(dry_run: bool, verbose: bool = True) -> dict:
     report: dict = {"generated_at": datetime.now(UTC).isoformat(), "dry_run": dry_run}
-    if verbose:
-        print("=== refreshing inputs")
-    report["fred"] = refresh_fred(verbose)
-    report["gold"] = refresh_gold(verbose)
 
     active = active_candidates()
     report["active_candidates"] = [c.id for c in active]
@@ -148,6 +144,11 @@ def run(dry_run: bool, verbose: bool = True) -> dict:
         if verbose:
             print(f"\n{report['outcome']}")
         return report
+
+    if verbose:
+        print("=== refreshing inputs for registered research candidates")
+    report["fred"] = refresh_fred(verbose)
+    report["gold"] = refresh_gold(verbose)
 
     bars = daily_bars(pd.read_parquet(DUKA_DIR))
     bars = bars.loc["2024-06-01":]
@@ -173,7 +174,13 @@ def run(dry_run: bool, verbose: bool = True) -> dict:
         full_index = pd.DatetimeIndex(raw.index.union(bars.index)).sort_values()
         sig = cand.signal(align_drivers(raw, full_index)).reindex(usable)
 
-        reg_date = pd.Timestamp(reg.get(cand.id, {}).get("registered_at", "1970-01-01")).date()
+        frozen = reg.get(cand.id)
+        if not frozen or frozen.get("definition_hash") != cand.definition_hash():
+            report["candidates"][cand.id] = {
+                "skipped": "candidate was never frozen, or definition hash changed"
+            }
+            continue
+        reg_date = pd.Timestamp(frozen["registered_at"]).date()
         have = set(existing.loc[existing["candidate_id"] == cand.id, "date"].dt.date) if not existing.empty else set()
         plan = plan_observations(cand.id, reg_date, bars.loc[usable], sig, "m15_utc_close", have)
 
@@ -189,14 +196,17 @@ def run(dry_run: bool, verbose: bool = True) -> dict:
             print(f"\n  {cand.id}: {plan.reason}")
 
         if not dry_run:
-            written = 0
-            for obs in plan.observations:
-                if warn:
-                    entry["skipped_due_to_staleness"] = warn
-                    break
-                forward.log_observation(cand, obs["date"], obs["signal"], obs["gold_close"])
-                written += 1
-            entry["written"] = written
+            # This public GitHub replay has no cryptographically attributable
+            # MT5 broker-completed-bar/quote identity or true publication audit.
+            # Writing a "forward" evidence entry from it would misstate both
+            # provenance and chronology. Keep its plan for research inspection
+            # and gather actual authenticated DEMO ticks through the in-app
+            # OBSERVE-ONLY collector instead. The latter never places an order.
+            entry["written"] = 0
+            entry["blocked"] = (
+                "historical replay is not verified broker forward evidence; "
+                "use the in-app MT5 OBSERVE-ONLY collector"
+            )
         report["candidates"][cand.id] = entry
 
     return report
