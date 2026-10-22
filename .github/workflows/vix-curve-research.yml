@@ -1,4 +1,4 @@
-name: QTS VIX Curve Research
+name: QTS Independent Gold Research
 
 on:
   workflow_dispatch:
@@ -13,6 +13,10 @@ on:
       - "scripts/edgelab_online_model_run.py"
       - "tests/unit/test_edgelab_causal_ml.py"
       - "tests/unit/test_edgelab_vix_curve.py"
+      - "src/qts/research/edgelab/cot_disaggregated.py"
+      - "scripts/fetch_cftc_gold.py"
+      - "scripts/edgelab_cot_official_run.py"
+      - "tests/unit/test_edgelab_cot_disaggregated.py"
 
 permissions:
   contents: read
@@ -37,7 +41,8 @@ jobs:
       - name: Verify causal VIX and session code
         run: |
           ruff check src/qts/research/edgelab/vix_curve.py src/qts/research/edgelab/causal_ml.py tests/unit/test_edgelab_vix_curve.py tests/unit/test_edgelab_causal_ml.py scripts/edgelab_online_model_run.py scripts/edgelab_vix_curve_run.py
-          pytest -q tests/unit/test_edgelab_vix_curve.py tests/unit/test_edgelab_causal_ml.py tests/unit/test_edgelab_intraday.py tests/unit/test_edgelab_regime.py
+          ruff check src/qts/research/edgelab/cot_disaggregated.py scripts/fetch_cftc_gold.py scripts/edgelab_cot_official_run.py tests/unit/test_edgelab_cot_disaggregated.py
+          pytest -q tests/unit/test_edgelab_vix_curve.py tests/unit/test_edgelab_causal_ml.py tests/unit/test_edgelab_intraday.py tests/unit/test_edgelab_regime.py tests/unit/test_edgelab_cot_disaggregated.py
       - name: Acquire published Cboe volatility-curve history
         run: python scripts/fetch_cboe_vix_curve.py
       - name: Download pinned historical XAUUSD M15 bars
@@ -72,14 +77,20 @@ jobs:
         run: python -m scripts.edgelab_vix_curve_run --gold-source basemax
       - name: Evaluate fixed-spec online gold learning model
         run: python -m scripts.edgelab_online_model_run
+      - name: Fetch official CFTC GOLD positioning history
+        run: python -m scripts.fetch_cftc_gold
+      - name: Evaluate two predeclared Managed Money gold hypotheses
+        run: python -m scripts.edgelab_cot_official_run
       - name: Publish evidence only (no raw market data)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: qts-vix-curve-research-${{ github.run_id }}
+          name: qts-independent-gold-research-${{ github.run_id }}
           path: |
             data/research/experiments/vix_curve_*.json
             data/research/experiments/online_ridge_*.json
+            data/research/experiments/cot_official_*.json
+            data/raw/edgelab/cftc_gold/source_manifest.json
             data/raw/edgelab/cboe_vix_curve/source_manifest.json
           if-no-files-found: warn
           retention-days: 30
