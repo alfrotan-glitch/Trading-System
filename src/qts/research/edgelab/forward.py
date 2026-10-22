@@ -398,10 +398,12 @@ def score(df: pd.DataFrame) -> pd.DataFrame:
         held = g["signal"].to_numpy(dtype=float)[:-1]
         gross = held * ret
         turnover = np.abs(np.diff(np.concatenate([[0.0], held])))
-        # Costs are ASSUMED at the ECN reference; reported as assumed, never measured.
+        # Forward scores must use the SAME realistic ECN research assumptions
+        # named by the API, not the obsolete optimistic harness default.
+        # Neither model measures the owner's actual broker costs.
         from qts.research.edgelab import CostModel
 
-        per_side = CostModel().per_side_bps() / 1e4
+        per_side = CostModel.realistic_ecn().per_side_bps() / 1e4
         net = gross - turnover * per_side
 
         bar_years = (g["date"].iloc[-1] - g["date"].iloc[0]).days / 365.25
