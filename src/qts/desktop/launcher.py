@@ -24,9 +24,8 @@ def _get_api_host_port() -> tuple[str, int]:
 def start_api_server(host: str = "127.0.0.1", port: int = 8000):
     import uvicorn
 
-    from qts.api.server import app, ensure_qts_api_routes
+    from qts.api.server import app
 
-    ensure_qts_api_routes()
     config = uvicorn.Config(
         app,
         host=host,
@@ -109,22 +108,20 @@ def _smoke_packaged_application() -> None:
     UI files survived packaging and can import within the executable. It never
     binds a public port, probes a broker, changes permissions or trades.
     """
-    from qts.api.server import app, ensure_qts_api_routes
+    from qts.api.server import app
 
-    ensure_qts_api_routes()
+    # FastAPI >=0.137 stores included routers as lazy internal
+    # _IncludedRouter objects without a .path attribute. `app.routes` is
+    # intentionally NOT a flattened list of HTTP endpoints. The generated
+    # OpenAPI schema is the supported, recursively-resolved route inventory.
     required_routes = {"/api/health/live", "/api/version", "/api/demo/guide"}
-    available_routes = {getattr(route, "path", "") for route in app.routes}
+    schema = app.openapi()
+    available_routes = set(schema.get("paths", {}))
     missing = sorted(required_routes - available_routes)
     if missing:
-        # Distinguish an incomplete API import from routers that were loaded
-        # but had their declarations stripped (e.g. packaging/circular import).
-        from qts.api.routes.demo import router as demo_router
-        from qts.api.routes.system import router as system_router
-
         raise RuntimeError(
-            f"Packaged backend missing routes: {missing}; "
-            f"registered={len(available_routes)} paths={sorted(available_routes)[:18]}; "
-            f"system_router={len(system_router.routes)} demo_router={len(demo_router.routes)}"
+            f"Packaged backend missing API endpoints: {missing}; "
+            f"schema_paths={len(available_routes)}"
         )
     ui_path = _get_ui_dir() / "index.html"
     if not ui_path.is_file() or ui_path.stat().st_size < 100:
