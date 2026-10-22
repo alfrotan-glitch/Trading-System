@@ -1,3 +1,14 @@
+## Current continuation: conditioned-volatility discovery (2026-10-23)
+
+**Round 23 executed locally:** the preregistered conditioned-volatility M15
+screen in `docs/research/mt5_conditioned_volatility_2026-10-23.md` tested four
+fixed range/tick-volume hypotheses on both preserved MT5 exports. Compression
+breakout was positive only in the longer overlapping export; expansion
+momentum was weakly positive in both but cost-sensitive. The family is
+`NO_VALIDATED_EDGE`, remains research-only, and did not access an order API.
+The next highest-information step is genuinely unseen broker observations with
+measured executable costs, not another parameter sweep on spent windows.
+
 ## Current continuation: prospective integrity and Windows delivery (2026-10-22)
 
 **Strategy outcome:** NO VALIDATED EXECUTABLE XAUUSD@ EDGE. This change set does
