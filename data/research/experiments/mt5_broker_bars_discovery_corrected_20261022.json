@@ -1,0 +1,1268 @@
+{
+  "hypotheses": {
+    "H-MT5-BREAKOUT-32": {
+      "definition": {
+        "execution": "next observed M15 bar open",
+        "gap_rule": "flatten before every missing/non-15-minute interval; no gap return credited",
+        "signal_at": "completed M15 close"
+      },
+      "splits": {
+        "DISCOVERY_60": {
+          "cost_0.00": {
+            "annualized_sharpe_252": 0.2330282029267101,
+            "average_abs_exposure": 0.05157847932414406,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.2330282029267101,
+              "average_abs_exposure": 0.05157847932414406,
+              "hac_t_excess_vs_control": 0.009653685324615746,
+              "max_drawdown": -0.0733438090864813,
+              "mean_daily_excess_vs_control": 3.709683752071685e-06,
+              "mean_daily_return": 8.354526487628388e-05,
+              "observations": 198,
+              "position_changes": 1236
+            },
+            "hac_t_excess_vs_control": 0.009653685324615746,
+            "max_drawdown": -0.0733438090864813,
+            "mean_daily_excess_vs_control": 3.709683752071685e-06,
+            "mean_daily_return": 8.354526487628388e-05,
+            "observations": 198,
+            "one_side_price_cost": 0.0,
+            "position_changes": 1236,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -0.4048918563031025,
+            "average_abs_exposure": 0.05157847932414406,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.2330282029267101,
+              "average_abs_exposure": 0.05157847932414406,
+              "hac_t_excess_vs_control": 0.009653685324615746,
+              "max_drawdown": -0.0733438090864813,
+              "mean_daily_excess_vs_control": 3.709683752071685e-06,
+              "mean_daily_return": 8.354526487628388e-05,
+              "observations": 198,
+              "position_changes": 1236
+            },
+            "hac_t_excess_vs_control": -0.578357601772037,
+            "max_drawdown": -0.0855497164751492,
+            "mean_daily_excess_vs_control": -0.00022152495130512996,
+            "mean_daily_return": -0.00014542063001149184,
+            "observations": 198,
+            "one_side_price_cost": 0.15,
+            "position_changes": 1236,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -1.0397318231839099,
+            "average_abs_exposure": 0.05157847932414406,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.2330282029267101,
+              "average_abs_exposure": 0.05157847932414406,
+              "hac_t_excess_vs_control": 0.009653685324615746,
+              "max_drawdown": -0.0733438090864813,
+              "mean_daily_excess_vs_control": 3.709683752071685e-06,
+              "mean_daily_return": 8.354526487628388e-05,
+              "observations": 198,
+              "position_changes": 1236
+            },
+            "hac_t_excess_vs_control": -1.168872587860918,
+            "max_drawdown": -0.11024312521233237,
+            "mean_daily_excess_vs_control": -0.0004466957119890702,
+            "mean_daily_return": -0.00037432264342850623,
+            "observations": 198,
+            "one_side_price_cost": 0.3,
+            "position_changes": 1236,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -1.8794474568570458,
+            "average_abs_exposure": 0.05157847932414406,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.2330282029267101,
+              "average_abs_exposure": 0.05157847932414406,
+              "hac_t_excess_vs_control": 0.009653685324615746,
+              "max_drawdown": -0.0733438090864813,
+              "mean_daily_excess_vs_control": 3.709683752071685e-06,
+              "mean_daily_return": 8.354526487628388e-05,
+              "observations": 198,
+              "position_changes": 1236
+            },
+            "hac_t_excess_vs_control": -1.957021813377976,
+            "max_drawdown": -0.14730735735617517,
+            "mean_daily_excess_vs_control": -0.0007468240683974662,
+            "mean_daily_return": -0.0006794259924403875,
+            "observations": 198,
+            "one_side_price_cost": 0.5,
+            "position_changes": 1236,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          }
+        },
+        "HOLDOUT_20": {
+          "cost_0.00": {
+            "annualized_sharpe_252": 0.27148558350414537,
+            "average_abs_exposure": 0.05368456152050684,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.27148558350414537,
+              "average_abs_exposure": 0.05368456152050684,
+              "hac_t_excess_vs_control": 0.14211745481876223,
+              "max_drawdown": -0.025953243203133525,
+              "mean_daily_excess_vs_control": 7.111680353429535e-05,
+              "mean_daily_return": 7.027712471024624e-05,
+              "observations": 66,
+              "position_changes": 438
+            },
+            "hac_t_excess_vs_control": 0.14211745481876223,
+            "max_drawdown": -0.025953243203133525,
+            "mean_daily_excess_vs_control": 7.111680353429535e-05,
+            "mean_daily_return": 7.027712471024624e-05,
+            "observations": 66,
+            "one_side_price_cost": 0.0,
+            "position_changes": 438,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -0.6249452735448121,
+            "average_abs_exposure": 0.05368456152050684,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.27148558350414537,
+              "average_abs_exposure": 0.05368456152050684,
+              "hac_t_excess_vs_control": 0.14211745481876223,
+              "max_drawdown": -0.025953243203133525,
+              "mean_daily_excess_vs_control": 7.111680353429535e-05,
+              "mean_daily_return": 7.027712471024624e-05,
+              "observations": 66,
+              "position_changes": 438
+            },
+            "hac_t_excess_vs_control": -0.31515892227778936,
+            "max_drawdown": -0.02799192096715286,
+            "mean_daily_excess_vs_control": -0.00015775836661377916,
+            "mean_daily_return": -0.00016230656719413771,
+            "observations": 66,
+            "one_side_price_cost": 0.15,
+            "position_changes": 438,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -1.5138970485434957,
+            "average_abs_exposure": 0.05368456152050684,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.27148558350414537,
+              "average_abs_exposure": 0.05368456152050684,
+              "hac_t_excess_vs_control": 0.14211745481876223,
+              "max_drawdown": -0.025953243203133525,
+              "mean_daily_excess_vs_control": 7.111680353429535e-05,
+              "mean_daily_return": 7.027712471024624e-05,
+              "observations": 66,
+              "position_changes": 438
+            },
+            "hac_t_excess_vs_control": -0.771632734697933,
+            "max_drawdown": -0.031248050317041587,
+            "mean_daily_excess_vs_control": -0.00038657199004235674,
+            "mean_daily_return": -0.0003948287053867173,
+            "observations": 66,
+            "one_side_price_cost": 0.3,
+            "position_changes": 438,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -2.6835853715105666,
+            "average_abs_exposure": 0.05368456152050684,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.27148558350414537,
+              "average_abs_exposure": 0.05368456152050684,
+              "hac_t_excess_vs_control": 0.14211745481876223,
+              "max_drawdown": -0.025953243203133525,
+              "mean_daily_excess_vs_control": 7.111680353429535e-05,
+              "mean_daily_return": 7.027712471024624e-05,
+              "observations": 66,
+              "position_changes": 438
+            },
+            "hac_t_excess_vs_control": -1.377833538114448,
+            "max_drawdown": -0.04471954553604396,
+            "mean_daily_excess_vs_control": -0.0006915611115149055,
+            "mean_daily_return": -0.0007047625023342115,
+            "observations": 66,
+            "one_side_price_cost": 0.5,
+            "position_changes": 438,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          }
+        },
+        "VALIDATION_20": {
+          "cost_0.00": {
+            "annualized_sharpe_252": -1.1027788430487715,
+            "average_abs_exposure": 0.05202601300650325,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.1027788430487715,
+              "average_abs_exposure": 0.05202601300650325,
+              "hac_t_excess_vs_control": -0.2935481235718774,
+              "max_drawdown": -0.05368477173904984,
+              "mean_daily_excess_vs_control": -0.00016705998095439573,
+              "mean_daily_return": -0.00031464057115607717,
+              "observations": 67,
+              "position_changes": 426
+            },
+            "hac_t_excess_vs_control": -0.2935481235718774,
+            "max_drawdown": -0.05368477173904984,
+            "mean_daily_excess_vs_control": -0.00016705998095439573,
+            "mean_daily_return": -0.00031464057115607717,
+            "observations": 67,
+            "one_side_price_cost": 0.0,
+            "position_changes": 426,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -1.8603646469398787,
+            "average_abs_exposure": 0.05202601300650325,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.1027788430487715,
+              "average_abs_exposure": 0.05202601300650325,
+              "hac_t_excess_vs_control": -0.2935481235718774,
+              "max_drawdown": -0.05368477173904984,
+              "mean_daily_excess_vs_control": -0.00016705998095439573,
+              "mean_daily_return": -0.00031464057115607717,
+              "observations": 67,
+              "position_changes": 426
+            },
+            "hac_t_excess_vs_control": -0.6628194776392432,
+            "max_drawdown": -0.0626938049671305,
+            "mean_daily_excess_vs_control": -0.00038126528126742525,
+            "mean_daily_return": -0.0005323740881591148,
+            "observations": 67,
+            "one_side_price_cost": 0.15,
+            "position_changes": 426,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -2.611594153539725,
+            "average_abs_exposure": 0.05202601300650325,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.1027788430487715,
+              "average_abs_exposure": 0.05202601300650325,
+              "hac_t_excess_vs_control": -0.2935481235718774,
+              "max_drawdown": -0.05368477173904984,
+              "mean_daily_excess_vs_control": -0.00016705998095439573,
+              "mean_daily_return": -0.00031464057115607717,
+              "observations": 67,
+              "position_changes": 426
+            },
+            "hac_t_excess_vs_control": -1.023658993141319,
+            "max_drawdown": -0.07184070047607494,
+            "mean_daily_excess_vs_control": -0.0005954172122119465,
+            "mean_daily_return": -0.0007500542294521596,
+            "observations": 67,
+            "one_side_price_cost": 0.3,
+            "position_changes": 426,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -3.6010253678818076,
+            "average_abs_exposure": 0.05202601300650325,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.1027788430487715,
+              "average_abs_exposure": 0.05202601300650325,
+              "hac_t_excess_vs_control": -0.2935481235718774,
+              "max_drawdown": -0.05368477173904984,
+              "mean_daily_excess_vs_control": -0.00016705998095439573,
+              "mean_daily_return": -0.00031464057115607717,
+              "observations": 67,
+              "position_changes": 426
+            },
+            "hac_t_excess_vs_control": -1.491156175009647,
+            "max_drawdown": -0.08617289056010524,
+            "mean_daily_excess_vs_control": -0.0008808701253505313,
+            "mean_daily_return": -0.0010402114131911502,
+            "observations": 67,
+            "one_side_price_cost": 0.5,
+            "position_changes": 426,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          }
+        }
+      },
+      "status": "DISCOVERY_ONLY",
+      "strategy_promoted": false,
+      "validated_edge": false
+    },
+    "H-MT5-REVERT-4": {
+      "definition": {
+        "execution": "next observed M15 bar open",
+        "gap_rule": "flatten before every missing/non-15-minute interval; no gap return credited",
+        "signal_at": "completed M15 close"
+      },
+      "splits": {
+        "DISCOVERY_60": {
+          "cost_0.00": {
+            "annualized_sharpe_252": -0.6157934253256147,
+            "average_abs_exposure": 0.9444753223654958,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -0.6157934253256147,
+              "average_abs_exposure": 0.9444753223654958,
+              "hac_t_excess_vs_control": -1.716892020327713,
+              "max_drawdown": -0.25177509178739543,
+              "mean_daily_excess_vs_control": -0.0020117757871342323,
+              "mean_daily_return": -0.0005582089314762598,
+              "observations": 198,
+              "position_changes": 4400
+            },
+            "hac_t_excess_vs_control": -1.716892020327713,
+            "max_drawdown": -0.25177509178739543,
+            "mean_daily_excess_vs_control": -0.0020117757871342323,
+            "mean_daily_return": -0.0005582089314762598,
+            "observations": 198,
+            "one_side_price_cost": 0.0,
+            "position_changes": 4400,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -2.338479475650973,
+            "average_abs_exposure": 0.9444753223654958,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -0.6157934253256147,
+              "average_abs_exposure": 0.9444753223654958,
+              "hac_t_excess_vs_control": -1.716892020327713,
+              "max_drawdown": -0.25177509178739543,
+              "mean_daily_excess_vs_control": -0.0020117757871342323,
+              "mean_daily_return": -0.0005582089314762598,
+              "observations": 198,
+              "position_changes": 4400
+            },
+            "hac_t_excess_vs_control": -2.987935071884579,
+            "max_drawdown": -0.39745485183618234,
+            "mean_daily_excess_vs_control": -0.0034784149843868064,
+            "mean_daily_return": -0.0020932731221937778,
+            "observations": 198,
+            "one_side_price_cost": 0.15,
+            "position_changes": 4400,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -4.100024275046767,
+            "average_abs_exposure": 0.9444753223654958,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -0.6157934253256147,
+              "average_abs_exposure": 0.9444753223654958,
+              "hac_t_excess_vs_control": -1.716892020327713,
+              "max_drawdown": -0.25177509178739543,
+              "mean_daily_excess_vs_control": -0.0020117757871342323,
+              "mean_daily_return": -0.0005582089314762598,
+              "observations": 198,
+              "position_changes": 4400
+            },
+            "hac_t_excess_vs_control": -4.267279102730175,
+            "max_drawdown": -0.5475905010461458,
+            "mean_daily_excess_vs_control": -0.004942664209968075,
+            "mean_daily_return": -0.0036259449576197286,
+            "observations": 198,
+            "one_side_price_cost": 0.3,
+            "position_changes": 4400,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -6.505472240172981,
+            "average_abs_exposure": 0.9444753223654958,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -0.6157934253256147,
+              "average_abs_exposure": 0.9444753223654958,
+              "hac_t_excess_vs_control": -1.716892020327713,
+              "max_drawdown": -0.25177509178739543,
+              "mean_daily_excess_vs_control": -0.0020117757871342323,
+              "mean_daily_return": -0.0005582089314762598,
+              "observations": 198,
+              "position_changes": 4400
+            },
+            "hac_t_excess_vs_control": -5.976235084816356,
+            "max_drawdown": -0.6912735845715714,
+            "mean_daily_excess_vs_control": -0.006891285291181866,
+            "mean_daily_return": -0.0056657924774393045,
+            "observations": 198,
+            "one_side_price_cost": 0.5,
+            "position_changes": 4400,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          }
+        },
+        "HOLDOUT_20": {
+          "cost_0.00": {
+            "annualized_sharpe_252": -1.2155054136048562,
+            "average_abs_exposure": 0.9454818272757586,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.2155054136048562,
+              "average_abs_exposure": 0.9454818272757586,
+              "hac_t_excess_vs_control": -0.4132038181417965,
+              "max_drawdown": -0.12301951960275515,
+              "mean_daily_excess_vs_control": -0.0009305330778363563,
+              "mean_daily_return": -0.0009284996463443266,
+              "observations": 66,
+              "position_changes": 1416
+            },
+            "hac_t_excess_vs_control": -0.4132038181417965,
+            "max_drawdown": -0.12301951960275515,
+            "mean_daily_excess_vs_control": -0.0009305330778363563,
+            "mean_daily_return": -0.0009284996463443266,
+            "observations": 66,
+            "one_side_price_cost": 0.0,
+            "position_changes": 1416,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -3.1335765380693874,
+            "average_abs_exposure": 0.9454818272757586,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.2155054136048562,
+              "average_abs_exposure": 0.9454818272757586,
+              "hac_t_excess_vs_control": -0.4132038181417965,
+              "max_drawdown": -0.12301951960275515,
+              "mean_daily_excess_vs_control": -0.0009305330778363563,
+              "mean_daily_return": -0.0009284996463443266,
+              "observations": 66,
+              "position_changes": 1416
+            },
+            "hac_t_excess_vs_control": -1.0227538927994086,
+            "max_drawdown": -0.18968689799157434,
+            "mean_daily_excess_vs_control": -0.002297616646754884,
+            "mean_daily_return": -0.0023608852573126942,
+            "observations": 66,
+            "one_side_price_cost": 0.15,
+            "position_changes": 1416,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -5.099931017627763,
+            "average_abs_exposure": 0.9454818272757586,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.2155054136048562,
+              "average_abs_exposure": 0.9454818272757586,
+              "hac_t_excess_vs_control": -0.4132038181417965,
+              "max_drawdown": -0.12301951960275515,
+              "mean_daily_excess_vs_control": -0.0009305330778363563,
+              "mean_daily_return": -0.0009284996463443266,
+              "observations": 66,
+              "position_changes": 1416
+            },
+            "hac_t_excess_vs_control": -1.634074513341427,
+            "max_drawdown": -0.2512903034215468,
+            "mean_daily_excess_vs_control": -0.0036626494720256517,
+            "mean_daily_return": -0.003791217955943454,
+            "observations": 66,
+            "one_side_price_cost": 0.3,
+            "position_changes": 1416,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -7.793954876225731,
+            "average_abs_exposure": 0.9454818272757586,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.2155054136048562,
+              "average_abs_exposure": 0.9454818272757586,
+              "hac_t_excess_vs_control": -0.4132038181417965,
+              "max_drawdown": -0.12301951960275515,
+              "mean_daily_excess_vs_control": -0.0009305330778363563,
+              "mean_daily_return": -0.0009284996463443266,
+              "observations": 66,
+              "position_changes": 1416
+            },
+            "hac_t_excess_vs_control": -2.4513555428358527,
+            "max_drawdown": -0.3262109480819313,
+            "mean_daily_excess_vs_control": -0.005479508246800829,
+            "mean_daily_return": -0.005695139855014256,
+            "observations": 66,
+            "one_side_price_cost": 0.5,
+            "position_changes": 1416,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          }
+        },
+        "VALIDATION_20": {
+          "cost_0.00": {
+            "annualized_sharpe_252": 0.6225479343159613,
+            "average_abs_exposure": 0.944805736201434,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.6225479343159613,
+              "average_abs_exposure": 0.944805736201434,
+              "hac_t_excess_vs_control": 1.3340830478294419,
+              "max_drawdown": -0.15457658386350936,
+              "mean_daily_excess_vs_control": 0.0032924783851557044,
+              "mean_daily_return": 0.0006131232055261208,
+              "observations": 67,
+              "position_changes": 1517
+            },
+            "hac_t_excess_vs_control": 1.3340830478294419,
+            "max_drawdown": -0.15457658386350936,
+            "mean_daily_excess_vs_control": 0.0032924783851557044,
+            "mean_daily_return": 0.0006131232055261208,
+            "observations": 67,
+            "one_side_price_cost": 0.0,
+            "position_changes": 1517,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -0.8993665915511281,
+            "average_abs_exposure": 0.944805736201434,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.6225479343159613,
+              "average_abs_exposure": 0.944805736201434,
+              "hac_t_excess_vs_control": 1.3340830478294419,
+              "max_drawdown": -0.15457658386350936,
+              "mean_daily_excess_vs_control": 0.0032924783851557044,
+              "mean_daily_return": 0.0006131232055261208,
+              "observations": 67,
+              "position_changes": 1517
+            },
+            "hac_t_excess_vs_control": 0.760597880487126,
+            "max_drawdown": -0.18951156680312442,
+            "mean_daily_excess_vs_control": 0.0018673611725391515,
+            "mean_daily_return": -0.000875912519125697,
+            "observations": 67,
+            "one_side_price_cost": 0.15,
+            "position_changes": 1517,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -2.452130004284614,
+            "average_abs_exposure": 0.944805736201434,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.6225479343159613,
+              "average_abs_exposure": 0.944805736201434,
+              "hac_t_excess_vs_control": 1.3340830478294419,
+              "max_drawdown": -0.15457658386350936,
+              "mean_daily_excess_vs_control": 0.0032924783851557044,
+              "mean_daily_return": 0.0006131232055261208,
+              "observations": 67,
+              "position_changes": 1517
+            },
+            "hac_t_excess_vs_control": 0.18194134117056204,
+            "max_drawdown": -0.22475662190283785,
+            "mean_daily_excess_vs_control": 0.00044450366659030857,
+            "mean_daily_return": -0.0023626864502251602,
+            "observations": 67,
+            "one_side_price_cost": 0.3,
+            "position_changes": 1517,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -4.567514342685358,
+            "average_abs_exposure": 0.944805736201434,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.6225479343159613,
+              "average_abs_exposure": 0.944805736201434,
+              "hac_t_excess_vs_control": 1.3340830478294419,
+              "max_drawdown": -0.15457658386350936,
+              "mean_daily_excess_vs_control": 0.0032924783851557044,
+              "mean_daily_return": 0.0006131232055261208,
+              "observations": 67,
+              "position_changes": 1517
+            },
+            "hac_t_excess_vs_control": -0.5967376516022641,
+            "max_drawdown": -0.2890559754521793,
+            "mean_daily_excess_vs_control": -0.0014491305506565146,
+            "mean_daily_return": -0.004341539321407245,
+            "observations": 67,
+            "one_side_price_cost": 0.5,
+            "position_changes": 1517,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          }
+        }
+      },
+      "status": "DISCOVERY_ONLY",
+      "strategy_promoted": false,
+      "validated_edge": false
+    },
+    "H-MT5-SESSION-MOM-4": {
+      "definition": {
+        "execution": "next observed M15 bar open",
+        "gap_rule": "flatten before every missing/non-15-minute interval; no gap return credited",
+        "signal_at": "completed M15 close"
+      },
+      "splits": {
+        "DISCOVERY_60": {
+          "cost_0.00": {
+            "annualized_sharpe_252": 0.10804632214870485,
+            "average_abs_exposure": 0.47932414406402846,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.10804632214870485,
+              "average_abs_exposure": 0.47932414406402846,
+              "hac_t_excess_vs_control": -0.5202487335790054,
+              "max_drawdown": -0.1380097893109974,
+              "mean_daily_excess_vs_control": -0.0006663013657595303,
+              "mean_daily_return": 7.351163723102189e-05,
+              "observations": 198,
+              "position_changes": 2416
+            },
+            "hac_t_excess_vs_control": -0.5202487335790054,
+            "max_drawdown": -0.1380097893109974,
+            "mean_daily_excess_vs_control": -0.0006663013657595303,
+            "mean_daily_return": 7.351163723102189e-05,
+            "observations": 198,
+            "one_side_price_cost": 0.0,
+            "position_changes": 2416,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -1.070872297421158,
+            "average_abs_exposure": 0.47932414406402846,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.10804632214870485,
+              "average_abs_exposure": 0.47932414406402846,
+              "hac_t_excess_vs_control": -0.5202487335790054,
+              "max_drawdown": -0.1380097893109974,
+              "mean_daily_excess_vs_control": -0.0006663013657595303,
+              "mean_daily_return": 7.351163723102189e-05,
+              "observations": 198,
+              "position_changes": 2416
+            },
+            "hac_t_excess_vs_control": -1.116802529991713,
+            "max_drawdown": -0.18885478850133486,
+            "mean_daily_excess_vs_control": -0.001440185261047918,
+            "mean_daily_return": -0.0007350717003860799,
+            "observations": 198,
+            "one_side_price_cost": 0.15,
+            "position_changes": 2416,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -2.227356953137502,
+            "average_abs_exposure": 0.47932414406402846,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.10804632214870485,
+              "average_abs_exposure": 0.47932414406402846,
+              "hac_t_excess_vs_control": -0.5202487335790054,
+              "max_drawdown": -0.1380097893109974,
+              "mean_daily_excess_vs_control": -0.0006663013657595303,
+              "mean_daily_return": 7.351163723102189e-05,
+              "observations": 198,
+              "position_changes": 2416
+            },
+            "hac_t_excess_vs_control": -1.7041622974583577,
+            "max_drawdown": -0.2931243080267123,
+            "mean_daily_excess_vs_control": -0.0022134127409216987,
+            "mean_daily_return": -0.0015429980091677734,
+            "observations": 198,
+            "one_side_price_cost": 0.3,
+            "position_changes": 2416,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -3.7332441045835503,
+            "average_abs_exposure": 0.47932414406402846,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.10804632214870485,
+              "average_abs_exposure": 0.47932414406402846,
+              "hac_t_excess_vs_control": -0.5202487335790054,
+              "max_drawdown": -0.1380097893109974,
+              "mean_daily_excess_vs_control": -0.0006663013657595303,
+              "mean_daily_return": 7.351163723102189e-05,
+              "observations": 198,
+              "position_changes": 2416
+            },
+            "hac_t_excess_vs_control": -2.47236198665719,
+            "max_drawdown": -0.41855814556753346,
+            "mean_daily_excess_vs_control": -0.003243362548574401,
+            "mean_daily_return": -0.002619211967820904,
+            "observations": 198,
+            "one_side_price_cost": 0.5,
+            "position_changes": 2416,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          }
+        },
+        "HOLDOUT_20": {
+          "cost_0.00": {
+            "annualized_sharpe_252": -0.7648460766429698,
+            "average_abs_exposure": 0.4779926642214071,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -0.7648460766429698,
+              "average_abs_exposure": 0.4779926642214071,
+              "hac_t_excess_vs_control": -0.34420429092495197,
+              "max_drawdown": -0.0917222548381822,
+              "mean_daily_excess_vs_control": -0.0005097239744398056,
+              "mean_daily_return": -0.0005131615436336409,
+              "observations": 66,
+              "position_changes": 788
+            },
+            "hac_t_excess_vs_control": -0.34420429092495197,
+            "max_drawdown": -0.0917222548381822,
+            "mean_daily_excess_vs_control": -0.0005097239744398056,
+            "mean_daily_return": -0.0005131615436336409,
+            "observations": 66,
+            "one_side_price_cost": 0.0,
+            "position_changes": 788,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -1.8876032757918255,
+            "average_abs_exposure": 0.4779926642214071,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -0.7648460766429698,
+              "average_abs_exposure": 0.4779926642214071,
+              "hac_t_excess_vs_control": -0.34420429092495197,
+              "max_drawdown": -0.0917222548381822,
+              "mean_daily_excess_vs_control": -0.0005097239744398056,
+              "mean_daily_return": -0.0005131615436336409,
+              "observations": 66,
+              "position_changes": 788
+            },
+            "hac_t_excess_vs_control": -0.8349804652627278,
+            "max_drawdown": -0.1284441237772318,
+            "mean_daily_excess_vs_control": -0.001241202438578406,
+            "mean_daily_return": -0.001277656736492768,
+            "observations": 66,
+            "one_side_price_cost": 0.15,
+            "position_changes": 788,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -2.989149085497852,
+            "average_abs_exposure": 0.4779926642214071,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -0.7648460766429698,
+              "average_abs_exposure": 0.4779926642214071,
+              "hac_t_excess_vs_control": -0.34420429092495197,
+              "max_drawdown": -0.0917222548381822,
+              "mean_daily_excess_vs_control": -0.0005097239744398056,
+              "mean_daily_return": -0.0005131615436336409,
+              "observations": 66,
+              "position_changes": 788
+            },
+            "hac_t_excess_vs_control": -1.321499853263189,
+            "max_drawdown": -0.1636836077320848,
+            "mean_daily_excess_vs_control": -0.0019721027260746543,
+            "mean_daily_return": -0.002041573198403353,
+            "observations": 66,
+            "one_side_price_cost": 0.3,
+            "position_changes": 788,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -4.424323269912265,
+            "average_abs_exposure": 0.4779926642214071,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -0.7648460766429698,
+              "average_abs_exposure": 0.4779926642214071,
+              "hac_t_excess_vs_control": -0.34420429092495197,
+              "max_drawdown": -0.0917222548381822,
+              "mean_daily_excess_vs_control": -0.0005097239744398056,
+              "mean_daily_return": -0.0005131615436336409,
+              "observations": 66,
+              "position_changes": 788
+            },
+            "hac_t_excess_vs_control": -1.963347809555263,
+            "max_drawdown": -0.2084665747843507,
+            "mean_daily_excess_vs_control": -0.0029457378050566415,
+            "mean_daily_return": -0.003059228981017476,
+            "observations": 66,
+            "one_side_price_cost": 0.5,
+            "position_changes": 788,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          }
+        },
+        "VALIDATION_20": {
+          "cost_0.00": {
+            "annualized_sharpe_252": -2.2642840701227356,
+            "average_abs_exposure": 0.48207437051859264,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -2.2642840701227356,
+              "average_abs_exposure": 0.48207437051859264,
+              "hac_t_excess_vs_control": -0.11345492988746125,
+              "max_drawdown": -0.15066933992552434,
+              "mean_daily_excess_vs_control": -0.0002077583451360738,
+              "mean_daily_return": -0.0015750605337909315,
+              "observations": 67,
+              "position_changes": 873
+            },
+            "hac_t_excess_vs_control": -0.11345492988746125,
+            "max_drawdown": -0.15066933992552434,
+            "mean_daily_excess_vs_control": -0.0002077583451360738,
+            "mean_daily_return": -0.0015750605337909315,
+            "observations": 67,
+            "one_side_price_cost": 0.0,
+            "position_changes": 873,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -3.4101906911380175,
+            "average_abs_exposure": 0.48207437051859264,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -2.2642840701227356,
+              "average_abs_exposure": 0.48207437051859264,
+              "hac_t_excess_vs_control": -0.11345492988746125,
+              "max_drawdown": -0.15066933992552434,
+              "mean_daily_excess_vs_control": -0.0002077583451360738,
+              "mean_daily_return": -0.0015750605337909315,
+              "observations": 67,
+              "position_changes": 873
+            },
+            "hac_t_excess_vs_control": -0.5392943409666808,
+            "max_drawdown": -0.16509647660070803,
+            "mean_daily_excess_vs_control": -0.0009976679512237255,
+            "mean_daily_return": -0.0023976246250624433,
+            "observations": 67,
+            "one_side_price_cost": 0.15,
+            "position_changes": 873,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -4.529241437081302,
+            "average_abs_exposure": 0.48207437051859264,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -2.2642840701227356,
+              "average_abs_exposure": 0.48207437051859264,
+              "hac_t_excess_vs_control": -0.11345492988746125,
+              "max_drawdown": -0.15066933992552434,
+              "mean_daily_excess_vs_control": -0.0002077583451360738,
+              "mean_daily_return": -0.0015750605337909315,
+              "observations": 67,
+              "position_changes": 873
+            },
+            "hac_t_excess_vs_control": -0.9560497243721465,
+            "max_drawdown": -0.1926331423359856,
+            "mean_daily_excess_vs_control": -0.00178688621994271,
+            "mean_daily_return": -0.003219496835056012,
+            "observations": 67,
+            "one_side_price_cost": 0.3,
+            "position_changes": 873,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -5.9789207248904255,
+            "average_abs_exposure": 0.48207437051859264,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -2.2642840701227356,
+              "average_abs_exposure": 0.48207437051859264,
+              "hac_t_excess_vs_control": -0.11345492988746125,
+              "max_drawdown": -0.15066933992552434,
+              "mean_daily_excess_vs_control": -0.0002077583451360738,
+              "mean_daily_return": -0.0015750605337909315,
+              "observations": 67,
+              "position_changes": 873
+            },
+            "hac_t_excess_vs_control": -1.4977140039536327,
+            "max_drawdown": -0.2477246191354776,
+            "mean_daily_excess_vs_control": -0.0028381028425012254,
+            "mean_daily_return": -0.004314251199898894,
+            "observations": 67,
+            "one_side_price_cost": 0.5,
+            "position_changes": 873,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          }
+        }
+      },
+      "status": "DISCOVERY_ONLY",
+      "strategy_promoted": false,
+      "validated_edge": false
+    },
+    "H-MT5-TREND-12": {
+      "definition": {
+        "execution": "next observed M15 bar open",
+        "gap_rule": "flatten before every missing/non-15-minute interval; no gap return credited",
+        "signal_at": "completed M15 close"
+      },
+      "splits": {
+        "DISCOVERY_60": {
+          "cost_0.00": {
+            "annualized_sharpe_252": 1.0485456226412524,
+            "average_abs_exposure": 0.8567140951534015,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 1.0485456226412524,
+              "average_abs_exposure": 0.8567140951534015,
+              "hac_t_excess_vs_control": -0.29481638876591804,
+              "max_drawdown": -0.09430247372972056,
+              "mean_daily_excess_vs_control": -0.0004804951298955623,
+              "mean_daily_return": 0.0008386973591050997,
+              "observations": 198,
+              "position_changes": 2561
+            },
+            "hac_t_excess_vs_control": -0.29481638876591804,
+            "max_drawdown": -0.09430247372972056,
+            "mean_daily_excess_vs_control": -0.0004804951298955623,
+            "mean_daily_return": 0.0008386973591050997,
+            "observations": 198,
+            "one_side_price_cost": 0.0,
+            "position_changes": 2561,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -0.027228284334325527,
+            "average_abs_exposure": 0.8567140951534015,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 1.0485456226412524,
+              "average_abs_exposure": 0.8567140951534015,
+              "hac_t_excess_vs_control": -0.29481638876591804,
+              "max_drawdown": -0.09430247372972056,
+              "mean_daily_excess_vs_control": -0.0004804951298955623,
+              "mean_daily_return": 0.0008386973591050997,
+              "observations": 198,
+              "position_changes": 2561
+            },
+            "hac_t_excess_vs_control": -0.7792328764784688,
+            "max_drawdown": -0.12480543547315881,
+            "mean_daily_excess_vs_control": -0.0012791196495838724,
+            "mean_daily_return": -2.1985160342949256e-05,
+            "observations": 198,
+            "one_side_price_cost": 0.15,
+            "position_changes": 2561,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -1.081520481518804,
+            "average_abs_exposure": 0.8567140951534015,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 1.0485456226412524,
+              "average_abs_exposure": 0.8567140951534015,
+              "hac_t_excess_vs_control": -0.29481638876591804,
+              "max_drawdown": -0.09430247372972056,
+              "mean_daily_excess_vs_control": -0.0004804951298955623,
+              "mean_daily_return": 0.0008386973591050997,
+              "observations": 198,
+              "position_changes": 2561
+            },
+            "hac_t_excess_vs_control": -1.256040783557026,
+            "max_drawdown": -0.2012082445478267,
+            "mean_daily_excess_vs_control": -0.0020769640744803756,
+            "mean_daily_return": -0.0008818856240757039,
+            "observations": 198,
+            "one_side_price_cost": 0.3,
+            "position_changes": 2561,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -2.4523182895188955,
+            "average_abs_exposure": 0.8567140951534015,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-04-20T10:15:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 1.0485456226412524,
+              "average_abs_exposure": 0.8567140951534015,
+              "hac_t_excess_vs_control": -0.29481638876591804,
+              "max_drawdown": -0.09430247372972056,
+              "mean_daily_excess_vs_control": -0.0004804951298955623,
+              "mean_daily_return": 0.0008386973591050997,
+              "observations": 198,
+              "position_changes": 2561
+            },
+            "hac_t_excess_vs_control": -1.8797114776919441,
+            "max_drawdown": -0.3552201860467825,
+            "mean_daily_excess_vs_control": -0.003139544451529605,
+            "mean_daily_return": -0.002027204335914494,
+            "observations": 198,
+            "one_side_price_cost": 0.5,
+            "position_changes": 2561,
+            "start_timestamp": "2025-07-14T20:00:00+00:00"
+          }
+        },
+        "HOLDOUT_20": {
+          "cost_0.00": {
+            "annualized_sharpe_252": -1.5336880738469785,
+            "average_abs_exposure": 0.8576192064021341,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.5336880738469785,
+              "average_abs_exposure": 0.8576192064021341,
+              "hac_t_excess_vs_control": -0.8680795876237424,
+              "max_drawdown": -0.1678874790902345,
+              "mean_daily_excess_vs_control": -0.0011570256010209183,
+              "mean_daily_return": -0.00115668928002698,
+              "observations": 66,
+              "position_changes": 789
+            },
+            "hac_t_excess_vs_control": -0.8680795876237424,
+            "max_drawdown": -0.1678874790902345,
+            "mean_daily_excess_vs_control": -0.0011570256010209183,
+            "mean_daily_return": -0.00115668928002698,
+            "observations": 66,
+            "one_side_price_cost": 0.0,
+            "position_changes": 789,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -2.5194248898864062,
+            "average_abs_exposure": 0.8576192064021341,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.5336880738469785,
+              "average_abs_exposure": 0.8576192064021341,
+              "hac_t_excess_vs_control": -0.8680795876237424,
+              "max_drawdown": -0.1678874790902345,
+              "mean_daily_excess_vs_control": -0.0011570256010209183,
+              "mean_daily_return": -0.00115668928002698,
+              "observations": 66,
+              "position_changes": 789
+            },
+            "hac_t_excess_vs_control": -1.389279350090049,
+            "max_drawdown": -0.19468496790065604,
+            "mean_daily_excess_vs_control": -0.0018613317678197923,
+            "mean_daily_return": -0.001920230009048835,
+            "observations": 66,
+            "one_side_price_cost": 0.15,
+            "position_changes": 789,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -3.4831800922720615,
+            "average_abs_exposure": 0.8576192064021341,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.5336880738469785,
+              "average_abs_exposure": 0.8576192064021341,
+              "hac_t_excess_vs_control": -0.8680795876237424,
+              "max_drawdown": -0.1678874790902345,
+              "mean_daily_excess_vs_control": -0.0011570256010209183,
+              "mean_daily_return": -0.00115668928002698,
+              "observations": 66,
+              "position_changes": 789
+            },
+            "hac_t_excess_vs_control": -1.903960624547026,
+            "max_drawdown": -0.2228254257292951,
+            "mean_daily_excess_vs_control": -0.002565053054012591,
+            "mean_daily_return": -0.0026831840731033215,
+            "observations": 66,
+            "one_side_price_cost": 0.3,
+            "position_changes": 789,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -4.734144837658928,
+            "average_abs_exposure": 0.8576192064021341,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-10-20T09:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": -1.5336880738469785,
+              "average_abs_exposure": 0.8576192064021341,
+              "hac_t_excess_vs_control": -0.8680795876237424,
+              "max_drawdown": -0.1678874790902345,
+              "mean_daily_excess_vs_control": -0.0011570256010209183,
+              "mean_daily_return": -0.00115668928002698,
+              "observations": 66,
+              "position_changes": 789
+            },
+            "hac_t_excess_vs_control": -2.5792804034080077,
+            "max_drawdown": -0.2620382812736244,
+            "mean_daily_excess_vs_control": -0.0035024390710126354,
+            "mean_daily_return": -0.003699544351578979,
+            "observations": 66,
+            "one_side_price_cost": 0.5,
+            "position_changes": 789,
+            "start_timestamp": "2026-07-21T02:15:00+00:00"
+          }
+        },
+        "VALIDATION_20": {
+          "cost_0.00": {
+            "annualized_sharpe_252": 0.42071796977555637,
+            "average_abs_exposure": 0.8580957145239286,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.42071796977555637,
+              "average_abs_exposure": 0.8580957145239286,
+              "hac_t_excess_vs_control": 1.2905668465780302,
+              "max_drawdown": -0.0888191478322583,
+              "mean_daily_excess_vs_control": 0.0027874204356236913,
+              "mean_daily_return": 0.0003538986105377879,
+              "observations": 67,
+              "position_changes": 799
+            },
+            "hac_t_excess_vs_control": 1.2905668465780302,
+            "max_drawdown": -0.0888191478322583,
+            "mean_daily_excess_vs_control": 0.0027874204356236913,
+            "mean_daily_return": 0.0003538986105377879,
+            "observations": 67,
+            "one_side_price_cost": 0.0,
+            "position_changes": 799,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.15": {
+            "annualized_sharpe_252": -0.4625547149474128,
+            "average_abs_exposure": 0.8580957145239286,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.42071796977555637,
+              "average_abs_exposure": 0.8580957145239286,
+              "hac_t_excess_vs_control": 1.2905668465780302,
+              "max_drawdown": -0.0888191478322583,
+              "mean_daily_excess_vs_control": 0.0027874204356236913,
+              "mean_daily_return": 0.0003538986105377879,
+              "observations": 67,
+              "position_changes": 799
+            },
+            "hac_t_excess_vs_control": 0.9640581312251337,
+            "max_drawdown": -0.09999731838302484,
+            "mean_daily_excess_vs_control": 0.0020972066790692113,
+            "mean_daily_return": -0.00039438115216070116,
+            "observations": 67,
+            "one_side_price_cost": 0.15,
+            "position_changes": 799,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.30": {
+            "annualized_sharpe_252": -1.3214515802527287,
+            "average_abs_exposure": 0.8580957145239286,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.42071796977555637,
+              "average_abs_exposure": 0.8580957145239286,
+              "hac_t_excess_vs_control": 1.2905668465780302,
+              "max_drawdown": -0.0888191478322583,
+              "mean_daily_excess_vs_control": 0.0027874204356236913,
+              "mean_daily_return": 0.0003538986105377879,
+              "observations": 67,
+              "position_changes": 799
+            },
+            "hac_t_excess_vs_control": 0.642395467867598,
+            "max_drawdown": -0.11563131768941204,
+            "mean_daily_excess_vs_control": 0.001407584886118013,
+            "mean_daily_return": -0.0011420672294830663,
+            "observations": 67,
+            "one_side_price_cost": 0.3,
+            "position_changes": 799,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          },
+          "cost_0.50": {
+            "annualized_sharpe_252": -2.4294421929502854,
+            "average_abs_exposure": 0.8580957145239286,
+            "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
+            "end_timestamp": "2026-07-21T02:00:00+00:00",
+            "gross": {
+              "annualized_sharpe_252": 0.42071796977555637,
+              "average_abs_exposure": 0.8580957145239286,
+              "hac_t_excess_vs_control": 1.2905668465780302,
+              "max_drawdown": -0.0888191478322583,
+              "mean_daily_excess_vs_control": 0.0027874204356236913,
+              "mean_daily_return": 0.0003538986105377879,
+              "observations": 67,
+              "position_changes": 799
+            },
+            "hac_t_excess_vs_control": 0.22102476726906478,
+            "max_drawdown": -0.16518936304301723,
+            "mean_daily_excess_vs_control": 0.0004890091466893146,
+            "mean_daily_return": -0.0021380593364267253,
+            "observations": 67,
+            "one_side_price_cost": 0.5,
+            "position_changes": 799,
+            "start_timestamp": "2026-04-20T10:30:00+00:00"
+          }
+        }
+      },
+      "status": "DISCOVERY_ONLY",
+      "strategy_promoted": false,
+      "validated_edge": false
+    }
+  },
+  "input": {
+    "evidence_path": "data\\evidence\\mt5_bars_30000.json",
+    "first_timestamp": "2025-07-14T20:00:00+00:00",
+    "intervals_gt_15m": 328,
+    "last_timestamp": "2026-10-20T09:00:00+00:00",
+    "max_interval_minutes": 4395.0,
+    "path": "data\\raw\\mt5_xauusd_m15_30000.csv",
+    "rows": 29987,
+    "sha256": "0dfd3025fb6b3fc636d8531b22ab30640f45f7bfa344136ce181f29e76adbab2",
+    "spread_field": "preserved but not converted; broker points and point size are not sufficient for USD/oz cost"
+  },
+  "protocol": {
+    "active_return": "difference between compounded daily strategy and control returns",
+    "control": "constant long exposure matched to each strategy's mean absolute exposure within split",
+    "cost_scenarios": [
+      0.0,
+      0.15,
+      0.3,
+      0.5
+    ],
+    "cost_status": "ASSUMED; bid/ask, commission, slippage and swaps are unavailable",
+    "hypotheses_predeclared": [
+      "H-MT5-TREND-12",
+      "H-MT5-REVERT-4",
+      "H-MT5-BREAKOUT-32",
+      "H-MT5-SESSION-MOM-4"
+    ],
+    "no_parameter_sweep": true,
+    "split_rule": "chronological 60% discovery / 20% validation / 20% holdout"
+  },
+  "safety": {
+    "DEMO_EXECUTION": "DISABLED",
+    "LIVE": "LOCKED",
+    "order_apis_called": [],
+    "orders_submitted": 0
+  },
+  "schema": "qts.xauusd_mt5_broker_bars_discovery.v2",
+  "status": "DISCOVERY_ONLY",
+  "strategy_promoted": false,
+  "validated_edge": false
+}

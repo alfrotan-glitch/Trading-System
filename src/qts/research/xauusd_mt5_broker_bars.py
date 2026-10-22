@@ -21,7 +21,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-SCHEMA = "qts.xauusd_mt5_broker_bars_discovery.v1"
+SCHEMA = "qts.xauusd_mt5_broker_bars_discovery.v2"
 EXPECTED_BAR_SECONDS = 15 * 60
 LOOKBACKS = {"H-MT5-TREND-12": 12, "H-MT5-REVERT-4": 4, "H-MT5-BREAKOUT-32": 32}
 ASSUMED_ONE_SIDE_PRICE_COSTS = (0.0, 0.15, 0.30, 0.50)
@@ -128,9 +128,17 @@ def _daily_returns(values: pd.Series) -> pd.Series:
     return (1.0 + values).groupby(index.floor("D")).prod() - 1.0
 
 
-def _summary(returns: pd.Series, excess: pd.Series, position: pd.Series) -> dict[str, Any]:
+def _summary(
+    returns: pd.Series,
+    strategy_returns: pd.Series,
+    control_returns: pd.Series,
+    position: pd.Series,
+) -> dict[str, Any]:
     daily = _daily_returns(returns)
-    excess_daily = _daily_returns(excess)
+    # Active return is the difference between compounded daily portfolio
+    # returns. Compounding intrabar strategy-minus-control differences would
+    # incorrectly treat each difference as an independent portfolio return.
+    excess_daily = _daily_returns(strategy_returns) - _daily_returns(control_returns)
     mean = float(daily.mean()) if len(daily) else None
     std = float(daily.std(ddof=1)) if len(daily) > 1 else None
     sharpe = float(mean / std * np.sqrt(252.0)) if mean is not None and std and std > 0 else None
@@ -182,11 +190,20 @@ def evaluate_hypothesis(
     control_position = pd.Series(exposure, index=frame.index).where(contiguous, 0.0)
     control_delta = control_position.diff().fillna(control_position.abs()).abs()
     control = control_position * intrabar - control_delta * float(one_side_price_cost) / frame["open"]
-    excess = net - control
-    result = _summary(net.iloc[start:end], excess.iloc[start:end], position.iloc[start:end])
+    result = _summary(
+        net.iloc[start:end],
+        net.iloc[start:end],
+        control.iloc[start:end],
+        position.iloc[start:end],
+    )
     result.update(
         {
-            "gross": _summary(gross.iloc[start:end], gross.iloc[start:end] - control.iloc[start:end], position.iloc[start:end]),
+            "gross": _summary(
+                gross.iloc[start:end],
+                gross.iloc[start:end],
+                (control_position * intrabar).iloc[start:end],
+                position.iloc[start:end],
+            ),
             "one_side_price_cost": float(one_side_price_cost),
             "cost_basis": "ASSUMED_PRICE_DISTANCE_PER_SIDE; not broker-measured",
             "start_timestamp": index[start].isoformat() if start < len(frame) else None,
@@ -247,6 +264,7 @@ def run_discovery(path: Path = DEFAULT_INPUT, evidence_path: Path = DEFAULT_EVID
             "cost_scenarios": list(ASSUMED_ONE_SIDE_PRICE_COSTS),
             "cost_status": "ASSUMED; bid/ask, commission, slippage and swaps are unavailable",
             "control": "constant long exposure matched to each strategy's mean absolute exposure within split",
+            "active_return": "difference between compounded daily strategy and control returns",
             "no_parameter_sweep": True,
         },
         "hypotheses": results,
@@ -261,10 +279,14 @@ def render_report(report: dict[str, Any]) -> str:
         "",
         "**Disposition: DISCOVERY ONLY. No validated edge, no promotion, no orders.**",
         "",
+        "Corrected v2 run. The original v1 HAC statistics are superseded and retained unchanged for traceability.",
+        "",
         f"Input rows: `{report['input']['rows']}`; SHA-256: `{report['input']['sha256']}`.",
         f"Observed intervals longer than 15 minutes: `{report['input']['intervals_gt_15m']}`; maximum: `{report['input']['max_interval_minutes']}` minutes.",
         "",
         "Signals were evaluated at a completed-bar close and applied at the next observed bar open. Missing bars flatten the position before the next observed bar; no unknown gap return is credited. Costs are assumed price distances per side, not broker measurements.",
+        "",
+        "HAC statistics use the daily difference between compounded strategy and control returns; intrabar active-return differences are not compounded as a separate portfolio.",
         "",
         "| Hypothesis | Discovery t (cost 0.30) | Validation t | Holdout t | Holdout Sharpe |",
         "|---|---:|---:|---:|---:|",

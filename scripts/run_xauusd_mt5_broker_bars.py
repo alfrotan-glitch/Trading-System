@@ -19,8 +19,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--evidence", type=Path, default=DEFAULT_EVIDENCE)
-    parser.add_argument("--output", type=Path, default=Path("data/research/experiments/mt5_broker_bars_discovery_20261022.json"))
-    parser.add_argument("--markdown", type=Path, default=Path("reports/mt5_broker_bars_discovery_20261022.md"))
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("data/research/experiments/mt5_broker_bars_discovery_corrected_20261022.json"),
+    )
+    parser.add_argument(
+        "--markdown",
+        type=Path,
+        default=Path("reports/mt5_broker_bars_discovery_corrected_20261022.md"),
+    )
     args = parser.parse_args(argv)
 
     report = run_discovery(args.input, args.evidence)

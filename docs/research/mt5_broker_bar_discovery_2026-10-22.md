@@ -2,6 +2,15 @@
 
 **Disposition: `DISCOVERY_ONLY`. No validated edge, no promotion, no orders.**
 
+The first run's HAC active-return calculation was corrected after review. Its
+original JSON and report remain unchanged for traceability, but their t-statistics
+are superseded by the corrected rerun in
+`data/research/experiments/mt5_broker_bars_discovery_corrected_20261022.json`
+and `reports/mt5_broker_bars_discovery_corrected_20261022.md`. The correction
+compares compounded daily strategy and control returns before calculating daily
+active-return statistics. It changes the reported values slightly; it does not
+change the conclusion that this sample provides no positive, stable effect.
+
 This is a new broker-feed assay on the locally preserved WMMarkets DEMO M15
 OHLC export. It is not a profitability claim and it does not reopen any spent
 long-history holdout. The product remains `NO_VALIDATED_EDGE`, `LIVE LOCKED`,
@@ -59,14 +68,19 @@ sample. The high turnover of the reversal and session rules also makes the
 unmeasured broker execution terms especially material. These are historical
 observations on a limited broker export, not evidence of future profitability.
 
-Machine-readable output: `data/research/experiments/mt5_broker_bars_discovery_20261022.json`.
+Original machine-readable output, retained unchanged:
+`data/research/experiments/mt5_broker_bars_discovery_20261022.json`.
+Corrected v2 output:
+`data/research/experiments/mt5_broker_bars_discovery_corrected_20261022.json`.
 
 ## Reproduction and safety
 
 ```text
 python scripts/run_xauusd_mt5_broker_bars.py \
   --input data/raw/mt5_xauusd_m15_30000.csv \
-  --evidence data/evidence/mt5_bars_30000.json
+  --evidence data/evidence/mt5_bars_30000.json \
+  --output data/research/experiments/mt5_broker_bars_discovery_corrected_20261022.json \
+  --markdown reports/mt5_broker_bars_discovery_corrected_20261022.md
 ```
 
 The runner has no broker import and no order path. Recorded safety facts are
