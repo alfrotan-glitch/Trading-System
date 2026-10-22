@@ -67,6 +67,28 @@ jobs:
           This build is a candidate, not a certified release.
           '@ | Set-Content "dist\QTS\START-HERE.txt" -Encoding ASCII
           Compress-Archive -Path "dist\QTS\*" -DestinationPath "QTS-Windows-Preview.zip"
+      - name: Accept extracted ZIP from a normal Windows folder
+        shell: pwsh
+        run: |
+          $install = Join-Path $env:RUNNER_TEMP "QTS Customer Installation"
+          New-Item -Path $install -ItemType Directory -Force | Out-Null
+          Expand-Archive -LiteralPath "QTS-Windows-Preview.zip" -DestinationPath $install -Force
+          $exe = Join-Path $install "QTS.exe"
+          if (!(Test-Path $exe)) { throw "QTS.exe missing after unzip to customer directory" }
+          if (!(Test-Path (Join-Path $install "START-HERE.txt"))) {
+            throw "Customer instructions missing from packaged ZIP"
+          }
+          $env:QTS_SMOKE_RESULT_PATH = Join-Path $env:RUNNER_TEMP "qts-extracted-smoke.txt"
+          foreach ($flag in @("--version", "--smoke", "--smoke-server")) {
+            $p = Start-Process -FilePath $exe -ArgumentList $flag -WorkingDirectory $install -Wait -PassThru
+            if ($p.ExitCode -ne 0) {
+              if (Test-Path $env:QTS_SMOKE_RESULT_PATH) {
+                Get-Content $env:QTS_SMOKE_RESULT_PATH | Write-Host
+              }
+              throw "Extracted QTS.exe $flag failed exit=$($p.ExitCode)"
+            }
+          }
+          Write-Host "Extracted QTS desktop launch validated from folder with spaces."
       - uses: actions/upload-artifact@v4
         with:
           name: qts-windows-desktop-${{ github.run_id }}
