@@ -111,7 +111,7 @@ def test_score_matches_a_hand_computation(tmp_paths):
 
     # Always fully invested: gross return equals buy-and-hold, less one entry cost.
     gross = (110 / 100) * (105 / 110) * (115.5 / 105)
-    expected = gross - 1.0 - CostModel().per_side_bps() / 1e4
+    expected = gross - 1.0 - CostModel.realistic_ecn().per_side_bps() / 1e4
     assert out["total_return"] == pytest.approx(expected, abs=1e-3)
     # Fully invested in the benchmark means beta ~ 1; the tiny gap is the cost term.
     assert out["beta"] == pytest.approx(1.0, abs=0.05)
