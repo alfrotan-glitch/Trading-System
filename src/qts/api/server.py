@@ -298,7 +298,21 @@ def ensure_qts_api_routes() -> None:
             continue
         if expected.isdisjoint(present):
             app.include_router(router)
-            present.update(expected)
+            observed = {getattr(route, "path", None) for route in app.routes}
+            if not expected.issubset(observed):
+                from fastapi.routing import APIRoute
+                from starlette.routing import Route
+
+                example = router.routes[0]
+                raise RuntimeError(
+                    "Router composition failed after include_router; "
+                    f"app_count={len(app.routes)}, internal_count={len(app.router.routes)}, "
+                    f"declared={len(router.routes)}, missing={sorted(str(p) for p in expected - observed)[:5]}, "
+                    f"first_type={type(example).__module__}.{type(example).__name__}, "
+                    f"fastapi_route={isinstance(example, APIRoute)}, "
+                    f"starlette_route={isinstance(example, Route)}"
+                )
+            present = observed
         else:
             missing = sorted(str(path) for path in expected - present)
             raise RuntimeError(f"Partially registered QTS API router: {missing}")
