@@ -7,10 +7,8 @@ on:
       - ".github/workflows/windows-desktop.yml"
       - ".github/workflows/release.yml"
       - "packaging/qts.spec"
-      - "src/qts/desktop/launcher.py"
-      - "src/qts/desktop/health.py"
-      - "src/qts/api/**"
-      - "src/qts/desktop/ui/**"
+      - "src/qts/**"
+      - "pyproject.toml"
   workflow_dispatch:
 
 permissions:
