@@ -69,12 +69,47 @@ class Candidate:
 
     def definition_hash(self) -> str:
         """Hash of the callable's source plus parameters — the freeze mechanism."""
-        try:
-            src = self.signal.__code__.co_code  # bytecode: changes if logic changes
-            names = src + repr(sorted(self.params.items())).encode()
-        except AttributeError:  # pragma: no cover - builtins have no __code__
-            names = repr(self.params).encode()
-        return hashlib.sha256(names).hexdigest()[:16]
+        # co_code ALONE does not encode literal constants or helper behavior:
+        # "return 0" and "return 1" can have identical bytecode. Hash
+        # code semantics, argument defaults and local function dependencies,
+        # without path/line-number noise that varies across Windows installs.
+        def freeze(obj: object, visited: set[int]) -> object:
+            from types import CodeType, FunctionType
+
+            if isinstance(obj, CodeType):
+                return {
+                    "ops": obj.co_code.hex(),
+                    "constants": [freeze(c, visited) for c in obj.co_consts],
+                    "names": obj.co_names,
+                    "vars": obj.co_varnames,
+                    "free": obj.co_freevars,
+                    "kwonly": obj.co_kwonlyargcount,
+                    "posonly": obj.co_posonlyargcount,
+                    "args": obj.co_argcount,
+                }
+            if isinstance(obj, FunctionType):
+                if id(obj) in visited:
+                    return {"recursive": obj.__qualname__}
+                visited.add(id(obj))
+                code = obj.__code__
+                helpers: dict[str, object] = {}
+                for name in code.co_names:
+                    value = obj.__globals__.get(name)
+                    if isinstance(value, FunctionType) and value.__module__ == obj.__module__:
+                        helpers[name] = freeze(value, visited)
+                    elif type(value) in (bool, int, float, str, tuple):
+                        helpers[name] = repr(value)
+                return {
+                    "code": freeze(code, visited),
+                    "defaults": repr(obj.__defaults__),
+                    "kwdefaults": repr(obj.__kwdefaults__),
+                    "helpers": helpers,
+                }
+            return repr(obj)
+
+        frozen = {"signal": freeze(self.signal, set()), "parameters": self.params}
+        payload = json.dumps(frozen, sort_keys=True, default=str, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
     def as_dict(self) -> dict:
         return {
