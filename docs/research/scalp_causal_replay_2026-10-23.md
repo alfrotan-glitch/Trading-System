@@ -35,3 +35,18 @@ as `stop_fill_assumption_drag_bps_per_trade`. This is a sensitivity comparison,
 **not an upper/lower guarantee**: an actual stop order may slip or gap beyond
 its trigger; broker executions must ultimately be validated using sequenced
 raw ticks and actual DEMO fills. Neither variant establishes a trading edge.
+
+## Raw MT5 tick stop-touch diagnostic
+
+The optional `--tick-stop-audit` mode reads original raw Parquet quote records
+in bounded batches. It locates the first observed **bid** crossing a BUY stop
+or **ask** crossing a SELL stop for every stop-ending trade in each of the
+previously simulated confirmed and anticipatory trade paths. Tick order must
+be nondecreasing; missing stop touches remain explicitly missing and no quote
+sequence is fabricated or repaired. Both paths are checked in one raw pass.
+
+The result compares mean quote-side first-touch PnL **among matched stop
+trades only**, not the PnL of a rerun strategy. A first observed quote is
+not an executed stop order; commission, order routing, slippage, latency,
+price gaps and changed subsequent trade paths remain uncertain. This research
+never authorizes DEMO or LIVE orders and is not evidence of validated edge.

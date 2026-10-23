@@ -8,14 +8,19 @@ from __future__ import annotations
 
 import argparse
 import json
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
+
+import numpy as np
+import pyarrow.parquet as pq
 
 from qts.data.mt5_history_acquisition import MANIFEST_FILENAME
 from qts.data.mt5_timestamp_basis import timestamp_basis_assessment
 from qts.execution.scalp_exit import ScalpExitPlan
 from qts.research.mt5_tick_bars import read_broker_bars
 from qts.research.scalp_replay import replay_scalp_bars
+from qts.research.scalp_tick_audit import TickStopAuditor
 from qts.research.xauusd_tick_discovery import discovery_cutoff
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -63,8 +68,13 @@ def discover_dataset(root: Path, timestamp_evidence: dict[str, Any]) -> Path:
     return max(eligible)[2]
 
 
-def run(dataset_dir: Path, timestamp_evidence: dict[str, Any]) -> dict[str, Any]:
-    """Replay only the historical discovery portion, excluding seen holdout."""
+def run(
+    dataset_dir: Path,
+    timestamp_evidence: dict[str, Any],
+    *,
+    tick_stop_audit: bool = False,
+) -> dict[str, Any]:
+    """Replay discovery history, optionally audit stop quotes from raw ticks."""
     manifest = json.loads((dataset_dir / MANIFEST_FILENAME).read_text(encoding="utf-8"))
     if manifest.get("status") != "COMPLETE":
         raise ValueError("scalp replay requires a COMPLETE immutable MT5 acquisition")
@@ -93,6 +103,28 @@ def run(dataset_dir: Path, timestamp_evidence: dict[str, Any]) -> dict[str, Any]
         "stop_detection_basis": earlier["stop_detection_basis"],
         "decision": "RESEARCH_ONLY_NOT_VALIDATED",
     }
+    if tick_stop_audit:
+        # Inspect two independent, already-frozen trade paths in ONE pass.
+        # This does not replace bar replay PnL or invent broker fills.
+        assumed = report["cost_assumptions"]
+        auditors = [
+            TickStopAuditor(
+                trades["trades"],
+                exit_slippage_bps=Decimal(assumed["exit_slippage_bps"]),
+                round_trip_commission_bps=Decimal(assumed["round_trip_commission_bps"]),
+            )
+            for trades in (report, earlier)
+        ]
+        for part in manifest["parts"]:
+            parquet = pq.ParquetFile(dataset_dir / "parts" / part["part"])
+            for batch in parquet.iter_batches(batch_size=250_000, columns=["time_msc", "bid", "ask"]):
+                timestamps = np.asarray(batch.column("time_msc").to_numpy(zero_copy_only=False), dtype=np.int64)
+                bids = np.asarray(batch.column("bid").to_numpy(zero_copy_only=False), dtype=np.float64)
+                asks = np.asarray(batch.column("ask").to_numpy(zero_copy_only=False), dtype=np.float64)
+                for auditor in auditors:
+                    auditor.consume(timestamps, bids, asks)
+        report["first_stop_touch_tick_audit"] = auditors[0].report()
+        report["anticipatory_comparison"]["first_stop_touch_tick_audit"] = auditors[1].report()
     report["source"] = {
         "manifest_dataset_sha256": manifest.get("dataset_sha256"),
         "timestamp_basis": basis,
@@ -143,6 +175,16 @@ def _markdown(report: dict[str, Any]) -> str:
             for family, values in m["by_family"].items()
         ],
         "",
+        "## First observable stop-touch MT5 tick audit (optional)",
+        "",
+        *([
+            f"- Confirmed first touches: {report['first_stop_touch_tick_audit']['stops_with_observed_first_touch']}",
+            f"- Confirmed first quote stop-only mean bps: {report['first_stop_touch_tick_audit']['mean_first_touch_quote_net_bps_on_matched_stops']}",
+            f"- Anticipatory first touches: {report['anticipatory_comparison']['first_stop_touch_tick_audit']['stops_with_observed_first_touch']}",
+            f"- Anticipatory first quote stop-only mean bps: {report['anticipatory_comparison']['first_stop_touch_tick_audit']['mean_first_touch_quote_net_bps_on_matched_stops']}",
+            "These are diagnostics for stop-touch events, NOT net strategy PnL or verified broker fills.",
+        ] if "first_stop_touch_tick_audit" in report else ["Not requested."]),
+        "",
         "## Limits",
         "",
         *[f"- {x}" for x in report["limitations"]],
@@ -154,6 +196,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset-dir", type=Path, help="Override automatic local discovery")
     parser.add_argument(
+        "--tick-stop-audit", action="store_true",
+        help="Observe first stop-crossing raw MT5 quotes without claiming broker fills",
+    )
+    parser.add_argument(
         "--timestamp-evidence", type=Path,
         default=REPO_ROOT / "data" / "evidence" / "mt5_timestamp_basis_20261023.json",
     )
@@ -164,12 +210,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     evidence = json.loads(args.timestamp_evidence.read_text(encoding="utf-8"))
     dataset_dir = args.dataset_dir if args.dataset_dir is not None else discover_dataset(LOCAL_DATA_ROOT, evidence)
-    report = run(dataset_dir, evidence)
+    report = run(dataset_dir, evidence, tick_stop_audit=args.tick_stop_audit)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     args.markdown.parent.mkdir(parents=True, exist_ok=True)
     args.markdown.write_text(_markdown(report), encoding="utf-8")
-    print(json.dumps({"status": report["status"], "metrics": report["metrics"], "source": report["source"]}))
+    summary = {"status": report["status"], "metrics": report["metrics"], "source": report["source"]}
+    if args.tick_stop_audit:
+        summary["confirmed_tick_stop_audit"] = report["first_stop_touch_tick_audit"]
+        summary["anticipatory_tick_stop_audit"] = report["anticipatory_comparison"]["first_stop_touch_tick_audit"]
+    print(json.dumps(summary))
     return 0
 
 
