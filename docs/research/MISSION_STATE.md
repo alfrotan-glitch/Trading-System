@@ -698,3 +698,41 @@ The sanitized record is
 No order API was called; `LIVE=LOCKED` and `DEMO_EXECUTION=DISABLED` remain
 enforced. The next experiment must be materially distinct and must not retune
 the fixed alignment horizons.
+
+## Current continuation: fixed Bollinger mean-reversion assay (2026-10-23)
+
+**Round 39 executed locally:** H-BB-01 faded a causal five-minute close at or
+beyond a fixed two-standard-deviation band from the prior 48 close mids. The
+confirmed-basis 365-day ledger supplied 70,596 complete five-minute bars.
+The primary six-bar horizon produced 8,597 samples and 933 frozen-holdout
+trades. Its holdout was `-0.3015` bps at measured quote cost and `-2.3015`
+bps at 2 bps extra stress, with bootstrap interval
+`[-3.7592, -0.8538]` bps. The stability 24-bar horizon had 470 holdout
+trades, `0.0478` bps at 2 bps stress, and an interval spanning zero. No
+walk-forward fold met the 500-trade gate for either horizon. H-BB-01 is
+**INCONCLUSIVE**, not a validated edge; no candidate was promoted. The
+sanitized record is
+ `data/evidence/mt5_broker_bollinger_365d_summary_20261023.json`.
+
+No order API was called; `orders_submitted=0`, `DEMO_EXECUTION=DISABLED`, and
+`LIVE=LOCKED` remain enforced. The full local output remains separate from
+tracked sanitized evidence. The next experiment must be materially distinct
+and must not retune this fixed band or horizon definition.
+
+## Current continuation: fixed RSI(2) oscillator assay (2026-10-23)
+
+**Round 40 executed locally:** H-RSI-01 faded fixed RSI(2) close extremes at
+ thresholds 10 and 90 using the confirmed-basis 365-day MT5 ledger. The data
+ supplied 70,596 complete five-minute bars. The primary six-bar horizon had
+ 38,502 samples and 3,592 frozen-holdout trades. Its holdout was `-0.7266`
+ bps at measured quote cost and `-2.7266` bps at 2 bps extra stress, with
+ bootstrap interval `[-3.4318, -2.0239]` bps. All five qualifying primary
+ walk-forward folds were negative at 2 bps. The 24-bar stability horizon was
+ also negative (`-2.9449` measured and `-4.9449` at 2 bps; interval
+ `[-7.2971, -2.6111]`). H-RSI-01 is **REJECTED**, not a validated edge; no
+ candidate was promoted. The sanitized record is
+ `data/evidence/mt5_broker_rsi_365d_summary_20261023.json`.
+
+No order API was called; `orders_submitted=0`, `DEMO_EXECUTION=DISABLED`, and
+`LIVE=LOCKED` remain enforced. The next experiment must be materially distinct
+and must not retune these fixed RSI thresholds or horizons.

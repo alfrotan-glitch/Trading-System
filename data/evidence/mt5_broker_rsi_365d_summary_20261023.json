@@ -1,0 +1,47 @@
+{
+  "schema": "qts.xauusd_broker_rsi.v1.summary",
+  "timestamp_basis": "CONFIRMED",
+  "complete_five_minute_bar_count": 70596,
+  "decision": "REJECTED",
+  "edge_claim": "NOT ESTABLISHED",
+  "primary": {
+    "rsi_period": 2,
+    "low_threshold": 10.0,
+    "high_threshold": 90.0,
+    "horizon_bars_including_entry": 6,
+    "sample_count": 38502,
+    "holdout_trade_count": 3592,
+    "holdout_mean_net_bps_at_measured_quote_cost": -0.7265591598014063,
+    "holdout_mean_net_bps_at_2bps_extra_stress": -2.7265591598014063,
+    "holdout_bootstrap_95_percent_interval_at_2bps": [-3.4318410045893843, -2.0239259243313157],
+    "walk_forward_fold_means_at_2bps": [-2.2330725591504708, -1.3767817298949645, -2.930596892257455, -1.5781205426618685, -1.8196309151855308],
+    "walk_forward_fold_trade_counts": [780, 865, 861, 827, 862],
+    "qualifying_walk_forward_folds": 5,
+    "positive_walk_forward_folds_at_2bps": 0
+  },
+  "stability": {
+    "horizon_bars_including_entry": 24,
+    "sample_count": 35707,
+    "holdout_trade_count": 1032,
+    "holdout_mean_net_bps_at_measured_quote_cost": -2.94487801693249,
+    "holdout_mean_net_bps_at_2bps_extra_stress": -4.94487801693249,
+    "holdout_bootstrap_95_percent_interval_at_2bps": [-7.297105342888575, -2.6111144615871673],
+    "walk_forward_fold_means_at_2bps": [-0.6848451023878178, -6.547460821943225, -3.4345931023154654, -2.3245159589964084, -2.700286403912477],
+    "walk_forward_fold_trade_counts": [226, 248, 247, 239, 246],
+    "qualifying_walk_forward_folds": 0,
+    "positive_walk_forward_folds_at_2bps": 0
+  },
+  "strategy_promoted": false,
+  "safety": {
+    "orders_submitted": 0,
+    "order_send_called": false,
+    "DEMO_EXECUTION": "DISABLED",
+    "LIVE": "LOCKED"
+  },
+  "cost_status": {
+    "quoted_bid_ask": "MEASURED",
+    "commission": "UNMEASURED",
+    "slippage": "UNMEASURED",
+    "financing": "NOT MATERIAL FOR INTRADAY HORIZONS; NOT MEASURED"
+  }
+}
