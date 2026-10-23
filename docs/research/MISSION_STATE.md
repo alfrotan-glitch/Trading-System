@@ -679,3 +679,22 @@ promoted. The sanitized record is
 The earlier positive assumed-cost result is not reproducible under the
 corrected causal definition and measured broker quote execution. No order API
 was called; `LIVE=LOCKED` and `DEMO_EXECUTION=DISABLED` remain enforced.
+
+## Current continuation: fixed multi-timeframe alignment assay (2026-10-23)
+
+**Round 38 executed locally:** H-ALIGN-01 required the signs of fixed
+15-minute, one-hour, and four-hour completed five-minute returns to agree,
+then entered on the next bar. The confirmed ledger supplied 70,596 complete
+five-minute bars. The primary 15-minute horizon produced 24,495 samples and
+3,611 holdout trades. All five qualifying walk-forward folds were negative at
+2 bps stress; the holdout was `-0.8117` bps at measured quote cost and
+`-2.8117` bps at 2 bps stress, with bootstrap interval
+`[-3.3164, -2.2626]` bps. The one-hour stability horizon was also negative
+(`-0.3880` measured, `-2.3880` at 2 bps; interval
+`[-3.8878, -0.8822]`). H-ALIGN-01 is rejected and no candidate was promoted.
+The sanitized record is
+`data/evidence/mt5_broker_alignment_365d_summary_20261023.json`.
+
+No order API was called; `LIVE=LOCKED` and `DEMO_EXECUTION=DISABLED` remain
+enforced. The next experiment must be materially distinct and must not retune
+the fixed alignment horizons.
