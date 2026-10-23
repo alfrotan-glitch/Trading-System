@@ -8,7 +8,6 @@ from typing import Any
 import numpy as np
 
 from qts.research.quote_cost_attribution import attribute_quote_costs
-
 from qts.research.xauusd_broker_regime import RegimeBars, _contiguous
 
 LOOKBACK_BARS = 48
