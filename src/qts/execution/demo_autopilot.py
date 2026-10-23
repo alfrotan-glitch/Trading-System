@@ -480,16 +480,20 @@ def _manage_open_positions(
     try:
         positions = session.adapter.position_details()
     except Exception as exc:
-        note("manage_error", f"positions unavailable: {type(exc).__name__}: {exc}")
-        return
+        detail = f"positions unavailable: {type(exc).__name__}: {exc}"
+        note("manage_error", detail)
+        raise AutopilotHalt(detail) from exc
+
+    if not isinstance(positions, list):
+        raise AutopilotHalt("positions unavailable: broker returned an invalid position list")
 
     max_hold_s = float(policy.get("max_hold_seconds") or 0)
     now_epoch = time.time()
 
     for pos in positions:
-        ticket = pos.get("ticket")
-        if ticket is None:
-            continue
+        if not isinstance(pos, dict) or pos.get("ticket") is None:
+            raise AutopilotHalt("position management unavailable: venue position has no ticket")
+        ticket = pos["ticket"]
         try:
             profit = Decimal(str(pos.get("profit") or "0"))
             row = _match_journal(journal, pos)
@@ -538,7 +542,9 @@ def _manage_open_positions(
         except AutopilotHalt:
             raise
         except Exception as exc:
-            note("manage_error", f"position {ticket}: {type(exc).__name__}: {exc}")
+            detail = f"position {ticket} management failed: {type(exc).__name__}: {exc}"
+            note("manage_error", detail)
+            raise AutopilotHalt(detail) from exc
 
 
 def _match_journal(journal: DemoOrderJournal, pos: dict[str, Any]) -> dict[str, Any] | None:

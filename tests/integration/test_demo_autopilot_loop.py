@@ -194,6 +194,36 @@ def test_unrealized_pnl_is_recorded_while_the_position_is_open(tmp_path: Path, a
     assert Decimal(row["unrealized_pnl"]) == Decimal("-1.00")
 
 
+
+@pytest.mark.parametrize("failure", ["disconnected", "invalid_response"])
+def test_position_management_failure_halts_before_order(
+    tmp_path: Path, authorized, monkeypatch, failure: str
+):
+    """Unreadable broker position state is a hard order barrier, not a log-only error."""
+    _write_registry(tmp_path, provider_fixture.registry_entry())
+    terminal = FakeTerminal()
+    session = _armed_session(tmp_path, terminal)
+
+    # Reconciliation has its own failure tests. Isolate the later management
+    # read so this regression cannot accidentally pass at an earlier gate.
+    monkeypatch.setattr(session, "reconcile", lambda: {"requires_suspend": False})
+
+    def unreadable_positions():
+        if failure == "disconnected":
+            raise ConnectionError("position feed disconnected")
+        return None
+
+    monkeypatch.setattr(session.adapter, "position_details", unreadable_positions)
+    report = run_autopilot(
+        session, AutopilotConfig(symbol="XAUUSD", max_iterations=1, poll_interval_s=0, actor="test")
+    )
+    assert report.halted is True
+    assert "positions unavailable" in (report.halt_reason or "")
+    assert report.orders_submitted == 0
+    assert session.stage.current().stage == DemoStage.HALTED.value
+    assert terminal.requests == []
+
+
 def test_provider_exposing_an_optimization_hook_is_refused(tmp_path: Path, authorized):
     entry = provider_fixture.registry_entry(provider="fakes_demo_provider:SelfOptimizingProvider")
     _write_registry(tmp_path, entry)
