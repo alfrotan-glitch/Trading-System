@@ -88,6 +88,7 @@ def run(dataset_dir: Path, timestamp_evidence: dict[str, Any]) -> dict[str, Any]
         "signals": earlier["signals"],
         "metrics": earlier["metrics"],
         "entry_refusals_cost_gate": earlier["entry_refusals_cost_gate"],
+        "early_chase_refusals": earlier["early_chase_refusals"],
         "observed_bar_gaps": earlier["observed_bar_gaps"],
         "stop_detection_basis": earlier["stop_detection_basis"],
         "decision": "RESEARCH_ONLY_NOT_VALIDATED",

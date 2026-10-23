@@ -124,7 +124,7 @@ def test_anticipatory_replay_uses_prior_close_not_future_bar():
     raw += [
         2003.6, 2003.65, 2003.62, 2003.66, 2003.60,
         2003.63, 2003.64, 2003.66, 2003.72,
-        2005.3, 2006.0, 2006.5, 2006.7, 2006.8, 2006.9,
+        2004.0, 2006.0, 2006.5, 2006.7, 2006.8, 2006.9,
     ]
     assert len(raw) == 40
     b = bars()
@@ -146,6 +146,25 @@ def test_anticipatory_replay_uses_prior_close_not_future_bar():
     assert early["trades"][0]["signal_time_msc"] < early["trades"][0]["entry_time_msc"]
     assert early["trades"][0]["family"] == "pre_breakout"
     assert early["LIVE"] == "LOCKED" and early["orders_submitted"] == 0
+
+
+def test_anticipatory_replay_refuses_late_gap_up_entry():
+    raw = [2002.0 + (3.0 if i % 2 else -3.0) for i in range(25)]
+    raw += [
+        2003.6, 2003.65, 2003.62, 2003.66, 2003.60,
+        2003.63, 2003.64, 2003.66, 2003.72,
+        2006.5, 2006.7, 2006.9, 2007.0, 2007.2, 2007.3,
+    ]
+    b = bars()
+    mid = np.asarray(raw)
+    b = replace(
+        b, open_bid=mid - 0.1, open_ask=mid + 0.1,
+        close_bid=mid - 0.1, close_ask=mid + 0.1,
+        high_mid=mid + 0.05, low_mid=mid - 0.05,
+    )
+    r = replay_scalp_bars(b, exit_plan=PLAN, entry_mode="anticipatory")
+    assert r["early_chase_refusals"] >= 1
+    assert r["metrics"]["trades"] == 0
 
 
 def test_replay_refuses_unknown_entry_mode():

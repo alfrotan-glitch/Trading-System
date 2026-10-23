@@ -19,6 +19,7 @@ from qts.execution.scalp_exit import ScalpExitPlan, decide_scalp_exit
 from qts.research.demo_scalp_provider import DEFAULT_PARAMS
 from qts.research.scalp_regimes import (
     ScalpIdea,
+    early_entry_still_has_room,
     propose_anticipatory_entry,
     propose_scalp_entry,
 )
@@ -174,6 +175,7 @@ def replay_scalp_bars(
     trades: list[dict[str, Any]] = []
     gaps = 0
     entry_refusals = 0
+    early_chase_refusals = 0
     signals = 0
     exact_quote_extrema = bars.low_bid is not None and bars.high_ask is not None
 
@@ -222,7 +224,12 @@ def replay_scalp_bars(
             spread = _spread_bps(obid, oask)
             proxy = pending.movement_proxy_price * BPS / ((obid + oask) / 2)
             required = spread + assumptions.extra_cost_reserve_bps + assumptions.minimum_movement_margin_bps
-            if spread <= assumptions.max_entry_spread_bps and proxy > required:
+            has_room = early_entry_still_has_room(
+                pending, bid=obid, ask=oask,
+                reserve_bps=assumptions.extra_cost_reserve_bps,
+                margin_bps=assumptions.minimum_movement_margin_bps,
+            )
+            if spread <= assumptions.max_entry_spread_bps and proxy > required and has_room:
                 side = pending.side
                 market_entry = oask if side == "BUY" else obid
                 entry_slip = market_entry * assumptions.entry_slippage_bps / BPS
@@ -235,7 +242,10 @@ def replay_scalp_bars(
                     "entry_index": i, "signal_time_msc": int(bars.time_msc[i - 1]),
                 }
             else:
-                entry_refusals += 1
+                if not has_room:
+                    early_chase_refusals += 1
+                if spread > assumptions.max_entry_spread_bps or proxy <= required:
+                    entry_refusals += 1
         pending = None
 
         if position is not None:
@@ -298,7 +308,9 @@ def replay_scalp_bars(
         "status": "RESEARCH_ONLY_NOT_VALIDATED",
         "entry_mode": entry_mode,
         "dataset_bars": allowed, "signals": signals,
-        "entry_refusals_cost_gate": entry_refusals, "observed_bar_gaps": gaps,
+        "entry_refusals_cost_gate": entry_refusals,
+        "early_chase_refusals": early_chase_refusals,
+        "observed_bar_gaps": gaps,
         "stop_detection_basis": "BROKER_BID_ASK_EXTREMA" if exact_quote_extrema else "MID_PRICE_PROXY",
         "cost_assumptions": {
             "entry_slippage_bps": str(assumptions.entry_slippage_bps),

@@ -4,7 +4,11 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from qts.research.demo_scalp_provider import AnticipatoryScalpProvider, RegimeScalpProvider
-from qts.research.scalp_regimes import propose_anticipatory_entry, propose_scalp_entry
+from qts.research.scalp_regimes import (
+    early_entry_still_has_room,
+    propose_anticipatory_entry,
+    propose_scalp_entry,
+)
 
 
 def test_uptrend_pullback_and_downtrend_pullback_proposals():
@@ -110,3 +114,21 @@ def test_anticipant_provider_has_distinct_strategy_identity():
     ordinary = RegimeScalpProvider()
     assert early.strategy_id != ordinary.strategy_id
     assert early.requires_registered_scalp_exit is True
+
+
+def test_early_entry_does_not_chase_a_confirmed_breakout_at_execution_time():
+    prices = [Decimal(2002 + (3 if i % 2 else -3)) for i in range(25)]
+    prices += [Decimal(v) for v in (
+        "2003.6", "2003.65", "2003.62", "2003.66", "2003.60",
+        "2003.63", "2003.64", "2003.66", "2003.72",
+    )]
+    idea = propose_anticipatory_entry(prices)
+    assert idea is not None and idea.boundary_price == Decimal("2005")
+    assert early_entry_still_has_room(
+        idea, bid=Decimal("2003.9"), ask=Decimal("2004.1"),
+        reserve_bps=Decimal("2"), margin_bps=Decimal("1"),
+    )
+    assert not early_entry_still_has_room(
+        idea, bid=Decimal("2005.1"), ask=Decimal("2005.3"),
+        reserve_bps=Decimal("2"), margin_bps=Decimal("1"),
+    )

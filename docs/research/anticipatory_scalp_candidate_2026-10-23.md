@@ -29,3 +29,11 @@ entries may have a worse hit rate and unfavorable selection, even when the
 entry price is nearer a local extreme. The success metric is realized,
 cost-adjusted performance, not early timing alone. Raw private MT5 data and
 detailed trade ledger stay on the owner machine.
+
+**No-chase entry gate:** The early signal remembers the previous, unbroken
+channel boundary. At the *actual subsequent executable entry quote*, a BUY
+must still have sufficient distance from its ask to the old resistance, and
+a SELL from its bid to the old support, after the frozen cost reserve and
+margin. Price already through the range boundary invalidates the early
+opportunity. Both the DEMO signal provider and causal replay use the same
+pure check. No assumed favorable intrabar or limit-order fill is used.

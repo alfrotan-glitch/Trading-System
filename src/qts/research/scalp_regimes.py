@@ -17,6 +17,9 @@ class ScalpIdea:
     family: str
     regime: str
     movement_proxy_price: Decimal
+    # Only early candidates record the causal boundary known at signal time.
+    # This is a price reference, NOT a promised take-profit fill.
+    boundary_price: Decimal | None = None
 
 
 def propose_scalp_entry(closes: Sequence[Decimal]) -> ScalpIdea | None:
@@ -114,12 +117,46 @@ def propose_anticipatory_entry(closes: Sequence[Decimal]) -> ScalpIdea | None:
         and current > past[-1] >= past[-2]
         and current > (high + low) / 2
     ):
-        return ScalpIdea("BUY", "pre_breakout", "COMPRESSION", width / 2)
+        return ScalpIdea("BUY", "pre_breakout", "COMPRESSION", width / 2, high)
     room_below = current - low
     if (
         near_min <= room_below <= near_max
         and current < past[-1] <= past[-2]
         and current < (high + low) / 2
     ):
-        return ScalpIdea("SELL", "pre_breakout", "COMPRESSION", width / 2)
+        return ScalpIdea("SELL", "pre_breakout", "COMPRESSION", width / 2, low)
     return None
+
+
+def early_entry_still_has_room(
+    idea: ScalpIdea,
+    *,
+    bid: Decimal,
+    ask: Decimal,
+    reserve_bps: Decimal,
+    margin_bps: Decimal,
+) -> bool:
+    """Refuse an early order if its old range boundary is already consumed.
+
+    Use the executable ask for BUY and bid for SELL at *actual entry time*,
+    not the earlier signal's mid close. This protects against overnight/gap
+    jumps and last-millisecond chasing; it does not assert that the boundary
+    will be reached or that its mid price can be filled.
+    """
+    if idea.family != "pre_breakout":
+        return True
+    boundary = idea.boundary_price
+    numbers = (bid, ask, reserve_bps, margin_bps)
+    if (
+        boundary is None or not boundary.is_finite() or boundary <= 0
+        or any(not x.is_finite() for x in numbers)
+        or bid <= 0 or ask <= bid or reserve_bps < 0 or margin_bps <= 0
+    ):
+        return False
+    if idea.side == "BUY":
+        remaining = (boundary - ask) * Decimal("10000") / ask
+    elif idea.side == "SELL":
+        remaining = (bid - boundary) * Decimal("10000") / bid
+    else:
+        return False
+    return remaining > reserve_bps + margin_bps

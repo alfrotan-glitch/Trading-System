@@ -16,6 +16,7 @@ from qts.execution.demo_autopilot import Signal
 from qts.research.demo_trend_tsmom import TrendTimeSeriesMomentum
 from qts.research.scalp_regimes import (
     ScalpIdea,
+    early_entry_still_has_room,
     propose_anticipatory_entry,
     propose_scalp_entry,
 )
@@ -119,6 +120,14 @@ class RegimeScalpProvider(TrendTimeSeriesMomentum):
         mid = (bid + ask) / 2
         if not bid.is_finite() or not ask.is_finite() or bid <= 0 or ask <= bid:
             self._last_rationale = "invalid executable quote"
+            return None
+        if not early_entry_still_has_room(
+            idea,
+            bid=bid, ask=ask,
+            reserve_bps=Decimal(str(self.params["extra_cost_reserve_bps"])),
+            margin_bps=Decimal(str(self.params["min_price_movement_after_cost_bps"])),
+        ):
+            self._last_rationale = "early setup is no longer executable before the causal range boundary"
             return None
         spread_bps = (ask - bid) / mid * Decimal("10000")
         proxy_bps = idea.movement_proxy_price / mid * Decimal("10000")
