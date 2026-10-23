@@ -589,3 +589,20 @@ qts forward score
 Unreachable hosts, verified: `raw.githubusercontent.com`, `cftc.gov`,
 `fred.stlouisfed.org`, `release-assets.githubusercontent.com`. `codeload.github.com`
 and `gh api` work. `gh pr edit` is broken — use `gh api -X PATCH`.
+## Current continuation: fixed volatility-regime directional assay (2026-10-23)
+
+**Round 33 executed locally:** the preregistered H-REG-01 rule used complete
+five-minute bars from the confirmed-basis 365-day MT5 ledger. It followed the
+last completed bar during a fixed 12-bar/48-bar volatility expansion and faded
+it during a fixed contraction. All five chronological folds were negative at
+2 bps extra stress. The frozen holdout had 4,023 non-overlapping trades,
+`-0.4263` bps at measured quote cost, and `-2.4263` bps at 2 bps extra stress;
+the moving-block bootstrap interval was `[-2.9153, -1.9531]` bps. H-REG-01
+is rejected, no model or rule was promoted, and no product integration is
+justified. The sanitized record is
+`data/evidence/mt5_broker_regime_365d_summary_20261023.json`.
+
+The runner was made directly invocable on Windows and used no order API.
+`orders_submitted=0`, `DEMO_EXECUTION=DISABLED`, and `LIVE=LOCKED` remain
+enforced. The full local output remains separate from tracked sanitized
+evidence.
