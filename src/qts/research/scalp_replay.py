@@ -115,7 +115,7 @@ def replay_scalp_bars(
     bars: BrokerBars,
     *,
     exit_plan: ScalpExitPlan,
-    assumptions: ReplayAssumptions = ReplayAssumptions(),
+    assumptions: ReplayAssumptions | None = None,
     end_exclusive_time_msc: int | None = None,
 ) -> dict[str, Any]:
     """Backtest one position at a time, signal at close, enter at NEXT open.
@@ -126,6 +126,7 @@ def replay_scalp_bars(
     broker-fault repairs are permitted.
     """
     _validate_bars(bars)
+    assumptions = ReplayAssumptions() if assumptions is None else assumptions
     allowed = len(bars.time_msc)
     if end_exclusive_time_msc is not None:
         allowed = int(np.searchsorted(bars.time_msc, end_exclusive_time_msc, side="left"))

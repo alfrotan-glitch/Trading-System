@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 
 from qts.execution.scalp_exit import ScalpExitPlan
-from qts.research.scalp_regimes import ScalpIdea
-from qts.research.xauusd_broker_ml import BrokerBars
 from qts.research import scalp_replay
+from qts.research.scalp_regimes import ScalpIdea
 from qts.research.scalp_replay import ReplayAssumptions, replay_scalp_bars
+from qts.research.xauusd_broker_ml import BrokerBars
 
 
 PLAN = ScalpExitPlan.from_mapping({
