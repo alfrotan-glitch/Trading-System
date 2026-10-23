@@ -622,3 +622,17 @@ Markov assays without changing their measured results. No order API was used;
 `orders_submitted=0`, `DEMO_EXECUTION=DISABLED`, and `LIVE=LOCKED` remain
 enforced. The full local output remains separate from tracked sanitized
 evidence.
+## Current continuation: fixed three-bar sequence assay (2026-10-23)
+
+**Round 35 executed locally:** the preregistered H-SEQ-01 event/state assay
+tested both continuation and fade mappings after three same-sign completed
+five-minute bars. Each mapping had 3,415 non-overlapping holdout trades and
+all five walk-forward folds were negative at 2 bps extra stress. Holdout means
+were `-2.9002` bps for continuation and `-2.2914` bps for fade; both moving-
+block bootstrap intervals were entirely below zero. H-SEQ-01 is rejected and
+no product integration is justified. The sanitized record is
+`data/evidence/mt5_broker_sequence_365d_summary_20261023.json`.
+
+No order API was used; `orders_submitted=0`, `DEMO_EXECUTION=DISABLED`, and
+`LIVE=LOCKED` remain enforced. The full local output remains separate from
+tracked sanitized evidence.

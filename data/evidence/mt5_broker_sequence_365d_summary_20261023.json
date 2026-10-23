@@ -1,0 +1,45 @@
+{
+  "schema": "qts.xauusd_broker_sequence_summary.v1",
+  "experiment": "H-SEQ-01",
+  "dataset": "local 365-day MT5 bid/ask ledger; confirmed UTC basis",
+  "complete_five_minute_bars": 70596,
+  "hypotheses": {
+    "H-SEQ-01-CONT": {
+      "samples": 16228,
+      "holdout_trades": 3415,
+      "fold_trade_counts": [738, 851, 801, 802, 794],
+      "fold_mean_net_bps_at_2bps_extra_stress": [-2.6985431701, -1.5424062789, -2.1439698029, -4.1002738943, -2.2982473656],
+      "positive_folds_at_2bps": 0,
+      "holdout_mean_net_bps_at_measured_quote_cost": -0.9002454131,
+      "holdout_mean_net_bps_at_2bps_extra_stress": -2.9002454131,
+      "bootstrap_95pct_ci_at_2bps": [-3.3888569984, -2.3959896562],
+      "decision": "REJECTED"
+    },
+    "H-SEQ-01-FADE": {
+      "samples": 16228,
+      "holdout_trades": 3415,
+      "fold_trade_counts": [738, 851, 801, 802, 794],
+      "fold_mean_net_bps_at_2bps_extra_stress": [-2.6073867961, -3.8399116254, -3.1555379370, -0.9716496456, -2.7659490388],
+      "positive_folds_at_2bps": 0,
+      "holdout_mean_net_bps_at_measured_quote_cost": -0.2914460194,
+      "holdout_mean_net_bps_at_2bps_extra_stress": -2.2914460194,
+      "bootstrap_95pct_ci_at_2bps": [-2.7967163531, -1.7982272404],
+      "decision": "REJECTED"
+    }
+  },
+  "cost_status": {
+    "quoted_bid_ask": "MEASURED",
+    "commission": "UNMEASURED",
+    "slippage": "UNMEASURED",
+    "financing": "NOT MATERIAL FOR INTRADAY HORIZONS; NOT MEASURED"
+  },
+  "decision": "NO_PROMOTION",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "safety": {
+    "orders_submitted": 0,
+    "order_send_called": false,
+    "DEMO_EXECUTION": "DISABLED",
+    "LIVE": "LOCKED"
+  }
+}
