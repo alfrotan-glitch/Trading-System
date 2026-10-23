@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
+from qts.adapters.base import MEASURED_SERVER_OFFSET_BASES
 from qts.execution.demo_autopilot import Signal
 from qts.research.demo_trend_tsmom import TrendTimeSeriesMomentum
 from qts.research.scalp_regimes import ScalpIdea, propose_scalp_entry
@@ -61,11 +62,21 @@ class RegimeScalpProvider(TrendTimeSeriesMomentum):
         source: str = "unstated",
     ) -> dict[str, Any]:
         supplied = list(bars)
-        times = [self._coerce_boundary(item[0]) for item in supplied]
-        for left, right in zip(times, times[1:]):
+        try:
+            times = [self._coerce_boundary(item[0]) for item in supplied]
+        except (TypeError, IndexError, KeyError):
+            return {"accepted": False, "bars": 0, "reason": "malformed completed-minute history"}
+        for left, right in zip(times, times[1:], strict=False):
             if left is not None and right is not None and right - left != timedelta(minutes=1):
                 return {"accepted": False, "bars": 0, "reason": "noncontiguous completed-minute history"}
         return super().seed_completed_bars(supplied, source=source)
+
+    def generate(self, market_state: dict[str, Any]) -> Signal | None:
+        """Refuse unmeasured broker clocks before the minute-bar engine runs."""
+        if market_state.get("timestamp_basis") not in MEASURED_SERVER_OFFSET_BASES:
+            self._last_rationale = "unmeasured broker clock basis — no scalp signal"
+            return None
+        return super().generate(market_state)
 
     def _complete_previous_bar(self, boundary: datetime, close: Decimal) -> str | None:
         """Never bridge a missing minute or an old seeded window."""

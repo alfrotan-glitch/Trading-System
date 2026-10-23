@@ -6,9 +6,9 @@ of future profit. This module cannot place an order.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Sequence
 
 
 @dataclass(frozen=True)
@@ -49,22 +49,20 @@ def propose_scalp_entry(closes: Sequence[Decimal]) -> ScalpIdea | None:
         regime = "TRANSITION"
 
     recent = past[-9:]
-    if regime == "UP":
-        if (
-            past[-1] < past[-2]
-            and current > past[-1]
-            and max(recent) - past[-1] >= volatility
-            and current < max(recent)
-        ):
-            return ScalpIdea("BUY", "trend_pullback", regime, volatility * 2)
-    if regime == "DOWN":
-        if (
-            past[-1] > past[-2]
-            and current < past[-1]
-            and past[-1] - min(recent) >= volatility
-            and current > min(recent)
-        ):
-            return ScalpIdea("SELL", "trend_pullback", regime, volatility * 2)
+    if regime == "UP" and (
+        past[-1] < past[-2]
+        and current > past[-1]
+        and max(recent) - past[-1] >= volatility
+        and current < max(recent)
+    ):
+        return ScalpIdea("BUY", "trend_pullback", regime, volatility * 2)
+    if regime == "DOWN" and (
+        past[-1] > past[-2]
+        and current < past[-1]
+        and past[-1] - min(recent) >= volatility
+        and current > min(recent)
+    ):
+        return ScalpIdea("SELL", "trend_pullback", regime, volatility * 2)
     if regime == "RANGE":
         if low <= current <= low + width * Decimal("0.25") and current > past[-1]:
             return ScalpIdea("BUY", "range_fade", regime, volatility * 2)

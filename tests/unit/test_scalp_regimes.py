@@ -57,7 +57,7 @@ def test_scalp_provider_only_consumes_completed_bars_and_checks_costs():
             "age_s": 0,
             "spread_bps": 1,
             "event_time": (first + timedelta(minutes=minute, seconds=1)).isoformat(),
-            "timestamp_basis": "MEASURED",
+            "timestamp_basis": "measured-fresh-tick",
         }
     assert provider.generate(market(49)) is None  # forming bar
     first_result = provider.generate(market(50))  # prior minute now confirmed
