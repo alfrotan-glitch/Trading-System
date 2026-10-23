@@ -7,6 +7,8 @@ from typing import Any
 
 import numpy as np
 
+from qts.research.quote_cost_attribution import attribute_quote_costs
+
 from qts.research.xauusd_broker_ml import BrokerBars
 
 FIFTEEN_MINUTE_MS = 900_000
@@ -186,7 +188,13 @@ def _metrics(samples: CompressionSamples, selected: np.ndarray) -> dict[str, Any
             "win_rate": float(np.mean(net > 0.0)),
             "bootstrap": _bootstrap(net_bps) if extra_cost == 2.0 else None,
         }
-    return {"n": int(selected.size), "costs": costs}
+    return {
+        "n": int(selected.size),
+        "costs": costs,
+        "quote_attribution": attribute_quote_costs(
+            entry_mid, samples.pnl_long[selected], samples.pnl_short[selected], samples.direction[selected]
+        ),
+    }
 
 
 def _evaluate_horizon(
