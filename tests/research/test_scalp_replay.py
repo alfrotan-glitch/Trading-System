@@ -1,5 +1,6 @@
 """Costed, one-bar-delayed research replay does not invent broker fills."""
 
+from dataclasses import replace
 from decimal import Decimal
 
 import numpy as np
@@ -94,9 +95,9 @@ def test_real_quote_extrema_detect_a_stop_hidden_by_mid_range(monkeypatch):
     b = bars()
     # 1-minute simulated mid extremes alone would miss this temporary
     # executable-bid sell-off; the broker-side minimum proves a possible stop.
-    b.low_bid = np.minimum(b.open_bid, b.close_bid).copy()
-    b.high_ask = np.maximum(b.open_ask, b.close_ask).copy()
-    b.low_bid[34] = 1995.0
+    low_bid = np.minimum(b.open_bid, b.close_bid).copy()
+    low_bid[34] = 1995.0
+    b = replace(b, low_bid=low_bid, high_ask=np.maximum(b.open_ask, b.close_ask).copy())
     outcome = replay_scalp_bars(b, exit_plan=PLAN)
     assert outcome["stop_detection_basis"] == "BROKER_BID_ASK_EXTREMA"
     assert outcome["metrics"]["uncertain_intrabar_stop_count"] >= 1
@@ -105,8 +106,7 @@ def test_real_quote_extrema_detect_a_stop_hidden_by_mid_range(monkeypatch):
 
 def test_replay_rejects_inconsistent_bid_ask_extrema():
     b = bars()
-    b.low_bid = np.full(40, 2001.0)
-    b.high_ask = np.full(40, 2001.2)
+    b = replace(b, low_bid=np.full(40, 2001.0), high_ask=np.full(40, 2001.2))
     with pytest.raises(ValueError, match="broker-side quote extrema"):
         replay_scalp_bars(b, exit_plan=PLAN)
 

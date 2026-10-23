@@ -18,6 +18,10 @@ from qts.research.mt5_tick_bars import read_broker_bars
 from qts.research.scalp_replay import replay_scalp_bars
 from qts.research.xauusd_tick_discovery import discovery_cutoff
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+LOCAL_DATA_ROOT = REPO_ROOT / "data" / "raw" / "mt5_ticks"
+LOCAL_REPORT_ROOT = REPO_ROOT / "data" / "raw" / "scalp_replay_reports"
+
 # Frozen research-only decision thresholds; no optimizer or CLI price tuning.
 PLAN = ScalpExitPlan.from_mapping({
     "take_profit_net_bps": "5",
@@ -26,6 +30,37 @@ PLAN = ScalpExitPlan.from_mapping({
     "max_spread_bps": "3",
     "max_tick_age_s": "3",
 })
+
+
+def discover_dataset(root: Path, timestamp_evidence: dict[str, Any]) -> Path:
+    """Select the longest COMPLETE digest-bound XAUUSD dataset, never by returns.
+
+    All choices are based on acquisition integrity and sample size. No strategy
+    results are inspected, so choosing a dataset cannot optimize a backtest.
+    """
+    permitted = set(timestamp_evidence.get("dataset_sha256s") or [])
+    eligible: list[tuple[int, str, Path]] = []
+    if not root.is_dir():
+        raise ValueError("local MT5 raw-data directory not found")
+    for manifest_path in root.rglob(MANIFEST_FILENAME):
+        if "xauusd" not in str(manifest_path.parent).lower():
+            continue
+        try:
+            doc = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        rows = doc.get("row_count")
+        if (
+            doc.get("status") != "COMPLETE"
+            or doc.get("dataset_sha256") not in permitted
+            or not isinstance(rows, int) or rows <= 0
+            or not doc.get("parts")
+        ):
+            continue
+        eligible.append((rows, str(manifest_path.parent), manifest_path.parent))
+    if not eligible:
+        raise ValueError("no COMPLETE XAUUSD MT5 dataset matches independent timestamp evidence")
+    return max(eligible)[2]
 
 
 def run(dataset_dir: Path, timestamp_evidence: dict[str, Any]) -> dict[str, Any]:
@@ -87,13 +122,19 @@ def _markdown(report: dict[str, Any]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset-dir", required=True, type=Path)
-    parser.add_argument("--timestamp-evidence", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--markdown", required=True, type=Path)
+    parser.add_argument("--dataset-dir", type=Path, help="Override automatic local discovery")
+    parser.add_argument(
+        "--timestamp-evidence", type=Path,
+        default=REPO_ROOT / "data" / "evidence" / "mt5_timestamp_basis_20261023.json",
+    )
+    # Reports contain broker-derived trade details and must remain in the
+    # existing gitignored raw-data tree, never in committed evidence.
+    parser.add_argument("--output", type=Path, default=LOCAL_REPORT_ROOT / "report.json")
+    parser.add_argument("--markdown", type=Path, default=LOCAL_REPORT_ROOT / "report.md")
     args = parser.parse_args(argv)
     evidence = json.loads(args.timestamp_evidence.read_text(encoding="utf-8"))
-    report = run(args.dataset_dir, evidence)
+    dataset_dir = args.dataset_dir if args.dataset_dir is not None else discover_dataset(LOCAL_DATA_ROOT, evidence)
+    report = run(dataset_dir, evidence)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     args.markdown.parent.mkdir(parents=True, exist_ok=True)
