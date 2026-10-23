@@ -84,6 +84,33 @@ def test_gapped_quote_bar_never_reuses_stale_signal(monkeypatch):
     assert output["LIVE"] == "LOCKED"
 
 
+def test_real_quote_extrema_detect_a_stop_hidden_by_mid_range(monkeypatch):
+    """A transient adverse BID quote is visible even if the mid stays flat."""
+    monkeypatch.setattr(
+        scalp_replay, "propose_scalp_entry",
+        lambda closes: ScalpIdea("BUY", "breakout", "UP", Decimal("6"))
+        if len(closes) == 34 else None,
+    )
+    b = bars()
+    # 1-minute simulated mid extremes alone would miss this temporary
+    # executable-bid sell-off; the broker-side minimum proves a possible stop.
+    b.low_bid = np.minimum(b.open_bid, b.close_bid).copy()
+    b.high_ask = np.maximum(b.open_ask, b.close_ask).copy()
+    b.low_bid[34] = 1995.0
+    outcome = replay_scalp_bars(b, exit_plan=PLAN)
+    assert outcome["stop_detection_basis"] == "BROKER_BID_ASK_EXTREMA"
+    assert outcome["metrics"]["uncertain_intrabar_stop_count"] >= 1
+    assert outcome["trades"][0]["exit_reason"] == "intrabar_stop_touch_uncertain"
+
+
+def test_replay_rejects_inconsistent_bid_ask_extrema():
+    b = bars()
+    b.low_bid = np.full(40, 2001.0)
+    b.high_ask = np.full(40, 2001.2)
+    with pytest.raises(ValueError, match="broker-side quote extrema"):
+        replay_scalp_bars(b, exit_plan=PLAN)
+
+
 def test_replay_refuses_parameter_search_disguised_as_assumptions():
     with pytest.raises(ValueError, match="must match frozen"):
         replay_scalp_bars(

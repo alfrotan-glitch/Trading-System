@@ -38,6 +38,9 @@ class _SqlSpy:
         self.real = real
         self.statements: list[str] = []
         self._lock = threading.Lock()
+        # The live collector writes from another thread. Those writes are not
+        # part of the synchronous manifest operation being measured.
+        self._measured_thread = threading.get_ident()
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         spy = self
@@ -47,8 +50,9 @@ class _SqlSpy:
                 self._con = con
 
             def execute(self, sql: str, *a: Any, **k: Any) -> Any:
-                with spy._lock:
-                    spy.statements.append(sql)
+                if threading.get_ident() == spy._measured_thread:
+                    with spy._lock:
+                        spy.statements.append(sql)
                 return self._con.execute(sql, *a, **k)
 
             def __getattr__(self, name: str) -> Any:

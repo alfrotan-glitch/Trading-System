@@ -44,6 +44,11 @@ class BrokerBars:
     close_bid: np.ndarray
     close_ask: np.ndarray
     mean_spread: np.ndarray
+    # Optional broker-side extrema; present for raw tick aggregation, absent
+    # in older synthetic fixture constructors. Never reconstruct exact stop
+    # touches from the mid-price range if these are available.
+    low_bid: np.ndarray | None = None
+    high_ask: np.ndarray | None = None
 
 
 @dataclass(frozen=True)

@@ -31,6 +31,10 @@ PLAN = ScalpExitPlan.from_mapping({
 def run(dataset_dir: Path, timestamp_evidence: dict[str, Any]) -> dict[str, Any]:
     """Replay only the historical discovery portion, excluding seen holdout."""
     manifest = json.loads((dataset_dir / MANIFEST_FILENAME).read_text(encoding="utf-8"))
+    if manifest.get("status") != "COMPLETE":
+        raise ValueError("scalp replay requires a COMPLETE immutable MT5 acquisition")
+    if not manifest.get("dataset_sha256") or not manifest.get("parts"):
+        raise ValueError("scalp replay requires a complete digest and nonempty parts ledger")
     basis = timestamp_basis_assessment(manifest, timestamp_evidence)
     if basis.get("status") not in {"CONFIRMED", "MEASURED_SAME_SESSION"}:
         raise ValueError("MT5 timestamp basis unconfirmed; refusing scalp replay")
@@ -62,7 +66,9 @@ def _markdown(report: dict[str, Any]) -> str:
         f"- Mean net bps per trade (estimated): {m['mean_net_bps']}",
         f"- Win rate (estimated): {m['win_rate']}",
         f"- Sum of trade bps (not compounded): {m['total_net_bps_additive']}",
-        f"- Uncertain intrabar stop/gap/end fills: {m['uncertain_intrabar_stop_count']}",
+        f"- Intrabar stop touches with unknown actual fills: {m['uncertain_intrabar_stop_count']}",
+        f"- All uncertain exits, including gaps/end: {m['uncertain_exit_count']}",
+        f"- Broker stop-detection basis: {report['stop_detection_basis']}",
         f"- Broker bar gaps: {report['observed_bar_gaps']}",
         "",
         "## By trading family",

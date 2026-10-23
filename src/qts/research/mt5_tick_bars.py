@@ -22,11 +22,15 @@ class _BarBuilder:
     close_bid: list[float] = field(default_factory=list)
     close_ask: list[float] = field(default_factory=list)
     mean_spread: list[float] = field(default_factory=list)
+    low_bid: list[float] = field(default_factory=list)
+    high_ask: list[float] = field(default_factory=list)
     _minute: int | None = None
     _open_bid: float = 0.0
     _open_ask: float = 0.0
     _high_mid: float = 0.0
     _low_mid: float = 0.0
+    _low_bid: float = 0.0
+    _high_ask: float = 0.0
     _close_bid: float = 0.0
     _close_ask: float = 0.0
     _spread_sum: float = 0.0
@@ -39,6 +43,8 @@ class _BarBuilder:
         self._open_ask = float(ask[0])
         self._high_mid = float(mid.max())
         self._low_mid = float(mid.min())
+        self._low_bid = float(bid.min())
+        self._high_ask = float(ask.max())
         self._close_bid = float(bid[-1])
         self._close_ask = float(ask[-1])
         self._spread_sum = float((ask - bid).sum())
@@ -52,6 +58,8 @@ class _BarBuilder:
         self.open_ask.append(self._open_ask)
         self.high_mid.append(self._high_mid)
         self.low_mid.append(self._low_mid)
+        self.low_bid.append(self._low_bid)
+        self.high_ask.append(self._high_ask)
         self.close_bid.append(self._close_bid)
         self.close_ask.append(self._close_ask)
         self.mean_spread.append(self._spread_sum / self._count)
@@ -64,6 +72,8 @@ class _BarBuilder:
             mid = (bid + ask) / 2.0
             self._high_mid = max(self._high_mid, float(mid.max()))
             self._low_mid = min(self._low_mid, float(mid.min()))
+            self._low_bid = min(self._low_bid, float(bid.min()))
+            self._high_ask = max(self._high_ask, float(ask.max()))
             self._close_bid = float(bid[-1])
             self._close_ask = float(ask[-1])
             self._spread_sum += float((ask - bid).sum())
@@ -83,6 +93,8 @@ class _BarBuilder:
             close_bid=np.asarray(self.close_bid, dtype=np.float64),
             close_ask=np.asarray(self.close_ask, dtype=np.float64),
             mean_spread=np.asarray(self.mean_spread, dtype=np.float64),
+            low_bid=np.asarray(self.low_bid, dtype=np.float64),
+            high_ask=np.asarray(self.high_ask, dtype=np.float64),
         )
 
 

@@ -72,6 +72,18 @@ def _validate_bars(bars: BrokerBars) -> None:
         raise ValueError("replay requires positive open/close bid-ask spreads")
     if np.any(arrays[3] < arrays[4]):
         raise ValueError("replay has inverted within-minute high/low")
+    if (bars.low_bid is None) != (bars.high_ask is None):
+        raise ValueError("replay requires both broker-side extrema or neither")
+    if bars.low_bid is not None and bars.high_ask is not None:
+        lowest = np.asarray(bars.low_bid)
+        highest = np.asarray(bars.high_ask)
+        if (
+            lowest.shape != arrays[0].shape or highest.shape != arrays[0].shape
+            or not np.isfinite(lowest).all() or not np.isfinite(highest).all()
+            or np.any(lowest <= 0) or np.any(lowest > np.minimum(arrays[1], arrays[5]))
+            or np.any(highest < np.maximum(arrays[2], arrays[6]))
+        ):
+            raise ValueError("replay has invalid broker-side quote extrema")
 
 
 def _spread_bps(bid: Decimal, ask: Decimal) -> Decimal:
@@ -83,7 +95,7 @@ def _summarize(trades: list[dict[str, Any]]) -> dict[str, Any]:
         return {
             "trades": 0, "win_rate": None, "mean_net_bps": None,
             "total_net_bps_additive": None, "max_drawdown_bps_additive": None,
-            "uncertain_intrabar_stop_count": 0, "by_family": {},
+            "uncertain_intrabar_stop_count": 0, "uncertain_exit_count": 0, "by_family": {},
         }
     nets = [Decimal(t["net_bps"]) for t in trades]
     cumulative = Decimal(0)
@@ -102,7 +114,10 @@ def _summarize(trades: list[dict[str, Any]]) -> dict[str, Any]:
         "mean_net_bps": float(sum(nets) / len(nets)),
         "total_net_bps_additive": float(cumulative),
         "max_drawdown_bps_additive": float(max_drawdown),
-        "uncertain_intrabar_stop_count": sum(t["intrabar_fill_uncertain"] for t in trades),
+        "uncertain_intrabar_stop_count": sum(
+            t["exit_reason"] == "intrabar_stop_touch_uncertain" for t in trades
+        ),
+        "uncertain_exit_count": sum(t["intrabar_fill_uncertain"] for t in trades),
         "by_family": {
             name: {"trades": len(ns), "mean_net_bps": float(sum(ns) / len(ns)),
                    "win_rate": sum(n > 0 for n in ns) / len(ns)}
@@ -152,6 +167,7 @@ def replay_scalp_bars(
     gaps = 0
     entry_refusals = 0
     signals = 0
+    exact_quote_extrema = bars.low_bid is not None and bars.high_ask is not None
 
     def finish(pos: dict[str, Any], index: int, *, price: Decimal, reason: str,
                uncertain: bool = False) -> None:
@@ -222,14 +238,23 @@ def replay_scalp_bars(
             # Treat a possible stop as a conservative, explicitly uncertain
             # close, never as a proven broker execution at the stop.
             biggest_spread = max(oask - obid, cask - cbid)
-            possible_stop = (
-                low - biggest_spread / 2 <= stop if side == "BUY"
-                else high + biggest_spread / 2 >= stop
-            )
+            if exact_quote_extrema:
+                assert bars.low_bid is not None and bars.high_ask is not None  # narrowed by flag
+                low_bid = Decimal(str(float(bars.low_bid[i])))
+                high_ask = Decimal(str(float(bars.high_ask[i])))
+                possible_stop = low_bid <= stop if side == "BUY" else high_ask >= stop
+            else:
+                # Legacy synthetic bars have no quote-side extrema. This is
+                # only a proxy, not evidence of exact broker-side stop touches.
+                low_bid = low - biggest_spread / 2
+                high_ask = high + biggest_spread / 2
+                possible_stop = low_bid <= stop if side == "BUY" else high_ask >= stop
             close_quote = cbid if side == "BUY" else cask
             if possible_stop:
-                conservative = min(close_quote, stop - biggest_spread / 2) if side == "BUY" else max(
-                    close_quote, stop + biggest_spread / 2
+                # Use the worst observed closing-side quote as a downside
+                # stress bound. A real stop fill is NOT proven by this bound.
+                conservative = min(close_quote, stop, low_bid) if side == "BUY" else max(
+                    close_quote, stop, high_ask
                 )
                 finish(position, i, price=conservative, reason="intrabar_stop_touch_uncertain",
                        uncertain=True)
@@ -266,6 +291,7 @@ def replay_scalp_bars(
         "status": "RESEARCH_ONLY_NOT_VALIDATED",
         "dataset_bars": allowed, "signals": signals,
         "entry_refusals_cost_gate": entry_refusals, "observed_bar_gaps": gaps,
+        "stop_detection_basis": "BROKER_BID_ASK_EXTREMA" if exact_quote_extrema else "MID_PRICE_PROXY",
         "cost_assumptions": {
             "entry_slippage_bps": str(assumptions.entry_slippage_bps),
             "exit_slippage_bps": str(assumptions.exit_slippage_bps),
@@ -274,7 +300,7 @@ def replay_scalp_bars(
         },
         "limitations": [
             "one-minute-bar approximation; unknown order of intrabar events",
-            "mid high/low stop touches are uncertain, conservative proxies",
+            "bid/ask extrema detect possible broker-side stop touches when available; fill price and sequence remain uncertain",
             "no observed execution fills, latency, or true commission",
             "no independent unseen validation; never authorizes DEMO or LIVE",
             "basis-point trade sums are not compounded portfolio returns",
