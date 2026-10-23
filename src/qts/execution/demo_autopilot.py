@@ -361,6 +361,10 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
 
             time.sleep(config.poll_interval_s)
     except AutopilotHalt as exc:
+        # A halt raised by a helper must produce the same authoritative report
+        # as a halt raised by the loop's local halt() function.
+        report.halted = True
+        report.halt_reason = str(exc)
         note("halt", str(exc))
         try:
             stage_machine.halt(reason=str(exc), actor=config.actor)
