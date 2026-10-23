@@ -3,8 +3,8 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from qts.research.demo_scalp_provider import RegimeScalpProvider
-from qts.research.scalp_regimes import propose_scalp_entry
+from qts.research.demo_scalp_provider import AnticipatoryScalpProvider, RegimeScalpProvider
+from qts.research.scalp_regimes import propose_anticipatory_entry, propose_scalp_entry
 
 
 def test_uptrend_pullback_and_downtrend_pullback_proposals():
@@ -66,3 +66,47 @@ def test_scalp_provider_only_consumes_completed_bars_and_checks_costs():
     assert first_result.stop_loss < tick
     assert "Unvalidated" in first_result.rationale
     assert provider.generate(market(50)) is None  # no duplicate signal
+
+
+def test_anticipatory_setup_exists_before_confirmed_breakout():
+    # A synthetic pre-breakout squeeze: the last bar has NOT crossed the
+    # preceding channel high, but shows directional pressure near it.
+    prices = [Decimal(2002 + (3 if i % 2 else -3)) for i in range(25)]
+    prices += [Decimal(v) for v in (
+        "2003.6", "2003.65", "2003.62", "2003.66", "2003.60",
+        "2003.63", "2003.64", "2003.66", "2003.72",
+    )]
+    assert len(prices) == 34
+    assert prices[-1] < max(prices[-21:-1])
+    early = propose_anticipatory_entry(prices)
+    assert early is not None
+    assert (early.side, early.family, early.regime) == (
+        "BUY", "pre_breakout", "COMPRESSION"
+    )
+    assert propose_scalp_entry(prices) is None
+    # Changing unseen future bars cannot affect the prefix decision.
+    extended = prices + [Decimal("2040"), Decimal("1980")]
+    assert propose_anticipatory_entry(extended[:34]) == early
+
+    down = [Decimal("4000") - price for price in prices]
+    short = propose_anticipatory_entry(down)
+    assert short is not None and short.side == "SELL"
+
+
+def test_anticipatory_refuses_chase_and_flat_or_bad_price():
+    prices = [Decimal(2002 + (3 if i % 2 else -3)) for i in range(25)]
+    prices += [Decimal(v) for v in (
+        "2003.6", "2003.65", "2003.62", "2003.66", "2003.60",
+        "2003.63", "2003.64", "2003.66", "2005.9",
+    )]
+    assert propose_anticipatory_entry(prices) is None  # beyond old high
+    assert propose_anticipatory_entry([Decimal("2000")] * 40) is None
+    assert propose_anticipatory_entry([Decimal("NaN")] * 40) is None
+    assert propose_anticipatory_entry(prices[:33]) is None
+
+
+def test_anticipant_provider_has_distinct_strategy_identity():
+    early = AnticipatoryScalpProvider()
+    ordinary = RegimeScalpProvider()
+    assert early.strategy_id != ordinary.strategy_id
+    assert early.requires_registered_scalp_exit is True

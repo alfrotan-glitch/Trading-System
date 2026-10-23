@@ -11,13 +11,17 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
 from qts.execution.scalp_exit import ScalpExitPlan, decide_scalp_exit
 from qts.research.demo_scalp_provider import DEFAULT_PARAMS
-from qts.research.scalp_regimes import ScalpIdea, propose_scalp_entry
+from qts.research.scalp_regimes import (
+    ScalpIdea,
+    propose_anticipatory_entry,
+    propose_scalp_entry,
+)
 from qts.research.xauusd_broker_ml import BrokerBars
 
 MINUTE_MS = 60_000
@@ -132,6 +136,7 @@ def replay_scalp_bars(
     exit_plan: ScalpExitPlan,
     assumptions: ReplayAssumptions | None = None,
     end_exclusive_time_msc: int | None = None,
+    entry_mode: Literal["confirmed", "anticipatory"] = "confirmed",
 ) -> dict[str, Any]:
     """Backtest one position at a time, signal at close, enter at NEXT open.
 
@@ -140,8 +145,11 @@ def replay_scalp_bars(
     No same-bar signal/entry, future mid fills, gap interpolation or silent
     broker-fault repairs are permitted.
     """
+    if entry_mode not in ("confirmed", "anticipatory"):
+        raise ValueError("replay entry_mode must be confirmed or anticipatory")
     _validate_bars(bars)
     assumptions = ReplayAssumptions() if assumptions is None else assumptions
+    proposer = propose_scalp_entry if entry_mode == "confirmed" else propose_anticipatory_entry
     allowed = len(bars.time_msc)
     if end_exclusive_time_msc is not None:
         allowed = int(np.searchsorted(bars.time_msc, end_exclusive_time_msc, side="left"))
@@ -274,7 +282,7 @@ def replay_scalp_bars(
         # At bar close we know this bar, but NOT the next bar's opening quote.
         closes.append((cbid + cask) / 2)
         if position is None:
-            pending = propose_scalp_entry(closes)
+            pending = proposer(closes)
             if pending is not None:
                 signals += 1
 
@@ -288,6 +296,7 @@ def replay_scalp_bars(
     return {
         "schema": "qts.regime_scalp_causal_replay.v1",
         "status": "RESEARCH_ONLY_NOT_VALIDATED",
+        "entry_mode": entry_mode,
         "dataset_bars": allowed, "signals": signals,
         "entry_refusals_cost_gate": entry_refusals, "observed_bar_gaps": gaps,
         "stop_detection_basis": "BROKER_BID_ASK_EXTREMA" if exact_quote_extrema else "MID_PRICE_PROXY",

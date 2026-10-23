@@ -77,6 +77,21 @@ def run(dataset_dir: Path, timestamp_evidence: dict[str, Any]) -> dict[str, Any]
     start, end = int(bars.time_msc.min()), int(bars.time_msc.max())
     cutoff = discovery_cutoff(start, end)
     report = replay_scalp_bars(bars, exit_plan=PLAN, end_exclusive_time_msc=cutoff)
+    # Side-by-side separate replays on precisely the SAME discovery bars.
+    # No cherry-picking, mixing fills, or strategy promotion.
+    earlier = replay_scalp_bars(
+        bars, exit_plan=PLAN, end_exclusive_time_msc=cutoff,
+        entry_mode="anticipatory",
+    )
+    report["anticipatory_comparison"] = {
+        "mode": earlier["entry_mode"],
+        "signals": earlier["signals"],
+        "metrics": earlier["metrics"],
+        "entry_refusals_cost_gate": earlier["entry_refusals_cost_gate"],
+        "observed_bar_gaps": earlier["observed_bar_gaps"],
+        "stop_detection_basis": earlier["stop_detection_basis"],
+        "decision": "RESEARCH_ONLY_NOT_VALIDATED",
+    }
     report["source"] = {
         "manifest_dataset_sha256": manifest.get("dataset_sha256"),
         "timestamp_basis": basis,
@@ -105,6 +120,15 @@ def _markdown(report: dict[str, Any]) -> str:
         f"- All uncertain exits, including gaps/end: {m['uncertain_exit_count']}",
         f"- Broker stop-detection basis: {report['stop_detection_basis']}",
         f"- Broker bar gaps: {report['observed_bar_gaps']}",
+        "",
+        "## Unconfirmed early-entry comparison (same discovery window)",
+        "",
+        f"- Anticipatory proposed signals: {report['anticipatory_comparison']['signals']}",
+        f"- Anticipatory trades: {report['anticipatory_comparison']['metrics']['trades']}",
+        f"- Anticipatory estimated mean net bps: {report['anticipatory_comparison']['metrics']['mean_net_bps']}",
+        f"- Anticipatory estimated win rate: {report['anticipatory_comparison']['metrics']['win_rate']}",
+        "",
+        "Do NOT choose a winning mode from this discovery comparison and call it validated.",
         "",
         "## By trading family",
         "",

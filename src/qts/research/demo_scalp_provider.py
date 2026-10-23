@@ -14,7 +14,11 @@ from typing import Any
 from qts.adapters.base import MEASURED_SERVER_OFFSET_BASES
 from qts.execution.demo_autopilot import Signal
 from qts.research.demo_trend_tsmom import TrendTimeSeriesMomentum
-from qts.research.scalp_regimes import ScalpIdea, propose_scalp_entry
+from qts.research.scalp_regimes import (
+    ScalpIdea,
+    propose_anticipatory_entry,
+    propose_scalp_entry,
+)
 
 STRATEGY_ID = "DEMO-XAUUSD-REGIME-SCALP-V1"
 
@@ -78,6 +82,10 @@ class RegimeScalpProvider(TrendTimeSeriesMomentum):
             return None
         return super().generate(market_state)
 
+    def _propose_candidate(self, closes: list[Decimal]) -> ScalpIdea | None:
+        """Virtual signal selector; baseline provider remains unchanged."""
+        return propose_scalp_entry(closes)
+
     def _complete_previous_bar(self, boundary: datetime, close: Decimal) -> str | None:
         """Never bridge a missing minute or an old seeded window."""
         expected_gap = timedelta(minutes=1)
@@ -90,7 +98,7 @@ class RegimeScalpProvider(TrendTimeSeriesMomentum):
             self._last_rationale = "minute gap: history reset without fabrication"
         self._closes.append(close)
         self._last_completed_bar = self._bar_start
-        self._pending = propose_scalp_entry(list(self._closes))
+        self._pending = self._propose_candidate(list(self._closes))
         if self._pending is None:
             self._last_rationale = "no causal trend-pullback, range-fade, or breakout opportunity"
             return None
@@ -148,3 +156,18 @@ class RegimeScalpProvider(TrendTimeSeriesMomentum):
             rationale=self._last_rationale,
             signal_id=f"regime-scalp-{idea.family}-{side.lower()}-{stamp}",
         )
+
+
+class AnticipatoryScalpProvider(RegimeScalpProvider):
+    """Separate *unregistered* pre-confirmation DEMO research candidate.
+
+    Distinct strategy identity prevents silently changing the previously
+    frozen confirmation-only strategy's semantics.
+    """
+
+    @property
+    def strategy_id(self) -> str:
+        return "DEMO-XAUUSD-PREBREAKOUT-SCALP-V1"
+
+    def _propose_candidate(self, closes: list[Decimal]) -> ScalpIdea | None:
+        return propose_anticipatory_entry(closes)

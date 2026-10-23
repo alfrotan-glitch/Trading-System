@@ -73,3 +73,51 @@ def propose_scalp_entry(closes: Sequence[Decimal]) -> ScalpIdea | None:
     if regime in ("DOWN", "TRANSITION") and current < min(past[-20:]) - volatility * Decimal("0.2"):
         return ScalpIdea("SELL", "breakout", regime, volatility * 2)
     return None
+
+
+def propose_anticipatory_entry(closes: Sequence[Decimal]) -> ScalpIdea | None:
+    """Detect a *potential* breakout setup BEFORE a confirmed range break.
+
+    A causal price-compression and directional-pressure heuristic, not a
+    calibrated probability, guarantee of a reversal, or future-price oracle.
+    All 34 observations must be completed bars available at decision time.
+    """
+    if len(closes) < 34:
+        return None
+    values = [Decimal(str(v)) for v in closes[-34:]]
+    if any(not v.is_finite() or v <= 0 for v in values):
+        return None
+    past, current = values[:-1], values[-1]
+    channel = past[-20:]
+    low, high = min(channel), max(channel)
+    width = high - low
+    if width <= 0 or not low < current < high:
+        # Never chase a breakout that has already crossed its old boundary.
+        return None
+
+    changes = [abs(values[i] - values[i - 1]) for i in range(1, len(values))]
+    older = sum(changes[-24:-6], Decimal(0)) / Decimal(18)
+    recent = sum(changes[-6:], Decimal(0)) / Decimal(6)
+    if older <= 0 or width < older or recent <= 0 or recent > older * Decimal("0.65"):
+        return None
+
+    # A reproducible fixed setup window, NOT a probability estimate.
+    # Require visible room before the old boundary, avoiding an entry that
+    # already spent the whole available move.
+    near_min = width * Decimal("0.12")
+    near_max = width * Decimal("0.35")
+    room_above = high - current
+    if (
+        near_min <= room_above <= near_max
+        and current > past[-1] >= past[-2]
+        and current > (high + low) / 2
+    ):
+        return ScalpIdea("BUY", "pre_breakout", "COMPRESSION", width / 2)
+    room_below = current - low
+    if (
+        near_min <= room_below <= near_max
+        and current < past[-1] <= past[-2]
+        and current < (high + low) / 2
+    ):
+        return ScalpIdea("SELL", "pre_breakout", "COMPRESSION", width / 2)
+    return None

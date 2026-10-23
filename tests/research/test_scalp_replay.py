@@ -8,7 +8,7 @@ import pytest
 
 from qts.execution.scalp_exit import ScalpExitPlan
 from qts.research import scalp_replay
-from qts.research.scalp_regimes import ScalpIdea
+from qts.research.scalp_regimes import ScalpIdea, propose_anticipatory_entry
 from qts.research.scalp_replay import ReplayAssumptions, replay_scalp_bars
 from qts.research.xauusd_broker_ml import BrokerBars
 
@@ -117,3 +117,37 @@ def test_replay_refuses_parameter_search_disguised_as_assumptions():
             bars(), exit_plan=PLAN,
             assumptions=ReplayAssumptions(stop_distance_price=Decimal("9")),
         )
+
+
+def test_anticipatory_replay_uses_prior_close_not_future_bar():
+    raw = [2002.0 + (3.0 if i % 2 else -3.0) for i in range(25)]
+    raw += [
+        2003.6, 2003.65, 2003.62, 2003.66, 2003.60,
+        2003.63, 2003.64, 2003.66, 2003.72,
+        2005.3, 2006.0, 2006.5, 2006.7, 2006.8, 2006.9,
+    ]
+    assert len(raw) == 40
+    b = bars()
+    mid = np.asarray(raw, dtype=np.float64)
+    b = replace(
+        b, open_bid=mid - 0.1, open_ask=mid + 0.1,
+        close_bid=mid - 0.1, close_ask=mid + 0.1,
+        high_mid=mid + 0.05, low_mid=mid - 0.05,
+    )
+    signal = propose_anticipatory_entry([Decimal(str(x)) for x in mid[:34]])
+    assert signal is not None and signal.family == "pre_breakout"
+    assert scalp_replay.propose_scalp_entry([Decimal(str(x)) for x in mid[:34]]) is None
+    early = replay_scalp_bars(b, exit_plan=PLAN, entry_mode="anticipatory")
+    baseline = replay_scalp_bars(b, exit_plan=PLAN, entry_mode="confirmed")
+    assert early["entry_mode"] == "anticipatory"
+    assert baseline["entry_mode"] == "confirmed"
+    assert early["metrics"]["trades"] >= 1
+    assert early["trades"][0]["entry_time_msc"] == int(mid.size - 6) * 60_000
+    assert early["trades"][0]["signal_time_msc"] < early["trades"][0]["entry_time_msc"]
+    assert early["trades"][0]["family"] == "pre_breakout"
+    assert early["LIVE"] == "LOCKED" and early["orders_submitted"] == 0
+
+
+def test_replay_refuses_unknown_entry_mode():
+    with pytest.raises(ValueError, match="entry_mode"):
+        replay_scalp_bars(bars(), exit_plan=PLAN, entry_mode="telepathic")
