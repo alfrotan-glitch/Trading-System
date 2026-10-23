@@ -736,3 +736,22 @@ and must not retune this fixed band or horizon definition.
 No order API was called; `orders_submitted=0`, `DEMO_EXECUTION=DISABLED`, and
 `LIVE=LOCKED` remain enforced. The next experiment must be materially distinct
 and must not retune these fixed RSI thresholds or horizons.
+
+## Current continuation: fixed EMA trend-state assay (2026-10-23)
+
+**Round 41 executed locally:** H-EMA-01 followed the causal sign of EMA(12)
+versus EMA(48) on complete five-minute close mids, resetting at gaps. The
+confirmed-basis 365-day ledger supplied 70,596 complete five-minute bars.
+The primary six-bar horizon produced 56,175 samples and 3,286 frozen-holdout
+trades. Its holdout was `-0.5200` bps at measured quote cost and `-2.5200`
+bps at 2 bps extra stress, with bootstrap interval
+`[-3.1762, -1.8429]` bps. All five qualifying primary walk-forward folds
+were negative at 2 bps. The 24-bar stability horizon was also negative
+(`-1.2405` measured and `-3.2405` at 2 bps; interval
+`[-5.4938, -0.9560]`). H-EMA-01 is **REJECTED**, not a validated edge; no
+candidate was promoted. The sanitized record is
+ `data/evidence/mt5_broker_ema_365d_summary_20261023.json`.
+
+No order API was called; `orders_submitted=0`, `DEMO_EXECUTION=DISABLED`, and
+`LIVE=LOCKED` remain enforced. The next experiment must be materially distinct
+and must not retune these fixed EMA periods or horizons.
