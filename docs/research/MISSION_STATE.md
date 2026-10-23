@@ -1,3 +1,20 @@
+## Current continuation: controlled broker-quote ML assay (2026-10-23)
+
+**Round 32 executed locally:** a preregistered fixed ridge-logistic model was
+fit only on causal quote-derived features from the discovery prefix and then
+evaluated through five chronological folds plus one frozen 40% holdout. All
+five folds were negative at the additional 2 bps round-trip stress. The
+holdout was negative even at the measured quote-side cost (`-0.5826` bps) and
+`-2.5826` bps at 2 bps extra stress; its moving-block bootstrap 95% interval
+was `[-2.6834, -2.4838]` bps. The 15-minute stability holdout was also
+negative (`-2.7762` bps). H-ML-01 is rejected, no model was promoted, and no
+product integration is justified. The sanitized record is
+`data/evidence/mt5_broker_ml_365d_summary_20261023.json`.
+
+The assay used no order API and retained `LIVE=LOCKED` and
+`DEMO_EXECUTION=DISABLED`. The full local output remains separate from the
+tracked sanitized evidence.
+
 ## Current continuation: independent broker-ledger follow-ups (2026-10-23)
 
 **Round 31 executed locally:** the preregistered H-MM-02 market-making

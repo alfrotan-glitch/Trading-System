@@ -1,0 +1,57 @@
+{
+  "schema": "qts.xauusd_broker_ml_summary.v1",
+  "experiment": "H-ML-01",
+  "dataset": "local 365-day MT5 bid/ask ledger; confirmed UTC basis",
+  "raw_rows": 81211638,
+  "one_minute_bars": 353758,
+  "discovery_samples": 209860,
+  "holdout_trades": 23787,
+  "model": {
+    "type": "fixed ridge logistic regression",
+    "features": [
+      "return_1",
+      "return_3",
+      "return_5",
+      "return_15",
+      "return_60",
+      "abs_return_mean_5",
+      "abs_return_mean_15",
+      "abs_return_mean_60",
+      "spread_bps"
+    ],
+    "alpha": 0.01,
+    "latency_bars": 1,
+    "primary_horizon_minutes": 5,
+    "stability_horizon_minutes": 15
+  },
+  "walk_forward": {
+    "fold_trade_counts": [5158, 5710, 5715, 5506, 5703],
+    "mean_net_bps_at_2bps_extra_stress": [-2.5714624216, -2.7997373596, -2.9647910008, -2.4074037204, -2.4495666657],
+    "positive_folds_at_2bps": 0
+  },
+  "holdout": {
+    "mean_net_bps_at_measured_quote_cost": -0.5825827219,
+    "mean_net_bps_at_2bps_extra_stress": -2.5825827219,
+    "bootstrap_95pct_ci_at_2bps": [-2.6833524335, -2.4837759265],
+    "bootstrap_p_mean_le_zero": 1.0
+  },
+  "stability_holdout": {
+    "trades": 8893,
+    "mean_net_bps_at_2bps_extra_stress": -2.7761669048
+  },
+  "cost_status": {
+    "quoted_bid_ask": "MEASURED",
+    "commission": "UNMEASURED",
+    "slippage": "UNMEASURED",
+    "financing": "NOT MATERIAL FOR INTRADAY HORIZONS; NOT MEASURED"
+  },
+  "decision": "REJECTED",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "safety": {
+    "orders_submitted": 0,
+    "order_send_called": false,
+    "DEMO_EXECUTION": "DISABLED",
+    "LIVE": "LOCKED"
+  }
+}

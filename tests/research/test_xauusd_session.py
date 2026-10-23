@@ -10,7 +10,8 @@ from qts.research.xauusd_session import Bar, _event, _stats, _verdict
 def _bars() -> list[Bar]:
     start = int(datetime(2026, 1, 2, tzinfo=UTC).timestamp() * 1000)
     bars: list[Bar] = []
-    for index in range(40):
+    # Cover the fixed 08:00–12:00 UTC London event, including its endpoint.
+    for index in range(60):
         stamp = start + index * 15 * 60 * 1000
         price = 100.0 + index * 0.10
         bars.append(Bar(stamp, stamp, price, price + 0.02, stamp + 1, price, price + 0.02))

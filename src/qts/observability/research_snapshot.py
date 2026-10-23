@@ -337,7 +337,9 @@ def export_research_snapshot(
         "schema": {
             "snapshot_version": RESEARCH_SNAPSHOT_VERSION,
             "source_tables": ["observation_sessions", "observation_ticks", "observation_attempts"],
-            "canonical_store": str(db_path),
+            # The store location is local machine identity, not reproducibility
+            # evidence.  Keep the schema role while never exporting the path.
+            "canonical_store": "<REDACTED:local-store>",
             "row_fields": [
                 "i",
                 "id",
