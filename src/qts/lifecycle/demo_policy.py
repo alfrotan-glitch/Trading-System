@@ -580,6 +580,19 @@ def validate_policy(doc: Any, params: dict[str, Any] | None = None) -> tuple[Res
                 f"policy {label}: exit_conditions.max_hold_seconds must be positive — "
                 "every position needs a deterministic time exit"
             )
+        if "scalp" in exits:
+            # Optional and inert until embedded in the signed policy document.
+            from qts.execution.scalp_exit import ScalpExitPlan
+
+            try:
+                scalp = ScalpExitPlan.from_mapping(exits["scalp"])
+                if scalp.max_spread_bps > _as_float(doc.get("max_spread_bps") or 0):
+                    reasons.append(f"policy {label}: scalp max_spread_bps exceeds policy spread cap")
+                stale_cap = _as_float((doc.get("stale_data_protection") or {}).get("max_tick_age_s"))
+                if stale_cap is None or scalp.max_tick_age_s > stale_cap:
+                    reasons.append(f"policy {label}: scalp max_tick_age_s exceeds policy stale cap")
+            except ValueError as exc:
+                reasons.append(f"policy {label}: invalid scalp exit: {exc}")
 
     # ---- data requirements / hashes -----------------------------------------
     min_data = doc.get("min_data_requirements") or {}

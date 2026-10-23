@@ -249,6 +249,68 @@ def test_unconfirmed_close_is_hard_execution_barrier(close_state: str):
         _manage_open_positions(session, entry, journal, lambda *args: None)
 
 
+
+def test_frozen_scalp_exit_closes_confirmed_profitable_demo_position():
+    """Executable bid and signed research policy can request a DEMO close."""
+    from types import SimpleNamespace
+
+    from qts.execution.demo_autopilot import _manage_open_positions
+
+    orders = [{"journal_id": 4, "strategy_id": "SCALP-TEST", "broker_position_id": "42",
+               "broker_symbol": "XAUUSD@", "side": "BUY"}]
+    position = {
+        "ticket": 42, "position_id": 42, "symbol": "XAUUSD@", "side": "BUY",
+        "price_open": "2000", "time": time.time(), "profit": "5",
+    }
+    journal = SimpleNamespace(open_orders=lambda: orders, update_unrealized=lambda *a, **k: None)
+    calls = []
+    session = SimpleNamespace(
+        adapter=SimpleNamespace(position_details=lambda: [position]),
+        close_position=lambda ticket, **kwargs: (
+            calls.append((ticket, kwargs["reason"]))
+            or {"state": "CLOSED", "success": True, "reconciliation": {"requires_suspend": False}}
+        ),
+    )
+    entry = SimpleNamespace(
+        strategy_id="SCALP-TEST",
+        exit_policy={"max_hold_seconds": 3600},
+        policy=SimpleNamespace(raw={"exit_conditions": {"scalp": {
+            "take_profit_net_bps": "5", "extra_cost_reserve_bps": "2",
+            "max_loss_net_bps": "12", "max_spread_bps": "3", "max_tick_age_s": "3",
+        }}}),
+    )
+    quote = {"ok": True, "bid": 2001.6, "ask": 2001.8, "age_s": 1}
+    notes = []
+    _manage_open_positions(session, entry, journal, lambda *args: notes.append(args), quote=quote)
+    assert calls == [(42, "scalp_take_profit")]
+    assert any(x[0] == "scalp_evaluation" for x in notes)
+
+
+def test_frozen_scalp_exit_refuses_foreign_position():
+    """No strategy may scalp-close a broker position it did not open."""
+    from types import SimpleNamespace
+
+    from qts.execution.demo_autopilot import AutopilotHalt, _manage_open_positions
+
+    session = SimpleNamespace(adapter=SimpleNamespace(position_details=lambda: [{
+        "ticket": 42, "position_id": 42, "symbol": "XAUUSD@", "side": "BUY",
+        "price_open": "2000", "time": time.time(), "profit": "0",
+    }]))
+    entry = SimpleNamespace(
+        strategy_id="SCALP-TEST", exit_policy={},
+        policy=SimpleNamespace(raw={"exit_conditions": {"scalp": {
+            "take_profit_net_bps": "5", "extra_cost_reserve_bps": "2",
+            "max_loss_net_bps": "12", "max_spread_bps": "3", "max_tick_age_s": "3",
+        }}}),
+    )
+    journal = SimpleNamespace(open_orders=lambda: [])
+    with pytest.raises(AutopilotHalt, match="no exact strategy journal owner"):
+        _manage_open_positions(
+            session, entry, journal, lambda *args: None,
+            quote={"ok": True, "bid": 2001.6, "ask": 2001.8, "age_s": 1},
+        )
+
+
 def test_provider_exposing_an_optimization_hook_is_refused(tmp_path: Path, authorized):
     entry = provider_fixture.registry_entry(provider="fakes_demo_provider:SelfOptimizingProvider")
     _write_registry(tmp_path, entry)

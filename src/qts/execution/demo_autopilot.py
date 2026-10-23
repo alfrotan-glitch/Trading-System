@@ -303,7 +303,7 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
             }
 
             # ---- 4. manage open positions ----------------------------------
-            _manage_open_positions(session, entry, journal, note)
+            _manage_open_positions(session, entry, journal, note, quote=quote)
 
             # ---- 5. daily order cap ----------------------------------------
             if entry.max_orders_per_day and journal.orders_today() >= entry.max_orders_per_day:
@@ -478,9 +478,20 @@ def _manage_open_positions(
     entry: StrategyRegistration,
     journal: DemoOrderJournal,
     note: Any,
+    *,
+    quote: dict[str, Any] | None = None,
 ) -> None:
     """Apply the registered exit policy to broker positions (close + record)."""
     policy = dict(entry.exit_policy or {})
+    # Only the immutable, hash-checked research policy may enable fast exits.
+    # The mutable registry exit_policy is not sufficient authorization.
+    frozen_exits = ((entry.policy.raw.get("exit_conditions") or {}) if entry.policy else {})
+    scalp_spec = frozen_exits.get("scalp")
+    scalp_plan = None
+    if scalp_spec is not None:
+        from qts.execution.scalp_exit import ScalpExitPlan
+
+        scalp_plan = ScalpExitPlan.from_mapping(scalp_spec)
     try:
         positions = session.adapter.position_details()
     except Exception as exc:
@@ -514,6 +525,39 @@ def _manage_open_positions(
                     reason = f"max_hold_seconds {max_hold_s:.0f} exceeded"
             if policy.get("close_on_registry_expiry") and not reason:
                 reason = None  # registry expiry is checked by the caller loop
+            if scalp_plan is not None and not reason:
+                from qts.execution.scalp_exit import decide_scalp_exit
+
+                # A liquidation of an unknown/foreign broker position is never
+                # authorised by this strategy's scalp exit plan.
+                known_ids = {str(pos.get("ticket")), str(pos.get("position_id"))}
+                owner_ok = (
+                    row is not None
+                    and row.get("strategy_id") == entry.strategy_id
+                    and str(row.get("broker_position_id") or "") in known_ids
+                    and row.get("broker_symbol") == pos.get("symbol")
+                    and row.get("side") == pos.get("side")
+                )
+                if not owner_ok:
+                    raise AutopilotHalt(f"scalp exit refused: ticket {ticket} has no exact strategy journal owner")
+                if not isinstance(quote, dict) or quote.get("ok") is not True:
+                    raise AutopilotHalt("scalp exit refused: broker quote not confirmed")
+                decision = decide_scalp_exit(
+                    scalp_plan,
+                    side=str(pos.get("side")),
+                    entry_price=pos.get("price_open"),
+                    bid=quote.get("bid"),
+                    ask=quote.get("ask"),
+                    tick_age_s=quote.get("age_s"),
+                )
+                note("scalp_evaluation", {
+                    "ticket": ticket,
+                    "reason": decision.reason,
+                    "estimated_net_bps": str(decision.estimated_net_bps),
+                    "spread_bps": str(decision.spread_bps),
+                })
+                if decision.close:
+                    reason = decision.reason
             if reason:
                 # An ambiguous close is an execution barrier, not a transient
                 # error. Never let the autonomous loop blindly submit another
