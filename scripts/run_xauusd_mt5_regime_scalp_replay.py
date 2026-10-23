@@ -115,14 +115,24 @@ def run(
             )
             for trades in (report, earlier)
         ]
+        discovery_complete = False
         for part in manifest["parts"]:
+            if discovery_complete:
+                break
             parquet = pq.ParquetFile(dataset_dir / "parts" / part["part"])
             for batch in parquet.iter_batches(batch_size=250_000, columns=["time_msc", "bid", "ask"]):
                 timestamps = np.asarray(batch.column("time_msc").to_numpy(zero_copy_only=False), dtype=np.int64)
-                bids = np.asarray(batch.column("bid").to_numpy(zero_copy_only=False), dtype=np.float64)
-                asks = np.asarray(batch.column("ask").to_numpy(zero_copy_only=False), dtype=np.float64)
-                for auditor in auditors:
-                    auditor.consume(timestamps, bids, asks)
+                discovery_rows = int(np.searchsorted(timestamps, cutoff, side="left"))
+                if discovery_rows:
+                    bids = np.asarray(batch.column("bid").to_numpy(zero_copy_only=False), dtype=np.float64)
+                    asks = np.asarray(batch.column("ask").to_numpy(zero_copy_only=False), dtype=np.float64)
+                    for auditor in auditors:
+                        auditor.consume(
+                            timestamps[:discovery_rows], bids[:discovery_rows], asks[:discovery_rows]
+                        )
+                if discovery_rows < len(timestamps):
+                    discovery_complete = True
+                    break
         report["first_stop_touch_tick_audit"] = auditors[0].report()
         report["anticipatory_comparison"]["first_stop_touch_tick_audit"] = auditors[1].report()
     report["source"] = {
