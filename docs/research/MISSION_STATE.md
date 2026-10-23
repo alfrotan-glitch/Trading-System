@@ -656,3 +656,26 @@ The assay used no order API and retained `LIVE=LOCKED` and
 `DEMO_EXECUTION=DISABLED`. The full local output remains separate from the
 tracked sanitized evidence. The next independent mechanism must not retune
 this event definition or reopen rejected families.
+
+## Current continuation: corrected compressed-range breakout assay (2026-10-23)
+
+**Round 37 executed locally:** the earlier H-VOL-COMP-BREAK-8 screen was
+retested after correcting a definition defect: its recorded compression gate
+had not been applied to the breakout signal. The corrected rule used causal
+15-minute range medians (32-bar recent versus the prior 256 recent medians),
+the prior 32-bar high/low breakout, next-bar bid/ask entry, fixed 8-bar
+primary and 16-bar stability exits, five chronological folds, and a frozen
+40% holdout. The confirmed ledger supplied 23,410 complete 15-minute bars.
+
+The primary rule produced 1,032 samples but only 218 holdout trades; stability
+produced 170 holdout trades, both below the preregistered 500-trade gate.
+Primary holdout means were `-3.7832` bps at measured quote cost and `-5.7832`
+bps at 2 bps stress. Stability was `-2.6859` bps at 2 bps stress. Both
+bootstrap intervals crossed zero because of the small holdout. The formal
+classification is `INCONCLUSIVE`, not a validated edge; no candidate was
+promoted. The sanitized record is
+`data/evidence/mt5_broker_compression_365d_summary_20261023.json`.
+
+The earlier positive assumed-cost result is not reproducible under the
+corrected causal definition and measured broker quote execution. No order API
+was called; `LIVE=LOCKED` and `DEMO_EXECUTION=DISABLED` remain enforced.

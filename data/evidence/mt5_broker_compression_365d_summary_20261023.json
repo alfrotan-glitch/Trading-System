@@ -1,0 +1,41 @@
+{
+  "schema": "qts.xauusd_broker_compression.v1.summary",
+  "timestamp_basis": "CONFIRMED",
+  "complete_fifteen_minute_bar_count": 23410,
+  "correction": "The earlier H-VOL-COMP-BREAK-8 implementation did not apply its recorded compression condition to the breakout signal and used assumed price-distance costs. This retest applies the fixed condition causally and uses measured broker bid/ask execution.",
+  "decision": "INCONCLUSIVE",
+  "edge_claim": "NOT ESTABLISHED",
+  "primary": {
+    "horizon_bars_including_entry": 8,
+    "sample_count": 1032,
+    "holdout_trade_count": 218,
+    "holdout_mean_net_bps_at_measured_quote_cost": -3.7831604183675163,
+    "holdout_mean_net_bps_at_2bps_extra_stress": -5.783160418367515,
+    "holdout_bootstrap_95_percent_interval_at_2bps": [-12.648521137412567, 1.1670573654214145],
+    "walk_forward_fold_means_at_2bps": [-4.774723621322724, 5.7225591791448, -2.9885133939423945, -12.385237182676875, -3.752054807318693],
+    "qualifying_walk_forward_folds": 0,
+    "positive_walk_forward_folds_at_2bps": 0
+  },
+  "stability": {
+    "horizon_bars_including_entry": 16,
+    "holdout_trade_count": 170,
+    "holdout_mean_net_bps_at_2bps_extra_stress": -2.6858904554975007,
+    "holdout_bootstrap_95_percent_interval_at_2bps": [-9.93787141128655, 4.194855033050156],
+    "walk_forward_fold_means_at_2bps": [-6.208783055972787, 3.9297349874246548, 3.5283361926891037, -8.941179174701153, -12.428367730321781],
+    "qualifying_walk_forward_folds": 0,
+    "positive_walk_forward_folds_at_2bps": 0
+  },
+  "strategy_promoted": false,
+  "safety": {
+    "orders_submitted": 0,
+    "order_send_called": false,
+    "DEMO_EXECUTION": "DISABLED",
+    "LIVE": "LOCKED"
+  },
+  "cost_status": {
+    "quoted_bid_ask": "MEASURED",
+    "commission": "UNMEASURED",
+    "slippage": "UNMEASURED",
+    "financing": "NOT MATERIAL FOR INTRADAY HORIZONS; NOT MEASURED"
+  }
+}
