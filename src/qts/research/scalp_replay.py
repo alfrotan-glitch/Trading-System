@@ -238,8 +238,7 @@ def replay_scalp_bars(
             # Treat a possible stop as a conservative, explicitly uncertain
             # close, never as a proven broker execution at the stop.
             biggest_spread = max(oask - obid, cask - cbid)
-            if exact_quote_extrema:
-                assert bars.low_bid is not None and bars.high_ask is not None  # narrowed by flag
+            if bars.low_bid is not None and bars.high_ask is not None:
                 low_bid = Decimal(str(float(bars.low_bid[i])))
                 high_ask = Decimal(str(float(bars.high_ask[i])))
                 possible_stop = low_bid <= stop if side == "BUY" else high_ask >= stop
