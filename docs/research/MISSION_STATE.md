@@ -1,3 +1,13 @@
+## Current continuation: 30-day microstructure continuation (2026-10-23)
+
+**Round 26 executed locally:** a complete 30-day read-only broker tick window
+with 4,124,595 rows was quality-passed and scored by the unchanged fixed
+microstructure engine. Quote spread remained near 0.58 bps median and 0.667
+bps p95. The overall result remains `INCONCLUSIVE`: one hypothesis was
+rejected, three were only `TESTED`, and the rest were inconclusive. The raw
+historical clock basis is still blocked, so no executable edge claim is
+eligible.
+
 ## Current continuation: microstructure scan (2026-10-23)
 
 **Round 25 executed locally:** the fixed microstructure discovery engine ran on

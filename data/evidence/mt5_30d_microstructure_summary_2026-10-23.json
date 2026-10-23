@@ -1,0 +1,51 @@
+{
+  "schema": "qts.mt5_30d_microstructure_summary.v1",
+  "study": "MT5-MICROSTRUCTURE-30D-20261023",
+  "instrument": "XAUUSD",
+  "dataset": {
+    "window_days": 30,
+    "rows": 4124595,
+    "sha256": "15320e222ca4d8f9765f33b989235f5bcaf474ead70ec0ac643fd5f73726a51f",
+    "status": "COMPLETE",
+    "analysis_status": "PASS",
+    "non_monotonic_time_msc_count": 0,
+    "invalid_bid_count": 0,
+    "invalid_ask_count": 0,
+    "ask_below_bid_count": 0,
+    "zero_spread_count": 0,
+    "identical_full_row_excess_count": 4,
+    "timestamp_basis_confirmed": false
+  },
+  "quote_spread_bps": {
+    "median": 0.5768787016378109,
+    "mean": 0.579430862663044,
+    "p95": 0.6668286107572443,
+    "max": 3.091033346936485
+  },
+  "microstructure_scan": {
+    "engine_schema": "qts.xauusd_microstructure.v1",
+    "decision": "INCONCLUSIVE",
+    "edge_claim": "NOT ESTABLISHED",
+    "strategy_promoted": false,
+    "mutual_information_bits": 0.030284978622828994,
+    "hypothesis_statuses": {
+      "H-INT-01": "REJECTED",
+      "H-MV-01": "INCONCLUSIVE",
+      "H-QD-01": "TESTED",
+      "H-QD-02": "TESTED",
+      "H-SP-01": "TESTED",
+      "H-SPR-01": "INCONCLUSIVE",
+      "H-VOL-01": "INCONCLUSIVE"
+    }
+  },
+  "limitations": {
+    "independent_oos": false,
+    "execution_costs": "quote spread measured; commission, slippage, swaps and fills unavailable",
+    "interpretation": "Thirty days improves sample power but does not establish an executable strategy or validate the historical clock basis"
+  },
+  "safety": {
+    "orders_submitted": 0,
+    "DEMO_EXECUTION": "DISABLED",
+    "LIVE": "LOCKED"
+  }
+}
