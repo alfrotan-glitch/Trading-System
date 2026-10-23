@@ -224,6 +224,31 @@ def test_position_management_failure_halts_before_order(
     assert terminal.requests == []
 
 
+
+@pytest.mark.parametrize("close_state", ["PARTIALLY_CLOSED", "AMBIGUOUS", "REJECTED"])
+def test_unconfirmed_close_is_hard_execution_barrier(close_state: str):
+    """A failed full-close request must never be treated as a managed exit."""
+    from types import SimpleNamespace
+
+    from qts.execution.demo_autopilot import AutopilotHalt, _manage_open_positions
+
+    session = SimpleNamespace(
+        adapter=SimpleNamespace(
+            position_details=lambda: [
+                {"ticket": 42, "time": time.time() - 900, "profit": "0", "price_current": "2000.10"}
+            ]
+        ),
+        close_position=lambda *args, **kwargs: {
+            "state": close_state, "success": False, "reconciliation": {"requires_suspend": False}
+        },
+    )
+    entry = SimpleNamespace(exit_policy={"max_hold_seconds": 1})
+    journal = SimpleNamespace(open_orders=lambda: [])
+
+    with pytest.raises(AutopilotHalt, match="not a confirmed full close"):
+        _manage_open_positions(session, entry, journal, lambda *args: None)
+
+
 def test_provider_exposing_an_optimization_hook_is_refused(tmp_path: Path, authorized):
     entry = provider_fixture.registry_entry(provider="fakes_demo_provider:SelfOptimizingProvider")
     _write_registry(tmp_path, entry)

@@ -532,9 +532,10 @@ def _manage_open_positions(
                     actor="autopilot",
                 )
                 state = str(res.get("state") or "")
-                if state == "AMBIGUOUS":
+                if state != "CLOSED" or res.get("success") is not True:
                     raise AutopilotHalt(
-                        f"close outcome for ticket {ticket} is ambiguous; reconciliation is required"
+                        f"close outcome for ticket {ticket} is not a confirmed full close "
+                        f"(state={state or 'UNKNOWN'}); reconciliation is required"
                     )
                 after_close = res.get("reconciliation") or {}
 
