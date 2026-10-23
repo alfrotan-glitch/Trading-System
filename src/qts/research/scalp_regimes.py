@@ -23,7 +23,9 @@ def propose_scalp_entry(closes: Sequence[Decimal]) -> ScalpIdea | None:
     """Propose trend-pullback, breakout, or range-fade on 34 closed bars."""
     if len(closes) < 34:
         return None
-    values = [Decimal(str(c)) for c in closes[-34:]]
+    # Replay stores completed closes in a deque, which does not support
+    # slice indexing. Convert only the bounded 34-bar window.
+    values = [Decimal(str(c)) for c in list(closes)[-34:]]
     if any(not p.is_finite() or p <= 0 for p in values):
         return None
     past = values[-33:-1]
@@ -84,7 +86,7 @@ def propose_anticipatory_entry(closes: Sequence[Decimal]) -> ScalpIdea | None:
     """
     if len(closes) < 34:
         return None
-    values = [Decimal(str(v)) for v in closes[-34:]]
+    values = [Decimal(str(v)) for v in list(closes)[-34:]]
     if any(not v.is_finite() or v <= 0 for v in values):
         return None
     past, current = values[:-1], values[-1]
