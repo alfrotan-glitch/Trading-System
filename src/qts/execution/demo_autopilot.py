@@ -274,6 +274,17 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
                 if not code_ok:
                     halt(f"code drift: {code_detail}")
 
+            # A short-horizon provider must have its complete exit rules
+            # embedded in the immutable, policy-hashed registry record.
+            # No strategy may get in quickly without a registered way out.
+            if getattr(provider, "requires_registered_scalp_exit", False):
+                signed_exits = (
+                    entry.policy.raw.get("exit_conditions") or {}
+                    if entry.policy is not None else {}
+                )
+                if not isinstance(signed_exits, dict) or "scalp" not in signed_exits:
+                    halt("scalp provider requires a frozen registered scalp exit policy")
+
             # ---- 2b. bounded restart warmup --------------------------------
             # A restarted process would otherwise need ~12h of live bars before
             # a bar-based strategy can cross over. Seed the provider ONCE per

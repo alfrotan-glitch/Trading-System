@@ -311,6 +311,25 @@ def test_frozen_scalp_exit_refuses_foreign_position():
         )
 
 
+def test_scalp_provider_requires_frozen_exit_before_any_demo_order(
+    tmp_path: Path, authorized, monkeypatch
+):
+    """A provider's scalping flag cannot bypass the signed exit policy."""
+    _write_registry(tmp_path, provider_fixture.registry_entry())
+    monkeypatch.setattr(
+        provider_fixture.FakeSignalProvider, "requires_registered_scalp_exit", True, raising=False
+    )
+    terminal = FakeTerminal()
+    session = _armed_session(tmp_path, terminal)
+    report = run_autopilot(
+        session, AutopilotConfig(symbol="XAUUSD", max_iterations=1, poll_interval_s=0, actor="test")
+    )
+    assert report.halted is True
+    assert "frozen registered scalp exit" in (report.halt_reason or "")
+    assert report.orders_submitted == 0
+    assert terminal.requests == []
+
+
 def test_provider_exposing_an_optimization_hook_is_refused(tmp_path: Path, authorized):
     entry = provider_fixture.registry_entry(provider="fakes_demo_provider:SelfOptimizingProvider")
     _write_registry(tmp_path, entry)
