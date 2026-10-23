@@ -1,0 +1,48 @@
+{
+  "schema": "qts.xauusd_broker_opening_range.v1.summary",
+  "timestamp_basis": "CONFIRMED",
+  "one_minute_bar_count": 353758,
+  "event_extraction": {
+    "event_count": 518,
+    "qualifying_event_count": 494,
+    "incomplete_range_count": 6,
+    "ambiguous_breakout_count": 1,
+    "no_breakout_count": 18
+  },
+  "hypotheses": {
+    "H-ORB-01-BREAK": {
+      "decision": "INCONCLUSIVE",
+      "sample_count": 494,
+      "holdout_trade_count": 203,
+      "holdout_mean_net_bps_at_measured_quote_cost": -0.9826967498497351,
+      "holdout_mean_net_bps_at_2bps_extra_stress": -2.9826967498497354,
+      "holdout_bootstrap_95_percent_interval_at_2bps": [-5.049767263647597, -0.9848512390399684],
+      "walk_forward_fold_means_at_2bps": [-0.1673803070038245, -7.756027451421101, 6.6042768993061, 3.8005199496120454, -3.1656730458750784],
+      "positive_walk_forward_folds_at_2bps": 0
+    },
+    "H-ORB-01-FADE": {
+      "decision": "INCONCLUSIVE",
+      "sample_count": 494,
+      "holdout_trade_count": 203,
+      "holdout_mean_net_bps_at_measured_quote_cost": -0.20625148610415164,
+      "holdout_mean_net_bps_at_2bps_extra_stress": -2.206251486104152,
+      "holdout_bootstrap_95_percent_interval_at_2bps": [-4.205020433193386, -0.14939850554597725],
+      "walk_forward_fold_means_at_2bps": [-5.087444314787773, 2.440283856121836, -11.847743658249877, -8.829484576454519, -1.8805334318483595],
+      "positive_walk_forward_folds_at_2bps": 0
+    }
+  },
+  "decision": "NO_PROMOTION",
+  "edge_claim": "NOT ESTABLISHED",
+  "safety": {
+    "orders_submitted": 0,
+    "order_send_called": false,
+    "DEMO_EXECUTION": "DISABLED",
+    "LIVE": "LOCKED"
+  },
+  "cost_status": {
+    "quoted_bid_ask": "MEASURED",
+    "commission": "UNMEASURED",
+    "slippage": "UNMEASURED",
+    "financing": "NOT MATERIAL FOR INTRADAY HORIZONS; NOT MEASURED"
+  }
+}

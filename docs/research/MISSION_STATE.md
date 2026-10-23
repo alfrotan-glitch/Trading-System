@@ -636,3 +636,23 @@ no product integration is justified. The sanitized record is
 No order API was used; `orders_submitted=0`, `DEMO_EXECUTION=DISABLED`, and
 `LIVE=LOCKED` remain enforced. The full local output remains separate from
 tracked sanitized evidence.
+
+## Current continuation: fixed opening-range assay (2026-10-23)
+
+**Round 36 executed locally:** H-ORB-01 tested two predeclared UTC opening
+events (08:00 and 13:30), a 30-minute completed-bar range, the first breach
+within the next 60 minutes, next-bar executable entry, and a fixed 30-minute
+hold. Breakout and fade mappings were both evaluated with five chronological
+folds, a frozen 40% holdout, measured bid/ask execution, and 0/1/2 bps extra
+stress. The assay produced 494 qualifying events and 203 holdout trades,
+below the preregistered 500-trade minimum. Both holdout means were negative
+at measured quote cost and at 2 bps stress; both 2 bps bootstrap intervals
+were entirely below zero. The formal classification is `INCONCLUSIVE` because
+the sample gate was not met, not a validated edge. No candidate was promoted.
+The sanitized record is
+`data/evidence/mt5_broker_opening_range_365d_summary_20261023.json`.
+
+The assay used no order API and retained `LIVE=LOCKED` and
+`DEMO_EXECUTION=DISABLED`. The full local output remains separate from the
+tracked sanitized evidence. The next independent mechanism must not retune
+this event definition or reopen rejected families.
