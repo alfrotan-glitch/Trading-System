@@ -485,7 +485,8 @@ def _manage_open_positions(
     policy = dict(entry.exit_policy or {})
     # Only the immutable, hash-checked research policy may enable fast exits.
     # The mutable registry exit_policy is not sufficient authorization.
-    frozen_exits = ((entry.policy.raw.get("exit_conditions") or {}) if entry.policy else {})
+    frozen_policy = getattr(entry, "policy", None)
+    frozen_exits = (frozen_policy.raw.get("exit_conditions") or {}) if frozen_policy else {}
     scalp_spec = frozen_exits.get("scalp")
     scalp_plan = None
     if scalp_spec is not None:

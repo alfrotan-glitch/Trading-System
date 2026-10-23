@@ -586,10 +586,11 @@ def validate_policy(doc: Any, params: dict[str, Any] | None = None) -> tuple[Res
 
             try:
                 scalp = ScalpExitPlan.from_mapping(exits["scalp"])
-                if scalp.max_spread_bps > _as_float(doc.get("max_spread_bps") or 0):
+                spread_cap = _as_float(doc.get("max_spread_bps"))
+                if spread_cap is None or float(scalp.max_spread_bps) > spread_cap:
                     reasons.append(f"policy {label}: scalp max_spread_bps exceeds policy spread cap")
                 stale_cap = _as_float((doc.get("stale_data_protection") or {}).get("max_tick_age_s"))
-                if stale_cap is None or scalp.max_tick_age_s > stale_cap:
+                if stale_cap is None or float(scalp.max_tick_age_s) > stale_cap:
                     reasons.append(f"policy {label}: scalp max_tick_age_s exceeds policy stale cap")
             except ValueError as exc:
                 reasons.append(f"policy {label}: invalid scalp exit: {exc}")
