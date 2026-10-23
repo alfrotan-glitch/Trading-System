@@ -11,7 +11,6 @@ from qts.research.scalp_regimes import ScalpIdea
 from qts.research.scalp_replay import ReplayAssumptions, replay_scalp_bars
 from qts.research.xauusd_broker_ml import BrokerBars
 
-
 PLAN = ScalpExitPlan.from_mapping({
     "take_profit_net_bps": "5", "extra_cost_reserve_bps": "2",
     "max_loss_net_bps": "12", "max_spread_bps": "3", "max_tick_age_s": "3",

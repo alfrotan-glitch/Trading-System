@@ -297,7 +297,12 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
                 _seed_provider_history(session, provider, note)
 
             # ---- 3. market state -------------------------------------------
-            quote = session._quote_probe()
+            try:
+                quote = session._quote_probe()
+            except Exception as exc:
+                halt(f"market quote probe failed: {type(exc).__name__}: {exc}")
+            if not isinstance(quote, dict):
+                halt("market quote probe returned an invalid response")
             if not quote.get("ok"):
                 note("skip", f"market data unavailable: {quote.get('error')}")
                 time.sleep(config.poll_interval_s)
@@ -314,7 +319,12 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
             }
 
             # ---- 4. manage open positions ----------------------------------
-            _manage_open_positions(session, entry, journal, note, quote=quote)
+            try:
+                _manage_open_positions(session, entry, journal, note, quote=quote)
+            except AutopilotHalt:
+                raise
+            except Exception as exc:
+                halt(f"position management failed: {type(exc).__name__}: {exc}")
 
             # ---- 5. daily order cap ----------------------------------------
             if entry.max_orders_per_day and journal.orders_today() >= entry.max_orders_per_day:
@@ -323,7 +333,10 @@ def run_autopilot(session: Any, config: AutopilotConfig) -> AutopilotReport:
                 continue
 
             # ---- 6. signal → gate → order ----------------------------------
-            signal = provider.generate(market_state)
+            try:
+                signal = provider.generate(market_state)
+            except Exception as exc:
+                halt(f"signal provider failed: {type(exc).__name__}: {exc}")
             if signal is None:
                 journal.record_signal(
                     strategy_id=entry.strategy_id,

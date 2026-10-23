@@ -330,6 +330,45 @@ def test_scalp_provider_requires_frozen_exit_before_any_demo_order(
     assert terminal.requests == []
 
 
+
+def test_provider_exception_halts_demo_loop_instead_of_escaping(
+    tmp_path: Path, authorized, monkeypatch
+):
+    """Unexpected strategy failure creates a durable halt and no broker orders."""
+    _write_registry(tmp_path, provider_fixture.registry_entry())
+    terminal = FakeTerminal()
+    session = _armed_session(tmp_path, terminal)
+
+    def broken_generate(self, market_state):
+        raise RuntimeError("strategy failed")
+
+    monkeypatch.setattr(provider_fixture.FakeSignalProvider, "generate", broken_generate)
+    result = run_autopilot(
+        session, AutopilotConfig(symbol="XAUUSD", max_iterations=1, poll_interval_s=0, actor="test")
+    )
+    assert result.halted is True
+    assert "signal provider failed" in (result.halt_reason or "")
+    assert session.stage.current().stage == DemoStage.HALTED.value
+    assert result.orders_submitted == 0
+    assert terminal.requests == []
+
+
+def test_quote_probe_exception_halts_demo_loop(
+    tmp_path: Path, authorized, monkeypatch
+):
+    _write_registry(tmp_path, provider_fixture.registry_entry())
+    terminal = FakeTerminal()
+    session = _armed_session(tmp_path, terminal)
+    monkeypatch.setattr(session, "_quote_probe", lambda: (_ for _ in ()).throw(ConnectionError("quote lost")))
+    result = run_autopilot(
+        session, AutopilotConfig(symbol="XAUUSD", max_iterations=1, poll_interval_s=0, actor="test")
+    )
+    assert result.halted is True
+    assert "market quote probe failed" in (result.halt_reason or "")
+    assert result.orders_submitted == 0
+    assert terminal.requests == []
+
+
 def test_provider_exposing_an_optimization_hook_is_refused(tmp_path: Path, authorized):
     entry = provider_fixture.registry_entry(provider="fakes_demo_provider:SelfOptimizingProvider")
     _write_registry(tmp_path, entry)
