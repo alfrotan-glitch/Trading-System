@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
-
 import pytest
 
 from qts.research.scalp_performance_diagnostics import analyze_scalp_tick_report
