@@ -606,3 +606,19 @@ The runner was made directly invocable on Windows and used no order API.
 `orders_submitted=0`, `DEMO_EXECUTION=DISABLED`, and `LIVE=LOCKED` remain
 enforced. The full local output remains separate from tracked sanitized
 evidence.
+## Current continuation: fixed return-sign Markov assay (2026-10-23)
+
+**Round 34 executed locally:** H-STAT-01 fit a first-order two-state return-sign
+model with fixed Laplace smoothing and fixed 0.55/0.45 direction gates. The
+confirmed-basis 365-day ledger supplied 69,631 five-minute samples, but every
+walk-forward prefix estimated both state probabilities inside the no-trade
+band. All five folds and the frozen holdout therefore produced zero trades.
+The result is `INCONCLUSIVE`, not an edge, and no threshold was tuned after
+the result. The sanitized record is
+`data/evidence/mt5_broker_markov_365d_summary_20261023.json`.
+
+The shared MT5 tick-to-minute reader now serves the broker ML, regime, and
+Markov assays without changing their measured results. No order API was used;
+`orders_submitted=0`, `DEMO_EXECUTION=DISABLED`, and `LIVE=LOCKED` remain
+enforced. The full local output remains separate from tracked sanitized
+evidence.
