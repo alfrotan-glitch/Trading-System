@@ -7,6 +7,7 @@ presents its estimates as audited executions/profitability.
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 from decimal import Decimal
 from pathlib import Path
@@ -27,6 +28,11 @@ from qts.research.xauusd_tick_discovery import discovery_cutoff
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LOCAL_DATA_ROOT = REPO_ROOT / "data" / "raw" / "mt5_ticks"
 LOCAL_REPORT_ROOT = REPO_ROOT / "data" / "raw" / "scalp_replay_reports"
+
+# Bound temporary Arrow / NumPy allocations on memory-constrained Windows.
+# They do not change quote ordering, strategy settings or the evaluated data.
+BAR_BUILD_BATCH_ROWS = 16_384
+TICK_REPLAY_BATCH_ROWS = 8_192
 
 # Frozen research-only decision thresholds; no optimizer or CLI price tuning.
 PLAN = ScalpExitPlan.from_mapping({
@@ -85,7 +91,10 @@ def run(
     basis = timestamp_basis_assessment(manifest, timestamp_evidence)
     if basis.get("status") not in {"CONFIRMED", "MEASURED_SAME_SESSION"}:
         raise ValueError("MT5 timestamp basis unconfirmed; refusing scalp replay")
-    bars = read_broker_bars(dataset_dir, manifest.get("parts") or [])
+    bars = read_broker_bars(
+        dataset_dir, manifest.get("parts") or [],
+        batch_size=BAR_BUILD_BATCH_ROWS if (tick_stop_audit or tick_execution_replay) else 500_000,
+    )
     start, end = int(bars.time_msc.min()), int(bars.time_msc.max())
     cutoff = discovery_cutoff(start, end)
     report = replay_scalp_bars(bars, exit_plan=PLAN, end_exclusive_time_msc=cutoff)
@@ -106,6 +115,11 @@ def run(
         "decision": "RESEARCH_ONLY_NOT_VALIDATED",
     }
     if tick_stop_audit or tick_execution_replay:
+        # Bar aggregation is no longer needed after both frozen replay
+        # results have been constructed. Free those arrays before streaming
+        # tens of millions of ticks a second time.
+        del bars
+        gc.collect()
         # Independent read-only tick research, always discovery-only.
         # New entries after tick exits are recalculated, NEVER patched into
         # the earlier bar-replay trades. Both modes share one raw data pass.
@@ -134,7 +148,7 @@ def run(
             if discovery_complete:
                 break
             parquet = pq.ParquetFile(dataset_dir / "parts" / part["part"])
-            for batch in parquet.iter_batches(batch_size=250_000, columns=["time_msc", "bid", "ask"]):
+            for batch in parquet.iter_batches(batch_size=TICK_REPLAY_BATCH_ROWS, columns=["time_msc", "bid", "ask"]):
                 timestamps = np.asarray(batch.column("time_msc").to_numpy(zero_copy_only=False), dtype=np.int64)
                 discovery_rows = int(np.searchsorted(timestamps, cutoff, side="left"))
                 if discovery_rows:
@@ -263,7 +277,14 @@ def main(argv: list[str] | None = None) -> int:
         tick_execution_replay=args.tick_execution_replay,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    # Serialize incrementally to avoid allocating a second huge JSON string.
+    # Replace only after a complete successful write: a failed run must not
+    # truncate the last successful local report.
+    temp_output = args.output.with_name(args.output.name + ".tmp")
+    with temp_output.open("w", encoding="utf-8") as handle:
+        json.dump(report, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+    temp_output.replace(args.output)
     args.markdown.parent.mkdir(parents=True, exist_ok=True)
     args.markdown.write_text(_markdown(report), encoding="utf-8")
     summary = {"status": report["status"], "metrics": report["metrics"], "source": report["source"]}

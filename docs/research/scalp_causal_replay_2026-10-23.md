@@ -67,3 +67,13 @@ slippage and commission are named assumptions, latency and broker liquidity
 are unmeasured, and all trade reports stay in gitignored local raw paths.
 Only the previously defined discovery sample is read, and the strategy
 does not self-authorize broker orders, DEMO registration, or LIVE execution.
+
+## Windows low-memory tick replay (2026-10-23)
+
+The local research driver uses Arrow batches of 8,192 raw quotes for tick
+replays and 16,384 quotes during the preliminary bar build. Bar arrays are
+released before the tick pass and the JSON report is written incrementally
+through an atomic replacement. Chronology, full discovery scope, broker-side
+stops and frozen signal/exit thresholds are unchanged. No sampling, dropping,
+reordering, or strategy optimization is permitted. A failed run leaves the
+previous successfully written report intact; do not mistake it for new results.

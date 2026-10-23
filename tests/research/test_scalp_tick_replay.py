@@ -113,6 +113,23 @@ def test_inconsistent_frozen_strategy_assumptions_refused():
         )
 
 
+def test_tiny_batches_preserve_same_tick_replay(monkeypatch):
+    """The low-RAM streaming path cannot change signals or exit ordering."""
+    monkeypatch.setattr(scalp_tick_replay, "propose_scalp_entry", fake_signal)
+    t, b, a = series(stop=True)
+    baseline = engine()
+    baseline.consume(t, b, a)
+    streamed = engine()
+    for n in range(0, len(t), 2):
+        streamed.consume(t[n:n + 2], b[n:n + 2], a[n:n + 2])
+    first = baseline.report()
+    second = streamed.report()
+    assert first["trades"] == second["trades"]
+    assert first["metrics"] == second["metrics"]
+    assert first["signals"] == second["signals"]
+    assert first["raw_quote_rows"] == second["raw_quote_rows"]
+
+
 def test_replay_does_not_bridge_missing_minutes(monkeypatch):
     monkeypatch.setattr(scalp_tick_replay, "propose_scalp_entry", fake_signal)
     t, b, a = series()

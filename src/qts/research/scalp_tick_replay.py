@@ -288,7 +288,7 @@ class TickScalpReplay:
         if not len(stamps):
             return
         if (
-            np.any(stamps < 0) or np.any(np.diff(stamps) < 0)
+            np.any(stamps < 0) or np.any(stamps[1:] < stamps[:-1])
             or (self.last_timestamp is not None and int(stamps[0]) < self.last_timestamp)
         ):
             raise ValueError("raw tick ordering changed; replay refused")
@@ -301,13 +301,14 @@ class TickScalpReplay:
             self.first_stamp = int(stamps[0])
         self.quote_rows += len(stamps)
         self.last_timestamp = int(stamps[-1])
-        minute_ids = stamps // MINUTE_MS
-        starts = np.r_[0, np.flatnonzero(minute_ids[1:] != minute_ids[:-1]) + 1]
-        ends = np.r_[starts[1:], len(stamps)]
-        for left, right in zip(starts, ends, strict=True):
-            self._minute_quotes(
-                int(minute_ids[left]), stamps[left:right], bids[left:right], asks[left:right]
-            )
+        # Batches are intentionally small. Find minute seams without
+        # materializing a second array of all minute IDs for each batch.
+        left = 0
+        while left < len(stamps):
+            minute = int(stamps[left]) // MINUTE_MS
+            right = int(np.searchsorted(stamps, (minute + 1) * MINUTE_MS, side="left"))
+            self._minute_quotes(minute, stamps[left:right], bids[left:right], asks[left:right])
+            left = right
 
     def report(self) -> dict[str, Any]:
         if self.position is not None:

@@ -98,12 +98,16 @@ class _BarBuilder:
         )
 
 
-def read_broker_bars(dataset_dir: Path, parts: list[dict[str, Any]]) -> BrokerBars:
+def read_broker_bars(
+    dataset_dir: Path, parts: list[dict[str, Any]], *, batch_size: int = 500_000
+) -> BrokerBars:
     """Read validated Parquet quote parts without reordering or repairing them."""
+    if batch_size < 1:
+        raise ValueError("broker bar batch_size must be positive")
     builder = _BarBuilder()
     for part in parts:
         parquet = pq.ParquetFile(dataset_dir / "parts" / part["part"])
-        for batch in parquet.iter_batches(batch_size=500_000, columns=["time_msc", "bid", "ask"]):
+        for batch in parquet.iter_batches(batch_size=batch_size, columns=["time_msc", "bid", "ask"]):
             stamp = np.asarray(batch.column("time_msc").to_numpy(zero_copy_only=False), dtype=np.int64)
             bid = np.asarray(batch.column("bid").to_numpy(zero_copy_only=False), dtype=np.float64)
             ask = np.asarray(batch.column("ask").to_numpy(zero_copy_only=False), dtype=np.float64)
