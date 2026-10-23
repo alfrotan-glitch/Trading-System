@@ -1,0 +1,39 @@
+{
+  "schema": "qts.xauusd_temporal_summary.v1",
+  "experiment": "H-TEMP-01",
+  "dataset": "local 365-day MT5 bid/ask ledger; discovery prefix only",
+  "timestamp_basis": "MEASURED_SAME_SESSION",
+  "window": {
+    "discovery_rows": 53043202,
+    "held_out_rows_read_by_hypothesis": 0,
+    "held_out_rows": 28168436
+  },
+  "definition": "Fixed raw-hour active-versus-quiet absolute-move comparison; magnitude diagnostic, not a directional strategy.",
+  "measured": {
+    "horizon_16": {
+      "active_n": 608501,
+      "quiet_n": 145421,
+      "active_mean_dollars": 0.4423234637,
+      "quiet_mean_dollars": 0.5063744232,
+      "ratio_active_to_quiet": 0.8735106740,
+      "gap_dollars": -0.0640509595,
+      "exceed_spread_plus_2c_lift": 0.0879797504
+    },
+    "horizon_64": {
+      "ratio_active_to_quiet": 0.8456235112,
+      "gap_dollars": -0.1686607487,
+      "exceed_spread_plus_2c_lift": 0.0561833710
+    },
+    "tercile_ratios_horizon_16": [0.8850660917, 0.8754814641, 0.9609952116]
+  },
+  "decision": "REJECTED",
+  "reason": "The active-hour group was less volatile than the fixed quiet-hour group; the preregistered ratio and dollar-gap floors failed.",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "safety": {
+    "orders_submitted": 0,
+    "order_send_called": false,
+    "DEMO_EXECUTION": "DISABLED",
+    "LIVE": "LOCKED"
+  }
+}

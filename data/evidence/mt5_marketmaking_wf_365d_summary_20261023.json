@@ -1,0 +1,44 @@
+{
+  "schema": "qts.xauusd_marketmaking_wf_summary.v1",
+  "experiment": "H-MM-02",
+  "dataset": "local 365-day MT5 bid/ask ledger; discovery prefix only",
+  "timestamp_basis": "MEASURED_SAME_SESSION",
+  "window": {
+    "discovery_rows": 53043202,
+    "held_out_rows_read_by_hypothesis": 0,
+    "held_out_rows": 28168436,
+    "walk_forward_folds": 5
+  },
+  "definition": "Fixed low-volatility/tight-spread versus high-volatility/wide-spread synthetic front-of-queue fill comparison.",
+  "measured": {
+    "primary": {
+      "n_favorable": 19174,
+      "n_unfavorable": 995505,
+      "fill_lift": 0.0183351880,
+      "excursion_ratio": 1.5211879821,
+      "risk_adjusted_favorable": 0.0608780623,
+      "risk_adjusted_unfavorable": 0.0738501067,
+      "net_favorable": 0.1321789924,
+      "net_unfavorable": 0.2413587777,
+      "one_quote_delay_fill_favorable": 0.7285908000,
+      "one_quote_delay_fill_unfavorable": 0.7242776279
+    },
+    "fold_favorable_sample_sizes": [1222, 177, 6, 0, 17769],
+    "fold_fill_lifts_with_qualifying_samples": [0.0166741905, 0.0242796856]
+  },
+  "inference": {
+    "fill_source": "SYNTHETIC front-of-queue touch model",
+    "bootstrap": "NOT RUN",
+    "commission_slippage_swaps_fills": "UNMEASURED"
+  },
+  "decision": "INCONCLUSIVE",
+  "reason": "Three folds failed the preregistered favorable-sample minimum and the pooled fill-lift and risk-adjusted floors failed; synthetic fills cannot establish executable profitability.",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "safety": {
+    "orders_submitted": 0,
+    "order_send_called": false,
+    "DEMO_EXECUTION": "DISABLED",
+    "LIVE": "LOCKED"
+  }
+}

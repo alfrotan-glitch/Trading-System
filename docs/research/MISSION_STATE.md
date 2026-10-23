@@ -1,3 +1,30 @@
+## Current continuation: independent broker-ledger follow-ups (2026-10-23)
+
+**Round 31 executed locally:** the preregistered H-MM-02 market-making
+walk-forward was rerun on the confirmed-basis 365-day MT5 bid/ask ledger.
+The result is `INCONCLUSIVE`, not an edge: favorable-state fill lift was
+`0.0183` versus the `0.05` floor, risk-adjusted favorable/unfavorable results
+were `0.0609/0.0739`, and three folds had fewer than 500 favorable events.
+The engine uses synthetic front-of-queue fills; bootstrap, commission,
+slippage, swaps, and realized fill evidence remain unavailable. The sanitized
+record is `data/evidence/mt5_marketmaking_wf_365d_summary_20261023.json`.
+
+**Round 30 executed locally:** the preregistered H-TEMP-01 raw-hour magnitude
+test ran on the same ledger. It was `REJECTED`: the primary active/quiet
+absolute-movement ratio was `0.8735` with a `-$0.0641` gap, and the 64-quote
+ratio was `0.8456`. This is not a directional strategy and no candidate was
+promoted. The sanitized record is
+`data/evidence/mt5_temporal_365d_summary_20261023.json`.
+
+Neither experiment accessed the held-out suffix or an order API. `LIVE`
+remains locked and `DEMO_EXECUTION` remains disabled.
+
+The next independent mechanism is still Gold Futures basis versus XAUUSD.
+No GC series is present locally; official CME historical products require a
+separate data purchase or subscription, so basis research is blocked until a
+licensed, timestamp-aligned GC feed is acquired. Do not substitute a
+third-party unverified series or invent carry/roll costs.
+
 ## Current continuation: fixed UTC session assay (2026-10-23)
 
 **Round 29 executed locally:** the preregistered fixed London/New York session
