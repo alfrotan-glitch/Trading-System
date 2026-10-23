@@ -10,7 +10,6 @@ from qts.research import scalp_tick_replay
 from qts.research.scalp_regimes import ScalpIdea
 from qts.research.scalp_tick_replay import TickScalpReplay
 
-
 PLAN = ScalpExitPlan.from_mapping({
     "take_profit_net_bps": "5", "extra_cost_reserve_bps": "2",
     "max_loss_net_bps": "12", "max_spread_bps": "3", "max_tick_age_s": "3",
