@@ -50,3 +50,20 @@ trades only**, not the PnL of a rerun strategy. A first observed quote is
 not an executed stop order; commission, order routing, slippage, latency,
 price gaps and changed subsequent trade paths remain uncertain. This research
 never authorizes DEMO or LIVE orders and is not evidence of validated edge.
+
+## Causal tick-sequenced execution replay (research only)
+
+`--tick-execution-replay` independently recomputes two strategy paths using
+the original chronological broker bid/ask tick ledger. A signal requires a
+completed minute bar; an order candidate enters at the *first quote of the
+following minute*, only after passing the frozen spread, movement and
+no-chase gates. Exits at the earliest eligible tick use the closing side
+(bid for BUY / ask for SELL) and check broker-side stop, discretionary
+cost-reserved profit/loss thresholds, and a bounded holding time.
+
+Unlike the earlier stop-touch audit, this replay recomputes *subsequent*
+entry opportunities after each tick-level exit. Raw quotes are not fills:
+slippage and commission are named assumptions, latency and broker liquidity
+are unmeasured, and all trade reports stay in gitignored local raw paths.
+Only the previously defined discovery sample is read, and the strategy
+does not self-authorize broker orders, DEMO registration, or LIVE execution.

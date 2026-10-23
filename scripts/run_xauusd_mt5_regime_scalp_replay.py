@@ -21,6 +21,7 @@ from qts.execution.scalp_exit import ScalpExitPlan
 from qts.research.mt5_tick_bars import read_broker_bars
 from qts.research.scalp_replay import replay_scalp_bars
 from qts.research.scalp_tick_audit import TickStopAuditor
+from qts.research.scalp_tick_replay import TickScalpReplay
 from qts.research.xauusd_tick_discovery import discovery_cutoff
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -73,6 +74,7 @@ def run(
     timestamp_evidence: dict[str, Any],
     *,
     tick_stop_audit: bool = False,
+    tick_execution_replay: bool = False,
 ) -> dict[str, Any]:
     """Replay discovery history, optionally audit stop quotes from raw ticks."""
     manifest = json.loads((dataset_dir / MANIFEST_FILENAME).read_text(encoding="utf-8"))
@@ -103,18 +105,30 @@ def run(
         "stop_detection_basis": earlier["stop_detection_basis"],
         "decision": "RESEARCH_ONLY_NOT_VALIDATED",
     }
-    if tick_stop_audit:
-        # Inspect two independent, already-frozen trade paths in ONE pass.
-        # This does not replace bar replay PnL or invent broker fills.
-        assumed = report["cost_assumptions"]
-        auditors = [
-            TickStopAuditor(
-                trades["trades"],
-                exit_slippage_bps=Decimal(assumed["exit_slippage_bps"]),
-                round_trip_commission_bps=Decimal(assumed["round_trip_commission_bps"]),
-            )
-            for trades in (report, earlier)
-        ]
+    if tick_stop_audit or tick_execution_replay:
+        # Independent read-only tick research, always discovery-only.
+        # New entries after tick exits are recalculated, NEVER patched into
+        # the earlier bar-replay trades. Both modes share one raw data pass.
+        auditors: list[TickStopAuditor] = []
+        tick_engines: list[TickScalpReplay] = []
+        if tick_stop_audit:
+            assumed = report["cost_assumptions"]
+            auditors = [
+                TickStopAuditor(
+                    trades["trades"],
+                    exit_slippage_bps=Decimal(assumed["exit_slippage_bps"]),
+                    round_trip_commission_bps=Decimal(assumed["round_trip_commission_bps"]),
+                )
+                for trades in (report, earlier)
+            ]
+        if tick_execution_replay:
+            tick_engines = [
+                TickScalpReplay(
+                    mode=mode, exit_plan=PLAN,
+                    end_exclusive_time_msc=cutoff,
+                )
+                for mode in ("confirmed", "anticipatory")
+            ]
         discovery_complete = False
         for part in manifest["parts"]:
             if discovery_complete:
@@ -130,11 +144,19 @@ def run(
                         auditor.consume(
                             timestamps[:discovery_rows], bids[:discovery_rows], asks[:discovery_rows]
                         )
+                    for engine in tick_engines:
+                        engine.consume(
+                            timestamps[:discovery_rows], bids[:discovery_rows], asks[:discovery_rows]
+                        )
                 if discovery_rows < len(timestamps):
                     discovery_complete = True
                     break
-        report["first_stop_touch_tick_audit"] = auditors[0].report()
-        report["anticipatory_comparison"]["first_stop_touch_tick_audit"] = auditors[1].report()
+        if auditors:
+            report["first_stop_touch_tick_audit"] = auditors[0].report()
+            report["anticipatory_comparison"]["first_stop_touch_tick_audit"] = auditors[1].report()
+        if tick_engines:
+            report["tick_execution_replay"] = tick_engines[0].report()
+            report["anticipatory_comparison"]["tick_execution_replay"] = tick_engines[1].report()
     report["source"] = {
         "manifest_dataset_sha256": manifest.get("dataset_sha256"),
         "timestamp_basis": basis,
@@ -195,6 +217,17 @@ def _markdown(report: dict[str, Any]) -> str:
             "These are diagnostics for stop-touch events, NOT net strategy PnL or verified broker fills.",
         ] if "first_stop_touch_tick_audit" in report else ["Not requested."]),
         "",
+        "## Tick-sequenced execution replay (optional, research only)",
+        "",
+        *([
+            f"- Confirmed tick-replay trades: {report['tick_execution_replay']['metrics']['trades']}",
+            f"- Confirmed estimated mean net bps: {report['tick_execution_replay']['metrics']['mean_net_bps']}",
+            f"- Anticipatory tick-replay trades: {report['anticipatory_comparison']['tick_execution_replay']['metrics']['trades']}",
+            f"- Anticipatory estimated mean net bps: {report['anticipatory_comparison']['tick_execution_replay']['metrics']['mean_net_bps']}",
+            "Trades and subsequent signals have been independently recomputed after actual quote-time exits.",
+            "No broker fills or latency have been measured. No demonstrated profitability.",
+        ] if "tick_execution_replay" in report else ["Not requested."]),
+        "",
         "## Limits",
         "",
         *[f"- {x}" for x in report["limitations"]],
@@ -210,6 +243,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Observe first stop-crossing raw MT5 quotes without claiming broker fills",
     )
     parser.add_argument(
+        "--tick-execution-replay", action="store_true",
+        help="Independently recompute signals, trades and exits from chronological raw quote ticks",
+    )
+    parser.add_argument(
         "--timestamp-evidence", type=Path,
         default=REPO_ROOT / "data" / "evidence" / "mt5_timestamp_basis_20261023.json",
     )
@@ -220,7 +257,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     evidence = json.loads(args.timestamp_evidence.read_text(encoding="utf-8"))
     dataset_dir = args.dataset_dir if args.dataset_dir is not None else discover_dataset(LOCAL_DATA_ROOT, evidence)
-    report = run(dataset_dir, evidence, tick_stop_audit=args.tick_stop_audit)
+    report = run(
+        dataset_dir, evidence,
+        tick_stop_audit=args.tick_stop_audit,
+        tick_execution_replay=args.tick_execution_replay,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     args.markdown.parent.mkdir(parents=True, exist_ok=True)
@@ -229,6 +270,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.tick_stop_audit:
         summary["confirmed_tick_stop_audit"] = report["first_stop_touch_tick_audit"]
         summary["anticipatory_tick_stop_audit"] = report["anticipatory_comparison"]["first_stop_touch_tick_audit"]
+    if args.tick_execution_replay:
+        for name, result in (
+            ("confirmed", report["tick_execution_replay"]),
+            ("anticipatory", report["anticipatory_comparison"]["tick_execution_replay"]),
+        ):
+            summary[f"{name}_tick_execution"] = {
+                "status": result["status"],
+                "signals": result["signals"],
+                "metrics": result["metrics"],
+                "raw_quote_rows": result["raw_quote_rows"],
+                "minute_gaps": result["minute_gaps"],
+            }
     print(json.dumps(summary))
     return 0
 

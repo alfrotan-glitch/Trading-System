@@ -25,6 +25,9 @@ def series(*, stop=False):
     times = np.arange(40, dtype=np.int64) * 60000
     bid = np.full(40, 1999.9)
     ask = np.full(40, 2000.1)
+    # One distinct completed-bar close triggers a SINGLE synthetic signal.
+    bid[33] = 2000.4
+    ask[33] = 2000.6
     event_time = np.array([34 * 60000 + 500], dtype=np.int64)
     event_bid = np.array([1995.0 if stop else 2002.0], dtype=np.float64)
     event_ask = event_bid + 0.2
@@ -35,7 +38,7 @@ def series(*, stop=False):
 
 
 def fake_signal(closes):
-    if len(closes) == 34:
+    if len(closes) == 34 and closes[-1] == Decimal("2000.5"):
         return ScalpIdea("BUY", "breakout", "UP", Decimal("8"))
     return None
 
