@@ -17,6 +17,9 @@ import pyarrow.parquet as pq
 from scipy.stats import norm
 
 from qts.data.mt5_history_acquisition import MANIFEST_FILENAME
+from qts.data.mt5_timestamp_basis import (
+    timestamp_basis_assessment as _timestamp_basis_assessment,
+)
 from qts.research.impulse.statistics import holm_bonferroni
 from qts.research.xauusd_tick_discovery import discovery_cutoff
 
@@ -71,20 +74,11 @@ def classify_states(bid_cents: np.ndarray, ask_cents: np.ndarray) -> np.ndarray:
     return ((np.sign(db).astype(np.int8) + 1) * 3 + (np.sign(da).astype(np.int8) + 1)).astype(np.int8)
 
 
-def timestamp_basis_assessment(manifest: dict[str, Any]) -> dict[str, Any]:
-    """Do not treat a plausible clock, or a vendor sentence alone, as confirmation."""
-    confirmed = manifest.get("timestamp_interpretation_confirmed") is True
-    return {
-        "timestamp_interpretation_confirmed": confirmed,
-        "session_hour_weekday": "UNBLOCKED" if confirmed else "BLOCKED",
-        "raw_interarrival_milliseconds": "USABLE_WITHOUT_TIMEZONE",
-        "evidence": (
-            "MetaQuotes' copy_ticks_range page says obtained tick times are UTC. "
-            "The project live-tick path says server-local time and a measured offset. "
-            "This archive's manifest does not confirm either reading for these rows."
-        ),
-        "status": "CONFIRMED" if confirmed else "BLOCKED",
-    }
+def timestamp_basis_assessment(
+    manifest: dict[str, Any], evidence: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Require a manifest confirmation or digest-bound independent evidence."""
+    return _timestamp_basis_assessment(manifest, evidence)
 
 
 def mutual_information(joint: np.ndarray) -> float | None:
@@ -1096,7 +1090,7 @@ def _list3(values: np.ndarray) -> list[int]:
     return [int(v) for v in values.tolist()]
 
 
-def scan_dataset(dataset_dir: Path) -> dict[str, Any]:
+def scan_dataset(dataset_dir: Path, timestamp_evidence: dict[str, Any] | None = None) -> dict[str, Any]:
     dataset_dir = Path(dataset_dir)
     manifest = json.loads((dataset_dir / MANIFEST_FILENAME).read_text(encoding="utf-8"))
     parts = manifest.get("parts") or []
@@ -1129,6 +1123,7 @@ def scan_dataset(dataset_dir: Path) -> dict[str, Any]:
                 batch.column("time_msc").to_numpy(zero_copy_only=False),
             )
     measured = scan.finish()
+    basis = timestamp_basis_assessment(manifest, timestamp_evidence)
     identity_ok = True
     if manifest.get("dataset_sha256") == PUBLISHED_DIGEST and (
         scan.rows != PUBLISHED_ROWS or cutoff != PUBLISHED_CUTOFF
@@ -1148,14 +1143,14 @@ def scan_dataset(dataset_dir: Path) -> dict[str, Any]:
             "asset": "XAUUSD_730d_20260919T114013Z.zip",
             "expected_zip_sha256": "975b68637be3597aeccd9055c09b98a398cf799fc04a1530164ae6acf108f723",
             "manifest_dataset_sha256": manifest.get("dataset_sha256"),
-            "timestamp_interpretation_confirmed": manifest.get("timestamp_interpretation_confirmed") is True,
+            "timestamp_interpretation_confirmed": basis["timestamp_interpretation_confirmed"],
         },
         "code_identity": {
             "git_sha": os.environ.get("GITHUB_SHA", "UNAVAILABLE"),
             "execution_host": os.environ.get("QTS_DISCOVERY_EXECUTION_HOST", "UNAVAILABLE"),
             "module": "qts.research.xauusd_microstructure",
         },
-        "timestamp_basis": timestamp_basis_assessment(manifest),
+        "timestamp_basis": basis,
         "window": {
             "time_msc_min": time_min,
             "time_msc_max": time_max,

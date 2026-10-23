@@ -1,0 +1,23 @@
+{
+  "schema": "qts.mt5_365d_microstructure_summary.v1",
+  "study": "MT5-MICROSTRUCTURE-365D-20261023",
+  "dataset": {"window_days": 365, "rows": 81211638, "sha256": "cd021f50fb92ae07ffb5abb2f5829137909f7621ed51bd5dd80980a9db8d7161", "analysis_status": "PASS", "timestamp_basis_confirmed": true},
+  "scan": {
+    "engine_schema": "qts.xauusd_microstructure.v1",
+    "decision": "INCONCLUSIVE",
+    "edge_claim": "NOT ESTABLISHED",
+    "strategy_promoted": false,
+    "mutual_information_bits": 0.0778164223,
+    "hypothesis_statuses": {
+      "H-INT-01": "REJECTED",
+      "H-MV-01": "REJECTED",
+      "H-QD-01": "REJECTED",
+      "H-QD-02": "REJECTED",
+      "H-SP-01": "TESTED",
+      "H-SPR-01": "REJECTED",
+      "H-VOL-01": "REJECTED"
+    }
+  },
+  "limitations": {"independent_oos": false, "execution_costs": "quote spread measured; commission, slippage, swaps and fills unavailable", "interpretation": "fixed discovery scan only; no executable strategy was constructed"},
+  "safety": {"orders_submitted": 0, "DEMO_EXECUTION": "DISABLED", "LIVE": "LOCKED"}
+}

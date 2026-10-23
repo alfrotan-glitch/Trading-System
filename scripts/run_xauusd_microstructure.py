@@ -41,6 +41,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", required=True)
     parser.add_argument("--markdown", required=True)
     parser.add_argument("--work-dir", required=True)
+    parser.add_argument("--timestamp-evidence", type=Path)
     args = parser.parse_args(argv)
     zip_path = Path(args.zip)
     output = Path(args.output)
@@ -58,7 +59,10 @@ def main(argv: list[str] | None = None) -> int:
     manifests = sorted(Path(args.work_dir).rglob(MANIFEST_FILENAME))
     if not manifests:
         return _fail(output, markdown, "LAYOUT_UNAVAILABLE", "no acquisition manifest after extraction")
-    report = scan_dataset(manifests[0].parent)
+    timestamp_evidence = None
+    if args.timestamp_evidence:
+        timestamp_evidence = json.loads(args.timestamp_evidence.read_text(encoding="utf-8"))
+    report = scan_dataset(manifests[0].parent, timestamp_evidence=timestamp_evidence)
     report["verified_zip_sha256"] = digest
     report["checksum_match"] = True
     write_report(report, output)

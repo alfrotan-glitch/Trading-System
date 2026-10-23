@@ -1,0 +1,21 @@
+{
+  "schema": "qts.mt5_session_assay_summary.v1",
+  "study": "MT5-XAUUSD-SESSION-365D-20261023",
+  "dataset": {"days": 365, "rows": 81211638, "bars_15m": 23601, "events": 515, "timestamp_basis": "CONFIRMED"},
+  "design": {
+    "split": "chronological 60/20/20 by UTC calendar date",
+    "entry_exit": "first valid quote at or after fixed four-hour UTC session boundaries",
+    "quote_cost": "actual bid/ask side selection",
+    "additional_round_trip_cost_stress_bps": [0.0, 1.0, 2.0],
+    "parameter_search": false
+  },
+  "hypotheses": [
+    {"id": "H-SES-ASIA-REV-4H", "verdict": "INCONCLUSIVE", "events": 0, "reason": "no qualifying UTC session observations"},
+    {"id": "H-SES-LDN-MOM-4H", "verdict": "REJECTED", "n": {"discovery": 154, "validation": 51, "holdout": 52}, "mean_net_bps_at_1bp": {"discovery": -0.2958, "validation": 4.2214, "holdout": -6.5296}, "holdout_t": -0.9452, "holdout_mean_net_bps_at_2bp": -7.5296},
+    {"id": "H-SES-NY-MOM-4H", "verdict": "REJECTED", "n": {"discovery": 154, "validation": 52, "holdout": 52}, "mean_net_bps_at_1bp": {"discovery": -4.2329, "validation": 4.9780, "holdout": 0.4710}, "holdout_t": 0.0464, "holdout_mean_net_bps_at_2bp": -0.5290}
+  ],
+  "decision": "INCONCLUSIVE",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "safety": {"orders_submitted": 0, "DEMO_EXECUTION": "DISABLED", "LIVE": "LOCKED"}
+}

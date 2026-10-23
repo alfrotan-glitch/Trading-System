@@ -1,0 +1,14 @@
+{
+  "schema": "qts.mt5_session_reversal_summary.v1",
+  "study": "MT5-XAUUSD-SESSION-REVERSAL-365D-20261023",
+  "dataset": {"window_days": 365, "rows": 81211638, "timestamp_basis": "CONFIRMED"},
+  "design": {"split": "chronological 60/20/20 by UTC calendar date", "quote_cost": "actual bid/ask sides", "additional_round_trip_cost_stress_bps": [0.0, 1.0, 2.0], "parameter_search": false},
+  "hypotheses": [
+    {"id": "H-SES-LDN-REV-4H", "verdict": "REJECTED", "n": {"discovery": 154, "validation": 51, "holdout": 52}, "mean_net_bps_at_1bp": {"discovery": -0.3247, "validation": 3.9983, "holdout": -6.5381}, "holdout_t": -0.9467, "holdout_mean_net_bps_at_2bp": -7.5381},
+    {"id": "H-SES-NY-REV-4H", "verdict": "REJECTED", "n": {"discovery": 154, "validation": 52, "holdout": 52}, "mean_net_bps_at_1bp": {"discovery": -4.3569, "validation": 4.9669, "holdout": 0.4155}, "holdout_t": 0.0408, "holdout_mean_net_bps_at_2bp": -0.5845}
+  ],
+  "decision": "INCONCLUSIVE",
+  "edge_claim": "NOT ESTABLISHED",
+  "strategy_promoted": false,
+  "safety": {"orders_submitted": 0, "DEMO_EXECUTION": "DISABLED", "LIVE": "LOCKED"}
+}

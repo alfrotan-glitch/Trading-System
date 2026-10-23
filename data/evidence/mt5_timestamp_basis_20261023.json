@@ -1,0 +1,34 @@
+{
+  "comparison": {
+    "historical_request_alignment_tolerance_s": 600,
+    "history_last_raw_minus_live_raw_s": -10800.117,
+    "history_last_raw_minus_utc_now_s": -1.012,
+    "live_bar_alignment_tolerance_s": 120,
+    "live_raw_minus_utc_now_s": 10799.105,
+    "m1_raw_minus_live_raw_s": -34.169
+  },
+  "dataset_sha256s": [
+    "15320e222ca4d8f9765f33b989235f5bcaf474ead70ec0ac643fd5f73726a51f",
+    "3325b3af4e41d832f53d1ba14abd01d78bff0a54060dbc185e71e1de777ecffa",
+    "43e480953d340644644e30447cb4dcf856df9128fdd06a33a849d3b4cf0af8d9",
+    "a3ea48766d2587faf02223612e7675514d013f47a6b6dfb4f555e81027f3bca2",
+    "c5c7d14175c627d25aabb4cd81456fbc4e5cbebeef80e60bd925e9c9af5c2f62",
+    "cd021f50fb92ae07ffb5abb2f5829137909f7621ed51bd5dd80980a9db8d7161",
+    "e92fd22423191f0622d1e9beea94b869d30e184f0a7325f8a89183abe6fdb65a",
+    "f6c66a9da46eedf80d73402650fe1a53081023bb14994101e3c79a54f8b45a37",
+    "f77a615dccba49e8501e56921d284abdebc7250e443957da924b15b2eddacf85"
+  ],
+  "historical_api": "copy_ticks_range",
+  "historical_time_basis": "UTC",
+  "history_rows": 763,
+  "interpretation": "copy_ticks_range time_msc aligns with UTC request time while live/M1 raw times share a non-zero server-local offset; this evidence applies only to the digest-bound raw acquisitions",
+  "live_api": "symbol_info_tick + copy_rates_from_pos",
+  "live_time_basis": "SERVER_LOCAL",
+  "measured_at_utc": "2026-10-23T01:48:35.104189+00:00",
+  "order_send_called": false,
+  "orders_submitted": 0,
+  "read_only": true,
+  "request_window_seconds": 600,
+  "schema": "qts.mt5_timestamp_basis.v1",
+  "status": "MEASURED_SAME_SESSION"
+}

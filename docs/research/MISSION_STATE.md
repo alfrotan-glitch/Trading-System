@@ -1,3 +1,32 @@
+## Current continuation: fixed UTC session assay (2026-10-23)
+
+**Round 29 executed locally:** the preregistered fixed London/New York session
+reversal follow-up also rejected both hypotheses on the 365-day ledger. At the
+1 bps extra round-trip stress, London was negative in discovery and holdout;
+New York was negative in discovery and effectively flat in holdout. Both were
+more negative at 2 bps. This family is rejected and remains research-only;
+`data/evidence/mt5_session_reversal_365d_summary_20261023.json` records the
+bounded result.
+
+**Round 28 executed locally:** the first fixed session-conditioned directional
+family ran on the complete 365-day local MT5 ledger after the timestamp basis
+was independently measured and digest-bound. London and New York four-hour
+momentum were both rejected: London was negative in discovery and holdout;
+New York was negative in discovery, effectively flat in holdout, and negative
+under the 2 bps round-trip stress. The Asia reversal hypothesis had no
+qualifying observations. The family is not an edge and no strategy was
+promoted. Full fixed output is recorded in
+`docs/research/mt5_session_assay_365d_20261023.md` and the sanitized summary
+in `data/evidence/mt5_session_assay_365d_summary_20261023.json`.
+
+**Round 27 executed locally:** the read-only MT5 ladder completed 45-, 60-,
+90-, 120-, 180-, and 365-day windows. Deferred local analysis passed all six;
+the longest ledger contains 81,211,638 rows. A same-session, read-only basis
+measurement now binds the 1-, 7-, 30-, 45-, 60-, 90-, 120-, 180-, and 365-day
+dataset digests to UTC historical `copy_ticks_range` time fields. Raw manifests
+remain unchanged and conservative. The sanitized ladder is in
+`docs/research/mt5_history_ladder_2026-10-23.md`.
+
 ## Current continuation: 30-day microstructure continuation (2026-10-23)
 
 **Round 26 executed locally:** a complete 30-day read-only broker tick window

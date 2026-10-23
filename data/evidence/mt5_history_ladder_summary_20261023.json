@@ -1,0 +1,21 @@
+{
+  "schema": "qts.mt5_history_ladder_summary.v1",
+  "study": "MT5-XAUUSD-HISTORY-LADDER-20261023",
+  "read_only": true,
+  "orders_submitted": 0,
+  "order_send_called": false,
+  "timestamp_basis": "CONFIRMED_BY_DIGEST_BOUND_SAME_SESSION_EVIDENCE",
+  "windows": [
+    {"days": 1, "rows": 203296, "analysis": "PASS", "median_spread_bps": 0.5831314646, "p95_spread_bps": 0.6606223797, "sha256": "43e480953d340644644e30447cb4dcf856df9128fdd06a33a849d3b4cf0af8d9"},
+    {"days": 7, "rows": 935472, "analysis": "PASS", "median_spread_bps": 0.5802750020, "p95_spread_bps": 0.6534500347, "sha256": "f77a615dccba49e8501e56921d284abdebc7250e443957da924b15b2eddacf85"},
+    {"days": 30, "rows": 4124595, "analysis": "PASS", "median_spread_bps": 0.5768787016, "p95_spread_bps": 0.6668286108, "sha256": "15320e222ca4d8f9765f33b989235f5bcaf474ead70ec0ac643fd5f73726a51f"},
+    {"days": 45, "rows": 6260797, "analysis": "PASS", "median_spread_bps": 0.5810533044, "p95_spread_bps": 0.6902184541, "sha256": "c5c7d14175c627d25aabb4cd81456fbc4e5cbebeef80e60bd925e9c9af5c2f62"},
+    {"days": 60, "rows": 8411211, "analysis": "PASS", "median_spread_bps": 0.5812503179, "p95_spread_bps": 0.6793148624, "sha256": "3325b3af4e41d832f53d1ba14abd01d78bff0a54060dbc185e71e1de777ecffa"},
+    {"days": 90, "rows": 13574657, "analysis": "PASS", "median_spread_bps": 0.5934542002, "p95_spread_bps": 0.7358965428, "sha256": "f6c66a9da46eedf80d73402650fe1a53081023bb14994101e3c79a54f8b45a37"},
+    {"days": 120, "rows": 21089755, "analysis": "PASS", "median_spread_bps": 0.6002109972, "p95_spread_bps": 0.7405670275, "sha256": "e92fd22423191f0622d1e9beea94b869d30e184f0a7325f8a89183abe6fdb65a"},
+    {"days": 180, "rows": 37296873, "analysis": "PASS", "median_spread_bps": 0.5762982920, "p95_spread_bps": 0.7307181742, "sha256": "a3ea48766d2587faf02223612e7675514d013f47a6b6dfb4f555e81027f3bca2"},
+    {"days": 365, "rows": 81211638, "analysis": "PASS", "median_spread_bps": 0.5863282901, "p95_spread_bps": 0.9023864019, "sha256": "cd021f50fb92ae07ffb5abb2f5829137909f7621ed51bd5dd80980a9db8d7161"}
+  ],
+  "quality_statement": "All listed windows are complete; deferred local analysis found no backward timestamps, invalid bid/ask rows, ask-below-bid rows, or zero spreads.",
+  "safety": {"DEMO_EXECUTION": "DISABLED", "LIVE": "LOCKED"}
+}
