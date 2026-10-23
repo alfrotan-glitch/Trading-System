@@ -750,7 +750,7 @@ were negative at 2 bps. The 24-bar stability horizon was also negative
 (`-1.2405` measured and `-3.2405` at 2 bps; interval
 `[-5.4938, -0.9560]`). H-EMA-01 is **REJECTED**, not a validated edge; no
 candidate was promoted. The sanitized record is
- `data/evidence/mt5_broker_ema_365d_summary_20261023.json`.
+`data/evidence/mt5_broker_ema_365d_summary_20261023.json`.
 
 No order API was called; `orders_submitted=0`, `DEMO_EXECUTION=DISABLED`, and
 `LIVE=LOCKED` remain enforced. The next experiment must be materially distinct
