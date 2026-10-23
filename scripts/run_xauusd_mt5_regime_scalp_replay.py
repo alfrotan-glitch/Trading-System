@@ -81,6 +81,7 @@ def run(
     *,
     tick_stop_audit: bool = False,
     tick_execution_replay: bool = False,
+    counter_pressure_replay: bool = False,
 ) -> dict[str, Any]:
     """Replay discovery history, optionally audit stop quotes from raw ticks."""
     manifest = json.loads((dataset_dir / MANIFEST_FILENAME).read_text(encoding="utf-8"))
@@ -93,7 +94,7 @@ def run(
         raise ValueError("MT5 timestamp basis unconfirmed; refusing scalp replay")
     bars = read_broker_bars(
         dataset_dir, manifest.get("parts") or [],
-        batch_size=BAR_BUILD_BATCH_ROWS if (tick_stop_audit or tick_execution_replay) else 500_000,
+        batch_size=BAR_BUILD_BATCH_ROWS if (tick_stop_audit or tick_execution_replay or counter_pressure_replay) else 500_000,
     )
     start, end = int(bars.time_msc.min()), int(bars.time_msc.max())
     cutoff = discovery_cutoff(start, end)
@@ -114,7 +115,7 @@ def run(
         "stop_detection_basis": earlier["stop_detection_basis"],
         "decision": "RESEARCH_ONLY_NOT_VALIDATED",
     }
-    if tick_stop_audit or tick_execution_replay:
+    if tick_stop_audit or tick_execution_replay or counter_pressure_replay:
         # Bar aggregation is no longer needed after both frozen replay
         # results have been constructed. Free those arrays before streaming
         # tens of millions of ticks a second time.
@@ -135,13 +136,18 @@ def run(
                 )
                 for trades in (report, earlier)
             ]
-        if tick_execution_replay:
+        if tick_execution_replay or counter_pressure_replay:
+            # All candidate paths receive the same raw ticks and frozen
+            # cost/exit assumptions. No parameter search or holdout peek.
+            modes = ["confirmed", "anticipatory"]
+            if counter_pressure_replay:
+                modes.append("counter_pressure")
             tick_engines = [
                 TickScalpReplay(
                     mode=mode, exit_plan=PLAN,
                     end_exclusive_time_msc=cutoff,
                 )
-                for mode in ("confirmed", "anticipatory")
+                for mode in modes
             ]
         discovery_complete = False
         for part in manifest["parts"]:
@@ -171,6 +177,8 @@ def run(
         if tick_engines:
             report["tick_execution_replay"] = tick_engines[0].report()
             report["anticipatory_comparison"]["tick_execution_replay"] = tick_engines[1].report()
+            if counter_pressure_replay:
+                report["counter_pressure_replay"] = tick_engines[2].report()
     report["source"] = {
         "manifest_dataset_sha256": manifest.get("dataset_sha256"),
         "timestamp_basis": basis,
@@ -242,6 +250,16 @@ def _markdown(report: dict[str, Any]) -> str:
             "No broker fills or latency have been measured. No demonstrated profitability.",
         ] if "tick_execution_replay" in report else ["Not requested."]),
         "",
+        "## Frozen contrarian compression challenger (optional, research only)",
+        "",
+        *([
+            f"- Fade candidate trades: {report['counter_pressure_replay']['metrics']['trades']}",
+            f"- Fade candidate estimated mean net bps: {report['counter_pressure_replay']['metrics']['mean_net_bps']}",
+            f"- Fade candidate win rate: {report['counter_pressure_replay']['metrics']['win_rate']}",
+            "This is a different, reverse-side hypothesis, selected after previous discovery evidence.",
+            "Any discovery result is exploratory, NOT out-of-sample validation.",
+        ] if "counter_pressure_replay" in report else ["Not requested."]),
+        "",
         "## Limits",
         "",
         *[f"- {x}" for x in report["limitations"]],
@@ -261,6 +279,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Independently recompute signals, trades and exits from chronological raw quote ticks",
     )
     parser.add_argument(
+        "--counter-pressure-replay", action="store_true",
+        help="Evaluate one frozen contrarian compression hypothesis with both original modes",
+    )
+    parser.add_argument(
         "--timestamp-evidence", type=Path,
         default=REPO_ROOT / "data" / "evidence" / "mt5_timestamp_basis_20261023.json",
     )
@@ -275,6 +297,7 @@ def main(argv: list[str] | None = None) -> int:
         dataset_dir, evidence,
         tick_stop_audit=args.tick_stop_audit,
         tick_execution_replay=args.tick_execution_replay,
+        counter_pressure_replay=args.counter_pressure_replay,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     # Serialize incrementally to avoid allocating a second huge JSON string.
@@ -291,7 +314,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.tick_stop_audit:
         summary["confirmed_tick_stop_audit"] = report["first_stop_touch_tick_audit"]
         summary["anticipatory_tick_stop_audit"] = report["anticipatory_comparison"]["first_stop_touch_tick_audit"]
-    if args.tick_execution_replay:
+    if args.tick_execution_replay or args.counter_pressure_replay:
         for name, result in (
             ("confirmed", report["tick_execution_replay"]),
             ("anticipatory", report["anticipatory_comparison"]["tick_execution_replay"]),
@@ -303,6 +326,15 @@ def main(argv: list[str] | None = None) -> int:
                 "raw_quote_rows": result["raw_quote_rows"],
                 "minute_gaps": result["minute_gaps"],
             }
+    if args.counter_pressure_replay:
+        result = report["counter_pressure_replay"]
+        summary["counter_pressure_tick_execution"] = {
+            "status": result["status"],
+            "signals": result["signals"],
+            "metrics": result["metrics"],
+            "raw_quote_rows": result["raw_quote_rows"],
+            "minute_gaps": result["minute_gaps"],
+        }
     print(json.dumps(summary))
     return 0
 

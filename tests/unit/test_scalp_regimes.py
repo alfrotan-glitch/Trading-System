@@ -7,6 +7,7 @@ from qts.research.demo_scalp_provider import AnticipatoryScalpProvider, RegimeSc
 from qts.research.scalp_regimes import (
     early_entry_still_has_room,
     propose_anticipatory_entry,
+    propose_counter_pressure_entry,
     propose_scalp_entry,
 )
 
@@ -132,3 +133,30 @@ def test_early_entry_does_not_chase_a_confirmed_breakout_at_execution_time():
         idea, bid=Decimal("2005.1"), ask=Decimal("2005.3"),
         reserve_bps=Decimal("2"), margin_bps=Decimal("1"),
     )
+
+
+def test_counter_pressure_candidate_is_opposite_causal_setup_with_midpoint_room():
+    prices = [Decimal(2002 + (3 if i % 2 else -3)) for i in range(25)]
+    prices += [Decimal(v) for v in (
+        "2003.6", "2003.65", "2003.62", "2003.66", "2003.60",
+        "2003.63", "2003.64", "2003.66", "2003.72",
+    )]
+    confirmed = propose_anticipatory_entry(prices)
+    fade = propose_counter_pressure_entry(prices)
+    assert confirmed is not None and confirmed.side == "BUY"
+    assert fade is not None
+    assert fade.side == "SELL" and fade.family == "pre_breakout_fade"
+    channel = prices[-21:-1]
+    assert fade.boundary_price == (min(channel) + max(channel)) / 2
+    assert early_entry_still_has_room(
+        fade, bid=Decimal("2004.2"), ask=Decimal("2004.4"),
+        reserve_bps=Decimal("2"), margin_bps=Decimal("1"),
+    )
+    assert not early_entry_still_has_room(
+        fade, bid=fade.boundary_price, ask=fade.boundary_price + Decimal("0.2"),
+        reserve_bps=Decimal("2"), margin_bps=Decimal("1"),
+    )
+    assert propose_counter_pressure_entry(prices + [Decimal("1000")]) != fade
+    assert propose_counter_pressure_entry(prices + [Decimal("1000")]) is None
+    assert propose_counter_pressure_entry(prices[:33]) is None
+    assert propose_counter_pressure_entry([Decimal("2000")] * 34) is None

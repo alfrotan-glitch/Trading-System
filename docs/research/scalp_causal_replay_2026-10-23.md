@@ -77,3 +77,22 @@ through an atomic replacement. Chronology, full discovery scope, broker-side
 stops and frozen signal/exit thresholds are unchanged. No sampling, dropping,
 reordering, or strategy optimization is permitted. A failed run leaves the
 previous successfully written report intact; do not mistake it for new results.
+
+## Fixed counter-pressure compression hypothesis (research-only)
+
+The existing anticipatory setup assumes price pressure toward a channel boundary
+predicts continuation. The new `counter_pressure` mode challenges that
+assumption by taking the *opposite* side for the exact same completed-bar
+compression precursor, hypothesizing a return toward the preceding channel
+midpoint. This is NOT a discovered edge and does not tune parameters on the
+previously observed negative outcomes. The entry must retain sufficient
+executable-side price room to the frozen midpoint, after the same reserves.
+
+Run `python scripts/run_xauusd_mt5_regime_scalp_replay.py --counter-pressure-replay`
+on the local original MT5 dataset to compare confirmed, anticipatory and the
+single pre-specified fade challenger on exactly the same causal discovery
+history. All modes independently recompute entries and exits from bid/ask
+quotes in the same bounded-memory tick scan. No holdout inspection, broker
+orders, DEMO enrollment or LIVE unlock. Since the challenger was conceived
+after inspecting the discovery data, even a positive result would require
+independent out-of-sample validation before any trading claim.

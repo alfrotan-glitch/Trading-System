@@ -128,6 +128,28 @@ def propose_anticipatory_entry(closes: Sequence[Decimal]) -> ScalpIdea | None:
     return None
 
 
+def propose_counter_pressure_entry(closes: Sequence[Decimal]) -> ScalpIdea | None:
+    """Research challenger: fade the same causal compression pressure setup.
+
+    No new optimized thresholds. The competing hypothesis is a short-lived
+    reversal toward the previously observed channel midpoint instead of a
+    breakout. Same signals, reverse direction, same fixed risk/exit model.
+    """
+    original = propose_anticipatory_entry(closes)
+    if original is None:
+        return None
+    values = [Decimal(str(v)) for v in list(closes)[-34:]]
+    channel = values[-21:-1]  # Previous 20 completed prices, excluding signal bar.
+    midpoint = (min(channel) + max(channel)) / 2
+    return ScalpIdea(
+        "SELL" if original.side == "BUY" else "BUY",
+        "pre_breakout_fade",
+        "COMPRESSION_FADE",
+        original.movement_proxy_price,
+        midpoint,
+    )
+
+
 def early_entry_still_has_room(
     idea: ScalpIdea,
     *,
@@ -143,7 +165,7 @@ def early_entry_still_has_room(
     jumps and last-millisecond chasing; it does not assert that the boundary
     will be reached or that its mid price can be filled.
     """
-    if idea.family != "pre_breakout":
+    if idea.family not in ("pre_breakout", "pre_breakout_fade"):
         return True
     boundary = idea.boundary_price
     numbers = (bid, ask, reserve_bps, margin_bps)

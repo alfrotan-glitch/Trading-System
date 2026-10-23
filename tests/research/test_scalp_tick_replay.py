@@ -139,3 +139,25 @@ def test_replay_does_not_bridge_missing_minutes(monkeypatch):
     r = e.report()
     assert r["minute_gaps"] == 1
     assert r["metrics"]["trades"] == 1
+
+
+def test_counter_pressure_replay_is_research_only_and_uses_next_minute(monkeypatch):
+    def fade_signal(closes):
+        if len(closes) == 34 and closes[-1] == Decimal("2000.5"):
+            return ScalpIdea(
+                "SELL", "pre_breakout_fade", "COMPRESSION_FADE",
+                Decimal("8"), Decimal("1990"),
+            )
+        return None
+
+    monkeypatch.setattr(scalp_tick_replay, "propose_counter_pressure_entry", fade_signal)
+    t, b, a = series(stop=True)
+    e = engine("counter_pressure")
+    e.consume(t, b, a)
+    out = e.report()
+    assert out["entry_mode"] == "counter_pressure"
+    assert out["metrics"]["trades"] == 1
+    assert out["trades"][0]["side"] == "SELL"
+    assert out["trades"][0]["entry_time_msc"] == 34 * 60000
+    assert out["orders_submitted"] == 0 and out["LIVE"] == "LOCKED"
+    assert out["strategy_promoted"] is False

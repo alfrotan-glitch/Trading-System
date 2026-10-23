@@ -20,13 +20,14 @@ from qts.research.scalp_regimes import (
     ScalpIdea,
     early_entry_still_has_room,
     propose_anticipatory_entry,
+    propose_counter_pressure_entry,
     propose_scalp_entry,
 )
 from qts.research.scalp_replay import ReplayAssumptions
 
 MINUTE_MS = 60_000
 BPS = Decimal("10000")
-MODE = Literal["confirmed", "anticipatory"]
+MODE = Literal["confirmed", "anticipatory", "counter_pressure"]
 
 
 def _check_assumptions(values: ReplayAssumptions) -> None:
@@ -89,7 +90,7 @@ class TickScalpReplay:
         assumptions: ReplayAssumptions | None = None,
         end_exclusive_time_msc: int,
     ) -> None:
-        if mode not in ("confirmed", "anticipatory"):
+        if mode not in ("confirmed", "anticipatory", "counter_pressure"):
             raise ValueError("unknown tick scalp entry mode")
         if end_exclusive_time_msc <= 0 or end_exclusive_time_msc % MINUTE_MS:
             raise ValueError("research cutoff must be positive and minute-aligned")
@@ -251,8 +252,10 @@ class TickScalpReplay:
                 if self.position is None:
                     if self.mode == "confirmed":
                         candidate = propose_scalp_entry(self.closes)
-                    else:
+                    elif self.mode == "anticipatory":
                         candidate = propose_anticipatory_entry(self.closes)
+                    else:
+                        candidate = propose_counter_pressure_entry(self.closes)
                     if candidate is not None:
                         self.signals += 1
             else:
