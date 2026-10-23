@@ -101,8 +101,11 @@ def _summarize(trades: list[dict[str, Any]]) -> dict[str, Any]:
             "trades": 0, "win_rate": None, "mean_net_bps": None,
             "total_net_bps_additive": None, "max_drawdown_bps_additive": None,
             "uncertain_intrabar_stop_count": 0, "uncertain_exit_count": 0, "by_family": {},
+            "mean_net_bps_if_stop_at_trigger": None,
+            "stop_fill_assumption_drag_bps_per_trade": None,
         }
     nets = [Decimal(t["net_bps"]) for t in trades]
+    trigger_nets = [Decimal(t["net_bps_if_stop_at_trigger"]) for t in trades]
     cumulative = Decimal(0)
     peak = Decimal(0)
     max_drawdown = Decimal(0)
@@ -117,6 +120,10 @@ def _summarize(trades: list[dict[str, Any]]) -> dict[str, Any]:
         "trades": len(trades),
         "win_rate": sum(n > 0 for n in nets) / len(nets),
         "mean_net_bps": float(sum(nets) / len(nets)),
+        "mean_net_bps_if_stop_at_trigger": float(sum(trigger_nets) / len(trigger_nets)),
+        "stop_fill_assumption_drag_bps_per_trade": float(
+            (sum(trigger_nets) - sum(nets)) / len(nets)
+        ),
         "total_net_bps_additive": float(cumulative),
         "max_drawdown_bps_additive": float(max_drawdown),
         "uncertain_intrabar_stop_count": sum(
@@ -188,13 +195,25 @@ def replay_scalp_bars(
         liquidation = price - exit_slip if side == "BUY" else price + exit_slip
         signed = liquidation - entry if side == "BUY" else entry - liquidation
         pnl_bps = signed * BPS / entry - assumptions.round_trip_commission_bps
+        # A price-trigger fill is a hypothetical diagnostic ONLY. Real
+        # broker stop orders may slip or gap through the trigger. Keep the
+        # original stress result unchanged for safety and comparability.
+        trigger_net_bps = pnl_bps
+        if reason == "intrabar_stop_touch_uncertain":
+            trigger = Decimal(str(pos["stop"]))
+            trigger_slip = trigger * assumptions.exit_slippage_bps / BPS
+            trigger_fill = trigger - trigger_slip if side == "BUY" else trigger + trigger_slip
+            trigger_move = trigger_fill - entry if side == "BUY" else entry - trigger_fill
+            trigger_net_bps = trigger_move * BPS / entry - assumptions.round_trip_commission_bps
         trades.append({
             "signal_time_msc": int(pos["signal_time_msc"]),
             "entry_time_msc": int(bars.time_msc[entry_index]),
             "exit_time_msc": int(bars.time_msc[index]),
             "side": side, "family": pos["family"], "regime": pos["regime"],
             "entry_price": str(entry), "exit_price_after_slippage": str(liquidation),
-            "net_bps": str(pnl_bps), "exit_reason": reason,
+            "net_bps": str(pnl_bps),
+            "net_bps_if_stop_at_trigger": str(trigger_net_bps),
+            "exit_reason": reason,
             "hold_bars": index - entry_index + 1,
             "intrabar_fill_uncertain": uncertain,
         })
@@ -321,6 +340,7 @@ def replay_scalp_bars(
         "limitations": [
             "one-minute-bar approximation; unknown order of intrabar events",
             "bid/ask extrema detect possible broker-side stop touches when available; fill price and sequence remain uncertain",
+            "stop-at-trigger fill scenario is hypothetical, not a broker-fill estimate or validated edge",
             "no observed execution fills, latency, or true commission",
             "no independent unseen validation; never authorizes DEMO or LIVE",
             "basis-point trade sums are not compounded portfolio returns",

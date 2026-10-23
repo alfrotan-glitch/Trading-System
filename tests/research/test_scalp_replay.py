@@ -102,6 +102,12 @@ def test_real_quote_extrema_detect_a_stop_hidden_by_mid_range(monkeypatch):
     assert outcome["stop_detection_basis"] == "BROKER_BID_ASK_EXTREMA"
     assert outcome["metrics"]["uncertain_intrabar_stop_count"] >= 1
     assert outcome["trades"][0]["exit_reason"] == "intrabar_stop_touch_uncertain"
+    assert Decimal(outcome["trades"][0]["net_bps_if_stop_at_trigger"]) > Decimal(
+        outcome["trades"][0]["net_bps"]
+    )
+    assert outcome["metrics"]["mean_net_bps_if_stop_at_trigger"] > outcome["metrics"]["mean_net_bps"]
+    assert outcome["metrics"]["stop_fill_assumption_drag_bps_per_trade"] > 0
+    assert outcome["strategy_promoted"] is False and outcome["LIVE"] == "LOCKED"
 
 
 def test_replay_rejects_inconsistent_bid_ask_extrema():
@@ -109,6 +115,14 @@ def test_replay_rejects_inconsistent_bid_ask_extrema():
     b = replace(b, low_bid=np.full(40, 2001.0), high_ask=np.full(40, 2001.2))
     with pytest.raises(ValueError, match="broker-side quote extrema"):
         replay_scalp_bars(b, exit_plan=PLAN)
+
+
+def test_no_stop_touch_has_zero_stop_assumption_drag(monkeypatch):
+    """Changing stop-fill diagnostics must not alter exits without stop touches."""
+    monkeypatch.setattr(scalp_replay, "propose_scalp_entry", lambda closes: None)
+    result = replay_scalp_bars(bars(), exit_plan=PLAN)
+    assert result["metrics"]["trades"] == 0
+    assert result["metrics"]["mean_net_bps_if_stop_at_trigger"] is None
 
 
 def test_replay_refuses_parameter_search_disguised_as_assumptions():

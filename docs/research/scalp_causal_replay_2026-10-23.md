@@ -24,3 +24,14 @@ are made, and LIVE remains locked. Run only on the historical discovery
 portion during development; do not optimize parameters using the
 already repeatedly inspected holdout. A new independent holdout and
 measured DEMO execution costs are necessary before claiming profitability.
+
+## Stop-fill assumption sensitivity
+
+The replay retains its original conservative stop-exit result. It also reports
+`mean_net_bps_if_stop_at_trigger` using the same trade decisions and cost
+assumptions, replacing only the intrabar stop exit by a hypothetical stop-price
+fill, after the configured exit-slippage assumption. The difference is reported
+as `stop_fill_assumption_drag_bps_per_trade`. This is a sensitivity comparison,
+**not an upper/lower guarantee**: an actual stop order may slip or gap beyond
+its trigger; broker executions must ultimately be validated using sequenced
+raw ticks and actual DEMO fills. Neither variant establishes a trading edge.
