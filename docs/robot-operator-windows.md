@@ -18,7 +18,10 @@ does not prove profitability; LIVE orders stay locked.
    authority, registration, identity, risk, reconciliation or stage check fails.
    Only if verification passes does it call
    `python -m qts demo run --confirm --risk-ack --poll-interval 5`.
-   To stop the console runner, use `Ctrl+C`.
+   To stop the console runner, use `Ctrl+C`. **Then check the
+   open DEMO positions in MetaTrader 5:** stopping the software loop does
+   not automatically guarantee positions were closed. Broker-side stops
+   and manual position management remain important.
 
 Simply double-clicking the launcher cannot submit broker orders; the
 explicit second option and the backend's separate authorization are mandatory.

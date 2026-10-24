@@ -62,7 +62,9 @@ if errorlevel 1 (
   pause
   exit /b 2
 )
-echo Starting controlled DEMO robot. Press Ctrl+C to stop.
+echo Starting controlled DEMO robot. Press Ctrl+C to stop its loop.
+echo IMPORTANT: Stopping the loop does NOT guarantee open DEMO positions close.
+echo After stopping, check MetaTrader 5 positions and close them if needed.
 ".venv\Scripts\python.exe" -m qts demo run --confirm --risk-ack --poll-interval 5
 set "RESULT=%ERRORLEVEL%"
 if not "%RESULT%"=="0" (
