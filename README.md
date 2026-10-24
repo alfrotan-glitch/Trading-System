@@ -56,6 +56,32 @@ release gate. It does not change the safety posture — see
 
 ---
 
+## Start the Robot on Windows
+
+**Double-click \`ROBOT.bat\` in the repository folder.** It opens the
+existing QTS desktop and the guided DEMO account workflow. No coding or
+PowerShell command is required for day-to-day opening. This is a shortcut
+to \`scripts\run_qts.bat\`, **not a second trading engine**.
+
+- **What works:** the desktop, MT5-DEMO connection diagnostics, observation,
+  and the existing guarded DEMO execution/autopilot architecture when it has
+  independent owner authorization, registration and all operational gates.
+- **What does not exist yet:** a validated after-cost profitable XAUUSD edge.
+  The tested 1-minute confirmed/anticipatory strategies have negative
+  estimated mean returns. The new counter-pressure research candidate is
+  not a proven solution. Do **not** treat an executable bot as evidence of
+  profitability.
+- **Money:** no live orders, live unlock, or automatic DEMO order submission
+  from launching \`ROBOT.bat\`. The operator must separately complete the
+  established DEMO execution approvals before any DEMO order can be sent.
+- **If Windows cannot start Python:** the launcher reports a direct memory
+  diagnostic; restart Windows and inspect free RAM/pagefile rather than
+  deleting the repo or your private tick history.
+
+Read [the short robot guide](docs/robot-operator-windows.md).
+
+---
+
 ## Quickstart
 
 ### 1. Prerequisites
