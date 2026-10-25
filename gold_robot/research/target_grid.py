@@ -29,6 +29,7 @@ def compare_targets(trials: list[Trial], active_days: int) -> list[dict]:
     if active_days <= 0 or not trials:
         raise ValueError("provide trials and positive active_days")
     groups: dict[float, dict[str, Trial]] = defaultdict(dict)
+    signal_days: dict[str, str] = {}
     for item in trials:
         if not item.signal_id or not item.day or not isfinite(item.target_r) or item.target_r <= 0:
             raise ValueError("invalid signal identification or R")
@@ -36,6 +37,9 @@ def compare_targets(trials: list[Trial], active_days: int) -> list[dict]:
             "target", "stop", "timeout", "pending_unfilled", "pending_at_end", "open_at_end"
         } or not isfinite(item.result.net_usd):
             raise ValueError("unknown or nonfinite execution outcome")
+        old_day = signal_days.setdefault(item.signal_id, item.day)
+        if old_day != item.day:
+            raise ValueError("signal day changed across target variants")
         if item.signal_id in groups[item.target_r]:
             raise ValueError("duplicated signal for a target")
         groups[item.target_r][item.signal_id] = item

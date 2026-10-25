@@ -49,3 +49,8 @@ def test_duplicate_and_nonfinite_refused():
 def test_missing_expiry_quotes_is_unresolved_and_not_a_fill():
     x = compare_targets([Trial("a", "2026-10-01", 1, outcome("pending_at_end", 0))], 1)[0]
     assert x["filled"] == 0 and x["unresolved"] == 1
+
+def test_signal_day_must_not_change_across_target_variants():
+    with pytest.raises(ValueError, match="day changed"):
+        compare_targets([Trial("a", "2026-10-01", 1, outcome("target", 1)),
+                         Trial("a", "2026-10-02", 2, outcome("target", 1))], 2)
