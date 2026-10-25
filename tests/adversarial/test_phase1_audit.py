@@ -56,8 +56,9 @@ def test_next_bar_execution_no_lookahead():
         res = engine.run(
             instr, manifest.timeframe, manifest.version, strategy_id="hold_long", strategy_params={"quantity": 0.1}
         )
-        # hold_long should have exactly 1 trade, filled at bar 1 open
-        assert res.trades == 1, f"expected 1 fill, got {res.fills}"
+        # hold_long has one ENTRY fill, but no completed round trip.
+        assert res.fill_count == 1, f"expected 1 fill, got {res.fills}"
+        assert res.trades == 0
         fill = res.fills[0]
         # next-bar: fill at bar_idx 1, price == bars[1].open == 2010
         assert fill["bar_idx"] == 1, f"fill at {fill['bar_idx']} should be 1 (next bar)"
@@ -129,7 +130,8 @@ def test_leakage_fixture_only_profitable_with_lookahead():
         )
         # With no trend and next-bar at open, equity should not grow: final equity == initial or small
         # hold_long buys at bar1 open 2000 and never sells, mark at 2000 -> flat
-        assert res.trades == 1
+        assert res.fill_count == 1
+        assert res.trades == 0  # never exited, hence no completed trade
         assert abs(res.final_equity - 10000) < 1e-6, f"next-bar flat expected 10000 got {res.final_equity}"
         assert res.profit_factor == 0.0 or res.profit_factor == float("inf") or res.profit_factor < 1.1  # flat
         # Now simulate cheating: if engine allowed same-bar fill at close/high/low,
