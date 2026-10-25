@@ -521,6 +521,42 @@ double EstimatedMonetaryLoss(const int side,const double volume,
    return MathIsValidNumber(cost) && cost>0.0 ? cost : -1.0;
   }
 
+// A current-equity breach latch prevents the NEXT trade after the limit.
+// This additional pre-order budget prevents the NEXT stop from consuming
+// more than the remaining daily loss allowance in the first place.
+// No claim is made that a broker stop fill cannot slip beyond the budget.
+double RemainingDailyRiskUsd(const double equity)
+  {
+   if(!MathIsValidNumber(equity) || equity<=0.0)
+      return -1.0;
+   double day_start=0.0;
+   // RiskState() must already have reconstructed/initialized this key.
+   // Never silently replace a missing baseline with current equity.
+   if(!GlobalVariableCheck(DayKey("START")) ||
+      !ReadNumber(DayKey("START"),0.0,day_start) || day_start<=0.0)
+      return -1.0;
+   double remaining=equity-day_start*(1.0-MaxDailyLossPct/100.0);
+   if(!MathIsValidNumber(remaining))
+      return -1.0;
+   return MathMax(0.0,remaining);
+  }
+
+bool PlannedOrderFitsRisk(const int side,const double volume,
+                          const double entry,const double stop)
+  {
+   double equity=AccountInfoDouble(ACCOUNT_EQUITY);
+   double remaining=RemainingDailyRiskUsd(equity);
+   double loss=EstimatedMonetaryLoss(side,volume,entry,stop);
+   if(equity<=0.0 || remaining<=0.0 || loss<=0.0 ||
+      loss>equity*RiskPerTradePct/100.0+1e-8 ||
+      loss>remaining+1e-8)
+     {
+      status_text="Planned stop exceeds per-trade or remaining daily risk";
+      return false;
+     }
+   return true;
+  }
+
 double SizedLots(const int side,const double price,const double stop)
   {
    double minimum=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
@@ -529,7 +565,10 @@ double SizedLots(const int side,const double price,const double stop)
    double equity=AccountInfoDouble(ACCOUNT_EQUITY);
    if(minimum<=0.0 || maximum<minimum || step<=0.0 || equity<=0.0)
       return 0.0;
-   double budget=equity*RiskPerTradePct/100.0;
+   double remaining=RemainingDailyRiskUsd(equity);
+   if(remaining<=0.0)
+      return 0.0;
+   double budget=MathMin(equity*RiskPerTradePct/100.0,remaining);
    double one_lot_cost=EstimatedMonetaryLoss(side,1.0,price,stop);
    if(one_lot_cost<=0.0 || budget<=0.0)
       return 0.0;
@@ -861,9 +900,10 @@ void EvaluateNewEntry()
    // to the live market or convert it to a market order on a price change.
    if(RealAccountBlocked() || PauseNewEntries || EmergencyFlattenOwned ||
       AnyConflictingPositionOrOrder() || !FreshEntryQuote(quote) ||
-      !BrokerSessionAllowed() || !NewTradesAllowedByRisk())
+      !BrokerSessionAllowed() || !NewTradesAllowedByRisk() ||
+       !PlannedOrderFitsRisk(side,lots,price,stop))
      {
-      status_text="Final execution guard refused";
+      status_text="Final execution/risk guard refused";
       return;
      }
    double level=((double)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL)+2.0)*_Point;

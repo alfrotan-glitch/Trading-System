@@ -543,3 +543,37 @@ def test_pending_tp_has_broker_currency_reward_and_fee_floor():
     assert 'OrderCalcProfit(direction,_Symbol,lots,price,target,gross_target)' in entry
     assert 'gross_target<AssumedRoundTurnFeePerLot*lots*MinimumTargetFeeMultiple' in entry
     assert entry.index('OrderCalcProfit(direction') < entry.index('OrderCheck(request,check)')
+
+
+def test_daily_risk_budget_vetoes_stop_losses_that_cross_daily_floor():
+    headroom = body_of('RemainingDailyRiskUsd')
+    sizing = body_of('SizedLots')
+    final_guard = body_of('EvaluateNewEntry')
+    fit = body_of('PlannedOrderFitsRisk')
+    assert 'GlobalVariableCheck(DayKey("START"))' in headroom
+    assert 'ReadNumber(DayKey("START"),0.0,day_start)' in headroom
+    assert 'equity-day_start*(1.0-MaxDailyLossPct/100.0)' in headroom
+    assert 'MathMax(0.0,remaining)' in headroom
+    assert 'MathMin(equity*RiskPerTradePct/100.0,remaining)' in sizing
+    assert 'RemainingDailyRiskUsd(equity)' in sizing
+    assert 'loss>remaining+1e-8' in fit
+    assert 'loss>equity*RiskPerTradePct/100.0+1e-8' in fit
+    assert 'PlannedOrderFitsRisk(side,lots,price,stop)' in final_guard
+    assert final_guard.index('PlannedOrderFitsRisk(') < final_guard.index('OrderSend(request,result)')
+
+
+def test_daily_remaining_risk_math_examples_for_100_and_200():
+    """Independent arithmetic: 2% single-trade is not a 2% daily entitlement."""
+    for starting_equity, current_equity, expected_headroom in (
+        (100.0, 100.0, 3.0),
+        (100.0, 98.0, 1.0),
+        (200.0, 200.0, 6.0),
+        (200.0, 196.0, 2.0),
+        (200.0, 193.0, 0.0),
+    ):
+        remaining = max(0.0, current_equity - starting_equity * 0.97)
+        assert round(remaining, 6) == expected_headroom
+        approved_risk = min(current_equity * .02, remaining)
+        assert approved_risk <= expected_headroom + 1e-8
+    # After a first $4 stop, a second $3.92 stop exceeds the $2 daily headroom.
+    assert (196 * .02) > (196 - 200 * .97)
