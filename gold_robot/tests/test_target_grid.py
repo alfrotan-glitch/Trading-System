@@ -45,3 +45,7 @@ def test_duplicate_and_nonfinite_refused():
         compare_targets([a, a], 1)
     with pytest.raises(ValueError):
         compare_targets([Trial("a", "2026-10-01", float('nan'), outcome("stop", -1))], 1)
+
+def test_missing_expiry_quotes_is_unresolved_and_not_a_fill():
+    x = compare_targets([Trial("a", "2026-10-01", 1, outcome("pending_at_end", 0))], 1)[0]
+    assert x["filled"] == 0 and x["unresolved"] == 1

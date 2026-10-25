@@ -34,7 +34,7 @@ class LimitPlan:
 
 @dataclass(frozen=True)
 class Result:
-    outcome: str  # pending_unfilled, stop, target, timeout, open_at_end
+    outcome: str  # pending_unfilled, pending_at_end, stop, target, timeout, open_at_end
     filled_ms: int | None
     closed_ms: int | None
     gross_usd: float
@@ -97,5 +97,7 @@ def replay(plan: LimitPlan, ticks: Iterable[Tick]) -> Result:
         if tick.time_ms - filled_at >= plan.max_hold_ms:
             return closed("timeout", tick.time_ms, exit_quote)
     if filled_at is None:
-        return Result("pending_unfilled", None, None, 0.0, 0.0)
+        # Quote coverage ended before broker-side expiry. This is not
+        # evidence that the order would never have filled.
+        return Result("pending_at_end", None, None, 0.0, 0.0)
     return Result("open_at_end", filled_at, None, 0.0, 0.0)

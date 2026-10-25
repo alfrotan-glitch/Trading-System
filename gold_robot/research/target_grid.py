@@ -33,7 +33,7 @@ def compare_targets(trials: list[Trial], active_days: int) -> list[dict]:
         if not item.signal_id or not item.day or not isfinite(item.target_r) or item.target_r <= 0:
             raise ValueError("invalid signal identification or R")
         if item.result.outcome not in {
-            "target", "stop", "timeout", "pending_unfilled", "open_at_end"
+            "target", "stop", "timeout", "pending_unfilled", "pending_at_end", "open_at_end"
         } or not isfinite(item.result.net_usd):
             raise ValueError("unknown or nonfinite execution outcome")
         if item.signal_id in groups[item.target_r]:
@@ -49,8 +49,8 @@ def compare_targets(trials: list[Trial], active_days: int) -> list[dict]:
     for rr, group in groups.items():
         items = list(group.values())
         closes = [t for t in items if t.result.outcome in {"target", "stop", "timeout"}]
-        fills = [t for t in items if t.result.outcome != "pending_unfilled"]
-        unresolved = sum(t.result.outcome == "open_at_end" for t in items)
+        fills = [t for t in items if t.result.outcome not in {"pending_unfilled", "pending_at_end"}]
+        unresolved = sum(t.result.outcome in {"open_at_end", "pending_at_end"} for t in items)
         successes = sum(t.result.outcome == "target" for t in items)
         net = sum(t.result.net_usd for t in closes)
         losses = -sum(t.result.net_usd for t in closes if t.result.net_usd < 0)

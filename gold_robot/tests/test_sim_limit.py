@@ -13,7 +13,7 @@ def sell(**kwargs):
 
 def test_buy_touch_uses_ask_not_bid():
     result = replay(buy(), [Tick(20, 2999, 3000.4), Tick(30, 2999, 3000.1)])
-    assert result.outcome == "pending_unfilled"
+    assert result.outcome == "pending_at_end"
 
 
 def test_buy_target_executable_bid_and_fees():
@@ -38,7 +38,7 @@ def test_expiry_exact_timestamp_does_not_fill():
 
 
 def test_decision_tick_never_fills():
-    assert replay(buy(), [Tick(10, 2999, 2999.5)]).outcome == "pending_unfilled"
+    assert replay(buy(), [Tick(10, 2999, 2999.5)]).outcome == "pending_at_end"
 
 
 def test_unsorted_and_crossed_quote_rejected():
@@ -56,3 +56,7 @@ def test_open_at_end_not_counted_as_profit():
 def test_timeout_at_executable_quote():
     x = replay(buy(max_hold_ms=10), [Tick(20, 2999.8, 3000), Tick(30, 3000.2, 3000.4)])
     assert x.outcome == "timeout" and x.net_usd == pytest.approx(0.1)
+
+def test_quote_coverage_ending_before_expiry_is_unresolved():
+    x = replay(buy(), [Tick(20, 3001, 3001.2)])
+    assert x.outcome == "pending_at_end"
