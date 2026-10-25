@@ -47,7 +47,7 @@ def test_two_fills_create_one_net_trade_not_two_wins():
     assert x.fill_count == 2
     assert x.completed_net_usd == (Decimal("197"),)
     assert x.incomplete_position_count == 0
-    assert x.profit_factor == float("inf")
+    assert x.profit_factor == 0.0  # no losing trades: insufficient PF evidence
 
 
 def test_long_partial_exit_is_one_completed_position_when_flat():
