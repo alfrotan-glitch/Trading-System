@@ -19,12 +19,16 @@ Manifest v1 fields:
   ledger (CSV basename), ledger_sha256.
 
 CSV fields:
-  deal_id, exit_time_utc, side (BUY/SELL), gross_usd,
+  deal_id, position_id, exit_time_utc, side (BUY/SELL), gross_usd,
   commission_usd, slippage_usd, swap_usd, fee_usd.
 
-gross_usd is P&L *already* measured with executable entry/exit Bid/Ask.
-Costs are nonnegative charges, except swap_usd may represent a credit.
-Never subtract a separately estimated spread again from executable gross.
+gross_usd is broker P&L measured at ACTUAL executed entry and exit fills.
+This already incorporates spread and execution slippage. Subtract only
+commission, fee and swap charges (swap may be a credit). slippage_usd is
+OPTIONAL measured diagnostic metadata, never subtracted a second time.
+Empty slippage means UNKNOWN, not zero. Several close deals for one MT5
+position are aggregated for position-level PF, but their dated P&L remains
+on the actual exit dates. The tool cannot prove a position is fully closed.
 """
 from __future__ import annotations
 
@@ -45,6 +49,9 @@ class Ledger:
     trades: tuple[tuple[date, float], ...]
     gross_usd: float
     explicit_cost_usd: float
+    position_pnl: tuple[float, ...]
+    observed_slippage_usd: float
+    unknown_slippage_deals: int
 
 
 def _money(value: object, *, allow_negative: bool = False) -> float:
@@ -114,6 +121,8 @@ def load_ledger(manifest_path: Path) -> Ledger:
     first, last = _day(meta["period_start"]), _day(meta["period_end"])
     if first > last:
         raise ValueError("reversed benchmark period")
+    if (last - first).days > 3652:
+        raise ValueError("benchmark window exceeds 10 years")
     meta["initial_equity_usd"] = _money(meta["initial_equity_usd"])
     if meta["initial_equity_usd"] <= 0:
         raise ValueError("initial equity must be positive")
@@ -126,13 +135,15 @@ def load_ledger(manifest_path: Path) -> Ledger:
     if digest != meta["ledger_sha256"]:
         raise ValueError("ledger checksum mismatch; data may have changed")
     required_fields = {
-        "deal_id", "exit_time_utc", "side", "gross_usd",
+        "deal_id", "position_id", "exit_time_utc", "side", "gross_usd",
         "commission_usd", "slippage_usd", "swap_usd", "fee_usd",
     }
     values: list[tuple[date, float]] = []
     seen: set[str] = set()
+    positions: dict[str, float] = {}
     prior_time: datetime | None = None
-    gross_total = cost_total = 0.0
+    gross_total = cost_total = observed_slippage = 0.0
+    unknown_slippage_deals = 0
     with ledger_path.open(newline="", encoding="utf-8-sig") as stream:
         reader = csv.DictReader(stream)
         if not required_fields.issubset(reader.fieldnames or []):
@@ -142,6 +153,9 @@ def load_ledger(manifest_path: Path) -> Ledger:
             if not key or key in seen:
                 raise ValueError("missing or duplicate deal identifier")
             seen.add(key)
+            position_id = str(row["position_id"] or "").strip()
+            if not position_id:
+                raise ValueError("missing position identifier")
             if row["side"] not in ("BUY", "SELL"):
                 raise ValueError("invalid trade direction")
             timestamp = _timestamp(row["exit_time_utc"])
@@ -153,20 +167,30 @@ def load_ledger(manifest_path: Path) -> Ledger:
                 raise ValueError("trade outside declared benchmark period")
             gross = _money(row["gross_usd"], allow_negative=True)
             commission = _money(row["commission_usd"])
-            slippage = _money(row["slippage_usd"])
+            slip_raw = row["slippage_usd"]
+            if slip_raw is None or str(slip_raw).strip() == "":
+                unknown_slippage_deals += 1
+            else:
+                # Adverse (+) or favorable (-) slippage is ALREADY in fill P&L.
+                observed_slippage += _money(slip_raw, allow_negative=True)
             swap = _money(row["swap_usd"], allow_negative=True)
             fee = _money(row["fee_usd"])
-            costs = commission + slippage + swap + fee
-            values.append((when, gross - costs))
+            costs = commission + swap + fee
+            net = gross - costs
+            values.append((when, net))
+            positions[position_id] = positions.get(position_id, 0.0) + net
             gross_total += gross
             cost_total += costs
-    return Ledger(meta, tuple(values), gross_total, cost_total)
+    return Ledger(meta, tuple(values), gross_total, cost_total,
+                  tuple(positions.values()), observed_slippage,
+                  unknown_slippage_deals)
 
 
 def _arm(ledger: Ledger) -> dict:
     net = [value for _, value in ledger.trades]
-    wins = sum(x for x in net if x > 0)
-    losses = -sum(x for x in net if x < 0)
+    position_net = ledger.position_pnl
+    wins = sum(x for x in position_net if x > 0)
+    losses = -sum(x for x in position_net if x < 0)
     balance = peak = drawdown = 0.0
     for value in net:
         balance += value
@@ -174,14 +198,17 @@ def _arm(ledger: Ledger) -> dict:
         drawdown = max(drawdown, peak - balance)
     start = ledger.meta["initial_equity_usd"]
     return {
-        "trades": len(net),
+        "trades": len(position_net),  # distinct position IDs, NOT deal rows
+        "closing_deals": len(net),
         "net_usd": round(sum(net), 6),
         "net_pct_starting_equity": round(100 * sum(net) / start, 6),
-        "net_expectancy_usd_per_trade": round(sum(net) / len(net), 6) if net else None,
+        "net_expectancy_usd_per_trade": round(sum(net) / len(position_net), 6) if position_net else None,
         "profit_factor": wins / losses if losses else None,
-        "max_closed_trade_drawdown_pct_starting_equity": 100 * drawdown / start,
+        "max_realized_deal_drawdown_pct_starting_equity": 100 * drawdown / start,
         "gross_usd": round(ledger.gross_usd, 6),
         "explicit_cost_usd": round(ledger.explicit_cost_usd, 6),
+        "diagnostic_slippage_usd_included_in_gross": round(ledger.observed_slippage_usd, 6),
+        "unmeasured_slippage_deals": ledger.unknown_slippage_deals,
     }
 
 
@@ -209,10 +236,19 @@ def compare(candidate: Ledger, reference: Ledger, *, seed: int = 6241024) -> dic
     deltas = [c_daily[d] - r_daily[d] for d in dates]
     mean = sum(deltas) / len(deltas)
     rng = random.Random(seed)
-    boots = sorted(
-        sum(deltas[rng.randrange(len(deltas))] for _ in dates) / len(deltas)
-        for _ in range(2000)
-    )
+    # Preserve week-length serial clusters. Very short histories are NOT
+    # assigned a comforting numerical confidence interval.
+    boots: list[float] = []
+    if len(deltas) >= 28:
+        width = 7
+        for _ in range(2000):
+            sample: list[float] = []
+            while len(sample) < len(deltas):
+                start_index = rng.randrange(len(deltas))
+                sample.extend(deltas[(start_index + step) % len(deltas)]
+                              for step in range(width))
+            boots.append(sum(sample[:len(deltas)]) / len(deltas))
+        boots.sort()
     return {
         "status": "RESEARCH_COMPARISON_ONLY_NOT_VALIDATED",
         "broker": candidate.meta["broker"],
@@ -224,10 +260,12 @@ def compare(candidate: Ledger, reference: Ledger, *, seed: int = 6241024) -> dic
         "candidate": _arm(candidate),
         "reference": _arm(reference),
         "paired_daily_mean_difference_pct_starting_equity": 100 * mean,
-        "paired_bootstrap_99pct_lower_difference_pct": 100 * boots[19],
+        "paired_week_block_bootstrap_99pct_lower_difference_pct": 100 * boots[19] if boots else None,
         "notes": [
             "Signed metadata and SHA-256 check file integrity, NOT authenticity of vendor results.",
-            "Bootstrap treats calendar days as exchangeable; serial dependence and capital flows are NOT audited.",
+            "7-calendar-day circular block bootstrap; interval omitted for fewer than 28 days. No formal statistical edge claim.",
+            "Actual-fill gross already includes spread/slippage. Only broker charges are deducted; reported slippage is diagnostic.",
+            "MT5 position_id groups partial closing deals; a closed deal ledger does not prove no positions remain open.",
             "Matched dates and broker do not guarantee identical fill models or strategy exposure.",
             "Positive comparisons never grant DEMO or LIVE execution authority.",
             "Confirm on an untouched future broker-tick sample with measured costs and native MT5 receipts.",
