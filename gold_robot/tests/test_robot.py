@@ -597,3 +597,21 @@ def test_native_tester_refuses_stale_compilation_or_source_mismatch():
     assert 'Installed source differs from repository' in runner
     assert 'Compiled EX5 predates current source' in runner
     assert 'LastWriteTimeUtc.AddSeconds(-2)' in runner
+
+
+def test_tester_audit_reports_specific_nontrade_causes():
+    signal=body_of('CompletedBarSignal')
+    entry=body_of('EvaluateNewEntry')
+    tick=body_of('OnTick')
+    assert 'EnableEntryDiagnostics    = true' in EA
+    for token in ('SIGNAL: indicators not ready',
+                  'SIGNAL: missing indicator/bars',
+                  'SIGNAL: ADX %.1f below threshold %.1f',
+                  'SIGNAL: no closed-bar EMA pullback cross',
+                  'SIGNAL: H1 rejects M5/M15 entry direction'):
+        assert token in signal
+    assert 'Preserve the stage-specific reason from CompletedBarSignal' in entry
+    assert 'SIZE: min lot %.2f risks $%.2f, budget $%.2f' in entry
+    assert 'MARGIN: min lot %.2f needs $%.2f, cap $%.2f' in entry
+    assert 'QTS ENTRY AUDIT bar=' in tick
+    assert 'MQLInfoInteger(MQL_TESTER)!=0' in tick

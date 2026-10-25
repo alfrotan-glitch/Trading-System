@@ -57,8 +57,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 60642,
-      "sha256": "1908d2b53d4f16d6a0f3a6c001b094e011a8bf362e9920509b60704c004c6924"
+      "bytes": 62997,
+      "sha256": "8dcaa5b8a9063e9d829bd02d7aeda23fbf84b7e292e06291e1f411e59268dabf"
     },
     {
       "path": "research/BuildForwardFixture.mq5",
@@ -182,8 +182,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 27524,
-      "sha256": "c6f08ae505a5030b9e74a946aad51635e68f8e56da087c5eee8988ab44405d82"
+      "bytes": 28367,
+      "sha256": "a050a2546ef64ccecaaf5224c8fc7bd44d2b278eee9e4661e969496680ac1c2d"
     },
     {
       "path": "tests/test_scalp_signals.py",

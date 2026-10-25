@@ -14,6 +14,7 @@
 
 // All input defaults are conservative *engineering* choices, NOT optimized alpha.
 input bool            EnableDemoOrders          = false; // Explicitly opt in after review.
+input bool            EnableEntryDiagnostics    = true; // Tester-only journal: why each closed bar was vetoed.
 input bool            PauseNewEntries           = false;
 input bool            EmergencyFlattenOwned     = false; // Emergency CLOSE of THIS magic only.
 enum QTS_ENTRY_STYLE { QTS_FORMER_STOP_LIMIT=0, QTS_RETEST_LIMIT=1 };
@@ -450,7 +451,10 @@ int CompletedBarSignal(double &atr_value)
       BarsCalculated(slow_handle)<SlowEmaPeriod+3 ||
       BarsCalculated(atr_handle)<AtrPeriod+3 ||
       BarsCalculated(adx_handle)<AdxPeriod+3)
+     {
+      status_text="SIGNAL: indicators not ready";
       return 0;
+     }
    double fast[2],slow[2],atr[1],adx[1],closes[2];
    MqlRates bars[3];
    if(CopyBuffer(fast_handle,0,1,2,fast)!=2 ||
@@ -459,14 +463,27 @@ int CompletedBarSignal(double &atr_value)
       CopyBuffer(adx_handle,0,1,1,adx)!=1 ||
       CopyClose(_Symbol,SignalTimeframe,1,2,closes)!=2 ||
       CopyRates(_Symbol,SignalTimeframe,0,3,bars)!=3)
+     {
+      status_text="SIGNAL: missing indicator/bars";
       return 0;
+     }
    int frame=PeriodSeconds(SignalTimeframe);
    if(frame<=0 || bars[1].time-bars[0].time!=frame ||
       bars[2].time-bars[1].time!=frame)
+     {
+      status_text="SIGNAL: stale or noncontiguous M5/M15 bars";
       return 0;
-   if(!MathIsValidNumber(atr[0]) || atr[0]<=0.0 ||
-      !MathIsValidNumber(adx[0]) || adx[0]<MinimumAdx)
+     }
+   if(!MathIsValidNumber(atr[0]) || atr[0]<=0.0)
+     {
+      status_text="SIGNAL: invalid ATR";
       return 0;
+     }
+   if(!MathIsValidNumber(adx[0]) || adx[0]<MinimumAdx)
+     {
+      status_text=StringFormat("SIGNAL: ADX %.1f below threshold %.1f",adx[0],MinimumAdx);
+      return 0;
+     }
    int result=0;
    // Physical copy arrays are OLDEST first; index 0 is shift=2 here.
    if(fast[1]>slow[1] && closes[0]<=fast[0] && closes[1]>fast[1])
@@ -474,28 +491,47 @@ int CompletedBarSignal(double &atr_value)
    if(fast[1]<slow[1] && closes[0]>=fast[0] && closes[1]<fast[1])
       result=-1;
    if(result==0)
+     {
+      status_text="SIGNAL: no closed-bar EMA pullback cross";
       return 0;
+     }
    if(EnableH1TrendFilter)
      {
       double h1_ma[1],h1_close[1];
       // Requesting the buffer starts H1 indicator calculation in a cold tester/history cache.
       if(CopyBuffer(h1_handle,0,1,1,h1_ma)!=1 ||
          BarsCalculated(h1_handle)<55)
+        {
+         status_text="SIGNAL: H1 indicator not ready";
          return 0;
+        }
       datetime h1_running=iTime(_Symbol,PERIOD_H1,0);
       datetime h1_previous=iTime(_Symbol,PERIOD_H1,1);
       if(h1_running<=0 || h1_running-h1_previous!=3600)
-         return 0; // Do not use a stale trend filter across the market weekend.
-      if(CopyClose(_Symbol,PERIOD_H1,1,1,h1_close)!=1)
+        {
+         status_text="SIGNAL: H1 bar gap";
          return 0;
+        } // Do not use a stale trend filter across the market weekend.
+      if(CopyClose(_Symbol,PERIOD_H1,1,1,h1_close)!=1)
+        {
+         status_text="SIGNAL: no H1 close";
+         return 0;
+        }
       if(!MathIsValidNumber(h1_ma[0]) || h1_ma[0]==EMPTY_VALUE ||
          !MathIsValidNumber(h1_close[0]) || h1_close[0]<=0.0)
+        {
+         status_text="SIGNAL: H1 trend indicator invalid";
          return 0;
+        }
       if((result>0 && h1_close[0]<=h1_ma[0]) ||
          (result<0 && h1_close[0]>=h1_ma[0]))
+        {
+         status_text="SIGNAL: H1 rejects M5/M15 entry direction";
          return 0;
+        }
      }
    atr_value=atr[0];
+   status_text=result>0 ? "SIGNAL: buy confirmed" : "SIGNAL: sell confirmed";
    return result;
   }
 
@@ -813,7 +849,12 @@ void EvaluateNewEntry()
       status_text="Another chart/strategy has a position or order";
       return;
      }
-   if(!BrokerSessionAllowed() || !NewTradesAllowedByRisk())
+   if(!BrokerSessionAllowed())
+     {
+      status_text="ENTRY: outside broker session";
+      return;
+     }
+   if(!NewTradesAllowedByRisk())
       return;
    MqlTick quote;
    if(!FreshEntryQuote(quote))
@@ -824,10 +865,7 @@ void EvaluateNewEntry()
    double atr=0.0;
    int side=CompletedBarSignal(atr);
    if(side==0)
-     {
-      status_text="No closed-bar signal";
-      return;
-     }
+      return; // Preserve the stage-specific reason from CompletedBarSignal.
    if((quote.ask-quote.bid)>atr*MaxSpreadVsAtrPct/100.0)
      {
       status_text="Spread too large versus ATR";
@@ -857,7 +895,20 @@ void EvaluateNewEntry()
    double lots=SizedLots(side,price,stop);
    if(lots<=0.0)
      {
-      status_text="Minimum lot or margin exceeds risk budget";
+      double min_lot=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+      double minimum_risk=EstimatedMonetaryLoss(side,min_lot,price,stop);
+      double equity=AccountInfoDouble(ACCOUNT_EQUITY);
+      double budget=MathMin(equity*RiskPerTradePct/100.0,RemainingDailyRiskUsd(equity));
+      double margin=0.0;
+      ENUM_ORDER_TYPE order_side=side>0 ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+      bool margin_ok=OrderCalcMargin(order_side,_Symbol,min_lot,price,margin);
+      double margin_cap=AccountInfoDouble(ACCOUNT_MARGIN_FREE)*MaxMarginUsePct/100.0;
+      if(minimum_risk>0.0 && minimum_risk>budget+1e-8)
+         status_text=StringFormat("SIZE: min lot %.2f risks $%.2f, budget $%.2f",min_lot,minimum_risk,budget);
+      else if(margin_ok && margin>margin_cap)
+         status_text=StringFormat("MARGIN: min lot %.2f needs $%.2f, cap $%.2f",min_lot,margin,margin_cap);
+      else
+         status_text="SIZE: broker lot, loss model or margin rejected";
       return;
      }
    // For small accounts a near TP may be swallowed by trading fees.
@@ -1469,6 +1520,10 @@ void OnTick()
      {
       last_closed_bar=closed;
       ConsiderNewEntry();
+      if(EnableEntryDiagnostics && MQLInfoInteger(MQL_TESTER)!=0)
+         PrintFormat("QTS ENTRY AUDIT bar=%s timeframe=%d equity=%.2f minlot=%.2f reason=%s",
+                     TimeToString(closed,TIME_DATE|TIME_MINUTES),(int)SignalTimeframe,
+                     AccountInfoDouble(ACCOUNT_EQUITY),SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN),status_text);
      }
    else if(last_closed_bar==0)
       last_closed_bar=closed;
