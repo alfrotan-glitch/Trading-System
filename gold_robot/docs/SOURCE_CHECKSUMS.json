@@ -1,0 +1,199 @@
+{
+  "sha256_files": [
+    {
+      "path": "INSTALL_ROBOT.bat",
+      "bytes": 965,
+      "sha256": "4e6dd9044554d11b37c58586825a46bcf47fb58c3383c60ee6c38d7494db0b9d"
+    },
+    {
+      "path": "README.txt",
+      "bytes": 1576,
+      "sha256": "81993a24ff48bb597573cfdf3cd26875120c88e91ebd8f0e1d701b8216a8b510"
+    },
+    {
+      "path": "docs/ACCEPTANCE_CHECKLIST.md",
+      "bytes": 1147,
+      "sha256": "20a49f16f6abc4a0b38c596ad75fa7c607ac8bb7f5fb2e34d8a321d19332d31b"
+    },
+    {
+      "path": "docs/ENGINEERING_AUDIT.md",
+      "bytes": 2598,
+      "sha256": "ff8600f78e93837af41b6b3c45d0e21352b138cfe4d62e936af62b4a640455ae"
+    },
+    {
+      "path": "docs/ENTRY_MODEL.md",
+      "bytes": 2058,
+      "sha256": "8649309326ed43b968dca3ab55cf0092cf0d6b157c337c622343a6dfaca75d68"
+    },
+    {
+      "path": "docs/IMPORT_AUDIT.md",
+      "bytes": 3746,
+      "sha256": "c998cdb0399554591103399e9dd16242ec0ee7fb285c18ab551aad77ae8dc54a"
+    },
+    {
+      "path": "docs/INTRADAY_DESIGN.md",
+      "bytes": 2385,
+      "sha256": "9fc4eb20bb07c1c6c3de151e60b9be66bd97939d2e88ca25303f01dfe8b77598"
+    },
+    {
+      "path": "docs/PERFORMANCE_REPORT.md",
+      "bytes": 14423,
+      "sha256": "b0b67d4d82b49b5d8e1e215cb11d9eda2a61702e9cc405d71cea60847f8a92ff"
+    },
+    {
+      "path": "docs/RELEASE_STATUS.json",
+      "bytes": 920,
+      "sha256": "447f2dffa0dcfe17a2e365010657ee19a7ee19f96235448c6bebb2c34b095a19"
+    },
+    {
+      "path": "mt5_robot/ExecutionPolicy.mqh",
+      "bytes": 1480,
+      "sha256": "997f6900e2451ce95305429bef377e0df0bb45b24546383ac86fb5e01a450bd0"
+    },
+    {
+      "path": "mt5_robot/Install_QTS_Gold_Robot.ps1",
+      "bytes": 13358,
+      "sha256": "b6cba76b19a1cc4ec60e57ec2625767c956bff0a0eee34e15305eb241658322d"
+    },
+    {
+      "path": "mt5_robot/QTS_Gold_Robot.mq5",
+      "bytes": 58282,
+      "sha256": "dc03e8bca655d7aaa9d00bdca0ed3e6aa36e6496a85dee1366e2e5fe01da0485"
+    },
+    {
+      "path": "research/BuildForwardFixture.mq5",
+      "bytes": 1588,
+      "sha256": "6e13dacf2689c0cc3f6904face09aeaf13c0668bea6add68516f6f7a0aba1482"
+    },
+    {
+      "path": "research/BuildTesterFixture.mq5",
+      "bytes": 1378,
+      "sha256": "c62ce8bff77e33b1beba92c8ef4b25294a229f33fd0410cf1063edce16d9e0b2"
+    },
+    {
+      "path": "research/ExportBrokerData.mq5",
+      "bytes": 2246,
+      "sha256": "ac29abbbe84541747c9b1b0e9e69793c1cd2a7fab3890f19aece1c348c26380c"
+    },
+    {
+      "path": "research/RunNativeValidation.ps1",
+      "bytes": 2730,
+      "sha256": "1e7544ae05f5a6355eb67ea1d2bdec3cc0853ae715e899846b9cf52de3f2d809"
+    },
+    {
+      "path": "research/alternatives.py",
+      "bytes": 4269,
+      "sha256": "738fb330e7d226eca4da20d2777d2a130d66467e989b28153aee8dd9e352f2ec"
+    },
+    {
+      "path": "research/analyze_native_coverage.py",
+      "bytes": 4140,
+      "sha256": "5c97ffa966ef0f620252790c065fa7fd149f6671c7f60155c6544c4ec4de41f4"
+    },
+    {
+      "path": "research/build_report.py",
+      "bytes": 8887,
+      "sha256": "f625005f0bf1d941335956789b09ba887c1720ca424546973b23eeca935fb152"
+    },
+    {
+      "path": "research/daily_direction.py",
+      "bytes": 5334,
+      "sha256": "5e2691ec655638647e9b9490225c5c49ae4ee6ce084cc7806975c0953133b6e3"
+    },
+    {
+      "path": "research/edge_gate.py",
+      "bytes": 3586,
+      "sha256": "dcbcbc455b335678f0c80624fd9ff9d0c1be248e6685a1b61ae6ca5f40688e3a"
+    },
+    {
+      "path": "research/native_trade_diagnostics.py",
+      "bytes": 4845,
+      "sha256": "49c436f4ed9c6af6bba8596377be55e29676314d00b84707632aaaf8b5463143"
+    },
+    {
+      "path": "research/parse_coverage_probe.py",
+      "bytes": 1807,
+      "sha256": "bcfa9ac5e16ecdf2148284a7ac0f120c6175fb7121d91a41851e1086eb2de570"
+    },
+    {
+      "path": "research/parse_native_report.py",
+      "bytes": 3323,
+      "sha256": "cbcd9f13a7a0a8d7bcfe7c45f98463a0e428635328bb83f87bf1e82db9e2e8ae"
+    },
+    {
+      "path": "research/post_removal_revisits.py",
+      "bytes": 3203,
+      "sha256": "31ac7776c2fbb7e05e2d5c2389fa84671eeb10134857950aaeb9575dca92a8ec"
+    },
+    {
+      "path": "research/prior_day.py",
+      "bytes": 3641,
+      "sha256": "7bcc9815dcf49713e170ee8d30ccd1c74f950866eb8d34e350c97365c86a3199"
+    },
+    {
+      "path": "research/quote_burst.py",
+      "bytes": 8785,
+      "sha256": "76d1c397e2a53f10c0f2023307a34aa1a66f778823df0ac84e34d2d52f0e1283"
+    },
+    {
+      "path": "research/research.py",
+      "bytes": 15909,
+      "sha256": "7ad5ba6906ed98b56c9bc71944d8f4de9743014b130d7b757c8dbb5b25d60f1b"
+    },
+    {
+      "path": "research/scalp_signals.py",
+      "bytes": 4126,
+      "sha256": "246a1c1233a0bb8a619bbce413afa963a0aee1e1c5e0b73769b6b51f208316d3"
+    },
+    {
+      "path": "research/small_account_risk.py",
+      "bytes": 3450,
+      "sha256": "49103f7496f33ebd716895f6b5306b0fb959862bd0c44ef179175c8f03a79018"
+    },
+    {
+      "path": "research/sweep_diagnostics.py",
+      "bytes": 3995,
+      "sha256": "b57d35ebbae3278e7c584a62a78912f0215be1319d2d4f35d28780199d24300a"
+    },
+    {
+      "path": "research/sweep_followup.py",
+      "bytes": 1954,
+      "sha256": "445cac9a8ba85a7a627bb02f78053fa49df514f90495f421fbde75d0c8a8f0ce"
+    },
+    {
+      "path": "research/update_manifest.py",
+      "bytes": 812,
+      "sha256": "efec4e327f1b8862fc315cd5d9eb0865dcd97c835550d1cc2e2754219729cfeb"
+    },
+    {
+      "path": "tests/ReceiptSelftest.mq5",
+      "bytes": 1005,
+      "sha256": "793293feef8ead8436456fd2398745776bd4b0f60268415b8be5e5babf8858ca"
+    },
+    {
+      "path": "tests/test_edge_gate.py",
+      "bytes": 1192,
+      "sha256": "71fdcdb394fbc463e16c5fe66ec17da5fa0bb6432cccaea710a8f1a67d46a510"
+    },
+    {
+      "path": "tests/test_research.py",
+      "bytes": 3685,
+      "sha256": "85b85920778cff7598f2c8e776f99f4bab04a255d57c0b3a03ab7caca95a404c"
+    },
+    {
+      "path": "tests/test_robot.py",
+      "bytes": 24437,
+      "sha256": "4378152fc1220971c9099eb859f41cecd1f3d06eef7eabf89a3e0c0c43531057"
+    },
+    {
+      "path": "tests/test_scalp_signals.py",
+      "bytes": 1598,
+      "sha256": "68f6f3b04d076a7f92a3c721f27c06acd1216832fe05153b4f9654243947bd50"
+    },
+    {
+      "path": "tests/test_small_account_risk.py",
+      "bytes": 1373,
+      "sha256": "703c28cbc05039184c8be8c8acb612541ba4e9e2206a41faf7b030d7d6e0786c"
+    }
+  ]
+}

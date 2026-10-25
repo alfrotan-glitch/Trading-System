@@ -1,7 +1,7 @@
-"""Offline risk-budget parity model for small XAUUSD accounts.
+"""Offline risk-budget parity model for a small XAUUSD account.
 
-RESEARCH ONLY: execution EA must use real-time OrderCalcProfit/OrderCalcMargin.
-No model guarantees stop fills or profitable trades.
+Only a RESEARCH tool. The EA must use OrderCalcProfit/OrderCalcMargin
+with current broker facts. This model never proves broker fill quality.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ class Contract:
     min_lot: float = 0.01
     lot_step: float = 0.01
     max_lot: float = 100.0
-    margin_per_lot_usd: float = 0.0
+    margin_per_lot_usd: float = 0.0  # Unknown means not verified; use required value.
 
 
 @dataclass(frozen=True)
@@ -46,7 +46,11 @@ def _positive_finite(*values: float) -> bool:
 
 
 def size_trade(contract: Contract, risk: QuoteRisk) -> SizeDecision:
-    """Floor to legal volume steps; never buy an unaffordable minimum lot."""
+    """Floor volume to legal steps; never round up to an unaffordable minimum.
+
+    Cost assumptions are pessimistic scenario inputs, NOT guaranteed loss bounds.
+    Reject unknown margin rather than pretending a $100 account is executable.
+    """
     if not _positive_finite(
         risk.equity_usd, risk.free_margin_usd, risk.entry, risk.stop,
         contract.contract_size, contract.min_lot, contract.lot_step,

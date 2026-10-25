@@ -1,7 +1,7 @@
 """Independent performance gate for frequent XAUUSD scalping candidates.
 
-Requires explicit gross P&L plus separate cost fields. A high fill count is
-not evidence of profitability. Historical screening is never live approval.
+Reads a trade ledger with explicit gross P&L and separate costs. No claims
+of profitability are accepted merely because many fills were made.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 def evaluate_trades(rows: list[dict], active_days: int, seed: int = 6241024) -> dict:
-    """Day-block bootstrap; independent future holdout still required."""
+    """Day-block bootstrap; use independent *future* holdout to confirm edge."""
     if active_days < 1:
         raise ValueError("active_days must be positive")
     by_day: dict[str, list[float]] = defaultdict(list)
@@ -70,7 +70,7 @@ def evaluate_trades(rows: list[dict], active_days: int, seed: int = 6241024) -> 
             len(values) >= 100 and net > 0 and pf is not None and pf > 1.15
             and lower is not None and lower > 0
         ) else "REJECTED_OR_INSUFFICIENT_EVIDENCE",
-        "note": "Historical screen only; independent future data and native MT5 fills required.",
+        "note": "Historical screen only; positive status still requires independent future data and native MT5 fills.",
     }
 
 

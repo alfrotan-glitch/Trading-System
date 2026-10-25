@@ -1,7 +1,8 @@
-"""Causal M5 closed-candle XAUUSD research signals. No order submissions.
+"""Causal M5 closed-candle XAUUSD research signals; NEVER submits orders.
 
-Signal time is the *end* of the completed candle. Any realistic execution
-must use a subsequent tick's actual executable bid/ask, never the close.
+Each timestamp is the beginning of a complete broker-time candle. A signal is
+eligible only at bar_start + bar_seconds. Execution must use the NEXT tick's
+executable Bid/Ask; candle close is not a free fill.
 """
 from __future__ import annotations
 
@@ -33,30 +34,29 @@ def generate_signals(
     atr_period: int = 14, lookback: int = 12,
     start_hour: int = 6, end_hour: int = 22,
 ) -> list[Signal]:
-    """Breakout, trend-pullback and liquidity-sweep candidates.
+    """Emit momentum, pullback and failed-breakout research candidates.
 
-    Weekend/history gaps reset every indicator and lookback window. Trading
-    hours are on the timestamp's broker/server clock, not the local PC.
+    Gaps reset indicators and window to avoid stitched weekend transitions.
+    Trading-hour inputs refer to *broker/server clock*, never local OS time.
     """
     if not (bar_seconds > 0 and 2 <= fast_period < slow_period and
             atr_period >= 2 and lookback >= 3 and
             0 <= start_hour < end_hour <= 24):
         raise ValueError("invalid signal configuration")
     out: list[Signal] = []
-    ema_fast = ema_slow = atr = prev_close = None
+    ema_fast = ema_slow = atr = prev_close = prev_ema_fast = None
     segment: list[Bar] = []
     previous_time = None
     for bar in bars:
-        if not (all(isfinite(x) for x in
-                    (bar.open, bar.high, bar.low, bar.close))
-                and 0 < bar.low <= min(bar.open, bar.close)
-                and max(bar.open, bar.close) <= bar.high):
+        if not (all(isfinite(x) for x in (bar.open,bar.high,bar.low,bar.close))
+                and 0 < bar.low <= min(bar.open,bar.close)
+                and max(bar.open,bar.close) <= bar.high):
             raise ValueError("invalid price bar")
         if previous_time is not None and bar.time <= previous_time:
             raise ValueError("unsorted or duplicate candle")
         if previous_time is not None and bar.time - previous_time != bar_seconds:
             segment = []
-            ema_fast = ema_slow = atr = prev_close = None
+            ema_fast = ema_slow = atr = prev_close = prev_ema_fast = None
         previous_time = bar.time
         prior = segment[-lookback:]
         tr = bar.high - bar.low if prev_close is None else max(
@@ -70,29 +70,29 @@ def generate_signals(
         atr = tr if atr is None else atr + (tr-atr)/atr_period
         segment.append(bar)
         prev_close = bar.close
-        if (len(segment) < max(2*slow_period, lookback+2)
-                or len(prior) < lookback or atr <= 0):
+        prev_ema_fast = ema_fast
+        if len(segment) < max(2*slow_period,lookback+2) or len(prior)<lookback or atr<=0:
             continue
         decision = bar.time + bar_seconds
-        hour = (decision % 86400)//3600
+        hour = (decision % 86400) // 3600
         if not start_hour <= hour < end_hour:
             continue
         hi = max(b.high for b in prior)
         lo = min(b.low for b in prior)
         trend = 1 if ema_fast > ema_slow else -1 if ema_fast < ema_slow else 0
         if trend > 0 and bar.close > hi + 0.05*atr:
-            out.append(Signal(decision, "breakout", 1, atr, lo))
+            out.append(Signal(decision,"breakout",1,atr,lo))
         elif trend < 0 and bar.close < lo - 0.05*atr:
-            out.append(Signal(decision, "breakout", -1, atr, hi))
+            out.append(Signal(decision,"breakout",-1,atr,hi))
+        # True prior EMA and prior close: never compare a previous price to a
+        # newly computed current moving average.
         before = prior[-1]
-        if (old_fast is not None and trend > 0
-                and before.close <= old_fast and bar.close > ema_fast):
-            out.append(Signal(decision, "trend_pullback", 1, atr, lo))
-        elif (old_fast is not None and trend < 0
-                and before.close >= old_fast and bar.close < ema_fast):
-            out.append(Signal(decision, "trend_pullback", -1, atr, hi))
+        if old_fast is not None and trend > 0 and before.close <= old_fast and bar.close > ema_fast:
+            out.append(Signal(decision,"trend_pullback",1,atr,lo))
+        elif old_fast is not None and trend < 0 and before.close >= old_fast and bar.close < ema_fast:
+            out.append(Signal(decision,"trend_pullback",-1,atr,hi))
         if bar.low < lo - 0.10*atr and bar.close > lo + 0.05*atr:
-            out.append(Signal(decision, "liquidity_sweep", 1, atr, bar.low))
+            out.append(Signal(decision,"liquidity_sweep",1,atr,bar.low))
         elif bar.high > hi + 0.10*atr and bar.close < hi - 0.05*atr:
-            out.append(Signal(decision, "liquidity_sweep", -1, atr, bar.high))
+            out.append(Signal(decision,"liquidity_sweep",-1,atr,bar.high))
     return out

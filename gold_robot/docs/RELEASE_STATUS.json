@@ -1,0 +1,20 @@
+{
+  "version": "0.0.0-development",
+  "release_state": "NOT_RELEASED",
+  "default_order_permission": false,
+  "market_entry_orders_permitted": false,
+  "real_money_orders_permitted": false,
+  "entry_policy": "Old-stop LIMIT (default) or near-market structural retest LIMIT candidate (research-only); no strategy has passed independent profitability validation.",
+  "testing": {
+    "metaeditor_compiled_ex5": false,
+    "validated_profitable_edge": false,
+    "reason": "Research changes to M5 and near-market retest LIMIT have only source-level Python regression checks; native MQL5 compile and tick-replay on $100/$200 tester deposits remain REQUIRED."
+  },
+  "owner_capital_usd": [
+    100,
+    200
+  ],
+  "default_risk_per_trade_pct": 1.0,
+  "configured_max_risk_per_trade_pct": 2.0,
+  "risk_note": "The 2.0% parameter cap is not a guaranteed realized loss bound; costs, slippage and gaps can exceed risk budget."
+}

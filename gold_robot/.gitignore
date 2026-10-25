@@ -1,0 +1,16 @@
+# Gold robot source-only module. Keep any runtime/private broker material local.
+/runtime/
+/evidence/
+/.venv/
+/.pytest_cache/
+**/__pycache__/
+*.ex5
+*.log
+*.ini
+*.set
+*.csv
+*.parquet
+*.jsonl
+*.db
+*.db-wal
+*.db-shm

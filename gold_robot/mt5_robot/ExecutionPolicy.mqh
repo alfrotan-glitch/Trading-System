@@ -1,6 +1,4 @@
-// QTS Gold Robot -- pending order receipt classification.
-// Order acceptance is NOT a deal fill. An ambiguous receipt requires
-// broker-book reconciliation before further exposure.
+// Pure receipt policy. A submission receipt is NEVER proof of a fill.
 enum QTS_RECEIPT { QTS_AMBIGUOUS=0, QTS_ACCEPTED=1, QTS_REJECTED=2 };
 QTS_RECEIPT PendingReceipt(const bool sent,const uint code,
                            const ulong order,const ulong deal)
@@ -9,8 +7,8 @@ QTS_RECEIPT PendingReceipt(const bool sent,const uint code,
                          code==TRADE_RETCODE_DONE ||
                          code==TRADE_RETCODE_DONE_PARTIAL))
       return QTS_ACCEPTED;
-   if(order>0 || deal>0)
-      return QTS_AMBIGUOUS;
+   // A ticket with a negative/contradictory receipt needs reconciliation.
+   if(order>0 || deal>0) return QTS_AMBIGUOUS;
    switch(code)
      {
       case TRADE_RETCODE_REQUOTE:
@@ -34,5 +32,5 @@ QTS_RECEIPT PendingReceipt(const bool sent,const uint code,
       case TRADE_RETCODE_INVALID_ORDER:
          return QTS_REJECTED;
      }
-   return QTS_AMBIGUOUS;
+   return QTS_AMBIGUOUS; // Timeout, connection loss, unknown codes, no ticket.
   }
