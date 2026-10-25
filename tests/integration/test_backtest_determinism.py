@@ -21,6 +21,11 @@ def test_backtest_determinism():
         assert r1.hash() == r2.hash()
         assert r1.equity_curve == r2.equity_curve
         assert r1.trades == r2.trades
+        # A completed round trip is not the same as the order-fill count.
+        assert r1.fill_count == len(r1.fills)
+        assert r1.trades == len(r1.completed_trade_net_usd)
+        assert r1.trades <= r1.fill_count
+        assert r1.bar_return_profit_factor == r2.bar_return_profit_factor
 
 
 def test_backtest_different_seed_same_data_same_result():
