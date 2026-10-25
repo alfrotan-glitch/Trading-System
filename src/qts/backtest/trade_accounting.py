@@ -27,8 +27,10 @@ class TradeAccounting:
     def profit_factor(self) -> float:
         gains = sum((x for x in self.completed_net_usd if x > 0), Decimal("0"))
         losses = -sum((x for x in self.completed_net_usd if x < 0), Decimal("0"))
+        # With no losing round trip, PF is mathematically undefined.
+        # The research gate must never interpret +inf as validated alpha.
         if losses == 0:
-            return float("inf") if gains > 0 else 0.0
+            return 0.0
         return float(gains / losses)
 
 
