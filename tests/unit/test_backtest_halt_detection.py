@@ -159,4 +159,6 @@ def test_the_halt_is_reported_before_any_trade_count_is_believed(kill_at, tmp_pa
     assert truncated.halted is True
     # Reporting the truncated count as if it were the strategy's would be the
     # exact bug this module exists to prevent.
-    assert truncated.trades < complete.trades
+    assert truncated.fill_count < complete.fill_count
+    assert truncated.trades == len(truncated.completed_trade_net_usd)
+    assert complete.trades == len(complete.completed_trade_net_usd)

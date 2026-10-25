@@ -28,6 +28,7 @@ import numpy as np
 
 from qts.adapters.matching import MatchingConfig, MatchingEngine
 from qts.adapters.paper_adapter import RealisticPaperBroker
+from qts.backtest.trade_accounting import summarize_completed_trades
 from qts.data.store import SqliteParquetDataStore
 from qts.domain.value_objects import Instrument
 from qts.execution.engine import ExecutionEngine, OrderManager
@@ -78,6 +79,9 @@ class BacktestResult:
     data_version: str
     seed: int
     bars: int
+    # Number of CLOSED position round trips; distinct from fill count.
+    # Partial exits only become one completed trade when the position is flat
+    # or flips. Open exposure must never be called a completed winner.
     trades: int
     equity_curve: list[float] = field(default_factory=list)
     returns: list[float] = field(default_factory=list)
@@ -88,7 +92,15 @@ class BacktestResult:
     final_equity: float = 10000.0
     sharpe: float = 0.0
     max_dd: float = 0.0
+    # Completed-position profit factor, using actual fill prices and fees.
     profit_factor: float = 0.0
+    # Diagnostic bar-return factor (NOT the completed-trade PF).
+    bar_return_profit_factor: float = 0.0
+    fill_count: int = 0
+    incomplete_position_count: int = 0
+    realized_partial_close_pnl_usd: float = 0.0
+    unallocated_open_entry_fees_usd: float = 0.0
+    completed_trade_net_usd: list[float] = field(default_factory=list)
     # Full run configuration identity (strategy, parameters, seed, data,
     # matching/risk settings, and code version).
     config_hash: str = ""
@@ -121,6 +133,8 @@ def _fill_record(fill: Any, bar: Any, idx: int, strategy_id: str, role: str) -> 
         "price": str(fill.price),
         "qty": str(fill.quantity),
         "side": fill.side.value,
+        "symbol": fill.instrument.symbol,
+        "contract_size": str(fill.instrument.contract_size),
         "time": fill.event_time.isoformat(),
         "bar_open": str(bar.open),
         "bar_idx": idx,
@@ -418,7 +432,11 @@ class BacktestEngine:
 
         sharpe = sharpe_ratio(rets) if len(rets) else 0.0
         dd = max_drawdown(eq_arr)
-        pf = profit_factor(rets) if len(rets) else 0.0
+        bar_return_pf = profit_factor(rets) if len(rets) else 0.0
+        # Fills are not completed trades: entries, partial exits and flips
+        # have materially different economics. Trade PF is computed only from
+        # actual completed round trips, while unclosed exposure is explicit.
+        ledger = summarize_completed_trades(fills_out)
         from qts.observability.lineage import code_version
 
         run_code_version = code_version()
@@ -446,7 +464,7 @@ class BacktestEngine:
             data_version=data_version,
             seed=seed,
             bars=len(bars),
-            trades=len(fills_out),
+            trades=len(ledger.completed_net_usd),
             equity_curve=equity,
             returns=rets.tolist(),
             fills=fills_out,
@@ -454,7 +472,13 @@ class BacktestEngine:
             final_equity=float(equity[-1]) if equity else self.initial_balance,
             sharpe=float(sharpe),
             max_dd=float(dd),
-            profit_factor=float(pf),
+            profit_factor=ledger.profit_factor,
+            bar_return_profit_factor=float(bar_return_pf),
+            fill_count=ledger.fill_count,
+            incomplete_position_count=ledger.incomplete_position_count,
+            realized_partial_close_pnl_usd=float(ledger.realized_partial_close_pnl_usd),
+            unallocated_open_entry_fees_usd=float(ledger.open_entry_fees_usd),
+            completed_trade_net_usd=[float(x) for x in ledger.completed_net_usd],
             config_hash=config_hash,
             code_version=run_code_version,
             halted=halted_at is not None,
@@ -603,6 +627,7 @@ class BacktestEngine:
             res = engine.run(
                 instrument, timeframe, data_version, strategy_id, strategy_params, exit_rules=exit_rules
             )
-            # use PF as stress metric (or sharpe)
+            # Completed-position PF, not a ratio of marked bar returns.
+            # A zero-trade stress run cannot be labelled profitable.
             results[spread] = res.profit_factor
         return results
