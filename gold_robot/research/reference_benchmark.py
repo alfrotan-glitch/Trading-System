@@ -13,7 +13,10 @@ Manifest v1 fields:
   source, broker, symbol, account_type (TESTER/DEMO/REAL),
   account_currency (USD), account_key (unique *pseudonym*; no login or secret),
   period_start, period_end (YYYY-MM-DD), initial_equity_usd (>0),
-  cost_basis (EXECUTABLE_BID_ASK), ledger (CSV basename), ledger_sha256.
+  cost_basis (EXECUTABLE_BID_ASK), market_data_sha256 (broker tick data),
+  execution_model (REAL_TICKS/BROKER_LIVE/DEMO_LIVE), broker_server,
+  contract_size, point_size, volume_step, leverage,
+  ledger (CSV basename), ledger_sha256.
 
 CSV fields:
   deal_id, exit_time_utc, side (BUY/SELL), gross_usd,
@@ -81,13 +84,15 @@ def load_ledger(manifest_path: Path) -> Ledger:
     required = {
         "schema_version", "source", "broker", "symbol", "account_type",
         "account_currency", "account_key", "period_start", "period_end",
-        "initial_equity_usd", "cost_basis", "ledger", "ledger_sha256",
+        "initial_equity_usd", "cost_basis", "market_data_sha256",
+        "execution_model", "broker_server", "contract_size", "point_size",
+        "volume_step", "leverage", "ledger", "ledger_sha256",
     }
     if not isinstance(meta, dict) or not required.issubset(meta):
         raise ValueError("incomplete benchmark manifest")
     if meta["schema_version"] != 1:
         raise ValueError("unsupported manifest schema")
-    for key in ("source", "broker", "symbol", "account_key"):
+    for key in ("source", "broker", "broker_server", "symbol", "account_key"):
         if not isinstance(meta[key], str) or not meta[key].strip():
             raise ValueError(f"missing {key}")
     if meta["account_type"] not in ("TESTER", "DEMO", "REAL"):
@@ -96,6 +101,16 @@ def load_ledger(manifest_path: Path) -> Ledger:
         raise ValueError("USD reporting required; FX conversions are not modeled")
     if meta["cost_basis"] != "EXECUTABLE_BID_ASK":
         raise ValueError("gross must use executable Bid/Ask, not candle close")
+    expected_model = {"TESTER": "REAL_TICKS", "DEMO": "DEMO_LIVE", "REAL": "BROKER_LIVE"}[meta["account_type"]]
+    if meta["execution_model"] != expected_model:
+        raise ValueError("inconsistent account type and execution model")
+    market_hash = meta["market_data_sha256"]
+    if not isinstance(market_hash, str) or len(market_hash) != 64 or any(c not in "0123456789abcdef" for c in market_hash):
+        raise ValueError("market_data_sha256 must identify the exact tick archive")
+    for param in ("contract_size", "point_size", "volume_step", "leverage"):
+        meta[param] = _money(meta[param])
+        if meta[param] <= 0:
+            raise ValueError("invalid broker contract or leverage")
     first, last = _day(meta["period_start"]), _day(meta["period_end"])
     if first > last:
         raise ValueError("reversed benchmark period")
@@ -173,7 +188,9 @@ def _arm(ledger: Ledger) -> dict:
 def compare(candidate: Ledger, reference: Ledger, *, seed: int = 6241024) -> dict:
     important = (
         "broker", "symbol", "account_type", "account_currency",
-        "period_start", "period_end", "cost_basis",
+        "period_start", "period_end", "cost_basis", "execution_model",
+        "market_data_sha256", "broker_server", "contract_size",
+        "point_size", "volume_step", "leverage", "initial_equity_usd",
     )
     differences = [k for k in important if candidate.meta[k] != reference.meta[k]]
     if differences:
