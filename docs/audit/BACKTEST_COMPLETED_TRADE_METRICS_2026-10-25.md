@@ -23,8 +23,8 @@ factor is evidence of a profitable completed-trade strategy.
   retains the original detailed fill tape.
 - BacktestResult.profit_factor = ratio of profits to losses from completed
   positions only. Zero when there are no completed positions or no gains.
-  The no-loss positive-only convention remains infinity, which is NOT
-  sufficient evidence of a reliable strategy.
+  If no completed losing trade exists, PF is an **undefined** ratio
+  represented by 0.0 (a non-promotable sentinel), never positive infinity.
 - BacktestResult.bar_return_profit_factor = pre-existing ratio of positive
   and negative **marked-bar returns**, explicitly separated from trade PF.
 - BacktestResult.completed_trade_net_usd = per-position completed net result
