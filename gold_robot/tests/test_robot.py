@@ -577,3 +577,14 @@ def test_daily_remaining_risk_math_examples_for_100_and_200():
         assert approved_risk <= expected_headroom + 1e-8
     # After a first $4 stop, a second $3.92 stop exceeds the $2 daily headroom.
     assert (196 * .02) > (196 - 200 * .97)
+
+
+def test_small_account_native_test_deposit_is_configurable_and_isolated():
+    runner = (ROOT / 'research/RunNativeValidation.ps1').read_text('utf-8')
+    assert '[ValidateSet(100,200,10000)][int]$DepositUsd=200' in runner
+    assert 'Deposit=$DepositUsd' in runner
+    assert 'Report=$reportName' in runner
+    assert 'native_replay_${DepositUsd}_2025' in runner
+    assert '"$reportName.htm"' in runner
+    assert 'UseCloud=0' in runner
+    assert 'AllowLiveTrading=0' in runner

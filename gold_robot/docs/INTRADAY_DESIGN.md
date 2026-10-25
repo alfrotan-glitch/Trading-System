@@ -22,3 +22,22 @@ This source revision expands the tester-only candidate menu; it does not prove o
 5. If 0.01 lot cannot stay under the configured risk limit at an economically justified stop, skip the trade. Avoid synthetic wins from a target so small that the broker spread consumes the profit.
 
 - Additional gross TP fee-floor veto: `OrderCalcProfit` checks account-currency profit at the actual pending entry/target against `MinimumTargetFeeMultiple` times assumed round-turn fees. This is not a win-probability or profitability guarantee.
+
+## Daily loss allowance (source review 2026-10-25)
+
+The previous persistent stop was reactive: it blocked new trades only after
+account equity breached the daily threshold. The EA now additionally checks
+remaining account-equity headroom **before lot sizing** and **immediately before
+OrderSend**, after broker preflight. Planned stop risk includes the configured
+fee allowance and adverse stop slippage through `EstimatedMonetaryLoss`.
+
+For example, with a $200 start-of-day equity and a 3% daily limit, the daily
+floor is $194. After equity falls to $196, only $2 of modeled risk remains:
+a proposed $3.92 stop is refused despite a configured 2% per-trade ceiling.
+A $100 account at $98 equity similarly has just $1 of daily headroom.
+
+This is not a guarantee of a maximum realized daily loss. Gaps, adverse fills,
+commission changes and broker disconnects can exceed pre-trade estimates.
+A missing or corrupt daily equity baseline forces NO_TRADE. Tests exercise the
+numeric cases and the source placement of both risk checks; native MetaEditor
+and $100/$200 real-tick replays remain outstanding.

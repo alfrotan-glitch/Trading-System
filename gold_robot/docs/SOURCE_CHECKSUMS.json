@@ -32,8 +32,8 @@
     },
     {
       "path": "docs/INTRADAY_DESIGN.md",
-      "bytes": 2632,
-      "sha256": "56f3f209e5650f32320b784aa15412bbdce49f2dbc0db9c16ddc64cf748708a2"
+      "bytes": 3733,
+      "sha256": "0e5ab5bb210f690331971718171206f2617aa8f43edde7626c9c9e08d99499b4"
     },
     {
       "path": "docs/PERFORMANCE_REPORT.md",
@@ -77,8 +77,8 @@
     },
     {
       "path": "research/RunNativeValidation.ps1",
-      "bytes": 2730,
-      "sha256": "1e7544ae05f5a6355eb67ea1d2bdec3cc0853ae715e899846b9cf52de3f2d809"
+      "bytes": 2931,
+      "sha256": "5a437efd0c7f6b6682d3a1deabaf1c07f9121e71fe76a55b6cb926ce5f4c9cf0"
     },
     {
       "path": "research/alternatives.py",
@@ -182,8 +182,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 26558,
-      "sha256": "8005e2ee46066c8444682ca710a9c6a08460dd17853a7990206938ff675a47d9"
+      "bytes": 27041,
+      "sha256": "400659476d11ff295b1a7d38216416ce58d38d21a1a87e7bbc54fad2ec42936f"
     },
     {
       "path": "tests/test_scalp_signals.py",
