@@ -3,6 +3,9 @@
 This module NEVER submits orders. Explicit gross price basis, trial count,
 and trade identifiers prevent optimistic reports from unverifiable inputs.
 Each row is one COMPLETED trade, not a partial MT5 close deal.
+All costs must be supplied. MT5 native signed swap must be converted into a
+positive swap_charge_usd for charges or negative for credits; broker_fee_usd
+is nonnegative. Missing fee fields are not silently set to zero.
 """
 from __future__ import annotations
 
@@ -84,10 +87,13 @@ def evaluate_trades(
         g = _number(row.get("gross_usd"), "gross_usd", signed=True)
         c = _number(row.get("commission_usd"), "commission_usd")
         s = _number(row.get("slippage_usd"), "slippage_usd", signed=True)
+        swap = _number(row.get("swap_charge_usd"), "swap_charge_usd", signed=True)
+        fee = _number(row.get("broker_fee_usd"), "broker_fee_usd")
         if gross_basis == BASIS_PRE_SLIPPAGE and s < 0:
             raise ValueError("pre-slippage basis requires nonnegative slippage charge")
         # For ACTUAL_EXECUTED_FILLS spread/slippage are ALREADY priced in gross.
-        charged = c + (s if gross_basis == BASIS_PRE_SLIPPAGE else 0.0)
+        # All charges must be present, including optional credits (negative swap).
+        charged = c + swap + fee + (s if gross_basis == BASIS_PRE_SLIPPAGE else 0.0)
         by_day[day].append(g - charged)
         costs += charged
         gross += g
@@ -173,7 +179,7 @@ def evaluate_trades(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Read-only after-cost edge screen")
-    parser.add_argument("trades", type=Path, help="CSV: trade_id,date,gross_usd,commission_usd,slippage_usd")
+    parser.add_argument("trades", type=Path, help="CSV: completed trade ID, date, gross, commission, slippage, swap charge, broker fee")
     parser.add_argument("--active-days", type=int, required=True)
     parser.add_argument("--gross-basis", choices=(BASIS_PRE_SLIPPAGE, BASIS_ACTUAL_FILLS), required=True)
     parser.add_argument("--trials-tested", type=int, required=True)
@@ -182,7 +188,8 @@ def main() -> None:
     args = parser.parse_args()
     with args.trades.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
-        required = {"trade_id", "date", "gross_usd", "commission_usd", "slippage_usd"}
+        required = {"trade_id", "date", "gross_usd", "commission_usd", "slippage_usd",
+                    "swap_charge_usd", "broker_fee_usd"}
         if not required.issubset(reader.fieldnames or []):
             raise ValueError("missing required complete-trade or cost fields")
         rows = list(reader)
