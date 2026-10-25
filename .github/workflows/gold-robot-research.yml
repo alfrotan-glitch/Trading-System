@@ -23,4 +23,4 @@ jobs:
       - name: Install lightweight test runner
         run: python -m pip install pytest==8.3.5
       - name: Verify cost accounting and small-account risk
-        run: python -m pytest -o addopts='' -q gold_robot/tests/test_small_account_risk.py gold_robot/tests/test_edge_gate.py gold_robot/tests/test_scalp_signals.py
+        run: python -m pytest -o addopts='' -q gold_robot/tests
