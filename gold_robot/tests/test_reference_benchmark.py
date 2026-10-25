@@ -28,6 +28,13 @@ def bundle(tmp_path, name, rows, **overrides):
         "schema_version": 1,
         "source": f"fixture {name}",
         "broker": "WMMarkets",
+        "broker_server": "WMMarkets-Demo",
+        "execution_model": "REAL_TICKS",
+        "market_data_sha256": "a" * 64,
+        "contract_size": 100.0,
+        "point_size": 0.01,
+        "volume_step": 0.01,
+        "leverage": 100,
         "symbol": "XAUUSD@",
         "account_type": "TESTER",
         "account_currency": "USD",
@@ -75,6 +82,11 @@ def test_matched_accounts_compare_after_costs_without_promoting(tmp_path):
 @pytest.mark.parametrize("key,value", [
     ("broker", "OtherBroker"),
     ("symbol", "XAUUSD"),
+    ("broker_server", "OtherServer"),
+    ("market_data_sha256", "b" * 64),
+    ("contract_size", 10.0),
+    ("leverage", 500),
+    ("initial_equity_usd", 200),
     ("account_type", "REAL"),
     ("period_start", "2026-10-02"),
     ("period_end", "2026-10-05"),
@@ -86,6 +98,9 @@ def test_reject_incomparable_or_invalid_benchmarks(tmp_path, key, value):
     vendor_path = bundle(tmp_path, "vendor", [trade()], **{key: value})
     if key in ("account_currency", "cost_basis"):
         with pytest.raises(ValueError):
+            load_ledger(vendor_path)
+    elif key == "account_type":
+        with pytest.raises(ValueError, match="execution model"):
             load_ledger(vendor_path)
     elif key == "period_start":
         with pytest.raises(ValueError, match="outside declared"):
