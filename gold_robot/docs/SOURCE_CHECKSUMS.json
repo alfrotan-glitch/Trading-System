@@ -102,8 +102,8 @@
     },
     {
       "path": "research/edge_gate.py",
-      "bytes": 3586,
-      "sha256": "dcbcbc455b335678f0c80624fd9ff9d0c1be248e6685a1b61ae6ca5f40688e3a"
+      "bytes": 8704,
+      "sha256": "5449ba0f939f46eaf805c7d1321625c14dcb3cd8f7a3525bf4b27222db4d1139"
     },
     {
       "path": "research/native_trade_diagnostics.py",
@@ -172,8 +172,8 @@
     },
     {
       "path": "tests/test_edge_gate.py",
-      "bytes": 1192,
-      "sha256": "71fdcdb394fbc463e16c5fe66ec17da5fa0bb6432cccaea710a8f1a67d46a510"
+      "bytes": 4823,
+      "sha256": "e6b8a15557d2f5a553c4426811fd16322c24afda1d03d763c56b645968233433"
     },
     {
       "path": "tests/test_research.py",
