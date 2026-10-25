@@ -27,6 +27,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from pydantic import BaseModel, Field, model_validator
 
 from qts.db import connect as db_connect
@@ -62,6 +63,25 @@ class ImmutableRecordError(ValueError):
 def _canonical_json(value: Any) -> str:
     """Serialize configuration deterministically, including Decimal-like values."""
     return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def _normalize_numpy_outcome(value: Any) -> Any:
+    """Unwrap numpy result scalars before Pydantic's JSON serialization.
+
+    Model.model_copy(update=...) skips validation; an np.bool_ nested in
+    outcome details otherwise survives until model_dump_json and crashes the
+    persistent experiment ledger. Preserve boolean meaning (never stringify
+    False as a truthy "False"). Configuration fields are left unchanged.
+    """
+    if isinstance(value, np.generic):
+        return _normalize_numpy_outcome(value.item())
+    if isinstance(value, np.ndarray):
+        return _normalize_numpy_outcome(value.tolist())
+    if isinstance(value, dict):
+        return {k: _normalize_numpy_outcome(v) for k, v in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_normalize_numpy_outcome(v) for v in value]
+    return value
 
 
 class Hypothesis(BaseModel):
@@ -209,7 +229,7 @@ class Experiment(BaseModel):
         code = conclusion.value if isinstance(conclusion, ConclusionCode) else conclusion
         return self.model_copy(
             update={
-                "results": self.results if results is None else results,
+                "results": self.results if results is None else _normalize_numpy_outcome(results),
                 "conclusion": code,
                 "failure_reason": failure_reason,
                 "status": status.value if isinstance(status, ExperimentStatus) else (status or self.status),
