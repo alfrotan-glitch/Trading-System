@@ -42,6 +42,13 @@ Alongside each CSV create a manifest.json with values like:
       "schema_version": 1,
       "source": "Native MT5 tester: identify settings and tested EA version",
       "broker": "WMMarkets",
+      "broker_server": "WMMarkets-Demo",
+      "execution_model": "REAL_TICKS",
+      "market_data_sha256": "64-character SHA256 digest of the same underlying real-tick archive",
+      "contract_size": 100.0,
+      "point_size": 0.01,
+      "volume_step": 0.01,
+      "leverage": 100,
       "symbol": "XAUUSD@",
       "account_type": "TESTER",
       "account_currency": "USD",
@@ -55,7 +62,10 @@ Alongside each CSV create a manifest.json with values like:
     }
 
 The reference must have a **different account_key**. Use anonymous labels,
-not passwords, broker login IDs or secrets. The manifest assertions are
+not passwords, broker login IDs or secrets. The market data checksum must be the digest of the actual **same real-tick
+archive**, not two made-up matching strings. A DEMO or REAL account uses the
+matching execution_model instead of REAL_TICKS, and must retain a documented
+common tick archive where available. The manifest assertions are
 operator-supplied and NOT an independent authentication of trade origin.
 
 ## Windows command
