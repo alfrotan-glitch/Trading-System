@@ -1,0 +1,4 @@
+# Preserve the imported Windows MT5 research package byte-for-byte.
+# SOURCE_CHECKSUMS.json verifies exact bytes including existing BOM/EOL formats.
+# The root .gitattributes transforms PS1/BAT newlines; that would break package checksums.
+* -text
