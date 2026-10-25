@@ -101,3 +101,23 @@ data/evidence/demo_readiness_gate_*.json
 
 # Local artifact drop (e.g. downloaded release zips) — never source.
 google_drive/
+
+# QTS Gold Robot local development: source code is publishable only after review.
+# MT5 terminals, tester profiles, broker data, logs, and machine-local state are not.
+/runtime/
+/evidence/
+/mt5_robot/**/runtime/
+/mt5_robot/**/Tester/
+/mt5_robot/**/MQL5/Files/
+/mt5_robot/**/*.csv
+/mt5_robot/**/*.jsonl
+/mt5_robot/**/*.ini
+/mt5_robot/**/*.set
+/research/**/*.csv
+/research/**/*.parquet
+/research/**/*.jsonl
+/research/**/*.ini
+/research/**/*.set
+*.ex5
+*.set
+*.log
