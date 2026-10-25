@@ -1,0 +1,26 @@
+name: Gold Robot Research Safety
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gold_robot/**"
+      - ".github/workflows/gold-robot-research.yml"
+  pull_request:
+    paths:
+      - "gold_robot/**"
+      - ".github/workflows/gold-robot-research.yml"
+permissions:
+  contents: read
+jobs:
+  source-research-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install lightweight test runner
+        run: python -m pip install pytest==8.3.5
+      - name: Verify cost accounting and small-account risk
+        run: python -m pytest -q gold_robot/tests/test_small_account_risk.py gold_robot/tests/test_edge_gate.py
