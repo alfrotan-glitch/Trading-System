@@ -588,3 +588,12 @@ def test_small_account_native_test_deposit_is_configurable_and_isolated():
     assert '"$reportName.htm"' in runner
     assert 'UseCloud=0' in runner
     assert 'AllowLiveTrading=0' in runner
+
+
+def test_native_tester_refuses_stale_compilation_or_source_mismatch():
+    runner = (ROOT / 'research/RunNativeValidation.ps1').read_text('utf-8')
+    assert 'Get-FileHash -LiteralPath $expected -Algorithm SHA256' in runner
+    assert 'Get-FileHash -LiteralPath $installed -Algorithm SHA256' in runner
+    assert 'Installed source differs from repository' in runner
+    assert 'Compiled EX5 predates current source' in runner
+    assert 'LastWriteTimeUtc.AddSeconds(-2)' in runner

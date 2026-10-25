@@ -77,8 +77,8 @@
     },
     {
       "path": "research/RunNativeValidation.ps1",
-      "bytes": 2931,
-      "sha256": "5a437efd0c7f6b6682d3a1deabaf1c07f9121e71fe76a55b6cb926ce5f4c9cf0"
+      "bytes": 3901,
+      "sha256": "8482fff5672dade9bbfdfd823ab34f53176a91339c0d411a2519a76e02a41290"
     },
     {
       "path": "research/alternatives.py",
@@ -182,8 +182,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 27041,
-      "sha256": "400659476d11ff295b1a7d38216416ce58d38d21a1a87e7bbc54fad2ec42936f"
+      "bytes": 27524,
+      "sha256": "c6f08ae505a5030b9e74a946aad51635e68f8e56da087c5eee8988ab44405d82"
     },
     {
       "path": "tests/test_scalp_signals.py",
