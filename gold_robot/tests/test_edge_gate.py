@@ -22,13 +22,15 @@ DEFAULT = {
 }
 
 
-def row(day, gross, fee=.10, slip=.05, trade_id="a"):
+def row(day, gross, fee=.10, slip=.05, trade_id="a", swap=0.0, broker_fee=0.0):
     return {
         "trade_id": trade_id,
         "date": day,
         "gross_usd": gross,
         "commission_usd": fee,
         "slippage_usd": slip,
+        "swap_charge_usd": swap,
+        "broker_fee_usd": broker_fee,
     }
 
 
@@ -139,3 +141,23 @@ def test_favorable_fill_slippage_is_only_diagnostic():
     with pytest.raises(ValueError):
         check([row("2026-08-01", 2, slip=-.2)], 1,
               gross_basis=BASIS_PRE_SLIPPAGE)
+
+
+def test_swap_fee_costs_counted_exactly_once():
+    x = [row("2026-08-01", 10, fee=.8, slip=.1,
+             swap=.3, broker_fee=.2)]
+    actual = check(x, 1, gross_basis=BASIS_ACTUAL_FILLS)
+    estimated = check(x, 1, gross_basis=BASIS_PRE_SLIPPAGE)
+    assert actual["net_usd"] == 8.7
+    assert estimated["net_usd"] == 8.6
+    credited = check([row("2026-08-01", 10, fee=.8, slip=0,
+                         swap=-.5, broker_fee=.2)], 1)
+    assert credited["net_usd"] == 9.5
+
+
+def test_missing_broker_fees_or_swap_not_turned_into_zero():
+    for missing in ("swap_charge_usd", "broker_fee_usd"):
+        r = row("2026-08-01", 10)
+        r.pop(missing)
+        with pytest.raises(ValueError, match=missing):
+            check([r], 1)
