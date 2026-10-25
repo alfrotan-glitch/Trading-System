@@ -1,28 +1,63 @@
-# QTS Gold Robot — Windows MT5 scalping research
+# QTS Gold Robot — Windows MetaTrader 5 Expert Advisor
 
-**Status:** NOT RELEASED · no validated profitable strategy · LIVE orders locked.
+**Status: RESEARCH / NOT RELEASED. No verified positive trading edge. LIVE orders are blocked.**
 
-This folder begins the direct GitHub integration of the locally reviewed Windows XAUUSD Expert Advisor. The complete uploaded MQL5 source is **not yet committed here**. The current files are production-minded, separately tested *research components*, not a runnable bot by themselves. Do not mistake this for a release.
+This directory contains the imported, canonical **MQL5** gold Expert Advisor,
+its execution-policy include file, the Windows installer, offline research and tests.
 
-## What is available on GitHub
+## Use the correct Windows launcher
 
-- `research/small_account_risk.py`: risk-budget and volume-rounding audit for $100/$200 equity, 1% default and 2% absolute configured ceiling, estimated fees/slippage, broker-minimum-lot and margin veto.
-- `research/scalp_signals.py`: causal M5 closed-bar breakout, trend pullback and liquidity-sweep signals, without order submissions or future data.\n- `research/edge_gate.py`: independently reports fills/day, win rate, net expectancy, profit factor, day-block bootstrap, drawdown, and costs from explicit trade ledgers; positive historical screens are never labelled live-approved.
-- `tests/`: regression tests for zero-trade, many-trade-but-losing, margin, fee, and capital-loss cases.
-- `.github/workflows/gold-robot-research.yml`: CI executes the research tests on GitHub.
+- **`gold_robot/INSTALL_ROBOT.bat`** installs/compiles the MQL5 EA in MetaTrader 5.
+  Installing does not enable trades or change account type.
+- **`ROBOT.bat` in the repository root** starts the *separate Python QTS workstation*.
+  It does **not** install this MQL5 EA. These are two different execution engines.
 
-## Findings from the supplied local EA source
+## What the Gold EA currently implements
 
-The original native tester Jan–Jun 2025 run reported 136 accepted pending LIMIT orders and 18 completed trades, a 13.2% fill rate, native net **-$5.54**, and PF **0.98** on a simulated $10,000 balance before additional assumptions. It cannot be represented as evidence for a $100/$200 account or sustained profitable daily scalping.
+- Original deep former-stop LIMIT and an experimental shallower structural-retest LIMIT.
+- M15 is still the default signal timeframe. M5 is available as a research input;
+  its profitability and real-tick execution have **not** been independently validated.
+- Risk defaults to 1% of equity; user-configurable risk is **capped at 2%**.
+- Daily equity loss threshold defaults to 3%, now supplemented by a pre-order
+  check of the **remaining daily risk headroom** during lot sizing and immediately
+  before sending an order.
+- Broker-based estimated loss, margin, minimum volume, quote freshness,
+  spread limits, durable protective order and position monitoring.
+- No forced number of trades, martingale, discretionary loosening of structural
+  stop placement or guaranteed take-profit success.
 
-The source-only experimental local upgrade introduced an M5 research option, a near-market structural retest LIMIT candidate alongside the original former-stop LIMIT, configurable 1.0R research TP, stronger fee/slippage-aware risk sizing, and capacity for eight daily fills / twenty pending attempts. These are *limits, not promised trades*. The revised source-level Python suite passed 68 tests locally but **no native MetaEditor build or real-tick tester run** has been completed for that revised EA.
+**The strategy evidence gate permits order submission only in Strategy Tester.**
+The installed EA defaults to no orders; it cannot start real-account trading.
+This gate must not be relaxed simply to increase trade count.
 
-## Non-negotiable validation
+## Accounts with $100–$200
 
-1. Import the sanitized canonical EA and execution policy, maintaining real-account prohibition.
-2. Compile with the installed local MetaEditor and run real-tick MT5 Strategy Tester on **both $100 and $200 starting equity** with actual contract/margin/tick information, costs, and commission stress.
-3. Compare former-stop LIMIT vs nearer retest LIMIT on independent development and validation data. Score actual filled trades and missed orders, rather than signal frequency alone.
-4. Record trades per day, TP-before-SL, median time-to-exit, gross P&L, net after spread/commission/slippage, confidence intervals, maximum drawdown and restart safety.
-5. Do not enable unattended DEMO or LIVE execution just to increase trade count. No algorithm can guarantee daily profit or near-100% target hits.
+A 0.01-lot minimum, broker leverage and the true required stop distance can make
+a small account impossible to trade within 1–2% risk. A rejected transaction is
+the correct result when legal volume or margin cannot meet the risk budget.
+The 2% setting is a ceiling, not a promised or required risk per trade.
 
-The public GitHub repository intentionally excludes account logins, passwords, broker tick history, installed binaries, tester logs and other machine-local data.
+Broker stops and modeled adverse price gaps are **not a guaranteed maximum loss**.
+Spread, commission and swap assumptions are not yet fully verified against WMMarkets.
+
+## Independent verification
+
+1. Review source and compile the **latest** EA in local MetaEditor.
+2. Use real broker bid/ask ticks in native MT5 Strategy Tester for $100 and $200.
+   The offline `research/RunNativeValidation.ps1` script accepts `-DepositUsd 100`
+   or `-DepositUsd 200`, saves separate reports and currently uses the M15
+   historical fixture. It does **not** automatically verify M5.
+3. Verify actual costs, min lot, margin, pending fill and timeout rates,
+   broker disconnections, restart recovery, and stop-loss gaps.
+4. Compare alternative strategies and take-profit distances by positive
+   **net expectancy**, not merely trading frequency or advertised win rate.
+5. Retain the real-money lock until all release criteria are met.
+
+Read `docs/PERFORMANCE_REPORT.md` for the **older** M15 EA's loss-making
+six-month native report (18 trades; PF 0.98); the report does not measure
+profitability of the latest code. Read `docs/INTRADAY_DESIGN.md` and
+`docs/RELEASE_STATUS.json` for current limitations.
+
+GitHub CI validates Python tests and source safety checks, **not an MQL5
+MetaEditor compilation or connected broker execution**. The user should not
+interpret passing CI as profitable or deployment-ready.
