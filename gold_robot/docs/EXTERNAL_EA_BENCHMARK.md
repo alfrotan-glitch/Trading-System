@@ -25,16 +25,23 @@ It **never submits orders**. It does not claim any strategy is profitable.
 ## Inputs
 
 First obtain genuine closed-trade exports from comparable MT5 Strategy Tester
-runs on the *same broker and XAUUSD@*. Both require gross gains/losses measured
-at executable Bid/Ask fills; do **not** subtract spread twice. Never invent
-unavailable commissions, slippage, swaps or missing trades.
+runs on the *same broker and XAUUSD@*. Both require gross gains/losses measured at **actual executed** entry/exit Bid/Ask fills.
+Do **not** subtract spread or slippage a second time. Commission, swap and
+fees are separate broker charges; positive swap is a charge, negative is a
+credit. Never invent missing trades or charges. A blank slippage field means
+not measured, not zero.
 
 Each ledger is a UTF-8 CSV with columns:
 
-    deal_id,exit_time_utc,side,gross_usd,commission_usd,slippage_usd,swap_usd,fee_usd
+    deal_id,position_id,exit_time_utc,side,gross_usd,commission_usd,slippage_usd,swap_usd,fee_usd
 
-Costs are positive charges except swap (may be a credit). Exit timestamps
-must have an explicit UTC offset. Every deal_id must be unique.
+Commission and broker fees are nonnegative charges; swap may be a credit.
+The slippage_usd column is **diagnostic only** and may be empty (unknown).
+It must not be deducted from gross based on actual fills. Exit timestamps
+must have an explicit UTC offset. Every deal_id must be unique. Each close
+deal needs its MT5 position_id (DEAL_POSITION_ID). Partial closing deals of
+the same position count as one position for per-position PF and expectancy;
+their realized profits still count on their respective exit dates.
 
 Alongside each CSV create a manifest.json with values like:
 
@@ -76,13 +83,16 @@ No extra package is required. The output is JSON with research-only status.
 
 ## How to read the output
 
-- Reported gross, explicit costs, net, win/loss-derived profit factor, and
-  closed-trade max drawdown use **realized** values, not marked-to-market risk.
+- Reported gross, commission/swap/fees, net, per-position profit factor,
+  and realized-deal drawdown use **realized** values, not marked-to-market
+  equity risk. Position IDs group partial exits; the CSV does not prove that
+  every position is fully closed or that open exposure is absent.
 - The daily paired difference is scaled by each starting balance, and
   explicitly includes days without trades.
-- The seeded bootstrap 99% lower bound is only a descriptive sensitivity:
-  serial correlation, variable risk, broker fills and capital flows may
-  invalidate its coverage.
+- The seeded **7-calendar-day moving-block** bootstrap 99% lower bound
+  preserves some temporal clustering. For fewer than 28 days, it is omitted.
+  This is descriptive only; intraday serial dependence, variable risk,
+  broker fills and capital flows may invalidate its coverage.
 - Matching declared broker, symbol, account mode, currency, period and cost
   basis is mandatory; mismatches are rejected rather than hidden.
 - An attractive signal with unverified provenance is **not** credible proof.
