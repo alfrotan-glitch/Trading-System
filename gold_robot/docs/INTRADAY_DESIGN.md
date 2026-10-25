@@ -20,3 +20,5 @@ This source revision expands the tester-only candidate menu; it does not prove o
 3. For each setup report signals per day, placed/filled rates, post-cost net, R expectancy, confidence intervals, drawdown, stop-outs, partial fills, time-to-TP/SL, and walk-forward stability.
 4. No special preference for trade frequency is allowed to bypass the evidence gate; DEMO submissions remain disabled until an independent positive edge is found, and LIVE remains blocked.
 5. If 0.01 lot cannot stay under the configured risk limit at an economically justified stop, skip the trade. Avoid synthetic wins from a target so small that the broker spread consumes the profit.
+
+- Additional gross TP fee-floor veto: `OrderCalcProfit` checks account-currency profit at the actual pending entry/target against `MinimumTargetFeeMultiple` times assumed round-turn fees. This is not a win-probability or profitability guarantee.

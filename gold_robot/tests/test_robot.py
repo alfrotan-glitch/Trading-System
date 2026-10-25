@@ -534,3 +534,11 @@ def test_small_account_risk_guards_and_fee_budget():
     assert 'MaxPendingOrdersPerDay    = 20;' in EA
     assert 'AssumedRoundTurnFeePerLot<0.0' in EA
     assert 'AdverseStopSlipPrice<0.0' in EA
+
+def test_pending_tp_has_broker_currency_reward_and_fee_floor():
+    entry = body_of('EvaluateNewEntry')
+    assert 'MinimumTargetFeeMultiple' in EA
+    assert 'MinimumTargetFeeMultiple<1.0 || MinimumTargetFeeMultiple>10.0' in EA
+    assert 'OrderCalcProfit(direction,_Symbol,lots,price,target,gross_target)' in entry
+    assert 'gross_target<AssumedRoundTurnFeePerLot*lots*MinimumTargetFeeMultiple' in entry
+    assert entry.index('OrderCalcProfit(direction') < entry.index('OrderCheck(request,check)')

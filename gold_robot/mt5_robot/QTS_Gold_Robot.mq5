@@ -55,7 +55,8 @@ input int             PendingExpiryBars         = 2;    // Server-managed order 
 input int             MaxPendingOrdersPerDay    = 20; // Attempts; cannot force fills.
 input double          RetestDepthAtr            = 0.35; // Research retest; may increase fill rates, not edge.
 input double          AssumedRoundTurnFeePerLot = 10.0; // USD per 1.0 lot (unverified broker tariff).
-input double          AdverseStopSlipPrice      = 0.10; // XAUUSD price units, not a fill guarantee.    // Includes unfilled/cancelled orders.
+input double          AdverseStopSlipPrice      = 0.10; // XAUUSD price units, not a fill guarantee.
+input double          MinimumTargetFeeMultiple  = 2.0;  // Gross TP profit must cover >= 2x assumed total fees.
 
 
 CTrade trader;
@@ -820,6 +821,18 @@ void EvaluateNewEntry()
       status_text="Minimum lot or margin exceeds risk budget";
       return;
      }
+   // For small accounts a near TP may be swallowed by trading fees.
+   // OrderCalcProfit uses the broker contract and account currency; do not
+   // treat this assumed-cost test as proof of positive expectancy.
+   double gross_target=0.0;
+   ENUM_ORDER_TYPE direction=side>0 ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+   if(!OrderCalcProfit(direction,_Symbol,lots,price,target,gross_target) ||
+      !MathIsValidNumber(gross_target) || gross_target<=0.0 ||
+      gross_target<AssumedRoundTurnFeePerLot*lots*MinimumTargetFeeMultiple)
+     {
+      status_text="TP reward too small for assumed trading costs";
+      return;
+     }
    MqlTradeRequest request={};
    MqlTradeCheckResult check={};
    MqlTradeResult result={};
@@ -1158,7 +1171,8 @@ int OnInit()
       MaxPendingOrdersPerDay<1 || MaxPendingOrdersPerDay>40 ||
       RetestDepthAtr<0.1 || RetestDepthAtr>1.5 ||
       AssumedRoundTurnFeePerLot<0.0 || AssumedRoundTurnFeePerLot>100.0 ||
-      AdverseStopSlipPrice<0.0 || AdverseStopSlipPrice>2.0)
+      AdverseStopSlipPrice<0.0 || AdverseStopSlipPrice>2.0 ||
+      MinimumTargetFeeMultiple<1.0 || MinimumTargetFeeMultiple>10.0)
      {
       Print("QTS: invalid parameters, no initialization.");
       return INIT_PARAMETERS_INCORRECT;

@@ -32,8 +32,8 @@
     },
     {
       "path": "docs/INTRADAY_DESIGN.md",
-      "bytes": 2385,
-      "sha256": "9fc4eb20bb07c1c6c3de151e60b9be66bd97939d2e88ca25303f01dfe8b77598"
+      "bytes": 2632,
+      "sha256": "56f3f209e5650f32320b784aa15412bbdce49f2dbc0db9c16ddc64cf748708a2"
     },
     {
       "path": "docs/PERFORMANCE_REPORT.md",
@@ -57,8 +57,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 58282,
-      "sha256": "dc03e8bca655d7aaa9d00bdca0ed3e6aa36e6496a85dee1366e2e5fe01da0485"
+      "bytes": 59046,
+      "sha256": "d119d5315a59b7e7c5989e2b8c4a0095ed5561e7bda9beba9c5b4cca41d58e26"
     },
     {
       "path": "research/BuildForwardFixture.mq5",
@@ -182,8 +182,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 24437,
-      "sha256": "4378152fc1220971c9099eb859f41cecd1f3d06eef7eabf89a3e0c0c43531057"
+      "bytes": 24942,
+      "sha256": "1b4f051d897f1ace299dbb3538c96cac1413ecd914d8747432a3dd9943e03f0a"
     },
     {
       "path": "tests/test_scalp_signals.py",
