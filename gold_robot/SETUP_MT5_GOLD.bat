@@ -6,6 +6,7 @@ echo ========================================================
 echo   QTS GOLD MT5 - WMMarkets Setup ^& Broker Readiness
 echo ========================================================
 echo.
+set "QTS_NO_PAUSE=1"
 echo STEP 1: Install and compile the CURRENT canonical QTS Gold Robot.
 echo No trades will be enabled. The old installed EA is backed up.
 echo.
