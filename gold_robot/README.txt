@@ -1,20 +1,32 @@
-QTS Gold Robot - initial development (NOT RELEASED)
+QTS GOLD MT5 - WINDOWS QUICK START
+=================================
 
-Windows / MetaTrader 5 MQL5 Expert Advisor for XAUUSD research.
-Canonical EA: mt5_robot/QTS_Gold_Robot.mq5.
-Execute INSTALL_ROBOT.bat only in a controlled DEMO/test environment after reviewing the source and broker settings.
-The installer does NOT enable trading or enter orders.
-New DEMO broker entries are locked by the strategy evidence gate; LIVE is blocked.
-No profitable strategy has been independently validated. Do not fund a real account on the basis of this package.
+CANONICAL MAIN BRANCH:
+https://github.com/alfrotan-glitch/Trading-System
 
-Import notes (2026-10-25):
-- Source was exported from a local Windows workspace for review.
-- This research revision has NOT been compiled in MetaEditor; the listed Python source-level tests are NOT a substitute.
-- Broker login was removed from the native tester runner; supply -DemoLogin <demo-id> locally only when necessary.
-- This intraday research revision defaults to 1.0% per-trade risk, allows up to 2.0% as a hard configured limit, and refuses unaffordable minimum-lot or margin requirements. The M5 and near-market retest LIMIT candidate have NOT been tested in native MT5.
-- The preceding $10,000 tester results do not represent an adequately validated $100-$200 account.
-- Large broker datasets, tester logs, executable binaries, and research evidence are NOT included in this source snapshot.
+1. Clone only main in a clean folder.
+2. Double-click START_HERE.bat in the root folder.
+3. Option 1 installs and compiles the current QTS_Gold_Robot EA and broker-check script.
+4. In WMMarkets MetaTrader 5, open XAUUSD@ and run QTS_Broker_Preflight from Navigator > Scripts.
+5. Option 2 creates a professional local HTML/JSON readiness report.
 
-See docs/ACCEPTANCE_CHECKLIST.md, docs/PERFORMANCE_REPORT.md and docs/IMPORT_AUDIT.md.
+Exact MT5 Expert Advisor source:
+  mt5_robot/QTS_Gold_Robot.mq5
+Dependencies:
+  mt5_robot/ExecutionPolicy.mqh
+  mt5_robot/StructureResearch.mqh
 
-Intraday research choices: see docs/INTRADAY_DESIGN.md. M15 / former-stop LIMIT remains the default; M5 / retest LIMIT is an opt-in tester candidate.
+Native MetaEditor must confirm 0 errors, 0 warnings.
+For the latest edited source, this must be verified on the operator's Windows terminal.
+
+Use MT5 Strategy Tester for research: XAUUSD@ / M15 / real ticks / 3000 USD
+(the operator's current minimum selectable tester deposit). Check EntryStyle 0-3
+separately. The optional daily-loss/count bypass is restricted to Strategy Tester.
+Broker, per-trade SL/TP, volume, spread, margin and execution-safety checks remain.
+
+No independently validated profitable strategy. No orders on real-money accounts.
+Installation/reporting never submits orders. A clean report is not profit evidence.
+
+Full instructions: docs/WINDOWS_START_DARI.md
+Safety limitations: docs/RELEASE_STATUS.json
+Historical research: docs/PERFORMANCE_REPORT.md
