@@ -14,7 +14,6 @@ from decimal import ROUND_DOWN, Decimal
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-
 D = Decimal
 DEFAULT_SPOT_CASH = D("200")
 DEFAULT_MAX_BUY = D("40")
