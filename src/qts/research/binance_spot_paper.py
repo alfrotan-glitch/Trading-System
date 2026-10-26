@@ -11,7 +11,7 @@ import argparse
 import json
 from dataclasses import dataclass
 from decimal import ROUND_DOWN, Decimal
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 D = Decimal
@@ -113,8 +113,14 @@ class BinancePublicSpot:
             raise SpotPaperError("endpoint is not a public allowlisted market-data route")
         symbol = self._validate_symbol(symbol)
         url = f"{self.host}/api/v3/{endpoint}?{urlencode({'symbol': symbol})}"
+        parsed = urlsplit(url)
+        if (parsed.scheme != "https" or parsed.netloc != "data-api.binance.vision"
+                or parsed.username or parsed.password):
+            raise SpotPaperError("non-HTTPS/non-Binance data endpoint rejected")
         request = Request(url, headers={"User-Agent": "QTS-Research-Spot-Paper/0.1"}, method="GET")
-        with urlopen(request, timeout=6) as response:
+        # URL is constructed exclusively from a fixed HTTPS origin, two
+        # allowlisted GET paths, and an alphanumeric uppercase symbol.
+        with urlopen(request, timeout=6) as response:  # nosec B310
             result = json.load(response)
         if not isinstance(result, dict):
             raise SpotPaperError("unexpected exchange response")
