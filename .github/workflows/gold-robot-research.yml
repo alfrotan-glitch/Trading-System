@@ -24,3 +24,5 @@ jobs:
         run: python -m pip install pytest==8.3.5
       - name: Verify cost accounting and small-account risk
         run: python -m pytest -o addopts='' -q gold_robot/tests
+      - name: Verify canonical Windows source package integrity
+        run: python gold_robot/research/update_manifest.py --check
