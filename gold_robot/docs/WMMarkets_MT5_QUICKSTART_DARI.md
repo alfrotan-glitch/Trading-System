@@ -1,0 +1,45 @@
+# QTS Gold Robot — راهنمای کوتاه ویندوز و WMMarkets MT5
+
+**وضعیت: آماده نصب/بازرسی و آزمایش در Strategy Tester؛ هنوز آماده معاملات واقعی نیست.** هیچ بک‌تست جدیدی روی نسخه فعلی و تیک‌های WMMarkets در این مرحله اجرا نشده است. نسخه اصلی همان `gold_robot/mt5_robot/QTS_Gold_Robot.mq5` است. این ابزار، ربات جداگانه یا مسیر معاملات دوم ایجاد نمی‌کند.
+
+## روش نصب برای کسی که برنامه‌نویس نیست
+
+1. MT5 بروکر WMMarkets را باز کنید؛ در **Market Watch** نماد دقیق `XAUUSD@` را انتخاب نمایید.
+2. فولدر آخرین سورس QTS را از شاخه **main** در GitHub داشته باشید. اگر از ZIP استفاده می‌کنید، آن را در یک فولدر **جدید** استخراج کنید تا با نسخه‌های قدیمی مخلوط نشود.
+3. روی `gold_robot/INSTALL_ROBOT.bat` دوبار کلیک کنید. اسکریپت خودکار محل MT5 و MetaEditor را پیدا می‌کند؛ اگر چند MT5 موجود باشد، فولدر همان ترمینال WMMarkets را انتخاب کنید. نصب‌کننده فایل‌های قبلی را قبل از کاپی و کامپایل پشتیبانی می‌گیرد و اگر خطا بیاید برمی‌گرداند.
+4. نصب فقط زمانی موفق است که گزارش MetaEditor شامل **0 errors, 0 warnings** و یک فایل EX5 تازه باشد. حتی پس از نصب، هیچ معامله‌ای به‌صورت پیش‌فرض باز نمی‌شود.
+5. روی `gold_robot/CHECK_BROKER.bat` دوبار کلیک کنید. این فایل، ابزار خواندنی `QTS_Broker_Preflight` را در بخش **Scripts** ترمینال نصب/کامپایل می‌کند، بدون تغییر کد EA.
+6. در MT5 چارت `XAUUSD@` را باز کنید، از Navigator > Scripts > Refresh، ابزار `QTS_Broker_Preflight` را روی همان چارت اجرا کنید. تنظیمات آزمایشی پیش‌فرض: **200 USD سرمایه مدل، 0.5% بودجه ریسک و 4.0 واحد قیمتی فاصله حد ضرر**. این فاصله فقط مثال است و باید با Stop واقعی هر معامله مقایسه شود.
+7. گزارش در MT5 Data Folder > MQL5 > Files > `QTS_Broker_Preflight.csv` ذخیره می‌شود. متن گزارش **نباید شامل رمز عبور یا API Key باشد**؛ ابزار هیچ‌کدام را نمی‌خواند. برای مشوره می‌توانید متن خود گزارش را شریک کنید.
+8. اگر در سطر `Verdict` عبارت `BLOCKED_...` بود، از **اجبار حجم، کاهش مصنوعی Stop Loss یا برداشتن فیلترها خودداری کنید**. گزارش نشان می‌دهد دقیقاً کدام محدودیت بروکر یا حساب مانع است. اگر `ENGINEERING_PRECHECK_OK_NOT_TRADE_PERMISSION` بود، فقط مشخصات پایه قرارداد مناسب ارزیابی شده است؛ این مجوز معامله نیست.
+
+## آزمایش واقعی قبل از استفاده
+
+در MT5 گزینه Strategy Tester (Ctrl+R) را باز کنید:
+
+- EA: `QTS_Gold_Robot`
+- Symbol: همان `XAUUSD@` ثبت‌شده در حساب WMMarkets
+- Timeframe: ابتدا **M15**؛ M5 را به‌صورت مقایسه جداگانه آزمایش کنید
+- Model: **Every tick based on real ticks** (در صورت دسترسی از بروکر)
+- Deposit: جداگانه **$100** و **$200**؛ و یک حساب $10,000 فقط برای مقایسه محدودیت حجم
+- Inputs در **Strategy Tester فقط**: `EnableDemoOrders=true`. این فلگ در حساب متصل، به‌سبب **StrategyEvidenceApproved** فعلاً اجازه سفارش نمی‌دهد.
+- ورود استراتیژی فعلی: **Limit**. UT Bot/OTT/QQE هنوز داخل EA فعال نشده‌اند. سیگنال‌های جدید فقط با تحقیق مستقل و بررسی عملکرد خالص قابل‌اضافه‌شدن هستند.
+- خروجی ضروری: گزارش trades, equity drawdown, profit factor, average net trade, modelling mode, warnings و refused orders.
+
+اگر کامپایل جدید یا بک‌تست native خطا داد، فایل log یا نام خطا را شریک کنید؛ از گزارش یک نسخه قدیمی به‌عنوان نتیجه ربات تازه استفاده نکنید.
+
+## بررسی‌هایی که قبل از اجازه حتی Demo auto-trading باقی مانده‌اند
+
+- تیک‌های واقعی و سرور متصل WMMarkets؛ ارزش tick، حداقل Lot، Margin و محدودیت‌های LIMIT/expiry/SL/TP بر اساس گزارش خود ترمینال.
+- اسپرید، کمیسیون، Slippage و Swap واقعی؛ کمیسیون فرضی `$10/lot` قابل اتکا نیست.
+- نتیجه مثبت و پایدار **بعد از هزینه‌ها** روی یک دوره دیده‌نشده؛ شمار زیاد معامله و Win Rate معیار کافی نیست.
+- بازپخش قطع اتصال، اجرا/لغو سفارش معلق، restart و بازگشت گزارش‌ها با فیلترهای ریسک.
+- حساب واقعی (**LIVE**) تا تکمیل مراحل علمی و تصمیم مستقل مالک سیستم مسدود بماند.
+
+## تفاوت فایل‌ها
+
+- `gold_robot/INSTALL_ROBOT.bat`: نصب خود Expert Advisor، بدون فعال‌کردن سفارش.
+- `gold_robot/CHECK_BROKER.bat`: نصب *اسکریپت بررسی بروکر*، بدون سفارش.
+- `ROBOT.bat` در ریشه مخزن: سیستم تحقیقاتی **Python QTS**؛ Expert Advisor متاتریدر را نصب نمی‌کند.
+
+منابع رسمی: [MetaEditor command-line compilation](https://www.metatrader5.com/en/metaeditor/help/beginning/integration_ide)، [MQL5 OrderCalcProfit](https://www.mql5.com/en/docs/trading/ordercalcprofit)، [MT5 Scripts & EAs](https://www.metatrader5.com/en/terminal/help/algotrading/autotrading).
