@@ -10,12 +10,16 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_DOWN
+from decimal import ROUND_DOWN, Decimal
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 
 D = Decimal
+DEFAULT_SPOT_CASH = D("200")
+DEFAULT_MAX_BUY = D("40")
+DEFAULT_RISK = D("0.50")
+DEFAULT_FEE_RATE = D("0.001")
 MARKET_DATA_HOST = "https://data-api.binance.vision"
 
 
@@ -50,7 +54,7 @@ class Rules:
     min_notional: Decimal
 
     @classmethod
-    def from_exchange_info(cls, payload: dict, symbol: str) -> "Rules":
+    def from_exchange_info(cls, payload: dict, symbol: str) -> Rules:
         items = payload.get("symbols", [])
         if len(items) != 1 or items[0].get("symbol") != symbol:
             raise SpotPaperError("symbol metadata missing or inconsistent")
@@ -81,7 +85,7 @@ class Quote:
     ask: Decimal
 
     @classmethod
-    def from_book_ticker(cls, payload: dict, symbol: str) -> "Quote":
+    def from_book_ticker(cls, payload: dict, symbol: str) -> Quote:
         if payload.get("symbol") != symbol:
             raise SpotPaperError("quote symbol mismatch")
         bid, ask = dec(payload["bidPrice"]), dec(payload["askPrice"])
@@ -142,9 +146,9 @@ class SpotPaperAccount:
     commissions may settle in base/BNB and live fill/slippage can differ.
     """
 
-    def __init__(self, starting_usdt: Decimal = D("200"), *,
-                 max_buy_usdt: Decimal = D("40"),
-                 max_risk_usdt: Decimal = D("0.50"), fee_rate: Decimal = D("0.001")):
+    def __init__(self, starting_usdt: Decimal = DEFAULT_SPOT_CASH, *,
+                 max_buy_usdt: Decimal = DEFAULT_MAX_BUY,
+                 max_risk_usdt: Decimal = DEFAULT_RISK, fee_rate: Decimal = DEFAULT_FEE_RATE):
         self.cash = dec(starting_usdt)
         self.units = D(0)
         self.max_buy_usdt = dec(max_buy_usdt)
