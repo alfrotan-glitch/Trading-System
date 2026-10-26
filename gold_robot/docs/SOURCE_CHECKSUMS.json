@@ -22,8 +22,8 @@
     },
     {
       "path": "README.txt",
-      "bytes": 1408,
-      "sha256": "26f6ccaa821fdc8d683b79b0eccb47d8f03e8cf9826acbd313cb3116fe59e30f"
+      "bytes": 1445,
+      "sha256": "696549fd940a12fdd58bb8125a78ab3411d616d325df4748075254d4fff74d2c"
     },
     {
       "path": "SETUP_MT5_GOLD.bat",
@@ -77,8 +77,8 @@
     },
     {
       "path": "docs/RELEASE_STATUS.json",
-      "bytes": 2425,
-      "sha256": "c5f753f9a3ed33735a0431dbcd6f36fb7a84c86e39adfa3b0dafe0a38db87cc4"
+      "bytes": 2444,
+      "sha256": "8c0a431f429e9936ba70c1ea749042f951f7ebf2878441e63c7b0f24b012cd7b"
     },
     {
       "path": "docs/WINDOWS_START_DARI.md",
