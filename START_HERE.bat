@@ -7,6 +7,7 @@ if not exist "gold_robot\SETUP_MT5_GOLD.bat" (
   pause
   exit /b 1
 )
+if /I "%~1"=="/verify-setup" goto VERIFY_SETUP
 :MENU
 cls
 echo.
@@ -63,6 +64,12 @@ if not exist "gold_robot\docs\WINDOWS_START_DARI.md" (
 )
 start "" notepad.exe "%~dp0gold_robot\docs\WINDOWS_START_DARI.md"
 goto MENU
+
+:VERIFY_SETUP
+REM Noninteractive Windows smoke test, validates menu -> setup BAT paths.
+set "QTS_SETUP_VALIDATE_ONLY=1"
+call "gold_robot\SETUP_MT5_GOLD.bat"
+exit /b %ERRORLEVEL%
 
 :END
 echo QTS closed; no orders were requested by this menu.
