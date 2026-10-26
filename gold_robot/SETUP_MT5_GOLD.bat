@@ -14,7 +14,7 @@ echo.
 echo ===========================================================
 echo  QTS GOLD - Windows MT5 source installer and broker preflight
 echo ===========================================================
-echo  WMMarkets XAUUSD@ | LIVE LOCKED | No automatic orders
+echo  WMMarkets XAUUSD@ ^| LIVE LOCKED ^| No automatic orders
 echo  Source directory: "%QTS_SETUP_DIR%"
 echo.
 if not exist "%QTS_EA_INSTALL%" goto MISSING_EA_INSTALL
