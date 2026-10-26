@@ -156,6 +156,23 @@ void OnStart()
                Record(report,"WorstMinLotModeledLossUSD",Money(worst));
                Record(report,"MinLotBuyMarginUSD",Money(buy_margin));
                Record(report,"MinLotSellMarginUSD",Money(sell_margin));
+               // Show WHY a min-lot order cannot respect a small-account
+               // budget; never 'fix' the failure by widening allowed risk.
+               // These estimates exclude actual commission/slippage/gap loss.
+               if(worst>0.0 && risk_budget>0.0)
+                 {
+                  Record(report,"MinimumLotModeledRiskPercent",
+                         DoubleToString(100.0*worst/ModelCapitalUsd,2));
+                  Record(report,"MinimumLotRiskBudgetMultiple",
+                         DoubleToString(worst/risk_budget,2));
+                  Record(report,"RiskBudgetExceededUSD",
+                         Money(MathMax(0.0,worst-risk_budget)));
+                  Record(report,"RiskBudgetStatus",
+                         worst>risk_budget ? "BLOCKED_MINIMUM_LOT_RISK" : "WITHIN_MODELED_BUDGET");
+                 }
+               Record(report,"MinimumLotMarginStatus",
+                      buy_margin>ModelCapitalUsd || sell_margin>ModelCapitalUsd ?
+                      "BLOCKED_MODEL_CAPITAL_MARGIN" : "WITHIN_MODEL_CAPITAL");
                if(worst>risk_budget || buy_margin>ModelCapitalUsd ||
                   sell_margin>ModelCapitalUsd || worst<=0.0)
                  {
