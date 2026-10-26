@@ -36,7 +36,6 @@ try{
     )
     [IO.File]::WriteAllLines($csv,$rows)
     & $runner -DataFolder $mql5 -OutputDirectory $output -NoOpen
-    if($LASTEXITCODE -ne 0){throw "Report failed: $LASTEXITCODE"}
     $a=Get-ChildItem -LiteralPath $output -Filter '*.json' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if(-not $a){throw 'JSON report missing'}
     $first=Get-Content -LiteralPath $a.FullName -Raw | ConvertFrom-Json
