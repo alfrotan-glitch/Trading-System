@@ -22,6 +22,7 @@ import argparse
 import csv
 import json
 from dataclasses import dataclass, field
+from math import isfinite
 from pathlib import Path
 from statistics import median
 from typing import Iterable
@@ -107,8 +108,10 @@ def load_stops(rows: Iterable[dict[str, str]]) -> tuple[list[Stop], int]:
         stop = float(row["initial_stop_price"])
         exit_price = float(row["exit_price"])
         direction = 1 if side == "BUY" else -1
-        if (entry_ms < 0 or exit_ms <= entry_ms or entry <= 0 or stop <= 0
-                or exit_price <= 0 or direction * (entry - stop) <= 0):
+        if (entry_ms < 0 or exit_ms <= entry_ms or
+                not all(isfinite(v) for v in (entry, stop, exit_price)) or
+                entry <= 0 or stop <= 0 or exit_price <= 0 or
+                direction * (entry - stop) <= 0):
             raise ValueError("invalid chronology, pricing or initial SL side")
         # No requirement that exit price equals planned SL: stop slip/gap exists.
         stops.append(Stop(identity, direction, entry_ms, exit_ms,
@@ -128,7 +131,8 @@ def audit(stops: list[Stop], ticks: Iterable[dict[str, str]],
         ms = int(row["time_ms"])
         bid = float(row["bid"])
         ask = float(row["ask"])
-        if (ms < 0 or bid <= 0 or ask <= bid or
+        if (ms < 0 or not isfinite(bid) or not isfinite(ask) or
+                bid <= 0 or ask <= bid or
                 last_tick is not None and ms < last_tick):
             raise ValueError("out-of-order or invalid executable tick")
         last_tick = ms
