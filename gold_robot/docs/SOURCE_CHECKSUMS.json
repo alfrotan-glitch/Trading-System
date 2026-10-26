@@ -52,13 +52,13 @@
     },
     {
       "path": "mt5_robot/Install_QTS_Gold_Robot.ps1",
-      "bytes": 13358,
-      "sha256": "b6cba76b19a1cc4ec60e57ec2625767c956bff0a0eee34e15305eb241658322d"
+      "bytes": 14815,
+      "sha256": "e1fff2cd83ae7cf14fd3d38235222149ff78eef677493db76382937a2504e466"
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 62997,
-      "sha256": "8dcaa5b8a9063e9d829bd02d7aeda23fbf84b7e292e06291e1f411e59268dabf"
+      "bytes": 65021,
+      "sha256": "c2080de98410d1161d4d321d72232417c51cc49b871c2e7ea694ad89d143b715"
     },
     {
       "path": "research/BuildForwardFixture.mq5",
@@ -194,6 +194,11 @@
       "path": "tests/test_small_account_risk.py",
       "bytes": 1373,
       "sha256": "703c28cbc05039184c8be8c8acb612541ba4e9e2206a41faf7b030d7d6e0786c"
+    },
+    {
+      "path": "mt5_robot/StructureResearch.mqh",
+      "bytes": 6031,
+      "sha256": "892cad8304fd6c1e73cb099b5c4c6c2be1be01bd15ab8d43e0fade3e1b61ec61"
     }
   ]
 }
