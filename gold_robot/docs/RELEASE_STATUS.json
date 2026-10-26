@@ -1,20 +1,58 @@
 {
-  "version": "0.0.0-development",
-  "release_state": "NOT_RELEASED",
+  "component": "QTS Gold MT5 Expert Advisor",
+  "version": "0.1.0-research-windows",
+  "release_state": "WINDOWS_RESEARCH_INSTALLER_READY_NATIVE_CURRENT_BUILD_UNVERIFIED",
+  "installed_earlier_revision_metaeditor_passed": true,
+  "current_revision_metaeditor_compiled_on_user_terminal": false,
+  "current_revision_native_real_tick_backtested": false,
+  "validated_profitable_edge": false,
+  "live_real_money_orders_permitted": false,
+  "connected_demo_new_orders_permitted_by_strategy_gate": false,
   "default_order_permission": false,
-  "market_entry_orders_permitted": false,
-  "real_money_orders_permitted": false,
-  "entry_policy": "Old-stop LIMIT (default) or near-market structural retest LIMIT candidate (research-only); no strategy has passed independent profitability validation.",
-  "testing": {
-    "metaeditor_compiled_ex5": false,
-    "validated_profitable_edge": false,
-    "reason": "Research changes to M5 and near-market retest LIMIT have only source-level Python regression checks; native MQL5 compile and tick-replay on $100/$200 tester deposits remain REQUIRED."
+  "market_order_entries_permitted": false,
+  "entry_policy": "Four isolated tester-only LIMIT styles: former-stop, retest, confirmed structural breakout/retest, and sweep/reclaim; no positive independent expectancy validated.",
+  "tester_only_research_mode": {
+    "input": "TesterIgnoreDailyAndPeakStops",
+    "default": true,
+    "effect": "Ignore day/peak equity latches and daily executed/pending count caps in Strategy Tester only.",
+    "unchanged_guards": [
+      "Protective SL/TP",
+      "RiskPerTradePct upper ceiling 2.0",
+      "OrderCalcProfit and legal broker minimum lot",
+      "Margin and spread",
+      "Execution incident halt",
+      "Read-only real-account blocking"
+    ]
   },
-  "owner_capital_usd": [
-    100,
-    200
+  "strategy_tester": {
+    "operator_gui_minimum_deposit_usd": 3000,
+    "broker": "WMMarkets-Demo",
+    "symbol": "XAUUSD@",
+    "model": "Every tick based on real ticks",
+    "timeframes": [
+      "M15",
+      "M5"
+    ],
+    "verified_runs_for_current_source": 0
+  },
+  "windows_delivery": {
+    "root_launcher": "START_HERE.bat",
+    "ea_installer": "gold_robot/SETUP_MT5_GOLD.bat",
+    "report_launcher": "gold_robot/MAKE_REPORT.bat",
+    "report_format": [
+      "HTML",
+      "JSON"
+    ],
+    "report_output": "gold_robot/reports_local",
+    "read_only_report": true,
+    "expected_local_native_compile_gate": "0 errors, 0 warnings, fresh EX5"
+  },
+  "research_limitations": [
+    "No verified latest-build native WMMarkets backtest",
+    "Prior baseline six-month sample yielded 18 completed trades with PF 0.98 and net loss",
+    "Historical sweep family failed holdout",
+    "Broker commission and live fill behavior not independently confirmed",
+    "Windows smoke test is not MetaEditor compilation"
   ],
-  "default_risk_per_trade_pct": 1.0,
-  "configured_max_risk_per_trade_pct": 2.0,
-  "risk_note": "The 2.0% parameter cap is not a guaranteed realized loss bound; costs, slippage and gaps can exceed risk budget."
+  "risk_note": "Stop gaps, slippage and costs may exceed planned per-trade risk. Tester-only daily-limit bypass is for measuring opportunities, never trade authority."
 }
