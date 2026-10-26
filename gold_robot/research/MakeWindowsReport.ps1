@@ -4,7 +4,7 @@ param([string]$DataFolder="", [string]$OutputDirectory="", [switch]$NoOpen)
 $ErrorActionPreference='Stop'
 $gold=Split-Path -Parent $PSScriptRoot
 $manifestPath=Join-Path $gold 'docs\SOURCE_CHECKSUMS.json'
-function H([object]$v){return [System.Net.WebUtility]::HtmlEncode([string]$v)}
+function HtmlEscape([object]$v){return [System.Net.WebUtility]::HtmlEncode([string]$v)}
 function Resolve-Mql5([string]$path){
     if([string]::IsNullOrWhiteSpace($path)){return $null}
     foreach($p in @($path,(Join-Path $path 'MQL5'))){
@@ -15,10 +15,10 @@ function Resolve-Mql5([string]$path){
     return $null
 }
 function Tr([string]$key,[object]$value){
-    return ('<tr><th>{0}</th><td dir="ltr">{1}</td></tr>' -f (H $key),(H $value))
+    return ('<tr><th>{0}</th><td dir="ltr">{1}</td></tr>' -f (HtmlEscape $key),(HtmlEscape $value))
 }
 function Tile([string]$title,[string]$status,[string]$detail,[string]$kind){
-    return ('<div class="tile {0}"><span>{1}</span><b dir="ltr">{2}</b><small>{3}</small></div>' -f $kind,(H $title),(H $status),(H $detail))
+    return ('<div class="tile {0}"><span>{1}</span><b dir="ltr">{2}</b><small>{3}</small></div>' -f $kind,(HtmlEscape $title),(HtmlEscape $status),(HtmlEscape $detail))
 }
 $repoFiles=@('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh')
 $sourceState='SOURCE_MISSING'
@@ -184,7 +184,7 @@ footer{color:#64748b;font-size:12px;text-align:center;margin-top:22px}
 </style></head><body><main>
 <header><h1>QTS GOLD | گزارش آمادگی ویندوز</h1>
 <p>بررسی منبع، نصب ربات، سازگاری بروکر و شرایط ورود به Strategy Tester.</p>
-<div class="meta">تاریخ: $(H $created) | XAUUSD@ | LIVE: LOCKED | EDGE: UNVALIDATED</div>
+<div class="meta">تاریخ: $(HtmlEscape $created) | XAUUSD@ | LIVE: LOCKED | EDGE: UNVALIDATED</div>
 </header><div class="grid">$cards</div>
 <section><h2>خلاصه وضعیت</h2><table>
 $(Tr 'نتیجه کامپایل' $compileState)
@@ -193,7 +193,7 @@ $(Tr 'وضعیت نهایی' $overall)
 </table></section>
 <section><h2>مشخصات بروکر</h2><table>$rowsHtml</table>
 <p>این فایل تنها از گزارش خواندنی بروکر استفاده کرده است. عدد سود، بازده واقعی و کارمزد حساب را تأیید نمی‌کند.</p></section>
-<section><h2>اقدام پیشنهادی</h2><p class="next">$(H $next)</p>
+<section><h2>اقدام پیشنهادی</h2><p class="next">$(HtmlEscape $next)</p>
 <p>برای مقایسه استراتیژی‌ها در MT5 باید نتایج واقعی Strategy Tester جداگانه تهیه شوند. این گزارش آمادگی، گزارش سودآوری نیست.</p></section>
 <footer>QTS research workstation · No login / account key · No orders submitted by this tool</footer>
 </main></body></html>
