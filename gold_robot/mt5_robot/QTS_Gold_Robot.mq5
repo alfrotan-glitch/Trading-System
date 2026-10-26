@@ -553,6 +553,9 @@ int CompletedBarSignal(double &atr_value)
    return result;
   }
 
+// After all signal globals and input declarations are available.
+#include "StructureResearch.mqh"
+
 // ------------------------------------------------------------------
 // Broker-authoritative order sizing and SL/TP attached to pending request.
 // Broker stops are not guarantees of prices or maximum losses across gaps.
@@ -882,10 +885,14 @@ void EvaluateNewEntry()
       status_text="Quote, spread or broker permission refused entry";
       return;
      }
-   double atr=0.0;
-   int side=CompletedBarSignal(atr);
+   double atr=0.0,structure_level=0.0,structure_anchor=0.0;
+   bool structural=EntryStyle==QTS_BREAK_ACCEPT_RETEST ||
+                   EntryStyle==QTS_SWEEP_RECLAIM;
+   int side=structural ?
+      CompletedStructureSignal(atr,structure_level,structure_anchor) :
+      CompletedBarSignal(atr);
    if(side==0)
-      return; // Preserve the stage-specific reason from CompletedBarSignal.
+      return; // Preserve the stage-specific reason from causal signal logic.
    if((quote.ask-quote.bid)>atr*MaxSpreadVsAtrPct/100.0)
      {
       status_text="Spread too large versus ATR";
@@ -901,10 +908,14 @@ void EvaluateNewEntry()
       return;
      }
    double price=0.0,stop=0.0,target=0.0;
-   if(!(EntryStyle==QTS_RETEST_LIMIT ? PrepareRetestLimit(side,quote,atr,price,stop,target) :
-                                     PreparePullbackLimit(side,quote,atr,price,stop,target)))
+   bool prepared=structural ?
+      PrepareStructureLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
+      (EntryStyle==QTS_RETEST_LIMIT ?
+       PrepareRetestLimit(side,quote,atr,price,stop,target) :
+       PreparePullbackLimit(side,quote,atr,price,stop,target));
+   if(!prepared)
      {
-      status_text="Old-stop LIMIT level not safe, reachable or reward-positive";
+      status_text="LIMIT veto: price, structure, stop or reward not valid";
       return;
      }
    datetime deadline=0;
@@ -959,7 +970,10 @@ void EvaluateNewEntry()
    request.type_filling=ORDER_FILLING_RETURN;
    request.type_time=ORDER_TIME_SPECIFIED;
    request.expiration=deadline;
-   request.comment=EntryStyle==QTS_RETEST_LIMIT ? "QTS RETEST LIMIT DEMO" : "QTS OLD-SL LIMIT DEMO";
+   request.comment=EntryStyle==QTS_RETEST_LIMIT ? "QTS RETEST LIMIT DEMO" :
+                   EntryStyle==QTS_FORMER_STOP_LIMIT ? "QTS OLD-SL LIMIT DEMO" :
+                   EntryStyle==QTS_BREAK_ACCEPT_RETEST ? "QTS BREAK HOLD LIMIT" :
+                                                         "QTS SWEEP RECLAIM";
    ResetLastError();
    if(!OrderCheck(request,check) || (check.retcode!=0 && check.retcode!=TRADE_RETCODE_DONE))
      {
