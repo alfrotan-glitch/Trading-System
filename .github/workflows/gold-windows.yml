@@ -1,0 +1,39 @@
+name: QTS Gold Windows Installer and Report Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - "START_HERE.bat"
+      - "gold_robot/**"
+      - ".github/workflows/gold-windows.yml"
+  pull_request:
+    paths:
+      - "START_HERE.bat"
+      - "gold_robot/**"
+      - ".github/workflows/gold-windows.yml"
+permissions:
+  contents: read
+jobs:
+  windows-onboarding:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify clean source manifest on Windows
+        shell: pwsh
+        run: |
+          $m = Get-Content gold_robot/docs/SOURCE_CHECKSUMS.json -Raw | ConvertFrom-Json
+          foreach ($f in $m.sha256_files) {
+            $path = Join-Path gold_robot ($f.path.Replace('/','\'))
+            if (-not (Test-Path -LiteralPath $path)) { throw "Manifest source missing: $path" }
+            $file = Get-Item -LiteralPath $path
+            if ($file.Length -ne $f.bytes) { throw "Manifest file size mismatch: $path" }
+            $hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+            if ($hash -ne $f.sha256) { throw "Manifest sha mismatch: $path" }
+          }
+          if (-not (Test-Path START_HERE.bat)) { throw "Windows launcher missing" }
+          if (-not (Test-Path gold_robot/MAKE_REPORT.bat)) { throw "Report launcher missing" }
+          Write-Host "Canonical Windows sources: OK"
+      - name: Simulate clean and blocked MT5 broker reports (no trading)
+        shell: pwsh
+        run: ./gold_robot/tests/windows_report_smoke.ps1
