@@ -17,7 +17,7 @@ input bool            EnableDemoOrders          = false; // Explicitly opt in af
 input bool            EnableEntryDiagnostics    = true; // Tester-only journal: why each closed bar was vetoed.
 input bool            PauseNewEntries           = false;
 input bool            EmergencyFlattenOwned     = false; // Emergency CLOSE of THIS magic only.
-enum QTS_ENTRY_STYLE { QTS_FORMER_STOP_LIMIT=0, QTS_RETEST_LIMIT=1 };
+enum QTS_ENTRY_STYLE { QTS_FORMER_STOP_LIMIT=0, QTS_RETEST_LIMIT=1, QTS_BREAK_ACCEPT_RETEST=2, QTS_SWEEP_RECLAIM=3 };
 input QTS_ENTRY_STYLE EntryStyle               = QTS_FORMER_STOP_LIMIT;
 input ENUM_TIMEFRAMES SignalTimeframe           = PERIOD_M15;
 input int             FastEmaPeriod             = 20;
@@ -29,6 +29,7 @@ input double          RewardToRisk              = 1.0; // Unvalidated research s
 input double          RiskPerTradePct           = 1.0; // Up to 2%, NEVER a mandatory 2% risk.
 input double          MaxDailyLossPct           = 3.0;
 input double          MaxPeakDrawdownPct        = 8.0;
+input bool            TesterIgnoreDailyAndPeakStops = true; // ONLY Strategy Tester: observe all opportunities.
 input bool            FlattenOnEquityBreach     = true;
 input int             MaxTradesPerDay           = 8;
 input int             MaxSpreadPoints           = 90;
@@ -55,6 +56,9 @@ input double          MaxPendingDistanceAtr     = 1.80; // Do not chase far-away
 input int             PendingExpiryBars         = 2;    // Server-managed order expiration.
 input int             MaxPendingOrdersPerDay    = 20; // Attempts; cannot force fills.
 input double          RetestDepthAtr            = 0.35; // Research retest; may increase fill rates, not edge.
+input double          StructureBreakConfirmAtr  = 0.07;
+input double          StructureRetestWindowAtr  = 0.35;
+input double          StructureEntryOffsetAtr   = 0.04;
 input double          AssumedRoundTurnFeePerLot = 10.0; // USD per 1.0 lot (unverified broker tariff).
 input double          AdverseStopSlipPrice      = 0.10; // XAUUSD price units, not a fill guarantee.
 input double          MinimumTargetFeeMultiple  = 2.0;  // Gross TP profit must cover >= 2x assumed total fees.
@@ -77,6 +81,13 @@ bool broker_was_connected=false;
 bool StrategyEvidenceApproved()
   {
    return MQLInfoInteger(MQL_TESTER)!=0;
+  }
+
+// This bypass is strictly limited to simulated Strategy Tester sessions.
+// It never disables per-order stops, lot/margin, broker checks, or incident halts.
+bool TesterResearchNoDailyStops()
+  {
+   return MQLInfoInteger(MQL_TESTER)!=0 && TesterIgnoreDailyAndPeakStops;
   }
 
 // ------------------------------------------------------------------
@@ -238,6 +249,12 @@ bool RiskState(const double equity, bool &breached)
       status_text = "Invalid risk baseline";
       return false;
      }
+   if(TesterResearchNoDailyStops())
+     {
+      // Observe later opportunities after losses in TESTER ONLY.
+      breached=false;
+      return true;
+     }
    // Breaches are durable stops. A recovery in equity MUST NOT silently
    // re-enable new entries after the daily loss threshold was crossed.
    string daily_stop=DayKey("DAILY_STOP");
@@ -389,7 +406,8 @@ bool NewTradesAllowedByRisk()
       status_text="Daily trade count unavailable";
       return false;
      }
-   if(MathMax(stored_count,(double)broker_count) >= (double)MaxTradesPerDay)
+   if(!TesterResearchNoDailyStops() &&
+      MathMax(stored_count,(double)broker_count) >= (double)MaxTradesPerDay)
      {
       status_text="Daily entry limit reached";
       return false;
@@ -565,6 +583,8 @@ double RemainingDailyRiskUsd(const double equity)
   {
    if(!MathIsValidNumber(equity) || equity<=0.0)
       return -1.0;
+   if(TesterResearchNoDailyStops())
+      return equity; // Per-trade cap still independently uses equity percentage.
    double day_start=0.0;
    // RiskState() must already have reconstructed/initialized this key.
    // Never silently replace a missing baseline with current equity.
@@ -874,7 +894,8 @@ void EvaluateNewEntry()
    int known=BrokerDailyPendingOrders();
    double stored_pending=0.0;
    if(known<0 || !ReadNumber(DayKey("PLACEMENTS"),0.0,stored_pending) ||
-      MathMax((double)known,stored_pending)>=(double)MaxPendingOrdersPerDay)
+      (!TesterResearchNoDailyStops() &&
+       MathMax((double)known,stored_pending)>=(double)MaxPendingOrdersPerDay))
      {
       status_text="Pending-order daily ceiling or broker history unavailable";
       return;
@@ -1217,7 +1238,7 @@ void DisplayStatus()
   {
    string mode=MQLInfoInteger(MQL_TESTER)!=0 ? "STRATEGY TESTER" : "DEMO ONLY";
    string operation=EnableDemoOrders && StrategyEvidenceApproved() && !PauseNewEntries && !EmergencyFlattenOwned ?
-                    "DEMO pending LIMIT orders enabled" : "NO NEW ORDERS";
+                    (TesterResearchNoDailyStops() ? "TESTER: DAILY LIMITS OFF" : "TESTER: DAILY LIMITS ON") : "NO NEW ORDERS";
    Comment("QTS GOLD ROBOT | INITIAL DEVELOPMENT | ",mode," | LIVE LOCKED\n",
            operation,"\n",
            "NOT VERIFIED PROFITABLE - capital risk exists even in DEMO\n",
@@ -1240,7 +1261,11 @@ int OnInit()
       SignalTimeframe!=PERIOD_M30 &&
       SignalTimeframe!=PERIOD_H1)
       return INIT_PARAMETERS_INCORRECT;
-   if(FastEmaPeriod<3 || SlowEmaPeriod<=FastEmaPeriod || AtrPeriod<2 ||
+   if((int)EntryStyle<0 || (int)EntryStyle>3 ||
+      StructureBreakConfirmAtr<0.01 || StructureBreakConfirmAtr>0.70 ||
+      StructureRetestWindowAtr<0.05 || StructureRetestWindowAtr>1.50 ||
+      StructureEntryOffsetAtr<0.0 || StructureEntryOffsetAtr>0.50 ||
+      FastEmaPeriod<3 || SlowEmaPeriod<=FastEmaPeriod || AtrPeriod<2 ||
       AdxPeriod<2 || MinimumAdx<1.0 ||
       RewardToRisk<0.7 || RewardToRisk>4.0 || RiskPerTradePct<=0.0 || RiskPerTradePct>2.0 ||
       MaxDailyLossPct<=0.0 || MaxDailyLossPct>5.0 ||
@@ -1330,7 +1355,8 @@ int OnInit()
                                      "Strategy Tester observation only";
    else
       status_text="No validated strategy; DEMO orders remain locked";
-   Print("QTS Gold Robot development: former-stop LIMIT entry; demo/tester only; edge UNVALIDATED.");
+   PrintFormat("QTS Gold Robot research: entry_style=%d tester_no_daily_stops=%d; LIVE blocked; edge UNVALIDATED.",
+               (int)EntryStyle,(int)TesterResearchNoDailyStops());
    DisplayStatus();
    return INIT_SUCCEEDED;
   }
