@@ -514,7 +514,8 @@ def test_two_percent_risk_is_a_ceiling_not_the_default():
 def test_intraday_retest_is_research_candidate_not_forced_trade():
     assert 'SignalTimeframe!=PERIOD_M5' in EA
     entry = body_of('EvaluateNewEntry')
-    assert 'EntryStyle==QTS_RETEST_LIMIT ? PrepareRetestLimit' in entry
+    assert 'EntryStyle==QTS_RETEST_LIMIT ?' in entry
+    assert 'PrepareRetestLimit' in entry
     assert 'PreparePullbackLimit' in entry
     assert 'MQLInfoInteger(MQL_TESTER)!=0' in body_of('StrategyEvidenceApproved')
     retest = body_of('PrepareRetestLimit')
@@ -610,8 +611,57 @@ def test_tester_audit_reports_specific_nontrade_causes():
                   'SIGNAL: no closed-bar EMA pullback cross',
                   'SIGNAL: H1 rejects M5/M15 entry direction'):
         assert token in signal
-    assert 'Preserve the stage-specific reason from CompletedBarSignal' in entry
+    assert 'Preserve the stage-specific reason from causal signal logic' in entry
     assert 'SIZE: min lot %.2f risks $%.2f, budget $%.2f' in entry
     assert 'MARGIN: min lot %.2f needs $%.2f, cap $%.2f' in entry
     assert 'QTS ENTRY AUDIT bar=' in tick
     assert 'MQLInfoInteger(MQL_TESTER)!=0' in tick
+
+
+def test_discovery_bypass_never_leaves_strategy_tester():
+    gate = body_of('TesterResearchNoDailyStops')
+    risk = body_of('RiskState')
+    lot = body_of('SizedLots')
+    entry = body_of('NewTradesAllowedByRisk')
+    pending = body_of('EvaluateNewEntry')
+    remain = body_of('RemainingDailyRiskUsd')
+    assert 'MQLInfoInteger(MQL_TESTER)!=0 && TesterIgnoreDailyAndPeakStops' in gate
+    assert 'if(TesterResearchNoDailyStops())' in risk
+    assert risk.index('if(TesterResearchNoDailyStops())') < risk.index('GlobalVariableSet(daily_stop,1.0)')
+    assert 'if(!TesterResearchNoDailyStops()' in entry
+    assert 'if(!TesterResearchNoDailyStops()' in pending
+    assert 'TesterResearchNoDailyStops()' in remain
+    assert 'equity*RiskPerTradePct/100.0' in lot
+    assert 'EstimatedMonetaryLoss' in lot
+    assert 'OrderCalcMargin' in lot
+    assert 'StrategyEvidenceApproved()' in body_of('ConsiderNewEntry')
+    assert 'return MQLInfoInteger(MQL_TESTER)!=0;' in body_of('StrategyEvidenceApproved')
+
+
+def test_structural_hypotheses_are_causal_and_use_original_execution_engine():
+    structure = (ROOT / 'mt5_robot/StructureResearch.mqh').read_text(encoding='utf-8')
+    entry = body_of('EvaluateNewEntry')
+    assert '#include "StructureResearch.mqh"' in EA
+    for token in (
+        'QTS_BREAK_ACCEPT_RETEST', 'QTS_SWEEP_RECLAIM',
+        'CopyRates(_Symbol,SignalTimeframe,1,n,bars)',
+        'i<n-2', 'MqlRates probe=bars[n-2]',
+        'MqlRates confirm=bars[n-1]',
+        'StructureBreakConfirmAtr', 'StructureRetestWindowAtr',
+        'StructureEntryOffsetAtr', 'PrepareStructureLimit(',
+        'SYMBOL_TRADE_STOPS_LEVEL',
+    ):
+        assert token in structure or token in EA, token
+    for token in ('CompletedStructureSignal(', 'PrepareStructureLimit(', 'OrderCheck(request,check)',
+                  'OrderSend(request,result)', 'SizedLots(side,price,stop)', 'TRADE_ACTION_PENDING'):
+        assert token in entry, token
+    for forbidden in ('TRADE_ACTION_DEAL', 'OrderSend(', 'trade.Buy(', 'trade.Sell('):
+        assert forbidden not in structure
+    assert 'TesterResearchNoDailyStops()' in body_of('RiskState')
+
+
+def test_installer_validates_and_rolls_back_structural_include():
+    for term in ('StructureResearch.mqh', '$structureHash', '$destStructure',
+                 '$backupStructure', '$hadStructure', '$completed',
+                 'Get-FileHash -LiteralPath $destStructure'):
+        assert term in PS, term
