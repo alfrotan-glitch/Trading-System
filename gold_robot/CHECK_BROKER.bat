@@ -22,5 +22,5 @@ if not "%CODE%"=="0" (
   echo Its CSV appears inside MT5 Data Folder ^> MQL5 ^> Files.
 )
 echo.
-pause
+if not defined QTS_NO_PAUSE pause
 exit /b %CODE%
