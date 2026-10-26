@@ -6,6 +6,31 @@
       "sha256": "5860bef62ed14bd91f2c5eae6f8f96c3029ef92267fc8ccaac79744408fa70ad"
     },
     {
+      "path": "INSTALL_ROBOT.bat",
+      "bytes": 993,
+      "sha256": "e042f8fb1da128f4eb08e5729ac426cbc63e154942471031e333b51c1c4515fd"
+    },
+    {
+      "path": "MAKE_REPORT.bat",
+      "bytes": 607,
+      "sha256": "0bbb7e4fba04b9e44dd3123118dcf49a84764adaae99961f7a7000acb6b178c9"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3431,
+      "sha256": "71f7f91ad8526ee310ed05a79f2011225c1c8a11e8c577e93e6a6b393bff6647"
+    },
+    {
+      "path": "README.txt",
+      "bytes": 1408,
+      "sha256": "26f6ccaa821fdc8d683b79b0eccb47d8f03e8cf9826acbd313cb3116fe59e30f"
+    },
+    {
+      "path": "SETUP_MT5_GOLD.bat",
+      "bytes": 1393,
+      "sha256": "1475931f41974b3dce444c35145c14f3e909ce107b5410600e2fda78d269b045"
+    },
+    {
       "path": "docs/ACCEPTANCE_CHECKLIST.md",
       "bytes": 1976,
       "sha256": "99ae0e4f3d77f0c3ba0b819aa8481fdf04addea17b2282bdc1fff4820d1665af"
@@ -66,16 +91,6 @@
       "sha256": "85e1b0df291d6b2fec5d534816c86261e52b5fedff370201b50c26697c2e8e75"
     },
     {
-      "path": "INSTALL_ROBOT.bat",
-      "bytes": 993,
-      "sha256": "e042f8fb1da128f4eb08e5729ac426cbc63e154942471031e333b51c1c4515fd"
-    },
-    {
-      "path": "MAKE_REPORT.bat",
-      "bytes": 607,
-      "sha256": "0bbb7e4fba04b9e44dd3123118dcf49a84764adaae99961f7a7000acb6b178c9"
-    },
-    {
       "path": "mt5_robot/ExecutionPolicy.mqh",
       "bytes": 1480,
       "sha256": "997f6900e2451ce95305429bef377e0df0bb45b24546383ac86fb5e01a450bd0"
@@ -101,14 +116,34 @@
       "sha256": "892cad8304fd6c1e73cb099b5c4c6c2be1be01bd15ab8d43e0fade3e1b61ec61"
     },
     {
-      "path": "README.md",
-      "bytes": 3431,
-      "sha256": "71f7f91ad8526ee310ed05a79f2011225c1c8a11e8c577e93e6a6b393bff6647"
+      "path": "research/BuildForwardFixture.mq5",
+      "bytes": 1588,
+      "sha256": "6e13dacf2689c0cc3f6904face09aeaf13c0668bea6add68516f6f7a0aba1482"
     },
     {
-      "path": "README.txt",
-      "bytes": 1408,
-      "sha256": "26f6ccaa821fdc8d683b79b0eccb47d8f03e8cf9826acbd313cb3116fe59e30f"
+      "path": "research/BuildTesterFixture.mq5",
+      "bytes": 1378,
+      "sha256": "c62ce8bff77e33b1beba92c8ef4b25294a229f33fd0410cf1063edce16d9e0b2"
+    },
+    {
+      "path": "research/ExportBrokerData.mq5",
+      "bytes": 2246,
+      "sha256": "ac29abbbe84541747c9b1b0e9e69793c1cd2a7fab3890f19aece1c348c26380c"
+    },
+    {
+      "path": "research/MakeWindowsReport.ps1",
+      "bytes": 12466,
+      "sha256": "42c9c6fb4f9b21bb4b364e3ea6ffc8bf48038a2a18cb59daf4a2860f232debf5"
+    },
+    {
+      "path": "research/QTS_Broker_Preflight.mq5",
+      "bytes": 9924,
+      "sha256": "0100c7a44c33c3e13b1bc429ea4ba018d0cc0d39764c045a8489728bd282c3b3"
+    },
+    {
+      "path": "research/RunNativeValidation.ps1",
+      "bytes": 3901,
+      "sha256": "8482fff5672dade9bbfdfd823ab34f53176a91339c0d411a2519a76e02a41290"
     },
     {
       "path": "research/alternatives.py",
@@ -126,16 +161,6 @@
       "sha256": "f625005f0bf1d941335956789b09ba887c1720ca424546973b23eeca935fb152"
     },
     {
-      "path": "research/BuildForwardFixture.mq5",
-      "bytes": 1588,
-      "sha256": "6e13dacf2689c0cc3f6904face09aeaf13c0668bea6add68516f6f7a0aba1482"
-    },
-    {
-      "path": "research/BuildTesterFixture.mq5",
-      "bytes": 1378,
-      "sha256": "c62ce8bff77e33b1beba92c8ef4b25294a229f33fd0410cf1063edce16d9e0b2"
-    },
-    {
       "path": "research/daily_direction.py",
       "bytes": 5334,
       "sha256": "5e2691ec655638647e9b9490225c5c49ae4ee6ce084cc7806975c0953133b6e3"
@@ -144,16 +169,6 @@
       "path": "research/edge_gate.py",
       "bytes": 9252,
       "sha256": "752c6b587523f988182ef026ecba875f95066ce19a6070a54dfc6cd185960700"
-    },
-    {
-      "path": "research/ExportBrokerData.mq5",
-      "bytes": 2246,
-      "sha256": "ac29abbbe84541747c9b1b0e9e69793c1cd2a7fab3890f19aece1c348c26380c"
-    },
-    {
-      "path": "research/MakeWindowsReport.ps1",
-      "bytes": 12466,
-      "sha256": "42c9c6fb4f9b21bb4b364e3ea6ffc8bf48038a2a18cb59daf4a2860f232debf5"
     },
     {
       "path": "research/native_trade_diagnostics.py",
@@ -181,11 +196,6 @@
       "sha256": "7bcc9815dcf49713e170ee8d30ccd1c74f950866eb8d34e350c97365c86a3199"
     },
     {
-      "path": "research/QTS_Broker_Preflight.mq5",
-      "bytes": 9924,
-      "sha256": "0100c7a44c33c3e13b1bc429ea4ba018d0cc0d39764c045a8489728bd282c3b3"
-    },
-    {
       "path": "research/quote_burst.py",
       "bytes": 8785,
       "sha256": "76d1c397e2a53f10c0f2023307a34aa1a66f778823df0ac84e34d2d52f0e1283"
@@ -199,11 +209,6 @@
       "path": "research/research.py",
       "bytes": 15909,
       "sha256": "7ad5ba6906ed98b56c9bc71944d8f4de9743014b130d7b757c8dbb5b25d60f1b"
-    },
-    {
-      "path": "research/RunNativeValidation.ps1",
-      "bytes": 3901,
-      "sha256": "8482fff5672dade9bbfdfd823ab34f53176a91339c0d411a2519a76e02a41290"
     },
     {
       "path": "research/scalp_signals.py",
@@ -244,11 +249,6 @@
       "path": "research/update_manifest.py",
       "bytes": 2936,
       "sha256": "d9adc851123ccbc12af89478b36359b8e51e503b1a81d87c21818d7b3b9b9fe7"
-    },
-    {
-      "path": "SETUP_MT5_GOLD.bat",
-      "bytes": 1393,
-      "sha256": "1475931f41974b3dce444c35145c14f3e909ce107b5410600e2fda78d269b045"
     },
     {
       "path": "tests/ReceiptSelftest.mq5",
