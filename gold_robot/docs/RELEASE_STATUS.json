@@ -10,7 +10,7 @@
   "connected_demo_new_orders_permitted_by_strategy_gate": false,
   "default_order_permission": false,
   "market_order_entries_permitted": false,
-  "entry_policy": "Four isolated tester-only LIMIT styles: former-stop, retest, confirmed structural breakout/retest, and sweep/reclaim; no positive independent expectancy validated.",
+  "entry_policy": "Old-stop LIMIT (baseline), retest LIMIT (candidate), confirmed break-accept-retest LIMIT, and sweep-reclaim LIMIT; all Strategy Tester research only, zero independently proven after-cost edge.",
   "tester_only_research_mode": {
     "input": "TesterIgnoreDailyAndPeakStops",
     "default": true,
@@ -56,5 +56,12 @@
   ],
   "risk_note": "Stop gaps, slippage and costs may exceed planned per-trade risk. Tester-only daily-limit bypass is for measuring opportunities, never trade authority.",
   "windows_package_revision": "2026-10-26",
-  "windows_research_installation_status": "ONE_CLICK_SOURCE_PACKAGE_AVAILABLE_CURRENT_NATIVE_COMPILE_REQUIRED"
+  "windows_research_installation_status": "ONE_CLICK_SOURCE_PACKAGE_AVAILABLE_CURRENT_NATIVE_COMPILE_REQUIRED",
+  "market_entry_orders_permitted": false,
+  "real_money_orders_permitted": false,
+  "testing": {
+    "metaeditor_compiled_ex5": false,
+    "validated_profitable_edge": false,
+    "reason": "MetaEditor native MQL5 compile and broker real tick tester evidence for the CURRENT source have not been verified on WMMarkets."
+  }
 }
