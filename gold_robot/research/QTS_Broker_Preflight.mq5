@@ -14,6 +14,7 @@ input double ModelRiskPercent        = 0.50;
 input double ExampleStopPriceGap     = 4.0;   // Gold price units, e.g. $4/oz; NOT points
 input double EstimatedFeePerLotRound = 10.0;  // Account currency/1.0 lot; unverified assumption
 input int    MaxTickAgeSeconds       = 15;
+input int    MaxSpreadPoints         = 90;
 
 void Record(const int file, const string name, const string value)
   {
@@ -66,8 +67,10 @@ void OnStart()
       long freeze=SymbolInfoInteger(_Symbol,SYMBOL_TRADE_FREEZE_LEVEL);
       long trade_mode=SymbolInfoInteger(_Symbol,SYMBOL_TRADE_MODE);
       long order_mode=SymbolInfoInteger(_Symbol,SYMBOL_ORDER_MODE);
+      long expiry_mode=SymbolInfoInteger(_Symbol,SYMBOL_EXPIRATION_MODE);
       Record(report,"SymbolTradeMode",IntegerToString(trade_mode));
       Record(report,"SymbolOrderMode",IntegerToString(order_mode));
+      Record(report,"SymbolExpirationMode",IntegerToString(expiry_mode));
       Record(report,"MinLot",DoubleToString(minimum,4));
       Record(report,"MaxLot",DoubleToString(maximum,4));
       Record(report,"LotStep",DoubleToString(step,4));
@@ -81,7 +84,10 @@ void OnStart()
 
       if(point<=0.0 || tick_size<=0.0 || minimum<=0.0 || step<=0.0 ||
          maximum<minimum || stops<0 || freeze<0 ||
-         trade_mode!=SYMBOL_TRADE_MODE_FULL || (order_mode & SYMBOL_ORDER_SL)==0)
+         trade_mode!=SYMBOL_TRADE_MODE_FULL ||
+         (order_mode & SYMBOL_ORDER_LIMIT)==0 ||
+         (order_mode & SYMBOL_ORDER_SL)==0 || (order_mode & SYMBOL_ORDER_TP)==0 ||
+         (expiry_mode & SYMBOL_EXPIRATION_SPECIFIED)==0)
         {
          safe=false;
          Record(report,"Verdict","BLOCKED_CONTRACT_OR_TRADE_MODE");
@@ -102,10 +108,16 @@ void OnStart()
          Record(report,"Bid",DoubleToString(tick.bid,_Digits));
          Record(report,"Ask",DoubleToString(tick.ask,_Digits));
          Record(report,"SpreadPoints",DoubleToString(spread_points,1));
+         Record(report,"ConfiguredMaxSpreadPoints",IntegerToString(MaxSpreadPoints));
          Record(report,"ServerQuoteAgeSeconds",IntegerToString(age));
          Record(report,"MinStopGapPrice",DoubleToString(gap_min,_Digits));
          Record(report,"ModeledRiskBudgetUSD",Money(risk_budget));
-         if(server_now<=0 || age<0 || age>MaxTickAgeSeconds)
+         if(MaxSpreadPoints<=0 || spread_points>MaxSpreadPoints)
+           {
+            safe=false;
+            Record(report,"Verdict","BLOCKED_SPREAD_TOO_WIDE_FOR_EA");
+           }
+         else if(server_now<=0 || age<0 || age>MaxTickAgeSeconds)
            {
             safe=false;
             Record(report,"Verdict","BLOCKED_STALE_QUOTE_OR_MARKET_CLOSED");
