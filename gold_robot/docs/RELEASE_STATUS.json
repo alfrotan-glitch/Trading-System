@@ -1,7 +1,7 @@
 {
   "component": "QTS Gold MT5 Expert Advisor",
-  "version": "0.1.0-research-windows",
-  "release_state": "WINDOWS_RESEARCH_INSTALLER_READY_NATIVE_CURRENT_BUILD_UNVERIFIED",
+  "version": "0.0.0-development",
+  "release_state": "NOT_RELEASED_WINDOWS_RESEARCH_TESTER_PACKAGE",
   "installed_earlier_revision_metaeditor_passed": true,
   "current_revision_metaeditor_compiled_on_user_terminal": false,
   "current_revision_native_real_tick_backtested": false,
@@ -54,5 +54,6 @@
     "Broker commission and live fill behavior not independently confirmed",
     "Windows smoke test is not MetaEditor compilation"
   ],
-  "risk_note": "Stop gaps, slippage and costs may exceed planned per-trade risk. Tester-only daily-limit bypass is for measuring opportunities, never trade authority."
+  "risk_note": "Stop gaps, slippage and costs may exceed planned per-trade risk. Tester-only daily-limit bypass is for measuring opportunities, never trade authority.",
+  "windows_package_revision": "2026-10-26"
 }
