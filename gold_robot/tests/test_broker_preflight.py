@@ -34,7 +34,7 @@ def test_preflight_checks_limit_expiry_stops_volume_and_spread():
 
 
 def test_preflight_default_risk_is_conservative_example_not_trade_authority():
-    assert "ModelCapitalUsd         = 200.0;" in MQL
+    assert "ModelCapitalUsd         = 3000.0;" in MQL
     assert "ModelRiskPercent        = 0.50;" in MQL
     assert "ExampleStopPriceGap     = 4.0;" in MQL
     assert "ModelRiskPercent>1.0" in MQL
