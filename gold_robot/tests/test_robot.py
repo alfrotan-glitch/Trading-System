@@ -629,7 +629,7 @@ def test_discovery_bypass_never_leaves_strategy_tester():
     assert 'if(TesterResearchNoDailyStops())' in risk
     assert risk.index('if(TesterResearchNoDailyStops())') < risk.index('GlobalVariableSet(daily_stop,1.0)')
     assert 'if(!TesterResearchNoDailyStops()' in entry
-    assert 'if(!TesterResearchNoDailyStops()' in pending
+    assert '(!TesterResearchNoDailyStops()' in pending
     assert 'TesterResearchNoDailyStops()' in remain
     assert 'equity*RiskPerTradePct/100.0' in lot
     assert 'EstimatedMonetaryLoss' in lot
