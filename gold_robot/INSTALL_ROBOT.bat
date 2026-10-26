@@ -21,5 +21,5 @@ if not "%CODE%"=="0" (
     echo Installation finished. Default is observe-only ^(NO orders^).
     echo For authorized DEMO testing, enable entries in EA Inputs.
 )
-pause
+if not defined QTS_NO_PAUSE pause
 exit /b %CODE%
