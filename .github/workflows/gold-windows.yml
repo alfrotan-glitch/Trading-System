@@ -34,6 +34,12 @@ jobs:
           if (-not (Test-Path START_HERE.bat)) { throw "Windows launcher missing" }
           if (-not (Test-Path gold_robot/MAKE_REPORT.bat)) { throw "Report launcher missing" }
           Write-Host "Canonical Windows sources: OK"
+      - name: Invoke root launcher through Windows cmd without touching MT5
+        shell: pwsh
+        run: |
+          $rootLauncher = (Resolve-Path 'START_HERE.bat').Path
+          & $env:ComSpec /d /c ('call "{0}" /verify-setup' -f $rootLauncher)
+          if ($LASTEXITCODE -ne 0) { throw "Windows cmd launcher path failed: $LASTEXITCODE" }
       - name: Simulate clean and blocked MT5 broker reports (no trading)
         shell: pwsh
         run: ./gold_robot/tests/windows_report_smoke.ps1
