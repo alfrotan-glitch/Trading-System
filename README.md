@@ -5,6 +5,26 @@
 
 ---
 
+## Windows: one file to start QTS Gold MT5
+
+**Clone the canonical `main` branch and run `START_HERE.bat`:**
+
+```powershell
+git clone --branch main --single-branch https://github.com/alfrotan-glitch/Trading-System.git
+cd Trading-System
+.\START_HERE.bat
+```
+
+Choose **1** to install/compile the existing QTS Gold MT5 Expert Advisor and the read-only broker audit. Choose **2** to generate a clear local HTML/JSON readiness report. These two choices require **WMMarkets MetaTrader 5 on Windows, not Python**. The report is stored locally under `gold_robot/reports_local/` and is not uploaded to GitHub.
+
+After install, open `XAUUSD@` in MT5, refresh **Navigator → Scripts** and run `QTS_Broker_Preflight` on that chart. Then use option **2** for the report. When the broker/compile checks pass, use **MT5 Strategy Tester** with the user-observed minimum deposit **USD 3,000** and real ticks. The EA offers four `EntryStyle` research candidates; the optional tester-only opportunity census deliberately bypasses daily session limits **only in Strategy Tester**, not in connected accounts. **LIVE stays locked; none of these strategies has verified positive after-cost expectancy.**
+
+[Quick Windows/Dari installation and tester guide](gold_robot/docs/WINDOWS_START_DARI.md) · [Technical research details](gold_robot/docs/MT5_3000_UNLIMITED_TESTER_DARI_2026-10-26.md)
+
+**Two distinct launchers:** `START_HERE.bat` is the recommended MT5 Gold installation/report entry point. `ROBOT.bat` runs the separate QTS Python desktop and has its own gated DEMO controls. Do not mistake opening the Python desktop for installing the MT5 Expert Advisor.
+
+---
+
 ## Product Mission
 
 QTS is a gold research workstation. It can watch a demo account and submit
