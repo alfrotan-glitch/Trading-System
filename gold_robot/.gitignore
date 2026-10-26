@@ -14,3 +14,6 @@
 *.db
 *.db-wal
 *.db-shm
+
+# Machine-specific HTML/JSON readiness reports (never commit broker snapshots)
+/reports_local/
