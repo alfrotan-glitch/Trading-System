@@ -182,8 +182,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 28367,
-      "sha256": "a050a2546ef64ccecaaf5224c8fc7bd44d2b278eee9e4661e969496680ac1c2d"
+      "bytes": 30833,
+      "sha256": "44399072cb3ecad566cf590a80a669773afb167675dfaa9f3fe38b63cfec1108"
     },
     {
       "path": "tests/test_scalp_signals.py",
