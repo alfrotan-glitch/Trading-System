@@ -144,7 +144,7 @@ foreach($name in @('BrokerServer','AccountType','Symbol','MinLot','LotStep','Con
     'MinimumLotRiskBudgetMultiple','RiskBudgetExceededUSD',
     'RiskBudgetStatus','MinimumLotMarginStatus','ActualCommissionVerified',
     'OrdersSubmitted','Verdict')){
-    if($values.ContainsKey($name)){$rows+=Tr $name $values[$name]}
+    if($values.ContainsKey($name)){$rows += (Tr $name $values[$name])}
 }
 if($rows.Count -eq 0){$rows=@('<tr><td colspan="2">هنوز گزارش بروکر موجود نیست.</td></tr>')}
 $kindA=if($sourceState -eq 'SOURCE_HASH_OK'){'good'}else{'bad'}
@@ -203,7 +203,7 @@ New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $timestamp=Get-Date -Format 'yyyyMMdd_HHmmss'
 $outFile=Join-Path $OutputDirectory ("QTS_Gold_Readiness_"+$timestamp+".html")
 $jsonFile=Join-Path $OutputDirectory ("QTS_Gold_Readiness_"+$timestamp+".json")
-[System.IO.File]::WriteAllText($outFile,$html,(New-Object System.Text.UTF8Encoding($false)))
+[System.IO.File]::WriteAllText($outFile,$html,([System.Text.UTF8Encoding]::new($false)))
 $summary=[ordered]@{
     mode='READ_ONLY';created=$created;symbol='XAUUSD@'
     source_status=$sourceState;install_status=$installState;compiler=$compileState
