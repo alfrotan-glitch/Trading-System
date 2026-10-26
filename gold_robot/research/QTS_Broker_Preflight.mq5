@@ -9,7 +9,7 @@
 #property description "Read-only XAUUSD@ broker, minimum lot, stop-loss and margin audit. NO orders."
 
 input string ExpectedSymbol         = "XAUUSD@";
-input double ModelCapitalUsd         = 200.0;
+input double ModelCapitalUsd         = 3000.0;
 input double ModelRiskPercent        = 0.50;
 input double ExampleStopPriceGap     = 4.0;   // Gold price units, e.g. $4/oz; NOT points
 input double EstimatedFeePerLotRound = 10.0;  // Account currency/1.0 lot; unverified assumption
