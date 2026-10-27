@@ -1089,8 +1089,16 @@ void ConsiderNewEntry()
       status_text="Research gate: no validated after-cost strategy; observation only";
       return;
      }
-   if(!EnableDemoOrders || PauseNewEntries || EmergencyFlattenOwned || RealAccountBlocked())
+   if(!EnableDemoOrders)
+     {
+      status_text="ENTRY: disabled by EnableDemoOrders=false";
       return;
+     }
+   if(PauseNewEntries || EmergencyFlattenOwned || RealAccountBlocked())
+     {
+      status_text="ENTRY: operator pause, emergency mode or REAL-account block";
+      return;
+     }
    double token=0.0;
    if(!AcquireEntryMutex(token))
      {
@@ -1628,10 +1636,22 @@ void OnTick()
      {
       last_closed_bar=closed;
       ConsiderNewEntry();
-      if(EnableEntryDiagnostics && MQLInfoInteger(MQL_TESTER)!=0)
-         PrintFormat("QTS ENTRY AUDIT bar=%s timeframe=%d equity=%.2f minlot=%.2f reason=%s",
+      // Closed-bar diagnostics also work on WMMarkets connected DEMO.
+      // Logs are observational and never authorize orders or contain logins.
+      if(EnableEntryDiagnostics &&
+         (MQLInfoInteger(MQL_TESTER)!=0 ||
+          AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO))
+        {
+         MqlTick diagnostic_tick={};
+         double spread_points=-1.0;
+         if(SymbolInfoTick(_Symbol,diagnostic_tick) && _Point>0.0 &&
+            diagnostic_tick.ask>diagnostic_tick.bid)
+            spread_points=(diagnostic_tick.ask-diagnostic_tick.bid)/_Point;
+         PrintFormat("QTS ENTRY AUDIT bar=%s timeframe=%d style=%d equity=%.2f minlot=%.2f spread_points=%.1f reason=%s",
                      TimeToString(closed,TIME_DATE|TIME_MINUTES),(int)SignalTimeframe,
-                     AccountInfoDouble(ACCOUNT_EQUITY),SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN),status_text);
+                     (int)EntryStyle,AccountInfoDouble(ACCOUNT_EQUITY),
+                     SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN),spread_points,status_text);
+        }
      }
    else if(last_closed_bar==0)
       last_closed_bar=closed;
