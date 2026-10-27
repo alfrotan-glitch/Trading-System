@@ -634,6 +634,10 @@ def test_tester_audit_reports_specific_nontrade_causes():
     assert 'MARGIN: min lot %.2f needs $%.2f, cap $%.2f' in entry
     assert 'QTS ENTRY AUDIT bar=' in tick
     assert 'MQLInfoInteger(MQL_TESTER)!=0' in tick
+    assert 'ACCOUNT_TRADE_MODE_DEMO' in tick
+    assert 'spread_points=%.1f reason=%s' in tick
+    assert 'ENTRY: disabled by EnableDemoOrders=false' in body_of('ConsiderNewEntry')
+    assert 'ENTRY: operator pause, emergency mode or REAL-account block' in body_of('ConsiderNewEntry')
 
 
 def test_discovery_bypass_never_leaves_strategy_tester():
