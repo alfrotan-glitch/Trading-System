@@ -35,6 +35,8 @@ cd Trading-System
 | 4 | این راهنمای کوتاه در Notepad | نه |
 | 5 | خروج | نه |
 
+**برای معاملات آزمایشی در حساب Demo متصل:** پس از کامپایل موفق و بررسی بروکر، دو گزینه `EnableDemoOrders=true` و `EnableDemoForwardOrders=true` در Inputs لازم‌اند. پیش‌فرض هر دو خاموش است. این حالت فقط سرور WMMarkets، نماد `XAUUSD@`، ارز USD و حساب Demo را می‌پذیرد؛ ریسک هر معامله به‌صورت مستقل حداکثر ۰٫۲۵٪ و توقف روزانه فعال است. [راهنمای کامل Demo Forward](DEMO_FORWARD_OPERATIONS_DARI.md).
+
 **تفاوت دو جزء مهم:** `ROBOT.bat` در ریشه مربوط به موتور پژوهشی Python و DEMO تحت مجوزهای جداگانه است. برای شروع کار با **Expert Advisor متاتریدر** از `START_HERE.bat` استفاده کنید. ساخت و اجرای آزمایش MT5 نیاز به نصب محیط Python ندارد.
 
 ## آزمایش Strategy Tester با ۳۰۰۰ دالر
