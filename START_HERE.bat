@@ -1,7 +1,8 @@
 @echo off
 REM QTS - single Windows entry point. No live orders or automatic trading.
 setlocal EnableExtensions DisableDelayedExpansion
-cd /d "%~dp0"
+set "QTS_ROOT_DIR=%~dp0"
+cd /d "%QTS_ROOT_DIR%"
 if not exist "gold_robot\SETUP_MT5_GOLD.bat" (
   echo ERROR: Missing gold_robot folder. Clone the complete main branch.
   pause
@@ -36,7 +37,7 @@ if errorlevel 1 goto INSTALL
 goto END
 
 :INSTALL
-call "gold_robot\SETUP_MT5_GOLD.bat"
+call "%QTS_ROOT_DIR%gold_robot\SETUP_MT5_GOLD.bat"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" echo Installation is not verified. Review compiler messages above.
 echo.
@@ -44,7 +45,7 @@ pause
 goto MENU
 
 :REPORT
-call "gold_robot\MAKE_REPORT.bat"
+call "%QTS_ROOT_DIR%gold_robot\MAKE_REPORT.bat"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" echo Report generation failed. See details above.
 echo.
@@ -61,7 +62,7 @@ pause
 goto MENU
 
 :COMPARE
-call "gold_robot\MAKE_COMPARISON.bat"
+call "%QTS_ROOT_DIR%gold_robot\MAKE_COMPARISON.bat"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" echo Comparison report failed.
 echo.
@@ -69,7 +70,7 @@ pause
 goto MENU
 
 :PRESETS
-call "gold_robot\MAKE_TEST_PRESETS.bat"
+call "%QTS_ROOT_DIR%gold_robot\MAKE_TEST_PRESETS.bat"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" echo Tester presets were not created.
 echo.
@@ -82,7 +83,7 @@ if not exist "gold_robot\docs\WINDOWS_START_DARI.md" (
   pause
   goto MENU
 )
-start "" notepad.exe "%~dp0gold_robot\docs\WINDOWS_START_DARI.md"
+start "" notepad.exe "%QTS_ROOT_DIR%gold_robot\docs\WINDOWS_START_DARI.md"
 goto MENU
 
 :VERIFY_SETUP

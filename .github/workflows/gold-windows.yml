@@ -40,6 +40,27 @@ jobs:
           $rootLauncher = (Resolve-Path 'START_HERE.bat').Path
           & $env:ComSpec /d /c ('call "{0}" /verify-setup' -f $rootLauncher)
           if ($LASTEXITCODE -ne 0) { throw "Windows cmd launcher path failed: $LASTEXITCODE" }
+      - name: Verify menu sub-launchers through real relative Windows CMD calls
+        shell: pwsh
+        run: |
+          # Mirrors START_HERE menu calling gold_robot\*.bat from repository root.
+          # The working directory must not double-prefix gold_robot after cd /d.
+          $env:QTS_NO_OPEN = '1'
+          & $env:ComSpec /d /c 'call "gold_robot\MAKE_REPORT.bat"'
+          if ($LASTEXITCODE -ne 0) { throw "Root menu report launcher failed: $LASTEXITCODE" }
+          $reports = @(Get-ChildItem gold_robot/reports_local -Filter 'QTS_Gold_Readiness_*.json')
+          if ($reports.Count -lt 1) { throw 'Report not written to expected gold_robot/reports_local path' }
+          & $env:ComSpec /d /c 'call "gold_robot\MAKE_TEST_PRESETS.bat"'
+          if ($LASTEXITCODE -ne 0) { throw "Root menu tester preset launcher failed: $LASTEXITCODE" }
+          $presets = @(Get-ChildItem gold_robot/reports_local/tester_presets -Filter '*.set')
+          if ($presets.Count -ne 4) { throw 'Launcher did not produce four tester presets in correct directory' }
+          & $env:ComSpec /d /c 'call "gold_robot\MAKE_COMPARISON.bat"'
+          if ($LASTEXITCODE -ne 0) { throw "Root menu comparison launcher failed: $LASTEXITCODE" }
+          $comparisons = @(Get-ChildItem gold_robot/reports_local -Filter 'QTS_Gold_Comparison_*.json')
+          if ($comparisons.Count -lt 1) { throw 'Comparison report not written to expected location' }
+          if (Test-Path gold_robot/gold_robot) { throw 'Incorrect duplicated gold_robot path was created' }
+          Write-Host 'Windows nested relative BAT menu launchers: PASS'
+
       - name: Verify identical MT5 and compiler selection for both installers
         shell: pwsh
         run: |

@@ -1,6 +1,7 @@
 @echo off
 setlocal EnableExtensions
-cd /d "%~dp0"
+set "QTS_GOLD_DIR=%~dp0"
+cd /d "%QTS_GOLD_DIR%"
 echo.
 echo =====================================================
 echo  QTS / WMMarkets MT5 - READ-ONLY BROKER PREFLIGHT
@@ -9,7 +10,7 @@ echo This tool checks XAUUSD@ contract, minimum lot, spread,
 echo model risk on USD 3000, and broker stop/margin properties.
 echo It does NOT place orders or unlock live trading.
 echo.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0mt5_robot\Install_Broker_Preflight.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%QTS_GOLD_DIR%mt5_robot\Install_Broker_Preflight.ps1"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" (
   echo.
