@@ -95,5 +95,13 @@
     "global_daily_loss_latches_enforced": true,
     "real_money_locked": true,
     "compile_and_broker_forward_validation_pending": true
+  },
+  "pending_order_safety": {
+    "cancel_on_stale_quote": true,
+    "cancel_on_spread_points_bps_atr": true,
+    "final_demo_authorization_rechecked_before_order_send": true,
+    "server_side_pending_expiration_required": true,
+    "cancellation_race_acknowledged": true,
+    "validated_native_wmmarkets_fill_race": false
   }
 }
