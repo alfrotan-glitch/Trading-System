@@ -11,6 +11,11 @@
       "sha256": "e042f8fb1da128f4eb08e5729ac426cbc63e154942471031e333b51c1c4515fd"
     },
     {
+      "path": "MAKE_COMPARISON.bat",
+      "bytes": 432,
+      "sha256": "99390f21228f4ce4b2b9e8ccb7ba1bdaea805e5b4a24048e3be65da0e3fb677d"
+    },
+    {
       "path": "MAKE_REPORT.bat",
       "bytes": 607,
       "sha256": "0bbb7e4fba04b9e44dd3123118dcf49a84764adaae99961f7a7000acb6b178c9"
@@ -22,13 +27,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 4182,
-      "sha256": "de628d4facab5c5297393a388352310bf16e778fe9f2955790198ba8f4ed116c"
+      "bytes": 4497,
+      "sha256": "461dba927f7cb7cf2ef3fa6c864100d009f7d0819dba8bbe31964e3f741b6bcc"
     },
     {
       "path": "README.txt",
-      "bytes": 1875,
-      "sha256": "f0ba79e505d8588d123a82613c46f5021ef5cc553c72533f7e9f407479679443"
+      "bytes": 1945,
+      "sha256": "c9b01bb78b2b1437e00d6f01fff26078d6c28263eb08eed0793c757065e29b4f"
     },
     {
       "path": "SETUP_MT5_GOLD.bat",
@@ -92,13 +97,13 @@
     },
     {
       "path": "docs/RELEASE_STATUS.json",
-      "bytes": 3742,
-      "sha256": "dc3425deca1447df82e7cc6d92a4272aa44175a1ff795ac26a2fb4ae00651a21"
+      "bytes": 4108,
+      "sha256": "aac38f8a2a08c9dea00955a2f612d467c0d0a16650da294e03a41853654b44c6"
     },
     {
       "path": "docs/WINDOWS_START_DARI.md",
-      "bytes": 9333,
-      "sha256": "1d006b422ea69980663b218578db5c7c97a1ca42f9ea5e68cbbf9fe4c60b92fb"
+      "bytes": 10082,
+      "sha256": "7233fea03f35b7a2ef0948d01c9482cffab164739026e39324206ab028dcff33"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART_DARI.md",
@@ -139,6 +144,11 @@
       "path": "research/BuildTesterFixture.mq5",
       "bytes": 1378,
       "sha256": "c62ce8bff77e33b1beba92c8ef4b25294a229f33fd0410cf1063edce16d9e0b2"
+    },
+    {
+      "path": "research/CompareMT5Reports.ps1",
+      "bytes": 7203,
+      "sha256": "d4f11e523eb7d651ea789074132724f6a8244f091c71ef96e76460a210297683"
     },
     {
       "path": "research/ExportBrokerData.mq5",
@@ -267,8 +277,8 @@
     },
     {
       "path": "research/update_manifest.py",
-      "bytes": 2961,
-      "sha256": "918e1c8c77e20ea2a8fc5f00669849135f45b808459a3ee59306b771ab2383f3"
+      "bytes": 2996,
+      "sha256": "e16af53c19d2e34f03c61f97fa41d4fdbde265ab2d0ca0580d3633631b7c93ea"
     },
     {
       "path": "tests/ReceiptSelftest.mq5",
