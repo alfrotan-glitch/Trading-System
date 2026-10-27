@@ -1622,6 +1622,26 @@ void OnTimer()
    DisplayStatus();
   }
 
+// An unarmed DEMO should still explain which CLOSED-BAR signal conditions
+// passed or failed. This function has NO order preparation or submission path.
+// It lets operators diagnose missed signals without enabling Demo Forward.
+void ObserveUnarmedDemoSignal()
+  {
+   if(MQLInfoInteger(MQL_TESTER)!=0 || RealAccountBlocked() ||
+      !EnableEntryDiagnostics || ConnectedDemoForwardAuthorized())
+      return;
+   double atr=0.0,level=0.0,anchor=0.0;
+   bool structural=EntryStyle==QTS_BREAK_ACCEPT_RETEST ||
+                   EntryStyle==QTS_SWEEP_RECLAIM;
+   int side=structural ?
+      CompletedStructureSignal(atr,level,anchor) : CompletedBarSignal(atr);
+   if(side>0)
+      status_text="OBSERVE: unvalidated BUY candidate; orders not authorized";
+   else if(side<0)
+      status_text="OBSERVE: unvalidated SELL candidate; orders not authorized";
+   // For no candidate, retain the precise signal veto reason.
+  }
+
 void OnTick()
   {
    if(RealAccountBlocked())
@@ -1636,6 +1656,7 @@ void OnTick()
      {
       last_closed_bar=closed;
       ConsiderNewEntry();
+      ObserveUnarmedDemoSignal();
       // Closed-bar diagnostics also work on WMMarkets connected DEMO.
       // Logs are observational and never authorize orders or contain logins.
       if(EnableEntryDiagnostics &&
