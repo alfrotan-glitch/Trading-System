@@ -8,7 +8,8 @@ function HtmlEscape([object]$v){return [System.Net.WebUtility]::HtmlEncode([stri
 function Resolve-Mql5([string]$path){
     if([string]::IsNullOrWhiteSpace($path)){return $null}
     foreach($p in @($path,(Join-Path $path 'MQL5'))){
-        if(Test-Path -LiteralPath (Join-Path $p 'Experts') -PathType Container){
+        if((Test-Path -LiteralPath (Join-Path $p 'Experts') -PathType Container) -and
+           (Test-Path -LiteralPath (Join-Path $p 'Scripts') -PathType Container)){
             return (Resolve-Path -LiteralPath $p).Path
         }
     }
@@ -20,7 +21,8 @@ function Tr([string]$key,[object]$value){
 function Tile([string]$title,[string]$status,[string]$detail,[string]$kind){
     return ('<div class="tile {0}"><span>{1}</span><b dir="ltr">{2}</b><small>{3}</small></div>' -f $kind,(HtmlEscape $title),(HtmlEscape $status),(HtmlEscape $detail))
 }
-$repoFiles=@('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh')
+$repoFiles=@('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh',
+             'mt5_robot/StructureResearch.mqh','research/QTS_Broker_Preflight.mq5')
 $sourceState='SOURCE_MISSING'
 if(Test-Path -LiteralPath $manifestPath){
     $manifest=Get-Content -LiteralPath $manifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
@@ -64,6 +66,9 @@ if($DataFolder){
     }
 }
 $installState='NOT_VERIFIED'
+$preflightInstallState='NOT_VERIFIED'
+$preflightCompileState='NOT_COMPILED'
+$preflightCompiledAtUtc=[datetime]::MinValue
 $compileState='NOT_COMPILED'
 $preflightState='NOT_RUN'
 $preflightAge=$null
@@ -101,9 +106,44 @@ if($mql5){
             $installState='COMPILED_VERIFIED'
         }
     }
+    # An old or separately installed Preflight must never make a current EA look ready.
+    $preflightSource=Join-Path $gold 'research\QTS_Broker_Preflight.mq5'
+    $installedPreflightSource=Join-Path $mql5 'Scripts\QTS_Broker_Preflight.mq5'
+    $preflightBinary=Join-Path $mql5 'Scripts\QTS_Broker_Preflight.ex5'
+    $preflightLog=Join-Path $mql5 'Scripts\QTS_Broker_Preflight.log'
+    if($sourceState -eq 'SOURCE_HASH_OK' -and
+       (Test-Path -LiteralPath $preflightSource -PathType Leaf) -and
+       (Test-Path -LiteralPath $installedPreflightSource -PathType Leaf) -and
+       (Test-Path -LiteralPath $preflightBinary -PathType Leaf) -and
+       (Test-Path -LiteralPath $preflightLog -PathType Leaf)){
+        $sourceMatches=(Get-FileHash -LiteralPath $preflightSource -Algorithm SHA256).Hash -eq
+                        (Get-FileHash -LiteralPath $installedPreflightSource -Algorithm SHA256).Hash
+        $compileSummary=[regex]::Matches((Get-Content -LiteralPath $preflightLog -Raw),
+                     '(?im)^\s*Result:\s*(\d+)\s+errors?\s*,\s*(\d+)\s+warnings?\b')
+        if($compileSummary.Count -eq 1){
+            $preflightCompileState=('{0} errors / {1} warnings' -f
+                $compileSummary[0].Groups[1].Value,$compileSummary[0].Groups[2].Value)
+        }else{$preflightCompileState='INVALID_COMPILE_LOG'}
+        $preflightArtifact=Get-Item -LiteralPath $preflightBinary
+        $preflightCompiledAtUtc=$preflightArtifact.LastWriteTimeUtc
+        if($sourceMatches -and $preflightCompileState -eq '0 errors / 0 warnings' -and
+           $preflightArtifact.Length -gt 1000 -and
+           $preflightArtifact.LastWriteTimeUtc -ge
+                (Get-Item -LiteralPath $installedPreflightSource).LastWriteTimeUtc.AddSeconds(-2) -and
+           (Get-Item -LiteralPath $preflightLog).LastWriteTimeUtc -ge
+                (Get-Item -LiteralPath $installedPreflightSource).LastWriteTimeUtc.AddSeconds(-2)){
+            $preflightInstallState='COMPILED_VERIFIED'
+        }
+    }
     $preflight=Join-Path $mql5 'Files\QTS_Broker_Preflight.csv'
     if(Test-Path -LiteralPath $preflight){
         try{
+            if($preflightInstallState -ne 'COMPILED_VERIFIED'){
+                throw 'Preflight script version/compile is unverified'
+            }
+            if((Get-Item -LiteralPath $preflight).LastWriteTimeUtc -lt $preflightCompiledAtUtc.AddSeconds(-2)){
+                throw 'Broker CSV predates the current compiled preflight script'
+            }
             foreach($entry in @(Import-Csv -LiteralPath $preflight -Delimiter ';' -Encoding Default)){
                 if(-not [string]::IsNullOrWhiteSpace($entry.metric)){
                     $values[[string]$entry.metric]=[string]$entry.value
@@ -124,12 +164,15 @@ if($mql5){
 }
 $ready=$sourceState -eq 'SOURCE_HASH_OK' -and
        $installState -eq 'COMPILED_VERIFIED' -and
+       $preflightInstallState -eq 'COMPILED_VERIFIED' -and
        $preflightState -eq 'ENGINEERING_PRECHECK_OK_NOT_TRADE_PERMISSION'
 $overall=if($ready){'READY_FOR_TESTER_ONLY'}else{'ACTION_REQUIRED'}
 $next=if($sourceState -ne 'SOURCE_HASH_OK'){
     'سورس ناقص یا تغییرکرده است. نسخه تازه main را در پوشه تمیز Clone کنید.'
 }elseif($installState -ne 'COMPILED_VERIFIED'){
     'START_HERE.bat را باز و گزینه ۱ را برای نصب مجدد انتخاب کنید.'
+}elseif($preflightInstallState -ne 'COMPILED_VERIFIED'){
+    'اسکریپت Broker Preflight با نسخه فعلی هماهنگ یا کامپایل نشده؛ گزینه ۱ را اجرا کنید.'
 }elseif($preflightState -eq 'NOT_RUN' -or $preflightState -eq 'STALE_AUDIT'){
     'در چارت XAUUSD@ اسکریپت QTS_Broker_Preflight را اجرا کنید؛ سپس گزارش بسازید.'
 }elseif(-not $ready){
@@ -151,7 +194,7 @@ $kindA=if($sourceState -eq 'SOURCE_HASH_OK'){'good'}else{'bad'}
 $kindB=if($installState -eq 'COMPILED_VERIFIED'){'good'}else{'warn'}
 $kindC=if($preflightState -eq 'ENGINEERING_PRECHECK_OK_NOT_TRADE_PERMISSION'){'good'}else{'warn'}
 $cards=@(
-    (Tile 'صحت فایل‌های سورس' $sourceState 'SHA-256 سه فایل اصلی' $kindA),
+    (Tile 'صحت فایل‌های سورس' $sourceState 'SHA-256 چهار فایل اصلی' $kindA),
     (Tile 'کامپایل و نصب MT5' $installState 'بدون خطا و هشدار؛ فایل EX5 تازه' $kindB),
     (Tile 'بررسی بروکر' $preflightState 'آخرین گزارش خواندنی WMMarkets' $kindC),
     (Tile 'اجازه استفاده' $overall 'فقط آزمایش؛ معاملات واقعی قفل' 'neutral')
@@ -187,7 +230,9 @@ footer{color:#64748b;font-size:12px;text-align:center;margin-top:22px}
 <div class="meta">تاریخ: $(HtmlEscape $created) | XAUUSD@ | LIVE: LOCKED | EDGE: UNVALIDATED</div>
 </header><div class="grid">$cards</div>
 <section><h2>خلاصه وضعیت</h2><table>
-$(Tr 'نتیجه کامپایل' $compileState)
+$(Tr 'نتیجه کامپایل EA' $compileState)
+$(Tr 'کامپایل Broker Preflight' $preflightCompileState)
+$(Tr 'وضعیت نصب Broker Preflight' $preflightInstallState)
 $(Tr 'تازگی گزارش بروکر' $age)
 $(Tr 'وضعیت نهایی' $overall)
 </table></section>
@@ -207,6 +252,7 @@ $jsonFile=Join-Path $OutputDirectory ("QTS_Gold_Readiness_"+$timestamp+".json")
 $summary=[ordered]@{
     mode='READ_ONLY';created=$created;symbol='XAUUSD@'
     source_status=$sourceState;install_status=$installState;compiler=$compileState
+    preflight_install_status=$preflightInstallState;preflight_compiler=$preflightCompileState
     preflight_status=$preflightState;preflight_age_hours=$preflightAge
     readiness=$overall;live='LOCKED';validated_profitable_edge=$false
     orders_submitted_by_report=0;next_action=$next
