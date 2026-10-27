@@ -92,13 +92,13 @@
     },
     {
       "path": "docs/RELEASE_HANDOFF_2026-10-27.md",
-      "bytes": 6330,
-      "sha256": "056e1c0fe3db4db76e3ac1b890fe488b270cdec8e862ffc5a50ebfa4c7ba4686"
+      "bytes": 6605,
+      "sha256": "0f684cae60c99d6ddb09390f007bb38a7f4b46e878392e281d53fb69209a4a01"
     },
     {
       "path": "docs/RELEASE_STATUS.json",
-      "bytes": 4554,
-      "sha256": "48332ddd75334dafee88e3df28d2583f639c334fb40f61627ba3abf44b1c163e"
+      "bytes": 4880,
+      "sha256": "5bd5d6fd0ad51e77deab00cf22307359f781da5cb62a9887c370ebcc326788ad"
     },
     {
       "path": "docs/WINDOWS_START_DARI.md",
@@ -132,8 +132,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 66789,
-      "sha256": "1229f0ea14874882bf1e58b2b32b4df67949be7c4f5592ad700881b77653b080"
+      "bytes": 68198,
+      "sha256": "6636dc300c98f1cd4b01b9b8b09273b1249a40634af3d277478392908c612cf5"
     },
     {
       "path": "mt5_robot/StructureResearch.mqh",
@@ -312,8 +312,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 32175,
-      "sha256": "f516aa6afffc16edaa61a9a1b8fa87ec437e14723112aaf2ab4e1c5ffab1e20f"
+      "bytes": 33192,
+      "sha256": "d35124223f2e5e0f730520baf0ec7b6f25f89de5fcda22a8700244f88f611da5"
     },
     {
       "path": "tests/test_scalp_signals.py",
