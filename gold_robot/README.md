@@ -35,4 +35,4 @@ Native MT5 tester deposit for the operator's setup: **USD 3,000**, the smallest 
 - DEMO-forward virtual-money tests are explicitly opt-in; verify MT5 native compilation and broker limits before enabling. Commission, swap, slippage, rejects, disconnects and independent after-cost expectancy remain unverified.
 - Real-money account trading is structurally blocked and must not be enabled in a source-only handoff.
 
-Read [release status](docs/RELEASE_STATUS.json), [prior trade evidence](docs/PERFORMANCE_REPORT.md), [research with $3000](docs/MT5_3000_UNLIMITED_TESTER_DARI_2026-10-26.md), and [Stop Loss root cause plan](docs/OWNER_PLAN_STOPLOSS_ROOTCAUSE_2026-10-26.md).
+Read the [engineering release handoff](docs/RELEASE_HANDOFF_2026-10-27.md), [release status](docs/RELEASE_STATUS.json), [prior trade evidence](docs/PERFORMANCE_REPORT.md), [research with $3000](docs/MT5_3000_UNLIMITED_TESTER_DARI_2026-10-26.md), and [Stop Loss root cause plan](docs/OWNER_PLAN_STOPLOSS_ROOTCAUSE_2026-10-26.md).
