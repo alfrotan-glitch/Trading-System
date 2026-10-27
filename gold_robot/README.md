@@ -23,6 +23,8 @@ Each candidate uses the **same EA order validation, safety ledger, SL/TP and cos
 
 The input `TesterIgnoreDailyAndPeakStops=true` allows a Strategy Tester census of later opportunities after a losing day: daily equity halt, peak-equity halt and trade/pending daily counts are ignored **only in tester**. Per-trade risk, legal volume, broker margin, SL/TP, spread, session and execution-incident halts remain enforced. Connected demo and real accounts cannot use this bypass.
 
+Choose **option 5** to generate four consistent `.set` input profiles in `gold_robot/reports_local/tester_presets`; in MT5 Strategy Tester use **Inputs → Load** one at a time. These profiles always set `EnableDemoForwardOrders=false`. Generate only; they do not launch the terminal or place broker orders.
+
 Native MT5 tester deposit for the operator's setup: **USD 3,000**, the smallest value their terminal permits selecting. This is **not** a claim that WMMarkets real account funding minimum is USD 3,000 or that any deposit should be funded. Run M15 then M5 separately, on **Every tick based on real ticks**, four entries one at a time, and keep costs and test periods fixed.
 
 ## Verification and evidence
