@@ -27,6 +27,8 @@ Choose **option 5** to generate four consistent `.set` input profiles in `gold_r
 
 Native MT5 tester deposit for the operator's setup: **USD 3,000**, the smallest value their terminal permits selecting. This is **not** a claim that WMMarkets real account funding minimum is USD 3,000 or that any deposit should be funded. Run M15 then M5 separately, on **Every tick based on real ticks**, four entries one at a time, and keep costs and test periods fixed.
 
+Choose **option 6** to compare the four user-exported native MT5 HTML reports (named `QTS_0.htm` through `QTS_3.htm` in `gold_robot/reports_local/native`). The report displays original Tester metrics, missing/invalid files conspicuously and never promotes a strategy automatically. It does not send broker orders.
+
 ## Verification and evidence
 
 - Latest canonical EA was changed after an earlier user-verified successful MetaEditor compile; **the current source must still compile on the operator's terminal**.
