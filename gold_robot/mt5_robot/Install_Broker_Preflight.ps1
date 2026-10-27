@@ -6,6 +6,17 @@ $ErrorActionPreference='Stop'
 $goldRoot=Split-Path -Parent $PSScriptRoot
 $source=Join-Path $goldRoot 'research\QTS_Broker_Preflight.mq5'
 if(-not (Test-Path -LiteralPath $source -PathType Leaf)){throw 'Missing preflight source; update the gold_robot folder.'}
+# Match the same signed-by-manifest source integrity gate as the Expert Advisor.
+$manifestPath=Join-Path $goldRoot 'docs\SOURCE_CHECKSUMS.json'
+if(-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)){throw 'Missing broker preflight source manifest.'}
+$manifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8|ConvertFrom-Json
+$rows=@($manifest.sha256_files|Where-Object{$_.path -eq 'research/QTS_Broker_Preflight.mq5'})
+if($rows.Count -ne 1){throw 'Missing or duplicate preflight source manifest entry.'}
+$sourceHash=(Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
+if($sourceHash -ne ([string]$rows[0].sha256)){
+  throw 'Preflight source does not match canonical main manifest. Installation refused.'
+}
+
 function Resolve-Mql5([string]$candidate) {
   if([string]::IsNullOrWhiteSpace($candidate)){return $null}
   foreach($path in @($candidate,(Join-Path $candidate 'MQL5'))) {
