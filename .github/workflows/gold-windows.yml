@@ -40,6 +40,30 @@ jobs:
           $rootLauncher = (Resolve-Path 'START_HERE.bat').Path
           & $env:ComSpec /d /c ('call "{0}" /verify-setup' -f $rootLauncher)
           if ($LASTEXITCODE -ne 0) { throw "Windows cmd launcher path failed: $LASTEXITCODE" }
+      - name: Verify identical MT5 and compiler selection for both installers
+        shell: pwsh
+        run: |
+          $fake = Join-Path $env:RUNNER_TEMP 'QTS MT5 Folder With Spaces'
+          $mql5 = Join-Path $fake 'MQL5'
+          foreach ($dir in @('Experts','Scripts','Include','Indicators')) {
+            New-Item -ItemType Directory -Path (Join-Path $mql5 $dir) -Force | Out-Null
+          }
+          $editor = Join-Path $fake 'metaeditor64.exe'
+          [IO.File]::WriteAllText($editor, 'TEST-ONLY NOT A REAL EDITOR')
+          ./gold_robot/mt5_robot/Install_MT5_Canonical.ps1 -TerminalDataFolder $fake -MetaEditorPath $editor -ValidateOnly
+          if (-not $?) { throw 'Single MT5 terminal selection validation failed' }
+          $source = Get-Content gold_robot/mt5_robot/Install_MT5_Canonical.ps1 -Raw
+          foreach ($required in @('RunInstaller $robotScript', 'RunInstaller $brokerScript',
+              '-TerminalDataFolder "{1}" -MetaEditorPath "{2}"', '$mql5,$editor')) {
+            if (-not $source.Contains($required)) { throw "Missing unified target propagation: $required" }
+          }
+          $bad = Join-Path $fake 'Invalid Terminal'
+          $failed = $false
+          try {
+            ./gold_robot/mt5_robot/Install_MT5_Canonical.ps1 -TerminalDataFolder $bad -MetaEditorPath $editor -ValidateOnly
+          } catch { $failed = $true }
+          if (-not $failed) { throw 'Malformed target was not rejected' }
+          Write-Host 'Single-target MT5 safety and malformed-folder refusal: PASS'
       - name: Generate and verify four isolated MT5 tester presets
         shell: pwsh
         run: |
