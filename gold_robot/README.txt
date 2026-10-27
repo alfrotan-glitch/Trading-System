@@ -9,6 +9,7 @@ https://github.com/alfrotan-glitch/Trading-System
 3. Option 1 installs and compiles the current QTS_Gold_Robot EA and broker-check script.
 4. In WMMarkets MetaTrader 5, open XAUUSD@ and run QTS_Broker_Preflight from Navigator > Scripts.
 5. Option 2 creates a professional local HTML/JSON readiness report.
+6. Option 5 creates four safe M15 Strategy Tester input presets (.set).
 
 Exact MT5 Expert Advisor source:
   mt5_robot/QTS_Gold_Robot.mq5
