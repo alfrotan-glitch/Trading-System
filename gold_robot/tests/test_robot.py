@@ -485,11 +485,27 @@ def test_unresolved_send_marker_precedes_submit_and_blocks_restart():
     assert 'GlobalVariablesFlush()' in body_of('LatchExecutionHalt')
 
 
-def test_unvalidated_edge_cannot_be_armed_on_demo_by_input():
+def test_connected_demo_forward_requires_independent_explicit_opt_in_and_account_identity():
     assert 'StrategyEvidenceApproved()' in body_of('ConsiderNewEntry')
     gate=body_of('StrategyEvidenceApproved')
-    assert 'return MQLInfoInteger(MQL_TESTER)!=0;' in gate
-    assert 'EnableDemoOrders' not in gate
+    demo=body_of('ConnectedDemoForwardAuthorized')
+    risk=body_of('EffectiveTradeRiskPct')
+    assert 'MQLInfoInteger(MQL_TESTER)!=0 || ConnectedDemoForwardAuthorized()' in gate
+    assert 'MQLInfoInteger(MQL_TESTER)!=0' in demo
+    assert '!EnableDemoOrders' in demo
+    assert '!EnableDemoForwardOrders' in demo
+    assert 'ACCOUNT_TRADE_MODE_DEMO' in demo
+    assert '_Symbol=="XAUUSD@"' in demo
+    assert 'StringFind(AccountInfoString(ACCOUNT_SERVER),"WMMarkets")==0' in demo
+    assert 'AccountInfoString(ACCOUNT_CURRENCY)=="USD"' in demo
+    assert 'MathMin(RiskPerTradePct,DemoForwardRiskCapPct)' in risk
+    assert 'return 0.0;' in risk
+    assert 'return equity;' in body_of('RemainingDailyRiskUsd') and 'TesterResearchNoDailyStops()' in body_of('RemainingDailyRiskUsd')
+    assert 'MQLInfoInteger(MQL_TESTER)!=0 && TesterIgnoreDailyAndPeakStops' in body_of('TesterResearchNoDailyStops')
+    assert 'RealAccountBlocked()' in body_of('OnTick')
+    assert 'RealAccountBlocked()' in body_of('EvaluateNewEntry')
+    assert 'RiskPerTradePct<=0.0 || RiskPerTradePct>2.0' in body_of('OnInit')
+    assert 'DemoForwardRiskCapPct<=0.0 || DemoForwardRiskCapPct>0.5' in body_of('OnInit')
 
 
 def test_tester_receipts_do_not_deduplicate_against_broker_deals():
@@ -555,10 +571,10 @@ def test_daily_risk_budget_vetoes_stop_losses_that_cross_daily_floor():
     assert 'ReadNumber(DayKey("START"),0.0,day_start)' in headroom
     assert 'equity-day_start*(1.0-MaxDailyLossPct/100.0)' in headroom
     assert 'MathMax(0.0,remaining)' in headroom
-    assert 'MathMin(equity*RiskPerTradePct/100.0,remaining)' in sizing
+    assert 'MathMin(equity*EffectiveTradeRiskPct()/100.0,remaining)' in sizing
     assert 'RemainingDailyRiskUsd(equity)' in sizing
     assert 'loss>remaining+1e-8' in fit
-    assert 'loss>equity*RiskPerTradePct/100.0+1e-8' in fit
+    assert 'loss>equity*EffectiveTradeRiskPct()/100.0+1e-8' in fit
     assert 'PlannedOrderFitsRisk(side,lots,price,stop)' in final_guard
     assert final_guard.index('PlannedOrderFitsRisk(') < final_guard.index('OrderSend(request,result)')
 
@@ -631,11 +647,11 @@ def test_discovery_bypass_never_leaves_strategy_tester():
     assert 'if(!TesterResearchNoDailyStops()' in entry
     assert '(!TesterResearchNoDailyStops()' in pending
     assert 'TesterResearchNoDailyStops()' in remain
-    assert 'equity*RiskPerTradePct/100.0' in lot
+    assert 'equity*EffectiveTradeRiskPct()/100.0' in lot
     assert 'EstimatedMonetaryLoss' in lot
     assert 'OrderCalcMargin' in lot
     assert 'StrategyEvidenceApproved()' in body_of('ConsiderNewEntry')
-    assert 'return MQLInfoInteger(MQL_TESTER)!=0;' in body_of('StrategyEvidenceApproved')
+    assert 'ConnectedDemoForwardAuthorized()' in body_of('StrategyEvidenceApproved')
 
 
 def test_structural_hypotheses_are_causal_and_use_original_execution_engine():
