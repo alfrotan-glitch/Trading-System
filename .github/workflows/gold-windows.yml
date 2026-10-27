@@ -40,6 +40,33 @@ jobs:
           $rootLauncher = (Resolve-Path 'START_HERE.bat').Path
           & $env:ComSpec /d /c ('call "{0}" /verify-setup' -f $rootLauncher)
           if ($LASTEXITCODE -ne 0) { throw "Windows cmd launcher path failed: $LASTEXITCODE" }
+      - name: Generate and verify four isolated MT5 tester presets
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'qts-tester-presets'
+          ./gold_robot/research/MakeTesterPresets.ps1 -OutputDirectory $dir
+          $sets = @(Get-ChildItem -LiteralPath $dir -Filter '*.set')
+          if ($sets.Count -ne 4) { throw 'Four strategy tester profiles required' }
+          $expected = @('0','1','2','3')
+          foreach ($set in $sets) {
+            $contents = Get-Content -LiteralPath $set.FullName -Encoding Unicode
+            $style = @($contents | Where-Object { $_ -match '^EntryStyle=' })
+            if ($style.Count -ne 1) { throw "Missing entry style in $($set.Name)" }
+            $actual = $style[0].Split('=')[1]
+            if ($actual -notin $expected) { throw "Invalid entry style $actual" }
+            $expected = @($expected | Where-Object { $_ -ne $actual })
+            foreach ($required in @('EnableDemoOrders=true',
+                                    'EnableDemoForwardOrders=false',
+                                    'TesterIgnoreDailyAndPeakStops=true',
+                                    'RiskPerTradePct=0.50')) {
+              if ($required -notin $contents) { throw "Unsafe/inconsistent preset $($set.Name): $required" }
+            }
+            if (@($contents | Where-Object { $_ -match '^EnableDemoForwardOrders=true' }).Count -gt 0) {
+              throw "Connected demo permission leaked into tester preset"
+            }
+          }
+          if ($expected.Count -ne 0) { throw "Missing entry styles" }
+          Write-Host 'Four MT5 tester presets validated without broker access.'
       - name: Simulate clean and blocked MT5 broker reports (no trading)
         shell: pwsh
         run: ./gold_robot/tests/windows_report_smoke.ps1
