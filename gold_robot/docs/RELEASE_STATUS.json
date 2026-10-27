@@ -10,7 +10,7 @@
   "connected_demo_new_orders_permitted_by_strategy_gate": true,
   "default_order_permission": false,
   "market_order_entries_permitted": false,
-  "entry_policy": "Four isolated research-only LIMIT signal hypotheses; Strategy Tester simulated orders or explicitly authorized WMMarkets virtual DEMO forward only. No independently validated after-cost edge.",
+  "entry_policy": "Four research LIMIT hypotheses: old-stop limit, retest limit, break-accept-retest limit, sweep-reclaim limit. Tester-only simulated orders or separately authorized WMMarkets virtual DEMO-forward; no verified after-cost edge.",
   "tester_only_research_mode": {
     "input": "TesterIgnoreDailyAndPeakStops",
     "default": true,
