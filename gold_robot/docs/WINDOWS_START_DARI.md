@@ -34,7 +34,8 @@ cd Trading-System
 | 3 | محیط تحقیقی جداگانه QTS با Python | نه، این گزینه فقط Desktop مشاهده را باز می‌کند |
 | 4 | این راهنمای کوتاه در Notepad | نه |
 | 5 | ساخت چهار Preset برای Strategy Tester | نه؛ فقط چهار فایل `.set` ساخته می‌شود |
-| 6 | خروج | نه |
+| 6 | تهیه گزارش مقایسه چهار Backtest | نه؛ فقط فایل‌های HTML ذخیره‌شده را می‌خواند |
+| 7 | خروج | نه |
 
 **برای معاملات آزمایشی در حساب Demo متصل:** پس از کامپایل موفق و بررسی بروکر، دو گزینه `EnableDemoOrders=true` و `EnableDemoForwardOrders=true` در Inputs لازم‌اند. پیش‌فرض هر دو خاموش است. این حالت فقط سرور WMMarkets، نماد `XAUUSD@`، ارز USD و حساب Demo را می‌پذیرد؛ ریسک هر معامله به‌صورت مستقل حداکثر ۰٫۲۵٪ و توقف روزانه فعال است. [راهنمای کامل Demo Forward](DEMO_FORWARD_OPERATIONS_DARI.md).
 
@@ -68,6 +69,8 @@ cd Trading-System
 **گزارش آمادگی** که با گزینه 2 تولید می‌شود: وضعیت فایل‌ها، کامپایل، Broker Preflight، حداقل لات، اسپرید و بودجه ریسک. اگر گزارش بروکر قدیمی باشد یا فایل EX5 با سورس فعلی مطابقت نداشته باشد، وضعیت `ACTION_REQUIRED` نشان داده می‌شود. «Ready for Tester» صرفاً مجوز **آزمایش** است.
 
 **Presetهای مقایسه چهار استراتیژی:** از `START_HERE.bat` گزینه **5** را انتخاب کنید. چهار فایل `.set` در `gold_robot/reports_local/tester_presets` ساخته می‌شوند. در MT5 Strategy Tester → Inputs → Load یکی را انتخاب کنید و در Settings سرمایه **۳۰۰۰ دالر** و Every tick based on real ticks بگذارید. فایل‌ها تنظیمات دیگر را برابر و `EnableDemoForwardOrders=false` نگه می‌دارند؛ اجرای سفارش با حساب متصل از طریق این فایل‌ها مجاز نیست.
+
+**گزارش مقایسه:** پس از چهار Backtest، از هر اجرا یک فایل HTML ذخیره کنید و با نام‌های `QTS_0.htm`، `QTS_1.htm`، `QTS_2.htm`، `QTS_3.htm` داخل `gold_robot/reports_local/native` قرار دهید. سپس گزینه **6** منوی اصلی را بزنید؛ فایل HTML/JSON با خلاصه تعداد معاملات، سود/زیان، Profit Factor و حداکثر افت Equity ساخته می‌شود. این ارقام native هستند و بدون تأیید همه هزینه‌ها به معنی سود خالص واقعی نیستند.
 
 **گزارش معاملات** که باید از Strategy Tester ذخیره شود: `Backtest Report`، `Deals`، `Orders` و `Journal`. برای تحلیل Stopهای فعال‌شده و برگشت قیمت، تیک‌های Bid/Ask با زمان درست نیز لازم‌اند. هیچ گزارشی با ۰ معامله به معنی سودآوری نیست.
 
