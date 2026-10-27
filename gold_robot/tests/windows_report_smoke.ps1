@@ -7,9 +7,10 @@ $runner=Join-Path $gold 'research\MakeWindowsReport.ps1'
 $fixture=Join-Path ([IO.Path]::GetTempPath()) ('qts-win-smoke-'+[guid]::NewGuid().ToString('N'))
 $mql5=Join-Path $fixture 'MQL5'
 $exp=Join-Path $mql5 'Experts'
+$scripts=Join-Path $mql5 'Scripts'
 $files=Join-Path $mql5 'Files'
 $output=Join-Path $fixture 'output'
-New-Item -ItemType Directory -Path $exp,$files,$output -Force | Out-Null
+New-Item -ItemType Directory -Path $exp,$scripts,$files,$output -Force | Out-Null
 try{
     $pairs=@(
         @('QTS_Gold_Robot.mq5','QTS_Gold_Robot.mq5'),
@@ -19,11 +20,17 @@ try{
     foreach($pair in $pairs){
         Copy-Item -LiteralPath (Join-Path $gold ('mt5_robot\'+$pair[0])) -Destination (Join-Path $exp $pair[1])
     }
+    Copy-Item -LiteralPath (Join-Path $gold 'research\QTS_Broker_Preflight.mq5') -Destination (Join-Path $scripts 'QTS_Broker_Preflight.mq5')
+    [IO.File]::WriteAllText((Join-Path $scripts 'QTS_Broker_Preflight.ex5'), ('V'*2200))
+    [IO.File]::WriteAllText((Join-Path $scripts 'QTS_Broker_Preflight.log'), 'Result: 0 errors, 0 warnings, 600 ms elapsed')
     [IO.File]::WriteAllText((Join-Path $exp 'QTS_Gold_Robot.ex5'), ('Z'*2200))
     [IO.File]::WriteAllText((Join-Path $exp 'QTS_Gold_Robot.log'), "Result: 0 errors, 0 warnings, 800 ms elapsed")
     $now=(Get-Date).ToUniversalTime()
     foreach($p in @('QTS_Gold_Robot.ex5','QTS_Gold_Robot.log')){
         (Get-Item -LiteralPath (Join-Path $exp $p)).LastWriteTimeUtc=$now
+    }
+    foreach($p in @('QTS_Broker_Preflight.ex5','QTS_Broker_Preflight.log')){
+        (Get-Item -LiteralPath (Join-Path $scripts $p)).LastWriteTimeUtc=$now
     }
     $csv=Join-Path $files 'QTS_Broker_Preflight.csv'
     $rows=@(
@@ -41,6 +48,9 @@ try{
     $first=Get-Content -LiteralPath $a.FullName -Raw | ConvertFrom-Json
     if($first.source_status -ne 'SOURCE_HASH_OK'){throw "Source manifest failed: $($first.source_status)"}
     if($first.install_status -ne 'COMPILED_VERIFIED'){throw "Compiled fixture invalid: $($first.install_status)"}
+    if($first.preflight_install_status -ne 'COMPILED_VERIFIED'){
+        throw "Broker Preflight source/EX5 is not verified: $($first.preflight_install_status)"
+    }
     if($first.preflight_status -notlike 'BLOCKED*'){throw 'Risk BLOCK not shown'}
     if($first.readiness -ne 'ACTION_REQUIRED'){throw 'Blocked broker was marked ready'}
     $report=Get-ChildItem -LiteralPath $output -Filter '*.html' | Select-Object -First 1
@@ -68,6 +78,18 @@ try{
         throw 'Trading safety was misrepresented'
     }
     Write-Host 'All verified, tester-only case: PASS'
+
+    # If a different/older preflight source is substituted, a green CSV cannot certify readiness.
+    [IO.File]::AppendAllText((Join-Path $scripts 'QTS_Broker_Preflight.mq5'),'// TAMPERED')
+    & $runner -DataFolder $mql5 -OutputDirectory $output -NoOpen
+    $testJson=Get-ChildItem -LiteralPath $output -Filter '*.json' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $tampered=Get-Content -LiteralPath $testJson.FullName -Raw | ConvertFrom-Json
+    if($tampered.readiness -ne 'ACTION_REQUIRED' -or
+       $tampered.preflight_install_status -eq 'COMPILED_VERIFIED'){
+        throw 'A mismatched installed broker diagnostic was mistakenly marked READY'
+    }
+    Write-Host 'Preflight tampering rejection: PASS'
+
 }finally{
     Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue
 }
