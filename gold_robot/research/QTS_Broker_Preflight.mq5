@@ -10,7 +10,7 @@
 
 input string ExpectedSymbol         = "XAUUSD@";
 input double ModelCapitalUsd         = 3000.0;
-input double ModelRiskPercent        = 0.50;
+input double ModelRiskPercent        = 0.25; // Match DEMO-forward risk ceiling; tester risk is independent
 input double ExampleStopPriceGap     = 4.0;   // Gold price units, e.g. $4/oz; NOT points
 input double EstimatedFeePerLotRound = 10.0;  // Account currency/1.0 lot; unverified assumption
 input int    MaxTickAgeSeconds       = 15;
