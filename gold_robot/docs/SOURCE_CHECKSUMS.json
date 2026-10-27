@@ -27,8 +27,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 4497,
-      "sha256": "461dba927f7cb7cf2ef3fa6c864100d009f7d0819dba8bbe31964e3f741b6bcc"
+      "bytes": 4620,
+      "sha256": "5b2e2d1bc8329512bc9611d1aec11b02824dfa54907e4372226c4bbd133a4e0e"
     },
     {
       "path": "README.txt",
@@ -92,18 +92,18 @@
     },
     {
       "path": "docs/RELEASE_HANDOFF_2026-10-27.md",
-      "bytes": 6072,
-      "sha256": "0cbb437b45076cf748f6191e2f45f447c9bf35f206c7613c26fda86b6b18887a"
+      "bytes": 6330,
+      "sha256": "056e1c0fe3db4db76e3ac1b890fe488b270cdec8e862ffc5a50ebfa4c7ba4686"
     },
     {
       "path": "docs/RELEASE_STATUS.json",
-      "bytes": 4108,
-      "sha256": "aac38f8a2a08c9dea00955a2f612d467c0d0a16650da294e03a41853654b44c6"
+      "bytes": 4554,
+      "sha256": "48332ddd75334dafee88e3df28d2583f639c334fb40f61627ba3abf44b1c163e"
     },
     {
       "path": "docs/WINDOWS_START_DARI.md",
-      "bytes": 10082,
-      "sha256": "7233fea03f35b7a2ef0948d01c9482cffab164739026e39324206ab028dcff33"
+      "bytes": 10543,
+      "sha256": "fc22faf7f6de64f9be570fbfa040f932a48b0f64acf6a938fc7aac0b42e7bd82"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART_DARI.md",
