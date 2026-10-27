@@ -14,7 +14,7 @@
 
 ۴. در حساب **WMMarkets Demo**، چارت `XAUUSD@` را باز کنید. در Navigator → Scripts → Refresh ابزار `QTS_Broker_Preflight` را اجرا کنید. سپس در `START_HERE.bat` گزینه **۲** را بزنید تا گزارش HTML/JSON ساخته شود.
 
-اگر گزارش `ACTION_REQUIRED` یا `BLOCKED_...` است، سفارش Demo را فعال نکنید. گزارش اکنون فایل سورس، EX5، لاگ کامپایل Preflight و جدیدبودن CSV را نیز بررسی می‌کند.
+اگر گزارش `ACTION_REQUIRED` یا `BLOCKED_...` است، سفارش Demo را فعال نکنید. Broker Preflight همچنین حساب REAL و سرور Demo غیر از WMMarkets را با `BLOCKED_ACCOUNT_MODE_OR_BROKER` رد می‌کند. گزارش اکنون فایل سورس، EX5، لاگ کامپایل Preflight و جدیدبودن CSV را نیز بررسی می‌کند.
 
 ## واقعیت ریسک بروکر
 
