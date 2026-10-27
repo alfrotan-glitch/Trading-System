@@ -17,13 +17,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 3431,
-      "sha256": "71f7f91ad8526ee310ed05a79f2011225c1c8a11e8c577e93e6a6b393bff6647"
+      "bytes": 3802,
+      "sha256": "b8187c2753d7bd5da32344010f826201b899031f3f5c108cb925c768465edc52"
     },
     {
       "path": "README.txt",
-      "bytes": 1445,
-      "sha256": "696549fd940a12fdd58bb8125a78ab3411d616d325df4748075254d4fff74d2c"
+      "bytes": 1803,
+      "sha256": "d43ecb38d5e799c6102b5434cc64b980a662e062d1282433e98e8c6e6df3deda"
     },
     {
       "path": "SETUP_MT5_GOLD.bat",
@@ -34,6 +34,11 @@
       "path": "docs/ACCEPTANCE_CHECKLIST.md",
       "bytes": 1976,
       "sha256": "99ae0e4f3d77f0c3ba0b819aa8481fdf04addea17b2282bdc1fff4820d1665af"
+    },
+    {
+      "path": "docs/DEMO_FORWARD_OPERATIONS_DARI.md",
+      "bytes": 6643,
+      "sha256": "f8392ca97aa839e624eef0adbaed6ad5e89199b7c6222260536b5b0b2d9fc4ff"
     },
     {
       "path": "docs/ENGINEERING_AUDIT.md",
@@ -77,13 +82,13 @@
     },
     {
       "path": "docs/RELEASE_STATUS.json",
-      "bytes": 2877,
-      "sha256": "28d5066a6a8097aefd1aa03ee02f245d96f16f0ea57dbaeea1b3932d2a408828"
+      "bytes": 3483,
+      "sha256": "05e2e7a4672e001ed23ac593ec894626f962e938e130c154fbe376223dc9d949"
     },
     {
       "path": "docs/WINDOWS_START_DARI.md",
-      "bytes": 7987,
-      "sha256": "be3fb9f65ea28b612b3d100dcc7fb180f4ab5773b666f2c27165aa38b7bb570c"
+      "bytes": 8582,
+      "sha256": "845174f771cf476a6484b5febe1e028bcc25f44c1b192c1cf3ac4cab80bdac79"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART_DARI.md",
@@ -107,8 +112,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 65021,
-      "sha256": "c2080de98410d1161d4d321d72232417c51cc49b871c2e7ea694ad89d143b715"
+      "bytes": 66789,
+      "sha256": "1229f0ea14874882bf1e58b2b32b4df67949be7c4f5592ad700881b77653b080"
     },
     {
       "path": "mt5_robot/StructureResearch.mqh",
@@ -277,8 +282,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 30833,
-      "sha256": "44399072cb3ecad566cf590a80a669773afb167675dfaa9f3fe38b63cfec1108"
+      "bytes": 31970,
+      "sha256": "118586bab0e174bf6d22afd516a6cae594b4c2d992f56eddb0c3b05c2be16afc"
     },
     {
       "path": "tests/test_scalp_signals.py",
