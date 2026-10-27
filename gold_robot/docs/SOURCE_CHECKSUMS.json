@@ -152,8 +152,8 @@
     },
     {
       "path": "research/CompareMT5Reports.ps1",
-      "bytes": 7203,
-      "sha256": "d4f11e523eb7d651ea789074132724f6a8244f091c71ef96e76460a210297683"
+      "bytes": 7206,
+      "sha256": "e886b1774c0b77d6f6eb894d26e365e03f896f05790cdbe12e159409e0c4759c"
     },
     {
       "path": "research/ExportBrokerData.mq5",
@@ -167,8 +167,8 @@
     },
     {
       "path": "research/MakeWindowsReport.ps1",
-      "bytes": 15570,
-      "sha256": "24e8a32cbd3213b1e2bd6a5b2014aa35620abf949ac575c2373466db303f8e12"
+      "bytes": 15573,
+      "sha256": "f64fdf3b2c52da0c12cbe8bfcb1ec55ec4336eb8b3c8af8fec8deb0236d519c2"
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",

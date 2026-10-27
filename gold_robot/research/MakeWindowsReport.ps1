@@ -1,4 +1,4 @@
-# QTS Gold Windows Status Reporter — read-only. Requires Windows PowerShell 5.1+.
+﻿# QTS Gold Windows Status Reporter — read-only. Requires Windows PowerShell 5.1+.
 [CmdletBinding()]
 param([string]$DataFolder="", [string]$OutputDirectory="", [switch]$NoOpen)
 $ErrorActionPreference='Stop'

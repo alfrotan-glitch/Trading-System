@@ -1,4 +1,4 @@
-# Read-only comparison of four user-exported native MT5 Strategy Tester reports.
+﻿# Read-only comparison of four user-exported native MT5 Strategy Tester reports.
 [CmdletBinding()]
 param([string]$ReportDirectory="",[string]$OutputDirectory="",[switch]$NoOpen)
 $ErrorActionPreference='Stop'
