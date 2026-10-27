@@ -48,7 +48,15 @@
     "expected_local_native_compile_gate": "0 errors, 0 warnings, fresh EX5",
     "tester_presets_launcher": "START_HERE.bat option 5 / gold_robot/research/MakeTesterPresets.ps1",
     "tester_presets_output": "gold_robot/reports_local/tester_presets/*.set",
-    "tester_presets_order_submission": false
+    "tester_presets_order_submission": false,
+    "native_report_comparison_launcher": "START_HERE.bat option 6 / gold_robot/research/CompareMT5Reports.ps1",
+    "native_report_input_files": [
+      "reports_local/native/QTS_0.htm",
+      "reports_local/native/QTS_1.htm",
+      "reports_local/native/QTS_2.htm",
+      "reports_local/native/QTS_3.htm"
+    ],
+    "native_comparison_is_profit_validation": false
   },
   "research_limitations": [
     "No verified latest-build native WMMarkets backtest",
