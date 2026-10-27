@@ -37,8 +37,8 @@
     },
     {
       "path": "SETUP_MT5_GOLD.bat",
-      "bytes": 3495,
-      "sha256": "7487dbf573283b14c21befe70a515eddad730161bbfc819c7eae1baa1ccdb2a7"
+      "bytes": 3110,
+      "sha256": "60a571755ee4c52f6e047cd8ba1aef250e3b9845ca2cab2d194d276a85873c40"
     },
     {
       "path": "docs/ACCEPTANCE_CHECKLIST.md",
@@ -117,8 +117,13 @@
     },
     {
       "path": "mt5_robot/Install_Broker_Preflight.ps1",
-      "bytes": 6916,
-      "sha256": "563b0988ad98e3a3c6141493ce5b1ead3ceaa8177318abe939df3064390b4c0d"
+      "bytes": 7649,
+      "sha256": "364c6d60b2b0a872eb6b8f2ea151ac4509350f09460612b39366fbaac3a9bd01"
+    },
+    {
+      "path": "mt5_robot/Install_MT5_Canonical.ps1",
+      "bytes": 7098,
+      "sha256": "ee68949aadebf8a2dc9d518fd932e1b3e355f06124c4d8e31fb4e13191247891"
     },
     {
       "path": "mt5_robot/Install_QTS_Gold_Robot.ps1",
@@ -162,8 +167,8 @@
     },
     {
       "path": "research/MakeWindowsReport.ps1",
-      "bytes": 12466,
-      "sha256": "42c9c6fb4f9b21bb4b364e3ea6ffc8bf48038a2a18cb59daf4a2860f232debf5"
+      "bytes": 15570,
+      "sha256": "24e8a32cbd3213b1e2bd6a5b2014aa35620abf949ac575c2373466db303f8e12"
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",
@@ -337,8 +342,8 @@
     },
     {
       "path": "tests/windows_report_smoke.ps1",
-      "bytes": 3787,
-      "sha256": "6fd10f377ecb0c76b6a8e65c2a4d46b9298442ea485b3b917618dd98482e708a"
+      "bytes": 5250,
+      "sha256": "746d90e36f75dff43722c23210193dcc01121a53293177ebb25e4431bc84e0e9"
     }
   ]
 }
