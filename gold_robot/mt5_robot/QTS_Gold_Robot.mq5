@@ -13,7 +13,9 @@
 #include "ExecutionPolicy.mqh"
 
 // All input defaults are conservative *engineering* choices, NOT optimized alpha.
-input bool            EnableDemoOrders          = false; // Explicitly opt in after review.
+input bool            EnableDemoOrders          = false; // OFF by default.
+input bool            EnableDemoForwardOrders    = false; // Independent authorization, connected WMMarkets DEMO only.
+input double          DemoForwardRiskCapPct      = 0.25; // DEMO hard cap; never weakens trade-level risk.
 input bool            EnableEntryDiagnostics    = true; // Tester-only journal: why each closed bar was vetoed.
 input bool            PauseNewEntries           = false;
 input bool            EmergencyFlattenOwned     = false; // Emergency CLOSE of THIS magic only.
@@ -76,11 +78,31 @@ bool local_execution_halt = false;
 string audit_file="QTS_Gold_Robot_Broker_Deals.csv";
 bool broker_was_connected=false;
 
-// No candidate has yet passed independent broker-cost validation. Tester
-// research is permitted; a UI input cannot promote an unvalidated strategy.
+// Broker DEMO forwarding is a separately authorized experiment with virtual funds.
+// No result permits REAL account orders. This is NOT economic edge validation.
+bool ConnectedDemoForwardAuthorized()
+  {
+   if(MQLInfoInteger(MQL_TESTER)!=0 || !EnableDemoOrders ||
+      !EnableDemoForwardOrders ||
+      AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)
+      return false;
+   return _Symbol=="XAUUSD@" &&
+          StringFind(AccountInfoString(ACCOUNT_SERVER),"WMMarkets")==0 &&
+          AccountInfoString(ACCOUNT_CURRENCY)=="USD";
+  }
+
 bool StrategyEvidenceApproved()
   {
-   return MQLInfoInteger(MQL_TESTER)!=0;
+   return MQLInfoInteger(MQL_TESTER)!=0 || ConnectedDemoForwardAuthorized();
+  }
+
+double EffectiveTradeRiskPct()
+  {
+   if(MQLInfoInteger(MQL_TESTER)!=0)
+      return RiskPerTradePct;
+   if(!ConnectedDemoForwardAuthorized())
+      return 0.0;
+   return MathMin(RiskPerTradePct,DemoForwardRiskCapPct);
   }
 
 // This bypass is strictly limited to simulated Strategy Tester sessions.
@@ -607,7 +629,7 @@ bool PlannedOrderFitsRisk(const int side,const double volume,
    double remaining=RemainingDailyRiskUsd(equity);
    double loss=EstimatedMonetaryLoss(side,volume,entry,stop);
    if(equity<=0.0 || remaining<=0.0 || loss<=0.0 ||
-      loss>equity*RiskPerTradePct/100.0+1e-8 ||
+      loss>equity*EffectiveTradeRiskPct()/100.0+1e-8 ||
       loss>remaining+1e-8)
      {
       status_text="Planned stop exceeds per-trade or remaining daily risk";
@@ -627,7 +649,7 @@ double SizedLots(const int side,const double price,const double stop)
    double remaining=RemainingDailyRiskUsd(equity);
    if(remaining<=0.0)
       return 0.0;
-   double budget=MathMin(equity*RiskPerTradePct/100.0,remaining);
+   double budget=MathMin(equity*EffectiveTradeRiskPct()/100.0,remaining);
    double one_lot_cost=EstimatedMonetaryLoss(side,1.0,price,stop);
    if(one_lot_cost<=0.0 || budget<=0.0)
       return 0.0;
@@ -930,7 +952,7 @@ void EvaluateNewEntry()
       double min_lot=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
       double minimum_risk=EstimatedMonetaryLoss(side,min_lot,price,stop);
       double equity=AccountInfoDouble(ACCOUNT_EQUITY);
-      double budget=MathMin(equity*RiskPerTradePct/100.0,RemainingDailyRiskUsd(equity));
+      double budget=MathMin(equity*EffectiveTradeRiskPct()/100.0,RemainingDailyRiskUsd(equity));
       double margin=0.0;
       ENUM_ORDER_TYPE order_side=side>0 ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
       bool margin_ok=OrderCalcMargin(order_side,_Symbol,min_lot,price,margin);
@@ -1250,9 +1272,12 @@ void ManageOwnedPositions()
 
 void DisplayStatus()
   {
-   string mode=MQLInfoInteger(MQL_TESTER)!=0 ? "STRATEGY TESTER" : "DEMO ONLY";
+   string mode=MQLInfoInteger(MQL_TESTER)!=0 ? "STRATEGY TESTER" :
+               (ConnectedDemoForwardAuthorized() ? "WMMarkets DEMO FORWARD" : "DEMO OBSERVE ONLY");
    string operation=EnableDemoOrders && StrategyEvidenceApproved() && !PauseNewEntries && !EmergencyFlattenOwned ?
-                    (TesterResearchNoDailyStops() ? "TESTER: DAILY LIMITS OFF" : "TESTER: DAILY LIMITS ON") : "NO NEW ORDERS";
+                    (MQLInfoInteger(MQL_TESTER)!=0 ?
+                     (TesterResearchNoDailyStops() ? "TESTER: DAILY LIMITS OFF" : "TESTER: DAILY LIMITS ON") :
+                     "WMMarkets DEMO FORWARD: DAILY LIMITS ON") : "NO NEW ORDERS";
    Comment("QTS GOLD ROBOT | INITIAL DEVELOPMENT | ",mode," | LIVE LOCKED\n",
            operation,"\n",
            "NOT VERIFIED PROFITABLE - capital risk exists even in DEMO\n",
@@ -1282,6 +1307,7 @@ int OnInit()
       FastEmaPeriod<3 || SlowEmaPeriod<=FastEmaPeriod || AtrPeriod<2 ||
       AdxPeriod<2 || MinimumAdx<1.0 ||
       RewardToRisk<0.7 || RewardToRisk>4.0 || RiskPerTradePct<=0.0 || RiskPerTradePct>2.0 ||
+      DemoForwardRiskCapPct<=0.0 || DemoForwardRiskCapPct>0.5 ||
       MaxDailyLossPct<=0.0 || MaxDailyLossPct>5.0 ||
       MaxPeakDrawdownPct<=MaxDailyLossPct || MaxPeakDrawdownPct>12.0 ||
       MaxTradesPerDay<1 || MaxTradesPerDay>20 || MaxSpreadPoints<=0 ||
@@ -1368,7 +1394,9 @@ int OnInit()
       status_text=EnableDemoOrders ? "Strategy Tester research enabled" :
                                      "Strategy Tester observation only";
    else
-      status_text="No validated strategy; DEMO orders remain locked";
+      status_text=ConnectedDemoForwardAuthorized() ?
+                  "UNVALIDATED: WMMarkets DEMO-forward trial explicitly enabled" :
+                  "DEMO observation: two forward authorization inputs required";
    PrintFormat("QTS Gold Robot research: entry_style=%d tester_no_daily_stops=%d; LIVE blocked; edge UNVALIDATED.",
                (int)EntryStyle,(int)TesterResearchNoDailyStops());
    DisplayStatus();
