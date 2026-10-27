@@ -712,3 +712,23 @@ def test_resting_limit_orders_are_cancelled_after_quote_or_spread_deterioration(
     assert 'ManageOwnedPendingOrders();' in body_of('OnTimer')
     assert 'ManageOwnedPendingOrders();' in body_of('OnTick')
     assert 'ORDER_TIME_SPECIFIED' in EA
+
+
+
+def test_unarmed_demo_observes_closed_bar_signals_without_any_order_path():
+    observer = body_of('ObserveUnarmedDemoSignal')
+    tick = body_of('OnTick')
+    assert 'ObserveUnarmedDemoSignal();' in tick
+    assert tick.index('ConsiderNewEntry();') < tick.index('ObserveUnarmedDemoSignal();')
+    for required in (
+        'RealAccountBlocked()', '!EnableEntryDiagnostics',
+        'ConnectedDemoForwardAuthorized()', 'CompletedStructureSignal(',
+        'CompletedBarSignal(', 'OBSERVE: unvalidated BUY candidate',
+        'OBSERVE: unvalidated SELL candidate'
+    ):
+        assert required in observer
+    for forbidden in ('OrderSend(', 'OrderCheck(', 'trade.Buy(', 'trade.Sell(',
+                      'trader.Buy(', 'trader.Sell(', 'PrepareStructureLimit(',
+                      'PrepareRetestLimit(', 'PreparePullbackLimit('):
+        assert forbidden not in observer
+    assert 'QTS ENTRY AUDIT bar=' in tick
