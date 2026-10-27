@@ -82,8 +82,8 @@
     },
     {
       "path": "docs/RELEASE_STATUS.json",
-      "bytes": 3483,
-      "sha256": "05e2e7a4672e001ed23ac593ec894626f962e938e130c154fbe376223dc9d949"
+      "bytes": 3516,
+      "sha256": "c339e176caf55f4230c71716361a16b78f1d5499ea82fa138ac15f85026b6f6f"
     },
     {
       "path": "docs/WINDOWS_START_DARI.md",
@@ -282,8 +282,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 31970,
-      "sha256": "118586bab0e174bf6d22afd516a6cae594b4c2d992f56eddb0c3b05c2be16afc"
+      "bytes": 32175,
+      "sha256": "f516aa6afffc16edaa61a9a1b8fa87ec437e14723112aaf2ab4e1c5ffab1e20f"
     },
     {
       "path": "tests/test_scalp_signals.py",
