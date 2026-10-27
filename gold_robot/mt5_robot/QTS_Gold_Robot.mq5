@@ -1134,15 +1134,46 @@ bool ProtectiveRequestDue(const ulong ticket,const string action)
    return true;
   }
 
+// A pending LIMIT can be filled by the broker even after the original quote
+// and spread have deteriorated. Cancel it opportunistically on every tick or
+// timer when its original execution environment is no longer acceptable.
+// Cancellation is best-effort: a broker fill can race the request.
+bool RestingPendingQuoteSafe()
+  {
+   MqlTick quote={};
+   if(!SymbolInfoTick(_Symbol,quote) || _Point<=0.0 ||
+      quote.bid<=0.0 || quote.ask<=quote.bid || quote.time<=0)
+      return false;
+   datetime now=TimeTradeServer();
+   if(now<=0 || now<quote.time || now-quote.time>MaxTickAgeSeconds)
+      return false;
+   double spread=quote.ask-quote.bid;
+   double mid=(quote.bid+quote.ask)/2.0;
+   if(mid<=0.0 || spread/_Point>(double)MaxSpreadPoints ||
+      spread*10000.0/mid>MaxSpreadBps)
+      return false;
+   // Apply the same ATR-normalized spread policy to a RESTING order, not
+   // only at submission. Never accept missing indicator data as safe.
+   double atr[1];
+   if(CopyBuffer(atr_handle,0,1,1,atr)!=1 ||
+      !MathIsValidNumber(atr[0]) || atr[0]<=0.0 ||
+      spread>atr[0]*MaxSpreadVsAtrPct/100.0)
+      return false;
+   return true;
+  }
+
 void ManageOwnedPendingOrders(const bool force_cancel=false)
   {
    if(RealAccountBlocked())
       return;
    bool breached=false;
    bool risk_ok=RiskState(AccountInfoDouble(ACCOUNT_EQUITY),breached);
+   // Do not burden the quote/ATR pipeline when no pending orders are open.
+   bool pending_quote_unsafe=OrdersTotal()>0 && !RestingPendingQuoteSafe();
    // A resting order can fill while Algo Trading is paused. On receipt of
    // a timer/tick, attempt cancellation whenever any safety state worsens.
-   bool cancel_all=force_cancel || EmergencyFlattenOwned || PauseNewEntries ||
+   bool cancel_all=force_cancel || pending_quote_unsafe ||
+                   EmergencyFlattenOwned || PauseNewEntries ||
                    !EnableDemoOrders || !StrategyEvidenceApproved() || !risk_ok || breached ||
                    !BrokerSessionAllowed() || local_execution_halt ||
                    AnySameSymbolPosition();
