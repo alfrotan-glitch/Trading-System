@@ -47,8 +47,8 @@
     },
     {
       "path": "docs/DEMO_FORWARD_OPERATIONS_DARI.md",
-      "bytes": 6643,
-      "sha256": "f8392ca97aa839e624eef0adbaed6ad5e89199b7c6222260536b5b0b2d9fc4ff"
+      "bytes": 7042,
+      "sha256": "56ffe0e41f3c8e9e0a652c5a7f11aa93f2909feb97ee57ff1f989f41760d6344"
     },
     {
       "path": "docs/ENGINEERING_AUDIT.md",
@@ -132,8 +132,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 68198,
-      "sha256": "6636dc300c98f1cd4b01b9b8b09273b1249a40634af3d277478392908c612cf5"
+      "bytes": 69016,
+      "sha256": "999829ad146a7a0e6a31367d8fdb53e6b45ea453d8ac8d6a47825fd4f4c36b26"
     },
     {
       "path": "mt5_robot/StructureResearch.mqh",
@@ -312,8 +312,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 33192,
-      "sha256": "d35124223f2e5e0f730520baf0ec7b6f25f89de5fcda22a8700244f88f611da5"
+      "bytes": 33477,
+      "sha256": "2ffcc1881c52a9b44a4b8dac58a5efa6f38d3681e67381d51d0d7cb8ea917840"
     },
     {
       "path": "tests/test_scalp_signals.py",
