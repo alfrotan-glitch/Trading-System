@@ -11,7 +11,7 @@ The operator uses **`START_HERE.bat` from repository root**. The Gold MT5 path i
 
 | Engineering area | Current implementation | Acceptance interpretation |
 |---|---|---|
-| Install | Source hash validation, atomic backup/rollback, MetaEditor zero-errors/zero-warnings and fresh EX5 checks | Windows launcher/PowerShell smoke succeeds; current user-terminal MetaEditor compile **not independently observed** |
+| Install | One target MT5 Data Folder and MetaEditor shared by EA and Preflight; each component has source-hash validation, backup/rollback, zero-errors/zero-warnings and fresh EX5 verification | Windows synthetic path/rollback checks pass; current user-terminal MetaEditor compile **not independently observed** |
 | Access control | REAL/CONTEST blocked by `DemoOrTester`/OnInit; only WMMarkets-Demo USD XAUUSD@ with two explicit inputs enables connected Demo orders | REAL locked; default observation-only; tester research remains separately authorized |
 | Strategy selection | Existing former-stop & retest LIMIT plus closed-candle break/accept/retest and sweep/reclaim hypotheses | Four isolated candidates, NOT validated profitable strategies |
 | Causality | Closed M5/M15/H1 bars; pre-established structure older than probe & confirm candles | Static no-future-access coverage; native broker replay still required |
@@ -21,7 +21,7 @@ The operator uses **`START_HERE.bat` from repository root**. The Gold MT5 path i
 | Halt authority | Execution-incident latch, unresolved submission marker, daily/peak equity stops, pending-entry caps | Halt bypass is only `MQL_TESTER`; daily/peak protection stays enabled on DEMO-forward |
 | Broker reconciliation | Broker-authoritative deals and locally deduplicated audit CSV; restart/reconnect checks | Broker correction/commission timing and all failure races not exhaustively verified |
 | Stop-Loss forensics | Read-only Bid/Ask after-stop windows; missing tick coverage marked UNKNOWN | Requires timestamped broker fills and ticks; do not widen SL simply after price rebounds |
-| Operator experience | Unified START_HERE, Broker Preflight, local HTML/JSON readiness, 4 MT5 `.set` presets | Readiness HTML is an installation audit, NOT a strategy performance report |
+| Operator experience | Unified START_HERE, Broker Preflight, local HTML/JSON readiness, four MT5 `.set` presets and four native-report comparison | Broker readiness now also checks the installed Preflight source hash, EX5, compile log and CSV freshness; NONE of these is strategy-profit evidence |
 
 ## Explicit boundaries
 
@@ -42,7 +42,7 @@ Prior baseline and sweep results were not validated positive. No user funds shou
 
 ## Release gate and evidence not yet supplied
 
-- User-terminal native MetaEditor compile of this exact main commit, with current source and no warnings.
+- User-terminal native MetaEditor compile of this exact main commit, with current source and no warnings. Both EA and broker preflight must use the same terminal and compiler.
 - Four real-tick MT5 Strategy Tester runs from independent history, with full broker costs and trades (not just signals).
 - A defensible post-stop Bid/Ask forensic sample distinguishing stop placement, spread and adverse selection.
 - Supervised connected WMMarkets DEMO order acceptance/fill/expiry/restart/kill-switch check, including no accidental unintended exposure.
