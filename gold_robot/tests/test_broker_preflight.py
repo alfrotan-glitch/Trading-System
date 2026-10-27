@@ -12,6 +12,9 @@ def test_preflight_is_readonly_and_symbols_are_pinned():
     assert 'ExpectedSymbol         = "XAUUSD@"' in MQL
     assert "_Symbol!=ExpectedSymbol" in MQL
     assert 'AccountInfoString(ACCOUNT_CURRENCY)!="USD"' in MQL
+    assert 'ACCOUNT_TRADE_MODE_DEMO' in MQL
+    assert 'StringFind(AccountInfoString(ACCOUNT_SERVER),"WMMarkets")!=0' in MQL
+    assert 'BLOCKED_ACCOUNT_MODE_OR_BROKER' in MQL
     assert 'OrdersSubmitted","0"' in MQL
     for forbidden in (
         "OrderSend(", "OrderSendAsync(", "WebRequest(", "trade.Buy(",
