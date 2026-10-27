@@ -6,7 +6,7 @@ This directory contains **one canonical Expert Advisor**, `mt5_robot/QTS_Gold_Ro
 
 ## Clone, install, report
 
-From the repository root, double-click **`START_HERE.bat`**. Select **1** to install/compile the Gold EA and preflight script. On your `XAUUSD@` chart run `QTS_Broker_Preflight`. Select **2** to create a local, clean HTML/JSON broker/readiness report; it never sends orders.
+From the repository root, double-click **`START_HERE.bat`**. Select **1** to install/compile the Gold EA and preflight script using **one selected MT5 terminal and compiler**. On your `XAUUSD@` chart run `QTS_Broker_Preflight`. Select **2** to create a local, clean HTML/JSON broker/readiness report, which rejects stale or mismatched broker-preflight sources and artifacts; it never sends orders.
 
 [The short Dari guide](docs/WINDOWS_START_DARI.md) is the recommended complete operator procedure. The generated reports are excluded from Git. For quick reporting without the menu, double-click `MAKE_REPORT.bat`.
 
