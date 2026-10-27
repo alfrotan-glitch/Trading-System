@@ -524,7 +524,9 @@ def test_two_percent_risk_is_a_ceiling_not_the_default():
     assert 'RiskPerTradePct>2.0' in EA
     assert 'input double          RiskPerTradePct           = 1.0;' in EA
     assert 'RiskPerTradePct>2.0' in EA and 'RiskPerTradePct>1.0' not in EA
-    assert 'return MQLInfoInteger(MQL_TESTER)!=0;' in EA
+    assert 'MQLInfoInteger(MQL_TESTER)!=0 || ConnectedDemoForwardAuthorized()' in EA
+    assert 'AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO' in body_of('ConnectedDemoForwardAuthorized')
+    assert 'RealAccountBlocked()' in body_of('OnTick')
 
 
 def test_intraday_retest_is_research_candidate_not_forced_trade():
