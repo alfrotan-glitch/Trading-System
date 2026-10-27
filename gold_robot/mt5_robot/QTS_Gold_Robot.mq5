@@ -1006,7 +1006,8 @@ void EvaluateNewEntry()
      }
    // The order must remain a genuine unfilled limit; NEVER reprice it
    // to the live market or convert it to a market order on a price change.
-   if(RealAccountBlocked() || PauseNewEntries || EmergencyFlattenOwned ||
+   if(RealAccountBlocked() || !StrategyEvidenceApproved() ||
+      !EnableDemoOrders || PauseNewEntries || EmergencyFlattenOwned ||
       AnyConflictingPositionOrOrder() || !FreshEntryQuote(quote) ||
       !BrokerSessionAllowed() || !NewTradesAllowedByRisk() ||
        !PlannedOrderFitsRisk(side,lots,price,stop))
