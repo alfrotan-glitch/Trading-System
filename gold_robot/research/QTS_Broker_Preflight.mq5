@@ -47,7 +47,14 @@ void OnStart()
    Record(report,"ModelRiskPercent",DoubleToString(ModelRiskPercent,2));
    Record(report,"ExampleStopPriceGap",DoubleToString(ExampleStopPriceGap,4));
 
-   if(_Symbol!=ExpectedSymbol || AccountInfoString(ACCOUNT_CURRENCY)!="USD" ||
+   // A broker audit from a REAL account or unrelated demo cannot certify a WMMarkets DEMO-forward setup.
+   if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO ||
+      StringFind(AccountInfoString(ACCOUNT_SERVER),"WMMarkets")!=0)
+     {
+      safe=false;
+      Record(report,"Verdict","BLOCKED_ACCOUNT_MODE_OR_BROKER");
+     }
+   else if(_Symbol!=ExpectedSymbol || AccountInfoString(ACCOUNT_CURRENCY)!="USD" ||
       ModelCapitalUsd<=0.0 || ModelRiskPercent<=0.0 ||
       ModelRiskPercent>1.0 || ExampleStopPriceGap<=0.0 ||
       EstimatedFeePerLotRound<0.0 || MaxTickAgeSeconds<1)
