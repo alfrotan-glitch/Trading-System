@@ -107,8 +107,8 @@
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART_DARI.md",
-      "bytes": 5788,
-      "sha256": "4ef4d1b325206dbc5c19f7bb17465174371fc2c1c04a25b58d43fa7c4cdd5acc"
+      "bytes": 5934,
+      "sha256": "a8f1a097121b9db13aa073abb0cccfcd3cb569c9dce0a5fe8d64370e3874e745"
     },
     {
       "path": "mt5_robot/ExecutionPolicy.mqh",
@@ -172,8 +172,8 @@
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",
-      "bytes": 9987,
-      "sha256": "4c352d26d60750853b646c447b45b28faf0acb3d0e5c9d3f3ee5bbba4adc0820"
+      "bytes": 10336,
+      "sha256": "e7b93fd7ec70673640210e5411aac8c1d11a9841acb15d6ad87bb9bbaf05289b"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -292,8 +292,8 @@
     },
     {
       "path": "tests/test_broker_preflight.py",
-      "bytes": 4361,
-      "sha256": "5d45b81972297e9780c1ddddabc61a408d93fd5958941b370079c2f0329fd10d"
+      "bytes": 4537,
+      "sha256": "0688fde1fa33983f16292bdc051b9e668509d511a34262bd2d79964850a5287e"
     },
     {
       "path": "tests/test_edge_gate.py",
