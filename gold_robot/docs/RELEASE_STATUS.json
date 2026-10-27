@@ -56,7 +56,11 @@
       "reports_local/native/QTS_2.htm",
       "reports_local/native/QTS_3.htm"
     ],
-    "native_comparison_is_profit_validation": false
+    "native_comparison_is_profit_validation": false,
+    "canonical_single_target_installer": "gold_robot/mt5_robot/Install_MT5_Canonical.ps1",
+    "installer_same_data_folder_and_metaeditor_for_ea_and_preflight": true,
+    "broker_readiness_requires_matching_preflight_source_ex5_and_compiler_log": true,
+    "broker_csv_must_be_newer_than_current_preflight_compile": true
   },
   "research_limitations": [
     "No verified latest-build native WMMarkets backtest",
@@ -64,7 +68,8 @@
     "Historical sweep family failed holdout",
     "Broker commission and live fill behavior not independently confirmed",
     "Windows smoke test is not MetaEditor compilation",
-    "The connected DEMO-forward path has not been native-compiled or exercised on the user's WMMarkets terminal in this revision"
+    "The connected DEMO-forward path has not been native-compiled or exercised on the user's WMMarkets terminal in this revision",
+    "Windows CI validates a simulated MT5 folder and source/EX5 freshness, not a current WMMarkets MetaEditor compilation"
   ],
   "risk_note": "Stop gaps, slippage and costs may exceed planned per-trade risk. Tester-only daily-limit bypass is for measuring opportunities, never trade authority.",
   "windows_package_revision": "2026-10-27",
