@@ -19,7 +19,7 @@ From the repository root, double-click **`START_HERE.bat`**. Select **1** to ins
 | 2 | Closed-bar structural breakout → confirmation → retest LIMIT |
 | 3 | Closed-bar sweep → reclaim → confirmation LIMIT (previous family negative in independent research) |
 
-Each candidate uses the **same EA order validation, safety ledger, SL/TP and cost/risk checks**. No external LuxAlgo/OTT/QQE implementation has been silently injected. New entries are allowed only in **Strategy Tester** by the `StrategyEvidenceApproved` gate, even if a connected demo account permits trading.
+Each candidate uses the **same EA order validation, safety ledger, SL/TP and cost/risk checks**. No external LuxAlgo/OTT/QQE implementation has been silently injected. New entries are permitted in **Strategy Tester** or in an explicitly authorized **WMMarkets connected DEMO Forward** trial (both `EnableDemoOrders` and `EnableDemoForwardOrders` must be true). Defaults are observe-only. Connected DEMO Forward is capped to at most **0.25% of equity** per new trade by default, maintains daily and drawdown latches, and remains unvalidated. REAL accounts are structurally blocked. See [Dari DEMO Forward guide](docs/DEMO_FORWARD_OPERATIONS_DARI.md).
 
 The input `TesterIgnoreDailyAndPeakStops=true` allows a Strategy Tester census of later opportunities after a losing day: daily equity halt, peak-equity halt and trade/pending daily counts are ignored **only in tester**. Per-trade risk, legal volume, broker margin, SL/TP, spread, session and execution-incident halts remain enforced. Connected demo and real accounts cannot use this bypass.
 
@@ -30,7 +30,7 @@ Native MT5 tester deposit for the operator's setup: **USD 3,000**, the smallest 
 - Latest canonical EA was changed after an earlier user-verified successful MetaEditor compile; **the current source must still compile on the operator's terminal**.
 - Repository tests and GitHub Windows PowerShell smoke tests validate static invariants and report generation, **not live broker trading or a profitable edge**.
 - Historical M15 result: 18 completed trades, PF 0.98, a net loss (older source revision); **not** proof of performance of the new entries.
-- Before considering demo execution, independently verify true broker commission, swap, spread, margin, stop gap, fills/rejections, disconnections and positive after-cost out-of-sample performance.
+- DEMO-forward virtual-money tests are explicitly opt-in; verify MT5 native compilation and broker limits before enabling. Commission, swap, slippage, rejects, disconnects and independent after-cost expectancy remain unverified.
 - Real-money account trading is structurally blocked and must not be enabled in a source-only handoff.
 
 Read [release status](docs/RELEASE_STATUS.json), [prior trade evidence](docs/PERFORMANCE_REPORT.md), [research with $3000](docs/MT5_3000_UNLIMITED_TESTER_DARI_2026-10-26.md), and [Stop Loss root cause plan](docs/OWNER_PLAN_STOPLOSS_ROOTCAUSE_2026-10-26.md).
