@@ -22,8 +22,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 4111,
-      "sha256": "c5f844db97f95e483b7cc0cf663b2edf18b4e9cc8d19862043d53f4e38a32465"
+      "bytes": 4182,
+      "sha256": "de628d4facab5c5297393a388352310bf16e778fe9f2955790198ba8f4ed116c"
     },
     {
       "path": "README.txt",
@@ -84,6 +84,11 @@
       "path": "docs/PERFORMANCE_REPORT.md",
       "bytes": 14423,
       "sha256": "b0b67d4d82b49b5d8e1e215cb11d9eda2a61702e9cc405d71cea60847f8a92ff"
+    },
+    {
+      "path": "docs/RELEASE_HANDOFF_2026-10-27.md",
+      "bytes": 6072,
+      "sha256": "0cbb437b45076cf748f6191e2f45f447c9bf35f206c7613c26fda86b6b18887a"
     },
     {
       "path": "docs/RELEASE_STATUS.json",
