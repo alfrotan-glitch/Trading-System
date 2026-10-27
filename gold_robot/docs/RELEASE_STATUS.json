@@ -45,7 +45,10 @@
     ],
     "report_output": "gold_robot/reports_local",
     "read_only_report": true,
-    "expected_local_native_compile_gate": "0 errors, 0 warnings, fresh EX5"
+    "expected_local_native_compile_gate": "0 errors, 0 warnings, fresh EX5",
+    "tester_presets_launcher": "START_HERE.bat option 5 / gold_robot/research/MakeTesterPresets.ps1",
+    "tester_presets_output": "gold_robot/reports_local/tester_presets/*.set",
+    "tester_presets_order_submission": false
   },
   "research_limitations": [
     "No verified latest-build native WMMarkets backtest",
