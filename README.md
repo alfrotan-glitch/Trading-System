@@ -15,7 +15,7 @@ cd Trading-System
 .\START_HERE.bat
 ```
 
-Choose **1** to install/compile the existing QTS Gold MT5 Expert Advisor and the read-only broker audit. Choose **2** to generate a clear local HTML/JSON readiness report. Choose **5** for four no-order Strategy Tester preset profiles (one per EntryStyle). These two choices require **WMMarkets MetaTrader 5 on Windows, not Python**. The report is stored locally under `gold_robot/reports_local/` and is not uploaded to GitHub.
+Choose **1** to install/compile the existing QTS Gold MT5 Expert Advisor and the read-only broker audit. Choose **2** to generate a clear local HTML/JSON readiness report. Choose **5** for four no-order Strategy Tester preset profiles (one per EntryStyle), then choose **6** to compare saved native MT5 HTML backtest reports. These two choices require **WMMarkets MetaTrader 5 on Windows, not Python**. The report is stored locally under `gold_robot/reports_local/` and is not uploaded to GitHub.
 
 After install, open `XAUUSD@` in MT5, refresh **Navigator → Scripts** and run `QTS_Broker_Preflight` on that chart. Then use option **2** for the report. When the broker/compile checks pass, use **MT5 Strategy Tester** with the user-observed minimum deposit **USD 3,000** and real ticks. The EA offers four `EntryStyle` research candidates; the optional tester-only opportunity census deliberately bypasses daily session limits **only in Strategy Tester**, not in connected accounts. **LIVE stays locked; none of these strategies has verified positive after-cost expectancy.**
 
