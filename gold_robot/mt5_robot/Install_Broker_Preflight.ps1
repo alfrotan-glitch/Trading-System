@@ -121,7 +121,7 @@ try{
   $done=$true
   Write-Host 'SUCCESS: Broker Preflight compiled and installed (READ ONLY).' -ForegroundColor Green
   Write-Host 'MT5 > XAUUSD@ chart > Navigator > Scripts > Refresh > QTS_Broker_Preflight'
-  Write-Host 'Double click the script, confirm settings (3000 USD; 0.5% risk).'
+  Write-Host 'Double click the script, confirm settings (3000 USD; 0.25% risk).'
   Write-Host ('Read-only report: {0}' -f (Join-Path $mql5 'Files\QTS_Broker_Preflight.csv'))
   Write-Host 'No trades are submitted. LIVE EA remains locked.'
 }finally{
