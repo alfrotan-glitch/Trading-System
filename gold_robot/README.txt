@@ -24,9 +24,15 @@ Use MT5 Strategy Tester for research: XAUUSD@ / M15 / real ticks / 3000 USD
 separately. The optional daily-loss/count bypass is restricted to Strategy Tester.
 Broker, per-trade SL/TP, volume, spread, margin and execution-safety checks remain.
 
+Connected WMMarkets DEMO-forward orders require TWO explicit EA input switches:
+  EnableDemoOrders=true AND EnableDemoForwardOrders=true.
+They are both OFF by default. Demo risk per new trade is capped at 0.25%.
+Daily/peak stop bypass NEVER applies to connected DEMO; REAL stays locked.
+
 No independently validated profitable strategy. No orders on real-money accounts.
 Installation/reporting never submits orders. A clean report is not profit evidence.
 
 Full instructions: docs/WINDOWS_START_DARI.md
+Virtual DEMO forward operations: docs/DEMO_FORWARD_OPERATIONS_DARI.md
 Safety limitations: docs/RELEASE_STATUS.json
 Historical research: docs/PERFORMANCE_REPORT.md
