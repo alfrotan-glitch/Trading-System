@@ -4,6 +4,7 @@ REM Invoke PowerShell directly instead of chaining nested batch files;
 REM the old nested CALL could return "The system cannot find the path specified".
 setlocal EnableExtensions DisableDelayedExpansion
 set "QTS_SETUP_DIR=%~dp0"
+set "QTS_ONE_INSTALL=%QTS_SETUP_DIR%mt5_robot\Install_MT5_Canonical.ps1"
 set "QTS_EA_INSTALL=%QTS_SETUP_DIR%mt5_robot\Install_QTS_Gold_Robot.ps1"
 set "QTS_BROKER_INSTALL=%QTS_SETUP_DIR%mt5_robot\Install_Broker_Preflight.ps1"
 set "QTS_EA_SOURCE=%QTS_SETUP_DIR%mt5_robot\QTS_Gold_Robot.mq5"
@@ -17,6 +18,7 @@ echo ===========================================================
 echo  WMMarkets XAUUSD@ ^| LIVE LOCKED ^| No automatic orders
 echo  Source directory: "%QTS_SETUP_DIR%"
 echo.
+if not exist "%QTS_ONE_INSTALL%" goto MISSING_ONE_INSTALL
 if not exist "%QTS_EA_INSTALL%" goto MISSING_EA_INSTALL
 if not exist "%QTS_BROKER_INSTALL%" goto MISSING_BROKER_INSTALL
 if not exist "%QTS_EA_SOURCE%" goto MISSING_EA_SOURCE
@@ -30,35 +32,22 @@ if /I "%QTS_SETUP_VALIDATE_ONLY%"=="1" (
   exit /b 0
 )
 
-echo STEP 1/2: Install and compile QTS Gold Robot.
-echo  Existing EA files are backed up and restored on compile failure.
-"%QTS_POWERSHELL%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%QTS_EA_INSTALL%"
+echo The same MT5 data folder and compiler will be used for both components.
+"%QTS_POWERSHELL%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%QTS_ONE_INSTALL%"
 set "QTS_RC=%ERRORLEVEL%"
 if not "%QTS_RC%"=="0" (
-  echo.
-  echo ERROR: EA installer failed with exit code %QTS_RC%.
-  echo Check the PowerShell or MetaEditor error ABOVE.
-  echo Broker preflight has NOT been installed by this run.
+  echo ERROR: Canonical one-target installer failed with exit code %QTS_RC%.
+  echo Review the error above; the broker account and Algo Trading are unchanged.
   exit /b %QTS_RC%
 )
 echo.
-echo STEP 2/2: Install and compile the READ-ONLY broker preflight.
-"%QTS_POWERSHELL%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%QTS_BROKER_INSTALL%"
-set "QTS_RC=%ERRORLEVEL%"
-if not "%QTS_RC%"=="0" (
-  echo.
-  echo ERROR: Broker preflight installer failed with exit code %QTS_RC%.
-  echo The EA was compiled, but no broker readiness is verified.
-  exit /b %QTS_RC%
-)
-echo.
-echo SUCCESS: QTS source installed for OBSERVATION / STRATEGY TESTER.
-echo In WMMarkets MT5 open XAUUSD@.
-echo Navigator - Scripts - Refresh - QTS_Broker_Preflight.
-echo Run that READ-ONLY script; then select report option 2 in START_HERE.
-echo Live new orders remain LOCKED; no profitable edge validated.
+echo SUCCESS: EA and broker preflight verified in ONE MT5 terminal.
+echo Native compiler evidence is local. This does not validate trading profit.
 exit /b 0
 
+:MISSING_ONE_INSTALL
+echo ERROR [MISSING_ONE_INSTALL]: "%QTS_ONE_INSTALL%"
+goto BAD_PACKAGE
 :MISSING_EA_INSTALL
 echo ERROR [MISSING_EA_INSTALL]: "%QTS_EA_INSTALL%"
 goto BAD_PACKAGE
