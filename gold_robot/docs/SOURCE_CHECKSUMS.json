@@ -2,28 +2,28 @@
   "sha256_files": [
     {
       "path": "CHECK_BROKER.bat",
-      "bytes": 950,
-      "sha256": "5860bef62ed14bd91f2c5eae6f8f96c3029ef92267fc8ccaac79744408fa70ad"
+      "bytes": 993,
+      "sha256": "259903009af33802485be982d8c1013c12f5157ca0f3b94e87083b3b8fc143ba"
     },
     {
       "path": "INSTALL_ROBOT.bat",
-      "bytes": 993,
-      "sha256": "e042f8fb1da128f4eb08e5729ac426cbc63e154942471031e333b51c1c4515fd"
+      "bytes": 1036,
+      "sha256": "2ad7e8e2aeb798cb7cc3f8f05985e0437835cde5fb1b6e8b7090e3e03cb3df94"
     },
     {
       "path": "MAKE_COMPARISON.bat",
-      "bytes": 432,
-      "sha256": "99390f21228f4ce4b2b9e8ccb7ba1bdaea805e5b4a24048e3be65da0e3fb677d"
+      "bytes": 582,
+      "sha256": "6e8bed286881c670310af1c3bee60cb3cf8adc528355ed637992688ad7b84dd2"
     },
     {
       "path": "MAKE_REPORT.bat",
-      "bytes": 607,
-      "sha256": "0bbb7e4fba04b9e44dd3123118dcf49a84764adaae99961f7a7000acb6b178c9"
+      "bytes": 804,
+      "sha256": "90ec9d971d4d5feef568566eb08f582acc002704af0fa25eadc9c9ce37eb029a"
     },
     {
       "path": "MAKE_TEST_PRESETS.bat",
-      "bytes": 469,
-      "sha256": "b92e9db88982e4c7963a314a3240e6aeabe98e3ab53e0b2f2069567bbc8766a7"
+      "bytes": 512,
+      "sha256": "1bf955b19873b9e19de60cbad2faf03cebcec719dc924d586762f198aa762790"
     },
     {
       "path": "README.md",
