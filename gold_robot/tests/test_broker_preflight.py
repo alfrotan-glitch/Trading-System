@@ -88,3 +88,18 @@ def test_wmmarkets_oct_2026_model_200_usd_cannot_risk_4_usd_stop():
     assert round(worst_loss / risk_budget, 2) == 4.10
     assert round(worst_loss - risk_budget, 2) == 3.10
     assert worst_loss > risk_budget
+
+def test_current_3000_usd_demo_forward_risk_budget_cannot_force_minimum_lot():
+    """Fixed risk example is an affordability check, never a profitable signal."""
+    equity = 3000.0
+    broker_min_lot = 0.01
+    contract_oz_per_lot = 100.0
+    assumed_fee_per_lot = 10.0
+    budget = equity * 0.0025
+    assert budget == 7.5
+    four_dollar_stop = broker_min_lot * contract_oz_per_lot * 4.0 + broker_min_lot * assumed_fee_per_lot
+    twelve_dollar_stop = broker_min_lot * contract_oz_per_lot * 12.0 + broker_min_lot * assumed_fee_per_lot
+    assert round(four_dollar_stop, 2) == 4.10
+    assert four_dollar_stop <= budget
+    assert twelve_dollar_stop > budget
+    assert "ModelRiskPercent        = 0.25;" in MQL
