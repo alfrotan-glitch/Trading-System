@@ -16,7 +16,7 @@
 input bool            EnableDemoOrders          = false; // OFF by default.
 input bool            EnableDemoForwardOrders    = false; // Independent authorization, connected WMMarkets DEMO only.
 input double          DemoForwardRiskCapPct      = 0.25; // DEMO hard cap; never weakens trade-level risk.
-input bool            EnableEntryDiagnostics    = true; // Tester-only journal: why each closed bar was vetoed.
+input bool            EnableEntryDiagnostics    = true; // Closed-bar diagnostic reasons in Tester and connected DEMO Experts logs.
 input bool            PauseNewEntries           = false;
 input bool            EmergencyFlattenOwned     = false; // Emergency CLOSE of THIS magic only.
 enum QTS_ENTRY_STYLE { QTS_FORMER_STOP_LIMIT=0, QTS_RETEST_LIMIT=1, QTS_BREAK_ACCEPT_RETEST=2, QTS_SWEEP_RECLAIM=3 };
