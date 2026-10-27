@@ -107,8 +107,8 @@
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART_DARI.md",
-      "bytes": 9164,
-      "sha256": "85e1b0df291d6b2fec5d534816c86261e52b5fedff370201b50c26697c2e8e75"
+      "bytes": 5788,
+      "sha256": "4ef4d1b325206dbc5c19f7bb17465174371fc2c1c04a25b58d43fa7c4cdd5acc"
     },
     {
       "path": "mt5_robot/ExecutionPolicy.mqh",
@@ -117,8 +117,8 @@
     },
     {
       "path": "mt5_robot/Install_Broker_Preflight.ps1",
-      "bytes": 7649,
-      "sha256": "364c6d60b2b0a872eb6b8f2ea151ac4509350f09460612b39366fbaac3a9bd01"
+      "bytes": 7650,
+      "sha256": "c9b99f6a0cfd4bc7150c5bcf2bcf20937242d9bbe20e4783aea8ed8f053c6b8e"
     },
     {
       "path": "mt5_robot/Install_MT5_Canonical.ps1",
@@ -172,8 +172,8 @@
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",
-      "bytes": 9924,
-      "sha256": "0100c7a44c33c3e13b1bc429ea4ba018d0cc0d39764c045a8489728bd282c3b3"
+      "bytes": 9987,
+      "sha256": "4c352d26d60750853b646c447b45b28faf0acb3d0e5c9d3f3ee5bbba4adc0820"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -292,8 +292,8 @@
     },
     {
       "path": "tests/test_broker_preflight.py",
-      "bytes": 3647,
-      "sha256": "b2b9ea28e7d5de55426afaf56c18fdb0c53760cbd39da8611229e4a22cabf551"
+      "bytes": 4361,
+      "sha256": "5d45b81972297e9780c1ddddabc61a408d93fd5958941b370079c2f0329fd10d"
     },
     {
       "path": "tests/test_edge_gate.py",
