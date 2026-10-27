@@ -16,14 +16,19 @@
       "sha256": "0bbb7e4fba04b9e44dd3123118dcf49a84764adaae99961f7a7000acb6b178c9"
     },
     {
+      "path": "MAKE_TEST_PRESETS.bat",
+      "bytes": 469,
+      "sha256": "b92e9db88982e4c7963a314a3240e6aeabe98e3ab53e0b2f2069567bbc8766a7"
+    },
+    {
       "path": "README.md",
-      "bytes": 3802,
-      "sha256": "b8187c2753d7bd5da32344010f826201b899031f3f5c108cb925c768465edc52"
+      "bytes": 4111,
+      "sha256": "c5f844db97f95e483b7cc0cf663b2edf18b4e9cc8d19862043d53f4e38a32465"
     },
     {
       "path": "README.txt",
-      "bytes": 1803,
-      "sha256": "d43ecb38d5e799c6102b5434cc64b980a662e062d1282433e98e8c6e6df3deda"
+      "bytes": 1875,
+      "sha256": "f0ba79e505d8588d123a82613c46f5021ef5cc553c72533f7e9f407479679443"
     },
     {
       "path": "SETUP_MT5_GOLD.bat",
@@ -82,13 +87,13 @@
     },
     {
       "path": "docs/RELEASE_STATUS.json",
-      "bytes": 3516,
-      "sha256": "c339e176caf55f4230c71716361a16b78f1d5499ea82fa138ac15f85026b6f6f"
+      "bytes": 3742,
+      "sha256": "dc3425deca1447df82e7cc6d92a4272aa44175a1ff795ac26a2fb4ae00651a21"
     },
     {
       "path": "docs/WINDOWS_START_DARI.md",
-      "bytes": 8582,
-      "sha256": "845174f771cf476a6484b5febe1e028bcc25f44c1b192c1cf3ac4cab80bdac79"
+      "bytes": 9333,
+      "sha256": "1d006b422ea69980663b218578db5c7c97a1ca42f9ea5e68cbbf9fe4c60b92fb"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART_DARI.md",
@@ -134,6 +139,11 @@
       "path": "research/ExportBrokerData.mq5",
       "bytes": 2246,
       "sha256": "ac29abbbe84541747c9b1b0e9e69793c1cd2a7fab3890f19aece1c348c26380c"
+    },
+    {
+      "path": "research/MakeTesterPresets.ps1",
+      "bytes": 4183,
+      "sha256": "3f217a54c477806ad07dfd5fbc2d67901f03bddabefbd0c9720922841f91c0ca"
     },
     {
       "path": "research/MakeWindowsReport.ps1",
@@ -252,8 +262,8 @@
     },
     {
       "path": "research/update_manifest.py",
-      "bytes": 2936,
-      "sha256": "d9adc851123ccbc12af89478b36359b8e51e503b1a81d87c21818d7b3b9b9fe7"
+      "bytes": 2961,
+      "sha256": "918e1c8c77e20ea2a8fc5f00669849135f45b808459a3ee59306b771ab2383f3"
     },
     {
       "path": "tests/ReceiptSelftest.mq5",
