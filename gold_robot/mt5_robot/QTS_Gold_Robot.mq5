@@ -1278,9 +1278,17 @@ void DisplayStatus()
                     (MQLInfoInteger(MQL_TESTER)!=0 ?
                      (TesterResearchNoDailyStops() ? "TESTER: DAILY LIMITS OFF" : "TESTER: DAILY LIMITS ON") :
                      "WMMarkets DEMO FORWARD: DAILY LIMITS ON") : "NO NEW ORDERS";
-   Comment("QTS GOLD ROBOT | INITIAL DEVELOPMENT | ",mode," | LIVE LOCKED\n",
-           operation,"\n",
-           "NOT VERIFIED PROFITABLE - capital risk exists even in DEMO\n",
+   MqlTick current={};
+   double spread=0.0;
+   if(SymbolInfoTick(_Symbol,current) && _Point>0.0 && current.ask>current.bid)
+      spread=(current.ask-current.bid)/_Point;
+   Comment("QTS GOLD ROBOT | ",mode," | LIVE LOCKED\n",
+           operation," | EntryStyle=",IntegerToString((int)EntryStyle),"\n",
+           "Equity=",DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2),
+           " ",AccountInfoString(ACCOUNT_CURRENCY),
+           " | Effective trade risk=",DoubleToString(EffectiveTradeRiskPct(),2),"%",
+           " | Spread=",DoubleToString(spread,1),"pt\n",
+           "NO VALIDATED EDGE | No guaranteed profit\n",
            status_text);
   }
 
