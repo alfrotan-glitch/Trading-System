@@ -21,10 +21,12 @@ echo  [1] Install / update MT5 Gold Robot and broker check
 echo  [2] Create professional local readiness report
 echo  [3] Open QTS research desktop (no orders)
 echo  [4] Read the short MT5 Windows guide
-echo  [5] Exit
+echo  [5] Create four MT5 Strategy Tester presets (no orders)
+echo  [6] Exit
 echo.
-choice /C 12345 /N /M "Choose 1-5: "
-if errorlevel 5 goto END
+choice /C 123456 /N /M "Choose 1-6: "
+if errorlevel 6 goto END
+if errorlevel 5 goto PRESETS
 if errorlevel 4 goto GUIDE
 if errorlevel 3 goto DESKTOP
 if errorlevel 2 goto REPORT
@@ -52,6 +54,14 @@ echo Starting the separate Python research desktop - no broker orders.
 call "scripts\run_qts.bat"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" echo Desktop was not launched. MT5 Gold Robot is independent.
+echo.
+pause
+goto MENU
+
+:PRESETS
+call "gold_robot\MAKE_TEST_PRESETS.bat"
+set "CODE=%ERRORLEVEL%"
+if not "%CODE%"=="0" echo Tester presets were not created.
 echo.
 pause
 goto MENU
