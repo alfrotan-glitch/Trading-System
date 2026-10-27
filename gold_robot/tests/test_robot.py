@@ -683,3 +683,28 @@ def test_installer_validates_and_rolls_back_structural_include():
                  '$backupStructure', '$hadStructure', '$completed',
                  'Get-FileHash -LiteralPath $destStructure'):
         assert term in PS, term
+
+
+
+def test_resting_limit_orders_are_cancelled_after_quote_or_spread_deterioration():
+    """Pending orders keep their original broker-side SL/TP; cancellation is best-effort."""
+    pending = body_of('ManageOwnedPendingOrders')
+    guard = body_of('RestingPendingQuoteSafe')
+    for required in (
+        'pending_quote_unsafe=OrdersTotal()>0 && !RestingPendingQuoteSafe()',
+        'bool cancel_all=force_cancel || pending_quote_unsafe',
+        'trader.OrderDelete(ticket)',
+    ):
+        assert required in pending
+    for required in (
+        'SymbolInfoTick(_Symbol,quote)',
+        'now-quote.time>MaxTickAgeSeconds',
+        'spread/_Point>(double)MaxSpreadPoints',
+        'spread*10000.0/mid>MaxSpreadBps',
+        'CopyBuffer(atr_handle,0,1,1,atr)',
+        'spread>atr[0]*MaxSpreadVsAtrPct/100.0',
+    ):
+        assert required in guard
+    assert 'ManageOwnedPendingOrders();' in body_of('OnTimer')
+    assert 'ManageOwnedPendingOrders();' in body_of('OnTick')
+    assert 'ORDER_TIME_SPECIFIED' in EA
