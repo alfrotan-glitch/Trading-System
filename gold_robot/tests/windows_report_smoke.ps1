@@ -59,6 +59,19 @@ try{
     if(-not $html.Contains('&lt;script&gt;')){throw 'Missing encoded broker data'}
     Write-Host 'Blocked, read-only case: PASS'
 
+    (Get-Item -LiteralPath $csv).LastWriteTimeUtc=$now.AddMinutes(-10)
+    & $runner -DataFolder $mql5 -OutputDirectory $output -NoOpen
+    $staleJson=Get-ChildItem -LiteralPath $output -Filter '*.json' |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $stale=Get-Content -LiteralPath $staleJson.FullName -Raw | ConvertFrom-Json
+    if($stale.preflight_status -ne 'STALE_AUDIT' -or $stale.readiness -ne 'ACTION_REQUIRED'){
+        throw 'Old broker audit was not rejected with actionable stale status'
+    }
+    if($stale.preflight_detail -notlike '*predates*'){
+        throw 'Old broker audit did not include a meaningful diagnostic'
+    }
+    Write-Host 'Old broker CSV: STALE_AUDIT, no trading permission: PASS'
+
     [IO.File]::WriteAllLines($csv,@(
         'metric;value',
         'MODE;READ_ONLY_NO_ORDERS',

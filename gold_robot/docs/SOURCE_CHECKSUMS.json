@@ -167,8 +167,8 @@
     },
     {
       "path": "research/MakeWindowsReport.ps1",
-      "bytes": 15116,
-      "sha256": "8fd38f0be442444057c572767810fcf5a77b3199547ef194e54cfba597bba192"
+      "bytes": 16180,
+      "sha256": "19d8d5d45c7195e8312bc80effbd200405d8f421bee3d7883b4fb5b6b7fc978b"
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",
@@ -342,8 +342,8 @@
     },
     {
       "path": "tests/windows_report_smoke.ps1",
-      "bytes": 5250,
-      "sha256": "746d90e36f75dff43722c23210193dcc01121a53293177ebb25e4431bc84e0e9"
+      "bytes": 5994,
+      "sha256": "cafc883161e8d66345c9fe9180a2c191a7a32debc66d6ab768a2124aad5a5d9a"
     }
   ]
 }

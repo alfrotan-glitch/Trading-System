@@ -80,6 +80,7 @@ $preflightCompileState='NOT_COMPILED'
 $preflightCompiledAtUtc=[datetime]::MinValue
 $compileState='NOT_COMPILED'
 $preflightState='NOT_RUN'
+$preflightDiagnostic='No broker audit CSV found. Run QTS_Broker_Preflight on the WMMarkets DEMO XAUUSD@ chart.'
 $preflightAge=$null
 $values=@{}
 if($mql5){
@@ -161,14 +162,26 @@ if($mql5){
             if(-not $values.ContainsKey('Verdict') -or $values['OrdersSubmitted'] -ne '0' -or
                 $values['MODE'] -ne 'READ_ONLY_NO_ORDERS'){
                 $preflightState='INVALID_AUDIT'
+                $preflightDiagnostic='Required CSV fields are missing or invalid: MODE, Verdict or OrdersSubmitted.'
             }else{
                 $preflightAge=[math]::Round(((Get-Date).ToUniversalTime() -
                     (Get-Item -LiteralPath $preflight).LastWriteTimeUtc).TotalHours,1)
                 $preflightState=if($preflightAge -gt 24 -or $preflightAge -lt -1){
                     'STALE_AUDIT'
                 }else{[string]$values['Verdict']}
+                $preflightDiagnostic=if($preflightState -eq 'STALE_AUDIT'){
+                    'Broker audit is older than 24 hours or has an invalid timestamp. Run Preflight again.'
+                }else{'Broker audit loaded. Review the broker verdict and risk fields.'}
             }
-        }catch{$preflightState='INVALID_AUDIT'}
+        }catch{
+            if($_.Exception.Message -eq 'Broker CSV predates the current compiled preflight script'){
+                $preflightState='STALE_AUDIT'
+                $preflightDiagnostic='Broker audit predates the installed preflight version. Run QTS_Broker_Preflight again.'
+            }else{
+                $preflightState='INVALID_AUDIT'
+                $preflightDiagnostic='Broker audit CSV could not be parsed or verified. Run Preflight again and check MT5 Experts/Journal.'
+            }
+        }
     }
 }
 $ready=$sourceState -eq 'SOURCE_HASH_OK' -and
@@ -229,7 +242,7 @@ header h1{font-size:25px;margin:0 0 12px}header p{color:#d3dfee;line-height:1.7;
 section{background:white;border:1px solid #e1e8ef;border-radius:14px;padding:23px;margin-top:16px}
 h2{font-size:18px;margin:0 0 15px}table{width:100%;border-collapse:collapse}
 td,th{padding:11px;border-bottom:1px solid #edf1f6;overflow-wrap:anywhere;font-size:14px}
-th{text-align:left;color:#64748b;font-weight:500;width:42%}td{text-align:left
+th{text-align:left;color:#64748b;font-weight:500;width:42%}td{text-align:left}
 .next{border-left:4px solid #2563eb;background:#eff5fb;padding:15px;line-height:1.9}
 footer{color:#64748b;font-size:12px;text-align:center;margin-top:22px}
 @media(max-width:680px){.grid{grid-template-columns:1fr}main{margin:12px auto}}
@@ -243,6 +256,7 @@ $(Tr 'EA compiler result' $compileState)
 $(Tr 'Broker Preflight compiler result' $preflightCompileState)
 $(Tr 'Broker Preflight installation' $preflightInstallState)
 $(Tr 'Broker audit age' $age)
+$(Tr 'Broker audit details' $preflightDiagnostic)
 $(Tr 'Overall readiness' $overall)
 </table></section>
 <section><h2>Broker specifications</h2><table>$rowsHtml</table>
@@ -262,7 +276,7 @@ $summary=[ordered]@{
     mode='READ_ONLY';created=$created;symbol='XAUUSD@'
     source_status=$sourceState;install_status=$installState;compiler=$compileState
     preflight_install_status=$preflightInstallState;preflight_compiler=$preflightCompileState
-    preflight_status=$preflightState;preflight_age_hours=$preflightAge
+    preflight_status=$preflightState;preflight_age_hours=$preflightAge;preflight_detail=$preflightDiagnostic
     readiness=$overall;live='LOCKED';validated_profitable_edge=$false
     orders_submitted_by_report=0;next_action=$next
 }
