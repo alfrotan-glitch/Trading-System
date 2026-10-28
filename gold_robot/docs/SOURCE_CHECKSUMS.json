@@ -27,13 +27,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 4620,
-      "sha256": "5b2e2d1bc8329512bc9611d1aec11b02824dfa54907e4372226c4bbd133a4e0e"
+      "bytes": 4606,
+      "sha256": "35d73a7ec1ad4f45d44371517c1acca06ae02645652cbd08e72263b2a039cc19"
     },
     {
       "path": "README.txt",
-      "bytes": 1945,
-      "sha256": "c9b01bb78b2b1437e00d6f01fff26078d6c28263eb08eed0793c757065e29b4f"
+      "bytes": 1935,
+      "sha256": "2b23d2b9f3ca4c97a77dab35dff49e7f21d9aeb5c8afac7910b7fa3a8fb8767d"
     },
     {
       "path": "SETUP_MT5_GOLD.bat",
@@ -46,9 +46,9 @@
       "sha256": "99ae0e4f3d77f0c3ba0b819aa8481fdf04addea17b2282bdc1fff4820d1665af"
     },
     {
-      "path": "docs/DEMO_FORWARD_OPERATIONS_DARI.md",
-      "bytes": 7406,
-      "sha256": "10796d21b16c0397ca178d27ef61d8444584df69a41298f72819364bfc6d173b"
+      "path": "docs/DEMO_FORWARD_OPERATIONS.md",
+      "bytes": 3654,
+      "sha256": "c46e7907895917de788672d4b45a11a51a30e68683996f3f6e1e9cfcee6ec196"
     },
     {
       "path": "docs/ENGINEERING_AUDIT.md",
@@ -76,9 +76,9 @@
       "sha256": "0e5ab5bb210f690331971718171206f2617aa8f43edde7626c9c9e08d99499b4"
     },
     {
-      "path": "docs/MT5_3000_UNLIMITED_TESTER_DARI_2026-10-26.md",
-      "bytes": 8063,
-      "sha256": "cae80de8e16c0b7a5fbd8f60c542747b0978ecccfac3eb7edbeea1ecec709f33"
+      "path": "docs/MT5_3000_UNLIMITED_TESTER_2026-10-26.md",
+      "bytes": 3613,
+      "sha256": "13d9c5a2e25038318d2d3f51c5c3169c5fc02b1507524233aa4205724997c35d"
     },
     {
       "path": "docs/OWNER_PLAN_STOPLOSS_ROOTCAUSE_2026-10-26.md",
@@ -101,14 +101,14 @@
       "sha256": "5bd5d6fd0ad51e77deab00cf22307359f781da5cb62a9887c370ebcc326788ad"
     },
     {
-      "path": "docs/WINDOWS_START_DARI.md",
-      "bytes": 10543,
-      "sha256": "fc22faf7f6de64f9be570fbfa040f932a48b0f64acf6a938fc7aac0b42e7bd82"
+      "path": "docs/WINDOWS_START.md",
+      "bytes": 4503,
+      "sha256": "5f0698e196695643a1469b076b5e3e644ed24d7289738ef642947694f04c1f2f"
     },
     {
-      "path": "docs/WMMarkets_MT5_QUICKSTART_DARI.md",
-      "bytes": 5934,
-      "sha256": "a8f1a097121b9db13aa073abb0cccfcd3cb569c9dce0a5fe8d64370e3874e745"
+      "path": "docs/WMMarkets_MT5_QUICKSTART.md",
+      "bytes": 2910,
+      "sha256": "1422693d46e11ca242cc0c839acd26a5e9121f0334e02e7106d98a20396273ff"
     },
     {
       "path": "mt5_robot/ExecutionPolicy.mqh",
@@ -152,8 +152,8 @@
     },
     {
       "path": "research/CompareMT5Reports.ps1",
-      "bytes": 7206,
-      "sha256": "e886b1774c0b77d6f6eb894d26e365e03f896f05790cdbe12e159409e0c4759c"
+      "bytes": 6836,
+      "sha256": "08d7d90c1f9748f3959c0a7ecd401f19289ac6605f4ee117c24280f66c3528cb"
     },
     {
       "path": "research/ExportBrokerData.mq5",
@@ -167,8 +167,8 @@
     },
     {
       "path": "research/MakeWindowsReport.ps1",
-      "bytes": 15573,
-      "sha256": "f64fdf3b2c52da0c12cbe8bfcb1ec55ec4336eb8b3c8af8fec8deb0236d519c2"
+      "bytes": 14969,
+      "sha256": "4bd2b3ab6d0e229202d4516b4f47a5d2156a790978d49c10e3399a242ad23a2a"
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",

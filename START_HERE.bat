@@ -78,12 +78,12 @@ pause
 goto MENU
 
 :GUIDE
-if not exist "gold_robot\docs\WINDOWS_START_DARI.md" (
+if not exist "gold_robot\docs\WINDOWS_START.md" (
   echo ERROR: Windows guide is missing.
   pause
   goto MENU
 )
-start "" notepad.exe "%QTS_ROOT_DIR%gold_robot\docs\WINDOWS_START_DARI.md"
+start "" notepad.exe "%QTS_ROOT_DIR%gold_robot\docs\WINDOWS_START.md"
 goto MENU
 
 :VERIFY_SETUP

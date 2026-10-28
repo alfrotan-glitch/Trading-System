@@ -85,7 +85,7 @@ $htmlFile=Join-Path $OutputDirectory ("QTS_Gold_Comparison_"+$stamp+".html")
 $jsonFile=Join-Path $OutputDirectory ("QTS_Gold_Comparison_"+$stamp+".json")
 $tableRows=$rows -join [Environment]::NewLine
 $html=@"
-<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<!doctype html><html lang="en" dir="ltr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>QTS Gold - Native MT5 Strategy Comparison</title><style>
 *{box-sizing:border-box}body{font-family:"Segoe UI",Tahoma,sans-serif;background:#f4f6f9;color:#182536;margin:0}
@@ -93,20 +93,20 @@ main{max-width:1000px;margin:30px auto;padding:0 20px 50px}
 header{background:#163450;color:white;border-radius:16px;padding:28px}
 header h1{font-size:24px;margin:0 0 12px}header p{line-height:1.9;margin:0;color:#cddbea}
 section{background:white;border-radius:13px;padding:22px;margin:18px 0;border:1px solid #e0e7f0}
-table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:13px 9px;text-align:right;border-bottom:1px solid #eef1f5}
-thead{background:#edf2f8}.note{border-right:4px solid #2563eb;background:#eef5fc;padding:13px;line-height:1.9}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:13px 9px;text-align:left;border-bottom:1px solid #eef1f5}
+thead{background:#edf2f8}.note{border-left:4px solid #2563eb;background:#eef5fc;padding:13px;line-height:1.9}
 p{line-height:1.8}footer{font-size:12px;color:#6c798b;text-align:center}
 @media(max-width:700px){section{overflow-x:auto}table{min-width:700px}}
 </style></head><body><main>
-<header><h1>QTS Gold — مقایسه چهار استراتیژی MT5</h1>
-<p>گزارش حاصل از فایل‌های واقعی Strategy Tester. این ابزار فقط معلومات را می‌خواند، معامله نمی‌کند.</p>
+<header><h1>QTS Gold | Four-Strategy MT5 Comparison</h1>
+<p>Comparison of native Strategy Tester reports. Read-only; no broker orders are sent.</p>
 <small>$(HtmlEscape $stampHtml) | XAUUSD@ | Native reports: $parsed / 4 | LIVE LOCKED</small></header>
-<section><h2>نتیجه‌های موجود</h2><table>
-<thead><tr><th>روش ورود</th><th>وضعیت</th><th>معاملات</th><th>سود/زیان خالص</th><th>Profit Factor</th><th>حداکثر افت Equity</th></tr></thead>
+<section><h2>Available results</h2><table>
+<thead><tr><th>Entry style</th><th>Status</th><th>Trades</th><th>Net profit/loss</th><th>Profit Factor</th><th>Maximum equity drawdown</th></tr></thead>
 <tbody>$tableRows</tbody></table>
-<p class="note">برای مقایسه معتبر باید تاریخ، نماد، حالت real ticks، سرمایه ۳۰۰۰ دالری و شرایط هزینه در هر چهار اجرا یکسان باشد. اطلاعات ناقص معادل نتیجه صفر نیست. سودآوری آینده یا Edge مستقل تأیید نشده است.</p></section>
-<section><h2>راهنمای کوتاه</h2>
-<p>چهار گزارش MT5 را با نام‌های QTS_0.htm، QTS_1.htm، QTS_2.htm، QTS_3.htm در پوشه gold_robot/reports_local/native ذخیره کنید و این گزارش را دوباره بسازید. از Strategy Tester برای هر روش، Report، Deals، Orders و Journal را هم جداگانه نگه دارید.</p></section>
+<p class="note">For a valid comparison, all four tests must use the same dates, symbol, real-tick model, USD 3,000 tester deposit and execution costs. Missing data is not a zero result. Future returns and independent edge remain unvalidated.</p></section>
+<section><h2>Operator instructions</h2>
+<p>Save the four native MT5 reports as QTS_0.htm, QTS_1.htm, QTS_2.htm and QTS_3.htm under gold_robot/reports_local/native, then regenerate the comparison. Preserve each run's Report, Deals, Orders and Journal independently.</p></section>
 <footer>Read-only native report comparison | No credentials | No broker orders</footer>
 </main></body></html>
 "@

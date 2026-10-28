@@ -34,7 +34,7 @@ Daily/peak stop bypass NEVER applies to connected DEMO; REAL stays locked.
 No independently validated profitable strategy. No orders on real-money accounts.
 Installation/reporting never submits orders. A clean report is not profit evidence.
 
-Full instructions: docs/WINDOWS_START_DARI.md
-Virtual DEMO forward operations: docs/DEMO_FORWARD_OPERATIONS_DARI.md
+Full instructions: docs/WINDOWS_START.md
+Virtual DEMO forward operations: docs/DEMO_FORWARD_OPERATIONS.md
 Safety limitations: docs/RELEASE_STATUS.json
 Historical research: docs/PERFORMANCE_REPORT.md

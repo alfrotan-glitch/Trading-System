@@ -168,17 +168,17 @@ $ready=$sourceState -eq 'SOURCE_HASH_OK' -and
        $preflightState -eq 'ENGINEERING_PRECHECK_OK_NOT_TRADE_PERMISSION'
 $overall=if($ready){'READY_FOR_TESTER_ONLY'}else{'ACTION_REQUIRED'}
 $next=if($sourceState -ne 'SOURCE_HASH_OK'){
-    'سورس ناقص یا تغییرکرده است. نسخه تازه main را در پوشه تمیز Clone کنید.'
+    'Source files are missing or modified. Restore a clean main checkout.'
 }elseif($installState -ne 'COMPILED_VERIFIED'){
-    'START_HERE.bat را باز و گزینه ۱ را برای نصب مجدد انتخاب کنید.'
+    'Run START_HERE.bat option 1 to reinstall the current EA.'
 }elseif($preflightInstallState -ne 'COMPILED_VERIFIED'){
-    'اسکریپت Broker Preflight با نسخه فعلی هماهنگ یا کامپایل نشده؛ گزینه ۱ را اجرا کنید.'
+    'Broker Preflight is not installed or compiled from current source. Run option 1.'
 }elseif($preflightState -eq 'NOT_RUN' -or $preflightState -eq 'STALE_AUDIT'){
-    'در چارت XAUUSD@ اسکریپت QTS_Broker_Preflight را اجرا کنید؛ سپس گزارش بسازید.'
+    'Run QTS_Broker_Preflight on the XAUUSD@ chart, then regenerate this report.'
 }elseif(-not $ready){
-    'نتیجه BLOCKED/INVALID بروکر را بررسی کنید؛ حد ضرر یا ریسک را به زور تغییر ندهید.'
+    'Review the broker BLOCKED/INVALID result. Never reduce stops or risk checks just to force entry.'
 }else{
-    'Strategy Tester: نماد XAUUSD@، سرمایه ۳۰۰۰ دالر، تیک واقعی و چهار اجرای EntryStyle.'
+    'Use Strategy Tester: XAUUSD@, USD 3,000 tester deposit, real ticks, and four independent EntryStyle runs.'
 }
 $rows=@()
 foreach($name in @('BrokerServer','AccountType','Symbol','MinLot','LotStep','ContractSize',
@@ -189,21 +189,21 @@ foreach($name in @('BrokerServer','AccountType','Symbol','MinLot','LotStep','Con
     'OrdersSubmitted','Verdict')){
     if($values.ContainsKey($name)){$rows += (Tr $name $values[$name])}
 }
-if($rows.Count -eq 0){$rows=@('<tr><td colspan="2">هنوز گزارش بروکر موجود نیست.</td></tr>')}
+if($rows.Count -eq 0){$rows=@('<tr><td colspan="2">No broker preflight data available.</td></tr>')}
 $kindA=if($sourceState -eq 'SOURCE_HASH_OK'){'good'}else{'bad'}
 $kindB=if($installState -eq 'COMPILED_VERIFIED'){'good'}else{'warn'}
 $kindC=if($preflightState -eq 'ENGINEERING_PRECHECK_OK_NOT_TRADE_PERMISSION'){'good'}else{'warn'}
 $cards=@(
-    (Tile 'صحت فایل‌های سورس' $sourceState 'SHA-256 چهار فایل اصلی' $kindA),
-    (Tile 'کامپایل و نصب MT5' $installState 'بدون خطا و هشدار؛ فایل EX5 تازه' $kindB),
-    (Tile 'بررسی بروکر' $preflightState 'آخرین گزارش خواندنی WMMarkets' $kindC),
-    (Tile 'اجازه استفاده' $overall 'فقط آزمایش؛ معاملات واقعی قفل' 'neutral')
+    (Tile 'Source integrity' $sourceState 'SHA-256 of four critical source files' $kindA),
+    (Tile 'MT5 compilation' $installState 'Fresh EX5 with zero errors and warnings' $kindB),
+    (Tile 'Broker preflight' $preflightState 'Latest read-only WMMarkets report' $kindC),
+    (Tile 'Permitted use' $overall 'Tester only; LIVE trading locked' 'neutral')
 ) -join [Environment]::NewLine
 $rowsHtml=$rows -join [Environment]::NewLine
 $created=(Get-Date).ToString('yyyy-MM-dd HH:mm')
-$age=if($null -ne $preflightAge){"$preflightAge ساعت"}else{'نامشخص'}
+$age=if($null -ne $preflightAge){"$preflightAge hours"}else{'unknown'}
 $html=@"
-<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>QTS Gold - Windows Readiness</title>
 <style>
@@ -220,26 +220,26 @@ header h1{font-size:25px;margin:0 0 12px}header p{color:#d3dfee;line-height:1.7;
 section{background:white;border:1px solid #e1e8ef;border-radius:14px;padding:23px;margin-top:16px}
 h2{font-size:18px;margin:0 0 15px}table{width:100%;border-collapse:collapse}
 td,th{padding:11px;border-bottom:1px solid #edf1f6;overflow-wrap:anywhere;font-size:14px}
-th{text-align:right;color:#64748b;font-weight:500;width:42%}td{text-align:left}
-.next{border-right:4px solid #2563eb;background:#eff5fb;padding:15px;line-height:1.9}
+th{text-align:left;color:#64748b;font-weight:500;width:42%}td{text-align:left
+.next{border-left:4px solid #2563eb;background:#eff5fb;padding:15px;line-height:1.9}
 footer{color:#64748b;font-size:12px;text-align:center;margin-top:22px}
 @media(max-width:680px){.grid{grid-template-columns:1fr}main{margin:12px auto}}
 </style></head><body><main>
-<header><h1>QTS GOLD | گزارش آمادگی ویندوز</h1>
-<p>بررسی منبع، نصب ربات، سازگاری بروکر و شرایط ورود به Strategy Tester.</p>
-<div class="meta">تاریخ: $(HtmlEscape $created) | XAUUSD@ | LIVE: LOCKED | EDGE: UNVALIDATED</div>
+<header><h1>QTS Gold | Windows Readiness Report</h1>
+<p>Source integrity, installation, broker compatibility and Strategy Tester prerequisites.</p>
+<div class="meta">Generated: $(HtmlEscape $created) | XAUUSD@ | LIVE: LOCKED | EDGE: UNVALIDATED</div>
 </header><div class="grid">$cards</div>
-<section><h2>خلاصه وضعیت</h2><table>
-$(Tr 'نتیجه کامپایل EA' $compileState)
-$(Tr 'کامپایل Broker Preflight' $preflightCompileState)
-$(Tr 'وضعیت نصب Broker Preflight' $preflightInstallState)
-$(Tr 'تازگی گزارش بروکر' $age)
-$(Tr 'وضعیت نهایی' $overall)
+<section><h2>Status summary</h2><table>
+$(Tr 'EA compiler result' $compileState)
+$(Tr 'Broker Preflight compiler result' $preflightCompileState)
+$(Tr 'Broker Preflight installation' $preflightInstallState)
+$(Tr 'Broker audit age' $age)
+$(Tr 'Overall readiness' $overall)
 </table></section>
-<section><h2>مشخصات بروکر</h2><table>$rowsHtml</table>
-<p>این فایل تنها از گزارش خواندنی بروکر استفاده کرده است. عدد سود، بازده واقعی و کارمزد حساب را تأیید نمی‌کند.</p></section>
-<section><h2>اقدام پیشنهادی</h2><p class="next">$(HtmlEscape $next)</p>
-<p>برای مقایسه استراتیژی‌ها در MT5 باید نتایج واقعی Strategy Tester جداگانه تهیه شوند. این گزارش آمادگی، گزارش سودآوری نیست.</p></section>
+<section><h2>Broker specifications</h2><table>$rowsHtml</table>
+<p>This report reads broker diagnostics only. It does not verify realized profits, live costs or trading permission.</p></section>
+<section><h2>Recommended next action</h2><p class="next">$(HtmlEscape $next)</p>
+<p>Validate each strategy separately with native MT5 real-tick tester reports. Readiness is not evidence of profitability.</p></section>
 <footer>QTS research workstation · No login / account key · No orders submitted by this tool</footer>
 </main></body></html>
 "@
