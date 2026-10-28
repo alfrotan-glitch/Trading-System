@@ -167,8 +167,8 @@
     },
     {
       "path": "research/MakeWindowsReport.ps1",
-      "bytes": 14969,
-      "sha256": "4bd2b3ab6d0e229202d4516b4f47a5d2156a790978d49c10e3399a242ad23a2a"
+      "bytes": 15116,
+      "sha256": "8fd38f0be442444057c572767810fcf5a77b3199547ef194e54cfba597bba192"
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",

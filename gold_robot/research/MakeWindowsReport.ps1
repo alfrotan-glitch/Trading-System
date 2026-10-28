@@ -5,6 +5,15 @@ $ErrorActionPreference='Stop'
 $gold=Split-Path -Parent $PSScriptRoot
 $manifestPath=Join-Path $gold 'docs\SOURCE_CHECKSUMS.json'
 function HtmlEscape([object]$v){return [System.Net.WebUtility]::HtmlEncode([string]$v)}
+function FileSha256([string]$path){
+    $stream=[System.IO.File]::OpenRead($path)
+    try{
+        $algorithm=[System.Security.Cryptography.SHA256]::Create()
+        try{
+            return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-','')
+        }finally{$algorithm.Dispose()}
+    }finally{$stream.Dispose()}
+}
 function Resolve-Mql5([string]$path){
     if([string]::IsNullOrWhiteSpace($path)){return $null}
     foreach($p in @($path,(Join-Path $path 'MQL5'))){
@@ -33,7 +42,7 @@ if(Test-Path -LiteralPath $manifestPath){
         if($found.Count -ne 1 -or -not (Test-Path -LiteralPath $path)){
             $pass=$false;break
         }
-        if((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne [string]$found[0].sha256){
+        if((FileSha256 $path) -ne [string]$found[0].sha256){
             $pass=$false;break
         }
     }
@@ -85,8 +94,8 @@ if($mql5){
         if(-not (Test-Path -LiteralPath $pair[1]) -or -not (Test-Path -LiteralPath $pair[0])){
             $matching=$false;continue
         }
-        if((Get-FileHash -LiteralPath $pair[0] -Algorithm SHA256).Hash -ne
-           (Get-FileHash -LiteralPath $pair[1] -Algorithm SHA256).Hash){$matching=$false}
+        if((FileSha256 $pair[0]) -ne
+           (FileSha256 $pair[1])){$matching=$false}
         $t=(Get-Item -LiteralPath $pair[1]).LastWriteTimeUtc
         if($t -gt $newestSource){$newestSource=$t}
     }
@@ -116,8 +125,8 @@ if($mql5){
        (Test-Path -LiteralPath $installedPreflightSource -PathType Leaf) -and
        (Test-Path -LiteralPath $preflightBinary -PathType Leaf) -and
        (Test-Path -LiteralPath $preflightLog -PathType Leaf)){
-        $sourceMatches=(Get-FileHash -LiteralPath $preflightSource -Algorithm SHA256).Hash -eq
-                        (Get-FileHash -LiteralPath $installedPreflightSource -Algorithm SHA256).Hash
+        $sourceMatches=(FileSha256 $preflightSource) -eq
+                        (FileSha256 $installedPreflightSource)
         $compileSummary=[regex]::Matches((Get-Content -LiteralPath $preflightLog -Raw),
                      '(?im)^\s*Result:\s*(\d+)\s+errors?\s*,\s*(\d+)\s+warnings?\b')
         if($compileSummary.Count -eq 1){
