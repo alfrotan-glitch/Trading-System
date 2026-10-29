@@ -53,6 +53,6 @@ Stop considering a candidate if its fee-stressed expectancy is negative, its equ
 
 ## Local usage
 
-Copy `QTS_*.htm` and `QTS_*.log` into `gold_robot/reports_local/native`. Genuine HTML results are compared via `START_HERE.bat` option 6. If Python 3 is installed, choose `START_HERE.bat` option 8 (or run `gold_robot/AUDIT_LOGS.bat`), which scans both the native-report directory and Downloads for QTS files without changing originals. It opens a local HTML audit and also writes `QTS_Agent_Log_Audit.json`. Neither is a production release certificate.
+Copy `QTS_*.htm` and `QTS_*.log` into `gold_robot/reports_local/native`. Genuine HTML results are compared via `START_HERE.bat` option 6. If Python 3 is installed, choose `START_HERE.bat` option 8 (or run `gold_robot/AUDIT_LOGS.bat`), which searches the native-report folder, Downloads, Desktop and Documents for QTS agent logs by file contents, not filename. On Windows, a file picker is offered if nothing is found. It opens a local HTML audit and also writes `QTS_Agent_Log_Audit.json`; a no-match scan is explicitly labeled `NO_AGENT_LOGS_FOUND`, not an execution failure. Neither is a production release certificate.
 
 Never rename agent logs into HTML results, and never expose passwords or terminal account keys in Git.

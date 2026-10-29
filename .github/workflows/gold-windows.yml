@@ -93,6 +93,30 @@ jobs:
               $html -notmatch '&lt;script&gt;' -or $html -match '<script>alert') {
             throw 'Mislabeled-file detection or HTML escaping failed'
           }
+          $renamed = Join-Path $folder 'gold tester session.txt'
+          [IO.File]::WriteAllLines($renamed,$lines,[Text.Encoding]::Unicode)
+          $native = Join-Path $folder 'saved gold report.html'
+          [IO.File]::WriteAllText($native,'<html>MetaTrader 5 / Total Net Profit</html>')
+          python gold_robot/research/audit_mt5_logs.py --directory $folder --output $jsonPath --html-output $htmlPath
+          if ($LASTEXITCODE -ne 0) { throw 'Content-based discovery failed' }
+          $found = Get-Content $jsonPath -Raw | ConvertFrom-Json
+          if ($found.file_search.status -ne 'LOGS_FOUND' -or
+              $found.file_search.log_files_found -ne 2 -or
+              @($found.file_search.native_html_reports_found).Count -ne 1 -or
+              $found.complete_unique -ne 1) {
+            throw 'Renamed log discovery, duplicate detection or native HTML routing failed'
+          }
+          $empty = Join-Path $env:RUNNER_TEMP 'qts no saved logs'
+          New-Item -Path $empty -ItemType Directory -Force | Out-Null
+          python gold_robot/research/audit_mt5_logs.py --directory $empty --output $jsonPath --html-output $htmlPath
+          if ($LASTEXITCODE -ne 0) { throw 'No saved reports should be a friendly report, not a crash' }
+          $none = Get-Content $jsonPath -Raw | ConvertFrom-Json
+          $emptyHtml = Get-Content $htmlPath -Raw
+          if ($none.file_search.status -ne 'NO_AGENT_LOGS_FOUND' -or
+              $none.file_search.log_files_found -ne 0 -or
+              $emptyHtml -notmatch 'NO_AGENT_LOGS_FOUND') {
+            throw 'Empty-file UX did not generate clear diagnostics'
+          }
           Write-Host 'Windows native offline log review: PASS'
       - name: Verify identical MT5 and compiler selection for both installers
         shell: pwsh

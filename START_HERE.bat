@@ -25,7 +25,7 @@ echo  [4] Read the short MT5 Windows guide
 echo  [5] Create four MT5 Strategy Tester presets (no orders)
 echo  [6] Compare saved MT5 Strategy Tester reports
 echo  [7] Exit
-echo  [8] Audit saved MT5 tester logs (also checks Downloads)
+echo  [8] Find saved MT5 logs and open an easy-to-read report
 echo.
 choice /C 12345678 /N /M "Choose 1-8: "
 if errorlevel 8 goto AUDIT

@@ -20,7 +20,7 @@
 | 5 | Generate four MT5 Strategy Tester `.set` profiles | None |
 | 6 | Compare four saved native MT5 tester reports | None |
 | 7 | Exit | None |
-| 8 | Inspect local and Downloads QTS agent logs, generate HTML/JSON summary | None |
+| 8 | Find saved MT5 logs in common folders or choose a file, then open HTML/JSON audit | None |
 
 `ROBOT.bat` is the separate Python research/DEMO entry point. For the MT5 Expert Advisor use `START_HERE.bat`. The MT5 workflow does not require the Python desktop.
 
@@ -39,7 +39,7 @@ The tester-only bypass does **not** disable per-trade risk, minimum lot, margin,
 
 Let each run finish and confirm the Strategy Tester completion message. From the Tester Backtest/Report results, use Save as Report to export the native HTML report; a MetaTester agent log (including a file renamed to .htm) is NOT an HTML performance report. Export the MT5 Deals, Orders and Journal separately. Save the native HTML reports as `QTS_0.htm`, `QTS_1.htm`, `QTS_2.htm`, `QTS_3.htm` in `gold_robot/reports_local/native/`; use menu option **6** for a read-only comparison. Missing files or zero trades are not successful results.
 
-For logs accidentally saved as `.htm`, or journal files named `QTS_*.htm.log`, use menu **8**. It scans `gold_robot/reports_local/native/` and `Downloads` for QTS-named files without moving or deleting them and opens a local HTML summary. It needs Python 3. Its figures are diagnostics, not validated profitability.
+For logs accidentally saved as `.htm`, or journal files with other names, use menu **8**. It checks `gold_robot/reports_local/native/`, Downloads, Desktop and Documents (including OneDrive copies where configured), and identifies MT5 agent logs by their content rather than filenames. If no log is found, Windows offers a file picker. Selecting a saved log does not move or rename it; the program still opens an HTML summary when no file was found. Actual native MT5 HTML performance reports belong in option 6. Option 8 needs Python 3; its figures are diagnostics, not validated profitability.
 
 ## Connected virtual DEMO
 

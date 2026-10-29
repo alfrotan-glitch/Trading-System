@@ -5,7 +5,9 @@ import argparse
 import hashlib
 import html
 import json
+import os
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -22,12 +24,14 @@ INPUT = re.compile(r"\bTester\s+([A-Za-z_]\w*)=([^\s]+)\s*$")
 FILENAME_STYLE = re.compile(r"^QTS_([0-3])\.htm(?:\.log)?$", re.IGNORECASE)
 
 def read_text(path: Path) -> str:
-    data = path.read_bytes()
-    if len(data) > 100_000_000:
+    if path.stat().st_size > 100_000_000:
         raise ValueError("Refusing log larger than 100 MB")
+    data = path.read_bytes()
     if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
         return data.decode("utf-16")
-    return data.decode("utf-8-sig")
+    if b"\x00" in data[:100]:
+        return data.decode("utf-16-le")
+    return data.decode("utf-8-sig", errors="replace")
 
 def audit_file(path: Path, fee_per_lot: float) -> list[dict]:
     contents = read_text(path)
@@ -170,7 +174,10 @@ th{{background:#eaf1f9}}.alert{{border-left:4px solid #bb7900;padding-left:12px}
 </style></head><body><main><header><h1>QTS Gold | Agent Log Review</h1>
 <p>RESEARCH ONLY · LIVE LOCKED · EDGE UNVALIDATED</p></header>
 <section><strong>{total} runs detected · {complete} completed unique · {mismatches} mislabeled files</strong>
-<p>Assumed cost stress: {cost} USD per round-turn lot (not a measured broker charge).</p></section>
+<p>Assumed cost stress: {cost} USD per round-turn lot (not a measured broker charge).</p>
+<p>Discovery: {html.escape(str(report.get("file_search", {}).get("status", "NOT_SCANNED")))}.
+Native MT5 HTML reports found: {len(report.get("file_search", {}).get("native_html_reports_found", []))}.
+If none were found, use MT5 to save a report or select an existing file.</p></section>
 <section><h2>Individual test sessions</h2>
 <table><thead><tr><th>File</th><th>Run</th><th>Style</th><th>Start</th><th>End</th>
 <th>State</th><th>Deals</th><th>W/L</th><th>Logged USD</th>
@@ -184,6 +191,109 @@ For native Strategy Tester results use START_HERE option 6 after saving the orig
 """
 
 
+
+SEARCH_EXTENSIONS = {".log", ".htm", ".html", ".txt"}
+MAX_SCAN_FILES = 3000
+MAX_PREVIEW_BYTES = 512 * 1024
+
+
+def user_search_directories(report_directory: Path, include_saved_folders: bool) -> list[Path]:
+    """Only the report folder and a few user-facing export locations; never a disk-wide crawl."""
+    folders = [report_directory]
+    if include_saved_folders:
+        roots = [Path.home()]
+        for key in ("USERPROFILE", "OneDrive", "OneDriveConsumer", "OneDriveCommercial"):
+            value = os.environ.get(key)
+            if value:
+                roots.append(Path(value))
+        for root in roots:
+            folders.extend(root / part for part in ("Downloads", "Desktop", "Documents"))
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for folder in folders:
+        identity = str(folder.expanduser().resolve(strict=False)).casefold()
+        if identity not in seen:
+            seen.add(identity)
+            unique.append(folder.expanduser())
+    return unique
+
+
+def file_preview(path: Path) -> str:
+    """Bounded read; classify content before ingesting any non-QTS-named file."""
+    with path.open("rb") as handle:
+        data = handle.read(MAX_PREVIEW_BYTES)
+    if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        return data.decode("utf-16", errors="replace")
+    if b"\x00" in data[:100]:
+        return data.decode("utf-16-le", errors="replace")
+    return data.decode("utf-8-sig", errors="replace")
+
+
+def discover_files(folders: list[Path]) -> dict:
+    logs: list[Path] = []
+    native_reports: list[Path] = []
+    scanned = 0
+    skipped_large = 0
+    for folder in folders:
+        if not folder.is_dir():
+            continue
+        try:
+            entries = sorted(folder.iterdir(), key=lambda p: p.name.casefold())
+        except OSError:
+            continue
+        for path in entries:
+            if scanned >= MAX_SCAN_FILES:
+                break
+            if path.suffix.lower() not in SEARCH_EXTENSIONS or not path.is_file():
+                continue
+            try:
+                size = path.stat().st_size
+                if size > 100_000_000:
+                    skipped_large += 1
+                    continue
+                scanned += 1
+                preview = file_preview(path)
+                if START.search(preview):
+                    logs.append(path)
+                elif re.search(r"(?is)<!doctype\s+html|<html\b", preview[:2000]):
+                    if re.search(r"(?i)QTS_Gold_Robot|MetaTrader\s*5|Total Net Profit", preview):
+                        native_reports.append(path)
+            except (OSError, UnicodeError):
+                continue
+    return {
+        "log_paths": logs,
+        "native_report_paths": native_reports,
+        "folders": [str(folder) for folder in folders],
+        "scanned": scanned,
+        "skipped_large": skipped_large,
+        "search_limited": scanned >= MAX_SCAN_FILES,
+    }
+
+
+def pick_saved_files() -> list[Path]:
+    """Optional native file dialog. Cancellation never changes or creates any input."""
+    if sys.platform != "win32":
+        return []
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            selected = filedialog.askopenfilenames(
+                parent=root,
+                title="Select saved MetaTrader 5 test logs or reports",
+                filetypes=[("MT5 logs and reports", "*.log *.htm *.html *.txt"),
+                           ("All files", "*.*")],
+            )
+        finally:
+            root.destroy()
+        return [Path(path) for path in selected]
+    except Exception as exc:
+        print(f"File selection dialog unavailable: {type(exc).__name__}", file=sys.stderr)
+        return []
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("paths", nargs="*", type=Path)
@@ -191,15 +301,49 @@ def main() -> int:
     parser.add_argument("--round-turn-fee-per-lot", type=float, default=10.0)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--html-output", type=Path)
-    parser.add_argument("--include-downloads", action="store_true")
+    parser.add_argument("--include-downloads", action="store_true",
+                        help="Search Downloads, Desktop and Documents (including OneDrive), by file contents")
+    parser.add_argument("--pick-on-empty", action="store_true",
+                        help="On Windows, offer a file picker when nothing is found")
     args = parser.parse_args()
-    paths = args.paths or sorted(set(args.directory.glob("QTS_*.log")) | set(args.directory.glob("QTS_*.htm")))
-    if args.include_downloads and not args.paths:
-        downloads = Path.home() / "Downloads"
-        paths = sorted(set(paths) | set(downloads.glob("QTS_*.log")) | set(downloads.glob("QTS_*.htm")))
-    if not paths:
-        parser.error("No QTS_*.log or QTS_*.htm files found; save MT5 agent logs in reports_local/native")
+    search = discover_files(user_search_directories(args.directory, args.include_downloads)) if not args.paths else {
+        "log_paths": [], "native_report_paths": [], "folders": [], "scanned": 0,
+        "skipped_large": 0, "search_limited": False,
+    }
+    paths = args.paths or search["log_paths"]
+    if not paths and args.pick_on_empty:
+        selected = pick_saved_files()
+        for candidate in selected:
+            try:
+                preview = file_preview(candidate)
+                if START.search(preview):
+                    paths.append(candidate)
+                elif re.search(r"(?is)<!doctype\s+html|<html\b", preview[:2000]):
+                    if re.search(r"(?i)QTS_Gold_Robot|MetaTrader\s*5|Total Net Profit", preview):
+                        search["native_report_paths"].append(candidate)
+            except (OSError, UnicodeError):
+                print(f"Cannot read selected file: {candidate.name}", file=sys.stderr)
     output = audit(paths, args.round_turn_fee_per_lot)
+    output["file_search"] = {
+        "folders_checked": search["folders"],
+        "candidate_files_inspected": search["scanned"],
+        "files_over_100mb_skipped": search["skipped_large"],
+        "scan_limit_reached": search["search_limited"],
+        "native_html_reports_found": [p.name for p in search["native_report_paths"]],
+        "log_files_found": len(paths),
+        "status": "LOGS_FOUND" if output["sessions"] else (
+            "NATIVE_HTML_ONLY" if search["native_report_paths"] else "NO_AGENT_LOGS_FOUND"
+        ),
+    }
+    if not output["sessions"]:
+        print("No QTS agent log sessions were detected. This is not a failed trading test.")
+        for folder in search["folders"]:
+            print(f"  Looked in: {folder}")
+        if search["native_report_paths"]:
+            print("Native MT5 HTML report(s) were found; use START_HERE option 6 to compare those reports.")
+        print("Save a tester log from MT5 or select the correct file using the Windows picker.")
+    else:
+        print(f"Detected {len(output['sessions'])} QTS tester session(s) in {len(paths)} file(s).")
     contents = json.dumps(output, indent=2, ensure_ascii=True) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
