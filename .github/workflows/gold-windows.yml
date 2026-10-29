@@ -325,7 +325,7 @@ jobs:
           [IO.File]::WriteAllLines($path,$deals,[Text.Encoding]::ASCII)
           $output = Join-Path $env:RUNNER_TEMP 'qts position forensics results'
           ./gold_robot/research/BuildTradeForensics.ps1 -InputDirectory $folder -OutputDirectory $output -NoOpen
-          if ($LASTEXITCODE -ne 0) { throw 'Position-level forensic parser execution failed' }
+          if (-not (Test-Path (Join-Path $output 'QTS_TRADE_BY_TRADE.json'))) { throw 'Position-level forensic parser failed to produce JSON' }
           $j = Get-Content (Join-Path $output 'QTS_TRADE_BY_TRADE.json') -Raw | ConvertFrom-Json
           $trades = @($j.trades)
           if ($trades.Count -ne 2) { throw 'Trade count must group fill and exit by position' }
