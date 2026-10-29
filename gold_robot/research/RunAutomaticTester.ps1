@@ -188,7 +188,7 @@ try{
         $setFile=Join-Path $testerProfiles $setName
         Copy-Item -LiteralPath $preset -Destination $setFile
         $lines=Get-Content -LiteralPath $setFile -Encoding Unicode
-        foreach($must in @('EntryStyle='+$i,'EnableDemoOrders=true',
+        foreach($must in @(('EntryStyle='+$i),'EnableDemoOrders=true',
                            'EnableDemoForwardOrders=false','TesterIgnoreDailyAndPeakStops=false',
                            'RiskPerTradePct=0.50')){
             if($must -notin $lines){throw ('Unsafe MT5 parameter set: '+$must)}
