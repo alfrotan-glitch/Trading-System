@@ -111,7 +111,25 @@ jobs:
             }
           }
           if ($expected.Count -ne 0) { throw "Missing entry styles" }
-          Write-Host 'Four MT5 tester presets validated without broker access.'
+          $safeSets = @(Get-ChildItem -LiteralPath (Join-Path $dir 'safety_on') -Filter '*.set')
+          if ($safeSets.Count -ne 4) { throw 'Four safety-on research profiles required' }
+          $safeExpected = @('0','1','2','3')
+          foreach ($set in $safeSets) {
+            $lines = Get-Content -LiteralPath $set.FullName -Encoding Unicode
+            $style = @($lines | Where-Object { $_ -match '^EntryStyle=' })
+            if ($style.Count -ne 1) { throw "Missing safety-on style in $($set.Name)" }
+            $value = $style[0].Split('=')[1]
+            if ($value -notin $safeExpected) { throw 'Invalid or duplicate safety-on style' }
+            $safeExpected = @($safeExpected | Where-Object { $_ -ne $value })
+            foreach ($required in @('EnableDemoOrders=true',
+                                    'EnableDemoForwardOrders=false',
+                                    'TesterIgnoreDailyAndPeakStops=false',
+                                    'RiskPerTradePct=0.50')) {
+              if ($required -notin $lines) { throw "Unsafe safety-on preset: $($set.Name) missing $required" }
+            }
+          }
+          if ($safeExpected.Count -ne 0) { throw 'Safety-on entry style coverage incomplete' }
+          Write-Host 'Four opportunity-census and four safety-on MT5 tester presets verified.'
       - name: Compare four synthetic MT5 native tester reports without broker access
         shell: pwsh
         run: |

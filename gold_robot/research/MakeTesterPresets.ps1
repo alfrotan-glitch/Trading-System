@@ -49,6 +49,8 @@ if(-not $OutputDirectory){
     $OutputDirectory=Join-Path $gold 'reports_local\tester_presets'
 }
 New-Item -ItemType Directory -Path $OutputDirectory -Force|Out-Null
+$safetyDirectory=Join-Path $OutputDirectory 'safety_on'
+New-Item -ItemType Directory -Path $safetyDirectory -Force|Out-Null
 $names=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM')
 $created=@()
 for($style=0;$style -lt 4;$style++){
@@ -78,10 +80,23 @@ for($style=0;$style -lt 4;$style++){
     # MT5 on Windows accepts native Unicode .set parameter files.
     [IO.File]::WriteAllLines($path,$lines,[Text.Encoding]::Unicode)
     $created+=,$path
+    $settings['TesterIgnoreDailyAndPeakStops']='false'
+    $safeLines=@(
+        '; QTS Gold MT5 Strategy Tester preset (risk stops ACTIVE; simulation only)',
+        '; WMMarkets XAUUSD@ / M15 / suggested tester deposit 3000 USD',
+        '; Real ticks; identical dates and costs; no connected broker orders.',
+        ('; EntryStyle={0} {1} with normal daily/peak stops' -f $style,$names[$style])
+    )
+    foreach($key in $settings.Keys){
+        $safeLines+=('{0}={1}' -f $key,$settings[$key])
+    }
+    $safePath=Join-Path $safetyDirectory ('QTS_M15_{0}_SAFETY_ON.set' -f $names[$style])
+    [IO.File]::WriteAllLines($safePath,$safeLines,[Text.Encoding]::Unicode)
 }
 if($created.Count -ne 4){throw 'Failed to produce all four test profiles.'}
 Write-Host 'QTS Gold MT5 Strategy Tester presets created (no orders submitted):'
 foreach($item in $created){Write-Host $item}
+Write-Host ('Production-like TESTER variants (risk stops active): '+$safetyDirectory)
 Write-Host 'MT5: Ctrl+R > Inputs > Load one .set file > start a native real-tick test.'
 Write-Host 'Deposit=3000 USD is set in Tester SETTINGS, not in .set input profiles.'
 Write-Host 'Save each Result/Deals/Orders/Journal separately. LIVE remains locked.'

@@ -31,6 +31,8 @@ Choose **option 6** to compare the four user-exported native MT5 HTML reports (n
 
 Style 0 uses `RewardToRisk` as a **minimum** while selecting a prior swing extreme as its target; it can realize far more than 1R. Styles 1–3 target approximately the configured multiple of stop distance. These are different research exit models and must not be mistaken for identical fixed 1:1 scalps.
 
+Option 5 creates four opportunity-census tester profiles and four alternative `tester_presets/safety_on/` profiles; use the latter to check ordinary daily/peak equity stops before evaluating readiness. Neither profile authorizes connected DEMO or REAL orders.
+
 For agent logs, put `QTS_*.log` or mislabeled `QTS_*.htm` files in `gold_robot/reports_local/native`, then run `AUDIT_LOGS.bat` (optional Python 3). The read-only audit reports completed, incomplete and duplicate sessions, and an explicitly hypothetical cost-stress scenario. It never certifies a profitable edge or changes MT5.
 
 ## Verification and evidence

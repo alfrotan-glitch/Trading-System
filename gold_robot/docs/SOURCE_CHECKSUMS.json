@@ -32,8 +32,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 5549,
-      "sha256": "58b2e576776e6d37a0bc41523f7bbbeada551907f2817e429580b3905e297589"
+      "bytes": 5810,
+      "sha256": "aea83480dfd20ac3e4281693ed5d1381b366f16e701c8c488979b08c6ddde8e0"
     },
     {
       "path": "README.txt",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/PRODUCTION_EVIDENCE_2026-10-29.md",
-      "bytes": 5934,
-      "sha256": "dfe856b496e40d050cf04334bd4ebe0d4f760e1bffe265bf6e8af52bbc8d05dc"
+      "bytes": 6172,
+      "sha256": "99fc2a0b2aede33d9539ae65a27ae2b9aaafc6426205cba8b152bd9723468e4b"
     },
     {
       "path": "docs/RELEASE_HANDOFF_2026-10-27.md",
@@ -112,8 +112,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 4752,
-      "sha256": "fcef3449ac530c20d7eb6c5bec51317fc4fd1048e363f43b6707c19f93aae3c0"
+      "bytes": 4979,
+      "sha256": "c9a41d117413ab310175d5d1439ab7669c0eb7a68f7c741e102e50838285f4d2"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART.md",
@@ -172,8 +172,8 @@
     },
     {
       "path": "research/MakeTesterPresets.ps1",
-      "bytes": 4183,
-      "sha256": "3f217a54c477806ad07dfd5fbc2d67901f03bddabefbd0c9720922841f91c0ca"
+      "bytes": 5062,
+      "sha256": "9620fc61800eee633ecd66f086f9df763b5765c70c388ce645d111f377bc30ea"
     },
     {
       "path": "research/MakeWindowsReport.ps1",
