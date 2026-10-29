@@ -19,6 +19,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
       - name: Verify clean source manifest on Windows
         shell: pwsh
         run: |
@@ -61,6 +64,36 @@ jobs:
           if (Test-Path gold_robot/gold_robot) { throw 'Incorrect duplicated gold_robot path was created' }
           Write-Host 'Windows nested relative BAT menu launchers: PASS'
 
+      - name: Verify user-friendly offline MT5 log review and HTML escaping
+        shell: pwsh
+        run: |
+          $folder = Join-Path $env:RUNNER_TEMP 'qts saved tester logs'
+          New-Item -Path $folder -ItemType Directory -Force | Out-Null
+          $log = Join-Path $folder 'QTS_0.htm.log'
+          $lines = @(
+            'testing of Experts\QTS_Gold_Robot.ex5 from 2026.01.01 00:00 to 2026.02.05 00:00 started with inputs:',
+            'Tester  EntryStyle=2',
+            'Tester  RiskPerTradePct=0.50',
+            'QTS ENTRY AUDIT bar=2026.01.02 reason=<script>alert(1)</script>',
+            'QTS broker deal: deal=9 entry=0 volume=0.01 price=4000.00 gross=0.00 commission=0.00 swap=0.00 fee=0.00 net=0.00',
+            'QTS broker deal: deal=10 entry=1 volume=0.01 price=4001.00 gross=1.00 commission=0.00 swap=0.00 fee=0.00 net=1.00',
+            'final balance 3001.00 USD',
+            'Test passed in 0:00:03'
+          )
+          [IO.File]::WriteAllLines($log, $lines, [Text.Encoding]::UTF8)
+          $jsonPath = Join-Path $folder 'audit.json'
+          $htmlPath = Join-Path $folder 'audit.html'
+          python gold_robot/research/audit_mt5_logs.py --directory $folder --output $jsonPath --html-output $htmlPath
+          if ($LASTEXITCODE -ne 0) { throw 'Local MT5 log analysis failed' }
+          $data = Get-Content $jsonPath -Raw | ConvertFrom-Json
+          $html = Get-Content $htmlPath -Raw
+          if ($data.filename_mismatches -ne 1 -or $data.sessions[0].entry_style -ne 2 -or
+              $data.sessions[0].eligible_for_comparison -ne $false -or
+              $html -notmatch 'WRONG_FILENAME' -or
+              $html -notmatch '&lt;script&gt;' -or $html -match '<script>alert') {
+            throw 'Mislabeled-file detection or HTML escaping failed'
+          }
+          Write-Host 'Windows native offline log review: PASS'
       - name: Verify identical MT5 and compiler selection for both installers
         shell: pwsh
         run: |

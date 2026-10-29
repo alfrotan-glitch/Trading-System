@@ -33,7 +33,7 @@ Style 0 uses `RewardToRisk` as a **minimum** while selecting a prior swing extre
 
 Option 5 creates four opportunity-census tester profiles and four alternative `tester_presets/safety_on/` profiles; use the latter to check ordinary daily/peak equity stops before evaluating readiness. Neither profile authorizes connected DEMO or REAL orders.
 
-For agent logs, put `QTS_*.log` or mislabeled `QTS_*.htm` files in `gold_robot/reports_local/native`, then run `AUDIT_LOGS.bat` (optional Python 3). The read-only audit reports completed, incomplete and duplicate sessions, and an explicitly hypothetical cost-stress scenario. It never certifies a profitable edge or changes MT5.
+For agent logs, choose **option 8** in `START_HERE.bat` (requires Python 3) or run `AUDIT_LOGS.bat`. It searches `gold_robot/reports_local/native` and Downloads for matching QTS files, opens a readable local HTML review and writes JSON. No file copying or manual renaming is required. The read-only audit reports completed, incomplete and duplicate sessions, and an explicitly hypothetical cost-stress scenario. It never certifies a profitable edge or changes MT5.
 
 ## Verification and evidence
 

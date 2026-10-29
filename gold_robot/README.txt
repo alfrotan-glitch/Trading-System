@@ -11,6 +11,7 @@ https://github.com/alfrotan-glitch/Trading-System
 5. Option 2 creates a professional local HTML/JSON readiness report.
 6. Option 5 creates four safe M15 Strategy Tester input presets (.set).
 7. Option 6 compares four saved MT5 HTML reports, never sends orders.
+8. Option 8 scans saved QTS logs (including Downloads) and opens a read-only HTML diagnostic.
 
 Exact MT5 Expert Advisor source:
   mt5_robot/QTS_Gold_Robot.mq5

@@ -2,8 +2,8 @@
   "sha256_files": [
     {
       "path": "AUDIT_LOGS.bat",
-      "bytes": 874,
-      "sha256": "fd0b2d44f5f29739b62ffd4d955809d8c3c571af6b9839d7b0ac305d503d4ee0"
+      "bytes": 1082,
+      "sha256": "2c460740c56f735daa54b9f04f11deb12dad657182af6a11e19fb3efaeb7ec2a"
     },
     {
       "path": "CHECK_BROKER.bat",
@@ -32,13 +32,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 5810,
-      "sha256": "aea83480dfd20ac3e4281693ed5d1381b366f16e701c8c488979b08c6ddde8e0"
+      "bytes": 5946,
+      "sha256": "f25afbf5a19becc2dd4e3789730a7ecbc755b674af84398d19d2468f6c6b3938"
     },
     {
       "path": "README.txt",
-      "bytes": 1935,
-      "sha256": "2b23d2b9f3ca4c97a77dab35dff49e7f21d9aeb5c8afac7910b7fa3a8fb8767d"
+      "bytes": 2029,
+      "sha256": "ebbf0d648269c7906890f7e06375d866fe9fb8af99a2226040e243bec832f486"
     },
     {
       "path": "SETUP_MT5_GOLD.bat",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/PRODUCTION_EVIDENCE_2026-10-29.md",
-      "bytes": 6172,
-      "sha256": "99fc2a0b2aede33d9539ae65a27ae2b9aaafc6426205cba8b152bd9723468e4b"
+      "bytes": 6234,
+      "sha256": "fb218b38f369e81cfa907ea8d96619c39beef7f335221a520a59db53077f1f75"
     },
     {
       "path": "docs/RELEASE_HANDOFF_2026-10-27.md",
@@ -112,8 +112,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 4979,
-      "sha256": "c9a41d117413ab310175d5d1439ab7669c0eb7a68f7c741e102e50838285f4d2"
+      "bytes": 5382,
+      "sha256": "bc1129512252a4339689bf7a46ff798d126fddef15bcae937c6fb73d6da8ca8d"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART.md",
@@ -202,8 +202,8 @@
     },
     {
       "path": "research/audit_mt5_logs.py",
-      "bytes": 6655,
-      "sha256": "8d7453ec27ee9775ec51aebcb112129d99ab96ad63a570770a3de4af1957fa9f"
+      "bytes": 11434,
+      "sha256": "7a6b987d6b3eef3d5fe8b6bbf1aaddf5b880e040d64de3a808cd634c5f0f4949"
     },
     {
       "path": "research/build_report.py",
@@ -317,8 +317,8 @@
     },
     {
       "path": "tests/test_log_audit.py",
-      "bytes": 1966,
-      "sha256": "37483df4028a8cbef67090f473e73573cd3d4c020835e7ca975ba611f096060c"
+      "bytes": 3500,
+      "sha256": "925deb0e2eccdd765f227a77bbba02aee04e1156bc38ccb8963f429b1984a335"
     },
     {
       "path": "tests/test_reference_benchmark.py",
