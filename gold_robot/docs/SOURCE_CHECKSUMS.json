@@ -162,8 +162,8 @@
     },
     {
       "path": "research/CompareMT5Reports.ps1",
-      "bytes": 8706,
-      "sha256": "7035785cd6cc01a8fb7cf69fe3dd4adfe6f2b067fe8bf68f3e5a96ac8815d50e"
+      "bytes": 8974,
+      "sha256": "cbf26ed16f2312a27a82ea501ea5d36e4915273cfb692b02b240e8250f1f783c"
     },
     {
       "path": "research/ExportBrokerData.mq5",

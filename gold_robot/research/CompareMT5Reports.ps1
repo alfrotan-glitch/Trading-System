@@ -7,6 +7,14 @@ if(-not $ReportDirectory){$ReportDirectory=Join-Path $root 'reports_local\native
 if(-not $OutputDirectory){$OutputDirectory=Join-Path $root 'reports_local'}
 New-Item -ItemType Directory -Path $OutputDirectory -Force|Out-Null
 function HtmlEscape([object]$v){return [System.Net.WebUtility]::HtmlEncode([string]$v)}
+function FileSha256([string]$path){
+  $stream=[System.IO.File]::OpenRead($path)
+  try{
+    $algorithm=[System.Security.Cryptography.SHA256]::Create()
+    try{return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-','')}
+    finally{$algorithm.Dispose()}
+  }finally{$stream.Dispose()}
+}
 function AsNumber([string]$raw){
   $part=($raw -split '\(')[0].Trim()
   $part=($part -replace '[\s,\u00a0\u202f]','')
@@ -60,7 +68,7 @@ function ParseNative([string]$filepath,[int]$expectedStyle){
   return [ordered]@{
     state=if($identity -eq 'STYLE_VERIFIED'){'PARSED'}else{'UNVERIFIED_STYLE'}
     style_identity=$identity;net_usd=$net;profit_factor=$pf;trades=[int]$trades
-    maximal_equity_drawdown=$dd;sha256=(Get-FileHash -LiteralPath $filepath -Algorithm SHA256).Hash
+    maximal_equity_drawdown=$dd;sha256=(FileSha256 $filepath)
   }
 }
 $labels=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM')
