@@ -136,6 +136,24 @@ jobs:
           }
           if (@($r.results).Count -ne 4) { throw 'Native comparison missing strategies' }
           Write-Host 'Read-only 4-arm MT5 native comparison: PASS'
+          $bad = Join-Path $native 'QTS_0.htm'
+          [IO.File]::WriteAllText($bad,
+            "CS`t0`t00:00:01.000`tStartup`tMetaTester 5 build 6230",
+            [Text.Encoding]::Unicode)
+          Remove-Item -LiteralPath (Join-Path $native 'QTS_1.htm')
+          [IO.File]::WriteAllText((Join-Path $native 'QTS_1.htm.log'),
+            "CS`t0`t00:00:01.000`tStartup`tMetaTester 5 build 6230",
+            [Text.Encoding]::Unicode)
+          ./gold_robot/research/CompareMT5Reports.ps1 -ReportDirectory $native -OutputDirectory $out -NoOpen
+          $latest = Get-ChildItem -LiteralPath $out -Filter '*.json' |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $badResult = Get-Content -LiteralPath $latest.FullName -Raw | ConvertFrom-Json
+          if ($badResult.reports_parsed -ne 2 -or
+              $badResult.results[0].state -ne 'LOG_ONLY' -or
+              $badResult.results[1].state -ne 'LOG_ONLY') {
+            throw 'Mislabeled MT5 logs were accepted as finished HTML reports'
+          }
+          Write-Host 'Agent logs correctly refused as backtest HTML: PASS'
       - name: Simulate clean and blocked MT5 broker reports (no trading)
         shell: pwsh
         run: ./gold_robot/tests/windows_report_smoke.ps1

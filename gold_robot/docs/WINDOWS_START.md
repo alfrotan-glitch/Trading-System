@@ -36,7 +36,7 @@ Use menu option **5** to generate four profiles in `gold_robot/reports_local/tes
 
 The tester-only bypass does **not** disable per-trade risk, minimum lot, margin, protective stops, spread limits or incident halts. The four candidates are research hypotheses, not approved trading strategies.
 
-Export the MT5 Report, Deals, Orders and Journal for each run. Save the native HTML reports as `QTS_0.htm`, `QTS_1.htm`, `QTS_2.htm`, `QTS_3.htm` in `gold_robot/reports_local/native/`; use menu option **6** for a read-only comparison. Missing files or zero trades are not successful results.
+Let each run finish and confirm the Strategy Tester completion message. From the Tester Backtest/Report results, use Save as Report to export the native HTML report; a MetaTester agent log (including a file renamed to .htm) is NOT an HTML performance report. Export the MT5 Deals, Orders and Journal separately. Save the native HTML reports as `QTS_0.htm`, `QTS_1.htm`, `QTS_2.htm`, `QTS_3.htm` in `gold_robot/reports_local/native/`; use menu option **6** for a read-only comparison. Missing files or zero trades are not successful results.
 
 ## Connected virtual DEMO
 

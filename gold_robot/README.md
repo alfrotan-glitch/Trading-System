@@ -27,7 +27,9 @@ Choose **option 5** to generate four consistent `.set` input profiles in `gold_r
 
 Native MT5 tester deposit for the operator's setup: **USD 3,000**, the smallest value their terminal permits selecting. This is **not** a claim that WMMarkets real account funding minimum is USD 3,000 or that any deposit should be funded. Run M15 then M5 separately, on **Every tick based on real ticks**, four entries one at a time, and keep costs and test periods fixed.
 
-Choose **option 6** to compare the four user-exported native MT5 HTML reports (named `QTS_0.htm` through `QTS_3.htm` in `gold_robot/reports_local/native`). The report displays original Tester metrics, missing/invalid files conspicuously and never promotes a strategy automatically. It does not send broker orders.
+Choose **option 6** to compare the four user-exported native MT5 HTML reports (named `QTS_0.htm` through `QTS_3.htm` in `gold_robot/reports_local/native`). The report displays original Tester metrics, missing/invalid files conspicuously and never promotes a strategy automatically. It does not send broker orders. Agent `.log` files are not HTML reports: allow the MT5 test to finish, export **Save as Report** from the Backtest/Report panel, and preserve journal logs separately. The comparator explicitly labels mislabeled logs `LOG_ONLY`.
+
+Style 0 uses `RewardToRisk` as a **minimum** while selecting a prior swing extreme as its target; it can realize far more than 1R. Styles 1–3 target approximately the configured multiple of stop distance. These are different research exit models and must not be mistaken for identical fixed 1:1 scalps.
 
 ## Verification and evidence
 

@@ -20,6 +20,12 @@ function ParseNative([string]$filepath){
   $item=Get-Item -LiteralPath $filepath
   if($item.Length -lt 100 -or $item.Length -gt 10000000){throw 'Unexpected report size'}
   $html=[IO.File]::ReadAllText($filepath)
+  if($html -notmatch '(?is)<!doctype\s+html\b|<html\b'){
+    if($html -match '(?m)^\uFEFF?CS\t\d+\t' -or $html.Contains('MetaTester 5 build')){
+      throw 'MetaTester agent log, not an HTML backtest report. Use Strategy Tester > Backtest > Save as Report.'
+    }
+    throw 'Not a native MT5 HTML backtest report.'
+  }
   $found=@{}
   $keys=@('Total Net Profit','Profit Factor','Total Trades','Equity Drawdown Maximal')
   foreach($row in [regex]::Matches($html,'(?is)<tr\b[^>]*>(.*?)</tr>')){
@@ -59,8 +65,14 @@ for($style=0;$style -lt 4;$style++){
       foreach($k in $details.Keys){$entry[$k]=$details[$k]}
       $entry.message='Native tester values; actual broker costs/edge not validated'
     }catch{
-      $entry.state='INVALID'
       $entry.message=[string]$_.Exception.Message
+      $entry.state=if($entry.message -like 'MetaTester agent log*'){'LOG_ONLY'}else{'INVALID'}
+    }
+  }else{
+    $logPath=Join-Path $ReportDirectory ($filename+'.log')
+    if(Test-Path -LiteralPath $logPath -PathType Leaf){
+      $entry.state='LOG_ONLY'
+      $entry.message='MetaTester agent log found, but no HTML report. Save from Strategy Tester Backtest tab.'
     }
   }
   $results+=,[pscustomobject]$entry

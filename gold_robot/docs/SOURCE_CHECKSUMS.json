@@ -27,8 +27,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 4606,
-      "sha256": "35d73a7ec1ad4f45d44371517c1acca06ae02645652cbd08e72263b2a039cc19"
+      "bytes": 5140,
+      "sha256": "9bc0480c3698137bed0150f5a261b03e7bbc45bca489a6608202ecbcc117e85c"
     },
     {
       "path": "README.txt",
@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 4503,
-      "sha256": "5f0698e196695643a1469b076b5e3e644ed24d7289738ef642947694f04c1f2f"
+      "bytes": 4752,
+      "sha256": "fcef3449ac530c20d7eb6c5bec51317fc4fd1048e363f43b6707c19f93aae3c0"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "research/CompareMT5Reports.ps1",
-      "bytes": 6836,
-      "sha256": "08d7d90c1f9748f3959c0a7ecd401f19289ac6605f4ee117c24280f66c3528cb"
+      "bytes": 7492,
+      "sha256": "ce6b9fa386ed7a2b0afdbbdc903ae7ce0f88ff4ca2602c0a169d0f1bb9f40b58"
     },
     {
       "path": "research/ExportBrokerData.mq5",
