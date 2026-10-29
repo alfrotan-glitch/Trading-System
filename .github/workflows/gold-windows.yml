@@ -120,7 +120,8 @@ jobs:
           New-Item -ItemType Directory -Path $native,$out -Force | Out-Null
           for ($i = 0; $i -lt 4; $i++) {
             $net = (-10 + $i * 8)
-            $html = '<html><table><tr><td>Total Net Profit:</td><td>' + $net +
+            $html = '<html><table><tr><td>Inputs:</td><td>EntryStyle=' + $i + '</td></tr>' +
+                    '<tr><td>Total Net Profit:</td><td>' + $net +
                     '</td></tr><tr><td>Profit Factor:</td><td>1.10</td></tr>' +
                     '<tr><td>Total Trades:</td><td>25</td></tr>' +
                     '<tr><td>Equity Drawdown Maximal:</td><td>90.00 (3.0%)</td></tr></table></html>'
@@ -131,11 +132,35 @@ jobs:
           $json = @(Get-ChildItem -LiteralPath $out -Filter '*.json')
           if ($json.Count -ne 1) { throw 'Missing native comparison JSON' }
           $r = Get-Content -LiteralPath $json[0].FullName -Raw | ConvertFrom-Json
-          if ($r.reports_parsed -ne 4 -or $r.validated_edge -ne $false -or $r.live -ne 'LOCKED') {
+          if ($r.reports_parsed -ne 4 -or $r.validated_edge -ne $false -or $r.live -ne 'LOCKED' -or $r.comparison_approved -ne $false -or $r.periods_and_costs_verified -ne $false) {
             throw 'Native comparison has incorrect status or permissions'
           }
           if (@($r.results).Count -ne 4) { throw 'Native comparison missing strategies' }
           Write-Host 'Read-only 4-arm MT5 native comparison: PASS'
+          $path2 = Join-Path $native 'QTS_2.htm'
+          $report2 = [IO.File]::ReadAllText($path2)
+          [IO.File]::WriteAllText($path2,
+            $report2.Replace('EntryStyle=2','EntryStyle=3'),[Text.Encoding]::Unicode)
+          ./gold_robot/research/CompareMT5Reports.ps1 -ReportDirectory $native -OutputDirectory $out -NoOpen
+          $badStyle = Get-ChildItem -LiteralPath $out -Filter '*.json' |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $wrong = Get-Content -LiteralPath $badStyle.FullName -Raw | ConvertFrom-Json
+          if ($wrong.reports_parsed -ne 3 -or $wrong.results[2].state -ne 'INVALID' -or
+              $wrong.results[2].message -notlike '*EntryStyle mismatch*') {
+            throw 'Mislabeled native HTML report was counted as the expected strategy'
+          }
+          [IO.File]::WriteAllText($path2,
+            $report2.Replace('EntryStyle=2','EntryStyle=unreported'),[Text.Encoding]::Unicode)
+          ./gold_robot/research/CompareMT5Reports.ps1 -ReportDirectory $native -OutputDirectory $out -NoOpen
+          $missingStyle = Get-ChildItem -LiteralPath $out -Filter '*.json' |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $unverified = Get-Content -LiteralPath $missingStyle.FullName -Raw | ConvertFrom-Json
+          if ($unverified.reports_parsed -ne 3 -or $unverified.unverified_style -ne 1 -or
+              $unverified.results[2].state -ne 'UNVERIFIED_STYLE') {
+            throw 'HTML lacking EntryStyle was counted as verified research evidence'
+          }
+          Write-Host 'Mislabeled/missing EntryStyle evidence: PASS'
+          [IO.File]::WriteAllText($path2,$report2,[Text.Encoding]::Unicode)
           $bad = Join-Path $native 'QTS_0.htm'
           [IO.File]::WriteAllText($bad,
             "CS`t0`t00:00:01.000`tStartup`tMetaTester 5 build 6230",

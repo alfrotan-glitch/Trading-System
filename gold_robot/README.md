@@ -31,6 +31,8 @@ Choose **option 6** to compare the four user-exported native MT5 HTML reports (n
 
 Style 0 uses `RewardToRisk` as a **minimum** while selecting a prior swing extreme as its target; it can realize far more than 1R. Styles 1–3 target approximately the configured multiple of stop distance. These are different research exit models and must not be mistaken for identical fixed 1:1 scalps.
 
+For agent logs, put `QTS_*.log` or mislabeled `QTS_*.htm` files in `gold_robot/reports_local/native`, then run `AUDIT_LOGS.bat` (optional Python 3). The read-only audit reports completed, incomplete and duplicate sessions, and an explicitly hypothetical cost-stress scenario. It never certifies a profitable edge or changes MT5.
+
 ## Verification and evidence
 
 - Latest canonical EA was changed after an earlier user-verified successful MetaEditor compile; **the current source must still compile on the operator's terminal**.
@@ -39,4 +41,4 @@ Style 0 uses `RewardToRisk` as a **minimum** while selecting a prior swing extre
 - DEMO-forward virtual-money tests are explicitly opt-in; verify MT5 native compilation and broker limits before enabling. Commission, swap, slippage, rejects, disconnects and independent after-cost expectancy remain unverified.
 - Real-money account trading is structurally blocked and must not be enabled in a source-only handoff.
 
-Read the [engineering release handoff](docs/RELEASE_HANDOFF_2026-10-27.md), [release status](docs/RELEASE_STATUS.json), [prior trade evidence](docs/PERFORMANCE_REPORT.md), [research with $3000](docs/MT5_3000_UNLIMITED_TESTER_2026-10-26.md), and [Stop Loss root cause plan](docs/OWNER_PLAN_STOPLOSS_ROOTCAUSE_2026-10-26.md).
+Read the [2026-10-29 production evidence gate](docs/PRODUCTION_EVIDENCE_2026-10-29.md), [engineering release handoff](docs/RELEASE_HANDOFF_2026-10-27.md), [release status](docs/RELEASE_STATUS.json), [prior trade evidence](docs/PERFORMANCE_REPORT.md), [research with $3000](docs/MT5_3000_UNLIMITED_TESTER_2026-10-26.md), and [Stop Loss root cause plan](docs/OWNER_PLAN_STOPLOSS_ROOTCAUSE_2026-10-26.md).

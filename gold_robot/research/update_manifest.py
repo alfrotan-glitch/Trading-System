@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "docs" / "SOURCE_CHECKSUMS.json"
 TOPLEVEL = {"README.md", "README.txt", "CHECK_BROKER.bat", "MAKE_REPORT.bat",
             "INSTALL_ROBOT.bat", "SETUP_MT5_GOLD.bat", "MAKE_TEST_PRESETS.bat",
-            "MAKE_COMPARISON.bat"}
+            "MAKE_COMPARISON.bat", "AUDIT_LOGS.bat"}
 INCLUDED = {
     "mt5_robot": {".mq5", ".mqh", ".ps1"},
     "research": {".py", ".mq5", ".ps1", ".json"},

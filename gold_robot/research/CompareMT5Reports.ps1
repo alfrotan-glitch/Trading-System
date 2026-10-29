@@ -16,7 +16,7 @@ function AsNumber([string]$raw){
      [double]::IsNaN($num) -or [double]::IsInfinity($num)){throw 'Invalid MT5 numeric field'}
   return $num
 }
-function ParseNative([string]$filepath){
+function ParseNative([string]$filepath,[int]$expectedStyle){
   $item=Get-Item -LiteralPath $filepath
   if($item.Length -lt 100 -or $item.Length -gt 10000000){throw 'Unexpected report size'}
   $html=[IO.File]::ReadAllText($filepath)
@@ -26,6 +26,16 @@ function ParseNative([string]$filepath){
     }
     throw 'Not a native MT5 HTML backtest report.'
   }
+  $text=[System.Net.WebUtility]::HtmlDecode([regex]::Replace($html,'(?is)<[^>]+>',' '))
+  $styles=@([regex]::Matches($text,'(?i)\bEntryStyle\s*=\s*([0-3])\b'))
+  if($styles.Count -gt 0){
+    foreach($match in $styles){
+      if([int]$match.Groups[1].Value -ne $expectedStyle){
+        throw ('Report EntryStyle mismatch: expected {0}, found {1}' -f $expectedStyle,$match.Groups[1].Value)
+      }
+    }
+  }
+  $identity=if($styles.Count -gt 0){'STYLE_VERIFIED'}else{'STYLE_UNVERIFIED'}
   $found=@{}
   $keys=@('Total Net Profit','Profit Factor','Total Trades','Equity Drawdown Maximal')
   foreach($row in [regex]::Matches($html,'(?is)<tr\b[^>]*>(.*?)</tr>')){
@@ -48,7 +58,8 @@ function ParseNative([string]$filepath){
     throw 'Invalid MT5 profit factor, trades or drawdown'
   }
   return [ordered]@{
-    state='PARSED';net_usd=$net;profit_factor=$pf;trades=[int]$trades
+    state=if($identity -eq 'STYLE_VERIFIED'){'PARSED'}else{'UNVERIFIED_STYLE'}
+    style_identity=$identity;net_usd=$net;profit_factor=$pf;trades=[int]$trades
     maximal_equity_drawdown=$dd;sha256=(Get-FileHash -LiteralPath $filepath -Algorithm SHA256).Hash
   }
 }
@@ -61,9 +72,11 @@ for($style=0;$style -lt 4;$style++){
                    message='Save the matching native MT5 HTML report with this filename'}
   if(Test-Path -LiteralPath $path -PathType Leaf){
     try{
-      $details=ParseNative $path
+      $details=ParseNative $path $style
       foreach($k in $details.Keys){$entry[$k]=$details[$k]}
-      $entry.message='Native tester values; actual broker costs/edge not validated'
+      $entry.message=if($entry.state -eq 'UNVERIFIED_STYLE'){
+        'Report has summary figures but does not prove its EntryStyle input; do not rank it.'
+      }else{'EntryStyle verified; date/model and actual broker costs still require verification'}
     }catch{
       $entry.message=[string]$_.Exception.Message
       $entry.state=if($entry.message -like 'MetaTester agent log*'){'LOG_ONLY'}else{'INVALID'}
@@ -80,7 +93,7 @@ for($style=0;$style -lt 4;$style++){
 $rows=@()
 foreach($item in $results){
   $trades='—';$net='—';$pf='—';$dd='—'
-  if($item.state -eq 'PARSED'){
+  if($item.state -eq 'PARSED' -or $item.state -eq 'UNVERIFIED_STYLE'){
     $trades=[string]$item.trades
     $net=$item.net_usd.ToString('0.00',[Globalization.CultureInfo]::InvariantCulture)
     $pf=$item.profit_factor.ToString('0.00',[Globalization.CultureInfo]::InvariantCulture)
@@ -91,6 +104,8 @@ foreach($item in $results){
          (HtmlEscape $trades),(HtmlEscape $net),(HtmlEscape $pf),(HtmlEscape $dd))
 }
 $parsed=@($results|Where-Object{$_.state -eq 'PARSED'}).Count
+$unverified=@($results|Where-Object{$_.state -eq 'UNVERIFIED_STYLE'}).Count
+$comparisonReady=($parsed -eq 4 -and $unverified -eq 0)
 $stamp=Get-Date -Format 'yyyyMMdd_HHmmss'
 $stampHtml=Get-Date -Format 'yyyy-MM-dd HH:mm'
 $htmlFile=Join-Path $OutputDirectory ("QTS_Gold_Comparison_"+$stamp+".html")
@@ -112,20 +127,20 @@ p{line-height:1.8}footer{font-size:12px;color:#6c798b;text-align:center}
 </style></head><body><main>
 <header><h1>QTS Gold | Four-Strategy MT5 Comparison</h1>
 <p>Comparison of native Strategy Tester reports. Read-only; no broker orders are sent.</p>
-<small>$(HtmlEscape $stampHtml) | XAUUSD@ | Native reports: $parsed / 4 | LIVE LOCKED</small></header>
+<small>$(HtmlEscape $stampHtml) | XAUUSD@ | Style-verified reports: $parsed / 4 | LIVE LOCKED</small></header>
 <section><h2>Available results</h2><table>
 <thead><tr><th>Entry style</th><th>Status</th><th>Trades</th><th>Net profit/loss</th><th>Profit Factor</th><th>Maximum equity drawdown</th></tr></thead>
 <tbody>$tableRows</tbody></table>
-<p class="note">For a valid comparison, all four tests must use the same dates, symbol, real-tick model, USD 3,000 tester deposit and execution costs. Missing data is not a zero result. Future returns and independent edge remain unvalidated.</p></section>
+<p class="note">A file without a matching EntryStyle input is UNVERIFIED_STYLE, not reliable evidence. Even four style-verified reports require manual confirmation of matching dates, XAUUSD@, M15, real-tick model, USD 3,000 deposit, and execution costs. Missing data is not a zero result. No profitability or LIVE approval is implied.</p></section>
 <section><h2>Operator instructions</h2>
 <p>Save the four native MT5 reports as QTS_0.htm, QTS_1.htm, QTS_2.htm and QTS_3.htm under gold_robot/reports_local/native, then regenerate the comparison. Preserve each run's Report, Deals, Orders and Journal independently.</p></section>
 <footer>Read-only native report comparison | No credentials | No broker orders</footer>
 </main></body></html>
 "@
 [IO.File]::WriteAllText($htmlFile,$html,([Text.UTF8Encoding]::new($false)))
-@{mode='READ_ONLY';live='LOCKED';validated_edge=$false;reports_parsed=$parsed;results=$results} |
+@{mode='READ_ONLY';live='LOCKED';validated_edge=$false;reports_parsed=$parsed;unverified_style=$unverified;all_styles_identified=$comparisonReady;periods_and_costs_verified=$false;comparison_approved=$false;results=$results} |
   ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $jsonFile -Encoding UTF8
 Write-Host ('Comparison HTML: '+$htmlFile)
 Write-Host ('Comparison JSON: '+$jsonFile)
-Write-Host ('Reports parsed: '+$parsed+'/4. No validated trading edge.')
+Write-Host ('Style-verified reports: '+$parsed+'/4; style-unverified: '+$unverified+'. No validated trading edge.')
 if(-not $NoOpen){Invoke-Item -LiteralPath $htmlFile}

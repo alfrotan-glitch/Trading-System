@@ -1,6 +1,11 @@
 {
   "sha256_files": [
     {
+      "path": "AUDIT_LOGS.bat",
+      "bytes": 874,
+      "sha256": "fd0b2d44f5f29739b62ffd4d955809d8c3c571af6b9839d7b0ac305d503d4ee0"
+    },
+    {
       "path": "CHECK_BROKER.bat",
       "bytes": 993,
       "sha256": "259903009af33802485be982d8c1013c12f5157ca0f3b94e87083b3b8fc143ba"
@@ -27,8 +32,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 5140,
-      "sha256": "9bc0480c3698137bed0150f5a261b03e7bbc45bca489a6608202ecbcc117e85c"
+      "bytes": 5549,
+      "sha256": "58b2e576776e6d37a0bc41523f7bbbeada551907f2817e429580b3905e297589"
     },
     {
       "path": "README.txt",
@@ -89,6 +94,11 @@
       "path": "docs/PERFORMANCE_REPORT.md",
       "bytes": 14423,
       "sha256": "b0b67d4d82b49b5d8e1e215cb11d9eda2a61702e9cc405d71cea60847f8a92ff"
+    },
+    {
+      "path": "docs/PRODUCTION_EVIDENCE_2026-10-29.md",
+      "bytes": 5934,
+      "sha256": "dfe856b496e40d050cf04334bd4ebe0d4f760e1bffe265bf6e8af52bbc8d05dc"
     },
     {
       "path": "docs/RELEASE_HANDOFF_2026-10-27.md",
@@ -152,8 +162,8 @@
     },
     {
       "path": "research/CompareMT5Reports.ps1",
-      "bytes": 7492,
-      "sha256": "ce6b9fa386ed7a2b0afdbbdc903ae7ce0f88ff4ca2602c0a169d0f1bb9f40b58"
+      "bytes": 8706,
+      "sha256": "7035785cd6cc01a8fb7cf69fe3dd4adfe6f2b067fe8bf68f3e5a96ac8815d50e"
     },
     {
       "path": "research/ExportBrokerData.mq5",
@@ -189,6 +199,11 @@
       "path": "research/analyze_native_coverage.py",
       "bytes": 4140,
       "sha256": "5c97ffa966ef0f620252790c065fa7fd149f6671c7f60155c6544c4ec4de41f4"
+    },
+    {
+      "path": "research/audit_mt5_logs.py",
+      "bytes": 6655,
+      "sha256": "8d7453ec27ee9775ec51aebcb112129d99ab96ad63a570770a3de4af1957fa9f"
     },
     {
       "path": "research/build_report.py",
@@ -282,8 +297,8 @@
     },
     {
       "path": "research/update_manifest.py",
-      "bytes": 2996,
-      "sha256": "e16af53c19d2e34f03c61f97fa41d4fdbde265ab2d0ca0580d3633631b7c93ea"
+      "bytes": 3014,
+      "sha256": "00a3990e811fa99df66a2ff5a4a86f47f892955b18dfcb7d03e4f1f38e6554df"
     },
     {
       "path": "tests/ReceiptSelftest.mq5",
@@ -299,6 +314,11 @@
       "path": "tests/test_edge_gate.py",
       "bytes": 5660,
       "sha256": "c27db74d276c76b6d816ae8a09466289e743ff69f10adac7ce7865bd61b033ab"
+    },
+    {
+      "path": "tests/test_log_audit.py",
+      "bytes": 1966,
+      "sha256": "37483df4028a8cbef67090f473e73573cd3d4c020835e7ca975ba611f096060c"
     },
     {
       "path": "tests/test_reference_benchmark.py",
