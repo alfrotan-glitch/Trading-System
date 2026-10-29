@@ -4,7 +4,9 @@
 
 ## One-click automatic research testing
 
-For ordinary use, **close the WMMarkets MT5 terminal** and double-click `QTS_AUTO_TEST.bat` in the repository root. No tester menus, manual .set loading or report naming are required. The script resolves the one installed QTS terminal through MetaQuotes `origin.txt`, verifies matching canonical source and EX5 (or compiles via the matching MetaEditor), prepares four risk-stops-active `EntryStyle=0..3` profiles, and runs command-line MT5 Strategy Tester jobs sequentially. The common symbol is `XAUUSD@`, M15, model 4 (real ticks), USD 3,000 simulated, latest six completed calendar months, local agents only. It saves all exports and a local `OPEN_RESULTS.html` under `gold_robot/reports_local/auto_runs/<timestamp>/`. If the terminal is open, multiple targets exist, native ticks are not confirmed, or MT5 cannot export a fresh report, it does not claim success. Do not use a real account; LIVE remains blocked in the EA.
+For ordinary use, **close the WMMarkets MT5 terminal** and double-click `QTS_AUTO_TEST.bat` in the repository root. No tester menus, manual .set loading or report naming are required. The script resolves the one installed QTS terminal through MetaQuotes `origin.txt`, verifies matching canonical source and EX5 (or compiles via the matching MetaEditor), prepares seven risk-stops-active `EntryStyle=0..6` profiles, and runs command-line MT5 Strategy Tester jobs sequentially. The common symbol is `XAUUSD@`, M15, model 4 (real ticks), USD 3,000 simulated, latest six completed calendar months, local agents only. It saves all exports and a local `OPEN_RESULTS.html` under `gold_robot/reports_local/auto_runs/<timestamp>/`. If the terminal is open, multiple targets exist, native ticks are not confirmed, or MT5 cannot export a fresh report, it does not claim success. Do not use a real account; LIVE remains blocked in the EA.
+
+**Trade-by-trade reporting:** each completed native test attempts to export a broker-history forensic CSV from the MT5 Common Files folder. The automatic runner copies it into `native/QTS_0_trades.csv` through `native/QTS_6_trades.csv` and builds `QTS_TRADE_BY_TRADE.html`. Each position is grouped by broker position ID and shows entry/exit, initial versus closing SL/TP, broker exit reason, fees, holding time, exit slippage and incomplete evidence flags. A missing CSV is a research evidence gap, not success. Exact market path, MFE/MAE, and counterfactual reasons for a stop-out require more market data than a deal ledger.
 
 **Important:** Native completion and real-tick mode still do not prove an after-cost profitable edge. The actual broker charges, trade count, drawdown, unseen performance and MT5 report inputs remain subject to verification.
 
@@ -23,8 +25,8 @@ For ordinary use, **close the WMMarkets MT5 terminal** and double-click `QTS_AUT
 | 2 | Generate a local read-only readiness report | None |
 | 3 | Open the separate Python research desktop | None |
 | 4 | Open this guide | None |
-| 5 | Generate four MT5 Strategy Tester `.set` profiles | None |
-| 6 | Compare four saved native MT5 tester reports | None |
+| 5 | Generate seven MT5 Strategy Tester `.set` profiles | None |
+| 6 | Compare seven saved native MT5 tester reports | None |
 | 7 | Exit | None |
 | 8 | Find saved MT5 logs in common folders or choose a file, then open HTML/JSON audit | None |
 
@@ -34,16 +36,16 @@ For ordinary use, **close the WMMarkets MT5 terminal** and double-click `QTS_AUT
 
 Press `Ctrl+R` in MetaTrader 5. Select Expert `QTS_Gold_Robot`, symbol `XAUUSD@`, timeframe **M15** (then test **M5** separately), model **Every tick based on real ticks**, and initial deposit **USD 3,000** (the smallest amount observed as selectable in this operator's terminal). This is a tester setting, not a required real-money deposit.
 
-Use menu option **5** to generate four profiles in `gold_robot/reports_local/tester_presets/`. Load one profile at a time under Tester > Inputs:
+Use menu option **5** to generate seven profiles in `gold_robot/reports_local/tester_presets/`. Load one profile at a time under Tester > Inputs:
 
-- `EntryStyle=0,1,2,3` in four separate runs with identical dates, spread/cost conditions and deposit.
+- `EntryStyle=0,1,2,3,4,5,6` in seven separate runs with identical dates, spread/cost conditions and deposit.
 - `EnableDemoOrders=true` **in Strategy Tester only**; `EnableDemoForwardOrders=false`.
 - `TesterIgnoreDailyAndPeakStops=true` for the experimental opportunity census; this bypass affects only Tester.
 - `RiskPerTradePct=0.5` and `EnableEntryDiagnostics=true` for like-for-like research.
 
-The tester-only bypass does **not** disable per-trade risk, minimum lot, margin, protective stops, spread limits or incident halts. The four candidates are research hypotheses, not approved trading strategies. Option 5 also creates four `tester_presets/safety_on/` files with the ordinary daily/peak stops ACTIVE. Rerun any promising candidate with the safety-on version; results from stop-bypassed census tests are not production-like.
+The tester-only bypass does **not** disable per-trade risk, minimum lot, margin, protective stops, spread limits or incident halts. The seven candidates are research hypotheses, not approved trading strategies. Option 5 also creates seven `tester_presets/safety_on/` files with the ordinary daily/peak stops ACTIVE. Rerun any promising candidate with the safety-on version; results from stop-bypassed census tests are not production-like.
 
-Let each run finish and confirm the Strategy Tester completion message. From the Tester Backtest/Report results, use Save as Report to export the native HTML report; a MetaTester agent log (including a file renamed to .htm) is NOT an HTML performance report. Export the MT5 Deals, Orders and Journal separately. Save the native HTML reports as `QTS_0.htm`, `QTS_1.htm`, `QTS_2.htm`, `QTS_3.htm` in `gold_robot/reports_local/native/`; use menu option **6** for a read-only comparison. Missing files or zero trades are not successful results.
+Let each run finish and confirm the Strategy Tester completion message. From the Tester Backtest/Report results, use Save as Report to export the native HTML report; a MetaTester agent log (including a file renamed to .htm) is NOT an HTML performance report. Export the MT5 Deals, Orders and Journal separately. Save the native HTML reports as `QTS_0.htm` through `QTS_6.htm` in `gold_robot/reports_local/native/`; use menu option **6** for a read-only comparison. Missing files or zero trades are not successful results.
 
 For logs accidentally saved as `.htm`, or journal files with other names, use menu **8**. It checks `gold_robot/reports_local/native/`, Downloads, Desktop and Documents (including OneDrive copies where configured), and identifies MT5 agent logs by their content rather than filenames. If no log is found, Windows offers a file picker. Selecting a saved log does not move or rename it; the program still opens an HTML summary when no file was found. Actual native MT5 HTML performance reports belong in option 6. Option 8 needs Python 3; its figures are diagnostics, not validated profitability.
 

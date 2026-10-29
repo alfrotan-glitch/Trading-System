@@ -1,4 +1,4 @@
-﻿# Read-only comparison of four user-exported native MT5 Strategy Tester reports.
+﻿# Read-only comparison of seven user-exported native MT5 Strategy Tester reports.
 [CmdletBinding()]
 param([string]$ReportDirectory="",[string]$OutputDirectory="",[switch]$NoOpen)
 $ErrorActionPreference='Stop'
@@ -35,7 +35,7 @@ function ParseNative([string]$filepath,[int]$expectedStyle){
     throw 'Not a native MT5 HTML backtest report.'
   }
   $text=[System.Net.WebUtility]::HtmlDecode([regex]::Replace($html,'(?is)<[^>]+>',' '))
-  $styles=@([regex]::Matches($text,'(?i)\bEntryStyle\s*=\s*([0-3])\b'))
+  $styles=@([regex]::Matches($text,'(?i)\bEntryStyle\s*=\s*([0-6])\b'))
   if($styles.Count -gt 0){
     foreach($match in $styles){
       if([int]$match.Groups[1].Value -ne $expectedStyle){
@@ -71,9 +71,10 @@ function ParseNative([string]$filepath,[int]$expectedStyle){
     maximal_equity_drawdown=$dd;sha256=(FileSha256 $filepath)
   }
 }
-$labels=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM')
+$labels=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM',
+          'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT')
 $results=@()
-for($style=0;$style -lt 4;$style++){
+for($style=0;$style -lt $labels.Count;$style++){
   $filename='QTS_{0}.htm' -f $style
   $path=Join-Path $ReportDirectory $filename
   $entry=[ordered]@{style=$style;label=$labels[$style];file=$filename;state='MISSING'
@@ -113,7 +114,7 @@ foreach($item in $results){
 }
 $parsed=@($results|Where-Object{$_.state -eq 'PARSED'}).Count
 $unverified=@($results|Where-Object{$_.state -eq 'UNVERIFIED_STYLE'}).Count
-$comparisonReady=($parsed -eq 4 -and $unverified -eq 0)
+$comparisonReady=($parsed -eq $labels.Count -and $unverified -eq 0)
 $stamp=Get-Date -Format 'yyyyMMdd_HHmmss'
 $stampHtml=Get-Date -Format 'yyyy-MM-dd HH:mm'
 $htmlFile=Join-Path $OutputDirectory ("QTS_Gold_Comparison_"+$stamp+".html")
@@ -133,15 +134,15 @@ thead{background:#edf2f8}.note{border-left:4px solid #2563eb;background:#eef5fc;
 p{line-height:1.8}footer{font-size:12px;color:#6c798b;text-align:center}
 @media(max-width:700px){section{overflow-x:auto}table{min-width:700px}}
 </style></head><body><main>
-<header><h1>QTS Gold | Four-Strategy MT5 Comparison</h1>
+<header><h1>QTS Gold | Seven-Strategy MT5 Comparison</h1>
 <p>Comparison of native Strategy Tester reports. Read-only; no broker orders are sent.</p>
-<small>$(HtmlEscape $stampHtml) | XAUUSD@ | Style-verified reports: $parsed / 4 | LIVE LOCKED</small></header>
+<small>$(HtmlEscape $stampHtml) | XAUUSD@ | Style-verified reports: $parsed / $($labels.Count) | LIVE LOCKED</small></header>
 <section><h2>Available results</h2><table>
 <thead><tr><th>Entry style</th><th>Status</th><th>Trades</th><th>Net profit/loss</th><th>Profit Factor</th><th>Maximum equity drawdown</th></tr></thead>
 <tbody>$tableRows</tbody></table>
-<p class="note">A file without a matching EntryStyle input is UNVERIFIED_STYLE, not reliable evidence. Even four style-verified reports require manual confirmation of matching dates, XAUUSD@, M15, real-tick model, USD 3,000 deposit, and execution costs. Missing data is not a zero result. No profitability or LIVE approval is implied.</p></section>
+<p class="note">A file without a matching EntryStyle input is UNVERIFIED_STYLE, not reliable evidence. Even seven style-verified reports require manual confirmation of matching dates, XAUUSD@, M15, real-tick model, USD 3,000 deposit, and execution costs. Missing data is not a zero result. No profitability or LIVE approval is implied.</p></section>
 <section><h2>Operator instructions</h2>
-<p>Save the four native MT5 reports as QTS_0.htm, QTS_1.htm, QTS_2.htm and QTS_3.htm under gold_robot/reports_local/native, then regenerate the comparison. Preserve each run's Report, Deals, Orders and Journal independently.</p></section>
+<p>Save the seven native MT5 reports as QTS_0.htm through QTS_6.htm under gold_robot/reports_local/native, then regenerate the comparison. Preserve each run's Report, Deals, Orders and Journal independently.</p></section>
 <footer>Read-only native report comparison | No credentials | No broker orders</footer>
 </main></body></html>
 "@
@@ -150,5 +151,5 @@ p{line-height:1.8}footer{font-size:12px;color:#6c798b;text-align:center}
   ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $jsonFile -Encoding UTF8
 Write-Host ('Comparison HTML: '+$htmlFile)
 Write-Host ('Comparison JSON: '+$jsonFile)
-Write-Host ('Style-verified reports: '+$parsed+'/4; style-unverified: '+$unverified+'. No validated trading edge.')
+Write-Host ('Style-verified reports: '+$parsed+'/'+$labels.Count+'; style-unverified: '+$unverified+'. No validated trading edge.')
 if(-not $NoOpen){Invoke-Item -LiteralPath $htmlFile}

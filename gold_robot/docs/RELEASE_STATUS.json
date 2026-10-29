@@ -10,7 +10,7 @@
   "connected_demo_new_orders_permitted_by_strategy_gate": true,
   "default_order_permission": false,
   "market_order_entries_permitted": false,
-  "entry_policy": "Four research LIMIT hypotheses: old-stop limit, retest limit, break-accept-retest limit, sweep-reclaim limit. Tester-only simulated orders or separately authorized WMMarkets virtual DEMO-forward; no verified after-cost edge.",
+  "entry_policy": "Seven research LIMIT hypotheses: former-stop, retest, break-accept-retest, sweep-reclaim, trend-impulse retrace, range rejection, inside-bar breakout. Styles 4-6 are Strategy Tester only; styles 0-3 retain existing separate DEMO-forward authorization. All strategies are UNVALIDATED after costs; LIVE LOCKED.",
   "tester_only_research_mode": {
     "input": "TesterIgnoreDailyAndPeakStops",
     "default": true,

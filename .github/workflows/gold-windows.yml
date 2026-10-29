@@ -58,7 +58,7 @@ jobs:
           & $env:ComSpec /d /c 'call "gold_robot\MAKE_TEST_PRESETS.bat"'
           if ($LASTEXITCODE -ne 0) { throw "Root menu tester preset launcher failed: $LASTEXITCODE" }
           $presets = @(Get-ChildItem gold_robot/reports_local/tester_presets -Filter '*.set')
-          if ($presets.Count -ne 4) { throw 'Launcher did not produce four tester presets in correct directory' }
+          if ($presets.Count -ne 7) { throw 'Launcher did not produce seven tester presets in correct directory' }
           & $env:ComSpec /d /c 'call "gold_robot\MAKE_COMPARISON.bat"'
           if ($LASTEXITCODE -ne 0) { throw "Root menu comparison launcher failed: $LASTEXITCODE" }
           $comparisons = @(Get-ChildItem gold_robot/reports_local -Filter 'QTS_Gold_Comparison_*.json')
@@ -154,7 +154,7 @@ jobs:
           New-Item -ItemType Directory -Path $install,$experts,(Join-Path $data 'MQL5\Profiles') -Force | Out-Null
           $exe = Join-Path $install 'terminal64.exe'
           [IO.File]::WriteAllText($exe,'TEST-ONLY FAKE TERMINAL - NEVER EXECUTE')
-          foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh')){
+          foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh')){
             Copy-Item -LiteralPath (Join-Path gold_robot/mt5_robot $name) -Destination (Join-Path $experts $name)
           }
           $binary = Join-Path $experts 'QTS_Gold_Robot.ex5'
@@ -169,8 +169,8 @@ jobs:
           }
           $configFolder = Join-Path $out 'configs'
           $configs = @(Get-ChildItem -LiteralPath $configFolder -Filter '*.ini')
-          if ($configs.Count -ne 4) { throw 'Expected exactly four auto-generated MT5 ini files' }
-          for($i=0;$i -lt 4;$i++){
+          if ($configs.Count -ne 7) { throw 'Expected exactly seven auto-generated MT5 ini files' }
+          for($i=0;$i -lt 7;$i++){
             $ini = Get-Content (Join-Path $configFolder ("style_$i.ini")) -Encoding Unicode
             foreach($required in @('Expert=QTS_Gold_Robot.ex5','Symbol=XAUUSD@','Period=M15',
                                     'Model=4','Deposit=3000','AllowLiveTrading=0','Enabled=0',
@@ -195,15 +195,15 @@ jobs:
           if(-not (Test-Path (Join-Path $out 'OPEN_RESULTS.html'))) {
             throw 'One-click report shell was not produced'
           }
-          Write-Host 'Four native tester configurations prepared; zero MT5 launches/orders: PASS'
-      - name: Generate and verify four isolated MT5 tester presets
+          Write-Host 'Seven native tester configurations prepared; zero MT5 launches/orders: PASS'
+      - name: Generate and verify seven isolated MT5 tester presets
         shell: pwsh
         run: |
           $dir = Join-Path $env:RUNNER_TEMP 'qts-tester-presets'
           ./gold_robot/research/MakeTesterPresets.ps1 -OutputDirectory $dir
           $sets = @(Get-ChildItem -LiteralPath $dir -Filter '*.set')
-          if ($sets.Count -ne 4) { throw 'Four strategy tester profiles required' }
-          $expected = @('0','1','2','3')
+          if ($sets.Count -ne 7) { throw 'Seven strategy tester profiles required' }
+          $expected = @('0','1','2','3','4','5','6')
           foreach ($set in $sets) {
             $contents = Get-Content -LiteralPath $set.FullName -Encoding Unicode
             $style = @($contents | Where-Object { $_ -match '^EntryStyle=' })
@@ -223,8 +223,8 @@ jobs:
           }
           if ($expected.Count -ne 0) { throw "Missing entry styles" }
           $safeSets = @(Get-ChildItem -LiteralPath (Join-Path $dir 'safety_on') -Filter '*.set')
-          if ($safeSets.Count -ne 4) { throw 'Four safety-on research profiles required' }
-          $safeExpected = @('0','1','2','3')
+          if ($safeSets.Count -ne 7) { throw 'Seven safety-on research profiles required' }
+          $safeExpected = @('0','1','2','3','4','5','6')
           foreach ($set in $safeSets) {
             $lines = Get-Content -LiteralPath $set.FullName -Encoding Unicode
             $style = @($lines | Where-Object { $_ -match '^EntryStyle=' })
@@ -240,14 +240,14 @@ jobs:
             }
           }
           if ($safeExpected.Count -ne 0) { throw 'Safety-on entry style coverage incomplete' }
-          Write-Host 'Four opportunity-census and four safety-on MT5 tester presets verified.'
-      - name: Compare four synthetic MT5 native tester reports without broker access
+          Write-Host 'Seven opportunity-census and seven safety-on MT5 tester presets verified.'
+      - name: Compare seven synthetic MT5 native tester reports without broker access
         shell: pwsh
         run: |
           $native = Join-Path $env:RUNNER_TEMP 'qts-native-reports'
           $out = Join-Path $env:RUNNER_TEMP 'qts-native-comparison'
           New-Item -ItemType Directory -Path $native,$out -Force | Out-Null
-          for ($i = 0; $i -lt 4; $i++) {
+          for ($i = 0; $i -lt 7; $i++) {
             $net = (-10 + $i * 8)
             $html = '<html><table><tr><td>Inputs:</td><td>EntryStyle=' + $i + '</td></tr>' +
                     '<tr><td>Total Net Profit:</td><td>' + $net +
@@ -261,11 +261,11 @@ jobs:
           $json = @(Get-ChildItem -LiteralPath $out -Filter '*.json')
           if ($json.Count -ne 1) { throw 'Missing native comparison JSON' }
           $r = Get-Content -LiteralPath $json[0].FullName -Raw | ConvertFrom-Json
-          if ($r.reports_parsed -ne 4 -or $r.validated_edge -ne $false -or $r.live -ne 'LOCKED' -or $r.comparison_approved -ne $false -or $r.periods_and_costs_verified -ne $false) {
+          if ($r.reports_parsed -ne 7 -or $r.validated_edge -ne $false -or $r.live -ne 'LOCKED' -or $r.comparison_approved -ne $false -or $r.periods_and_costs_verified -ne $false) {
             throw 'Native comparison has incorrect status or permissions'
           }
-          if (@($r.results).Count -ne 4) { throw 'Native comparison missing strategies' }
-          Write-Host 'Read-only 4-arm MT5 native comparison: PASS'
+          if (@($r.results).Count -ne 7) { throw 'Native comparison missing strategies' }
+          Write-Host 'Read-only 7-arm MT5 native comparison: PASS'
           $path2 = Join-Path $native 'QTS_2.htm'
           $report2 = [IO.File]::ReadAllText($path2)
           [IO.File]::WriteAllText($path2,
@@ -274,7 +274,7 @@ jobs:
           $badStyle = Get-ChildItem -LiteralPath $out -Filter '*.json' |
             Sort-Object LastWriteTime -Descending | Select-Object -First 1
           $wrong = Get-Content -LiteralPath $badStyle.FullName -Raw | ConvertFrom-Json
-          if ($wrong.reports_parsed -ne 3 -or $wrong.results[2].state -ne 'INVALID' -or
+          if ($wrong.reports_parsed -ne 6 -or $wrong.results[2].state -ne 'INVALID' -or
               $wrong.results[2].message -notlike '*EntryStyle mismatch*') {
             throw 'Mislabeled native HTML report was counted as the expected strategy'
           }
@@ -284,7 +284,7 @@ jobs:
           $missingStyle = Get-ChildItem -LiteralPath $out -Filter '*.json' |
             Sort-Object LastWriteTime -Descending | Select-Object -First 1
           $unverified = Get-Content -LiteralPath $missingStyle.FullName -Raw | ConvertFrom-Json
-          if ($unverified.reports_parsed -ne 3 -or $unverified.unverified_style -ne 1 -or
+          if ($unverified.reports_parsed -ne 6 -or $unverified.unverified_style -ne 1 -or
               $unverified.results[2].state -ne 'UNVERIFIED_STYLE') {
             throw 'HTML lacking EntryStyle was counted as verified research evidence'
           }
@@ -302,12 +302,43 @@ jobs:
           $latest = Get-ChildItem -LiteralPath $out -Filter '*.json' |
             Sort-Object LastWriteTime -Descending | Select-Object -First 1
           $badResult = Get-Content -LiteralPath $latest.FullName -Raw | ConvertFrom-Json
-          if ($badResult.reports_parsed -ne 2 -or
+          if ($badResult.reports_parsed -ne 5 -or
               $badResult.results[0].state -ne 'LOG_ONLY' -or
               $badResult.results[1].state -ne 'LOG_ONLY') {
             throw 'Mislabeled MT5 logs were accepted as finished HTML reports'
           }
           Write-Host 'Agent logs correctly refused as backtest HTML: PASS'
+      - name: Verify independent per-position SL/TP forensics
+        shell: pwsh
+        run: |
+          $folder = Join-Path $env:RUNNER_TEMP 'qts sample broker deals'
+          New-Item -Path $folder -ItemType Directory -Force | Out-Null
+          $header = 'position_id;deal_id;order_id;entry;reason;type;time_msc;volume;price;sl;tp;gross;commission;swap;fee'
+          $deals = @(
+            $header,
+            '100;1;91;DEAL_ENTRY_IN;DEAL_REASON_EXPERT;DEAL_TYPE_BUY;100000;0.01;4000;3998;4002;0;-0.03;0;0',
+            '100;2;92;DEAL_ENTRY_OUT;DEAL_REASON_SL;DEAL_TYPE_SELL;280000;0.01;3997.9;3998;4002;-2.10;-0.03;0;0',
+            '200;3;93;DEAL_ENTRY_IN;DEAL_REASON_EXPERT;DEAL_TYPE_SELL;390000;0.01;4010;4012;4008;0;-0.03;0;0',
+            '200;4;94;DEAL_ENTRY_OUT;DEAL_REASON_TP;DEAL_TYPE_BUY;510000;0.01;4008;4012;4008;2.0;-0.03;0;0'
+          )
+          $path = Join-Path $folder 'QTS_4_trades.csv'
+          [IO.File]::WriteAllLines($path,$deals,[Text.Encoding]::ASCII)
+          $output = Join-Path $env:RUNNER_TEMP 'qts position forensics results'
+          ./gold_robot/research/BuildTradeForensics.ps1 -InputDirectory $folder -OutputDirectory $output -NoOpen
+          if ($LASTEXITCODE -ne 0) { throw 'Position-level forensic parser execution failed' }
+          $j = Get-Content (Join-Path $output 'QTS_TRADE_BY_TRADE.json') -Raw | ConvertFrom-Json
+          $trades = @($j.trades)
+          if ($trades.Count -ne 2) { throw 'Trade count must group fill and exit by position' }
+          $sl = @($trades | Where-Object { $_.exit_reason -eq 'DEAL_REASON_SL' })
+          $tp = @($trades | Where-Object { $_.exit_reason -eq 'DEAL_REASON_TP' })
+          if ($sl.Count -ne 1 -or $tp.Count -ne 1 -or
+              $sl[0].position_id -ne '100' -or $tp[0].position_id -ne '200' -or
+              $sl[0].exit_adverse_slippage_price -lt 0.0999 -or
+              $sl[0].net_usd -ge 0 -or $tp[0].net_usd -le 0 -or
+              $j.edge_validated -ne $false -or $j.status -ne 'EVIDENCE_GAPS_NO_GO') {
+            throw 'SL / TP deal identity or slip calculation incorrect'
+          }
+          Write-Host 'Individual MT5 deal SL/TP forensics: PASS (no broker order)'
       - name: Simulate clean and blocked MT5 broker reports (no trading)
         shell: pwsh
         run: ./gold_robot/tests/windows_report_smoke.ps1

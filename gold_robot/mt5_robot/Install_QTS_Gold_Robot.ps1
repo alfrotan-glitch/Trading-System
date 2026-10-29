@@ -48,6 +48,15 @@ $structureHash = (Get-FileHash -LiteralPath $structure -Algorithm SHA256).Hash
 if ($structureHash.ToUpperInvariant() -ne ([string]$structureRows[0].sha256).ToUpperInvariant()) {
     throw 'Structural research include checksum mismatch.'
 }
+$opportunity = Join-Path $PSScriptRoot 'OpportunityResearch.mqh'
+$opportunityRows = @($manifest.sha256_files | Where-Object { $_.path -eq 'mt5_robot/OpportunityResearch.mqh' })
+if ($opportunityRows.Count -ne 1 -or -not (Test-Path -LiteralPath $opportunity -PathType Leaf)) {
+    throw 'Missing opportunity research include or manifest entry.'
+}
+$opportunityHash = (Get-FileHash -LiteralPath $opportunity -Algorithm SHA256).Hash
+if ($opportunityHash.ToUpperInvariant() -ne ([string]$opportunityRows[0].sha256).ToUpperInvariant()) {
+    throw 'Opportunity research include checksum mismatch.'
+}
 Write-Host ('Package source validated: {0}' -f $source)
 Write-Host ('Source SHA-256: {0}' -f $actualHash)
 Write-Host 'Stale version 0.00 check: PASS; metadata warning 68 cannot originate from this source.' -ForegroundColor Green
@@ -146,6 +155,7 @@ $dest = Join-Path $experts 'QTS_Gold_Robot.mq5'
 $compiled = Join-Path $experts 'QTS_Gold_Robot.ex5'
 $destPolicy = Join-Path $experts 'ExecutionPolicy.mqh'
 $destStructure = Join-Path $experts 'StructureResearch.mqh'
+$destOpportunity = Join-Path $experts 'OpportunityResearch.mqh'
 $log = Join-Path $experts 'QTS_Gold_Robot.log'
 $backupDir = Join-Path $experts 'QTS_Gold_Robot_Backups'
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss_ffff'
@@ -153,18 +163,21 @@ $backupSource = Join-Path $backupDir ($stamp + '_QTS_Gold_Robot.mq5')
 $backupEX5 = Join-Path $backupDir ($stamp + '_QTS_Gold_Robot.ex5')
 $backupPolicy = Join-Path $backupDir ($stamp + '_ExecutionPolicy.mqh')
 $backupStructure = Join-Path $backupDir ($stamp + '_StructureResearch.mqh')
+$backupOpportunity = Join-Path $backupDir ($stamp + '_OpportunityResearch.mqh')
+$hadOpportunity = Test-Path -LiteralPath $destOpportunity -PathType Leaf
 $hadStructure = Test-Path -LiteralPath $destStructure -PathType Leaf
 $hadPolicy = Test-Path -LiteralPath $destPolicy -PathType Leaf
 $hadSource = Test-Path -LiteralPath $dest -PathType Leaf
 $hadEX5 = Test-Path -LiteralPath $compiled -PathType Leaf
 $completed = $false
 
-if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure) {
+if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity) {
     New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
     if ($hadSource) { Copy-Item -LiteralPath $dest -Destination $backupSource }
     if ($hadEX5) { Copy-Item -LiteralPath $compiled -Destination $backupEX5 }
     if ($hadPolicy) { Copy-Item -LiteralPath $destPolicy -Destination $backupPolicy }
     if ($hadStructure) { Copy-Item -LiteralPath $destStructure -Destination $backupStructure }
+    if ($hadOpportunity) { Copy-Item -LiteralPath $destOpportunity -Destination $backupOpportunity }
 }
 Write-Host ('MT5 MQL5 location: {0}' -f $mql5)
 Write-Host ('Compiler:          {0}' -f $editor)
@@ -173,6 +186,7 @@ Write-Host 'The existing robot is backed up. A failed compile triggers an automa
 try {
     Copy-Item -LiteralPath $policy -Destination $destPolicy -Force
     Copy-Item -LiteralPath $structure -Destination $destStructure -Force
+    Copy-Item -LiteralPath $opportunity -Destination $destOpportunity -Force
     Copy-Item -LiteralPath $source -Destination $dest -Force
     if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne
         (Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash) {
@@ -227,6 +241,9 @@ try {
     if ((Get-FileHash -LiteralPath $destStructure -Algorithm SHA256).Hash -ne $structureHash) {
         throw 'Structural research include changed during compilation.'
     }
+    if ((Get-FileHash -LiteralPath $destOpportunity -Algorithm SHA256).Hash -ne $opportunityHash) {
+        throw 'Opportunity research include changed during compilation.'
+    }
     # Verified anomalous exit code 1 is allowed ONLY after every compile
     # invariant above passed. Unexpected exit codes still fail closed.
     if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 1) {
@@ -245,6 +262,11 @@ try {
     Write-Host 'No validated trading advantage; real-money trading is refused.'
 } finally {
     if (-not $completed) {
+        if ($hadOpportunity -and (Test-Path -LiteralPath $backupOpportunity -PathType Leaf)) {
+            Copy-Item -LiteralPath $backupOpportunity -Destination $destOpportunity -Force
+        } elseif (Test-Path -LiteralPath $destOpportunity -PathType Leaf) {
+            Remove-Item -LiteralPath $destOpportunity -Force
+        }
         if ($hadStructure -and (Test-Path -LiteralPath $backupStructure -PathType Leaf)) {
             Copy-Item -LiteralPath $backupStructure -Destination $destStructure -Force
         } elseif (Test-Path -LiteralPath $destStructure -PathType Leaf) {

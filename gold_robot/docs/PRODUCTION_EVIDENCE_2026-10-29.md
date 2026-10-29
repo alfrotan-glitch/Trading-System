@@ -40,6 +40,14 @@ Predeclare experiment hypotheses: baseline former-stop, shallow retest, structur
 
 Stop considering a candidate if its fee-stressed expectancy is negative, its equity drawdown exceeds policy, or its positive return depends on a small number of extraordinary wins. Do not select the best among many variants on one historical window without correcting for multiple testing. Academic discussion: Bailey et al., *The Probability of Backtest Overfitting* (2017), https://escholarship.org/uc/item/4w1110bb.
 
+## Additional research hypotheses and individual trade evidence
+
+Three fixed, causal closed-bar LIMIT hypotheses have been added for **Strategy Tester only**: 4 trend impulse retrace, 5 prior-range rejection, and 6 inside-bar breakout retest. The seven styles must be run independently with the same dates and realistic cost assumptions. More candidates increase the multiple-testing burden; none is promoted by raw frequency or historical profit.
+
+The EA tester callback attempts to export one broker-deal row per execution, including `DEAL_POSITION_ID`, `DEAL_ENTRY`, `DEAL_REASON`, initial/current `DEAL_SL/DEAL_TP`, actual fill price, volume and fee components. The Windows report groups rows into one account-independent forensic record per position, distinguishes SL from TP from stop-out and detects partial/unclosed positions and adverse stop fills. This is a **broker-recorded exit explanation**, not proof of the causal market conditions that led to the stop. Complete MFE/MAE, tick-path diagnosis and comparison with rejected opportunities require raw tick data beyond these broker history columns.
+
+**Acceptance rule:** if any strategy's position-ledger export is absent, mark `EVIDENCE_GAPS_NO_GO` and do not claim that every trade was inspected. Do not conclude that a profitable edge exists unless sufficient independent after-cost out-of-sample results satisfy the existing release gates.
+
 ## Mandatory release gates
 
 - [x] Repository CI, Windows launcher smoke and read-only broker preflight workflows have been exercised on the current tester tooling; latest commit checks are authoritative.

@@ -19,7 +19,7 @@ input double          DemoForwardRiskCapPct      = 0.25; // DEMO hard cap; never
 input bool            EnableEntryDiagnostics    = true; // Closed-bar diagnostic reasons in Tester and connected DEMO Experts logs.
 input bool            PauseNewEntries           = false;
 input bool            EmergencyFlattenOwned     = false; // Emergency CLOSE of THIS magic only.
-enum QTS_ENTRY_STYLE { QTS_FORMER_STOP_LIMIT=0, QTS_RETEST_LIMIT=1, QTS_BREAK_ACCEPT_RETEST=2, QTS_SWEEP_RECLAIM=3 };
+enum QTS_ENTRY_STYLE { QTS_FORMER_STOP_LIMIT=0, QTS_RETEST_LIMIT=1, QTS_BREAK_ACCEPT_RETEST=2, QTS_SWEEP_RECLAIM=3, QTS_TREND_IMPULSE=4, QTS_RANGE_REJECTION=5, QTS_INSIDE_BREAKOUT=6 };
 input QTS_ENTRY_STYLE EntryStyle               = QTS_FORMER_STOP_LIMIT;
 input ENUM_TIMEFRAMES SignalTimeframe           = PERIOD_M15;
 input int             FastEmaPeriod             = 20;
@@ -577,6 +577,7 @@ int CompletedBarSignal(double &atr_value)
 
 // After all signal globals and input declarations are available.
 #include "StructureResearch.mqh"
+#include "OpportunityResearch.mqh"
 
 // ------------------------------------------------------------------
 // Broker-authoritative order sizing and SL/TP attached to pending request.
@@ -910,9 +911,11 @@ void EvaluateNewEntry()
    double atr=0.0,structure_level=0.0,structure_anchor=0.0;
    bool structural=EntryStyle==QTS_BREAK_ACCEPT_RETEST ||
                    EntryStyle==QTS_SWEEP_RECLAIM;
-   int side=structural ?
-      CompletedStructureSignal(atr,structure_level,structure_anchor) :
-      CompletedBarSignal(atr);
+   bool opportunity=(int)EntryStyle>=4;
+   int side=opportunity ?
+      CompletedOpportunitySignal(atr,structure_level,structure_anchor) :
+      (structural ? CompletedStructureSignal(atr,structure_level,structure_anchor) :
+                    CompletedBarSignal(atr));
    if(side==0)
       return; // Preserve the stage-specific reason from causal signal logic.
    if((quote.ask-quote.bid)>atr*MaxSpreadVsAtrPct/100.0)
@@ -930,11 +933,13 @@ void EvaluateNewEntry()
       return;
      }
    double price=0.0,stop=0.0,target=0.0;
-   bool prepared=structural ?
-      PrepareStructureLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
-      (EntryStyle==QTS_RETEST_LIMIT ?
-       PrepareRetestLimit(side,quote,atr,price,stop,target) :
-       PreparePullbackLimit(side,quote,atr,price,stop,target));
+   bool prepared=opportunity ?
+      PrepareOpportunityLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
+      (structural ?
+       PrepareStructureLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
+       (EntryStyle==QTS_RETEST_LIMIT ?
+        PrepareRetestLimit(side,quote,atr,price,stop,target) :
+        PreparePullbackLimit(side,quote,atr,price,stop,target)));
    if(!prepared)
      {
       status_text="LIMIT veto: price, structure, stop or reward not valid";
@@ -995,7 +1000,10 @@ void EvaluateNewEntry()
    request.comment=EntryStyle==QTS_RETEST_LIMIT ? "QTS RETEST LIMIT DEMO" :
                    EntryStyle==QTS_FORMER_STOP_LIMIT ? "QTS OLD-SL LIMIT DEMO" :
                    EntryStyle==QTS_BREAK_ACCEPT_RETEST ? "QTS BREAK HOLD LIMIT" :
-                                                         "QTS SWEEP RECLAIM";
+                   EntryStyle==QTS_SWEEP_RECLAIM ? "QTS SWEEP RECLAIM" :
+                   EntryStyle==QTS_TREND_IMPULSE ? "QTS TREND IMPULSE" :
+                   EntryStyle==QTS_RANGE_REJECTION ? "QTS RANGE REJECT" :
+                                                     "QTS INSIDE BREAK";
    ResetLastError();
    if(!OrderCheck(request,check) || (check.retcode!=0 && check.retcode!=TRADE_RETCODE_DONE))
      {
@@ -1348,7 +1356,9 @@ int OnInit()
       SignalTimeframe!=PERIOD_M30 &&
       SignalTimeframe!=PERIOD_H1)
       return INIT_PARAMETERS_INCORRECT;
-   if((int)EntryStyle<0 || (int)EntryStyle>3 ||
+   // Extra hypotheses remain Tester-only until independently accepted.
+   if((int)EntryStyle<0 || (int)EntryStyle>6 ||
+      ((int)EntryStyle>=4 && MQLInfoInteger(MQL_TESTER)==0) ||
       StructureBreakConfirmAtr<0.01 || StructureBreakConfirmAtr>0.70 ||
       StructureRetestWindowAtr<0.05 || StructureRetestWindowAtr>1.50 ||
       StructureEntryOffsetAtr<0.0 || StructureEntryOffsetAtr>0.50 ||
@@ -1584,6 +1594,18 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
    PrintFormat("QTS broker deal: deal=%I64u entry=%d volume=%.2f price=%.5f gross=%.2f commission=%.2f swap=%.2f fee=%.2f net=%.2f",
                trans.deal,(int)HistoryDealGetInteger(trans.deal,DEAL_ENTRY),
                volume,fill_price,gross,commission,swap,fee,realized);
+   // Broker says whether exit was SL, TP, stop-out or another reason.
+   // It cannot prove that the original signal was economically sound.
+   PrintFormat("QTS FORENSIC DEAL: deal=%I64u position=%I64d order=%I64d entry=%s reason=%s type=%s time_msc=%I64d volume=%.8f price=%.5f sl=%.5f tp=%.5f gross=%.8f commission=%.8f swap=%.8f fee=%.8f",
+               trans.deal,HistoryDealGetInteger(trans.deal,DEAL_POSITION_ID),
+               HistoryDealGetInteger(trans.deal,DEAL_ORDER),
+               EnumToString((ENUM_DEAL_ENTRY)HistoryDealGetInteger(trans.deal,DEAL_ENTRY)),
+               EnumToString((ENUM_DEAL_REASON)HistoryDealGetInteger(trans.deal,DEAL_REASON)),
+               EnumToString((ENUM_DEAL_TYPE)HistoryDealGetInteger(trans.deal,DEAL_TYPE)),
+               broker_event_time_msc,volume,fill_price,
+               HistoryDealGetDouble(trans.deal,DEAL_SL),
+               HistoryDealGetDouble(trans.deal,DEAL_TP),
+               gross,commission,swap,fee);
    if(!AppendBrokerDealAudit(trans.deal, broker_event_time_msc, direction,
                              volume, fill_price, gross, commission,
                              swap, fee, realized))
@@ -1592,6 +1614,61 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
       // unsafe automatic market-side replay of the broker transaction.
       LatchExecutionHalt("broker transaction ledger could not be appended");
      }
+  }
+
+// Tester-only complete, broker-authoritative position/deal evidence.
+// File is in Terminal Common/Files, copied by the automatic Windows runner.
+// Deliberately excludes account numbers and user credentials.
+double OnTester()
+  {
+   if(MQLInfoInteger(MQL_TESTER)==0) return 0.0;
+   if(!HistorySelect(0,TimeCurrent()))
+     {
+      Print("QTS FORENSIC ERROR: tester history could not be selected");
+      return 0.0;
+     }
+   string filename=StringFormat("QTS_FORENSIC_STYLE_%d_%I64u.csv",
+                   (int)EntryStyle,GetTickCount64());
+   int f=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,';');
+   if(f==INVALID_HANDLE)
+     {
+      PrintFormat("QTS FORENSIC ERROR: common file unavailable err=%d",GetLastError());
+      return 0.0;
+     }
+   FileWrite(f,"position_id","deal_id","order_id","entry","reason",
+             "type","time_msc","volume","price","sl","tp",
+             "gross","commission","swap","fee");
+   int count=0;
+   for(int i=0;i<HistoryDealsTotal();i++)
+     {
+      ulong deal=HistoryDealGetTicket(i);
+      if(deal==0) continue;
+      if((ulong)HistoryDealGetInteger(deal,DEAL_MAGIC)!=RobotMagic ||
+         HistoryDealGetString(deal,DEAL_SYMBOL)!=_Symbol) continue;
+      ENUM_DEAL_ENTRY entry=(ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal,DEAL_ENTRY);
+      if(entry!=DEAL_ENTRY_IN && entry!=DEAL_ENTRY_OUT &&
+         entry!=DEAL_ENTRY_INOUT && entry!=DEAL_ENTRY_OUT_BY) continue;
+      FileWrite(f,HistoryDealGetInteger(deal,DEAL_POSITION_ID),deal,
+                HistoryDealGetInteger(deal,DEAL_ORDER),
+                EnumToString(entry),
+                EnumToString((ENUM_DEAL_REASON)HistoryDealGetInteger(deal,DEAL_REASON)),
+                EnumToString((ENUM_DEAL_TYPE)HistoryDealGetInteger(deal,DEAL_TYPE)),
+                HistoryDealGetInteger(deal,DEAL_TIME_MSC),
+                DoubleToString(HistoryDealGetDouble(deal,DEAL_VOLUME),8),
+                DoubleToString(HistoryDealGetDouble(deal,DEAL_PRICE),_Digits),
+                DoubleToString(HistoryDealGetDouble(deal,DEAL_SL),_Digits),
+                DoubleToString(HistoryDealGetDouble(deal,DEAL_TP),_Digits),
+                DoubleToString(HistoryDealGetDouble(deal,DEAL_PROFIT),8),
+                DoubleToString(HistoryDealGetDouble(deal,DEAL_COMMISSION),8),
+                DoubleToString(HistoryDealGetDouble(deal,DEAL_SWAP),8),
+                DoubleToString(HistoryDealGetDouble(deal,DEAL_FEE),8));
+      count++;
+     }
+   FileFlush(f);
+   FileClose(f);
+   PrintFormat("QTS FORENSIC EXPORT: style=%d rows=%d file=%s",
+               (int)EntryStyle,count,filename);
+   return 0.0; // No optimization or edge selection at this callback.
   }
 
 void OnDeinit(const int reason)
@@ -1633,8 +1710,9 @@ void ObserveUnarmedDemoSignal()
    double atr=0.0,level=0.0,anchor=0.0;
    bool structural=EntryStyle==QTS_BREAK_ACCEPT_RETEST ||
                    EntryStyle==QTS_SWEEP_RECLAIM;
-   int side=structural ?
-      CompletedStructureSignal(atr,level,anchor) : CompletedBarSignal(atr);
+   bool opportunity=(int)EntryStyle>=4;
+   int side=opportunity ? CompletedOpportunitySignal(atr,level,anchor) :
+      (structural ? CompletedStructureSignal(atr,level,anchor) : CompletedBarSignal(atr));
    if(side>0)
       status_text="OBSERVE: unvalidated BUY candidate; orders not authorized";
    else if(side<0)

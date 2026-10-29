@@ -14,7 +14,8 @@ $native=Join-Path $OutputDirectory 'native'
 $configs=Join-Path $OutputDirectory 'configs'
 New-Item -ItemType Directory -Path $native,$configs -Force|Out-Null
 $results=New-Object System.Collections.ArrayList
-$names=@('Former stop','Retest','Break and retest','Sweep and reclaim')
+$names=@('Former stop','Retest','Break and retest','Sweep and reclaim',
+         'Trend impulse','Range rejection','Inside-bar breakout')
 $today=(Get-Date).Date
 $endMonth=[datetime]::new($today.Year,$today.Month,1)
 if(-not $FromDate){$FromDate=$endMonth.AddMonths(-6).ToString('yyyy.MM.dd')}
@@ -47,7 +48,7 @@ function SaveOutcome([string]$state,[string]$message,[string]$comparison){
     }
     if($rows.Count -eq 0){$rows=@('<tr><td colspan="4">No completed tests.</td></tr>')}
     $cmp='Not available'
-    if($comparison){$cmp='<a href="'+(EscapeHtml $comparison)+'">Compare all four reports</a>'}
+    if($comparison){$cmp='<a href="'+(EscapeHtml $comparison)+'">Compare all seven reports</a>'}
     $tableRows=$rows -join [Environment]::NewLine
     $safeMessage=EscapeHtml $message
     $safeState=EscapeHtml $state
@@ -66,7 +67,7 @@ th{background:#edf2f9}.warning{border-left:4px solid #c28a25;padding-left:12px}<
 <p>LIVE LOCKED · PROFITABLE EDGE NOT VALIDATED</p></header>
 <section><h2>$safeState</h2><p>$safeMessage</p>
 <p>Test period: $FromDate to $ToDate</p></section>
-<section><h2>Four research strategies</h2><table>
+<section><h2>Seven research strategies</h2><p><a href="QTS_TRADE_BY_TRADE.html">Individual trade forensics (each position, reason for exit)</a></p><table>
 <tr><th>Strategy</th><th>State</th><th>Details</th><th>Native report</th></tr>
 $tableRows
 </table><p>$cmp</p></section>
@@ -131,14 +132,14 @@ function SameHash([string]$a,[string]$b){
 }
 function CompiledCurrent([string]$data){
     $mql=Join-Path $data 'MQL5\Experts'
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh')){
         if(-not (SameHash (Join-Path $gold ('mt5_robot\'+$name)) (Join-Path $mql $name))){return $false}
     }
     $binary=Join-Path $mql 'QTS_Gold_Robot.ex5'
     if(-not (Test-Path -LiteralPath $binary -PathType Leaf)){return $false}
     if((Get-Item -LiteralPath $binary).Length -lt 1000){return $false}
     $binaryTime=(Get-Item -LiteralPath $binary).LastWriteTimeUtc
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh')){
         if($binaryTime -lt (Get-Item -LiteralPath (Join-Path $mql $name)).LastWriteTimeUtc.AddSeconds(-2)){return $false}
     }
     return $true
@@ -148,7 +149,7 @@ $message=''
 $comparison=''
 try{
     $manifest=Get-Content -LiteralPath (Join-Path $gold 'docs\SOURCE_CHECKSUMS.json') -Raw | ConvertFrom-Json
-    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh')){
+    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh','mt5_robot/OpportunityResearch.mqh')){
         $entry=@($manifest.sha256_files|Where-Object {$_.path -eq $rel})
         if($entry.Count -ne 1){throw ('Manifest does not identify '+$rel)}
         $path=Join-Path $gold ($rel.Replace('/','\'))
@@ -180,8 +181,9 @@ try{
     & (Join-Path $gold 'research\MakeTesterPresets.ps1') -OutputDirectory $presetDir -NoPrompt
     $testerProfiles=Join-Path $data 'MQL5\Profiles\Tester'
     New-Item -ItemType Directory -Path $testerProfiles -Force|Out-Null
-    $codes=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM')
-    for($i=0;$i -lt 4;$i++){
+    $codes=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM',
+            'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT')
+    for($i=0;$i -lt $names.Count;$i++){
         $preset=Join-Path $presetDir ('safety_on\QTS_M15_'+$codes[$i]+'_SAFETY_ON.set')
         if(-not (Test-Path -LiteralPath $preset -PathType Leaf)){throw ('Missing safety-on preset '+$i)}
         $setName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i+'.set'
@@ -207,9 +209,9 @@ try{
     }
     if($PrepareOnly){
         $state='PREPARED_ONLY'
-        $message='Four configurations with risk stops active. MT5 was not launched.'
+        $message='Seven configurations with risk stops active. MT5 was not launched.'
     }else{
-        for($i=0;$i -lt 4;$i++){
+        for($i=0;$i -lt $names.Count;$i++){
             $item=[ordered]@{style=$names[$i];status='PENDING';detail='';report=''}
             $null=$results.Add($item)
             $reportName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i
@@ -217,7 +219,7 @@ try{
             $began=[datetime]::UtcNow
             $process=$null
             try{
-                Write-Host ("Running native MT5 test {0}/4: {1}" -f ($i+1),$names[$i])
+                Write-Host ("Running native MT5 test {0}/7: {1}" -f ($i+1),$names[$i])
                 $process=Start-Process -FilePath $exe -ArgumentList ('/config:"{0}"' -f $ini) -PassThru
                 $deadline=(Get-Date).AddMinutes($TimeoutMinutesPerRun)
                 while(-not $process.HasExited){
@@ -239,6 +241,22 @@ try{
                 $destination=Join-Path $native ('QTS_'+$i+'.htm')
                 Copy-Item -LiteralPath $fresh[0] -Destination $destination
                 $item.report='QTS_'+$i+'.htm'
+                # OnTester exports each broker deal with position ID, entry/exit,
+                # exit reason and original/current SL/TP into MT5 Common/Files.
+                # Do not certify individual trades without this native evidence.
+                $common=Join-Path $env:APPDATA 'MetaQuotes\Terminal\Common\Files'
+                $pattern='QTS_FORENSIC_STYLE_'+$i+'_*.csv'
+                $forensic=@(Get-ChildItem -LiteralPath $common -Filter $pattern -File -ErrorAction SilentlyContinue |
+                    Where-Object {$_.LastWriteTimeUtc -ge $began.AddSeconds(-2)} |
+                    Sort-Object LastWriteTimeUtc -Descending)
+                if($forensic.Count -eq 1){
+                    Copy-Item -LiteralPath $forensic[0].FullName -Destination (
+                        Join-Path $native ('QTS_'+$i+'_trades.csv'))
+                    $item.detail='Broker position/deal forensic CSV captured.'
+                }else{
+                    $item.status='FORENSIC_MISSING'
+                    $item.detail='MT5 produced native HTML but did not export one fresh broker deal forensic CSV.'
+                }
                 if($reportText -match '(?i)real ticks'){
                     $item.status='REPORT_SAVED'
                     $item.detail='Native real-tick report saved. Costs and profitability NOT verified.'
@@ -260,11 +278,15 @@ try{
             }
         }
         & (Join-Path $gold 'research\CompareMT5Reports.ps1') -ReportDirectory $native -OutputDirectory $OutputDirectory -NoOpen
+        & (Join-Path $gold 'research\BuildTradeForensics.ps1') -InputDirectory $native -OutputDirectory $OutputDirectory -NoOpen
         $latest=Get-ChildItem -LiteralPath $OutputDirectory -Filter 'QTS_Gold_Comparison_*.html' |
             Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
         if($latest){$comparison=$latest.Name}
-        $state='TESTS_FINISHED_REVIEW_REQUIRED'
-        $message='Four native reports collected. Positive after-cost expectancy remains unvalidated.'
+        $forensicSummary=Get-Content -LiteralPath (Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json') -Raw | ConvertFrom-Json
+        $state=if($forensicSummary.status -eq 'IMPORTED_FOR_REVIEW'){
+            'TESTS_FINISHED_REVIEW_REQUIRED'
+        }else{'TESTS_FINISHED_WITH_EVIDENCE_GAPS'}
+        $message='Seven native reports collected. Position-by-position evidence checked; positive after-cost expectancy unvalidated.'
     }
 }catch{
     $message=$_.Exception.Message

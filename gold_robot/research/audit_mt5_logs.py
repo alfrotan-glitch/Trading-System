@@ -21,7 +21,7 @@ DEAL = re.compile(
 BALANCE = re.compile(r"final balance\s+([-\d.]+) USD")
 REASON = re.compile(r"QTS ENTRY AUDIT.*reason=(.*)")
 INPUT = re.compile(r"\bTester\s+([A-Za-z_]\w*)=([^\s]+)\s*$")
-FILENAME_STYLE = re.compile(r"^QTS_([0-3])\.htm(?:\.log)?$", re.IGNORECASE)
+FILENAME_STYLE = re.compile(r"^QTS_([0-6])\.htm(?:\.log)?$", re.IGNORECASE)
 
 def read_text(path: Path) -> str:
     if path.stat().st_size > 100_000_000:
@@ -141,7 +141,9 @@ def render_html(report: dict) -> str:
         return "<td>" + html.escape(str(value), quote=True) + "</td>"
 
     labels = {0: "Former-stop LIMIT", 1: "Retest LIMIT",
-              2: "Break and retest", 3: "Sweep and reclaim"}
+              2: "Break and retest", 3: "Sweep and reclaim",
+              4: "Trend impulse", 5: "Range rejection",
+              6: "Inside-bar breakout"}
     rows = []
     for item in report["sessions"]:
         state = item["state"]
