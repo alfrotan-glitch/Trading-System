@@ -54,10 +54,10 @@ for($style=0;$style -lt $names.Count;$style++){
         foreach($d in $entries){$v=N $d.volume;$inVolume+=$v;$inValue+=(N $d.price)*$v}
         foreach($d in $exits){$v=N $d.volume;$outVolume+=$v;$outValue+=(N $d.price)*$v}
         if($inVolume -le 0.0 -or $outVolume -le 0.0){$quality='INCOMPLETE_POSITION'}
-        if($inVolume>0.0 -and $outVolume>0.0 -and
+        if($inVolume -gt 0.0 -and $outVolume -gt 0.0 -and
            [Math]::Abs($inVolume-$outVolume)>0.0000001){$quality='PARTIAL_OR_OPEN'}
-        $entryPrice=if($inVolume>0.0){$inValue/$inVolume}else{0.0}
-        $exitPrice=if($outVolume>0.0){$outValue/$outVolume}else{0.0}
+        $entryPrice=if($inVolume -gt 0.0){$inValue/$inVolume}else{0.0}
+        $exitPrice=if($outVolume -gt 0.0){$outValue/$outVolume}else{0.0}
         $first=if($entries.Count){$entries[0]}else{$null}
         $last=if($exits.Count){$exits[-1]}else{$null}
         $initialSL=if($first){N $first.sl}else{0.0}
@@ -69,11 +69,11 @@ for($style=0;$style -lt $names.Count;$style++){
         $net=$gross+$charges
         $reason=if($last){[string]$last.reason}else{'NO_EXIT'}
         $side=if($first -and $first.type -eq 'DEAL_TYPE_BUY'){'BUY'}elseif($first -and $first.type -eq 'DEAL_TYPE_SELL'){'SELL'}else{'UNKNOWN'}
-        $riskGap=if($initialSL>0 -and $entryPrice>0){[Math]::Abs($entryPrice-$initialSL)}else{0.0}
-        $rewardGap=if($initialTP>0 -and $entryPrice>0){[Math]::Abs($initialTP-$entryPrice)}else{0.0}
+        $riskGap=if($initialSL -gt 0 -and $entryPrice -gt 0){[Math]::Abs($entryPrice-$initialSL)}else{0.0}
+        $rewardGap=if($initialTP -gt 0 -and $entryPrice -gt 0){[Math]::Abs($initialTP-$entryPrice)}else{0.0}
         $minutes=if($first -and $last){[Math]::Round(((N $last.time_msc)-(N $first.time_msc))/60000.0,2)}else{$null}
         $slip=0.0
-        if($reason -eq 'DEAL_REASON_SL' -and $exitSL>0){
+        if($reason -eq 'DEAL_REASON_SL' -and $exitSL -gt 0){
             $slip=if($side -eq 'BUY'){$exitSL-$exitPrice}else{$exitPrice-$exitSL}
         }
         $why=switch($reason){
@@ -94,7 +94,7 @@ for($style=0;$style -lt $names.Count;$style++){
             risk_price_distance=[Math]::Round($riskGap,5);
             target_price_distance=[Math]::Round($rewardGap,5);
             exit_reason=$reason;exit_adverse_slippage_price=[Math]::Round($slip,5);
-            initial_rr_price=if($riskGap>0){[Math]::Round($rewardGap/$riskGap,3)}else{$null};
+            initial_rr_price=if($riskGap -gt 0){[Math]::Round($rewardGap/$riskGap,3)}else{$null};
             minutes_held=$minutes;entry_lots=$inVolume;exit_lots=$outVolume;
             gross_usd=[Math]::Round($gross,2);charges_usd=[Math]::Round($charges,2);
             net_usd=[Math]::Round($net,2);deal_count=$items.Count;

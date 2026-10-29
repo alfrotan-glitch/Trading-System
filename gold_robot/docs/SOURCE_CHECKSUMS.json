@@ -167,8 +167,8 @@
     },
     {
       "path": "research/BuildTradeForensics.ps1",
-      "bytes": 9725,
-      "sha256": "819d7b2727bafa396f393a591e5026c24eb46c1deab7131fc296bcccb6e0c6c2"
+      "bytes": 9765,
+      "sha256": "3c9802d87564d7adefaaa09120072716e7227c69c5b986a17128150f713a54da"
     },
     {
       "path": "research/CompareMT5Reports.ps1",
