@@ -53,7 +53,7 @@ for($style=0;$style -lt $names.Count;$style++){
         $inVolume=0.0;$inValue=0.0;$outVolume=0.0;$outValue=0.0
         foreach($d in $entries){$v=N $d.volume;$inVolume+=$v;$inValue+=(N $d.price)*$v}
         foreach($d in $exits){$v=N $d.volume;$outVolume+=$v;$outValue+=(N $d.price)*$v}
-        if($inVolume<=0.0 -or $outVolume<=0.0){$quality='INCOMPLETE_POSITION'}
+        if($inVolume -le 0.0 -or $outVolume -le 0.0){$quality='INCOMPLETE_POSITION'}
         if($inVolume>0.0 -and $outVolume>0.0 -and
            [Math]::Abs($inVolume-$outVolume)>0.0000001){$quality='PARTIAL_OR_OPEN'}
         $entryPrice=if($inVolume>0.0){$inValue/$inVolume}else{0.0}

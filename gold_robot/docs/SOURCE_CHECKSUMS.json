@@ -107,8 +107,8 @@
     },
     {
       "path": "docs/RELEASE_STATUS.json",
-      "bytes": 4964,
-      "sha256": "738c9990bc651b72d9d3e25cddc01746da3966595ba2e902b12e6dbd07c0f299"
+      "bytes": 4973,
+      "sha256": "3b720af7262039ec912a0d4d818ce6105506b53df334ea3bd4e277e77138c802"
     },
     {
       "path": "docs/WINDOWS_START.md",
@@ -167,8 +167,8 @@
     },
     {
       "path": "research/BuildTradeForensics.ps1",
-      "bytes": 9719,
-      "sha256": "76e3f356172d72b002873773ebd08e5f32bb44de3c5bb919316c54cd6f91f7e8"
+      "bytes": 9725,
+      "sha256": "819d7b2727bafa396f393a591e5026c24eb46c1deab7131fc296bcccb6e0c6c2"
     },
     {
       "path": "research/CompareMT5Reports.ps1",
