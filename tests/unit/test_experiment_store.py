@@ -30,3 +30,14 @@ def test_all_experiments_orders_by_trial_count_not_insertion(tmp_path: Path) -> 
     exps = store.all_experiments()
     counts = [e.trial_count for e in exps]
     assert counts == sorted(counts), counts
+
+
+def test_default_database_respects_anchored_override(tmp_path: Path, monkeypatch) -> None:
+    """Default research state must never land in the current checkout."""
+    db = tmp_path / "isolated" / "experiment.db"
+    monkeypatch.setenv("QTS_DB_PATH", str(db))
+    store = ExperimentStore()
+    assert store.db_path == db
+    item = store.put(Experiment(hypothesis_id="H-default", strategy_id="S-default", data_version="TEST"))
+    assert db.is_file()
+    assert store.get(item.id) is not None

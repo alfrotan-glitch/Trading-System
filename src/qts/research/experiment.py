@@ -30,6 +30,7 @@ from typing import Any
 import numpy as np
 from pydantic import BaseModel, Field, model_validator
 
+from qts.config.paths import artifact_path
 from qts.db import connect as db_connect
 from qts.domain.value_objects import uuid7
 
@@ -241,8 +242,8 @@ class Experiment(BaseModel):
 class ExperimentStore:
     """SQLite-backed cumulative ledger with immutable configuration checks."""
 
-    def __init__(self, db_path: Path | str = "data/sqlite/qts.db"):
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: Path | str | None = None):
+        self.db_path = Path(db_path) if db_path is not None else artifact_path("db")
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init()
 
