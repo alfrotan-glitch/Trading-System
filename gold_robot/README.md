@@ -6,7 +6,7 @@ This directory contains **one canonical Expert Advisor**, `mt5_robot/QTS_Gold_Ro
 
 ## Clone, install, report
 
-From the repository root, double-click **`START_HERE.bat`**. Select **1** to install/compile the Gold EA and preflight script using **one selected MT5 terminal and compiler**. On your `XAUUSD@` chart run `QTS_Broker_Preflight`. Select **2** to create a local, clean HTML/JSON broker/readiness report, which rejects stale or mismatched broker-preflight sources and artifacts; it never sends orders.
+**Automatic testing (recommended):** close the WMMarkets MT5 window, then double-click **`QTS_AUTO_TEST.bat`** in the repository root. It locates the installed canonical QTS EA, compiles it if needed, runs all four M15 real-tick strategies with normal daily/peak risk stops, saves native HTML results, and opens one local `OPEN_RESULTS.html` summary. If the terminal, login/history or report export cannot be verified, it fails closed and explains the exact blocker. It never sends connected orders, never changes login/passwords, and never certifies profitable edge. For manual installation or diagnostics, double-click **`START_HERE.bat`**. Select **1** to install/compile the Gold EA and preflight script using **one selected MT5 terminal and compiler**. On your `XAUUSD@` chart run `QTS_Broker_Preflight`. Select **2** to create a local, clean HTML/JSON broker/readiness report, which rejects stale or mismatched broker-preflight sources and artifacts; it never sends orders.
 
 [The Windows operator guide](docs/WINDOWS_START.md) is the recommended complete operator procedure. The generated reports are excluded from Git. For quick reporting without the menu, double-click `MAKE_REPORT.bat`.
 

@@ -4,11 +4,13 @@ on:
     branches: [main]
     paths:
       - "START_HERE.bat"
+      - "QTS_AUTO_TEST.bat"
       - "gold_robot/**"
       - ".github/workflows/gold-windows.yml"
   pull_request:
     paths:
       - "START_HERE.bat"
+      - "QTS_AUTO_TEST.bat"
       - "gold_robot/**"
       - ".github/workflows/gold-windows.yml"
 permissions:
@@ -142,6 +144,58 @@ jobs:
           } catch { $failed = $true }
           if (-not $failed) { throw 'Malformed target was not rejected' }
           Write-Host 'Single-target MT5 safety and malformed-folder refusal: PASS'
+      - name: Prepare one-click native MT5 jobs in isolation (never launches terminal)
+        shell: pwsh
+        run: |
+          $fake = Join-Path $env:RUNNER_TEMP 'QTS MT5 Auto Folder With Spaces'
+          $install = Join-Path $fake 'terminal'
+          $data = Join-Path $fake 'data'
+          $experts = Join-Path $data 'MQL5\Experts'
+          New-Item -ItemType Directory -Path $install,$experts,(Join-Path $data 'MQL5\Profiles') -Force | Out-Null
+          $exe = Join-Path $install 'terminal64.exe'
+          [IO.File]::WriteAllText($exe,'TEST-ONLY FAKE TERMINAL - NEVER EXECUTE')
+          foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh')){
+            Copy-Item -LiteralPath (Join-Path gold_robot/mt5_robot $name) -Destination (Join-Path $experts $name)
+          }
+          $binary = Join-Path $experts 'QTS_Gold_Robot.ex5'
+          [IO.File]::WriteAllBytes($binary,(New-Object byte[] 4096))
+          $out = Join-Path $env:RUNNER_TEMP 'QTS automatic research test'
+          ./gold_robot/research/RunAutomaticTester.ps1 -TerminalExe $exe -TerminalDataFolder $data -OutputDirectory $out -FromDate '2026.04.01' -ToDate '2026.09.01' -PrepareOnly -NoOpen
+          if ($LASTEXITCODE -ne 0) { throw "One-click configuration preflight failed" }
+          $json = Get-Content (Join-Path $out 'OPEN_RESULTS.json') -Raw | ConvertFrom-Json
+          if ($json.state -ne 'PREPARED_ONLY' -or $json.live -ne 'LOCKED' -or
+              $json.validated_edge -ne $false -or $json.real_money_orders -ne $false) {
+            throw 'Preparation did not preserve simulation-only fail-closed state'
+          }
+          $configFolder = Join-Path $out 'configs'
+          $configs = @(Get-ChildItem -LiteralPath $configFolder -Filter '*.ini')
+          if ($configs.Count -ne 4) { throw 'Expected exactly four auto-generated MT5 ini files' }
+          for($i=0;$i -lt 4;$i++){
+            $ini = Get-Content (Join-Path $configFolder ("style_$i.ini")) -Encoding Unicode
+            foreach($required in @('Expert=QTS_Gold_Robot.ex5','Symbol=XAUUSD@','Period=M15',
+                                    'Model=4','Deposit=3000','AllowLiveTrading=0','Enabled=0',
+                                    'UseCloud=0','UseRemote=0','ShutdownTerminal=1',
+                                    'Optimization=0','ForwardMode=0','FromDate=2026.04.01',
+                                    'ToDate=2026.09.01')) {
+              if ($required -notin $ini) { throw "Tester configuration $i missing: $required" }
+            }
+            $parameter = @($ini | Where-Object {$_ -match '^ExpertParameters='})
+            if ($parameter.Count -ne 1) { throw "Tester profile path missing for $i" }
+            $setName = $parameter[0].Split('=')[1]
+            $setFile = Join-Path $data ('MQL5\Profiles\Tester\'+$setName)
+            if(-not (Test-Path $setFile)) { throw "Tester profile not copied: $setFile" }
+            $contents = Get-Content $setFile -Encoding Unicode
+            foreach($required in @(('EntryStyle='+$i),'EnableDemoOrders=true',
+                                    'EnableDemoForwardOrders=false',
+                                    'TesterIgnoreDailyAndPeakStops=false',
+                                    'RiskPerTradePct=0.50')) {
+              if($required -notin $contents) { throw "Unsafe or missing tester input: $required" }
+            }
+          }
+          if(-not (Test-Path (Join-Path $out 'OPEN_RESULTS.html'))) {
+            throw 'One-click report shell was not produced'
+          }
+          Write-Host 'Four native tester configurations prepared; zero MT5 launches/orders: PASS'
       - name: Generate and verify four isolated MT5 tester presets
         shell: pwsh
         run: |

@@ -2,6 +2,12 @@
 
 **Scope:** WMMarkets MetaTrader 5, XAUUSD@, Strategy Tester and controlled DEMO evaluation. LIVE trading is locked. No profitable edge has been independently validated.
 
+## One-click automatic research testing
+
+For ordinary use, **close the WMMarkets MT5 terminal** and double-click `QTS_AUTO_TEST.bat` in the repository root. No tester menus, manual .set loading or report naming are required. The script resolves the one installed QTS terminal through MetaQuotes `origin.txt`, verifies matching canonical source and EX5 (or compiles via the matching MetaEditor), prepares four risk-stops-active `EntryStyle=0..3` profiles, and runs command-line MT5 Strategy Tester jobs sequentially. The common symbol is `XAUUSD@`, M15, model 4 (real ticks), USD 3,000 simulated, latest six completed calendar months, local agents only. It saves all exports and a local `OPEN_RESULTS.html` under `gold_robot/reports_local/auto_runs/<timestamp>/`. If the terminal is open, multiple targets exist, native ticks are not confirmed, or MT5 cannot export a fresh report, it does not claim success. Do not use a real account; LIVE remains blocked in the EA.
+
+**Important:** Native completion and real-tick mode still do not prove an after-cost profitable edge. The actual broker charges, trade count, drawdown, unseen performance and MT5 report inputs remain subject to verification.
+
 ## Installation
 
 1. Install WMMarkets MetaTrader 5 and log into a DEMO account. Detach any old QTS EA from the chart.
