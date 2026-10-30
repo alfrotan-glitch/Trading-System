@@ -165,3 +165,61 @@ def test_extreme_quote_is_best_observed_even_when_every_future_tick_is_adverse()
     assert w["favorable_extreme_time_ms"] == 60000 + 2 * 60000
     assert w["adverse_extreme_executable_price"] == 93
     assert w["first_target_touch_ms"] is None
+
+
+def test_selected_four_native_styles_produce_stop_cases_not_missing_style_errors(tmp_path):
+    selected = [1, 3, 7, 8]
+    path = tmp_path / "selected.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("OPEN_RESULTS.json", json.dumps({
+            "targeted": True, "selected_styles": selected,
+            "state": "SELECTED_TESTS_FINISHED_REVIEW_REQUIRED",
+            "results": [{"style_id": i, "status": "REPORT_AND_FORENSICS_SAVED"}
+                        for i in selected]
+        }))
+        z.writestr("comparison.json", json.dumps({
+            "reports_parsed": 4,
+            "results": [{"style": i, "state": "PARSED", "trades": 1, "net_usd": -6}
+                        for i in selected]
+        }))
+        z.writestr("QTS_TRADE_BY_TRADE.json", json.dumps({
+            "status": "EVIDENCE_GAPS_NO_GO",
+            "evidence": [{"style": i, "status": "IMPORTED", "deals": 2}
+                         for i in selected],
+            "trades": [{"style": i, "position_id": str(i),
+                        "status": "COMPLETE", "net_usd": -6,
+                        "exit_reason": "DEAL_REASON_SL"} for i in selected]
+        }))
+        for style in selected:
+            z.writestr(f"native/QTS_{style}_trades.csv", make_deals(style))
+    cases, report = build(path)
+    assert {c["style"] for c in cases} == {1, 3, 7, 8}
+    assert report["stop_cases_total"] == 4
+    assert not report["price_after_stop_verified"]
+
+
+def test_selected_stop_cases_fail_without_single_original_style_csv(tmp_path):
+    selected = [1, 3, 7, 8]
+    path = tmp_path / "missing_smc.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("OPEN_RESULTS.json", json.dumps({
+            "targeted": True, "selected_styles": selected,
+            "state": "SELECTED_TESTS_FINISHED_REVIEW_REQUIRED",
+            "results": [{"style_id": i, "status": "REPORT_AND_FORENSICS_SAVED"}
+                        for i in selected]
+        }))
+        z.writestr("comparison.json", json.dumps({
+            "reports_parsed": 4,
+            "results": [{"style": i, "state": "PARSED", "trades": 1, "net_usd": -6}
+                        for i in selected]
+        }))
+        z.writestr("QTS_TRADE_BY_TRADE.json", json.dumps({
+            "evidence": [{"style": i, "status": "IMPORTED", "deals": 2}
+                         for i in selected],
+            "trades": []
+        }))
+        for style in selected[:-1]:
+            z.writestr(f"native/QTS_{style}_trades.csv", make_deals(style))
+    import pytest
+    with pytest.raises(ValueError, match="Missing selected native deal files"):
+        build(path)
