@@ -82,7 +82,7 @@ def test_entry_setup_comes_from_broker_order_comment_without_invention():
 def test_adaptive_router_is_closed_bar_test_only_and_never_changes_risk_execution():
     router = (ROOT / "mt5_robot" / "AdaptiveResearch.mqh").read_text(encoding="utf-8")
     assert "QTS_ADAPTIVE_ROUTER=7" in EA
-    assert "if((int)EntryStyle<0 || (int)EntryStyle>7 ||" in EA
+    assert "if((int)EntryStyle<0 || (int)EntryStyle>9 ||" in EA
     assert "((int)EntryStyle>=4 && MQLInfoInteger(MQL_TESTER)==0)" in EA
     assert 'SelectAdaptiveCandidate(quote,side,atr,structure_level,structure_anchor,' in EA
     assert "evaluated_style=chosen_style;" in router
@@ -102,3 +102,7 @@ def test_adaptive_router_is_closed_bar_test_only_and_never_changes_risk_executio
     assert "EntryStyle==QTS_ADAPTIVE_ROUTER" in EA
     assert "'ADAPTIVE_ROUTER'" in PRESETS
     assert "'ADAPTIVE_ROUTER'" in AUTORUN
+    assert "QTS_SMC_FVG_OB=8" in EA
+    assert "'SMC_FVG_OB'" in PRESETS
+    assert "'SMC_FVG_OB'" in AUTORUN
+    assert "QTS_M1_SCALP=9" in EA

@@ -1,4 +1,4 @@
-# Read-only generation of eight MT5 Strategy Tester parameter sets.
+# Read-only generation of ten MT5 Strategy Tester parameter sets (styles 0-9).
 # Neither starts terminal.exe nor authorizes broker orders or passwords.
 [CmdletBinding()]
 param(
@@ -32,6 +32,9 @@ foreach($m in $found){
         'QTS_RANGE_REJECTION' { $value='5';break }
         'QTS_INSIDE_BREAKOUT' { $value='6';break }
         'QTS_ADAPTIVE_ROUTER' { $value='7';break }
+        'QTS_SMC_FVG_OB' { $value='8';break }
+        'QTS_M1_SCALP' { $value='9';break }
+        'PERIOD_M1' { $value='1';break }
         'PERIOD_M5' { $value='5';break }
         'PERIOD_M15' { $value='15';break }
         'PERIOD_M30' { $value='30';break }
@@ -56,13 +59,23 @@ New-Item -ItemType Directory -Path $OutputDirectory -Force|Out-Null
 $safetyDirectory=Join-Path $OutputDirectory 'safety_on'
 New-Item -ItemType Directory -Path $safetyDirectory -Force|Out-Null
 $names=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM',
-         'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER')
+         'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER','SMC_FVG_OB','M1_SCALP')
 $created=@()
 for($style=0;$style -lt $names.Count;$style++){
     $settings=[ordered]@{}
     foreach($key in $inputs.Keys){$settings[$key]=$inputs[$key]}
     $settings['EntryStyle']=[string]$style
-    $settings['SignalTimeframe']='15'
+    # REPAIR 2026-10-30: Style 9 is M1-only in the EA (OnInit rejects
+    # anything else). Forcing '15' here previously made every Style 9
+    # preset fail OnInit, so the auto-runner silently excluded it.
+    # Style 9 also requires MaxPositionMinutes=15 exactly (EA default
+    # is 180); any other value is a different hypothesis, not Style 9.
+    if($style -eq 9){
+        $settings['SignalTimeframe']='1'
+        $settings['MaxPositionMinutes']='15'
+    } else {
+        $settings['SignalTimeframe']='15'
+    }
     $settings['EnableDemoOrders']='true' # Strategy Tester simulated orders.
     $settings['EnableDemoForwardOrders']='false' # Never arm a connected DEMO.
     $settings['TesterIgnoreDailyAndPeakStops']='true'
@@ -73,7 +86,7 @@ for($style=0;$style -lt $names.Count;$style++){
     $settings['ResetExecutionHalt']='false'
     $lines=@(
         '; QTS Gold MT5 Strategy Tester preset (simulation only; no connected account orders)',
-        '; WMMarkets XAUUSD@ / M15 / suggested tester deposit 3000 USD',
+        ('; WMMarkets XAUUSD@ / {0} / suggested tester deposit 3000 USD' -f $(if($style -eq 9){'M1'}else{'M15'})),
         '; Use Every tick based on real ticks; compare identical broker periods/costs.',
         '; The tester-only daily-stop bypass is NOT permission for DEMO or REAL.',
         ('; EntryStyle={0} {1}' -f $style,$names[$style])
@@ -81,25 +94,26 @@ for($style=0;$style -lt $names.Count;$style++){
     foreach($key in $settings.Keys){
         $lines+=('{0}={1}' -f $key,$settings[$key])
     }
-    $path=Join-Path $OutputDirectory ('QTS_M15_{0}.set' -f $names[$style])
+    $tfLabel=$(if($style -eq 9){'M1'}else{'M15'})
+    $path=Join-Path $OutputDirectory ('QTS_{0}_{1}.set' -f $tfLabel,$names[$style])
     # MT5 on Windows accepts native Unicode .set parameter files.
     [IO.File]::WriteAllLines($path,$lines,[Text.Encoding]::Unicode)
     $created+=,$path
     $settings['TesterIgnoreDailyAndPeakStops']='false'
     $safeLines=@(
         '; QTS Gold MT5 Strategy Tester preset (risk stops ACTIVE; simulation only)',
-        '; WMMarkets XAUUSD@ / M15 / suggested tester deposit 3000 USD',
+        ('; WMMarkets XAUUSD@ / {0} / suggested tester deposit 3000 USD' -f $(if($style -eq 9){'M1'}else{'M15'})),
         '; Real ticks; identical dates and costs; no connected broker orders.',
         ('; EntryStyle={0} {1} with normal daily/peak stops' -f $style,$names[$style])
     )
     foreach($key in $settings.Keys){
         $safeLines+=('{0}={1}' -f $key,$settings[$key])
     }
-    $safePath=Join-Path $safetyDirectory ('QTS_M15_{0}_SAFETY_ON.set' -f $names[$style])
+    $safePath=Join-Path $safetyDirectory ('QTS_{0}_{1}_SAFETY_ON.set' -f $tfLabel,$names[$style])
     [IO.File]::WriteAllLines($safePath,$safeLines,[Text.Encoding]::Unicode)
 }
-if($created.Count -ne $names.Count){throw 'Failed to produce all eight test profiles.'}
-Write-Host 'QTS Gold MT5 Strategy Tester presets created (seven fixed hypotheses plus one adaptive research router; no connected orders submitted):'
+if($created.Count -ne $names.Count){throw 'Failed to produce all ten test profiles.'}
+Write-Host 'QTS Gold MT5 Strategy Tester presets created (seven fixed hypotheses, one adaptive research router, one SMC hypothesis, one M1 scalp hypothesis; no connected orders submitted):'
 foreach($item in $created){Write-Host $item}
 Write-Host ('Production-like TESTER variants (risk stops active): '+$safetyDirectory)
 Write-Host 'MT5: Ctrl+R > Inputs > Load one .set file > start a native real-tick test.'

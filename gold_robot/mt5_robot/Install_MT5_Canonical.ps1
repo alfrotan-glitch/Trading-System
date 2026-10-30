@@ -13,6 +13,12 @@ $robotScript=Join-Path $PSScriptRoot 'Install_QTS_Gold_Robot.ps1'
 $brokerScript=Join-Path $PSScriptRoot 'Install_Broker_Preflight.ps1'
 foreach($file in @($robotScript,$brokerScript,
                   (Join-Path $root 'mt5_robot\QTS_Gold_Robot.mq5'),
+                  (Join-Path $root 'mt5_robot\ExecutionPolicy.mqh'),
+                  (Join-Path $root 'mt5_robot\StructureResearch.mqh'),
+                  (Join-Path $root 'mt5_robot\OpportunityResearch.mqh'),
+                  (Join-Path $root 'mt5_robot\AdaptiveResearch.mqh'),
+                  (Join-Path $root 'mt5_robot\SmcResearch.mqh'),
+                  (Join-Path $root 'mt5_robot\ScalpResearch.mqh'),
                   (Join-Path $root 'research\QTS_Broker_Preflight.mq5'),
                   (Join-Path $root 'docs\SOURCE_CHECKSUMS.json'))){
     if(-not (Test-Path -LiteralPath $file -PathType Leaf)){
