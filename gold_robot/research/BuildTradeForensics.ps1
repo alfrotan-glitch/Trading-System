@@ -1,7 +1,8 @@
 ﻿# QTS MT5 position-by-position forensic audit from broker-authored Tester deals.
 # Read-only, offline; no prediction of hidden causes or trading permissions.
 [CmdletBinding()]
-param([string]$InputDirectory="",[string]$OutputDirectory="",[switch]$NoOpen)
+param([string]$InputDirectory="",[string]$OutputDirectory="",[switch]$NoOpen,
+      [int[]]$SelectedStyles=@())
 $ErrorActionPreference='Stop'
 $gold=Split-Path -Parent $PSScriptRoot
 if(-not $InputDirectory){$InputDirectory=Join-Path $gold 'reports_local\native'}
@@ -20,10 +21,26 @@ function N([object]$raw){
 function F([double]$value){return $value.ToString('0.0000',[Globalization.CultureInfo]::InvariantCulture)}
 $names=@('Former stop','Retest','Break and retest','Sweep and reclaim',
          'Trend impulse','Range rejection','Inside-bar breakout','Adaptive router','SMC FVG OB','M1 scalp')
+# Selective forensic review has explicitly scoped evidence. Unselected
+# strategies must not be misrepresented as missing broker trade exports.
+$targeted=$PSBoundParameters.ContainsKey('SelectedStyles')
+$requiredStyles=@(0..9)
+if($targeted){
+    $requiredStyles=@($SelectedStyles)
+    if($requiredStyles.Count -lt 1 -or
+       @($requiredStyles | Sort-Object -Unique).Count -ne $requiredStyles.Count -or
+       @($requiredStyles | Where-Object {$_ -lt 0 -or $_ -gt 9}).Count -gt 0){
+        throw 'Invalid selected forensic strategy IDs.'
+    }
+}
 $positions=New-Object System.Collections.ArrayList
 $evidence=New-Object System.Collections.ArrayList
 $allComplete=$true
 for($style=0;$style -lt $names.Count;$style++){
+    if($style -notin $requiredStyles){
+        [void]$evidence.Add([ordered]@{style=$style;status='NOT_SELECTED';deals=0})
+        continue
+    }
     $path=Join-Path $InputDirectory ('QTS_'+$style+'_trades.csv')
     if(-not (Test-Path -LiteralPath $path -PathType Leaf)){
         $allComplete=$false
@@ -152,12 +169,15 @@ foreach($p in $positions){
     $rows+='<tr>'+$cells+'</tr>'
 }
 if(-not $rows){$rows=@('<tr><td colspan="15">No per-position broker evidence was exported.</td></tr>')}
-$state=if($allComplete){'IMPORTED_FOR_REVIEW'}else{'EVIDENCE_GAPS_NO_GO'}
+$state=if($allComplete){
+    if($targeted){'SELECTED_IMPORTED_FOR_REVIEW'}else{'IMPORTED_FOR_REVIEW'}
+}else{'EVIDENCE_GAPS_NO_GO'}
 $stamp=Get-Date -Format 'yyyyMMdd_HHmmss'
 $report=Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.html'
 $reportJson=Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json'
 [ordered]@{schema='qts.mt5.trade_forensics.v1';status=$state;
           broker_fact_not_causal_proof=$true;live='LOCKED';edge_validated=$false;
+          targeted=$targeted;selected_styles=@($requiredStyles);
           evidence=@($evidence.ToArray());trades=@($positions.ToArray())} |
     ConvertTo-Json -Depth 9 | Set-Content -LiteralPath $reportJson -Encoding UTF8
 $safeRows=$rows -join [Environment]::NewLine
