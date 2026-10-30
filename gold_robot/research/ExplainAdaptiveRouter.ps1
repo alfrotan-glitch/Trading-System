@@ -157,11 +157,11 @@ $out=[ordered]@{
 }
 $jsonPath=Join-Path $RunDirectory 'QTS_ADAPTIVE_REVIEW.json'
 $out|ConvertTo-Json -Depth 12|Set-Content -LiteralPath $jsonPath -Encoding UTF8
-function H([object]$v){return [System.Net.WebUtility]::HtmlEncode([string]$v)}
+function EscapeAdaptiveHtml([object]$v){return [System.Net.WebUtility]::HtmlEncode([string]$v)}
 $rows=@()
 foreach($b in $breakdown){
-    $rows+=('<tr><td>'+(H $b.family)+'</td><td>'+$b.positions+'</td><td>'+
-          $b.net_usd+'</td><td>'+(H $b.profit_factor)+'</td><td>'+
+    $rows+=('<tr><td>'+(EscapeAdaptiveHtml $b.family)+'</td><td>'+$b.positions+'</td><td>'+
+          $b.net_usd+'</td><td>'+(EscapeAdaptiveHtml $b.profit_factor)+'</td><td>'+
           $b.sl_exits+'</td><td>'+$b.tp_exits+'</td><td>'+$b.other_exits+'</td></tr>')
 }
 $monthRows=@()
@@ -169,7 +169,7 @@ foreach($m in $monthly){
     $monthRows+=('<tr><td>'+$m.exit_month_utc+'</td><td>'+$m.positions+'</td><td>'+
                  $m.net_usd+'</td><td>'+$m.sl+'</td><td>'+$m.tp+'</td></tr>')
 }
-$gapText=if($errors.Count){(H ($errors.ToArray() -join '; '))}else{'Broker ledger counts match MT5 style-7 report.'}
+$gapText=if($errors.Count){(EscapeAdaptiveHtml ($errors.ToArray() -join '; '))}else{'Broker ledger counts match MT5 style-7 report.'}
 $html=@"
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>QTS Adaptive Router | Actual Position Attribution</title>
@@ -178,12 +178,12 @@ main{max-width:1100px;margin:32px auto;padding:16px}section,header{background:wh
 header{background:#142e48;color:white}table{border-collapse:collapse;width:100%}
 th,td{text-align:left;padding:10px;border-bottom:1px solid #e1e5eb}th{background:#edf2f8}</style></head>
 <body><main><header><h1>Adaptive Router — Which strategy was actually chosen?</h1>
-<p>$(H $state) | LIVE LOCKED | NOT A PROFITABLE EDGE APPROVAL</p></header>
+<p>$(EscapeAdaptiveHtml $state) | LIVE LOCKED | NOT A PROFITABLE EDGE APPROVAL</p></header>
 <section><p>Broker positions: $($total.positions); Native MT5 positions: $expectedTrades.
 Position net: $($total.net_usd) USD; MT5 net: $expectedNet USD.
 Profit Factor (MT5): $($mt[0].profit_factor).
 Maximum equity drawdown (MT5): $($mt[0].maximal_equity_drawdown).</p>
-<p>$(H $gapText)</p></section>
+<p>$(EscapeAdaptiveHtml $gapText)</p></section>
 <section><h2>Selected strategy attribution</h2>
 <p>Family comes ONLY from the original broker order comment, not a guessed market regime.</p>
 <table><tr><th>Family</th><th>Positions</th><th>Net USD</th><th>PF</th><th>SL</th><th>TP</th><th>Other</th></tr>
