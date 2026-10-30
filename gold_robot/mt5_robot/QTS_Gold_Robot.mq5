@@ -64,6 +64,10 @@ input double          StructureEntryOffsetAtr   = 0.04;
 input double          AssumedRoundTurnFeePerLot = 10.0; // USD per 1.0 lot (unverified broker tariff).
 input double          AdverseStopSlipPrice      = 0.10; // XAUUSD price units, not a fill guarantee.
 input double          MinimumTargetFeeMultiple  = 2.0;  // Gross TP profit must cover >= 2x assumed total fees.
+// Fixed, preregistered hypotheses from stop-path audit; Strategy Tester ONLY.
+// Defaults preserve the original strategy, SL/TP and broker execution exactly.
+input bool            TesterUseEntryQualityV2    = false;
+input bool            TesterProtectNearTPV2      = false;
 
 
 CTrade trader;
@@ -484,6 +488,41 @@ bool FreshEntryQuote(MqlTick &tick)
   }
 
 // ------------------------------------------------------------------
+// Fixed candidate 1: reject high spread relative to original risk or a
+// strong adverse last CLOSED candle. Never use a future SL result here.
+bool TesterEntryQualityV2(const int side,const MqlTick &quote,
+                          const double atr,const double entry,const double sl)
+  {
+   if(!TesterUseEntryQualityV2) return true;
+   if(MQLInfoInteger(MQL_TESTER)==0) return false;
+   double risk=MathAbs(entry-sl);
+   if(side==0 || atr<=0.0 || risk<=0.0 ||
+      !MathIsValidNumber(risk) || quote.ask<=quote.bid)
+     {
+      status_text="V2 QUALITY: invalid pre-entry market state";
+      return false;
+     }
+   if(quote.ask-quote.bid>0.12*risk)
+     {
+      status_text="V2 QUALITY: spread exceeds 12pct of original risk";
+      return false;
+     }
+   MqlRates closed[1];
+   if(CopyRates(_Symbol,SignalTimeframe,1,1,closed)!=1 ||
+      closed[0].open<=0.0 || closed[0].close<=0.0)
+     {
+      status_text="V2 QUALITY: last closed candle not available";
+      return false;
+     }
+   double aligned_body=(closed[0].close-closed[0].open)*(double)side;
+   if(aligned_body< -0.80*atr)
+     {
+      status_text="V2 QUALITY: adverse closed candle > 0.8 ATR";
+      return false;
+     }
+   return true;
+  }
+
 // Research-only signal. Closed candles only, no lookahead.
 // ------------------------------------------------------------------
 int CompletedBarSignal(double &atr_value)
@@ -979,6 +1018,8 @@ void EvaluateNewEntry()
          return;
         }
      }
+   if(!TesterEntryQualityV2(side,quote,atr,price,stop))
+      return;
    datetime deadline=0;
    if(!PendingExpiration(deadline))
      {
@@ -1291,6 +1332,55 @@ void ManageOwnedPendingOrders(const bool force_cancel=false)
      }
   }
 
+// Fixed candidate 2: after 80% of original TP path, lock 15% of that
+// distance with a protective SL. Initial SL is NEVER widened.
+// Strictly Tester-only; connected DEMO/REAL path is unchanged.
+// Broker may refuse a modification; original protection remains.
+void TesterProtectNearTPPosition(const ulong ticket,const double current_sl,
+                                 const double original_tp)
+  {
+   if(!TesterProtectNearTPV2 || MQLInfoInteger(MQL_TESTER)==0)
+      return;
+   double entry=PositionGetDouble(POSITION_PRICE_OPEN);
+   int side=PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY ? 1 : -1;
+   double target_gap=(original_tp-entry)*(double)side;
+   double step=SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE);
+   if(entry<=0.0 || target_gap<=0.0 || current_sl<=0.0 ||
+      step<=0.0 || !MathIsValidNumber(target_gap))
+      return;
+   MqlTick quote={};
+   if(!SymbolInfoTick(_Symbol,quote) || quote.bid<=0.0 ||
+      quote.ask<=quote.bid)
+      return;
+   double executable=side>0 ? quote.bid : quote.ask;
+   double advance=(executable-entry)*(double)side;
+   if(advance<0.80*target_gap) return;
+   double proposed=entry+(double)side*0.15*target_gap;
+   proposed=side>0 ? MathFloor(proposed/step)*step :
+                     MathCeil(proposed/step)*step;
+   proposed=NormalizeDouble(proposed,_Digits);
+   if((proposed-current_sl)*(double)side<=step*0.51) return;
+   double broker_gap=((double)MathMax(
+      SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL),
+      SymbolInfoInteger(_Symbol,SYMBOL_TRADE_FREEZE_LEVEL))+2.0)*_Point;
+   if((executable-proposed)*(double)side<=broker_gap)
+      return; // Never violate broker stop/freeze constraints.
+   if(!ProtectiveRequestDue(ticket,"V2_PROTECT"))
+      return;
+   trader.SetExpertMagicNumber(RobotMagic);
+   trader.SetAsyncMode(false);
+   bool accepted=trader.PositionModify(ticket,proposed,original_tp);
+   uint code=trader.ResultRetcode();
+   if(!accepted || code!=TRADE_RETCODE_DONE)
+     {
+      PrintFormat("QTS V2 tester protective SL refused ticket=%I64u ret=%u",
+                  ticket,code);
+      return; // Broker's original SL remains; no inferred fill.
+     }
+   PrintFormat("QTS V2 tester protection ticket=%I64u new_SL=%.5f original_TP=%.5f",
+               ticket,proposed,original_tp);
+  }
+
 void ManageOwnedPositions()
   {
    if(RealAccountBlocked())
@@ -1318,7 +1408,10 @@ void ManageOwnedPositions()
       bool must_close=EmergencyFlattenOwned || sl<=0.0 || tp<=0.0 ||
                       expired || (FlattenOnEquityBreach && stop_risk);
       if(!must_close)
+        {
+         TesterProtectNearTPPosition(ticket,sl,tp);
          continue;
+        }
       if(!ProtectiveRequestDue(ticket,"CLOSE"))
          continue;
       trader.SetExpertMagicNumber(RobotMagic);
@@ -1431,6 +1524,12 @@ int OnInit()
       MinimumTargetFeeMultiple<1.0 || MinimumTargetFeeMultiple>10.0)
      {
       Print("QTS: invalid parameters, no initialization.");
+      return INIT_PARAMETERS_INCORRECT;
+     }
+   if((TesterUseEntryQualityV2 || TesterProtectNearTPV2) &&
+      MQLInfoInteger(MQL_TESTER)==0)
+     {
+      Print("QTS: research V2 variants are Strategy Tester ONLY.");
       return INIT_PARAMETERS_INCORRECT;
      }
    // M1 scalp is frozen: M1 only, 15-minute position cap. Any other
