@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/PRODUCTION_EVIDENCE_2026-10-29.md",
-      "bytes": 7809,
-      "sha256": "2fcea24b7c2200ed8d6c579d3139544f40b8d19dc1b7550f60799b8de8a3a758"
+      "bytes": 8034,
+      "sha256": "eeecdde7bd7614244c2e1af5d1d24195c5398e0f287bfb4ebf3bcd1ef597c884"
     },
     {
       "path": "docs/RELEASE_HANDOFF_2026-10-27.md",
@@ -147,8 +147,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 74434,
-      "sha256": "75df0bb48bf76cf5d09819de850a08cdaf2a6a9dcaf259ea80e7d06e88fd84cc"
+      "bytes": 75210,
+      "sha256": "8ee5d544424ce1a6dea612bf60bf28bf2bab5098d84f530b55b8019037c9571d"
     },
     {
       "path": "mt5_robot/StructureResearch.mqh",
@@ -167,8 +167,8 @@
     },
     {
       "path": "research/BuildTradeForensics.ps1",
-      "bytes": 9765,
-      "sha256": "3c9802d87564d7adefaaa09120072716e7227c69c5b986a17128150f713a54da"
+      "bytes": 11761,
+      "sha256": "1e851eb7a22d90181993c807f0ba92733584a939969818ed76f3ce4a1ce1afc1"
     },
     {
       "path": "research/CompareMT5Reports.ps1",
@@ -197,8 +197,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 16707,
-      "sha256": "c3f57e623bbbde9eef460e2ddc06ec41db338187914b63b4862122bd8688dd73"
+      "bytes": 18038,
+      "sha256": "0b6f44766c1103c5a1c59ef84c2e4fa85aa6201b1a4de98e04e9810415de8e4f"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -372,8 +372,8 @@
     },
     {
       "path": "tests/test_strategy_forensics_contract.py",
-      "bytes": 2782,
-      "sha256": "7997762011a6ed7625bae4cd8bb898176d5e92968108b5bb322b1ba2b3072770"
+      "bytes": 3812,
+      "sha256": "8d0260996defa0076a43cf44a4f0adb0049dfbec7801801dcaa5ba82ac036373"
     },
     {
       "path": "tests/test_target_grid.py",

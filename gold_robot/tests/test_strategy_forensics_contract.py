@@ -55,3 +55,24 @@ def test_seven_presets_are_active_risk_safeguards_in_auto_runner():
     assert "EnableDemoForwardOrders=false" in AUTORUN
     assert "TesterIgnoreDailyAndPeakStops=false" in AUTORUN
     assert "risk stops active" in AUTORUN
+
+
+def test_missing_trade_evidence_cannot_be_overwritten_by_native_html():
+    assert "if(-not $hasForensics)" in AUTORUN
+    assert "$item.status='FORENSIC_MISSING'" in AUTORUN
+    assert "$item.status='REPORT_AND_FORENSICS_SAVED'" in AUTORUN
+    assert "$badRuns=@($results | Where-Object" in AUTORUN
+    assert "$nativeResult.reports_parsed -eq $names.Count" in AUTORUN
+    assert "$nativeResult.all_styles_identified -eq $true" in AUTORUN
+
+
+def test_entry_setup_comes_from_broker_order_comment_without_invention():
+    assert "HistoryOrderGetString(order,ORDER_COMMENT)" in EA
+    assert "HistoryOrderGetDouble(order,ORDER_SL)" in EA
+    assert "HistoryOrderGetDouble(order,ORDER_TP)" in EA
+    assert '"fee","setup_reason"' in EA
+    forensic = (ROOT / "research" / "BuildTradeForensics.ps1").read_text(encoding="utf-8")
+    assert "MIXED_EXIT_REASONS" in forensic
+    assert "COMPLETE_MULTI_EXIT" in forensic
+    assert "setup_reason=$entrySetup;exit_legs=$exitLegs" in forensic
+    assert "REVERSAL_UNSUPPORTED" in forensic

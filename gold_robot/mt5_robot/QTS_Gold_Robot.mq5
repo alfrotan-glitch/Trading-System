@@ -1637,7 +1637,7 @@ double OnTester()
      }
    FileWrite(f,"position_id","deal_id","order_id","entry","reason",
              "type","time_msc","volume","price","sl","tp",
-             "gross","commission","swap","fee");
+             "gross","commission","swap","fee","setup_reason");
    int count=0;
    for(int i=0;i<HistoryDealsTotal();i++)
      {
@@ -1648,20 +1648,36 @@ double OnTester()
       ENUM_DEAL_ENTRY entry=(ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal,DEAL_ENTRY);
       if(entry!=DEAL_ENTRY_IN && entry!=DEAL_ENTRY_OUT &&
          entry!=DEAL_ENTRY_INOUT && entry!=DEAL_ENTRY_OUT_BY) continue;
+      ulong order=(ulong)HistoryDealGetInteger(deal,DEAL_ORDER);
+      // Broker order comments document the proposed entry family.
+      // These comments may be empty/modified by the broker; never invent one.
+      string setup_reason="";
+      if(entry==DEAL_ENTRY_IN && order!=0)
+         setup_reason=HistoryOrderGetString(order,ORDER_COMMENT);
+      // Some brokers omit DEAL_SL/TP on the opening deal. Historical
+      // ORDER_SL/TP are a documented fallback, not proof of a later edit.
+      double deal_sl=HistoryDealGetDouble(deal,DEAL_SL);
+      double deal_tp=HistoryDealGetDouble(deal,DEAL_TP);
+      if(entry==DEAL_ENTRY_IN && order!=0)
+        {
+         if(deal_sl<=0.0) deal_sl=HistoryOrderGetDouble(order,ORDER_SL);
+         if(deal_tp<=0.0) deal_tp=HistoryOrderGetDouble(order,ORDER_TP);
+        }
       FileWrite(f,HistoryDealGetInteger(deal,DEAL_POSITION_ID),deal,
-                HistoryDealGetInteger(deal,DEAL_ORDER),
+                order,
                 EnumToString(entry),
                 EnumToString((ENUM_DEAL_REASON)HistoryDealGetInteger(deal,DEAL_REASON)),
                 EnumToString((ENUM_DEAL_TYPE)HistoryDealGetInteger(deal,DEAL_TYPE)),
                 HistoryDealGetInteger(deal,DEAL_TIME_MSC),
                 DoubleToString(HistoryDealGetDouble(deal,DEAL_VOLUME),8),
                 DoubleToString(HistoryDealGetDouble(deal,DEAL_PRICE),_Digits),
-                DoubleToString(HistoryDealGetDouble(deal,DEAL_SL),_Digits),
-                DoubleToString(HistoryDealGetDouble(deal,DEAL_TP),_Digits),
+                DoubleToString(deal_sl,_Digits),
+                DoubleToString(deal_tp,_Digits),
                 DoubleToString(HistoryDealGetDouble(deal,DEAL_PROFIT),8),
                 DoubleToString(HistoryDealGetDouble(deal,DEAL_COMMISSION),8),
                 DoubleToString(HistoryDealGetDouble(deal,DEAL_SWAP),8),
-                DoubleToString(HistoryDealGetDouble(deal,DEAL_FEE),8));
+                DoubleToString(HistoryDealGetDouble(deal,DEAL_FEE),8),
+                setup_reason);
       count++;
      }
    FileFlush(f);

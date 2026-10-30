@@ -338,6 +338,23 @@ jobs:
               $j.edge_validated -ne $false -or $j.status -ne 'EVIDENCE_GAPS_NO_GO') {
             throw 'SL / TP deal identity or slip calculation incorrect'
           }
+          $headerExtended = $header + ';setup_reason'
+          $multi = @(
+            $headerExtended,
+            '300;5;95;DEAL_ENTRY_IN;DEAL_REASON_EXPERT;DEAL_TYPE_BUY;600000;0.02;4000;3998;4002;0;-0.04;0;0;QTS RANGE REJECT',
+            '300;6;96;DEAL_ENTRY_OUT;DEAL_REASON_TP;DEAL_TYPE_SELL;700000;0.01;4002;3998;4002;2;-0.02;0;0;',
+            '300;7;97;DEAL_ENTRY_OUT;DEAL_REASON_SL;DEAL_TYPE_SELL;900000;0.01;3997.95;3998;4002;-2.05;-0.02;0;0;'
+          )
+          [IO.File]::WriteAllLines((Join-Path $folder 'QTS_5_trades.csv'),$multi,[Text.Encoding]::ASCII)
+          ./gold_robot/research/BuildTradeForensics.ps1 -InputDirectory $folder -OutputDirectory $output -NoOpen
+          $detail = Get-Content (Join-Path $output 'QTS_TRADE_BY_TRADE.json') -Raw | ConvertFrom-Json
+          $multiTrade = @($detail.trades | Where-Object { $_.position_id -eq '300' })
+          if($multiTrade.Count -ne 1 -or $multiTrade[0].setup_reason -ne 'QTS RANGE REJECT' -or
+             $multiTrade[0].status -ne 'COMPLETE_MULTI_EXIT' -or
+             $multiTrade[0].exit_reason -ne 'MIXED_EXIT_REASONS' -or
+             @($multiTrade[0].exit_legs).Count -ne 2) {
+            throw 'A partial TP followed by SL was incorrectly reduced to the last exit'
+          }
           Write-Host 'Individual MT5 deal SL/TP forensics: PASS (no broker order)'
       - name: Simulate clean and blocked MT5 broker reports (no trading)
         shell: pwsh

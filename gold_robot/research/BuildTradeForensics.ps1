@@ -50,12 +50,21 @@ for($style=0;$style -lt $names.Count;$style++){
         $exits=@($items|Where-Object{$_.entry -in @('DEAL_ENTRY_OUT','DEAL_ENTRY_OUT_BY','DEAL_ENTRY_INOUT')})
         $quality='COMPLETE'
         if($entries.Count -eq 0 -or $exits.Count -eq 0){$quality='INCOMPLETE_POSITION'}
+        # DEAL_ENTRY_INOUT represents a netting reversal, not a standalone
+        # completed trade. A naive IN/OUT grouping would double-count risk.
+        if(@($items|Where-Object{$_.entry -eq 'DEAL_ENTRY_INOUT'}).Count -gt 0){
+            $quality='REVERSAL_UNSUPPORTED'
+        }
         $inVolume=0.0;$inValue=0.0;$outVolume=0.0;$outValue=0.0
         foreach($d in $entries){$v=N $d.volume;$inVolume+=$v;$inValue+=(N $d.price)*$v}
         foreach($d in $exits){$v=N $d.volume;$outVolume+=$v;$outValue+=(N $d.price)*$v}
         if($inVolume -le 0.0 -or $outVolume -le 0.0){$quality='INCOMPLETE_POSITION'}
         if($inVolume -gt 0.0 -and $outVolume -gt 0.0 -and
            [Math]::Abs($inVolume-$outVolume)>0.0000001){$quality='PARTIAL_OR_OPEN'}
+        $distinctExitReasons=@($exits | Select-Object -ExpandProperty reason -Unique)
+        if($quality -eq 'COMPLETE' -and $exits.Count -gt 1){
+            $quality='COMPLETE_MULTI_EXIT'
+        }
         $entryPrice=if($inVolume -gt 0.0){$inValue/$inVolume}else{0.0}
         $exitPrice=if($outVolume -gt 0.0){$outValue/$outVolume}else{0.0}
         $first=if($entries.Count){$entries[0]}else{$null}
@@ -68,15 +77,38 @@ for($style=0;$style -lt $names.Count;$style++){
         foreach($d in $items){$gross+=(N $d.gross);$charges+=(N $d.commission)+(N $d.swap)+(N $d.fee)}
         $net=$gross+$charges
         $reason=if($last){[string]$last.reason}else{'NO_EXIT'}
+        if($distinctExitReasons.Count -gt 1){$reason='MIXED_EXIT_REASONS'}
+        $entrySetup='NOT_RECORDED'
+        if($first -and $null -ne $first.PSObject.Properties['setup_reason']){
+            $candidate=[string]$first.setup_reason
+            if(-not [string]::IsNullOrWhiteSpace($candidate)){$entrySetup=$candidate}
+        }
+        $exitLegs=@()
+        foreach($leg in $exits){
+            $exitLegs+=,[ordered]@{
+                deal_id=[string]$leg.deal_id
+                reason=[string]$leg.reason
+                time_msc=[string]$leg.time_msc
+                lots=N $leg.volume
+                price=N $leg.price
+                sl=N $leg.sl
+                tp=N $leg.tp
+                gross=N $leg.gross
+                charges=(N $leg.commission)+(N $leg.swap)+(N $leg.fee)
+            }
+        }
         $side=if($first -and $first.type -eq 'DEAL_TYPE_BUY'){'BUY'}elseif($first -and $first.type -eq 'DEAL_TYPE_SELL'){'SELL'}else{'UNKNOWN'}
         $riskGap=if($initialSL -gt 0 -and $entryPrice -gt 0){[Math]::Abs($entryPrice-$initialSL)}else{0.0}
         $rewardGap=if($initialTP -gt 0 -and $entryPrice -gt 0){[Math]::Abs($initialTP-$entryPrice)}else{0.0}
         $minutes=if($first -and $last){[Math]::Round(((N $last.time_msc)-(N $first.time_msc))/60000.0,2)}else{$null}
         $slip=0.0
-        if($reason -eq 'DEAL_REASON_SL' -and $exitSL -gt 0){
+        # Multiple exit legs can have different fill prices and stop levels.
+        # A single last-exit slippage value is NOT representative in that case.
+        if($reason -eq 'DEAL_REASON_SL' -and $exits.Count -eq 1 -and $exitSL -gt 0){
             $slip=if($side -eq 'BUY'){$exitSL-$exitPrice}else{$exitPrice-$exitSL}
         }
         $why=switch($reason){
+           'MIXED_EXIT_REASONS' {'More than one broker exit cause: inspect every exit leg separately. The last deal must NOT override earlier outcomes.'}
            'DEAL_REASON_SL' {'Broker stop-loss execution. Verify entry setup, initial stop room, later stop modifications, adverse price movement and exit slippage.'}
            'DEAL_REASON_TP' {'Broker take-profit execution. Verify gross reward, cost drag, target distance and whether the position was stopped earlier in other partial fills.'}
            'DEAL_REASON_SO' {'Broker stop-out: inspect margin, liquidation and broker contract; not a planned protective exit.'}
@@ -85,9 +117,13 @@ for($style=0;$style -lt $names.Count;$style++){
            'NO_EXIT' {'No exit deal available. This is NOT a completed trade.'}
            default {'Other broker-recorded exit reason. Inspect journal and all associated deals.'}
         }
-        if($quality -ne 'COMPLETE'){$why='INCOMPLETE POSITION EVIDENCE. '+$why;$allComplete=$false}
+        if($quality -notin @('COMPLETE','COMPLETE_MULTI_EXIT')){
+            $why='INCOMPLETE POSITION EVIDENCE. '+$why
+            $allComplete=$false
+        }
         [void]$positions.Add([ordered]@{
             style=$style;strategy=$names[$style];position_id=[string]$group.Name;
+            setup_reason=$entrySetup;exit_legs=$exitLegs;
             status=$quality;side=$side;entry_price=[Math]::Round($entryPrice,5);
             exit_price=[Math]::Round($exitPrice,5);initial_sl=$initialSL;
             initial_tp=$initialTP;exit_sl=$exitSL;exit_tp=$exitTP;
@@ -104,14 +140,18 @@ for($style=0;$style -lt $names.Count;$style++){
 }
 $rows=@()
 foreach($p in $positions){
-    $columns=@($p.strategy,$p.position_id,$p.side,$p.status,$p.exit_reason,
+    $legsText=($p.exit_legs | ForEach-Object {
+        $_.deal_id+':'+$_.reason+' @'+(F $_.price)+' ('+(F $_.lots)+' lots)'
+    }) -join '; '
+    $columns=@($p.strategy,$p.position_id,$p.setup_reason,$p.side,$p.status,
+       $p.exit_reason,$legsText,
        (F $p.entry_price),(F $p.initial_sl),(F $p.initial_tp),
        (F $p.exit_price),$p.minutes_held,(F $p.exit_adverse_slippage_price),
        (F $p.net_usd),$p.interpretation)
     $cells=($columns|ForEach-Object{'<td>'+(E $_)+'</td>'}) -join ''
     $rows+='<tr>'+$cells+'</tr>'
 }
-if(-not $rows){$rows=@('<tr><td colspan="13">No per-position broker evidence was exported.</td></tr>')}
+if(-not $rows){$rows=@('<tr><td colspan="15">No per-position broker evidence was exported.</td></tr>')}
 $state=if($allComplete){'IMPORTED_FOR_REVIEW'}else{'EVIDENCE_GAPS_NO_GO'}
 $stamp=Get-Date -Format 'yyyyMMdd_HHmmss'
 $report=Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.html'
@@ -134,7 +174,8 @@ th{background:#edf2f9}.warning{border-left:4px solid #b4801f;padding:8px 12px}</
 <body><main><header><h1>QTS Gold | Individual Trade Forensics</h1>
 <p>Status: $(E $state) | LIVE LOCKED | PROFITABLE EDGE NOT VALIDATED</p></header>
 <section><h2>Every position, separately</h2><table><thead><tr>
-<th>Strategy</th><th>Position</th><th>Side</th><th>Evidence</th><th>Broker exit</th>
+<th>Strategy</th><th>Position</th><th>Entry setup (order comment)</th><th>Side</th><th>Evidence</th>
+<th>Broker exit</th><th>Every exit leg</th>
 <th>Entry</th><th>Initial SL</th><th>Initial TP</th><th>Exit</th><th>Minutes</th>
 <th>Adverse SL slip (price)</th><th>Net USD</th><th>What the evidence can explain</th>
 </tr></thead><tbody>$safeRows</tbody></table></section>

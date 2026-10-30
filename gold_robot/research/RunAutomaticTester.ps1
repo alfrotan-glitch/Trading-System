@@ -249,20 +249,25 @@ try{
                 $forensic=@(Get-ChildItem -LiteralPath $common -Filter $pattern -File -ErrorAction SilentlyContinue |
                     Where-Object {$_.LastWriteTimeUtc -ge $began.AddSeconds(-2)} |
                     Sort-Object LastWriteTimeUtc -Descending)
-                if($forensic.Count -eq 1){
-                    Copy-Item -LiteralPath $forensic[0].FullName -Destination (
-                        Join-Path $native ('QTS_'+$i+'_trades.csv'))
-                    $item.detail='Broker position/deal forensic CSV captured.'
-                }else{
-                    $item.status='FORENSIC_MISSING'
-                    $item.detail='MT5 produced native HTML but did not export one fresh broker deal forensic CSV.'
+                # Never overwrite a missing forensic export with REPORT_SAVED.
+                # A native HTML file is not a position-by-position audit.
+                $hasForensics=$forensic.Count -eq 1
+                if($hasForensics){
+                    $forensicTarget=Join-Path $native ('QTS_'+$i+'_trades.csv')
+                    Copy-Item -LiteralPath $forensic[0].FullName -Destination $forensicTarget
+                    if((Get-Item -LiteralPath $forensicTarget).Length -le 0){
+                        $hasForensics=$false
+                    }
                 }
-                if($reportText -match '(?i)real ticks'){
-                    $item.status='REPORT_SAVED'
-                    $item.detail='Native real-tick report saved. Costs and profitability NOT verified.'
-                }else{
+                if(-not $hasForensics){
+                    $item.status='FORENSIC_MISSING'
+                    $item.detail='Native MT5 HTML exists, but exactly one fresh nonempty broker position/deal CSV is required.'
+                }elseif($reportText -notmatch '(?i)real ticks'){
                     $item.status='MODEL_UNVERIFIED'
-                    $item.detail='Native report saved, but real-tick model not confirmed.'
+                    $item.detail='Broker deal CSV captured, but report did not verify real-tick model.'
+                }else{
+                    $item.status='REPORT_AND_FORENSICS_SAVED'
+                    $item.detail='Fresh report and broker deal evidence saved; costs and profitability remain unverified.'
                 }
             }catch{
                 $item.status='FAILED'
@@ -283,9 +288,24 @@ try{
             Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
         if($latest){$comparison=$latest.Name}
         $forensicSummary=Get-Content -LiteralPath (Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json') -Raw | ConvertFrom-Json
-        $state=if($forensicSummary.status -eq 'IMPORTED_FOR_REVIEW'){
-            'TESTS_FINISHED_REVIEW_REQUIRED'
-        }else{'TESTS_FINISHED_WITH_EVIDENCE_GAPS'}
+        # Both independent controls must pass. A completed test with missing
+        # original input identity, missing deal evidence or unverified model
+        # must remain an explicit research failure, never an approval.
+        $badRuns=@($results | Where-Object {$_.status -ne 'REPORT_AND_FORENSICS_SAVED'})
+        $nativeSummary=Get-ChildItem -LiteralPath $OutputDirectory -Filter 'QTS_Gold_Comparison_*.json' |
+            Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+        if(-not $nativeSummary){
+            throw 'No native MT5 comparison JSON was produced.'
+        }
+        $nativeResult=Get-Content -LiteralPath $nativeSummary.FullName -Raw | ConvertFrom-Json
+        $allInputStylesVerified=($nativeResult.reports_parsed -eq $names.Count -and
+                                 $nativeResult.all_styles_identified -eq $true)
+        if($forensicSummary.status -eq 'IMPORTED_FOR_REVIEW' -and
+           $badRuns.Count -eq 0 -and $allInputStylesVerified){
+            $state='TESTS_FINISHED_REVIEW_REQUIRED'
+        }else{
+            $state='TESTS_FINISHED_WITH_EVIDENCE_GAPS'
+        }
         $message='Seven native reports collected. Position-by-position evidence checked; positive after-cost expectancy unvalidated.'
     }
 }catch{
