@@ -212,11 +212,50 @@ def classify(cases: list[dict], replay: dict, pre: dict[str, dict] | None = None
             "at_least_2R_adverse_after_stop": sum(r["post_stress"] == "AT_LEAST_2R_AGAINST" for r in items),
         }
     categories = Counter(r["post_category_120m"] for r in enriched)
+
+    # These are independent style backtests, not simultaneously executed
+    # portfolio positions. Some Adaptive Router deals mirror fixed-style deals
+    # exactly. Count matched market events ONCE in cross-style analysis.
+    groups: dict[tuple, list[dict]] = defaultdict(list)
+    for row in enriched:
+        original = originals[row["trade_id"]]
+        fingerprint = (
+            original["side"], int(original["entry_time_ms"]),
+            int(original["exit_time_ms"]), float(original["entry_price"]),
+            float(original["initial_stop_price"]),
+            float(original["initial_target_price"]), float(original["exit_price"]),
+        )
+        groups[fingerprint].append(row)
+    mirrored_rows = 0
+    mirror_pairs: Counter[str] = Counter()
+    deduplicated = []
+    for rows in groups.values():
+        styles = {r["style"] for r in rows}
+        if len(rows) > 1 and len(styles) != len(rows):
+            raise ValueError("Identical market event duplicated within one strategy")
+        # Same market event must not carry contradictory broker outcomes.
+        if len(rows) > 1 and (len({r["post_category_120m"] for r in rows}) > 1
+                              or len({r["pre_category"] for r in rows}) > 1):
+            raise ValueError("Mirrored strategy trades disagree on quote evidence")
+        canonical = min(rows, key=lambda r: r["trade_id"])
+        deduplicated.append(canonical)
+        for r in rows:
+            r["cross_style_mirror_of"] = (
+                canonical["trade_id"] if r is not canonical else ""
+            )
+        if len(rows) > 1:
+            mirrored_rows += len(rows) - 1
+            mirror_pairs[",".join(map(str, sorted(styles)))] += 1
+    unique_post = Counter(r["post_category_120m"] for r in deduplicated)
     summary = {
         "schema": "qts.stop.failed_paths.v1",
         "status": "DESCRIPTIVE_RESEARCH_ONLY",
         "live": "LOCKED",
         "original_stop_cases": len(cases),
+        "distinct_market_events": len(deduplicated),
+        "cross_style_mirrored_rows": mirrored_rows,
+        "cross_style_mirror_pairs": dict(mirror_pairs),
+        "deduplicated_post_120m_outcomes": dict(unique_post),
         "before_stop_quotes_collected": bool(pre),
         "post_120m_outcomes": dict(categories),
         "pre_stop_outcomes": dict(Counter(r["pre_category"] for r in enriched)),
@@ -227,6 +266,7 @@ def classify(cases: list[dict], replay: dict, pre: dict[str, dict] | None = None
             "Pre-stop price progress is descriptive. It cannot prove why a trade lost.",
             "Only complete executable Bid/Ask quote coverage supports classification.",
             "The four entry styles were selected after viewing in-sample outcomes.",
+            "Identical trades shared across separate backtests are not independent observations.",
             "No parameters were optimized, and live execution remains locked.",
         ],
     }
