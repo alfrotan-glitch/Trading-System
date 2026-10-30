@@ -118,7 +118,7 @@ jobs:
           }
           python -m pip install --quiet pytest
           if($LASTEXITCODE -ne 0){ throw 'Could not install Python test runner' }
-          python -m pytest -q -o 'addopts=' gold_robot/tests/test_stop_tick_window_export.py gold_robot/tests/test_auto_stop_ticks.py
+          python -m pytest -q -o 'addopts=' gold_robot/tests/test_stop_tick_window_export.py gold_robot/tests/test_auto_stop_ticks.py gold_robot/tests/test_stop_failure_paths.py
           if($LASTEXITCODE -ne 0){ throw 'Stop tick plan unit regression failed' }
           Write-Host 'PASS: bounded 120-minute and automatic one-click broker quote research contracts'
 
