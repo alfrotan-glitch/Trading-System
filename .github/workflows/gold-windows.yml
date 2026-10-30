@@ -363,7 +363,7 @@ jobs:
             throw 'A partial TP followed by SL was incorrectly reduced to the last exit'
           }
           Write-Host 'Individual MT5 deal SL/TP forensics: PASS (no broker order)'
-      - name: Package one-click research evidence without account HTML or terminal logs
+      - name: Package local evidence without native account HTML or terminal logs
         shell: pwsh
         run: |
           $root = Join-Path $PWD 'gold_robot\reports_local\auto_runs'
@@ -390,17 +390,14 @@ jobs:
                'native/QTS_1_trades.csv' -notin $names) {
               throw 'Evidence package lacks correct allowlist'
             }
-            if(@($names|Where-Object {$_ -match '\.htm$|\.log
-        shell: pwsh
-        run: ./gold_robot/tests/windows_report_smoke.ps1
-}).Count) {
+            if(@($names | Where-Object { $_.EndsWith('.htm') -or $_.EndsWith('.log') }).Count) {
               throw 'Private native HTML or log was included in handoff'
             }
             $readme=$z.GetEntry('README_EVIDENCE.txt')
             $reader=[IO.StreamReader]::new($readme.Open())
-            try{$text=$reader.ReadToEnd()}finally{$reader.Dispose()}
-            if($text -notmatch 'INCOMPLETE_FORENSIC_EVIDENCE' -or
-               $text -notmatch 'QTS_0_trades.csv') {
+            try{$txt=$reader.ReadToEnd()}finally{$reader.Dispose()}
+            if($txt -notmatch 'INCOMPLETE_FORENSIC_EVIDENCE' -or
+               $txt -notmatch 'QTS_0_trades.csv') {
               throw 'Missing deal evidence was not disclosed'
             }
           } finally {$z.Dispose()}
