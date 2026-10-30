@@ -182,8 +182,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 77855,
-      "sha256": "6e92882b3534160ae404ff6112f76130d67440e9cc99b49dd15b033f5f7a9414"
+      "bytes": 81989,
+      "sha256": "e7d807534a76b0e260698df0c005d5765ecf4e75a56f66c4fa93305a7f895ef2"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -257,8 +257,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 22244,
-      "sha256": "23b64265d54e44a53ef4bed5837e620861f6c2885bfaa51ab93f7e25fe993e1a"
+      "bytes": 23614,
+      "sha256": "fd6d8c7666b1117c15a2c20a16d02436e66f3cad27a636a7c463ad10e22cd5f4"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -299,6 +299,11 @@
       "path": "research/build_report.py",
       "bytes": 8887,
       "sha256": "f625005f0bf1d941335956789b09ba887c1720ca424546973b23eeca935fb152"
+    },
+    {
+      "path": "research/compare_revised_variants.py",
+      "bytes": 5965,
+      "sha256": "be8a04c22b49298467477960f94267183f0455e98fa41c78cc1f750162b3b206"
     },
     {
       "path": "research/daily_direction.py",
@@ -449,6 +454,11 @@
       "path": "tests/test_research.py",
       "bytes": 3685,
       "sha256": "85b85920778cff7598f2c8e776f99f4bab04a255d57c0b3a03ab7caca95a404c"
+    },
+    {
+      "path": "tests/test_revised_v2_contract.py",
+      "bytes": 4218,
+      "sha256": "acea78fedfe9221ec1d7fbb36574ecf10023fa141c5afa7ba1bfe7643b8f430d"
     },
     {
       "path": "tests/test_robot.py",
