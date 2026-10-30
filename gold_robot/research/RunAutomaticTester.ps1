@@ -3,7 +3,9 @@
 param([string]$TerminalExe="",[string]$TerminalDataFolder="",
       [string]$OutputDirectory="",[string]$FromDate="",[string]$ToDate="",
       [int]$TimeoutMinutesPerRun=90,[switch]$PrepareOnly,[switch]$NoOpen,
-      [string]$OnlyStyles='')
+      [string]$OnlyStyles='',
+      [ValidateSet('BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED')]
+      [string]$ResearchVariant='BASELINE')
 $ErrorActionPreference='Stop'
 $gold=Split-Path -Parent $PSScriptRoot
 if(-not $OutputDirectory){
@@ -96,6 +98,7 @@ An incomplete or missing report means NO-GO.</p></section></main></body></html>
         symbol='XAUUSD@';model=4;timeframe='M15';deposit_usd=3000;
         from_date=$FromDate;to_date=$ToDate;comparison=$comparison;
         selected_styles=@($selectedStyles);targeted=$targeted;
+        research_variant=$ResearchVariant;
         results=@($results.ToArray())
     } | ConvertTo-Json -Depth 7 |
         Set-Content -LiteralPath (Join-Path $OutputDirectory 'OPEN_RESULTS.json') -Encoding UTF8
@@ -216,6 +219,25 @@ try{
         $tfLabel=$(if($i -eq 9){'M1'}else{'M15'})
         $preset=Join-Path $presetDir ('safety_on\QTS_'+$tfLabel+'_'+$codes[$i]+'_SAFETY_ON.set')
         if(-not (Test-Path -LiteralPath $preset -PathType Leaf)){throw ('Missing safety-on preset '+$i)}
+        # Native A/B comparison: mutate a new, isolated tester preset.
+        # The untouched baseline and compiled EA are the same in both arms.
+        $flags=[ordered]@{
+            'TesterUseEntryQualityV2'=($ResearchVariant -in @('ENTRY_FILTER','COMBINED'))
+            'TesterProtectNearTPV2'=($ResearchVariant -in @('NEAR_TP','COMBINED'))
+        }
+        $profileLines=@(Get-Content -LiteralPath $preset -Encoding Unicode)
+        foreach($key in $flags.Keys){
+            if(@($profileLines | Where-Object {$_ -match ('^'+$key+'=')}).Count -ne 1){
+                throw ('V2 research flag missing or duplicated: '+$key)
+            }
+            $value=if($flags[$key]){'true'}else{'false'}
+            $profileLines=@($profileLines | ForEach-Object {
+                if($_ -match ('^'+$key+'=')){ $key+'='+$value }else{ $_ }
+            })
+        }
+        $variantPreset=Join-Path $presetDir ('research_'+$ResearchVariant+'_'+$i+'.set')
+        [IO.File]::WriteAllLines($variantPreset,$profileLines,[Text.Encoding]::Unicode)
+        $preset=$variantPreset
         $setName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i+'.set'
         foreach($root in $profileLocations){
             $setFile=Join-Path $root $setName
@@ -229,6 +251,10 @@ try{
         $musts=@(('EntryStyle='+$i),'EnableDemoOrders=true',
                     'EnableDemoForwardOrders=false','TesterIgnoreDailyAndPeakStops=false',
                     'RiskPerTradePct=0.50')
+        foreach($key in $flags.Keys){
+            $expect=if($flags[$key]){'true'}else{'false'}
+            $musts+=@($key+'='+$expect)
+        }
         # Style 9 is M1-only with a 15-minute cap in the EA; a preset
         # without both is not Style 9 and must fail here, not in OnInit
         # after a wasted run (or worse, on the wrong timeframe).
