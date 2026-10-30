@@ -109,6 +109,8 @@ jobs:
               throw "Stop-tick helper PowerShell syntax failed: $name"
             }
           }
+          python -m pip install --quiet pytest
+          if($LASTEXITCODE -ne 0){ throw 'Could not install Python test runner' }
           python -m pytest -q gold_robot/tests/test_stop_tick_window_export.py
           if($LASTEXITCODE -ne 0){ throw 'Stop tick plan unit regression failed' }
           Write-Host 'PASS: read-only 120-minute window exporter prep/finish contract'
