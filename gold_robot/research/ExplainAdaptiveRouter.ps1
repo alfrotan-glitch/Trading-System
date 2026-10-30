@@ -63,15 +63,15 @@ function Summary([object[]]$rows){
     foreach($r in $rows){
         $value=[double]$r.net_usd
         $net+=$value
-        if($value>0.0){$gain+=$value}
-        elseif($value<0.0){$loss+=-$value}
+        if($value -gt 0.0){$gain+=$value}
+        elseif($value -lt 0.0){$loss+=-$value}
         $fees+=[double]$r.charges_usd
         if($r.exit_reason -eq 'DEAL_REASON_SL'){$sl++}
         elseif($r.exit_reason -eq 'DEAL_REASON_TP'){$tp++}
         else{$other++}
     }
     $pf=$null
-    if($loss>0.000001){$pf=[math]::Round($gain/$loss,4)}
+    if($loss -gt 0.000001){$pf=[math]::Round($gain/$loss,4)}
     return [ordered]@{
         positions=$rows.Count; net_usd=[math]::Round($net,2)
         profit_factor_after_recorded_costs=$pf
@@ -85,7 +85,7 @@ $expectedNet=[double]$mt[0].net_usd
 if($total.positions -ne $expectedTrades){
     [void]$errors.Add(('Count mismatch: broker position rows='+$total.positions+' native report='+$expectedTrades))
 }
-if([math]::Abs($total.net_usd-$expectedNet)>0.05){
+if([math]::Abs($total.net_usd-$expectedNet) -gt 0.05){
     [void]$errors.Add(('Net mismatch: broker position sum='+$total.net_usd+' native report='+$expectedNet))
 }
 if(@($groups['UNKNOWN']).Count -gt 0){

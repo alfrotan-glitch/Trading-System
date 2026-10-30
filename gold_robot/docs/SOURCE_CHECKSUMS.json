@@ -182,8 +182,8 @@
     },
     {
       "path": "research/ExplainAdaptiveRouter.ps1",
-      "bytes": 10228,
-      "sha256": "13a58404e46d20fd2fa67a5fd7b99838bc316c3cf8248044c52dcd9d42cf6013"
+      "bytes": 10244,
+      "sha256": "9646dac10ed1972cbab02d923e4b391d739cc0e65666417f1a6ec9e51a6daeec"
     },
     {
       "path": "research/ExportBrokerData.mq5",
