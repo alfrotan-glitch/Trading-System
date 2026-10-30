@@ -86,3 +86,105 @@ def test_holm_is_monotone_and_bounds_p():
 def test_dsr_needs_enough_days():
     assert deflated_sharpe([1.0] * 10, 3) is None
     assert deflated_sharpe([], 3) is None
+
+
+def _write_hand_ledger(path, rows):
+    import csv as _csv
+    with path.open("w", newline="") as handle:
+        writer = _csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+    return path
+
+
+def test_repaired_2x_costs_use_doubled_charges_including_slippage(tmp_path):
+    # REPAIR 2026-10-30: the old code reported the 1x net (120) as the
+    # "2x" figure and excluded slippage from its mean-cost stress.
+    # Hand arithmetic, PRE_SLIPPAGE basis:
+    #   gross 150, charged 15+15=30 -> 1x net 120, 1.5x net 105, 2x net 90.
+    #   Slippage doubled (other charges 1x): 150 - (20 + 2*10) = 110.
+    rows = [
+        {"trade_id": "T1", "date": "2026-03-02", "gross_usd": "100",
+         "commission_usd": "10", "slippage_usd": "5",
+         "swap_charge_usd": "0", "broker_fee_usd": "0"},
+        {"trade_id": "T2", "date": "2026-03-03", "gross_usd": "50",
+         "commission_usd": "10", "slippage_usd": "5",
+         "swap_charge_usd": "0", "broker_fee_usd": "0"},
+    ]
+    out = _run(_write_hand_ledger(tmp_path / "h.csv", rows),
+               active_days=2, trials_tested=1, stress_extra=0.0)
+    assert out["cost_multiples_net"]["1.0x"] == 120.0
+    assert out["cost_multiples_net"]["1.5x"] == 105.0
+    assert out["cost_multiples_net"]["2.0x"] == 90.0
+    assert out["robustness_2x_costs_net"] == 90.0
+    assert out["robustness_2x_costs_net"] != out["edge_gate"]["net_usd"]
+    assert out["robustness_2x_costs_mean_charged_per_trade"] == 15.0
+    assert out["robustness_slippage_doubled_net"] == 110.0
+    assert out["robustness_spread"]["status"] == "NOT_MEASURABLE"
+
+
+def test_2x_costs_do_not_double_count_actual_fill_slippage(tmp_path):
+    # ACTUAL_EXECUTED_FILLS: slippage is already inside gross, so the
+    # diagnostic slippage field must NOT be charged again at 1x or 2x.
+    # gross 150, charged 20 -> 1x 130, 2x 110; slippage stress N/A.
+    rows = [
+        {"trade_id": "T1", "date": "2026-03-02", "gross_usd": "100",
+         "commission_usd": "10", "slippage_usd": "5",
+         "swap_charge_usd": "0", "broker_fee_usd": "0"},
+        {"trade_id": "T2", "date": "2026-03-03", "gross_usd": "50",
+         "commission_usd": "10", "slippage_usd": "5",
+         "swap_charge_usd": "0", "broker_fee_usd": "0"},
+    ]
+    out = _run(_write_hand_ledger(tmp_path / "a.csv", rows),
+               active_days=2, trials_tested=1, stress_extra=0.0,
+               gross_basis="ACTUAL_EXECUTED_FILLS")
+    assert out["cost_multiples_net"]["1.0x"] == 130.0
+    assert out["robustness_2x_costs_net"] == 110.0
+    assert out["robustness_slippage_doubled_net"] is None
+
+
+def test_walk_forward_wfe_formula_and_undefined_negative_base():
+    from evaluate_ledger import walk_forward
+    daily = [(f"2026-03-{i + 1:02d}", v) for i, v in
+             enumerate([10.0] * 5 + [20.0] * 5)]
+    wf = walk_forward(daily, 5)
+    assert wf["segments"][0]["wfe_net"] == 1.0  # OOS 20 / IS 20
+    assert wf["segments"][1]["wfe_net"] == 0.75  # OOS 30 / IS 40
+    assert wf["method"].startswith("expanding-window")
+    assert wf["segments"][0]["in_sample_days"] == 2
+    # Negative in-sample base: WFE is undefined, never fabricated.
+    bad = [(f"2026-03-{i + 1:02d}", v) for i, v in
+           enumerate([-10.0] * 2 + [10.0] * 8)]
+    wf_bad = walk_forward(bad, 5)
+    assert wf_bad["segments"][0]["wfe_net"] is None
+    assert wf_bad["segments"][0]["oos_net"] == 20.0  # OOS judged on its own
+
+
+def test_counterfactuals_best_static_and_random_router():
+    from evaluate_ledger import counterfactuals
+    cf = counterfactuals({
+        "A": [("2026-03-02", 60.0), ("2026-03-03", 40.0)],
+        "B": [("2026-03-02", 20.0), ("2026-03-03", 30.0)],
+    }, draws=2000)
+    assert cf["best_static"]["name"] == "A"
+    assert cf["best_static"]["net"] == 100.0
+    assert cf["random_router_expected"]["net"] == 75.0
+    # Monte Carlo mean of a symmetric lottery: near 75, not exactly 75.
+    assert abs(cf["random_router_mc"]["mean_net"] - 75.0) < 2.0
+    single = counterfactuals({"A": [("2026-03-02", 1.0)]})
+    assert single["status"] == "NOT_COMPUTABLE"
+
+
+def test_shuffled_regime_placebo_detects_real_split(tmp_path):
+    # 40 trades: regime X always +10, regime Y always -10. Under label
+    # shuffling, X's net (+200) is essentially never reproduced, so
+    # its placebo p must be ~0; a fabricated split would sit near 1.
+    from evaluate_ledger import shuffled_regime_placebo
+    trades = []
+    for i in range(20):
+        trades.append((f"2026-03-{(i % 20) + 1:02d}", 10.0, "X"))
+    for i in range(20):
+        trades.append((f"2026-03-{(i % 20) + 1:02d}", -10.0, "Y"))
+    out = shuffled_regime_placebo(trades, permutations=200)
+    assert out["status"] == "COMPUTED"
+    assert out["per_regime"]["X"]["placebo_p_shuffled_net_ge_actual"] == 0.0

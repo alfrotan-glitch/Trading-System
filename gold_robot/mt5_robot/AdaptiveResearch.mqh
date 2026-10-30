@@ -43,7 +43,15 @@ bool RouterVolatilityGuardPass()
    double values[];
    if(CopyBuffer(atr_handle,0,1,ROUTER_ATR_LOOKBACK_BARS,values)!=ROUTER_ATR_LOOKBACK_BARS)
       return false;
-   double current=values[0];
+   // REPAIR 2026-10-30 (indexing defect, not a threshold change): CopyBuffer
+   // fills a NON-series array OLDEST first, and start_pos=1 copies shifts
+   // 1..50. So values[0] is shift 50 (the OLDEST bar, 50 bars ago) and
+   // values[49] is shift 1 (the latest closed bar). The previous code read
+   // values[0] as "current", so the guard abstained/passed on volatility
+   // from 50 bars ago instead of today's. The percentile loop below is
+   // order-insensitive and unchanged; only the reference bar is corrected.
+   // Window (50), percentile (0.90) and abstention rule are unchanged.
+   double current=values[ROUTER_ATR_LOOKBACK_BARS-1];
    if(!MathIsValidNumber(current) || current<=0.0)
       return false;
    int at_or_below=0;

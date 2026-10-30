@@ -1,13 +1,29 @@
-# Windows native test — adaptive branch (START HERE)
-Branch: `independent/adaptive-robot-20261030` (do NOT test main:
-main lacks the fix-branch gate, the router hardening, SMC, and scalp).
-Base: main `6c8f786` + fix `5fc0929` + router/SMC + scalp.
+# Windows native test — REPAIR branch (START HERE)
+Branch: `independent/adaptive-repair-20261030` (do NOT test main:
+main lacks the fix-branch gate, the router hardening, SMC, and scalp;
+do NOT test the adaptive branch either — its router has the ATR-guard
+indexing defect repaired here, and its installer/workflow omit Style 9).
+Base: adaptive branch `34cab34` + repair branch fixes (installer
+dependency set, ATR-guard reference bar, repaired 2x costs, genuine
+walk-forward, ten-style workflow). See
+`EVALUATION_REPAIR_2026-10-30.md` for the defect verdicts and
+`PREREGISTRATION_ADDENDUM_REPAIR_2026-10-30.md` for trial accounting.
 Symbol: WMMarkets XAUUSD@. Tester model 4 (every tick based on real
 ticks). Deposit $3,000, leverage 1:100, currency USD.
 LIVE REMAINS LOCKED. This is Strategy Tester simulation only.
 
-## Step 0 — compile first, nothing else counts without it
-1. Open MetaEditor, compile `gold_robot/mt5_robot/QTS_Gold_Robot.mq5`.
+## Step 0 — install and compile first, nothing else counts without it
+1. Install with `gold_robot/mt5_robot/Install_QTS_Gold_Robot.ps1`
+   (or `SETUP_MT5_GOLD.bat`, which runs the canonical installer).
+   The installer now validates, deploys, and post-compile-checks
+   EVERY MQL5 dependency against `docs/SOURCE_CHECKSUMS.json`:
+   QTS_Gold_Robot.mq5, ExecutionPolicy, StructureResearch,
+   OpportunityResearch, AdaptiveResearch, SmcResearch,
+   ScalpResearch. If any include is missing or hash-mismatched,
+   installation stops BEFORE copying — a stale Smc/Scalp file in
+   Experts can no longer be compiled silently. Do not hand-copy
+   files into Experts around the installer.
+2. Open MetaEditor, compile `gold_robot/mt5_robot/QTS_Gold_Robot.mq5`.
 2. If compilation fails, STOP and send the exact compiler errors
    back. Do not edit thresholds to make it compile; a compile fix
    that changes a frozen parameter restarts the unseen-window clock.
@@ -25,12 +41,19 @@ LIVE REMAINS LOCKED. This is Strategy Tester simulation only.
 - Each candidate needs >=100 closed trades, >=40 active days,
   >=20 trade days in that window before any positive screen.
 
-## Step 2 — styles 0–8 on M15 (safety_on only)
+## Step 2 — ALL TEN styles in ONE workflow (safety_on only)
+REPAIR 2026-10-30: the auto-runner previously covered only nine
+styles (0–8) and the comparison/forensics scripts only eight, so
+Style 9 was manual-only and the runner's completeness check could
+never pass. All four scripts now enumerate styles 0–9, and Style 9
+runs inside this same workflow on M1 (see Step 3). Do NOT run a
+nine-style subset and call it the workflow.
 1. Generate presets:
    `gold_robot/research/MakeTesterPresets.ps1` (creates
    `safety_on` presets with TesterIgnoreDailyAndPeakStops=false,
-   RiskPerTradePct=0.50).
-2. Run all nine styles (0–8):
+   RiskPerTradePct=0.50; Style 9 presets are M1 with
+   SignalTimeframe=1 and MaxPositionMinutes=15).
+2. Run all ten styles (0–9):
    `gold_robot/research/RunAutomaticTester.ps1 -FromDate <from> -ToDate <to>`
    Do NOT use the script's default last-6-months window for the
    validation run; pass the preregistered window explicitly.
@@ -41,10 +64,14 @@ LIVE REMAINS LOCKED. This is Strategy Tester simulation only.
    all-styles-identified check). A report that cannot be tied to a
    style is evidence-gap, not a result.
 
-## Step 3 — Style 9 M1 scalp, manual run (the auto-runner is M15-only)
-The auto-runner does not cover Style 9. Run it manually in the
-Strategy Tester with exactly these settings, in addition to the
-safety_on defaults:
+## Step 3 — Style 9 M1 scalp, inside the same workflow (manual fallback only)
+The auto-runner now runs Style 9 itself: Tester `.ini` Period=M1
+with the `QTS_M1_M1_SCALP_SAFETY_ON.set` preset, and it verifies
+`SignalTimeframe=1` and `MaxPositionMinutes=15` in that preset
+before launching (any other values fail the run, they do not
+silently test a different hypothesis). Use a manual run ONLY if
+the auto-runner is unavailable, with exactly these settings, in
+addition to the safety_on defaults:
 - Expert: QTS_Gold_Robot.ex5, Symbol: XAUUSD@, Period: M1,
   Model: 4 (every tick based on real ticks),
   FromDate/ToDate: the SAME preregistered window as Step 2,
@@ -84,17 +111,36 @@ available) and run, per style:
   ledgers stay SIMULATED and cannot pass.)
 - `gold_robot/research/evaluate_ledger.py <ledger.csv>
   --active-days <n> --trials-tested <declared>
-  --stress-extra-usd-per-trade <value> --provenance BROKER_NATIVE`
-  for folds, DSR/Holm, placebo, 2x-cost robustness, per-regime audit.
+  --stress-extra-usd-per-trade <value> --provenance BROKER_NATIVE
+  --candidate-ledger <style>=<ledger.csv>` (repeat for every style,
+  for the best-static / random-router counterfactuals)
+  for genuine expanding-window walk-forward + WFE, DSR/Holm,
+  placebo (max-drawdown sequence AND shuffled regime labels),
+  repaired 2x-cost robustness, cost multiples, slippage and
+  spread stress, per-regime audit. NOTE: the evaluator's old
+  `walk_forward_folds` output is chronological slices, NOT
+  walk-forward — judge walk-forward only from the `walk_forward`
+  output (WFE defined per fold, undefined when IS <= 0).
 - Declare trials_tested >= 10 (styles 0–9) plus every robustness
   perturbation actually run. If it exceeds 40, edge_gate lower=None
   is fail-closed; use DSR/Holm over the ledger-counted list.
 - Gates (all must pass for a candidate): edge_gate net>0,
   stressed net>0, PF>1.15, bootstrap 99% lower>0; DSR>=0.95,
-  alpha_t>=2.5 (DEV); mean walk-forward efficiency>=0.30, mean OOS
-  Sharpe>=0.30; beats best static style AND placebo; positive at
+  alpha_t>=2.5 (DEV); walk-forward pass (mean OOS Sharpe>=0.30,
+  at least folds-2 OOS segments positive, every defined WFE_net
+  >=0, at least one defined WFE); beats best static style AND
+  random router AND shuffled-regime placebo; positive at repaired
   2x costs, 1.5x/2x spread, slippage stress. Any failing gate =
   NO-GO for that candidate, reported with the gate named.
+- Python/MQL5 parity check (router mirror only): feed the same
+  closed bars that produced each router decision (from exported
+  broker data) through `research/router_logic.py` regime/guard/
+  SMC/scalp functions and compare chosen style and regime against
+  the EA's diagnostics + forensic CSV. Predeclared kill rule:
+  >5% chosen-style mismatch INVALIDATES the mirror (not the EA)
+  and the mirror must not be used for any further claim. The
+  mirror does not model candidate scoring, sizing, session, or
+  fills, so parity here is partial by construction.
 
 ## Step 6 — DEMO-forward (only after a tester pass, and only then)
 Do not arm DEMO for Styles 4–9 until a tester pass exists, the

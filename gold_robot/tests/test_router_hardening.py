@@ -42,11 +42,27 @@ def test_persistence_requires_three_consecutive_closed_bars():
 
 
 def test_atr_guard_abstains_only_above_90th_percentile():
+    # Input order is MQL5 CopyBuffer order: OLDEST first, so the current
+    # (latest closed) ATR is the LAST element.
     # Current ATR is the maximum of 50 -> percentile 1.0 -> abstain.
-    assert atr_guard_pass([10.0] + [1.0] * 49) is False
+    assert atr_guard_pass([1.0] * 49 + [10.0]) is False
     # Current ATR is the median -> pass.
-    assert atr_guard_pass([5.0] * 25 + [10.0] * 25) is True
+    assert atr_guard_pass([10.0] * 25 + [5.0] * 25) is True
     assert atr_guard_pass([1.0] * 10) is False  # wrong length, fail closed
+
+
+def test_atr_guard_uses_latest_closed_bar_not_oldest():
+    # Regression for the 2026-10-30 MQL5 indexing defect: the guard
+    # previously read values[0] (the OLDEST bar, shift 50) as current.
+    # Here the oldest bar is the maximum (would abstain under the bug)
+    # but the latest closed bar is the median (must pass when fixed).
+    assert atr_guard_pass([10.0] + [1.0] * 24 + [9.0] * 24 + [5.0]) is True
+    # And symmetrically: a calm oldest bar must not mask a current spike.
+    assert atr_guard_pass([1.0] * 49 + [10.0]) is False
+    # The MQL5 source must read the last element of the 50-bar window.
+    adaptive = (ROOT / "mt5_robot" / "AdaptiveResearch.mqh").read_text(encoding="utf-8")
+    assert "values[ROUTER_ATR_LOOKBACK_BARS-1]" in adaptive
+    assert "double current=values[0];" not in adaptive
 
 
 def test_transition_abstention():

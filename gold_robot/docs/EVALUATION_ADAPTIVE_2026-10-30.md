@@ -17,8 +17,10 @@ in this branch.
 - `gold_robot/tests`: 184 passed at the final commit (175 after
   router+SMC, 180 after scalp, 184 after the ledger tool).
 - Python unknown-strategy + exit-rules tests: 22 passed.
-- Manifest: 84 files valid (`SOURCE_CHECKSUMS.json` regenerated after
-  every gold_robot change, `--check` passes).
+- Manifest: 88 files valid (`SOURCE_CHECKSUMS.json` regenerated after
+  every gold_robot change, `--check` passes). [Corrected 2026-10-30
+  in the repair branch: the "84" figure below was written before the
+  final manifest regeneration; 88 is the verified count at push.]
 - `evaluate_ledger.py` synthetic controls (fabricated ledgers, NOT
   market results): a positive synthetic ledger (150 trades, mean
   +$3.00, sd $12, 60 days) screens net +$317.52, PF 1.57, bootstrap

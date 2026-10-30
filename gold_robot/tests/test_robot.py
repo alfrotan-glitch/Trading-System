@@ -732,3 +732,37 @@ def test_unarmed_demo_observes_closed_bar_signals_without_any_order_path():
                       'PrepareRetestLimit(', 'PreparePullbackLimit('):
         assert forbidden not in observer
     assert 'QTS ENTRY AUDIT bar=' in tick
+
+
+def test_installer_validates_deploys_and_rolls_back_smc_and_scalp():
+    # REPAIR 2026-10-30: the EA #includes SmcResearch.mqh and
+    # ScalpResearch.mqh, but the installer previously ignored both.
+    # Every include must be manifest-validated, deployed, hash-checked
+    # after compile, and rolled back on failure, like the older ones.
+    for term in ('SmcResearch.mqh', '$smcHash', '$destSmc',
+                 '$backupSmc', 'Get-FileHash -LiteralPath $destSmc',
+                 'SMC research include changed during compilation.',
+                 'ScalpResearch.mqh', '$scalpHash', '$destScalp',
+                 '$backupScalp', 'Get-FileHash -LiteralPath $destScalp',
+                 'Scalp research include changed during compilation.'):
+        assert term in PS, term
+
+
+def test_installer_post_compile_checks_adaptive_include():
+    # Adaptive was validated before copying but never re-checked after
+    # compilation, unlike policy/structure/opportunity. That gap is
+    # closed by the same repair.
+    assert 'Adaptive research include changed during compilation.' in PS
+
+
+def test_installer_dependency_set_matches_ea_includes():
+    # The installer's deployed set must equal the EA's #include set
+    # (excluding the system Trade.mqh). A new include added to the EA
+    # without an installer entry must fail this test, not ship stale.
+    import re as _re
+    includes = set(_re.findall(r'#include\s+"([A-Za-z_]+\.mqh)"', EA))
+    assert includes == {'ExecutionPolicy.mqh', 'StructureResearch.mqh',
+                        'OpportunityResearch.mqh', 'AdaptiveResearch.mqh',
+                        'SmcResearch.mqh', 'ScalpResearch.mqh'}
+    for inc in includes:
+        assert inc in PS, inc

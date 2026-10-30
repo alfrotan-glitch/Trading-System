@@ -1,4 +1,4 @@
-# QTS MT5 position-by-position forensic audit from broker-authored Tester deals.
+﻿# QTS MT5 position-by-position forensic audit from broker-authored Tester deals.
 # Read-only, offline; no prediction of hidden causes or trading permissions.
 [CmdletBinding()]
 param([string]$InputDirectory="",[string]$OutputDirectory="",[switch]$NoOpen)
@@ -19,7 +19,7 @@ function N([object]$raw){
 }
 function F([double]$value){return $value.ToString('0.0000',[Globalization.CultureInfo]::InvariantCulture)}
 $names=@('Former stop','Retest','Break and retest','Sweep and reclaim',
-         'Trend impulse','Range rejection','Inside-bar breakout','Adaptive router')
+         'Trend impulse','Range rejection','Inside-bar breakout','Adaptive router','SMC FVG OB','M1 scalp')
 $positions=New-Object System.Collections.ArrayList
 $evidence=New-Object System.Collections.ArrayList
 $allComplete=$true

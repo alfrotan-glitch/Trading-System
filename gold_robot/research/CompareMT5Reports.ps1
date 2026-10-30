@@ -1,4 +1,4 @@
-﻿# Read-only comparison of eight user-exported native MT5 Strategy Tester reports.
+﻿# Read-only comparison of ten user-exported native MT5 Strategy Tester reports (styles 0-9).
 [CmdletBinding()]
 param([string]$ReportDirectory="",[string]$OutputDirectory="",[switch]$NoOpen)
 $ErrorActionPreference='Stop'
@@ -35,7 +35,7 @@ function ParseNative([string]$filepath,[int]$expectedStyle){
     throw 'Not a native MT5 HTML backtest report.'
   }
   $text=[System.Net.WebUtility]::HtmlDecode([regex]::Replace($html,'(?is)<[^>]+>',' '))
-  $styles=@([regex]::Matches($text,'(?i)\bEntryStyle\s*=\s*([0-7])\b'))
+  $styles=@([regex]::Matches($text,'(?i)\bEntryStyle\s*=\s*([0-9])\b'))
   if($styles.Count -gt 0){
     foreach($match in $styles){
       if([int]$match.Groups[1].Value -ne $expectedStyle){
@@ -72,7 +72,7 @@ function ParseNative([string]$filepath,[int]$expectedStyle){
   }
 }
 $labels=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM',
-          'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER')
+          'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER','SMC_FVG_OB','M1_SCALP')
 $results=@()
 for($style=0;$style -lt $labels.Count;$style++){
   $filename='QTS_{0}.htm' -f $style
@@ -140,7 +140,7 @@ p{line-height:1.8}footer{font-size:12px;color:#6c798b;text-align:center}
 <section><h2>Available results</h2><table>
 <thead><tr><th>Entry style</th><th>Status</th><th>Trades</th><th>Net profit/loss</th><th>Profit Factor</th><th>Maximum equity drawdown</th></tr></thead>
 <tbody>$tableRows</tbody></table>
-<p class="note">A file without a matching EntryStyle input is UNVERIFIED_STYLE, not reliable evidence. Even eight style-verified reports require manual confirmation of matching dates, XAUUSD@, M15, real-tick model, USD 3,000 deposit, and execution costs. Missing data is not a zero result. No profitability or LIVE approval is implied.</p></section>
+<p class="note">A file without a matching EntryStyle input is UNVERIFIED_STYLE, not reliable evidence. Even ten style-verified reports require manual confirmation of matching dates, XAUUSD@, the correct timeframe per style (M15 for styles 0-8, M1 for Style 9), real-tick model, USD 3,000 deposit, and execution costs. Missing data is not a zero result. No profitability or LIVE approval is implied.</p></section>
 <section><h2>Operator instructions</h2>
 <p>Save the eight native MT5 reports as QTS_0.htm through QTS_7.htm under gold_robot/reports_local/native, then regenerate the comparison. Preserve each run's Report, Deals, Orders and Journal independently.</p></section>
 <footer>Read-only native report comparison | No credentials | No broker orders</footer>

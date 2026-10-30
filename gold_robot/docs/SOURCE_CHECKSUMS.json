@@ -27,8 +27,8 @@
     },
     {
       "path": "MAKE_TEST_PRESETS.bat",
-      "bytes": 512,
-      "sha256": "1bf955b19873b9e19de60cbad2faf03cebcec719dc924d586762f198aa762790"
+      "bytes": 540,
+      "sha256": "00df3567bd09489a9024aa358129062e846d3a2109ce42d6ee658d68ace4b62e"
     },
     {
       "path": "README.md",
@@ -42,8 +42,8 @@
     },
     {
       "path": "SETUP_MT5_GOLD.bat",
-      "bytes": 3110,
-      "sha256": "60a571755ee4c52f6e047cd8ba1aef250e3b9845ca2cab2d194d276a85873c40"
+      "bytes": 4395,
+      "sha256": "a1eea1ed5bca744d8e90805912e5bde736d88f0dabd63cb204fb02fff8586826"
     },
     {
       "path": "docs/ACCEPTANCE_CHECKLIST.md",
@@ -67,8 +67,13 @@
     },
     {
       "path": "docs/EVALUATION_ADAPTIVE_2026-10-30.md",
-      "bytes": 5637,
-      "sha256": "cde45ad3db5cd81cb1bf1597585fbdd3ad417dfe6c2712f0a267045fb3ddc3db"
+      "bytes": 5794,
+      "sha256": "02ed9c18eb240fc46b678aeed1d3f829c5ae3bae469bc321030457e1a818f13e"
+    },
+    {
+      "path": "docs/EVALUATION_REPAIR_2026-10-30.md",
+      "bytes": 16857,
+      "sha256": "3b5d44cd41806f3471a769abd838ff5896e17132680dffc1073e279aecfaa1ca"
     },
     {
       "path": "docs/EXTERNAL_EA_BENCHMARK.md",
@@ -106,6 +111,11 @@
       "sha256": "ef8ea47b9b56e348ae51d93016e57547e1bb843fd697dc2ed1cf09b4558371a7"
     },
     {
+      "path": "docs/PREREGISTRATION_ADDENDUM_REPAIR_2026-10-30.md",
+      "bytes": 3201,
+      "sha256": "b2b53f92919f1ad9b424e201b2a12c42b79caca15ffd6d7b14721baef66f8086"
+    },
+    {
       "path": "docs/PRODUCTION_EVIDENCE_2026-10-29.md",
       "bytes": 8034,
       "sha256": "eeecdde7bd7614244c2e1af5d1d24195c5398e0f287bfb4ebf3bcd1ef597c884"
@@ -127,8 +137,8 @@
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
-      "bytes": 5624,
-      "sha256": "7d2ab4e7879f943f3b39123a98d847953197de716835e81b8bb82591574ebdee"
+      "bytes": 8537,
+      "sha256": "f7ae51ea99a04554cef573aae5bea8f5580d6038412611d9ec134f095fb46b62"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART.md",
@@ -137,8 +147,8 @@
     },
     {
       "path": "mt5_robot/AdaptiveResearch.mqh",
-      "bytes": 8505,
-      "sha256": "f14c941268317ef65cf72287aaebf9f37481f6115200064255598c3e1bc2490a"
+      "bytes": 9125,
+      "sha256": "0abf34ae17d7c44cef7c2b84b7a8f7cd22b084c99be983bfc022cea2631a2d5c"
     },
     {
       "path": "mt5_robot/ExecutionPolicy.mqh",
@@ -152,13 +162,13 @@
     },
     {
       "path": "mt5_robot/Install_MT5_Canonical.ps1",
-      "bytes": 7098,
-      "sha256": "ee68949aadebf8a2dc9d518fd932e1b3e355f06124c4d8e31fb4e13191247891"
+      "bytes": 7513,
+      "sha256": "8b5707e3ecb71390f378640f263954bdf223c1e212e6989c83a58d91b5622999"
     },
     {
       "path": "mt5_robot/Install_QTS_Gold_Robot.ps1",
-      "bytes": 17584,
-      "sha256": "d5d3605c8014463c9eef888bdef36ca8d7ca1b510ae611460dc0ad192a865e8a"
+      "bytes": 20824,
+      "sha256": "34a3bce61512d6bdb66409f8559eec8760ad106eb1c2a2024ed7f3f84b346af0"
     },
     {
       "path": "mt5_robot/OpportunityResearch.mqh",
@@ -197,13 +207,13 @@
     },
     {
       "path": "research/BuildTradeForensics.ps1",
-      "bytes": 11779,
-      "sha256": "d05c16a459b43b23262a9a17f3bb21b9fa2f66bec19f75125035ee1028b47cc7"
+      "bytes": 11806,
+      "sha256": "6265eb174ee89577c173630b3f3c1cb3a9aba65a656ca6fc072548e667b3109a"
     },
     {
       "path": "research/CompareMT5Reports.ps1",
-      "bytes": 9115,
-      "sha256": "6933bebb7b11545d79e9bf0343a3919800b5de591639568304d25485270206f4"
+      "bytes": 9213,
+      "sha256": "5d421841e8b803e9f7958e674a101cf6d058cc7451f9d018bc98aeadae212903"
     },
     {
       "path": "research/ExportBrokerData.mq5",
@@ -212,8 +222,8 @@
     },
     {
       "path": "research/MakeTesterPresets.ps1",
-      "bytes": 5509,
-      "sha256": "8569bc917f20c278fb67adf0cf18070596f8875b0c071904f1fb91de8fc1ef64"
+      "bytes": 6272,
+      "sha256": "e4ff486e94633a93b8e291bd00247b45b3e6256762d93eaac085041c8535dfc0"
     },
     {
       "path": "research/MakeWindowsReport.ps1",
@@ -232,8 +242,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 19288,
-      "sha256": "13d7cc7ac58dfc61853b6d5417cba329e2e3c4a3b554b10c50ffd102353c3f3f"
+      "bytes": 19954,
+      "sha256": "acd3434963a1cc316bc2bc75fa9fbc3ab6ba9354ecee5e8691811fd7f8a07d5e"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -272,8 +282,8 @@
     },
     {
       "path": "research/evaluate_ledger.py",
-      "bytes": 11852,
-      "sha256": "bb211aa8771e60ab4bf0f9f7f6e9920efcf7b769b8a8f6b98a484d14ad669cb5"
+      "bytes": 27933,
+      "sha256": "79a21b7e8678d246f5dd64d55f42e22f973877c7a71f22e0b73bb42caa79cc52"
     },
     {
       "path": "research/native_trade_diagnostics.py",
@@ -317,8 +327,8 @@
     },
     {
       "path": "research/router_logic.py",
-      "bytes": 9239,
-      "sha256": "da0f70e842c1dc483210a816aba55a68e092ee0440a33f3adf7033fcf9dff4ce"
+      "bytes": 9963,
+      "sha256": "322bad287f09055558d110f8869d8e937602cd23cd913459f1b833c06812836c"
     },
     {
       "path": "research/scalp_signals.py",
@@ -377,8 +387,8 @@
     },
     {
       "path": "tests/test_evaluate_ledger.py",
-      "bytes": 3164,
-      "sha256": "62a27574a0753832ece28b7b478281f6fc5463297b9f5721f4c5254c8d111b7d"
+      "bytes": 7984,
+      "sha256": "c004b3ace31fedd876c9545db2648fd76841fbced6b830683bfe000208f693ca"
     },
     {
       "path": "tests/test_log_audit.py",
@@ -397,13 +407,13 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 34404,
-      "sha256": "b67933272d88be8002a0b05afdba6fd13b2f28436f6efc62e7110a3d11e54dc9"
+      "bytes": 36118,
+      "sha256": "144cdd4c90d9ab9bd96fa16ecdd39b2afc1e50f0404a096c0e1d76863bb6f5ff"
     },
     {
       "path": "tests/test_router_hardening.py",
-      "bytes": 6240,
-      "sha256": "c7db33efab0e68e778b2ac8685dd8e98198cfc05f2dc788dbef2bdb82f05756c"
+      "bytes": 7179,
+      "sha256": "68c40e27fe32b62b5a997d29cd4c3dd6434b2b2767ed6fa4c12d648ea9756973"
     },
     {
       "path": "tests/test_scalp_signals.py",

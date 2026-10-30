@@ -15,8 +15,14 @@ SmcResearch.mqh and ScalpResearch.mqh, preregistered 2026-10-30:
 - confirmed regime: raw regime must hold 3 consecutive closed bars.
 - transition: only priority-4 candidates with R>=1.0 may clear.
 - ATR guard: abstain iff current ATR percentile over the last 50
-  closed ATR values (values[0] = most recent closed, as in MQL5
-  CopyBuffer start=1) exceeds 0.90.
+  closed ATR values exceeds 0.90. REPAIR 2026-10-30: the input list
+  is in MQL5 CopyBuffer order (OLDEST first, exactly as CopyBuffer
+  fills a non-series array with start=1, count=50), so the current
+  (latest closed) ATR is the LAST element, not the first. The
+  previous mirror contract ("most recent first", current = [0])
+  encoded the same mis-indexing as the MQL5 bug it was meant to
+  mirror; both are corrected together here. The percentile itself
+  is order-insensitive; only the reference bar changes.
 - SMC (20 closed bars, oldest first): prior 12 bars swing; bar 12
   displacement >0.10 ATR beyond swing; order block = last opposing
   candle before bar 12; FVG = bar 13 low > bar 11 high (longs) or
@@ -69,16 +75,23 @@ class RouterState:
         return self.confirmed
 
 
-def atr_guard_pass(atr_values_most_recent_first: list[float]) -> bool:
-    """True iff the current ATR is at or below the 90th percentile."""
-    if len(atr_values_most_recent_first) != ROUTER_ATR_LOOKBACK_BARS:
+def atr_guard_pass(atr_values_oldest_first: list[float]) -> bool:
+    """True iff the current ATR is at or below the 90th percentile.
+
+    Input order is MQL5 CopyBuffer order: OLDEST first, so the current
+    (latest closed, shift 1) ATR is the LAST element. Passing a
+    most-recent-first list silently computes the guard on the oldest
+    bar's ATR instead — that was the 2026-10-30 MQL5 defect, and this
+    contract exists so the mirror cannot repeat it.
+    """
+    if len(atr_values_oldest_first) != ROUTER_ATR_LOOKBACK_BARS:
         return False
-    current = atr_values_most_recent_first[0]
+    current = atr_values_oldest_first[-1]
     if not (current and current > 0):
         return False
-    if any(not (v and v > 0) for v in atr_values_most_recent_first):
+    if any(not (v and v > 0) for v in atr_values_oldest_first):
         return False
-    at_or_below = sum(1 for v in atr_values_most_recent_first if v <= current)
+    at_or_below = sum(1 for v in atr_values_oldest_first if v <= current)
     return (at_or_below / ROUTER_ATR_LOOKBACK_BARS) <= ROUTER_ATR_ABSTAIN_PERCENTILE
 
 

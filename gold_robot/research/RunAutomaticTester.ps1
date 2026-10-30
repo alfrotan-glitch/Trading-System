@@ -1,4 +1,4 @@
-# QTS Gold unattended native MT5 Strategy Tester. Simulation only; REAL locked.
+﻿# QTS Gold unattended native MT5 Strategy Tester. Simulation only; REAL locked.
 [CmdletBinding()]
 param([string]$TerminalExe="",[string]$TerminalDataFolder="",
       [string]$OutputDirectory="",[string]$FromDate="",[string]$ToDate="",
@@ -15,7 +15,7 @@ $configs=Join-Path $OutputDirectory 'configs'
 New-Item -ItemType Directory -Path $native,$configs -Force|Out-Null
 $results=New-Object System.Collections.ArrayList
 $names=@('Former stop','Retest','Break and retest','Sweep and reclaim',
-         'Trend impulse','Range rejection','Inside-bar breakout','Adaptive router','SMC FVG OB')
+         'Trend impulse','Range rejection','Inside-bar breakout','Adaptive router','SMC FVG OB','M1 scalp')
 $today=(Get-Date).Date
 $endMonth=[datetime]::new($today.Year,$today.Month,1)
 if(-not $FromDate){$FromDate=$endMonth.AddMonths(-6).ToString('yyyy.MM.dd')}
@@ -48,7 +48,7 @@ function SaveOutcome([string]$state,[string]$message,[string]$comparison){
     }
     if($rows.Count -eq 0){$rows=@('<tr><td colspan="4">No completed tests.</td></tr>')}
     $cmp='Not available'
-    if($comparison){$cmp='<a href="'+(EscapeHtml $comparison)+'">Compare all nine reports</a>'}
+    if($comparison){$cmp='<a href="'+(EscapeHtml $comparison)+'">Compare all ten reports</a>'}
     $tableRows=$rows -join [Environment]::NewLine
     $safeMessage=EscapeHtml $message
     $safeState=EscapeHtml $state
@@ -195,9 +195,13 @@ try{
         catch{throw ('MT5 tester parameter folder not writable: '+$root)}
     }
     $codes=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM',
-            'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER','SMC_FVG_OB')
+            'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER','SMC_FVG_OB','M1_SCALP')
     for($i=0;$i -lt $names.Count;$i++){
-        $preset=Join-Path $presetDir ('safety_on\QTS_M15_'+$codes[$i]+'_SAFETY_ON.set')
+        # REPAIR 2026-10-30: Style 9 presets are M1 (QTS_M1_M1_SCALP_*),
+        # not M15. The old path silently missed Style 9's preset and the
+        # old loop never ran it at all (nine styles, not ten).
+        $tfLabel=$(if($i -eq 9){'M1'}else{'M15'})
+        $preset=Join-Path $presetDir ('safety_on\QTS_'+$tfLabel+'_'+$codes[$i]+'_SAFETY_ON.set')
         if(-not (Test-Path -LiteralPath $preset -PathType Leaf)){throw ('Missing safety-on preset '+$i)}
         $setName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i+'.set'
         foreach($root in $profileLocations){
@@ -209,9 +213,15 @@ try{
             }
         }
         $lines=Get-Content -LiteralPath (Join-Path $testerProfiles $setName) -Encoding Unicode
-        foreach($must in @(('EntryStyle='+$i),'EnableDemoOrders=true',
-                           'EnableDemoForwardOrders=false','TesterIgnoreDailyAndPeakStops=false',
-                           'RiskPerTradePct=0.50')){
+        $musts=@(('EntryStyle='+$i),'EnableDemoOrders=true',
+                    'EnableDemoForwardOrders=false','TesterIgnoreDailyAndPeakStops=false',
+                    'RiskPerTradePct=0.50')
+        # Style 9 is M1-only with a 15-minute cap in the EA; a preset
+        # without both is not Style 9 and must fail here, not in OnInit
+        # after a wasted run (or worse, on the wrong timeframe).
+        if($i -eq 9){ $musts+=@('SignalTimeframe=1','MaxPositionMinutes=15') }
+        else { $musts+=@('SignalTimeframe=15') }
+        foreach($must in $musts){
             if($must -notin $lines){throw ('Unsafe MT5 parameter set: '+$must)}
         }
         $reportName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i
@@ -219,7 +229,7 @@ try{
         $iniLines=@('[Common]','KeepPrivate=1','[Experts]','Enabled=0',
             'AllowLiveTrading=0','AllowDllImport=0','[Tester]',
             'Expert=QTS_Gold_Robot.ex5',('ExpertParameters='+$setName),
-            'Symbol=XAUUSD@','Period=M15','Model=4','Optimization=0',
+            'Symbol=XAUUSD@',('Period='+$(if($i -eq 9){'M1'}else{'M15'})),'Model=4','Optimization=0',
             'ForwardMode=0',('FromDate='+$FromDate),('ToDate='+$ToDate),
             'Deposit=3000','Currency=USD','Leverage=1:100',
             'UseLocal=1','UseRemote=0','UseCloud=0','Visual=0',
@@ -228,7 +238,7 @@ try{
     }
     if($PrepareOnly){
         $state='PREPARED_ONLY'
-        $message='Nine configurations with risk stops active. MT5 was not launched.'
+        $message='Ten configurations with risk stops active. MT5 was not launched.'
     }else{
         for($i=0;$i -lt $names.Count;$i++){
             $item=[ordered]@{style=$names[$i];status='PENDING';detail='';report=''}
@@ -238,7 +248,7 @@ try{
             $began=[datetime]::UtcNow
             $process=$null
             try{
-                Write-Host ("Running native MT5 test {0}/9: {1}" -f ($i+1),$names[$i])
+                Write-Host ("Running native MT5 test {0}/10: {1}" -f ($i+1),$names[$i])
                 $process=Start-Process -FilePath $exe -ArgumentList ('/config:"{0}"' -f $ini) -PassThru
                 $deadline=(Get-Date).AddMinutes($TimeoutMinutesPerRun)
                 while(-not $process.HasExited){
@@ -325,7 +335,7 @@ try{
         }else{
             $state='TESTS_FINISHED_WITH_EVIDENCE_GAPS'
         }
-        $message='Nine native reports collected. Position-by-position evidence checked; positive after-cost expectancy unvalidated.'
+        $message='Ten native reports collected. Position-by-position evidence checked; positive after-cost expectancy unvalidated.'
     }
 }catch{
     $message=$_.Exception.Message

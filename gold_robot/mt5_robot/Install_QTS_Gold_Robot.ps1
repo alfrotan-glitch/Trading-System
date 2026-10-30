@@ -66,6 +66,31 @@ $adaptiveHash = (Get-FileHash -LiteralPath $adaptive -Algorithm SHA256).Hash
 if ($adaptiveHash.ToUpperInvariant() -ne ([string]$adaptiveRows[0].sha256).ToUpperInvariant()) {
     throw 'Adaptive research include checksum mismatch.'
 }
+# REPAIR 2026-10-30: the EA #includes SmcResearch.mqh and ScalpResearch.mqh
+# (QTS_Gold_Robot.mq5 lines 584-585), but this installer previously
+# validated and deployed only main/ExecutionPolicy/Structure/Opportunity/
+# Adaptive. A stale Smc/Scalp file already in Experts would then have
+# been compiled silently against new source. Every #include is now
+# validated against the manifest before any copy, exactly like the
+# other includes. A missing or mismatched include is a hard stop.
+$smc = Join-Path $PSScriptRoot 'SmcResearch.mqh'
+$smcRows = @($manifest.sha256_files | Where-Object { $_.path -eq 'mt5_robot/SmcResearch.mqh' })
+if ($smcRows.Count -ne 1 -or -not (Test-Path -LiteralPath $smc -PathType Leaf)) {
+    throw 'Missing SMC research include or manifest entry.'
+}
+$smcHash = (Get-FileHash -LiteralPath $smc -Algorithm SHA256).Hash
+if ($smcHash.ToUpperInvariant() -ne ([string]$smcRows[0].sha256).ToUpperInvariant()) {
+    throw 'SMC research include checksum mismatch.'
+}
+$scalp = Join-Path $PSScriptRoot 'ScalpResearch.mqh'
+$scalpRows = @($manifest.sha256_files | Where-Object { $_.path -eq 'mt5_robot/ScalpResearch.mqh' })
+if ($scalpRows.Count -ne 1 -or -not (Test-Path -LiteralPath $scalp -PathType Leaf)) {
+    throw 'Missing scalp research include or manifest entry.'
+}
+$scalpHash = (Get-FileHash -LiteralPath $scalp -Algorithm SHA256).Hash
+if ($scalpHash.ToUpperInvariant() -ne ([string]$scalpRows[0].sha256).ToUpperInvariant()) {
+    throw 'Scalp research include checksum mismatch.'
+}
 Write-Host ('Package source validated: {0}' -f $source)
 Write-Host ('Source SHA-256: {0}' -f $actualHash)
 Write-Host 'Stale version 0.00 check: PASS; metadata warning 68 cannot originate from this source.' -ForegroundColor Green
@@ -166,6 +191,8 @@ $destPolicy = Join-Path $experts 'ExecutionPolicy.mqh'
 $destStructure = Join-Path $experts 'StructureResearch.mqh'
 $destOpportunity = Join-Path $experts 'OpportunityResearch.mqh'
 $destAdaptive = Join-Path $experts 'AdaptiveResearch.mqh'
+$destSmc = Join-Path $experts 'SmcResearch.mqh'
+$destScalp = Join-Path $experts 'ScalpResearch.mqh'
 $log = Join-Path $experts 'QTS_Gold_Robot.log'
 $backupDir = Join-Path $experts 'QTS_Gold_Robot_Backups'
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss_ffff'
@@ -175,7 +202,11 @@ $backupPolicy = Join-Path $backupDir ($stamp + '_ExecutionPolicy.mqh')
 $backupStructure = Join-Path $backupDir ($stamp + '_StructureResearch.mqh')
 $backupOpportunity = Join-Path $backupDir ($stamp + '_OpportunityResearch.mqh')
 $backupAdaptive = Join-Path $backupDir ($stamp + '_AdaptiveResearch.mqh')
+$backupSmc = Join-Path $backupDir ($stamp + '_SmcResearch.mqh')
+$backupScalp = Join-Path $backupDir ($stamp + '_ScalpResearch.mqh')
 $hadAdaptive = Test-Path -LiteralPath $destAdaptive -PathType Leaf
+$hadSmc = Test-Path -LiteralPath $destSmc -PathType Leaf
+$hadScalp = Test-Path -LiteralPath $destScalp -PathType Leaf
 $hadOpportunity = Test-Path -LiteralPath $destOpportunity -PathType Leaf
 $hadStructure = Test-Path -LiteralPath $destStructure -PathType Leaf
 $hadPolicy = Test-Path -LiteralPath $destPolicy -PathType Leaf
@@ -183,7 +214,7 @@ $hadSource = Test-Path -LiteralPath $dest -PathType Leaf
 $hadEX5 = Test-Path -LiteralPath $compiled -PathType Leaf
 $completed = $false
 
-if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity -or $hadAdaptive) {
+if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity -or $hadAdaptive -or $hadSmc -or $hadScalp) {
     New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
     if ($hadSource) { Copy-Item -LiteralPath $dest -Destination $backupSource }
     if ($hadEX5) { Copy-Item -LiteralPath $compiled -Destination $backupEX5 }
@@ -191,6 +222,8 @@ if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity 
     if ($hadStructure) { Copy-Item -LiteralPath $destStructure -Destination $backupStructure }
     if ($hadOpportunity) { Copy-Item -LiteralPath $destOpportunity -Destination $backupOpportunity }
     if ($hadAdaptive) { Copy-Item -LiteralPath $destAdaptive -Destination $backupAdaptive }
+    if ($hadSmc) { Copy-Item -LiteralPath $destSmc -Destination $backupSmc }
+    if ($hadScalp) { Copy-Item -LiteralPath $destScalp -Destination $backupScalp }
 }
 Write-Host ('MT5 MQL5 location: {0}' -f $mql5)
 Write-Host ('Compiler:          {0}' -f $editor)
@@ -201,6 +234,8 @@ try {
     Copy-Item -LiteralPath $structure -Destination $destStructure -Force
     Copy-Item -LiteralPath $opportunity -Destination $destOpportunity -Force
     Copy-Item -LiteralPath $adaptive -Destination $destAdaptive -Force
+    Copy-Item -LiteralPath $smc -Destination $destSmc -Force
+    Copy-Item -LiteralPath $scalp -Destination $destScalp -Force
     Copy-Item -LiteralPath $source -Destination $dest -Force
     if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne
         (Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash) {
@@ -258,6 +293,15 @@ try {
     if ((Get-FileHash -LiteralPath $destOpportunity -Algorithm SHA256).Hash -ne $opportunityHash) {
         throw 'Opportunity research include changed during compilation.'
     }
+    if ((Get-FileHash -LiteralPath $destAdaptive -Algorithm SHA256).Hash -ne $adaptiveHash) {
+        throw 'Adaptive research include changed during compilation.'
+    }
+    if ((Get-FileHash -LiteralPath $destSmc -Algorithm SHA256).Hash -ne $smcHash) {
+        throw 'SMC research include changed during compilation.'
+    }
+    if ((Get-FileHash -LiteralPath $destScalp -Algorithm SHA256).Hash -ne $scalpHash) {
+        throw 'Scalp research include changed during compilation.'
+    }
     # Verified anomalous exit code 1 is allowed ONLY after every compile
     # invariant above passed. Unexpected exit codes still fail closed.
     if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 1) {
@@ -280,6 +324,16 @@ try {
             Copy-Item -LiteralPath $backupAdaptive -Destination $destAdaptive -Force
         } elseif (Test-Path -LiteralPath $destAdaptive -PathType Leaf) {
             Remove-Item -LiteralPath $destAdaptive -Force
+        }
+        if ($hadSmc -and (Test-Path -LiteralPath $backupSmc -PathType Leaf)) {
+            Copy-Item -LiteralPath $backupSmc -Destination $destSmc -Force
+        } elseif (Test-Path -LiteralPath $destSmc -PathType Leaf) {
+            Remove-Item -LiteralPath $destSmc -Force
+        }
+        if ($hadScalp -and (Test-Path -LiteralPath $backupScalp -PathType Leaf)) {
+            Copy-Item -LiteralPath $backupScalp -Destination $destScalp -Force
+        } elseif (Test-Path -LiteralPath $destScalp -PathType Leaf) {
+            Remove-Item -LiteralPath $destScalp -Force
         }
         if ($hadOpportunity -and (Test-Path -LiteralPath $backupOpportunity -PathType Leaf)) {
             Copy-Item -LiteralPath $backupOpportunity -Destination $destOpportunity -Force
