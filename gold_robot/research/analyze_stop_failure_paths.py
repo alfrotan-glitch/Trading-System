@@ -192,7 +192,12 @@ def classify(cases: list[dict], replay: dict, pre: dict[str, dict] | None = None
             "TP_progress_fraction_after_SL": (
                 round(after_progress, 5) if after_progress is not None else None),
             "first_TP_minutes_after_SL": last.get("first_target_touch_after_stop_minutes"),
-            **meta,
+            **{key: meta.get(key) for key in (
+                "pre_status", "pre_category", "pre_ticks",
+                "max_favorable_R_before_SL", "max_adverse_R_before_SL",
+                "max_fraction_of_original_TP_before_SL",
+                "first_initial_SL_quote_ms", "first_initial_TP_quote_ms"
+            )},
         }
         enriched.append(row)
     if len({r["trade_id"] for r in enriched}) != len(originals):
