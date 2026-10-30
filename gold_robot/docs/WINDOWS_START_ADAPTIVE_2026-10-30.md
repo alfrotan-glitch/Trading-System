@@ -1,13 +1,12 @@
-# Windows native test — REPAIR branch (START HERE)
-Branch: `independent/adaptive-repair-20261030` (do NOT test main:
-main lacks the fix-branch gate, the router hardening, SMC, and scalp;
-do NOT test the adaptive branch either — its router has the ATR-guard
-indexing defect repaired here, and its installer/workflow omit Style 9).
-Base: adaptive branch `34cab34` + repair branch fixes (installer
-dependency set, ATR-guard reference bar, repaired 2x costs, genuine
-walk-forward, ten-style workflow). See
-`EVALUATION_REPAIR_2026-10-30.md` for the defect verdicts and
-`PREREGISTRATION_ADDENDUM_REPAIR_2026-10-30.md` for trial accounting.
+# Windows native test — consolidated main (START HERE)
+
+The independent adaptive-repair branch was consolidated into **main** on
+2026-10-30 and all other branches were removed. Use the latest main only.
+Earlier branch-specific directions in archived evaluation documents are historical,
+not operating instructions for the current source. These repairs have NOT been
+natively compiled or validated as profitable on the owner's WMMarkets terminal.
+Historical evidence and frozen pre-registration remain available below.
+
 Symbol: WMMarkets XAUUSD@. Tester model 4 (every tick based on real
 ticks). Deposit $3,000, leverage 1:100, currency USD.
 LIVE REMAINS LOCKED. This is Strategy Tester simulation only.
