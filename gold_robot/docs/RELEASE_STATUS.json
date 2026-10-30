@@ -10,7 +10,7 @@
   "connected_demo_new_orders_permitted_by_strategy_gate": true,
   "default_order_permission": false,
   "market_order_entries_permitted": false,
-  "entry_policy": "Seven fixed M15 research hypotheses (0-6), adaptive router (7), SMC FVG/OB (8) and M1 scalp (9). Styles 4-9 are MT5 Strategy Tester-only; styles 0-3 retain separately restricted connected DEMO capability subject to explicit permission and safeguards. No positive after-cost edge has been validated. LIVE LOCKED.",
+  "entry_policy": "Seven fixed M15 research hypotheses (0-6), including old-stop limit and retest limit, adaptive router (7), SMC FVG/OB (8) and M1 scalp (9). Styles 4-9 are MT5 Strategy Tester-only; styles 0-3 retain separately restricted connected DEMO capability subject to explicit permission and safeguards. No positive after-cost edge has been validated. LIVE LOCKED.",
   "tester_only_research_mode": {
     "input": "TesterIgnoreDailyAndPeakStops",
     "default": true,
