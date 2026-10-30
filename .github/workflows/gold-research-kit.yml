@@ -6,6 +6,8 @@ on:
     paths:
       - "gold_robot/**"
       - "QTS_AUTO_TEST.bat"
+      - "QTS_FAST_OPTIMIZE.bat"
+      - "QTS_FAST_OPTIMIZE.ps1"
       - "QTS_SHARE_RESULTS.bat"
       - "QTS_POST_STOP_REVIEW.bat"
       - ".github/workflows/gold-research-kit.yml"
@@ -35,7 +37,7 @@ jobs:
           $stage = Join-Path $env:RUNNER_TEMP 'QTS Gold Customer Kit'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item -LiteralPath 'gold_robot' -Destination $stage -Recurse
-          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat')) {
+          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1')) {
             Copy-Item -LiteralPath $file -Destination $stage
           }
           @'
@@ -47,12 +49,12 @@ jobs:
              Select the correct MT5 Data Folder and MetaEditor if asked.
              Installation must report zero compiler errors and warnings.
              Never copy .mqh files manually or bypass a failed install.
-          3. Double-click QTS_AUTO_TEST.bat to run the ten native MT5
+          3. For faster preliminary screening use QTS_FAST_OPTIMIZE.bat: nine\n             M15 styles via local optimization agents, then one M1 scalp.\n             This is NOT a full trade-by-trade audit.\n          4. Double-click QTS_AUTO_TEST.bat to run the ten native MT5
              Strategy Tester studies (styles 0-9, M1 for style 9).
              The program does NOT send live-account orders.
-          4. Review the saved OPEN_RESULTS report, then optionally run
+          5. Review the saved OPEN_RESULTS report, then optionally run
              QTS_SHARE_RESULTS.bat and QTS_POST_STOP_REVIEW.bat.
-          5. This is NOT a profitable-edge-certified production robot.
+          6. This is NOT a profitable-edge-certified production robot.
              LIVE REAL-MONEY TRADING IS LOCKED. Broker-specific native
              compile and after-cost, independent testing remain required.
              A synthetic CI check is NOT proof of broker fills or profits.
@@ -71,7 +73,7 @@ jobs:
           Expand-Archive -LiteralPath 'QTS-Gold-Windows-Research-Kit.zip' -DestinationPath $dst -Force
           Push-Location $dst
           try {
-            foreach($file in @('OPEN_FIRST.txt','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat')) {
+            foreach($file in @('OPEN_FIRST.txt','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1')) {
               if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing kit file: $file" }
             }
             python gold_robot/research/update_manifest.py --check
