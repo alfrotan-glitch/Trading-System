@@ -11,6 +11,8 @@ on:
       - "QTS_PREPARE_STOP_TICKS.ps1"
       - "QTS_FINISH_STOP_TICKS.bat"
       - "QTS_FINISH_STOP_TICKS.ps1"
+      - "QTS_ONE_CLICK_ROBOT.bat"
+      - "QTS_ONE_CLICK_ROBOT.ps1"
       - "QTS_FAST_OPTIMIZE.bat"
       - "QTS_FAST_OPTIMIZE.ps1"
       - "QTS_SHARE_RESULTS.bat"
@@ -42,7 +44,7 @@ jobs:
           $stage = Join-Path $env:RUNNER_TEMP 'QTS Gold Customer Kit'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item -LiteralPath 'gold_robot' -Destination $stage -Recurse
-          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1')) {
+          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1')) {
             Copy-Item -LiteralPath $file -Destination $stage
           }
           @'
@@ -64,7 +66,12 @@ jobs:
              Native MT5 tests and complete broker deal evidence are required.
           6. Review the saved OPEN_RESULTS report, then optionally run
              QTS_SHARE_RESULTS.bat and QTS_POST_STOP_REVIEW.bat.
-          7. This is NOT a profitable-edge-certified production robot.
+          7. ONE-CLICK post-stop research: double-click QTS_ONE_CLICK_ROBOT.bat
+             to reuse native MT5 deals, read historical broker bid/ask data,
+             replay stop paths and produce the QTS_POST_STOP_REVIEW.zip file.
+             The connected MT5 terminal and Python MT5 quote module are needed.
+             Missing Python module can be installed automatically.
+          8. This is NOT a profitable-edge-certified production robot.
              LIVE REAL-MONEY TRADING IS LOCKED. Broker-specific native
              compile and after-cost, independent testing remain required.
              A synthetic CI check is NOT proof of broker fills or profits.
@@ -83,7 +90,7 @@ jobs:
           Expand-Archive -LiteralPath 'QTS-Gold-Windows-Research-Kit.zip' -DestinationPath $dst -Force
           Push-Location $dst
           try {
-            foreach($file in @('OPEN_FIRST.txt','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1')) {
+            foreach($file in @('OPEN_FIRST.txt','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1')) {
               if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing kit file: $file" }
             }
             python gold_robot/research/update_manifest.py --check
@@ -99,7 +106,7 @@ jobs:
       - name: Parse read-only bounded stop tick helpers on Windows
         shell: pwsh
         run: |
-          foreach($name in @('QTS_PREPARE_STOP_TICKS.ps1', 'QTS_FINISH_STOP_TICKS.ps1')) {
+          foreach($name in @('QTS_PREPARE_STOP_TICKS.ps1', 'QTS_FINISH_STOP_TICKS.ps1', 'QTS_ONE_CLICK_ROBOT.ps1')) {
             $tokens = $null
             $errors = $null
             $file = (Resolve-Path $name).Path
@@ -111,9 +118,9 @@ jobs:
           }
           python -m pip install --quiet pytest
           if($LASTEXITCODE -ne 0){ throw 'Could not install Python test runner' }
-          python -m pytest -q -o 'addopts=' gold_robot/tests/test_stop_tick_window_export.py
+          python -m pytest -q -o 'addopts=' gold_robot/tests/test_stop_tick_window_export.py gold_robot/tests/test_auto_stop_ticks.py
           if($LASTEXITCODE -ne 0){ throw 'Stop tick plan unit regression failed' }
-          Write-Host 'PASS: read-only 120-minute window exporter prep/finish contract'
+          Write-Host 'PASS: bounded 120-minute and automatic one-click broker quote research contracts'
 
       - name: Parse and check local-agent fast-screen script on Windows
         shell: pwsh
