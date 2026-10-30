@@ -242,8 +242,8 @@
     },
     {
       "path": "research/PackTradeEvidence.ps1",
-      "bytes": 4563,
-      "sha256": "19309e39a6fad5e99ae28e432714887119fca12375db9c79c17df34e854d0bf7"
+      "bytes": 5316,
+      "sha256": "2fbffa687304e69ee5cd5f505b06102ae9b7c9efe74c9de6f6b8f75467bde5bb"
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",
@@ -252,8 +252,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 20274,
-      "sha256": "23e22be5bea3570651996a2559db7d05624a5f0e0d98785ec9fbd4c0db222d08"
+      "bytes": 21892,
+      "sha256": "b77bb66056966fd85f9ab5dc79fba0fc0ff37034b79a88d9691ab843f4de1061"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -457,8 +457,8 @@
     },
     {
       "path": "tests/test_strategy_forensics_contract.py",
-      "bytes": 5687,
-      "sha256": "1d6c595cfeb1e9d13ffc6a13fef60fdd6238c4fec02df59842fbe87ca985e9bb"
+      "bytes": 6679,
+      "sha256": "55d87f7067bf954f2285b39793ac134c73229bf76b8093306606e3b5796c10d9"
     },
     {
       "path": "tests/test_target_grid.py",
