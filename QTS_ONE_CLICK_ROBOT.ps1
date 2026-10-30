@@ -24,14 +24,14 @@ Write-Host 'QTS GOLD ONE CLICK - MT5 POST-STOP RESEARCH'
 Write-Host 'No real money orders. Only the recorded SL events.'
 Write-Host '======================================================='
 
-$run=LatestRun
-if(-not $run -or $run.Count -eq 0){
+$run=@(LatestRun | Where-Object { $null -ne $_ })
+if($run.Count -eq 0){
     Write-Host 'No saved four-style evidence: running the native four-style tester automatically.'
     & $env:ComSpec /d /c ('call "'+(Join-Path $repo 'QTS_FOUR_FINALISTS.bat')+'"')
     if($LASTEXITCODE -ne 0){throw 'Native four-style tester did not produce complete evidence.'}
-    $run=LatestRun
+    $run=@(LatestRun | Where-Object { $null -ne $_ })
 }
-if(-not $run -or $run.Count -ne 1){throw 'No unique broker-test evidence run found.'}
+if($run.Count -ne 1){throw 'No unique broker-test evidence run found.'}
 $run=$run[0]
 $tag=$run.Name
 if($tag -notmatch '^\d{8}_\d{6}$'){throw 'Native run folder has an unexpected identity.'}
@@ -54,20 +54,20 @@ if(-not (Test-Path -LiteralPath $python)){
 & $python -c "import MetaTrader5"
 if($LASTEXITCODE -ne 0){
     Write-Host 'Installing official MetaTrader5 quote reader into private QTS environment...'
-    RunPython $python @('-m','pip','install','--no-input','--only-binary=:all:','MetaTrader5') 'MT5 data-only Python package'
+    RunPython -exe $python -arguments @('-m','pip','install','--no-input','--only-binary=:all:','MetaTrader5') -purpose 'MT5 data-only Python package'
 }
 $bundle=Join-Path $run.FullName 'QTS_SHARE_RESULTS.zip'
 $cases=Join-Path $review 'QTS_STOP_CASES.csv'
 $original=Join-Path $review 'QTS_STOP_INPUT_AUDIT.json'
 if(-not (Test-Path -LiteralPath $cases -PathType Leaf) -or
    -not (Test-Path -LiteralPath $original -PathType Leaf)){
-    RunPython $python @((Join-Path $gold 'research\build_post_stop_inputs.py'),
-                        '--bundle',$bundle,'--out',$review) 'original broker stop-case extraction'
+    RunPython -exe $python -arguments @((Join-Path $gold 'research\build_post_stop_inputs.py'),
+                        '--bundle',$bundle,'--out',$review) -purpose 'original broker stop-case extraction'
 }
 if(-not (Test-Path -LiteralPath $cases -PathType Leaf)){throw 'No reconciled stop cases.'}
 $plan=Join-Path $review 'QTS_AUTO_STOP_WINDOWS.csv'
-RunPython $python @((Join-Path $gold 'research\prepare_stop_tick_windows.py'),
-                    '--stops',$cases,'--output',$plan,'--tag',$tag) 'bounded quote window plan'
+RunPython -exe $python -arguments @((Join-Path $gold 'research\prepare_stop_tick_windows.py'),
+                    '--stops',$cases,'--output',$plan,'--tag',$tag) -purpose 'bounded quote window plan'
 
 # Only a single installed QTS MT5 terminal is accepted. Avoid accidental
 # history downloads from the wrong broker or an unrelated MT5 installation.
@@ -76,11 +76,11 @@ $installed=@(Get-ChildItem -LiteralPath $dataRoot -Directory -ErrorAction Stop |
     Where-Object {Test-Path -LiteralPath (Join-Path $_.FullName 'MQL5\Experts\QTS_Gold_Robot.ex5')})
 if($installed.Count -ne 1){throw 'Could not identify exactly one QTS MT5 terminal installation.'}
 $target=$installed[0].FullName
-$args=@((Join-Path $gold 'research\auto_stop_ticks.py'),
+$bridgeArgs=@((Join-Path $gold 'research\auto_stop_ticks.py'),
         '--plan',$plan,'--tag',$tag,'--symbol','XAUUSD@',
         '--terminal-data',$target)
 $quoteDir=Join-Path $review 'QTS_AUTO_BROKER_TICKS'
-$args+=@('--output',$quoteDir)
+$bridgeArgs+=@('--output',$quoteDir)
 $origin=Join-Path $target 'origin.txt'
 if(Test-Path -LiteralPath $origin -PathType Leaf){
     $first=@(Get-Content -LiteralPath $origin | Where-Object {$_ -and $_.Trim() -ne ''} |
@@ -89,7 +89,7 @@ if(Test-Path -LiteralPath $origin -PathType Leaf){
         $location=$first[0].Trim().Trim('"')
         $terminalExe=if($location -match '\.exe$'){$location}else{Join-Path $location 'terminal64.exe'}
         if(Test-Path -LiteralPath $terminalExe -PathType Leaf){
-            $args+=@('--terminal-path',$terminalExe)
+            $bridgeArgs+=@('--terminal-path',$terminalExe)
         }
     }
 }
@@ -102,7 +102,7 @@ if(Test-Path -LiteralPath $quoteDir){
     Write-Host 'Existing quote-path audit found; not overwriting original broker ticks.'
 }else{
     Write-Host 'Collecting historical Bid/Ask automatically from the connected MT5 terminal...'
-    & $python @args
+    & $python @bridgeArgs
     $bridgeCode=$LASTEXITCODE
     if(-not (Test-Path -LiteralPath $statusPath)){
         throw 'Quote export failed before saving evidence status.'
@@ -114,8 +114,8 @@ if(Test-Path -LiteralPath $quoteDir){
     if($bridgeCode -ne 0){
         Write-Warning 'One or more broker quote requests failed. The audit will mark missing intervals UNKNOWN.'
     }
-    RunPython $python @((Join-Path $gold 'research\stop_reversal_audit.py'),
-                        '--stops',$cases,'--tick-dir',$quoteDir,'--output',$audit) 'quote-by-quote post-stop replay'
+    RunPython -exe $python -arguments @((Join-Path $gold 'research\stop_reversal_audit.py'),
+                        '--stops',$cases,'--tick-dir',$quoteDir,'--output',$audit) -purpose 'quote-by-quote post-stop replay'
 }
 if(-not (Test-Path -LiteralPath $audit -PathType Leaf)){throw 'No post-stop quote audit generated.'}
 if(-not (Test-Path -LiteralPath $statusPath -PathType Leaf)){throw 'Missing original broker tick status.'}
