@@ -277,8 +277,8 @@
     },
     {
       "path": "research/build_post_stop_inputs.py",
-      "bytes": 7273,
-      "sha256": "8fbecbaf596c6b52c7e1ad6be88f6e386d55637cd5ec4c27f2c7cf6fde216b74"
+      "bytes": 9135,
+      "sha256": "da640a3ff009e8cb2cea5ee9b1346038b0e236bd786a662f74aba3d67dbb65b4"
     },
     {
       "path": "research/build_report.py",
@@ -412,8 +412,8 @@
     },
     {
       "path": "tests/test_post_stop_replay.py",
-      "bytes": 7361,
-      "sha256": "3ab76f350e42f69f08a427aab160658b9ab3f8f0b7cc506d5fa8f9f5f8ecf11b"
+      "bytes": 9981,
+      "sha256": "a3bd8d1d53c3741c8fd16c1d2c31c85bd3cf1df207aee41c108b9fa1b0e65d94"
     },
     {
       "path": "tests/test_reference_benchmark.py",
