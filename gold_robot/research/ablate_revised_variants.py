@@ -1,0 +1,145 @@
+"""Four-arm native MT5 forensic comparison; RESEARCH ONLY.
+
+October 2026 has already been inspected. This is an exploratory ablation,
+NOT an independent future holdout. No trading orders and no parameter fitting.
+All strategies are independent MT5 studies, not a combined portfolio.
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+from collections import Counter
+from pathlib import Path
+
+from compare_revised_variants import load_run
+
+ARMS = ("BASELINE", "ENTRY_FILTER", "NEAR_TP", "COMBINED")
+STYLES = (1, 3, 7, 8)
+
+
+def ledger(root: Path, style: int) -> dict:
+    """Reconcile the raw exported broker deals with comparison HTML metrics."""
+    path = root / "native" / f"QTS_{style}_trades.csv"
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle, delimiter=";"))
+    if not rows:
+        raise ValueError(f"Missing native deal evidence: {path}")
+    seen_deals = set()
+    positions = {}
+    gross = charges = 0.0
+    lots = 0.0
+    for row in rows:
+        did = row["deal_id"]
+        if did in seen_deals:
+            raise ValueError(f"Duplicate broker deal id {did} style={style}")
+        seen_deals.add(did)
+        pid = row["position_id"]
+        pos = positions.setdefault(pid, {"entries": 0, "exits": 0})
+        entry = row["entry"]
+        if entry == "DEAL_ENTRY_IN":
+            pos["entries"] += 1
+            lots += float(row["volume"])
+        elif entry == "DEAL_ENTRY_OUT":
+            pos["exits"] += 1
+        else:
+            raise ValueError(f"Unsupported partial or reversing broker deal: {entry}")
+        gross += float(row["gross"])
+        charges += sum(float(row[k]) for k in ("commission", "swap", "fee"))
+    if any(p["entries"] != 1 or p["exits"] != 1 for p in positions.values()):
+        raise ValueError("Partial position or missing entry/exit leg: require exact native facts")
+    return {
+        "positions": len(positions), "entry_lots_sum": round(lots, 8),
+        "native_deals": len(rows), "gross_usd": round(gross, 2),
+        "recorded_charges_usd": round(charges, 2),
+        "recorded_net_usd": round(gross + charges, 2),
+    }
+
+
+def compare_ablation(root: Path) -> dict:
+    loaded = {}
+    for arm in ARMS:
+        run = root / arm.lower()
+        outcome, reports = load_run(run, arm)
+        loaded[arm] = (run, outcome, reports)
+    keys = ("from_date", "to_date", "deposit_usd", "model", "symbol", "timeframe")
+    base = loaded["BASELINE"][1]
+    if any(loaded[arm][1].get(key) != base.get(key) for arm in ARMS for key in keys):
+        raise ValueError("Native four-arm strategy tester settings do not match")
+    if base.get("from_date") != "2026.10.01" or base.get("to_date") != "2026.10.30":
+        raise ValueError("Expected exact October 2026 exploratory test interval")
+    studies = []
+    for style in STYLES:
+        arms = {}
+        for arm in ARMS:
+            folder, _, parsed = loaded[arm]
+            row = parsed[style]
+            raw = ledger(folder, style)
+            if abs(raw["recorded_net_usd"] - float(row["net_usd"])) > 0.02:
+                raise ValueError(f"Broker deal PnL disagrees with native report: {arm} style={style}")
+            if raw["positions"] != int(row["trades"]):
+                raise ValueError(f"Broker position count differs from native report: {arm} style={style}")
+            arms[arm] = {
+                **raw,
+                "profit_factor": float(row["profit_factor"]),
+                "max_equity_drawdown_usd": float(row["maximal_equity_drawdown"]),
+                "additional_round_turn_cost_10_per_lot_usd": round(
+                    raw["recorded_net_usd"] - 10 * raw["entry_lots_sum"], 2),
+                "profit_per_position_usd": round(
+                    raw["recorded_net_usd"] / raw["positions"], 4)
+                if raw["positions"] else None,
+            }
+        studies.append({
+            "style": style, "arms": arms,
+            "delta_entry_filter_usd": round(
+                arms["ENTRY_FILTER"]["recorded_net_usd"] -
+                arms["BASELINE"]["recorded_net_usd"], 2),
+            "delta_near_tp_usd": round(
+                arms["NEAR_TP"]["recorded_net_usd"] -
+                arms["BASELINE"]["recorded_net_usd"], 2),
+            "delta_combined_usd": round(
+                arms["COMBINED"]["recorded_net_usd"] -
+                arms["BASELINE"]["recorded_net_usd"], 2),
+        })
+    return {
+        "schema": "qts.mt5.v2.four_arm_exploratory_ablation.v1",
+        "status": "RESEARCH_ONLY_POST_HOC_OCTOBER",
+        "from_date": base["from_date"], "to_date": base["to_date"],
+        "arms": {
+            "BASELINE": ["EntryQualityV2=off", "ProtectNearTPV2=off"],
+            "ENTRY_FILTER": ["EntryQualityV2=on", "ProtectNearTPV2=off"],
+            "NEAR_TP": ["EntryQualityV2=off", "ProtectNearTPV2=on"],
+            "COMBINED": ["EntryQualityV2=on", "ProtectNearTPV2=on"],
+        },
+        "studies": studies,
+        "costs_independently_verified": False,
+        "live": "LOCKED",
+        "edge_validated": False,
+        "warnings": [
+            "October results were already reviewed, so this is a mechanistic exploratory ablation and NOT a fresh independent holdout.",
+            "A one-month outcome or selected style cannot certify repeatable positive expectancy.",
+            "No strategy is automatically promoted or enabled on connected broker accounts.",
+            "Each strategy was tested separately. Do not sum the PnL into a portfolio.",
+            "Additional per-lot cost is a scenario, not a claim about WMMarkets actual commissions or already-filled spread.",
+        ],
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    data = compare_ablation(args.root)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    print("QTS GOLD FOUR ARM ABLATION - OCTOBER DATA ALREADY SEEN / LIVE LOCKED")
+    for s in data["studies"]:
+        print(f"Style {s['style']}: " + ", ".join(
+            f"{arm}={s['arms'][arm]['recorded_net_usd']:+.2f}"
+            for arm in ARMS))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
