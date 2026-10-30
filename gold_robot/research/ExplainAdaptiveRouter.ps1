@@ -203,3 +203,4 @@ Write-Host ('Adaptive review HTML: '+$htmlPath)
 Write-Host ('Adaptive review JSON: '+$jsonPath)
 if(-not $NoOpen){Invoke-Item -LiteralPath $htmlPath}
 if($errors.Count -gt 0){exit 2}
+exit 0 # Explicitly override a stale LASTEXITCODE from a prior native command.
