@@ -49,7 +49,9 @@ jobs:
              Select the correct MT5 Data Folder and MetaEditor if asked.
              Installation must report zero compiler errors and warnings.
              Never copy .mqh files manually or bypass a failed install.
-          3. For faster preliminary screening use QTS_FAST_OPTIMIZE.bat: nine\n             M15 styles via local optimization agents, then one M1 scalp.\n             This is NOT a full trade-by-trade audit.\n          4. Double-click QTS_AUTO_TEST.bat to run the ten native MT5
+          3. For faster preliminary screening use QTS_FAST_OPTIMIZE.bat: nine
+             M15 styles via local optimization agents, then one M1 scalp.
+             This is NOT a full trade-by-trade audit.\n          4. Double-click QTS_AUTO_TEST.bat to run the ten native MT5
              Strategy Tester studies (styles 0-9, M1 for style 9).
              The program does NOT send live-account orders.
           5. Review the saved OPEN_RESULTS report, then optionally run
@@ -86,6 +88,25 @@ jobs:
             Remove-Item Env:QTS_SETUP_VALIDATE_ONLY -ErrorAction SilentlyContinue
             Pop-Location
           }
+      - name: Parse and check local-agent fast-screen script on Windows
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $full = (Resolve-Path 'QTS_FAST_OPTIMIZE.ps1').Path
+          [void][System.Management.Automation.Language.Parser]::ParseFile($full, [ref]$tokens, [ref]$errors)
+          if (@($errors).Count -ne 0) {
+            $errors | ForEach-Object { Write-Host $_.ToString() }
+            throw 'Fast optimization PowerShell syntax is invalid'
+          }
+          $text = Get-Content $full -Raw -Encoding UTF8
+          foreach ($required in @('EntryStyle=0||0||1||8||Y','Optimization=1',
+            'UseRemote=0','UseCloud=0','TesterIgnoreDailyAndPeakStops=false',
+            'profitable_edge_validated=$false','full_trade_forensics_complete=$false',
+            "RunJob `$config9 'M1 scalp'")) {
+            if (-not $text.Contains($required)) { throw "Missing fast screen safety invariant: $required" }
+          }
+          Write-Host 'PASS: fast screen syntax and static safety gates (MT5 native execution not simulated)'
       - uses: actions/upload-artifact@v4
         with:
           name: QTS-Gold-Windows-Research-Kit
