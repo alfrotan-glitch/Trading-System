@@ -2,11 +2,11 @@
 
 **Status: installed/compiled source research; current revision requires local MetaEditor verification. No confirmed profitable strategy. LIVE LOCKED.**
 
-This directory contains **one canonical Expert Advisor**, `mt5_robot/QTS_Gold_Robot.mq5`, plus its `ExecutionPolicy.mqh`, `StructureResearch.mqh`, `OpportunityResearch.mqh`, `AdaptiveResearch.mqh`, installer, broker audit and research. It is **not** the Python `ROBOT.bat` engine.
+This directory contains **one canonical Expert Advisor**, `mt5_robot/QTS_Gold_Robot.mq5`, plus `ExecutionPolicy.mqh`, `StructureResearch.mqh`, `OpportunityResearch.mqh`, `AdaptiveResearch.mqh`, `SmcResearch.mqh`, `ScalpResearch.mqh`, installer, broker audit and research. It is **not** the Python `ROBOT.bat` engine.
 
 ## Clone, install, report
 
-**Automatic testing (recommended):** close the WMMarkets MT5 window, then double-click **`QTS_AUTO_TEST.bat`** in the repository root. It locates the installed canonical QTS EA, compiles it if needed, runs seven fixed and one adaptive M15 real-tick Strategy Tester cases with normal daily/peak risk stops, saves native HTML results, and opens one local `OPEN_RESULTS.html` summary. If the terminal, login/history or report export cannot be verified, it fails closed and explains the exact blocker. It never sends connected orders, never changes login/passwords, and never certifies profitable edge. For manual installation or diagnostics, double-click **`START_HERE.bat`**. Select **1** to install/compile the Gold EA and preflight script using **one selected MT5 terminal and compiler**. On your `XAUUSD@` chart run `QTS_Broker_Preflight`. Select **2** to create a local, clean HTML/JSON broker/readiness report, which rejects stale or mismatched broker-preflight sources and artifacts; it never sends orders.
+**Automatic testing (recommended):** close the WMMarkets MT5 window, then double-click **`QTS_AUTO_TEST.bat`** in the repository root. It locates the installed canonical QTS EA, compiles it if needed, runs ten native real-tick Strategy Tester cases (seven fixed M15, adaptive M15, SMC M15 and M1 scalp) with normal daily/peak risk stops, saves native HTML results, and opens one local `OPEN_RESULTS.html` summary. If the terminal, login/history or report export cannot be verified, it fails closed and explains the exact blocker. It never sends connected orders, never changes login/passwords, and never certifies profitable edge. For manual installation or diagnostics, double-click **`START_HERE.bat`**. Select **1** to install/compile the Gold EA and preflight script using **one selected MT5 terminal and compiler**. On your `XAUUSD@` chart run `QTS_Broker_Preflight`. Select **2** to create a local, clean HTML/JSON broker/readiness report, which rejects stale or mismatched broker-preflight sources and artifacts; it never sends orders.
 
 **Adaptive forensic breakdown (without retesting MT5):** `QTS_SHARE_RESULTS.bat` now first generates `QTS_ADAPTIVE_REVIEW.html` and `.json` from the last run's `QTS_TRADE_BY_TRADE.json` and comparison report. It shows which fixed family Style 7 *actually* selected for each filled position, contribution by family, stop/target exits, monthly results, added-cost stress scenarios and worst positions, with a strict aggregate reconciliation. Its strategy labels come from exact broker entry-order comments, never guessed market regimes. Without the original decision log it cannot prove which other strategy would have won on the same entry. Then it packages the JSON with the original deals; no new MT5 test is needed.
 
@@ -16,7 +16,7 @@ This directory contains **one canonical Expert Advisor**, `mt5_robot/QTS_Gold_Ro
 
 ## SL → post-exit quote-path investigation (research only)
 
-Run \`QTS_SHARE_RESULTS.bat\` after an eight-strategy real-tick test, then
+Run \`QTS_SHARE_RESULTS.bat\` after a ten-strategy real-tick test, then
 double-click the repository-root \`QTS_POST_STOP_REVIEW.bat\`.
 It reads only the saved evidence ZIP and produces a normalized SL-case CSV
 plus a conservative evidence summary in the selected run's \`post_stop_review\`
