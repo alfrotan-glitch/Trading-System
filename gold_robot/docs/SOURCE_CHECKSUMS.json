@@ -277,8 +277,8 @@
     },
     {
       "path": "research/analyze_stop_failure_paths.py",
-      "bytes": 11899,
-      "sha256": "1a5add4e62c6140cb85bc2c03db82f6ade7bad557a280a729d1ade5e335027c9"
+      "bytes": 13994,
+      "sha256": "0de5de240661499b8d3888c0ccfc73a302b5c8eb34bdcc8d136b2b37e06f4654"
     },
     {
       "path": "research/audit_mt5_logs.py",
@@ -477,8 +477,8 @@
     },
     {
       "path": "tests/test_stop_failure_paths.py",
-      "bytes": 4190,
-      "sha256": "7c5b4641af0d28d63d587bb948981ac681627f7c8f0f4e2d90a89aa464902458"
+      "bytes": 6511,
+      "sha256": "13964a9f1b23254e9bd754b6827b7d8a6db44b287b1c09f386bfc8b3b8815321"
     },
     {
       "path": "tests/test_stop_reversal_audit.py",
