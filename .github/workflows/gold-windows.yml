@@ -152,6 +152,8 @@ jobs:
           $data = Join-Path $fake 'data'
           $experts = Join-Path $data 'MQL5\Experts'
           New-Item -ItemType Directory -Path $install,$experts,(Join-Path $data 'MQL5\Profiles') -Force | Out-Null
+          # Simulate a build that resolves Tester presets via installation MQL5.
+          New-Item -ItemType Directory -Path (Join-Path $install 'MQL5\Profiles') -Force | Out-Null
           $exe = Join-Path $install 'terminal64.exe'
           [IO.File]::WriteAllText($exe,'TEST-ONLY FAKE TERMINAL - NEVER EXECUTE')
           foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh')){
@@ -184,6 +186,11 @@ jobs:
             $setName = $parameter[0].Split('=')[1]
             $setFile = Join-Path $data ('MQL5\Profiles\Tester\'+$setName)
             if(-not (Test-Path $setFile)) { throw "Tester profile not copied: $setFile" }
+            $installCopy = Join-Path $install ('MQL5\Profiles\Tester\'+$setName)
+            if (-not (Test-Path $installCopy) -or
+                (Get-FileHash $installCopy).Hash -ne (Get-FileHash $setFile).Hash) {
+              throw "Alternate installation-folder .set profile differs from data-folder profile"
+            }
             $contents = Get-Content $setFile -Encoding Unicode
             foreach($required in @(('EntryStyle='+$i),'EnableDemoOrders=true',
                                     'EnableDemoForwardOrders=false',

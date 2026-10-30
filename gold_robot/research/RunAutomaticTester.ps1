@@ -179,17 +179,36 @@ try{
     }
     $presetDir=Join-Path $OutputDirectory 'presets'
     & (Join-Path $gold 'research\MakeTesterPresets.ps1') -OutputDirectory $presetDir -NoPrompt
+    # MT5 builds/documentation differ on whether Tester profiles resolve
+    # from the data folder or the installation folder. Support both when the
+    # installation's MQL5 profile tree actually exists; never use an unverified
+    # fallback to EA defaults because that silently tests EntryStyle=0 seven times.
     $testerProfiles=Join-Path $data 'MQL5\Profiles\Tester'
-    New-Item -ItemType Directory -Path $testerProfiles -Force|Out-Null
+    $profileLocations=@($testerProfiles)
+    $installProfileRoot=Join-Path $install 'MQL5\Profiles'
+    if(Test-Path -LiteralPath $installProfileRoot -PathType Container){
+        $profileLocations+=,(Join-Path $installProfileRoot 'Tester')
+    }
+    $profileLocations=@($profileLocations|Select-Object -Unique)
+    foreach($root in $profileLocations){
+        try{New-Item -ItemType Directory -Path $root -Force -ErrorAction Stop|Out-Null}
+        catch{throw ('MT5 tester parameter folder not writable: '+$root)}
+    }
     $codes=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM',
             'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT')
     for($i=0;$i -lt $names.Count;$i++){
         $preset=Join-Path $presetDir ('safety_on\QTS_M15_'+$codes[$i]+'_SAFETY_ON.set')
         if(-not (Test-Path -LiteralPath $preset -PathType Leaf)){throw ('Missing safety-on preset '+$i)}
         $setName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i+'.set'
-        $setFile=Join-Path $testerProfiles $setName
-        Copy-Item -LiteralPath $preset -Destination $setFile
-        $lines=Get-Content -LiteralPath $setFile -Encoding Unicode
+        foreach($root in $profileLocations){
+            $setFile=Join-Path $root $setName
+            try{Copy-Item -LiteralPath $preset -Destination $setFile -Force -ErrorAction Stop}
+            catch{throw ('Cannot install this Strategy Tester .set file: '+$setFile)}
+            if(-not (SameHash $preset $setFile)){
+                throw ('Tester profile checksum mismatch: '+$setFile)
+            }
+        }
+        $lines=Get-Content -LiteralPath (Join-Path $testerProfiles $setName) -Encoding Unicode
         foreach($must in @(('EntryStyle='+$i),'EnableDemoOrders=true',
                            'EnableDemoForwardOrders=false','TesterIgnoreDailyAndPeakStops=false',
                            'RiskPerTradePct=0.50')){

@@ -112,8 +112,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 7489,
-      "sha256": "b926b88d8b6d58af77c642edceaf0b50e8ae8c15d690a7e1ae725bbcee821c12"
+      "bytes": 7614,
+      "sha256": "c48ef36204d59c86ce5339f78699c95aacbf7fcc6cedd04186b352c3624ac624"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART.md",
@@ -197,8 +197,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 18038,
-      "sha256": "0b6f44766c1103c5a1c59ef84c2e4fa85aa6201b1a4de98e04e9810415de8e4f"
+      "bytes": 19133,
+      "sha256": "3e70272433c36c4f2a932c8451e610416e1a54665e217e93e03cecefbfac2798"
     },
     {
       "path": "research/RunNativeValidation.ps1",
