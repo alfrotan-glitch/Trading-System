@@ -182,8 +182,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 77596,
-      "sha256": "94407fade759c79f19137581c7be529769820314ef04c3ea46ab15f3fbba69db"
+      "bytes": 77855,
+      "sha256": "6e92882b3534160ae404ff6112f76130d67440e9cc99b49dd15b033f5f7a9414"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -252,8 +252,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 19954,
-      "sha256": "acd3434963a1cc316bc2bc75fa9fbc3ab6ba9354ecee5e8691811fd7f8a07d5e"
+      "bytes": 20088,
+      "sha256": "511b63f953e016f838783a971c280cff11763c26855ea3ba4ea33f383ea53124"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -427,8 +427,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 36118,
-      "sha256": "144cdd4c90d9ab9bd96fa16ecdd39b2afc1e50f0404a096c0e1d76863bb6f5ff"
+      "bytes": 37074,
+      "sha256": "f21842421dfc4a0e6b3b81cc402e14f6bd2bc62d9e4e19e44e7f16699318d9df"
     },
     {
       "path": "tests/test_router_hardening.py",

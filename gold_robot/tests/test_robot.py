@@ -766,3 +766,21 @@ def test_installer_dependency_set_matches_ea_includes():
                         'SmcResearch.mqh', 'ScalpResearch.mqh'}
     for inc in includes:
         assert inc in PS, inc
+
+
+def test_m1_scalp_can_initialize_but_other_families_still_refuse_m1():
+    """Source-level regression; a native MT5 test is still required."""
+    init = body_of('OnInit')
+    assert 'bool scalp_m1=(EntryStyle==QTS_M1_SCALP);' in init
+    assert '(scalp_m1 && SignalTimeframe!=PERIOD_M1)' in init
+    assert '(!scalp_m1 && SignalTimeframe!=PERIOD_M5 &&' in init
+    assert 'SignalTimeframe!=PERIOD_M15 && SignalTimeframe!=PERIOD_M30' in init
+    assert 'SignalTimeframe!=PERIOD_H1' in init
+    assert '(SignalTimeframe!=PERIOD_M1 || MaxPositionMinutes!=15)' in init
+    assert '((int)EntryStyle>=4 && MQLInfoInteger(MQL_TESTER)==0)' in init
+
+
+def test_auto_runner_checks_all_mql_dependencies_including_smc_and_scalp():
+    runner = (ROOT / 'research/RunAutomaticTester.ps1').read_text(encoding='utf-8')
+    assert runner.count("'SmcResearch.mqh','ScalpResearch.mqh'") >= 2
+    assert "'mt5_robot/SmcResearch.mqh','mt5_robot/ScalpResearch.mqh'" in runner

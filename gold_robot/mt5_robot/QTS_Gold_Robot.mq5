@@ -1388,10 +1388,16 @@ int OnInit()
       Print("QTS: only XAUUSD/GOLD with broker suffixes supported.");
       return INIT_FAILED;
      }
-   if(SignalTimeframe!=PERIOD_M5 && SignalTimeframe!=PERIOD_M15 &&
-      SignalTimeframe!=PERIOD_M30 &&
-      SignalTimeframe!=PERIOD_H1)
+   // M1 is valid ONLY for the frozen Style 9 scalp hypothesis.
+   bool scalp_m1=(EntryStyle==QTS_M1_SCALP);
+   if((scalp_m1 && SignalTimeframe!=PERIOD_M1) ||
+      (!scalp_m1 && SignalTimeframe!=PERIOD_M5 &&
+       SignalTimeframe!=PERIOD_M15 && SignalTimeframe!=PERIOD_M30 &&
+       SignalTimeframe!=PERIOD_H1))
+     {
+      Print("QTS: unsupported timeframe for selected entry style.");
       return INIT_PARAMETERS_INCORRECT;
+     }
    // Extra hypotheses remain Tester-only until independently accepted.
    if((int)EntryStyle<0 || (int)EntryStyle>9 ||
       ((int)EntryStyle>=4 && MQLInfoInteger(MQL_TESTER)==0) ||

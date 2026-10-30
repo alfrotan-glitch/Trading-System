@@ -132,14 +132,14 @@ function SameHash([string]$a,[string]$b){
 }
 function CompiledCurrent([string]$data){
     $mql=Join-Path $data 'MQL5\Experts'
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
         if(-not (SameHash (Join-Path $gold ('mt5_robot\'+$name)) (Join-Path $mql $name))){return $false}
     }
     $binary=Join-Path $mql 'QTS_Gold_Robot.ex5'
     if(-not (Test-Path -LiteralPath $binary -PathType Leaf)){return $false}
     if((Get-Item -LiteralPath $binary).Length -lt 1000){return $false}
     $binaryTime=(Get-Item -LiteralPath $binary).LastWriteTimeUtc
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
         if($binaryTime -lt (Get-Item -LiteralPath (Join-Path $mql $name)).LastWriteTimeUtc.AddSeconds(-2)){return $false}
     }
     return $true
@@ -149,7 +149,7 @@ $message=''
 $comparison=''
 try{
     $manifest=Get-Content -LiteralPath (Join-Path $gold 'docs\SOURCE_CHECKSUMS.json') -Raw | ConvertFrom-Json
-    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh','mt5_robot/OpportunityResearch.mqh','mt5_robot/AdaptiveResearch.mqh')){
+    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh','mt5_robot/OpportunityResearch.mqh','mt5_robot/AdaptiveResearch.mqh','mt5_robot/SmcResearch.mqh','mt5_robot/ScalpResearch.mqh')){
         $entry=@($manifest.sha256_files|Where-Object {$_.path -eq $rel})
         if($entry.Count -ne 1){throw ('Manifest does not identify '+$rel)}
         $path=Join-Path $gold ($rel.Replace('/','\'))
