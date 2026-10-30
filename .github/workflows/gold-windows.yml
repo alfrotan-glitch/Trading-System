@@ -309,7 +309,7 @@ jobs:
           $latest = Get-ChildItem -LiteralPath $out -Filter '*.json' |
             Sort-Object LastWriteTime -Descending | Select-Object -First 1
           $badResult = Get-Content -LiteralPath $latest.FullName -Raw | ConvertFrom-Json
-          if ($badResult.reports_parsed -ne 5 -or
+          if ($badResult.reports_parsed -ne 6 -or
               $badResult.results[0].state -ne 'LOG_ONLY' -or
               $badResult.results[1].state -ne 'LOG_ONLY') {
             throw 'Mislabeled MT5 logs were accepted as finished HTML reports'
