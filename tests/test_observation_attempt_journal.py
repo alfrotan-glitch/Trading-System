@@ -69,7 +69,14 @@ def test_every_attempt_has_a_classified_outcome(tmp_path: Path) -> None:
     assert rec["stored"] == rec["store_rows"] == collector.ticks_recorded
     assert rec["fully_reconciled"] is True
     assert rec["sequence_contiguous"] is True
-    assert rec["missed_slots"] == 0
+    # A busy CI runner can miss a 200-ms wall-clock poll interval. That
+    # must remain an auditable MISSED slot, not a fabricated observation.
+    # Accounting invariants above, not an unschedulable zero-gap promise,
+    # are this test's contract; deliberate gap detection is tested below.
+    if rec["missed_slots"]:
+        assert rec["missed_slot_ranges"]
+        assert rec["expected_slots"] > rec["serviced_slots"]
+        assert "NOT market activity" in rec["note"]
     assert fake.order_send_calls == []  # still strictly order-free
 
     # Every attempt row is a heartbeat: it carries timing + slot identity.
