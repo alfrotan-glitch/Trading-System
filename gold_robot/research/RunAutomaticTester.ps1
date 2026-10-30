@@ -17,11 +17,17 @@ New-Item -ItemType Directory -Path $native,$configs -Force|Out-Null
 $results=New-Object System.Collections.ArrayList
 $names=@('Former stop','Retest','Break and retest','Sweep and reclaim',
          'Trend impulse','Range rejection','Inside-bar breakout','Adaptive router','SMC FVG OB','M1 scalp')
-# Targeted run is NOT a ten-strategy research certification.
+# A selected native run never counts as ten-style acceptance.
 $selectedStyles=@(0..9)
 $targeted=($OnlyStyles -ne '')
 if($targeted){
-    if($OnlyStyles -notmatch '^[0-9](?:,[0-9])*
+    if($OnlyStyles -notmatch '^[0-9](?:,[0-9])*$'){throw 'Invalid OnlyStyles.'}
+    $selectedStyles=@($OnlyStyles.Split(',') | ForEach-Object {[int]$_})
+    if(@($selectedStyles | Sort-Object -Unique).Count -ne $selectedStyles.Count){
+        throw 'Duplicate selected strategy IDs.'
+    }
+}
+
 $today=(Get-Date).Date
 $endMonth=[datetime]::new($today.Year,$today.Month,1)
 if(-not $FromDate){$FromDate=$endMonth.AddMonths(-6).ToString('yyyy.MM.dd')}
@@ -337,26 +343,22 @@ try{
         }
         $nativeResult=Get-Content -LiteralPath $nativeSummary.FullName -Raw | ConvertFrom-Json
         if($targeted){
-            # Check every selected style independently. Non-selected files
-            # are expected to be absent and cannot be counted as failed runs.
-            $selectedVerified=$true
+            $verified=$true
             foreach($style in $selectedStyles){
-                $matchedReport=@($nativeResult.results | Where-Object {
+                $r=@($nativeResult.results | Where-Object {
                     $_.style -eq $style -and $_.state -eq 'PARSED'
                 })
-                $matchedDeals=@($forensicSummary.evidence | Where-Object {
+                $d=@($forensicSummary.evidence | Where-Object {
                     $_.style -eq $style -and $_.status -eq 'IMPORTED' -and $_.deals -gt 0
                 })
-                if($matchedReport.Count -ne 1 -or $matchedDeals.Count -ne 1){
-                    $selectedVerified=$false
-                }
+                if($r.Count -ne 1 -or $d.Count -ne 1){$verified=$false}
             }
-            if($badRuns.Count -eq 0 -and $results.Count -eq $selectedStyles.Count -and $selectedVerified){
+            if($badRuns.Count -eq 0 -and $results.Count -eq $selectedStyles.Count -and $verified){
                 $state='SELECTED_TESTS_FINISHED_REVIEW_REQUIRED'
             }else{
                 $state='SELECTED_TESTS_WITH_EVIDENCE_GAPS'
             }
-            $message='Selected native tests and deal forensics checked; positive edge unvalidated.'
+            $message='Selected native reports and individual deal evidence checked. Profitability unvalidated.'
         }else{
             $allInputStylesVerified=($nativeResult.reports_parsed -eq $names.Count -and
                                      $nativeResult.all_styles_identified -eq $true)
