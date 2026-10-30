@@ -276,6 +276,11 @@
       "sha256": "5c97ffa966ef0f620252790c065fa7fd149f6671c7f60155c6544c4ec4de41f4"
     },
     {
+      "path": "research/analyze_stop_failure_paths.py",
+      "bytes": 11899,
+      "sha256": "1a5add4e62c6140cb85bc2c03db82f6ade7bad557a280a729d1ade5e335027c9"
+    },
+    {
       "path": "research/audit_mt5_logs.py",
       "bytes": 17563,
       "sha256": "1c8874483f56e8391c888adc378fec898922a11552fab7823cf862dea05cfa60"
@@ -332,8 +337,8 @@
     },
     {
       "path": "research/prepare_stop_tick_windows.py",
-      "bytes": 2405,
-      "sha256": "083682983d52fdd07e8b6907f10fe2ce343b2844999fa198fd15cc3d6e6ea4d0"
+      "bytes": 2968,
+      "sha256": "e242e835b028a1b0ae928e3f1a54d7d2f5572c312cc0b963dcf4b180fe72f882"
     },
     {
       "path": "research/prior_day.py",
@@ -471,14 +476,19 @@
       "sha256": "703c28cbc05039184c8be8c8acb612541ba4e9e2206a41faf7b030d7d6e0786c"
     },
     {
+      "path": "tests/test_stop_failure_paths.py",
+      "bytes": 4190,
+      "sha256": "7c5b4641af0d28d63d587bb948981ac681627f7c8f0f4e2d90a89aa464902458"
+    },
+    {
       "path": "tests/test_stop_reversal_audit.py",
       "bytes": 4051,
       "sha256": "519ef252fc47b6ff84bcb3d423fe96f08e6e0f96a3108033994f675fd4860a49"
     },
     {
       "path": "tests/test_stop_tick_window_export.py",
-      "bytes": 2708,
-      "sha256": "32b80a5db34c25b2e0480acb48dbfc3741cab7001897131c6cb68f1d9683662e"
+      "bytes": 4251,
+      "sha256": "ae1eeebbdac2a08015b2508dc6047ca50b603bc2ef379e1d4deb7be9c907084a"
     },
     {
       "path": "tests/test_strategy_forensics_contract.py",
