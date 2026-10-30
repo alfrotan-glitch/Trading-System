@@ -402,6 +402,37 @@ jobs:
             }
           } finally {$z.Dispose()}
           Write-Host 'Trade-forensic local evidence ZIP allowlist and incomplete status: PASS'
+      - name: Attribute adaptive broker-deal positions to actually selected family
+        shell: pwsh
+        run: |
+          $r=Join-Path $env:RUNNER_TEMP 'qts adaptive position attribution'
+          New-Item -ItemType Directory -Path $r -Force | Out-Null
+          $a=@{
+            status='IMPORTED_FOR_REVIEW'
+            trades=@(
+              @{style=7;position_id='a';setup_reason='QTS RETEST LIMIT DEMO';status='COMPLETE';net_usd=10.0;charges_usd=0.0;exit_reason='DEAL_REASON_TP';exit_adverse_slippage_price=0.0;minutes_held=12;exit_legs=@(@{time_msc='1775000000000'})},
+              @{style=7;position_id='b';setup_reason='QTS SWEEP RECLAIM';status='COMPLETE';net_usd=-12.5;charges_usd=0.0;exit_reason='DEAL_REASON_SL';exit_adverse_slippage_price=0.3;minutes_held=4;exit_legs=@(@{time_msc='1775100000000'})},
+              @{style=0;position_id='not-adaptive';setup_reason='QTS OLD-SL LIMIT DEMO';status='COMPLETE';net_usd=1000.0;charges_usd=0.0;exit_reason='DEAL_REASON_TP';exit_adverse_slippage_price=0.0;minutes_held=3;exit_legs=@(@{time_msc='1775100000000'})}
+            )
+          }
+          $a | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $r 'QTS_TRADE_BY_TRADE.json')
+          $c=@{results=@(@{style=7;state='PARSED';trades=2;net_usd=-2.5;profit_factor=0.8;maximal_equity_drawdown=25.0})}
+          $c | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $r 'QTS_Gold_Comparison_Test.json')
+          ./gold_robot/research/ExplainAdaptiveRouter.ps1 -RunDirectory $r -NoOpen
+          if($LASTEXITCODE -ne 0){throw 'Adaptive family attribution failed'}
+          $result=Get-Content (Join-Path $r 'QTS_ADAPTIVE_REVIEW.json') -Raw|ConvertFrom-Json
+          if($result.status -ne 'RECONCILED_REVIEW_REQUIRED' -or
+             $result.broker_positions.positions -ne 2 -or
+             $result.broker_positions.net_usd -ne -2.5 -or
+             @($result.selected_family).Count -ne 2 -or
+             $result.selected_family[0].family -ne 'Retest' -or
+             $result.selected_family[1].family -ne 'Sweep and reclaim') {
+             throw 'Adaptive attribution invented family, counted unrelated trades or misstated net'
+          }
+          if(-not (Test-Path (Join-Path $r 'QTS_ADAPTIVE_REVIEW.html'))){
+             throw 'Missing local adaptive HTML'
+          }
+          Write-Host 'Adaptive per-position provenance and reconciled family report: PASS'
       - name: Simulate clean and blocked MT5 broker reports (no trading)
         shell: pwsh
         run: ./gold_robot/tests/windows_report_smoke.ps1

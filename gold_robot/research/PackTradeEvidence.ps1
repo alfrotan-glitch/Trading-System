@@ -24,7 +24,7 @@ if(-not $RunDirectory.StartsWith($root+'\',[StringComparison]::OrdinalIgnoreCase
     throw 'Refusing to package a folder outside QTS reports_local/auto_runs.'
 }
 $allowed=New-Object System.Collections.ArrayList
-foreach($name in @('OPEN_RESULTS.json','QTS_TRADE_BY_TRADE.json')){
+foreach($name in @('OPEN_RESULTS.json','QTS_TRADE_BY_TRADE.json','QTS_ADAPTIVE_REVIEW.json')){
     $p=Join-Path $RunDirectory $name
     if(Test-Path -LiteralPath $p -PathType Leaf){[void]$allowed.Add(@($p,$name))}
 }

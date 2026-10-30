@@ -32,8 +32,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 8235,
-      "sha256": "33da2862b6551d894e6fe23884a8771832728147352a0e0969485937b2a4f659"
+      "bytes": 8954,
+      "sha256": "7325331a40a064e698f32a85e4fbf72161dc1f9be9eaad42170612360b1078b2"
     },
     {
       "path": "README.txt",
@@ -112,8 +112,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 9319,
-      "sha256": "ede652ebc2a7f4542c2dc820654e7596a2bedfb0b0a79260a8ebe4ac9a60026b"
+      "bytes": 9945,
+      "sha256": "89a3df5f103f8aa3b9236fbe101bdbe46e125cd04d1cdba618fed09992c714c7"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART.md",
@@ -181,6 +181,11 @@
       "sha256": "6933bebb7b11545d79e9bf0343a3919800b5de591639568304d25485270206f4"
     },
     {
+      "path": "research/ExplainAdaptiveRouter.ps1",
+      "bytes": 10228,
+      "sha256": "13a58404e46d20fd2fa67a5fd7b99838bc316c3cf8248044c52dcd9d42cf6013"
+    },
+    {
       "path": "research/ExportBrokerData.mq5",
       "bytes": 2246,
       "sha256": "ac29abbbe84541747c9b1b0e9e69793c1cd2a7fab3890f19aece1c348c26380c"
@@ -197,8 +202,8 @@
     },
     {
       "path": "research/PackTradeEvidence.ps1",
-      "bytes": 4536,
-      "sha256": "e25afb68411aec44b15acde8c9cf4bf6878adc3e65e5b83e03879d64a930b384"
+      "bytes": 4563,
+      "sha256": "19309e39a6fad5e99ae28e432714887119fca12375db9c79c17df34e854d0bf7"
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",
