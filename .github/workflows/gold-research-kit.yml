@@ -6,6 +6,7 @@ on:
     paths:
       - "gold_robot/**"
       - "QTS_AUTO_TEST.bat"
+      - "QTS_FOUR_FINALISTS.bat"
       - "QTS_FAST_OPTIMIZE.bat"
       - "QTS_FAST_OPTIMIZE.ps1"
       - "QTS_SHARE_RESULTS.bat"
@@ -37,7 +38,7 @@ jobs:
           $stage = Join-Path $env:RUNNER_TEMP 'QTS Gold Customer Kit'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item -LiteralPath 'gold_robot' -Destination $stage -Recurse
-          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1')) {
+          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat')) {
             Copy-Item -LiteralPath $file -Destination $stage
           }
           @'
@@ -54,9 +55,12 @@ jobs:
              This is NOT a full trade-by-trade audit.\n          4. Double-click QTS_AUTO_TEST.bat to run the ten native MT5
              Strategy Tester studies (styles 0-9, M1 for style 9).
              The program does NOT send live-account orders.
-          5. Review the saved OPEN_RESULTS report, then optionally run
+          5. For full forensic review of four positive-screen styles,
+             run QTS_FOUR_FINALISTS.bat (styles 1,3,7,8 only).
+             Native MT5 tests and complete broker deal evidence are required.
+          6. Review the saved OPEN_RESULTS report, then optionally run
              QTS_SHARE_RESULTS.bat and QTS_POST_STOP_REVIEW.bat.
-          6. This is NOT a profitable-edge-certified production robot.
+          7. This is NOT a profitable-edge-certified production robot.
              LIVE REAL-MONEY TRADING IS LOCKED. Broker-specific native
              compile and after-cost, independent testing remain required.
              A synthetic CI check is NOT proof of broker fills or profits.
@@ -75,7 +79,7 @@ jobs:
           Expand-Archive -LiteralPath 'QTS-Gold-Windows-Research-Kit.zip' -DestinationPath $dst -Force
           Push-Location $dst
           try {
-            foreach($file in @('OPEN_FIRST.txt','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1')) {
+            foreach($file in @('OPEN_FIRST.txt','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat')) {
               if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing kit file: $file" }
             }
             python gold_robot/research/update_manifest.py --check
@@ -129,6 +133,29 @@ jobs:
           Write-Host 'PASS: only nine distinct native optimization style records validate'
           # Negative tests deliberately return nonzero; clear native exit state after successful assertions.
           $global:LASTEXITCODE = 0
+      - name: Verify four-finalist native runner on Windows
+        shell: pwsh
+        run: |
+          $file = (Resolve-Path 'gold_robot/research/RunAutomaticTester.ps1').Path
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$tokens, [ref]$errors)
+          if (@($errors).Count -ne 0) {
+            $errors | ForEach-Object { Write-Host $_.ToString() }
+            throw 'Selective runner PowerShell parse failed'
+          }
+          $body = Get-Content $file -Raw -Encoding UTF8
+          foreach ($key in @('OnlyStyles', 'foreach($i in $selectedStyles)',
+            'SELECTED_TESTS_FINISHED_REVIEW_REQUIRED', 'SELECTED_TESTS_WITH_EVIDENCE_GAPS')) {
+            if (-not $body.Contains($key)) { throw "Selective runner missing invariant $key" }
+          }
+          $package = Get-Content 'gold_robot/research/PackTradeEvidence.ps1' -Raw
+          if (-not $package.Contains('foreach($i in $requiredStyles)')) {
+            throw 'Evidence packager has old hardcoded style range'
+          }
+          $bat = Get-Content 'QTS_FOUR_FINALISTS.bat' -Raw
+          if (-not $bat.Contains('-OnlyStyles "1,3,7,8"')) { throw 'Four styles were not correctly selected' }
+          Write-Host 'PASS: selective native tester parser and four-style evidence routing'
       - uses: actions/upload-artifact@v4
         with:
           name: QTS-Gold-Windows-Research-Kit
