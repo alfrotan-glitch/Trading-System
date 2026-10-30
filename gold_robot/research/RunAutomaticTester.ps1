@@ -343,5 +343,7 @@ try{
 }finally{
     SaveOutcome $state $message $comparison
 }
-if($state -eq 'FAILED'){exit 2}
+# A run missing native evidence must fail the caller even when some
+# HTML reports exist. Preserve the diagnostic JSON/HTML for inspection.
+if($state -notin @('PREPARED_ONLY','TESTS_FINISHED_REVIEW_REQUIRED')){exit 2}
 exit 0

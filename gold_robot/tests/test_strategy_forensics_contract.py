@@ -106,3 +106,10 @@ def test_adaptive_router_is_closed_bar_test_only_and_never_changes_risk_executio
     assert "'SMC_FVG_OB'" in PRESETS
     assert "'SMC_FVG_OB'" in AUTORUN
     assert "QTS_M1_SCALP=9" in EA
+
+
+def test_native_runner_refuses_success_exit_on_missing_evidence():
+    # The normal Windows caller must not report success when any native
+    # style lacks a forensic ledger, report, or independent model check.
+    assert "if($state -notin @('PREPARED_ONLY','TESTS_FINISHED_REVIEW_REQUIRED')){exit 2}" in AUTORUN
+    assert "TESTS_FINISHED_WITH_EVIDENCE_GAPS" in AUTORUN

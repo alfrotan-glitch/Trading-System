@@ -252,8 +252,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 20088,
-      "sha256": "511b63f953e016f838783a971c280cff11763c26855ea3ba4ea33f383ea53124"
+      "bytes": 20274,
+      "sha256": "23e22be5bea3570651996a2559db7d05624a5f0e0d98785ec9fbd4c0db222d08"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -457,8 +457,8 @@
     },
     {
       "path": "tests/test_strategy_forensics_contract.py",
-      "bytes": 5313,
-      "sha256": "f5a419407397244650ad99af9755ad50153295cec1d07911f33c4badfa4d0848"
+      "bytes": 5687,
+      "sha256": "1d6c595cfeb1e9d13ffc6a13fef60fdd6238c4fec02df59842fbe87ca985e9bb"
     },
     {
       "path": "tests/test_target_grid.py",

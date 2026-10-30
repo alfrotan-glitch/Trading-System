@@ -107,6 +107,26 @@ jobs:
             if (-not $text.Contains($required)) { throw "Missing fast screen safety invariant: $required" }
           }
           Write-Host 'PASS: fast screen syntax and static safety gates (MT5 native execution not simulated)'
+      - name: Reject missing, duplicated and spoofed MT5 optimization passes
+        shell: pwsh
+        run: |
+          $ok = Join-Path $env:RUNNER_TEMP 'qts-fast-nine-valid.xml'
+          $bad = Join-Path $env:RUNNER_TEMP 'qts-fast-eight-only.xml'
+          $dup = Join-Path $env:RUNNER_TEMP 'qts-fast-duplicate.xml'
+          $header = '<Row><Cell><Data>Pass</Data></Cell><Cell><Data>EntryStyle</Data></Cell></Row>'
+          $records = @(0..8 | ForEach-Object { '<Row><Cell><Data>' + ($_+1) + '</Data></Cell><Cell><Data>' + $_ + '</Data></Cell></Row>' })
+          $prefix = '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet><Table>'
+          $suffix = '</Table></Worksheet></Workbook>'
+          [IO.File]::WriteAllText($ok, ($prefix+$header+($records -join '')+$suffix))
+          [IO.File]::WriteAllText($bad,($prefix+$header+(@($records | Select-Object -First 8) -join '')+$suffix))
+          [IO.File]::WriteAllText($dup,($prefix+$header+(@($records[0..7]+$records[7]) -join '')+$suffix))
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File './QTS_FAST_OPTIMIZE.ps1' -ValidateXmlOnly -OptimizationXml $ok
+          if($LASTEXITCODE -ne 0){ throw 'Nine-pass XML should validate' }
+          foreach($file in @($bad,$dup)){
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File './QTS_FAST_OPTIMIZE.ps1' -ValidateXmlOnly -OptimizationXml $file
+            if($LASTEXITCODE -eq 0){ throw "Invalid optimization evidence was accepted: $file" }
+          }
+          Write-Host 'PASS: only nine distinct native optimization style records validate'
       - uses: actions/upload-artifact@v4
         with:
           name: QTS-Gold-Windows-Research-Kit
