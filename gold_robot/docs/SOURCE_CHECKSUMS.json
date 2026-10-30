@@ -32,8 +32,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 10055,
-      "sha256": "4acef0cbea1eab9a7cf2f7a06d22d898d6b8746bd78aad905ba2ad1987f6d650"
+      "bytes": 10120,
+      "sha256": "7315cd9c2f7701f232fdabb12d532e342911f7a8b971d893c56f909a22aa77c5"
     },
     {
       "path": "README.txt",
@@ -133,7 +133,7 @@
     {
       "path": "docs/RELEASE_STATUS.json",
       "bytes": 5675,
-      "sha256": "3f7e8716c8b29157e3c28e73fb4b481d249690ce35c4bd3f03785e078cee0cb9"
+      "sha256": "f3dca60d2c47c50cd1f0874181ea875ad938342bec4493f24f9a575d069322c9"
     },
     {
       "path": "docs/WINDOWS_START.md",
@@ -142,8 +142,8 @@
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
-      "bytes": 8537,
-      "sha256": "f7ae51ea99a04554cef573aae5bea8f5580d6038412611d9ec134f095fb46b62"
+      "bytes": 8420,
+      "sha256": "51c7d17bd7e0859c15a0ae29d9ad395053101a882b4def22e6c8258b58d407e9"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART.md",
