@@ -19,7 +19,7 @@ input double          DemoForwardRiskCapPct      = 0.25; // DEMO hard cap; never
 input bool            EnableEntryDiagnostics    = true; // Closed-bar diagnostic reasons in Tester and connected DEMO Experts logs.
 input bool            PauseNewEntries           = false;
 input bool            EmergencyFlattenOwned     = false; // Emergency CLOSE of THIS magic only.
-enum QTS_ENTRY_STYLE { QTS_FORMER_STOP_LIMIT=0, QTS_RETEST_LIMIT=1, QTS_BREAK_ACCEPT_RETEST=2, QTS_SWEEP_RECLAIM=3, QTS_TREND_IMPULSE=4, QTS_RANGE_REJECTION=5, QTS_INSIDE_BREAKOUT=6, QTS_ADAPTIVE_ROUTER=7 };
+enum QTS_ENTRY_STYLE { QTS_FORMER_STOP_LIMIT=0, QTS_RETEST_LIMIT=1, QTS_BREAK_ACCEPT_RETEST=2, QTS_SWEEP_RECLAIM=3, QTS_TREND_IMPULSE=4, QTS_RANGE_REJECTION=5, QTS_INSIDE_BREAKOUT=6, QTS_ADAPTIVE_ROUTER=7, QTS_SMC_FVG_OB=8, QTS_M1_SCALP=9 };
 input QTS_ENTRY_STYLE EntryStyle               = QTS_FORMER_STOP_LIMIT;
 input ENUM_TIMEFRAMES SignalTimeframe           = PERIOD_M15;
 input int             FastEmaPeriod             = 20;
@@ -581,6 +581,8 @@ int CompletedBarSignal(double &atr_value)
 #include "StructureResearch.mqh"
 #include "OpportunityResearch.mqh"
 #include "AdaptiveResearch.mqh"
+#include "SmcResearch.mqh"
+#include "ScalpResearch.mqh"
 
 // ------------------------------------------------------------------
 // Broker-authoritative order sizing and SL/TP attached to pending request.
@@ -927,11 +929,16 @@ void EvaluateNewEntry()
      {
       bool structural=evaluated_style==QTS_BREAK_ACCEPT_RETEST ||
                       evaluated_style==QTS_SWEEP_RECLAIM;
-      bool opportunity=evaluated_style>=4;
-      side=opportunity ?
-         CompletedOpportunitySignal(atr,structure_level,structure_anchor) :
-         (structural ? CompletedStructureSignal(atr,structure_level,structure_anchor) :
-                       CompletedBarSignal(atr));
+      bool opportunity=evaluated_style>=4 && evaluated_style!=QTS_SMC_FVG_OB &&
+                      evaluated_style!=QTS_M1_SCALP;
+      side=evaluated_style==QTS_SMC_FVG_OB ?
+         CompletedSmcSignal(atr,structure_level,structure_anchor) :
+         (evaluated_style==QTS_M1_SCALP ?
+          CompletedScalpSignal(atr,structure_level,structure_anchor) :
+         (opportunity ?
+          CompletedOpportunitySignal(atr,structure_level,structure_anchor) :
+          (structural ? CompletedStructureSignal(atr,structure_level,structure_anchor) :
+                        CompletedBarSignal(atr))));
       if(side==0)
          return; // Preserve the stage-specific reason from causal signal logic.
      }
@@ -953,14 +960,19 @@ void EvaluateNewEntry()
      {
       bool structural=evaluated_style==QTS_BREAK_ACCEPT_RETEST ||
                       evaluated_style==QTS_SWEEP_RECLAIM;
-      bool opportunity=evaluated_style>=4;
-      bool prepared=opportunity ?
-         PrepareOpportunityLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
-         (structural ?
-          PrepareStructureLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
-          (evaluated_style==QTS_RETEST_LIMIT ?
-           PrepareRetestLimit(side,quote,atr,price,stop,target) :
-           PreparePullbackLimit(side,quote,atr,price,stop,target)));
+      bool opportunity=evaluated_style>=4 && evaluated_style!=QTS_SMC_FVG_OB &&
+                      evaluated_style!=QTS_M1_SCALP;
+      bool prepared=evaluated_style==QTS_SMC_FVG_OB ?
+         PrepareSmcLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
+         (evaluated_style==QTS_M1_SCALP ?
+          PrepareScalpLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
+         (opportunity ?
+          PrepareOpportunityLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
+          (structural ?
+           PrepareStructureLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
+           (evaluated_style==QTS_RETEST_LIMIT ?
+            PrepareRetestLimit(side,quote,atr,price,stop,target) :
+            PreparePullbackLimit(side,quote,atr,price,stop,target)))));
       if(!prepared)
         {
          status_text="LIMIT veto: price, structure, stop or reward not valid";
@@ -1025,6 +1037,8 @@ void EvaluateNewEntry()
                    evaluated_style==QTS_SWEEP_RECLAIM ? "QTS SWEEP RECLAIM" :
                    evaluated_style==QTS_TREND_IMPULSE ? "QTS TREND IMPULSE" :
                    evaluated_style==QTS_RANGE_REJECTION ? "QTS RANGE REJECT" :
+                   evaluated_style==QTS_SMC_FVG_OB ? "QTS SMC FVG OB" :
+                   evaluated_style==QTS_M1_SCALP ? "QTS M1 SCALP" :
                                                      "QTS INSIDE BREAK";
    ResetLastError();
    if(!OrderCheck(request,check) || (check.retcode!=0 && check.retcode!=TRADE_RETCODE_DONE))
@@ -1379,7 +1393,7 @@ int OnInit()
       SignalTimeframe!=PERIOD_H1)
       return INIT_PARAMETERS_INCORRECT;
    // Extra hypotheses remain Tester-only until independently accepted.
-   if((int)EntryStyle<0 || (int)EntryStyle>7 ||
+   if((int)EntryStyle<0 || (int)EntryStyle>9 ||
       ((int)EntryStyle>=4 && MQLInfoInteger(MQL_TESTER)==0) ||
       StructureBreakConfirmAtr<0.01 || StructureBreakConfirmAtr>0.70 ||
       StructureRetestWindowAtr<0.05 || StructureRetestWindowAtr>1.50 ||
@@ -1411,6 +1425,14 @@ int OnInit()
       MinimumTargetFeeMultiple<1.0 || MinimumTargetFeeMultiple>10.0)
      {
       Print("QTS: invalid parameters, no initialization.");
+      return INIT_PARAMETERS_INCORRECT;
+     }
+   // M1 scalp is frozen: M1 only, 15-minute position cap. Any other
+   // timeframe or time cap is a different hypothesis, not this one.
+   if(EntryStyle==QTS_M1_SCALP &&
+      (SignalTimeframe!=PERIOD_M1 || MaxPositionMinutes!=15))
+     {
+      Print("QTS: M1 scalp requires PERIOD_M1 and MaxPositionMinutes=15.");
       return INIT_PARAMETERS_INCORRECT;
      }
    evaluated_style=(int)EntryStyle;
@@ -1750,9 +1772,12 @@ void ObserveUnarmedDemoSignal()
    double atr=0.0,level=0.0,anchor=0.0;
    bool structural=EntryStyle==QTS_BREAK_ACCEPT_RETEST ||
                    EntryStyle==QTS_SWEEP_RECLAIM;
-   bool opportunity=(int)EntryStyle>=4;
-   int side=opportunity ? CompletedOpportunitySignal(atr,level,anchor) :
-      (structural ? CompletedStructureSignal(atr,level,anchor) : CompletedBarSignal(atr));
+   bool opportunity=(int)EntryStyle>=4 && EntryStyle!=QTS_SMC_FVG_OB &&
+                   EntryStyle!=QTS_M1_SCALP;
+   int side=EntryStyle==QTS_SMC_FVG_OB ? CompletedSmcSignal(atr,level,anchor) :
+      (EntryStyle==QTS_M1_SCALP ? CompletedScalpSignal(atr,level,anchor) :
+      (opportunity ? CompletedOpportunitySignal(atr,level,anchor) :
+      (structural ? CompletedStructureSignal(atr,level,anchor) : CompletedBarSignal(atr))));
    if(side>0)
       status_text="OBSERVE: unvalidated BUY candidate; orders not authorized";
    else if(side<0)

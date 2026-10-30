@@ -23,7 +23,17 @@ BASIS_PRE_SLIPPAGE = "PRE_SLIPPAGE_REFERENCE"
 BASIS_ACTUAL_FILLS = "ACTUAL_EXECUTED_FILLS"
 PROVENANCE_NATIVE = "BROKER_NATIVE"
 PROVENANCE_SIMULATED = "SIMULATED"
-BOOTSTRAPS = 2000
+BOOTSTRAPS = 20000
+# Tail resolution requires BOOTSTRAPS * (0.01 / trials_tested) >= 5, i.e.
+# trials_tested <= BOOTSTRAPS / 500. At 2,000 bootstraps that capped an
+# honest search at 4 trials -- fewer than the 7 EA EntryStyles alone --
+# which rewarded under-declaring trials. At 20,000 the cap is 40 trials:
+# still fail-closed beyond it, but it no longer forces a real 7-style
+# search to be unresolvable. Raising this further is NOT a free fix: the
+# 304-trial test below must stay unresolved, so any future increase must
+# keep BOOTSTRAPS * 0.01 / trials_tested < 5 for the largest trial count
+# the gate is meant to refuse, or replace the tail test outright.
+MAX_TRIALS_WITH_TAIL_RESOLUTION = BOOTSTRAPS // 500
 BLOCK_TRADE_DAYS = 7
 
 
@@ -146,7 +156,7 @@ def evaluate_trades(
         sufficient and net > 0 and stressed_net > 0 and pf is not None
         and pf > 1.15 and lower is not None and lower > 0
     )
-    return {
+    result = {
         "trades": len(values),
         "active_days": active_days,
         "days_with_trades": len(by_day),
@@ -155,6 +165,7 @@ def evaluate_trades(
         "gross_basis": gross_basis,
         "declared_provenance_unverified": provenance,
         "trials_tested": trials_tested,
+        "max_trials_with_tail_resolution": MAX_TRIALS_WITH_TAIL_RESOLUTION,
         "net_usd": round(net, 4),
         "gross_usd": round(gross, 4),
         "explicit_cost_usd_deducted": round(costs, 4),
@@ -175,6 +186,15 @@ def evaluate_trades(
             "Unseen broker ticks and native MT5 execution are still needed; LIVE remains locked.",
         ],
     }
+    if not has_tail_resolution:
+        result["warnings"].append(
+            "Trial count exceeds the bootstrap tail resolution "
+            f"(max {MAX_TRIALS_WITH_TAIL_RESOLUTION} trials at {BOOTSTRAPS} bootstraps): "
+            "the 99% lower expectancy is None by design, not evidence of no edge. "
+            "Do not under-declare trials to regain resolution; declare all variants "
+            "and use a different multiplicity correction (e.g. DSR/Holm over a ledger-counted trial list)."
+        )
+    return result
 
 
 def main() -> None:

@@ -15,7 +15,7 @@ $configs=Join-Path $OutputDirectory 'configs'
 New-Item -ItemType Directory -Path $native,$configs -Force|Out-Null
 $results=New-Object System.Collections.ArrayList
 $names=@('Former stop','Retest','Break and retest','Sweep and reclaim',
-         'Trend impulse','Range rejection','Inside-bar breakout','Adaptive router')
+         'Trend impulse','Range rejection','Inside-bar breakout','Adaptive router','SMC FVG OB')
 $today=(Get-Date).Date
 $endMonth=[datetime]::new($today.Year,$today.Month,1)
 if(-not $FromDate){$FromDate=$endMonth.AddMonths(-6).ToString('yyyy.MM.dd')}
@@ -48,7 +48,7 @@ function SaveOutcome([string]$state,[string]$message,[string]$comparison){
     }
     if($rows.Count -eq 0){$rows=@('<tr><td colspan="4">No completed tests.</td></tr>')}
     $cmp='Not available'
-    if($comparison){$cmp='<a href="'+(EscapeHtml $comparison)+'">Compare all eight reports</a>'}
+    if($comparison){$cmp='<a href="'+(EscapeHtml $comparison)+'">Compare all nine reports</a>'}
     $tableRows=$rows -join [Environment]::NewLine
     $safeMessage=EscapeHtml $message
     $safeState=EscapeHtml $state
@@ -182,7 +182,7 @@ try{
     # MT5 builds/documentation differ on whether Tester profiles resolve
     # from the data folder or the installation folder. Support both when the
     # installation's MQL5 profile tree actually exists; never use an unverified
-    # fallback to EA defaults because that silently tests EntryStyle=0 eight times.
+    # fallback to EA defaults because that silently tests EntryStyle=0 nine times.
     $testerProfiles=Join-Path $data 'MQL5\Profiles\Tester'
     $profileLocations=@($testerProfiles)
     $installProfileRoot=Join-Path $install 'MQL5\Profiles'
@@ -195,7 +195,7 @@ try{
         catch{throw ('MT5 tester parameter folder not writable: '+$root)}
     }
     $codes=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM',
-            'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER')
+            'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER','SMC_FVG_OB')
     for($i=0;$i -lt $names.Count;$i++){
         $preset=Join-Path $presetDir ('safety_on\QTS_M15_'+$codes[$i]+'_SAFETY_ON.set')
         if(-not (Test-Path -LiteralPath $preset -PathType Leaf)){throw ('Missing safety-on preset '+$i)}
@@ -228,7 +228,7 @@ try{
     }
     if($PrepareOnly){
         $state='PREPARED_ONLY'
-        $message='Eight configurations with risk stops active. MT5 was not launched.'
+        $message='Nine configurations with risk stops active. MT5 was not launched.'
     }else{
         for($i=0;$i -lt $names.Count;$i++){
             $item=[ordered]@{style=$names[$i];status='PENDING';detail='';report=''}
@@ -238,7 +238,7 @@ try{
             $began=[datetime]::UtcNow
             $process=$null
             try{
-                Write-Host ("Running native MT5 test {0}/8: {1}" -f ($i+1),$names[$i])
+                Write-Host ("Running native MT5 test {0}/9: {1}" -f ($i+1),$names[$i])
                 $process=Start-Process -FilePath $exe -ArgumentList ('/config:"{0}"' -f $ini) -PassThru
                 $deadline=(Get-Date).AddMinutes($TimeoutMinutesPerRun)
                 while(-not $process.HasExited){
@@ -325,7 +325,7 @@ try{
         }else{
             $state='TESTS_FINISHED_WITH_EVIDENCE_GAPS'
         }
-        $message='Eight native reports collected. Position-by-position evidence checked; positive after-cost expectancy unvalidated.'
+        $message='Nine native reports collected. Position-by-position evidence checked; positive after-cost expectancy unvalidated.'
     }
 }catch{
     $message=$_.Exception.Message

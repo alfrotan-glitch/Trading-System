@@ -2,6 +2,61 @@
 // Fixed EX-ANTE rules: every signal, indicator and candle is fully closed.
 // These are unvalidated regime heuristics, not a profit forecast or fitted model.
 // Never uses broker trade outcomes, future ticks, or previous test results.
+// HARDENING (2026-10-30, frozen, NOT tuned on realised PnL):
+//  - Regime persistence: a raw regime must hold for ROUTER_PERSISTENCE_BARS
+//    consecutive closed bars before it becomes the confirmed regime. This
+//    stops one bar's ADX/gap print from flipping the whole candidate set.
+//  - Transition abstention: in a confirmed transition regime only
+//    priority-4 candidates may clear, and only with reward/risk >= 1.0.
+//  - Volatility guard: abstain when the current closed-bar ATR is above
+//    the 90th percentile of the last 50 closed-bar ATR values (a volatility
+//    spike, where spread/gap behaviour dominates the stop model).
+//  These constants are deliberately NOT EA inputs: making them tester
+//  optimisable would turn the router into another overfitting surface.
+//  Any change to them restarts the unseen-window clock (see preregistration).
+#define ROUTER_PERSISTENCE_BARS 3
+#define ROUTER_TRANSITION_MIN_PRIORITY 4
+#define ROUTER_ATR_LOOKBACK_BARS 50
+#define ROUTER_ATR_ABSTAIN_PERCENTILE 0.90
+int g_router_last_raw_regime=-1;
+int g_router_raw_streak=0;
+int g_router_confirmed_regime=-1;
+
+int ConfirmedRouterRegime(const int raw_regime)
+  {
+   if(raw_regime==g_router_last_raw_regime)
+      g_router_raw_streak++;
+   else
+     {
+      g_router_last_raw_regime=raw_regime;
+      g_router_raw_streak=1;
+     }
+   if(g_router_raw_streak>=ROUTER_PERSISTENCE_BARS)
+      g_router_confirmed_regime=raw_regime;
+   return g_router_confirmed_regime;
+  }
+
+bool RouterVolatilityGuardPass()
+  {
+   if(atr_handle==INVALID_HANDLE)
+      return false;
+   double values[];
+   if(CopyBuffer(atr_handle,0,1,ROUTER_ATR_LOOKBACK_BARS,values)!=ROUTER_ATR_LOOKBACK_BARS)
+      return false;
+   double current=values[0];
+   if(!MathIsValidNumber(current) || current<=0.0)
+      return false;
+   int at_or_below=0;
+   for(int i=0;i<ROUTER_ATR_LOOKBACK_BARS;i++)
+     {
+      if(!MathIsValidNumber(values[i]) || values[i]<=0.0)
+         return false;
+      if(values[i]<=current)
+         at_or_below++;
+     }
+   double percentile=(double)at_or_below/(double)ROUTER_ATR_LOOKBACK_BARS;
+   return percentile<=ROUTER_ATR_ABSTAIN_PERCENTILE;
+  }
 int AdaptiveRegime(double &adx,double &ema_gap_atr)
   {
    adx=0.0; ema_gap_atr=0.0;
@@ -66,10 +121,21 @@ bool SelectAdaptiveCandidate(const MqlTick &quote,
       return false;
      }
    double adx=0.0,ema_gap=0.0;
-   int regime=AdaptiveRegime(adx,ema_gap);
-   if(regime<0)
+   int raw_regime=AdaptiveRegime(adx,ema_gap);
+   if(raw_regime<0)
      {
       status_text="ROUTER: closed-bar regime unavailable";
+      return false;
+     }
+   int regime=ConfirmedRouterRegime(raw_regime);
+   if(regime<0)
+     {
+      status_text="ROUTER: regime not yet confirmed (persistence)";
+      return false;
+     }
+   if(!RouterVolatilityGuardPass())
+     {
+      status_text="ROUTER: ATR volatility guard abstains";
       return false;
      }
    double best=-DBL_MAX;
@@ -107,10 +173,13 @@ bool SelectAdaptiveCandidate(const MqlTick &quote,
          continue;
       // An untradeable broker minimum lot cannot win the routing decision.
       if(SizedLots(candidate_side,p,sl)<=0.0) continue;
+      double ratio=reward/risk;
+      if(regime==1 && (priority<ROUTER_TRANSITION_MIN_PRIORITY || ratio<1.0))
+         continue;
       accepted++;
-      double ratio=MathMin(2.0,reward/risk);
+      double capped_ratio=MathMin(2.0,ratio);
       double relative_spread=(quote.ask-quote.bid)/risk;
-      double score=(double)priority+0.20*ratio-0.30*relative_spread;
+      double score=(double)priority+0.20*capped_ratio-0.30*relative_spread;
       if(!MathIsValidNumber(score)) continue;
       if(score>best+1e-9)
         {

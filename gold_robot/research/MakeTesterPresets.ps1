@@ -1,4 +1,4 @@
-# Read-only generation of eight MT5 Strategy Tester parameter sets.
+# Read-only generation of nine MT5 Strategy Tester parameter sets.
 # Neither starts terminal.exe nor authorizes broker orders or passwords.
 [CmdletBinding()]
 param(
@@ -32,6 +32,7 @@ foreach($m in $found){
         'QTS_RANGE_REJECTION' { $value='5';break }
         'QTS_INSIDE_BREAKOUT' { $value='6';break }
         'QTS_ADAPTIVE_ROUTER' { $value='7';break }
+        'QTS_SMC_FVG_OB' { $value='8';break }
         'PERIOD_M5' { $value='5';break }
         'PERIOD_M15' { $value='15';break }
         'PERIOD_M30' { $value='30';break }
@@ -56,7 +57,7 @@ New-Item -ItemType Directory -Path $OutputDirectory -Force|Out-Null
 $safetyDirectory=Join-Path $OutputDirectory 'safety_on'
 New-Item -ItemType Directory -Path $safetyDirectory -Force|Out-Null
 $names=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM',
-         'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER')
+         'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER','SMC_FVG_OB')
 $created=@()
 for($style=0;$style -lt $names.Count;$style++){
     $settings=[ordered]@{}
@@ -98,8 +99,8 @@ for($style=0;$style -lt $names.Count;$style++){
     $safePath=Join-Path $safetyDirectory ('QTS_M15_{0}_SAFETY_ON.set' -f $names[$style])
     [IO.File]::WriteAllLines($safePath,$safeLines,[Text.Encoding]::Unicode)
 }
-if($created.Count -ne $names.Count){throw 'Failed to produce all eight test profiles.'}
-Write-Host 'QTS Gold MT5 Strategy Tester presets created (seven fixed hypotheses plus one adaptive research router; no connected orders submitted):'
+if($created.Count -ne $names.Count){throw 'Failed to produce all nine test profiles.'}
+Write-Host 'QTS Gold MT5 Strategy Tester presets created (seven fixed hypotheses, one adaptive research router, one SMC hypothesis; no connected orders submitted):'
 foreach($item in $created){Write-Host $item}
 Write-Host ('Production-like TESTER variants (risk stops active): '+$safetyDirectory)
 Write-Host 'MT5: Ctrl+R > Inputs > Load one .set file > start a native real-tick test.'

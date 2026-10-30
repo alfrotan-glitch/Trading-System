@@ -161,3 +161,29 @@ def test_missing_broker_fees_or_swap_not_turned_into_zero():
         r.pop(missing)
         with pytest.raises(ValueError, match=missing):
             check([r], 1)
+
+
+def _strong_rows():
+    first = date(2026, 6, 1)
+    return [
+        row((first + timedelta(days=2 * i)).isoformat(), 3 if k < 2 else -1, trade_id=f"{i}-{k}")
+        for i in range(60) for k in range(3)
+    ]
+
+
+def test_twenty_trials_now_have_tail_resolution():
+    # Regression: at 2,000 bootstraps, trials_tested > 4 could never
+    # resolve a tail, so a real 7-style search was unresolvable by
+    # construction. At 20,000 bootstraps, 20 trials resolve.
+    result = check(_strong_rows(), 120, trials_tested=20)
+    assert result["max_trials_with_tail_resolution"] == 40
+    assert result["bootstrap_multiplicity_adjusted_99pct_lower_expectancy_usd"] is not None
+    assert result["bootstrap_multiplicity_adjusted_99pct_lower_expectancy_usd"] > 0
+    assert result["status"] == "RESEARCH_POSITIVE_NOT_VALIDATED"
+
+
+def test_forty_one_trials_stay_unresolved_and_warned():
+    result = check(_strong_rows(), 120, trials_tested=41)
+    assert result["bootstrap_multiplicity_adjusted_99pct_lower_expectancy_usd"] is None
+    assert result["status"] == "REJECTED_OR_INSUFFICIENT_EVIDENCE"
+    assert any("exceeds the bootstrap tail resolution" in w for w in result["warnings"])
