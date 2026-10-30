@@ -10,7 +10,7 @@
   "connected_demo_new_orders_permitted_by_strategy_gate": true,
   "default_order_permission": false,
   "market_order_entries_permitted": false,
-  "entry_policy": "Seven independent static LIMIT research strategies (including old-stop limit and retest limit) plus an eighth Tester-only closed-bar adaptive strategy router. The router evaluates multiple candidates per completed bar in trend, range and transition conditions, selects at most one feasible candidate or abstains. Styles 4-7 are Strategy Tester only; 0-3 retain existing restricted DEMO forward authorization. No strategy or router has validated positive after-cost expectancy. LIVE LOCKED.",
+  "entry_policy": "Seven fixed M15 research hypotheses (0-6), adaptive router (7), SMC FVG/OB (8) and M1 scalp (9). Styles 4-9 are MT5 Strategy Tester-only; styles 0-3 retain separately restricted connected DEMO capability subject to explicit permission and safeguards. No positive after-cost edge has been validated. LIVE LOCKED.",
   "tester_only_research_mode": {
     "input": "TesterIgnoreDailyAndPeakStops",
     "default": true,
@@ -31,10 +31,25 @@
     "model": "Every tick based on real ticks",
     "timeframes": [
       "M15",
-      "M5"
+      "M5",
+      "M1"
     ],
     "verified_runs_for_current_source": 0,
-    "adaptive_entry_style": 7
+    "adaptive_entry_style": 7,
+    "entry_styles": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "smc_entry_style": 8,
+    "scalp_entry_style": 9
   },
   "windows_delivery": {
     "root_launcher": "START_HERE.bat",
@@ -59,7 +74,9 @@
       "reports_local/native/QTS_4.htm",
       "reports_local/native/QTS_5.htm",
       "reports_local/native/QTS_6.htm",
-      "reports_local/native/QTS_7.htm"
+      "reports_local/native/QTS_7.htm",
+      "reports_local/native/QTS_8.htm",
+      "reports_local/native/QTS_9.htm"
     ],
     "native_comparison_is_profit_validation": false,
     "canonical_single_target_installer": "gold_robot/mt5_robot/Install_MT5_Canonical.ps1",
@@ -68,7 +85,7 @@
     "broker_csv_must_be_newer_than_current_preflight_compile": true
   },
   "research_limitations": [
-    "Style 7 has not yet been natively compiled or real-tick backtested on the user's WMMarkets terminal; it was designed after seeing the seven-style six-month results, so those months are NOT an untouched holdout.",
+    "Consolidated 10-style EA (including SMC 8 and M1 scalp 9) has not been natively compiled or assessed on an independent current WMMarkets real-tick holdout.",
     "No verified latest-build native WMMarkets backtest",
     "Prior baseline six-month sample yielded 18 completed trades with PF 0.98 and net loss",
     "Historical sweep family failed holdout",
@@ -78,14 +95,14 @@
     "Windows CI validates a simulated MT5 folder and source/EX5 freshness, not a current WMMarkets MetaEditor compilation"
   ],
   "risk_note": "Stop gaps, slippage and costs may exceed planned per-trade risk. Tester-only daily-limit bypass is for measuring opportunities, never trade authority.",
-  "windows_package_revision": "2026-10-27",
+  "windows_package_revision": "2026-10-30",
   "windows_research_installation_status": "ONE_CLICK_SOURCE_PACKAGE_AVAILABLE_CURRENT_NATIVE_COMPILE_REQUIRED",
   "market_entry_orders_permitted": false,
   "real_money_orders_permitted": false,
   "testing": {
     "metaeditor_compiled_ex5": false,
     "validated_profitable_edge": false,
-    "reason": "Adaptive Style 7 is research-only and requires fresh native WMMarkets MetaEditor compilation plus independent unseen-period real-tick testing and measured after-cost edge; historical 519-trade static-style audit is not adaptive-strategy validation."
+    "reason": "All ten consolidated styles require verified native MetaEditor compilation and broker-real-tick testing on the owner's WMMarkets terminal; no validated after-cost trading edge, and no permission for real-money orders."
   },
   "connected_demo_forward": {
     "default_authorized": false,
