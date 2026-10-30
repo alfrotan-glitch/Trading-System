@@ -111,5 +111,23 @@ def test_adaptive_router_is_closed_bar_test_only_and_never_changes_risk_executio
 def test_native_runner_refuses_success_exit_on_missing_evidence():
     # The normal Windows caller must not report success when any native
     # style lacks a forensic ledger, report, or independent model check.
-    assert "if($state -notin @('PREPARED_ONLY','TESTS_FINISHED_REVIEW_REQUIRED')){exit 2}" in AUTORUN
+    assert "SELECTED_TESTS_FINISHED_REVIEW_REQUIRED" in AUTORUN
+    assert "if($state -notin @('PREPARED_ONLY','TESTS_FINISHED_REVIEW_REQUIRED'," in AUTORUN
     assert "TESTS_FINISHED_WITH_EVIDENCE_GAPS" in AUTORUN
+
+
+def test_selected_native_forensics_of_four_positive_screen_styles():
+    assert "[string]$OnlyStyles=''" in AUTORUN
+    assert "foreach($i in $selectedStyles)" in AUTORUN
+    assert "SELECTED_TESTS_WITH_EVIDENCE_GAPS" in AUTORUN
+    assert "_.style -eq $style -and $_.state -eq 'PARSED'" in AUTORUN
+    assert "_.style -eq $style -and $_.status -eq 'IMPORTED' -and $_.deals -gt 0" in AUTORUN
+    assert "selected_styles=@($selectedStyles);targeted=$targeted" in AUTORUN
+    package = (ROOT / 'research' / 'PackTradeEvidence.ps1').read_text(encoding='utf-8')
+    assert "foreach($i in $requiredStyles)" in package
+    assert "SELECTED_CSV_FILES_PRESENT" in package
+    assert "if($outcome.targeted -eq $true)" in package
+    launcher = (ROOT.parent / 'QTS_FOUR_FINALISTS.bat').read_text(encoding='utf-8')
+    assert '-OnlyStyles "1,3,7,8"' in launcher
+    assert 'PackTradeEvidence.ps1' in launcher
+    assert 'LIVE LOCKED' in launcher
