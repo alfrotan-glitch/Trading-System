@@ -11,6 +11,11 @@ echo Seven M15 strategies / REAL TICKS / LIVE LOCKED
 echo ==========================================================
 "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0gold_robot\research\RunAutomaticTester.ps1" %QTS_NO_OPEN_OPTION%
 set "RC=%ERRORLEVEL%"
+REM Package only research JSON and broker-deal CSV; never share MT5 native HTML.
+if exist "%~dp0gold_robot\research\PackTradeEvidence.ps1" (
+  "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0gold_robot\research\PackTradeEvidence.ps1" -NoOpen
+  if errorlevel 1 echo Local evidence ZIP unavailable; use QTS_SHARE_RESULTS.bat to diagnose.
+)
 echo.
 if not "%RC%"=="0" (
   echo The automatic test did not finish. The HTML report explains what blocked it.

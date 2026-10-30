@@ -8,6 +8,8 @@ For ordinary use, **close the WMMarkets MT5 terminal** and double-click `QTS_AUT
 
 **Trade-by-trade reporting:** each completed native test attempts to export a broker-history forensic CSV from the MT5 Common Files folder. The automatic runner copies it into `native/QTS_0_trades.csv` through `native/QTS_6_trades.csv` and builds `QTS_TRADE_BY_TRADE.html`. Each position is grouped by broker position ID and shows entry/exit, initial versus closing SL/TP, broker exit reason, fees, holding time, exit slippage and incomplete evidence flags. A missing CSV is a research evidence gap, not success. Exact market path, MFE/MAE, and counterfactual reasons for a stop-out require more market data than a deal ledger.
 
+**Sharing evidence without another backtest:** after closing MT5, double-click `QTS_SHARE_RESULTS.bat` from the repository root. It locates the newest completed local run and opens the folder containing `QTS_SHARE_RESULTS.zip` (auto-created after future runs as well). The ZIP contains only summaries and per-position deal CSVs; it deliberately excludes account-bearing native MT5 HTML, terminal logs, account statements and passwords. If any of seven deal CSVs is missing it marks the package INCOMPLETE_FORENSIC_EVIDENCE. Share the ZIP for actual individual-trade analysis; a plain comparison table cannot answer why specific positions reached SL or TP.
+
 **Important:** Native completion and real-tick mode still do not prove an after-cost profitable edge. The actual broker charges, trade count, drawdown, unseen performance and MT5 report inputs remain subject to verification.
 
 ## Installation
