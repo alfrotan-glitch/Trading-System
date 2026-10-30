@@ -22,7 +22,7 @@ echo  [1] Install / update MT5 Gold Robot and broker check
 echo  [2] Create professional local readiness report
 echo  [3] Open QTS research desktop (no orders)
 echo  [4] Read the short MT5 Windows guide
-echo  [5] Create seven MT5 Strategy Tester presets (no orders)
+echo  [5] Create ten MT5 Strategy Tester presets (no orders)
 echo  [6] Compare saved MT5 Strategy Tester reports
 echo  [7] Exit
 echo  [8] Find saved MT5 logs and open an easy-to-read report
