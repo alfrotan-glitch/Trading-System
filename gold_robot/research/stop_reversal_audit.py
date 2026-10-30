@@ -12,7 +12,7 @@ Example:
 stops.csv fields:
  trade_id,side,entry_time_ms,exit_time_ms,entry_price,initial_stop_price,exit_price,exit_reason
 side BUY or SELL, exit_reason SL; times broker-history-aligned UTC epoch ms.
-ticks.csv fields: time_ms,bid,ask, chronological, quotes must be executable.
+ticks.csv fields: time_ms,bid,ask, chronological, quotes must be executable.\nOptional stops.csv field initial_target_price enables later TP-touch event study.\nAll timestamp columns must share one broker/UTC epoch time convention.
 
 Research only. No API imports or MT5 order functions.
 """
@@ -41,11 +41,18 @@ class Window:
     finished: bool = False
     has_gap: bool = False
     reclaimed_entry: bool = False
+    first_entry_reclaim_ms: int | None = None
+    first_target_touch_ms: int | None = None
+    favorable_extreme_price: float | None = None
+    favorable_extreme_ms: int | None = None
+    adverse_extreme_price: float | None = None
+    adverse_extreme_ms: int | None = None
     max_favorable_r: float = 0.0
     max_adverse_r: float = 0.0
 
     def observe(self, *, ms: int, tradetime: int, directional_r: float,
-                reclaimed: bool, max_gap_ms: int) -> None:
+                executable_exit: float, reclaimed: bool, reached_target: bool,
+                max_gap_ms: int) -> None:
         end = tradetime + self.horizon_ms
         if self.finished:
             return
@@ -67,6 +74,16 @@ class Window:
             self.has_gap = True
         self.last_ms = ms
         self.reclaimed_entry |= reclaimed
+        if reclaimed and self.first_entry_reclaim_ms is None:
+            self.first_entry_reclaim_ms = ms
+        if reached_target and self.first_target_touch_ms is None:
+            self.first_target_touch_ms = ms
+        if self.favorable_extreme_price is None or directional_r > self.max_favorable_r:
+            self.favorable_extreme_price = executable_exit
+            self.favorable_extreme_ms = ms
+        if self.adverse_extreme_price is None or directional_r < self.max_adverse_r:
+            self.adverse_extreme_price = executable_exit
+            self.adverse_extreme_ms = ms
         self.max_favorable_r = max(self.max_favorable_r, directional_r)
         self.max_adverse_r = min(self.max_adverse_r, directional_r)
 
@@ -80,6 +97,7 @@ class Stop:
     entry: float
     initial_stop: float
     exit_price: float
+    initial_target_price: float | None = None
     windows: dict[int, Window] = field(
         default_factory=lambda: {m: Window(m * 60000) for m in HORIZONS_MIN}
     )
@@ -107,15 +125,19 @@ def load_stops(rows: Iterable[dict[str, str]]) -> tuple[list[Stop], int]:
         entry = float(row["entry_price"])
         stop = float(row["initial_stop_price"])
         exit_price = float(row["exit_price"])
+        target_text = row.get("initial_target_price", "").strip()
+        target = float(target_text) if target_text else None
         direction = 1 if side == "BUY" else -1
         if (entry_ms < 0 or exit_ms <= entry_ms or
                 not all(isfinite(v) for v in (entry, stop, exit_price)) or
                 entry <= 0 or stop <= 0 or exit_price <= 0 or
-                direction * (entry - stop) <= 0):
+                direction * (entry - stop) <= 0 or
+                (target is not None and (not isfinite(target) or target <= 0 or
+                                          direction * (target - entry) <= 0))):
             raise ValueError("invalid chronology, pricing or initial SL side")
         # No requirement that exit price equals planned SL: stop slip/gap exists.
         stops.append(Stop(identity, direction, entry_ms, exit_ms,
-                          entry, stop, exit_price))
+                          entry, stop, exit_price, target))
     return sorted(stops, key=lambda t: (t.exit_ms, t.trade_id)), ignored
 
 
@@ -151,10 +173,14 @@ def audit(stops: list[Stop], ticks: Iterable[dict[str, str]],
             executable_exit = bid if stop.side == 1 else ask
             directional_r = stop.side * (executable_exit - stop.exit_price) / stop.r_price
             reclaimed = (bid >= stop.entry if stop.side == 1 else ask <= stop.entry)
+            reached_target = (stop.initial_target_price is not None and
+                              ((bid >= stop.initial_target_price) if stop.side == 1
+                               else (ask <= stop.initial_target_price)))
             for window in stop.windows.values():
                 window.observe(ms=ms, tradetime=stop.exit_ms,
-                               directional_r=directional_r, reclaimed=reclaimed,
-                               max_gap_ms=max_gap_ms)
+                               directional_r=directional_r,
+                               executable_exit=executable_exit, reclaimed=reclaimed,
+                               reached_target=reached_target, max_gap_ms=max_gap_ms)
             if not all(w.finished for w in stop.windows.values()):
                 remaining.append(stop)
         active = remaining
@@ -164,9 +190,17 @@ def audit(stops: list[Stop], ticks: Iterable[dict[str, str]],
     for minutes in HORIZONS_MIN:
         valid = [s.windows[minutes] for s in stops if s.windows[minutes].complete]
         reclaimed = [w for w in valid if w.reclaimed_entry]
+        with_target = [s.windows[minutes] for s in stops
+                       if s.initial_target_price is not None and
+                       s.windows[minutes].complete]
+        reached = [w for w in with_target if w.first_target_touch_ms is not None]
         results[str(minutes)] = {
             "eligible_stops_with_contiguous_executable_quotes": len(valid),
             "reclaimed_entry_count": len(reclaimed),
+            "target_eligible_stops": len(with_target),
+            "post_stop_original_target_touch_count": len(reached),
+            "post_stop_original_target_touch_fraction": (
+                round(len(reached) / len(with_target), 5) if with_target else None),
             "reclaimed_entry_fraction": round(len(reclaimed) / len(valid), 5) if valid else None,
             "median_max_favorable_R_after_stop": round(median(w.max_favorable_r for w in valid), 5)
                                                 if valid else None,
@@ -185,9 +219,27 @@ def audit(stops: list[Stop], ticks: Iterable[dict[str, str]],
             {
                 "trade_id": stop.trade_id,
                 "side": "BUY" if stop.side == 1 else "SELL",
+                "original_entry_price": stop.entry,
+                "original_sl_price": stop.initial_stop,
+                "original_tp_price": stop.initial_target_price,
+                "stop_exit_price": stop.exit_price,
+                "stop_exit_time_ms": stop.exit_ms,
                 "windows": {
                     str(m): {
                         "complete": w.complete,
+                        "first_entry_reclaim_ms": w.first_entry_reclaim_ms if w.complete else None,
+                        "first_target_touch_ms": w.first_target_touch_ms if w.complete else None,
+                        "first_target_touch_after_stop_minutes": (
+                            round((w.first_target_touch_ms - stop.exit_ms) / 60000, 4)
+                            if w.complete and w.first_target_touch_ms is not None else None),
+                        "favorable_extreme_executable_price": (
+                            w.favorable_extreme_price if w.complete else None),
+                        "favorable_extreme_time_ms": (
+                            w.favorable_extreme_ms if w.complete else None),
+                        "adverse_extreme_executable_price": (
+                            w.adverse_extreme_price if w.complete else None),
+                        "adverse_extreme_time_ms": (
+                            w.adverse_extreme_ms if w.complete else None),
                         "reclaimed_entry": w.reclaimed_entry if w.complete else None,
                         "max_favorable_R": round(w.max_favorable_r, 5) if w.complete else None,
                         "max_adverse_R": round(w.max_adverse_r, 5) if w.complete else None,
@@ -198,7 +250,7 @@ def audit(stops: list[Stop], ticks: Iterable[dict[str, str]],
             for stop in stops
         ],
         "warning": (
-            "Entry reclaim is NOT a hypothetical winning trade. Stop gaps, "
+            "Entry reclaim and later original TP touch are NOT hypothetical winning trades. Stop gaps, "
             "spread/commission, late fills, post-exit path, and original signal "
             "reselection preclude naive stop-widening or reverse-at-stop claims. "
             "Insufficient quote coverage remains UNKNOWN, never zero."
@@ -209,7 +261,11 @@ def audit(stops: list[Stop], ticks: Iterable[dict[str, str]],
 def main() -> None:
     parser = argparse.ArgumentParser(description="No-order XAUUSD post-stop quote audit")
     parser.add_argument("--stops", type=Path, required=True)
-    parser.add_argument("--ticks", type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--ticks", type=Path,
+                        help="One combined CSV with time_ms,bid,ask")
+    source.add_argument("--tick-dir", type=Path,
+                        help="MT5 ExportBrokerData.mq5 daily ticks_<day>.csv files")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--max-gap-seconds", type=int, default=60)
     args = parser.parse_args()
@@ -218,11 +274,28 @@ def main() -> None:
         if not reader.fieldnames or not set(FIELDS).issubset(reader.fieldnames):
             parser.error("stops CSV columns do not match documented field names")
         stops, ignored = load_stops(reader)
-    with args.ticks.open(newline="", encoding="utf-8-sig") as stream:
-        reader = csv.DictReader(stream)
-        if not reader.fieldnames or not {"time_ms", "bid", "ask"}.issubset(reader.fieldnames):
-            parser.error("ticks CSV must contain time_ms,bid,ask")
-        result = audit(stops, reader, max_gap_ms=args.max_gap_seconds * 1000)
+    def stream_executable_ticks():
+        if args.ticks:
+            paths = [args.ticks]
+        else:
+            paths = sorted(args.tick_dir.glob("ticks_*.csv"),
+                           key=lambda p: int(p.stem.split("_")[-1]))
+        if not paths:
+            raise ValueError("No native exported tick CSV files found; price-after-SL is UNKNOWN")
+        for path in paths:
+            with path.open(newline="", encoding="utf-8-sig") as stream:
+                reader = csv.DictReader(stream)
+                if not reader.fieldnames or not {"bid", "ask"}.issubset(reader.fieldnames):
+                    raise ValueError(f"Missing executable bid/ask fields in {path}")
+                time_field = ("time_ms" if "time_ms" in reader.fieldnames
+                              else "time_msc" if "time_msc" in reader.fieldnames else None)
+                if time_field is None:
+                    raise ValueError(f"Missing broker epoch millisecond time in {path}")
+                for row in reader:
+                    yield {"time_ms": row[time_field],
+                           "bid": row["bid"], "ask": row["ask"]}
+    result = audit(stops, stream_executable_ticks(),
+                   max_gap_ms=args.max_gap_seconds * 1000)
     result["ignored_non_stop_rows"] = ignored
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

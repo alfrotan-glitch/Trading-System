@@ -5,12 +5,14 @@ on:
     paths:
       - "START_HERE.bat"
       - "QTS_AUTO_TEST.bat"
+      - "QTS_POST_STOP_REVIEW.bat"
       - "gold_robot/**"
       - ".github/workflows/gold-windows.yml"
   pull_request:
     paths:
       - "START_HERE.bat"
       - "QTS_AUTO_TEST.bat"
+      - "QTS_POST_STOP_REVIEW.bat"
       - "gold_robot/**"
       - ".github/workflows/gold-windows.yml"
 permissions:
@@ -37,6 +39,7 @@ jobs:
             if ($hash -ne $f.sha256) { throw "Manifest sha mismatch: $path" }
           }
           if (-not (Test-Path START_HERE.bat)) { throw "Windows launcher missing" }
+          if (-not (Test-Path QTS_POST_STOP_REVIEW.bat)) { throw "Read-only stop review launcher missing" }
           if (-not (Test-Path gold_robot/MAKE_REPORT.bat)) { throw "Report launcher missing" }
           Write-Host "Canonical Windows sources: OK"
       - name: Invoke root launcher through Windows cmd without touching MT5

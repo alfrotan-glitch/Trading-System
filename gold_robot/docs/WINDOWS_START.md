@@ -70,3 +70,33 @@ Broker data and generated reports are local and excluded from Git. Do not share 
 ## Adaptive strategy router (Style 7, research only)
 
 Style 7 does **not** know the best strategy in advance and does not use realized future returns. Each M15 completed candle, it reads closed-bar ADX, EMA separation and ATR, classifies market context as range / transition / trend, and checks allowed family-specific signals and feasible LIMIT entries. If multiple candidates qualify, fixed ex-ante priorities and reward-to-risk/spread estimates choose one, with one shared broker execution and risk pipeline. If none qualify, there is no trade. `QTS ROUTER DECISION` identifies the selected family and closed-bar context; the broker deal CSV preserves the actual setup as order comment. No online learning, dynamic historical performance fitting, or profit guarantee is claimed. All historical comparisons of Style 7 must be performed **after this decision logic is fixed**; the earlier six months used to evaluate the seven static hypotheses are not an untouched holdout. LIVE is still locked.
+
+## Investigate SL and price reversal after exit
+
+After eight native tests finish, run \`QTS_SHARE_RESULTS.bat\`, then
+\`QTS_POST_STOP_REVIEW.bat\`. It reads the latest local ZIP (no MT5 orders)
+and writes \`post_stop_review/QTS_STOP_CASES.csv\` plus a report stating
+that future SL→TP outcomes are UNKNOWN without quotes. These exported
+cases include the original SL and original TP from the exact broker
+entry order and the timestamp of the exact broker SL exit.
+
+To replay quotes:
+1. On a WMMarkets DEMO terminal with \`XAUUSD@\` selected, use the existing
+   read-only \`gold_robot/research/ExportBrokerData.mq5\` to export
+   historical bid/ask ticks. Verify that the data have the same account
+   server, symbol, tick timestamps and test period; quote files may be
+   large and download availability is not guaranteed.
+2. In PowerShell set \`$env:QTS_BROKER_TICKS_DIR\` to the folder containing
+   \`ticks_<epoch-day>.csv\`; run \`QTS_POST_STOP_REVIEW.bat\` again.
+   No quote data = no post-stop TP/rebound claim.
+3. Read \`post_stop_review/QTS_POST_STOP_REAL_TICK_REVIEW.json\`. Each SL
+   shows first original-TP quote touch (if any), its timestamp, maximum
+   favorable and adverse executable quote prices and timestamps over
+   5/15/30/60/120-minute windows. A window requires continuous quote
+   coverage with no gap above the configured 60 seconds. Missing windows
+   produce null results and must never be counted as non-reversals.
+
+This is a **descriptive event study**, not a backtest of a wider SL.
+Seeing the original TP quoted AFTER an executed SL does not prove it
+could have been held to TP under the original safety constraints.
+Results are not training labels for a retrospective strategy selector.

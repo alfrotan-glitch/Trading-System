@@ -14,6 +14,25 @@ This directory contains **one canonical Expert Advisor**, `mt5_robot/QTS_Gold_Ro
 
 [The Windows operator guide](docs/WINDOWS_START.md) is the recommended complete operator procedure. The generated reports are excluded from Git. For quick reporting without the menu, double-click `MAKE_REPORT.bat`.
 
+## SL → post-exit quote-path investigation (research only)
+
+Run \`QTS_SHARE_RESULTS.bat\` after an eight-strategy real-tick test, then
+double-click the repository-root \`QTS_POST_STOP_REVIEW.bat\`.
+It reads only the saved evidence ZIP and produces a normalized SL-case CSV
+plus a conservative evidence summary in the selected run's \`post_stop_review\`
+folder. No MT5 login or broker order is needed.
+
+**A saved SL/TP ledger has no future quotes.** To answer whether the quote
+later returned to entry or reached the *original TP*, first export the
+same-broker executable bid/ask ticks via \`research/ExportBrokerData.mq5\`.
+Set \`QTS_BROKER_TICKS_DIR\` to the resulting directory of daily
+\`ticks_<day>.csv\` files before rerunning the batch file. The existing
+\`stop_reversal_audit.py\` now verifies complete 5/15/30/60/120-minute
+post-stop tick windows and records first TP touch and best/worst executable
+quote extrema; absent data remains UNKNOWN. Never mistake a later TP touch
+for realizable trade profits. See
+[the 2026-10-30 forensic audit](docs/POST_STOP_FORENSIC_EVIDENCE_2026-10-30.md).
+
 ## Seven fixed strategies plus one adaptive research router
 
 | Input `EntryStyle` | Behavior |

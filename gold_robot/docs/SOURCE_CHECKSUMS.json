@@ -32,8 +32,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 8954,
-      "sha256": "7325331a40a064e698f32a85e4fbf72161dc1f9be9eaad42170612360b1078b2"
+      "bytes": 10055,
+      "sha256": "4acef0cbea1eab9a7cf2f7a06d22d898d6b8746bd78aad905ba2ad1987f6d650"
     },
     {
       "path": "README.txt",
@@ -96,6 +96,11 @@
       "sha256": "b0b67d4d82b49b5d8e1e215cb11d9eda2a61702e9cc405d71cea60847f8a92ff"
     },
     {
+      "path": "docs/POST_STOP_FORENSIC_EVIDENCE_2026-10-30.md",
+      "bytes": 6794,
+      "sha256": "4de3db623b42c9d775688ee83cbeff85c9a37a44580d87bead329d2214cb9e4f"
+    },
+    {
       "path": "docs/PRODUCTION_EVIDENCE_2026-10-29.md",
       "bytes": 8034,
       "sha256": "eeecdde7bd7614244c2e1af5d1d24195c5398e0f287bfb4ebf3bcd1ef597c884"
@@ -112,8 +117,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 9945,
-      "sha256": "89a3df5f103f8aa3b9236fbe101bdbe46e125cd04d1cdba618fed09992c714c7"
+      "bytes": 11669,
+      "sha256": "55f9ffd8c9dfb332c3f07ff213c12ab5d514c9c1ef676d3d0e2faf06433c5f1c"
     },
     {
       "path": "docs/WMMarkets_MT5_QUICKSTART.md",
@@ -236,6 +241,11 @@
       "sha256": "1c8874483f56e8391c888adc378fec898922a11552fab7823cf862dea05cfa60"
     },
     {
+      "path": "research/build_post_stop_inputs.py",
+      "bytes": 7273,
+      "sha256": "8fbecbaf596c6b52c7e1ad6be88f6e386d55637cd5ec4c27f2c7cf6fde216b74"
+    },
+    {
       "path": "research/build_report.py",
       "bytes": 8887,
       "sha256": "f625005f0bf1d941335956789b09ba887c1720ca424546973b23eeca935fb152"
@@ -307,8 +317,8 @@
     },
     {
       "path": "research/stop_reversal_audit.py",
-      "bytes": 10057,
-      "sha256": "247490f160b300678a223256857e6c8989290394bb1584dde85fd01518d8f0d1"
+      "bytes": 14763,
+      "sha256": "f004cee42135a9654dd31c83f2aec6e09bbf551d0b11f21e006e8439b2874484"
     },
     {
       "path": "research/sweep_diagnostics.py",
@@ -349,6 +359,11 @@
       "path": "tests/test_log_audit.py",
       "bytes": 5633,
       "sha256": "97a60e616e9e2d966f0460085837b6828827377031a5d4aa95acff6538e901b8"
+    },
+    {
+      "path": "tests/test_post_stop_replay.py",
+      "bytes": 6440,
+      "sha256": "ce0ce2dd14c55956a839f86d43c7e89f249223dd6b94df680fe1c22e4159f97f"
     },
     {
       "path": "tests/test_reference_benchmark.py",
