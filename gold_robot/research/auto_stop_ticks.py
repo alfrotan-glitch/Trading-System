@@ -41,7 +41,7 @@ def read_windows(path: Path, expected_tag: str) -> list[tuple[int, int]]:
 
 def export_windows(
     plan: Path, output: Path, tag: str, symbol: str = "XAUUSD@",
-    mt5=None,
+    mt5=None, terminal_data: Path | None = None, terminal_path: Path | None = None,
 ) -> dict:
     if mt5 is None:
         import MetaTrader5 as mt5  # official read-only quote API, Windows only
@@ -65,13 +65,16 @@ def export_windows(
     }
     session = False
     try:
-        if not mt5.initialize():
+        if not (mt5.initialize(str(terminal_path)) if terminal_path else mt5.initialize()):
             raise RuntimeError(f"Cannot attach to MT5 terminal (code={mt5.last_error()})")
         session = True
         terminal = mt5.terminal_info()
         if terminal is None or not getattr(terminal, "connected", False):
             raise RuntimeError("MT5 terminal is not connected to its existing broker")
-        robot_path = Path(str(getattr(terminal, "data_path", ""))) / "MQL5" / "Experts" / "QTS_Gold_Robot.ex5"
+        active_path = Path(str(getattr(terminal, "data_path", "")))
+        if terminal_data is not None and active_path.resolve() != terminal_data.resolve():
+            raise RuntimeError("Wrong MT5 terminal attached: quote source folder mismatch")
+        robot_path = active_path / "MQL5" / "Experts" / "QTS_Gold_Robot.ex5"
         if not robot_path.is_file():
             raise RuntimeError(
                 "MT5 attached to a different terminal: canonical QTS_Gold_Robot.ex5 is missing"
@@ -158,8 +161,12 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--tag", required=True)
     parser.add_argument("--symbol", default="XAUUSD@")
+    parser.add_argument("--terminal-data", type=Path)
+    parser.add_argument("--terminal-path", type=Path)
     args = parser.parse_args()
-    result = export_windows(args.plan, args.output, args.tag, args.symbol)
+    result = export_windows(args.plan, args.output, args.tag, args.symbol,
+                            terminal_data=args.terminal_data,
+                            terminal_path=args.terminal_path)
     print(json.dumps({k: v for k, v in result.items() if k != "window_coverage"}, indent=2))
     return 0 if result["state"] == "EXPORTED_FOR_GAP_AUDIT" else 2
 
