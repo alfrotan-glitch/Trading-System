@@ -251,6 +251,11 @@
       "sha256": "e7b93fd7ec70673640210e5411aac8c1d11a9841acb15d6ad87bb9bbaf05289b"
     },
     {
+      "path": "research/QTS_Export_Stop_Ticks.mq5",
+      "bytes": 3896,
+      "sha256": "bec296cc409c2826591088d720fe95a7cc585a4591b865cdcd6b6f43f314ac64"
+    },
+    {
       "path": "research/RunAutomaticTester.ps1",
       "bytes": 22244,
       "sha256": "23b64265d54e44a53ef4bed5837e620861f6c2885bfaa51ab93f7e25fe993e1a"
@@ -319,6 +324,11 @@
       "path": "research/post_removal_revisits.py",
       "bytes": 3203,
       "sha256": "31ac7776c2fbb7e05e2d5c2389fa84671eeb10134857950aaeb9575dca92a8ec"
+    },
+    {
+      "path": "research/prepare_stop_tick_windows.py",
+      "bytes": 2405,
+      "sha256": "083682983d52fdd07e8b6907f10fe2ce343b2844999fa198fd15cc3d6e6ea4d0"
     },
     {
       "path": "research/prior_day.py",
@@ -454,6 +464,11 @@
       "path": "tests/test_stop_reversal_audit.py",
       "bytes": 4051,
       "sha256": "519ef252fc47b6ff84bcb3d423fe96f08e6e0f96a3108033994f675fd4860a49"
+    },
+    {
+      "path": "tests/test_stop_tick_window_export.py",
+      "bytes": 2708,
+      "sha256": "32b80a5db34c25b2e0480acb48dbfc3741cab7001897131c6cb68f1d9683662e"
     },
     {
       "path": "tests/test_strategy_forensics_contract.py",
