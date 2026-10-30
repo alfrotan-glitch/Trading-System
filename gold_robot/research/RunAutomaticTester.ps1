@@ -327,7 +327,11 @@ try{
             }
         }
         & (Join-Path $gold 'research\CompareMT5Reports.ps1') -ReportDirectory $native -OutputDirectory $OutputDirectory -NoOpen
-        & (Join-Path $gold 'research\BuildTradeForensics.ps1') -InputDirectory $native -OutputDirectory $OutputDirectory -NoOpen
+        if($targeted){
+            & (Join-Path $gold 'research\BuildTradeForensics.ps1') -InputDirectory $native -OutputDirectory $OutputDirectory -SelectedStyles $selectedStyles -NoOpen
+        }else{
+            & (Join-Path $gold 'research\BuildTradeForensics.ps1') -InputDirectory $native -OutputDirectory $OutputDirectory -NoOpen
+        }
         $latest=Get-ChildItem -LiteralPath $OutputDirectory -Filter 'QTS_Gold_Comparison_*.html' |
             Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
         if($latest){$comparison=$latest.Name}
@@ -353,7 +357,9 @@ try{
                 })
                 if($r.Count -ne 1 -or $d.Count -ne 1){$verified=$false}
             }
-            if($badRuns.Count -eq 0 -and $results.Count -eq $selectedStyles.Count -and $verified){
+            if($badRuns.Count -eq 0 -and $results.Count -eq $selectedStyles.Count -and $verified -and
+               $forensicSummary.status -eq 'SELECTED_IMPORTED_FOR_REVIEW' -and
+               $forensicSummary.targeted -eq $true){
                 $state='SELECTED_TESTS_FINISHED_REVIEW_REQUIRED'
             }else{
                 $state='SELECTED_TESTS_WITH_EVIDENCE_GAPS'
