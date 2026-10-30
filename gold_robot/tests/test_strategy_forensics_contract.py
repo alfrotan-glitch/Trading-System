@@ -131,3 +131,14 @@ def test_selected_native_forensics_of_four_positive_screen_styles():
     assert '-OnlyStyles "1,3,7,8"' in launcher
     assert 'PackTradeEvidence.ps1' in launcher
     assert 'LIVE LOCKED' in launcher
+
+
+def test_selected_trade_by_trade_report_never_claims_absent_styles_are_missing():
+    report = (ROOT / "research" / "BuildTradeForensics.ps1").read_text(encoding="utf-8")
+    assert "[int[]]$SelectedStyles=@()" in report
+    assert "$targeted=$PSBoundParameters.ContainsKey('SelectedStyles')" in report
+    assert "status='NOT_SELECTED'" in report
+    assert "SELECTED_IMPORTED_FOR_REVIEW" in report
+    assert "selected_styles=@($requiredStyles)" in report
+    assert "-SelectedStyles $selectedStyles -NoOpen" in AUTORUN
+    assert "$forensicSummary.status -eq 'SELECTED_IMPORTED_FOR_REVIEW'" in AUTORUN
