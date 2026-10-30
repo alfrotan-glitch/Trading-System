@@ -33,8 +33,21 @@ $comparisons=@(Get-ChildItem -LiteralPath $RunDirectory -Filter 'QTS_Gold_Compar
 if($comparisons.Count -gt 0){
     [void]$allowed.Add(@($comparisons[0].FullName,'comparison.json'))
 }
+# Select only the styles actually tested, never silently omit SMC 8/Scalp 9.
+$outcomePath=Join-Path $RunDirectory 'OPEN_RESULTS.json'
+if(-not (Test-Path -LiteralPath $outcomePath -PathType Leaf)){throw 'Missing test run manifest.'}
+$outcome=Get-Content -LiteralPath $outcomePath -Raw | ConvertFrom-Json
+$requiredStyles=@(0..9)
+if($outcome.targeted -eq $true){
+    $requiredStyles=@($outcome.selected_styles)
+    if($requiredStyles.Count -eq 0 -or
+       @($requiredStyles | Sort-Object -Unique).Count -ne $requiredStyles.Count -or
+       @($requiredStyles | Where-Object {$_ -notin @(0..9)}).Count -gt 0){
+        throw 'Invalid targeted-run strategy manifest.'
+    }
+}
 $missing=@()
-for($i=0;$i -lt 8;$i++){
+foreach($i in $requiredStyles){
     $file=('QTS_{0}_trades.csv' -f $i)
     $p=Join-Path (Join-Path $RunDirectory 'native') $file
     if(Test-Path -LiteralPath $p -PathType Leaf){
@@ -44,7 +57,10 @@ for($i=0;$i -lt 8;$i++){
     }
 }
 if($allowed.Count -eq 0){throw 'No allowlisted research evidence exists in the selected run folder.'}
-$status=if($missing.Count -eq 0){'EIGHT_CSV_FILES_PRESENT'}else{'INCOMPLETE_FORENSIC_EVIDENCE'}
+$status=if($missing.Count -eq 0){
+    if($outcome.targeted -eq $true){'SELECTED_CSV_FILES_PRESENT'}
+    else{'TEN_CSV_FILES_PRESENT'}
+}else{'INCOMPLETE_FORENSIC_EVIDENCE'}
 $manifest=@(
     'QTS GOLD - LOCAL RESEARCH EVIDENCE',
     'LIVE LOCKED. NO PROFITABLE EDGE VERIFIED.',
