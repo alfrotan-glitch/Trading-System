@@ -34,7 +34,7 @@ if($comparisons.Count -gt 0){
     [void]$allowed.Add(@($comparisons[0].FullName,'comparison.json'))
 }
 $missing=@()
-for($i=0;$i -lt 7;$i++){
+for($i=0;$i -lt 8;$i++){
     $file=('QTS_{0}_trades.csv' -f $i)
     $p=Join-Path (Join-Path $RunDirectory 'native') $file
     if(Test-Path -LiteralPath $p -PathType Leaf){
@@ -44,7 +44,7 @@ for($i=0;$i -lt 7;$i++){
     }
 }
 if($allowed.Count -eq 0){throw 'No allowlisted research evidence exists in the selected run folder.'}
-$status=if($missing.Count -eq 0){'SEVEN_CSV_FILES_PRESENT'}else{'INCOMPLETE_FORENSIC_EVIDENCE'}
+$status=if($missing.Count -eq 0){'EIGHT_CSV_FILES_PRESENT'}else{'INCOMPLETE_FORENSIC_EVIDENCE'}
 $manifest=@(
     'QTS GOLD - LOCAL RESEARCH EVIDENCE',
     'LIVE LOCKED. NO PROFITABLE EDGE VERIFIED.',

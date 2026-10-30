@@ -15,7 +15,7 @@ $configs=Join-Path $OutputDirectory 'configs'
 New-Item -ItemType Directory -Path $native,$configs -Force|Out-Null
 $results=New-Object System.Collections.ArrayList
 $names=@('Former stop','Retest','Break and retest','Sweep and reclaim',
-         'Trend impulse','Range rejection','Inside-bar breakout')
+         'Trend impulse','Range rejection','Inside-bar breakout','Adaptive router')
 $today=(Get-Date).Date
 $endMonth=[datetime]::new($today.Year,$today.Month,1)
 if(-not $FromDate){$FromDate=$endMonth.AddMonths(-6).ToString('yyyy.MM.dd')}
@@ -48,7 +48,7 @@ function SaveOutcome([string]$state,[string]$message,[string]$comparison){
     }
     if($rows.Count -eq 0){$rows=@('<tr><td colspan="4">No completed tests.</td></tr>')}
     $cmp='Not available'
-    if($comparison){$cmp='<a href="'+(EscapeHtml $comparison)+'">Compare all seven reports</a>'}
+    if($comparison){$cmp='<a href="'+(EscapeHtml $comparison)+'">Compare all eight reports</a>'}
     $tableRows=$rows -join [Environment]::NewLine
     $safeMessage=EscapeHtml $message
     $safeState=EscapeHtml $state
@@ -67,7 +67,7 @@ th{background:#edf2f9}.warning{border-left:4px solid #c28a25;padding-left:12px}<
 <p>LIVE LOCKED · PROFITABLE EDGE NOT VALIDATED</p></header>
 <section><h2>$safeState</h2><p>$safeMessage</p>
 <p>Test period: $FromDate to $ToDate</p></section>
-<section><h2>Seven research strategies</h2><p><a href="QTS_TRADE_BY_TRADE.html">Individual trade forensics (each position, reason for exit)</a></p><table>
+<section><h2>Seven fixed strategies plus adaptive router</h2><p><a href="QTS_TRADE_BY_TRADE.html">Individual trade forensics (each position, reason for exit)</a></p><table>
 <tr><th>Strategy</th><th>State</th><th>Details</th><th>Native report</th></tr>
 $tableRows
 </table><p>$cmp</p></section>
@@ -132,14 +132,14 @@ function SameHash([string]$a,[string]$b){
 }
 function CompiledCurrent([string]$data){
     $mql=Join-Path $data 'MQL5\Experts'
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh')){
         if(-not (SameHash (Join-Path $gold ('mt5_robot\'+$name)) (Join-Path $mql $name))){return $false}
     }
     $binary=Join-Path $mql 'QTS_Gold_Robot.ex5'
     if(-not (Test-Path -LiteralPath $binary -PathType Leaf)){return $false}
     if((Get-Item -LiteralPath $binary).Length -lt 1000){return $false}
     $binaryTime=(Get-Item -LiteralPath $binary).LastWriteTimeUtc
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh')){
         if($binaryTime -lt (Get-Item -LiteralPath (Join-Path $mql $name)).LastWriteTimeUtc.AddSeconds(-2)){return $false}
     }
     return $true
@@ -149,7 +149,7 @@ $message=''
 $comparison=''
 try{
     $manifest=Get-Content -LiteralPath (Join-Path $gold 'docs\SOURCE_CHECKSUMS.json') -Raw | ConvertFrom-Json
-    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh','mt5_robot/OpportunityResearch.mqh')){
+    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh','mt5_robot/OpportunityResearch.mqh','mt5_robot/AdaptiveResearch.mqh')){
         $entry=@($manifest.sha256_files|Where-Object {$_.path -eq $rel})
         if($entry.Count -ne 1){throw ('Manifest does not identify '+$rel)}
         $path=Join-Path $gold ($rel.Replace('/','\'))
@@ -182,7 +182,7 @@ try{
     # MT5 builds/documentation differ on whether Tester profiles resolve
     # from the data folder or the installation folder. Support both when the
     # installation's MQL5 profile tree actually exists; never use an unverified
-    # fallback to EA defaults because that silently tests EntryStyle=0 seven times.
+    # fallback to EA defaults because that silently tests EntryStyle=0 eight times.
     $testerProfiles=Join-Path $data 'MQL5\Profiles\Tester'
     $profileLocations=@($testerProfiles)
     $installProfileRoot=Join-Path $install 'MQL5\Profiles'
@@ -195,7 +195,7 @@ try{
         catch{throw ('MT5 tester parameter folder not writable: '+$root)}
     }
     $codes=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM',
-            'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT')
+            'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER')
     for($i=0;$i -lt $names.Count;$i++){
         $preset=Join-Path $presetDir ('safety_on\QTS_M15_'+$codes[$i]+'_SAFETY_ON.set')
         if(-not (Test-Path -LiteralPath $preset -PathType Leaf)){throw ('Missing safety-on preset '+$i)}
@@ -228,7 +228,7 @@ try{
     }
     if($PrepareOnly){
         $state='PREPARED_ONLY'
-        $message='Seven configurations with risk stops active. MT5 was not launched.'
+        $message='Eight configurations with risk stops active. MT5 was not launched.'
     }else{
         for($i=0;$i -lt $names.Count;$i++){
             $item=[ordered]@{style=$names[$i];status='PENDING';detail='';report=''}
@@ -238,7 +238,7 @@ try{
             $began=[datetime]::UtcNow
             $process=$null
             try{
-                Write-Host ("Running native MT5 test {0}/7: {1}" -f ($i+1),$names[$i])
+                Write-Host ("Running native MT5 test {0}/8: {1}" -f ($i+1),$names[$i])
                 $process=Start-Process -FilePath $exe -ArgumentList ('/config:"{0}"' -f $ini) -PassThru
                 $deadline=(Get-Date).AddMinutes($TimeoutMinutesPerRun)
                 while(-not $process.HasExited){
@@ -325,7 +325,7 @@ try{
         }else{
             $state='TESTS_FINISHED_WITH_EVIDENCE_GAPS'
         }
-        $message='Seven native reports collected. Position-by-position evidence checked; positive after-cost expectancy unvalidated.'
+        $message='Eight native reports collected. Position-by-position evidence checked; positive after-cost expectancy unvalidated.'
     }
 }catch{
     $message=$_.Exception.Message

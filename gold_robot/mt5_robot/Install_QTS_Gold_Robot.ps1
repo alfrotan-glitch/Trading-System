@@ -57,6 +57,15 @@ $opportunityHash = (Get-FileHash -LiteralPath $opportunity -Algorithm SHA256).Ha
 if ($opportunityHash.ToUpperInvariant() -ne ([string]$opportunityRows[0].sha256).ToUpperInvariant()) {
     throw 'Opportunity research include checksum mismatch.'
 }
+$adaptive = Join-Path $PSScriptRoot 'AdaptiveResearch.mqh'
+$adaptiveRows = @($manifest.sha256_files | Where-Object { $_.path -eq 'mt5_robot/AdaptiveResearch.mqh' })
+if ($adaptiveRows.Count -ne 1 -or -not (Test-Path -LiteralPath $adaptive -PathType Leaf)) {
+    throw 'Missing adaptive router include or manifest entry.'
+}
+$adaptiveHash = (Get-FileHash -LiteralPath $adaptive -Algorithm SHA256).Hash
+if ($adaptiveHash.ToUpperInvariant() -ne ([string]$adaptiveRows[0].sha256).ToUpperInvariant()) {
+    throw 'Adaptive research include checksum mismatch.'
+}
 Write-Host ('Package source validated: {0}' -f $source)
 Write-Host ('Source SHA-256: {0}' -f $actualHash)
 Write-Host 'Stale version 0.00 check: PASS; metadata warning 68 cannot originate from this source.' -ForegroundColor Green
@@ -156,6 +165,7 @@ $compiled = Join-Path $experts 'QTS_Gold_Robot.ex5'
 $destPolicy = Join-Path $experts 'ExecutionPolicy.mqh'
 $destStructure = Join-Path $experts 'StructureResearch.mqh'
 $destOpportunity = Join-Path $experts 'OpportunityResearch.mqh'
+$destAdaptive = Join-Path $experts 'AdaptiveResearch.mqh'
 $log = Join-Path $experts 'QTS_Gold_Robot.log'
 $backupDir = Join-Path $experts 'QTS_Gold_Robot_Backups'
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss_ffff'
@@ -164,6 +174,8 @@ $backupEX5 = Join-Path $backupDir ($stamp + '_QTS_Gold_Robot.ex5')
 $backupPolicy = Join-Path $backupDir ($stamp + '_ExecutionPolicy.mqh')
 $backupStructure = Join-Path $backupDir ($stamp + '_StructureResearch.mqh')
 $backupOpportunity = Join-Path $backupDir ($stamp + '_OpportunityResearch.mqh')
+$backupAdaptive = Join-Path $backupDir ($stamp + '_AdaptiveResearch.mqh')
+$hadAdaptive = Test-Path -LiteralPath $destAdaptive -PathType Leaf
 $hadOpportunity = Test-Path -LiteralPath $destOpportunity -PathType Leaf
 $hadStructure = Test-Path -LiteralPath $destStructure -PathType Leaf
 $hadPolicy = Test-Path -LiteralPath $destPolicy -PathType Leaf
@@ -171,13 +183,14 @@ $hadSource = Test-Path -LiteralPath $dest -PathType Leaf
 $hadEX5 = Test-Path -LiteralPath $compiled -PathType Leaf
 $completed = $false
 
-if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity) {
+if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity -or $hadAdaptive) {
     New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
     if ($hadSource) { Copy-Item -LiteralPath $dest -Destination $backupSource }
     if ($hadEX5) { Copy-Item -LiteralPath $compiled -Destination $backupEX5 }
     if ($hadPolicy) { Copy-Item -LiteralPath $destPolicy -Destination $backupPolicy }
     if ($hadStructure) { Copy-Item -LiteralPath $destStructure -Destination $backupStructure }
     if ($hadOpportunity) { Copy-Item -LiteralPath $destOpportunity -Destination $backupOpportunity }
+    if ($hadAdaptive) { Copy-Item -LiteralPath $destAdaptive -Destination $backupAdaptive }
 }
 Write-Host ('MT5 MQL5 location: {0}' -f $mql5)
 Write-Host ('Compiler:          {0}' -f $editor)
@@ -187,6 +200,7 @@ try {
     Copy-Item -LiteralPath $policy -Destination $destPolicy -Force
     Copy-Item -LiteralPath $structure -Destination $destStructure -Force
     Copy-Item -LiteralPath $opportunity -Destination $destOpportunity -Force
+    Copy-Item -LiteralPath $adaptive -Destination $destAdaptive -Force
     Copy-Item -LiteralPath $source -Destination $dest -Force
     if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne
         (Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash) {
@@ -262,6 +276,11 @@ try {
     Write-Host 'No validated trading advantage; real-money trading is refused.'
 } finally {
     if (-not $completed) {
+        if ($hadAdaptive -and (Test-Path -LiteralPath $backupAdaptive -PathType Leaf)) {
+            Copy-Item -LiteralPath $backupAdaptive -Destination $destAdaptive -Force
+        } elseif (Test-Path -LiteralPath $destAdaptive -PathType Leaf) {
+            Remove-Item -LiteralPath $destAdaptive -Force
+        }
         if ($hadOpportunity -and (Test-Path -LiteralPath $backupOpportunity -PathType Leaf)) {
             Copy-Item -LiteralPath $backupOpportunity -Destination $destOpportunity -Force
         } elseif (Test-Path -LiteralPath $destOpportunity -PathType Leaf) {

@@ -1,4 +1,4 @@
-// QTS Gold: three additional closed-bar research hypotheses (EntryStyle 4-6).
+// QTS Gold: three additional closed-bar research hypotheses (evaluated_style 4-6).
 // Research only: the parent EA forbids these modes outside Strategy Tester.
 // Input parameters are fixed before observing strategy results; not optimized.
 
@@ -43,7 +43,7 @@ int CompletedOpportunitySignal(double &atr_value,double &level,double &anchor)
    double vol=atr[0];
    MqlRates last=bars[n-1];
    int side=0;
-   if(EntryStyle==QTS_TREND_IMPULSE)
+   if(evaluated_style==QTS_TREND_IMPULSE)
      {
       // Trend continuation without the strict EMA CROSS used by Style 1.
       // One convincing completed impulse; next entry is a passive retrace.
@@ -59,7 +59,7 @@ int CompletedOpportunitySignal(double &atr_value,double &level,double &anchor)
          side=-1; level=last.low; anchor=last.high;
         }
      }
-   else if(EntryStyle==QTS_RANGE_REJECTION)
+   else if(evaluated_style==QTS_RANGE_REJECTION)
      {
       // Mean-reversion at an established prior range edge.
       // Last candle is NOT part of the range used to generate its signal.
@@ -89,7 +89,7 @@ int CompletedOpportunitySignal(double &atr_value,double &level,double &anchor)
            }
         }
      }
-   else if(EntryStyle==QTS_INSIDE_BREAKOUT)
+   else if(evaluated_style==QTS_INSIDE_BREAKOUT)
      {
       // Three completed candles: mother, inside, breakout.
       MqlRates mother=bars[n-3];
@@ -114,7 +114,7 @@ int CompletedOpportunitySignal(double &atr_value,double &level,double &anchor)
       status_text="OPPORTUNITY: no completed impulse, range rejection or inside break";
       return 0;
      }
-   if(EnableH1TrendFilter && EntryStyle!=QTS_RANGE_REJECTION)
+   if(EnableH1TrendFilter && evaluated_style!=QTS_RANGE_REJECTION)
      {
       double h1ma[1],h1close[1];
       datetime h0=iTime(_Symbol,PERIOD_H1,0);
@@ -133,7 +133,7 @@ int CompletedOpportunitySignal(double &atr_value,double &level,double &anchor)
      }
    atr_value=vol;
    status_text=StringFormat("OPPORTUNITY: style=%d %s closed-bar candidate",
-                            (int)EntryStyle,side>0 ? "BUY":"SELL");
+                            (int)evaluated_style,side>0 ? "BUY":"SELL");
    return side;
   }
 
@@ -155,11 +155,11 @@ bool PrepareOpportunityLimit(const int side,const MqlTick &tick,const double atr
    double floor_gap=MathMax(atr*MinimumStopDistanceAtr,
                      MathMax(spread*MinimumStopSpreadMultiple,broker_gap+2.0*step));
    double desired=0.0;
-   if(EntryStyle==QTS_TREND_IMPULSE)
+   if(evaluated_style==QTS_TREND_IMPULSE)
       desired=side>0 ? tick.bid-0.25*atr : tick.ask+0.25*atr;
-   else if(EntryStyle==QTS_RANGE_REJECTION)
+   else if(evaluated_style==QTS_RANGE_REJECTION)
       desired=side>0 ? anchor+0.25*atr : anchor-0.25*atr;
-   else if(EntryStyle==QTS_INSIDE_BREAKOUT)
+   else if(evaluated_style==QTS_INSIDE_BREAKOUT)
       desired=side>0 ? level-0.03*atr : level+0.03*atr;
    else
       return false;
@@ -173,7 +173,7 @@ bool PrepareOpportunityLimit(const int side,const MqlTick &tick,const double atr
          price-stop<floor_gap-step*0.51)
          return false;
       target=NormalizeDouble(MathCeil((price+(price-stop)*RewardToRisk)/step)*step,_Digits);
-      if(EntryStyle==QTS_RANGE_REJECTION && target>level-spread)
+      if(evaluated_style==QTS_RANGE_REJECTION && target>level-spread)
          return false;
       if(target-price<broker_gap) return false;
      }
@@ -186,7 +186,7 @@ bool PrepareOpportunityLimit(const int side,const MqlTick &tick,const double atr
          stop-price<floor_gap-step*0.51)
          return false;
       target=NormalizeDouble(MathFloor((price-(stop-price)*RewardToRisk)/step)*step,_Digits);
-      if(EntryStyle==QTS_RANGE_REJECTION && target<level+spread)
+      if(evaluated_style==QTS_RANGE_REJECTION && target<level+spread)
          return false;
       if(target<=0.0 || price-target<broker_gap) return false;
      }

@@ -46,7 +46,7 @@ int CompletedStructureSignal(double &atr_value,double &level,double &anchor)
    double buffer=atr[0]*StructureBreakConfirmAtr;
    double window=atr[0]*StructureRetestWindowAtr;
    int side=0;
-   if(EntryStyle==QTS_BREAK_ACCEPT_RETEST)
+   if(evaluated_style==QTS_BREAK_ACCEPT_RETEST)
      {
       if(probe.open<=high && probe.close>high+buffer &&
          confirm.low>=high-window && confirm.low<=high+window &&
@@ -61,7 +61,7 @@ int CompletedStructureSignal(double &atr_value,double &level,double &anchor)
          side=-1; level=low; anchor=MathMax(confirm.high,low);
         }
      }
-   else if(EntryStyle==QTS_SWEEP_RECLAIM)
+   else if(evaluated_style==QTS_SWEEP_RECLAIM)
      {
       // CAUTION: previous sweep strategy FAILED on unseen historical ticks.
       // This is NOT validated; no non-tester orders are ever authorized.

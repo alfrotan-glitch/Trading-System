@@ -19,7 +19,7 @@ input double          DemoForwardRiskCapPct      = 0.25; // DEMO hard cap; never
 input bool            EnableEntryDiagnostics    = true; // Closed-bar diagnostic reasons in Tester and connected DEMO Experts logs.
 input bool            PauseNewEntries           = false;
 input bool            EmergencyFlattenOwned     = false; // Emergency CLOSE of THIS magic only.
-enum QTS_ENTRY_STYLE { QTS_FORMER_STOP_LIMIT=0, QTS_RETEST_LIMIT=1, QTS_BREAK_ACCEPT_RETEST=2, QTS_SWEEP_RECLAIM=3, QTS_TREND_IMPULSE=4, QTS_RANGE_REJECTION=5, QTS_INSIDE_BREAKOUT=6 };
+enum QTS_ENTRY_STYLE { QTS_FORMER_STOP_LIMIT=0, QTS_RETEST_LIMIT=1, QTS_BREAK_ACCEPT_RETEST=2, QTS_SWEEP_RECLAIM=3, QTS_TREND_IMPULSE=4, QTS_RANGE_REJECTION=5, QTS_INSIDE_BREAKOUT=6, QTS_ADAPTIVE_ROUTER=7 };
 input QTS_ENTRY_STYLE EntryStyle               = QTS_FORMER_STOP_LIMIT;
 input ENUM_TIMEFRAMES SignalTimeframe           = PERIOD_M15;
 input int             FastEmaPeriod             = 20;
@@ -77,6 +77,8 @@ string status_text = "Initialization";
 bool local_execution_halt = false;
 string audit_file="QTS_Gold_Robot_Broker_Deals.csv";
 bool broker_was_connected=false;
+// Research-only per-bar selected entry style. One candidate at a time.
+int evaluated_style=0;
 
 // Broker DEMO forwarding is a separately authorized experiment with virtual funds.
 // No result permits REAL account orders. This is NOT economic edge validation.
@@ -578,6 +580,7 @@ int CompletedBarSignal(double &atr_value)
 // After all signal globals and input declarations are available.
 #include "StructureResearch.mqh"
 #include "OpportunityResearch.mqh"
+#include "AdaptiveResearch.mqh"
 
 // ------------------------------------------------------------------
 // Broker-authoritative order sizing and SL/TP attached to pending request.
@@ -909,15 +912,29 @@ void EvaluateNewEntry()
       return;
      }
    double atr=0.0,structure_level=0.0,structure_anchor=0.0;
-   bool structural=EntryStyle==QTS_BREAK_ACCEPT_RETEST ||
-                   EntryStyle==QTS_SWEEP_RECLAIM;
-   bool opportunity=(int)EntryStyle>=4;
-   int side=opportunity ?
-      CompletedOpportunitySignal(atr,structure_level,structure_anchor) :
-      (structural ? CompletedStructureSignal(atr,structure_level,structure_anchor) :
-                    CompletedBarSignal(atr));
-   if(side==0)
-      return; // Preserve the stage-specific reason from causal signal logic.
+   double price=0.0,stop=0.0,target=0.0;
+   evaluated_style=(int)EntryStyle;
+   bool adaptive=EntryStyle==QTS_ADAPTIVE_ROUTER;
+   int side=0;
+   if(adaptive)
+     {
+      int selected=-1;
+      if(!SelectAdaptiveCandidate(quote,side,atr,structure_level,structure_anchor,
+                                  price,stop,target,selected))
+         return;
+     }
+   else
+     {
+      bool structural=evaluated_style==QTS_BREAK_ACCEPT_RETEST ||
+                      evaluated_style==QTS_SWEEP_RECLAIM;
+      bool opportunity=evaluated_style>=4;
+      side=opportunity ?
+         CompletedOpportunitySignal(atr,structure_level,structure_anchor) :
+         (structural ? CompletedStructureSignal(atr,structure_level,structure_anchor) :
+                       CompletedBarSignal(atr));
+      if(side==0)
+         return;
+     }
    if((quote.ask-quote.bid)>atr*MaxSpreadVsAtrPct/100.0)
      {
       status_text="Spread too large versus ATR";
@@ -932,18 +949,23 @@ void EvaluateNewEntry()
       status_text="Pending-order daily ceiling or broker history unavailable";
       return;
      }
-   double price=0.0,stop=0.0,target=0.0;
-   bool prepared=opportunity ?
-      PrepareOpportunityLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
-      (structural ?
-       PrepareStructureLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
-       (EntryStyle==QTS_RETEST_LIMIT ?
-        PrepareRetestLimit(side,quote,atr,price,stop,target) :
-        PreparePullbackLimit(side,quote,atr,price,stop,target)));
-   if(!prepared)
+   if(!adaptive)
      {
-      status_text="LIMIT veto: price, structure, stop or reward not valid";
-      return;
+      bool structural=evaluated_style==QTS_BREAK_ACCEPT_RETEST ||
+                      evaluated_style==QTS_SWEEP_RECLAIM;
+      bool opportunity=evaluated_style>=4;
+      bool prepared=opportunity ?
+         PrepareOpportunityLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
+         (structural ?
+          PrepareStructureLimit(side,quote,atr,structure_level,structure_anchor,price,stop,target) :
+          (evaluated_style==QTS_RETEST_LIMIT ?
+           PrepareRetestLimit(side,quote,atr,price,stop,target) :
+           PreparePullbackLimit(side,quote,atr,price,stop,target)));
+      if(!prepared)
+        {
+         status_text="LIMIT veto: price, structure, stop or reward not valid";
+         return;
+        }
      }
    datetime deadline=0;
    if(!PendingExpiration(deadline))
@@ -997,12 +1019,12 @@ void EvaluateNewEntry()
    request.type_filling=ORDER_FILLING_RETURN;
    request.type_time=ORDER_TIME_SPECIFIED;
    request.expiration=deadline;
-   request.comment=EntryStyle==QTS_RETEST_LIMIT ? "QTS RETEST LIMIT DEMO" :
-                   EntryStyle==QTS_FORMER_STOP_LIMIT ? "QTS OLD-SL LIMIT DEMO" :
-                   EntryStyle==QTS_BREAK_ACCEPT_RETEST ? "QTS BREAK HOLD LIMIT" :
-                   EntryStyle==QTS_SWEEP_RECLAIM ? "QTS SWEEP RECLAIM" :
-                   EntryStyle==QTS_TREND_IMPULSE ? "QTS TREND IMPULSE" :
-                   EntryStyle==QTS_RANGE_REJECTION ? "QTS RANGE REJECT" :
+   request.comment=evaluated_style==QTS_RETEST_LIMIT ? "QTS RETEST LIMIT DEMO" :
+                   evaluated_style==QTS_FORMER_STOP_LIMIT ? "QTS OLD-SL LIMIT DEMO" :
+                   evaluated_style==QTS_BREAK_ACCEPT_RETEST ? "QTS BREAK HOLD LIMIT" :
+                   evaluated_style==QTS_SWEEP_RECLAIM ? "QTS SWEEP RECLAIM" :
+                   evaluated_style==QTS_TREND_IMPULSE ? "QTS TREND IMPULSE" :
+                   evaluated_style==QTS_RANGE_REJECTION ? "QTS RANGE REJECT" :
                                                      "QTS INSIDE BREAK";
    ResetLastError();
    if(!OrderCheck(request,check) || (check.retcode!=0 && check.retcode!=TRADE_RETCODE_DONE))
@@ -1357,7 +1379,7 @@ int OnInit()
       SignalTimeframe!=PERIOD_H1)
       return INIT_PARAMETERS_INCORRECT;
    // Extra hypotheses remain Tester-only until independently accepted.
-   if((int)EntryStyle<0 || (int)EntryStyle>6 ||
+   if((int)EntryStyle<0 || (int)EntryStyle>7 ||
       ((int)EntryStyle>=4 && MQLInfoInteger(MQL_TESTER)==0) ||
       StructureBreakConfirmAtr<0.01 || StructureBreakConfirmAtr>0.70 ||
       StructureRetestWindowAtr<0.05 || StructureRetestWindowAtr>1.50 ||
@@ -1391,6 +1413,7 @@ int OnInit()
       Print("QTS: invalid parameters, no initialization.");
       return INIT_PARAMETERS_INCORRECT;
      }
+   evaluated_style=(int)EntryStyle;
    fast_handle=iMA(_Symbol,SignalTimeframe,FastEmaPeriod,0,MODE_EMA,PRICE_CLOSE);
    slow_handle=iMA(_Symbol,SignalTimeframe,SlowEmaPeriod,0,MODE_EMA,PRICE_CLOSE);
    atr_handle=iATR(_Symbol,SignalTimeframe,AtrPeriod);
@@ -1721,7 +1744,8 @@ void OnTimer()
 void ObserveUnarmedDemoSignal()
   {
    if(MQLInfoInteger(MQL_TESTER)!=0 || RealAccountBlocked() ||
-      !EnableEntryDiagnostics || ConnectedDemoForwardAuthorized())
+      !EnableEntryDiagnostics || ConnectedDemoForwardAuthorized() ||
+      EntryStyle==QTS_ADAPTIVE_ROUTER)
       return;
    double atr=0.0,level=0.0,anchor=0.0;
    bool structural=EntryStyle==QTS_BREAK_ACCEPT_RETEST ||

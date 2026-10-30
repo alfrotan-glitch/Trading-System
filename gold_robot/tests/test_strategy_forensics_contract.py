@@ -1,4 +1,4 @@
-"""Regression contracts for the seven isolated MT5 research hypotheses.
+"""Regression contracts for seven fixed hypotheses plus an adaptive tester router.
 This suite cannot compile MQL5 or validate a profitable edge."""
 from pathlib import Path
 import re
@@ -76,3 +76,29 @@ def test_entry_setup_comes_from_broker_order_comment_without_invention():
     assert "COMPLETE_MULTI_EXIT" in forensic
     assert "setup_reason=$entrySetup;exit_legs=$exitLegs" in forensic
     assert "REVERSAL_UNSUPPORTED" in forensic
+
+
+
+def test_adaptive_router_is_closed_bar_test_only_and_never_changes_risk_execution():
+    router = (ROOT / "mt5_robot" / "AdaptiveResearch.mqh").read_text(encoding="utf-8")
+    assert "QTS_ADAPTIVE_ROUTER=7" in EA
+    assert "if((int)EntryStyle<0 || (int)EntryStyle>7 ||" in EA
+    assert "((int)EntryStyle>=4 && MQLInfoInteger(MQL_TESTER)==0)" in EA
+    assert 'SelectAdaptiveCandidate(quote,side,atr,structure_level,structure_anchor,' in EA
+    assert "evaluated_style=chosen_style;" in router
+    assert "if(MQLInfoInteger(MQL_TESTER)==0)" in router
+    assert "CopyBuffer(adx_handle,0,1,1,a)" in router
+    assert "CopyBuffer(fast_handle,0,1,1,f)" in router
+    assert "CopyBuffer(slow_handle,0,1,1,s)" in router
+    assert "CopyBuffer(atr_handle,0,1,1,vol)" in router
+    assert "if(priority==0) continue;" in router
+    assert "if(SizedLots(candidate_side,p,sl)<=0.0) continue;" in router
+    assert "chosen_style=-1;" in router
+    assert "if(chosen_style<0)" in router
+    assert "for(int style=0;style<7;style++)" in router
+    assert "request.comment=evaluated_style==QTS_RETEST_LIMIT" in EA
+    assert "OrderCheck(request,check)" in EA
+    assert "PlannedOrderFitsRisk(side,lots,price,stop)" in EA
+    assert "EntryStyle==QTS_ADAPTIVE_ROUTER" in EA
+    assert "'ADAPTIVE_ROUTER'" in PRESETS
+    assert "'ADAPTIVE_ROUTER'" in AUTORUN

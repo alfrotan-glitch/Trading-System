@@ -532,7 +532,7 @@ def test_two_percent_risk_is_a_ceiling_not_the_default():
 def test_intraday_retest_is_research_candidate_not_forced_trade():
     assert 'SignalTimeframe!=PERIOD_M5' in EA
     entry = body_of('EvaluateNewEntry')
-    assert 'EntryStyle==QTS_RETEST_LIMIT ?' in entry
+    assert 'evaluated_style==QTS_RETEST_LIMIT ?' in entry
     assert 'PrepareRetestLimit' in entry
     assert 'PreparePullbackLimit' in entry
     assert 'MQLInfoInteger(MQL_TESTER)!=0' in body_of('StrategyEvidenceApproved')

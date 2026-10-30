@@ -10,7 +10,7 @@
   "connected_demo_new_orders_permitted_by_strategy_gate": true,
   "default_order_permission": false,
   "market_order_entries_permitted": false,
-  "entry_policy": "Seven research LIMIT hypotheses: old-stop limit, retest limit, break-accept-retest, sweep-reclaim, trend-impulse retrace, range rejection, inside-bar breakout. Styles 4-6 are Strategy Tester only; styles 0-3 retain existing separate DEMO-forward authorization. All strategies are UNVALIDATED after costs; LIVE LOCKED.",
+  "entry_policy": "Seven independent static LIMIT research strategies plus an eighth Tester-only closed-bar adaptive strategy router. The router evaluates multiple candidates per completed bar in trend, range and transition conditions, selects at most one feasible candidate or abstains. Styles 4-7 are Strategy Tester only; 0-3 retain existing restricted DEMO forward authorization. No strategy or router has validated positive after-cost expectancy. LIVE LOCKED.",
   "tester_only_research_mode": {
     "input": "TesterIgnoreDailyAndPeakStops",
     "default": true,
@@ -33,7 +33,8 @@
       "M15",
       "M5"
     ],
-    "verified_runs_for_current_source": 0
+    "verified_runs_for_current_source": 0,
+    "adaptive_entry_style": 7
   },
   "windows_delivery": {
     "root_launcher": "START_HERE.bat",
@@ -54,7 +55,11 @@
       "reports_local/native/QTS_0.htm",
       "reports_local/native/QTS_1.htm",
       "reports_local/native/QTS_2.htm",
-      "reports_local/native/QTS_3.htm"
+      "reports_local/native/QTS_3.htm",
+      "reports_local/native/QTS_4.htm",
+      "reports_local/native/QTS_5.htm",
+      "reports_local/native/QTS_6.htm",
+      "reports_local/native/QTS_7.htm"
     ],
     "native_comparison_is_profit_validation": false,
     "canonical_single_target_installer": "gold_robot/mt5_robot/Install_MT5_Canonical.ps1",
@@ -63,6 +68,7 @@
     "broker_csv_must_be_newer_than_current_preflight_compile": true
   },
   "research_limitations": [
+    "Style 7 has not yet been natively compiled or real-tick backtested on the user's WMMarkets terminal; it was designed after seeing the seven-style six-month results, so those months are NOT an untouched holdout.",
     "No verified latest-build native WMMarkets backtest",
     "Prior baseline six-month sample yielded 18 completed trades with PF 0.98 and net loss",
     "Historical sweep family failed holdout",
@@ -79,7 +85,7 @@
   "testing": {
     "metaeditor_compiled_ex5": false,
     "validated_profitable_edge": false,
-    "reason": "MetaEditor native MQL5 compile and broker real tick tester evidence for the CURRENT source have not been verified on WMMarkets."
+    "reason": "Adaptive Style 7 is research-only and requires fresh native WMMarkets MetaEditor compilation plus independent unseen-period real-tick testing and measured after-cost edge; historical 519-trade static-style audit is not adaptive-strategy validation."
   },
   "connected_demo_forward": {
     "default_authorized": false,

@@ -19,7 +19,7 @@ function N([object]$raw){
 }
 function F([double]$value){return $value.ToString('0.0000',[Globalization.CultureInfo]::InvariantCulture)}
 $names=@('Former stop','Retest','Break and retest','Sweep and reclaim',
-         'Trend impulse','Range rejection','Inside-bar breakout')
+         'Trend impulse','Range rejection','Inside-bar breakout','Adaptive router')
 $positions=New-Object System.Collections.ArrayList
 $evidence=New-Object System.Collections.ArrayList
 $allComplete=$true
