@@ -1,0 +1,92 @@
+name: QTS Gold Windows Research Kit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gold_robot/**"
+      - "QTS_AUTO_TEST.bat"
+      - "QTS_SHARE_RESULTS.bat"
+      - "QTS_POST_STOP_REVIEW.bat"
+      - ".github/workflows/gold-research-kit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research-kit:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Verify immutable source fingerprints
+        shell: pwsh
+        run: |
+          python gold_robot/research/update_manifest.py --check
+          if ($LASTEXITCODE -ne 0) { throw "Gold source manifest verification failed" }
+      - name: Assemble portable Gold kit with no account files
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = Join-Path $env:RUNNER_TEMP 'QTS Gold Customer Kit'
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item -LiteralPath 'gold_robot' -Destination $stage -Recurse
+          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat')) {
+            Copy-Item -LiteralPath $file -Destination $stage
+          }
+          @'
+          QTS GOLD — WINDOWS RESEARCH KIT (10 STRATEGIES)
+          ================================================
+          1. Extract the complete ZIP to a writable folder on your Windows desktop.
+          2. With WMMarkets MetaTrader 5 installed, double-click:
+                  gold_robot\SETUP_MT5_GOLD.bat
+             Select the correct MT5 Data Folder and MetaEditor if asked.
+             Installation must report zero compiler errors and warnings.
+             Never copy .mqh files manually or bypass a failed install.
+          3. Double-click QTS_AUTO_TEST.bat to run the ten native MT5
+             Strategy Tester studies (styles 0-9, M1 for style 9).
+             The program does NOT send live-account orders.
+          4. Review the saved OPEN_RESULTS report, then optionally run
+             QTS_SHARE_RESULTS.bat and QTS_POST_STOP_REVIEW.bat.
+          5. This is NOT a profitable-edge-certified production robot.
+             LIVE REAL-MONEY TRADING IS LOCKED. Broker-specific native
+             compile and after-cost, independent testing remain required.
+             A synthetic CI check is NOT proof of broker fills or profits.
+          
+          This package contains no saved broker passwords, user data or
+          trading reports. A local MT5 terminal and broker history are required.
+          '@ | Set-Content -LiteralPath (Join-Path $stage 'OPEN_FIRST.txt') -Encoding UTF8
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'QTS-Gold-Windows-Research-Kit.zip'
+          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -CompressionLevel Optimal -Force
+          if (-not (Test-Path -LiteralPath $zip)) { throw 'Portable kit not created' }
+      - name: Test extracted kit in Windows folder with spaces
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dst = Join-Path $env:RUNNER_TEMP 'QTS Gold Extracted Acceptance'
+          Expand-Archive -LiteralPath 'QTS-Gold-Windows-Research-Kit.zip' -DestinationPath $dst -Force
+          Push-Location $dst
+          try {
+            foreach($file in @('OPEN_FIRST.txt','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat')) {
+              if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing kit file: $file" }
+            }
+            python gold_robot/research/update_manifest.py --check
+            if ($LASTEXITCODE -ne 0) { throw 'Extracted kit source hash mismatch' }
+            $env:QTS_SETUP_VALIDATE_ONLY = '1'
+            & $env:ComSpec /d /c 'call "gold_robot\SETUP_MT5_GOLD.bat"'
+            if ($LASTEXITCODE -ne 0) { throw "Extracted kit setup path validation failed: $LASTEXITCODE" }
+            Write-Host 'PASS: portable kit, complete source manifest and installer paths; no terminal launched'
+          } finally {
+            Remove-Item Env:QTS_SETUP_VALIDATE_ONLY -ErrorAction SilentlyContinue
+            Pop-Location
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QTS-Gold-Windows-Research-Kit
+          path: QTS-Gold-Windows-Research-Kit.zip
+          if-no-files-found: error
+          retention-days: 14
