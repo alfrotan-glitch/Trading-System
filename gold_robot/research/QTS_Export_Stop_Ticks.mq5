@@ -48,7 +48,7 @@ void OnStart()
          break;
       }
       index++;
-      string tick_file=export_folder+"\\\\"+StringFormat("ticks_%05d.csv",index);
+      string tick_file=export_folder+"\\"+StringFormat("ticks_%05d.csv",index);
       int handle=FileOpen(tick_file,FILE_WRITE|FILE_CSV|FILE_ANSI,',');
       if(handle==INVALID_HANDLE)
       {
@@ -98,7 +98,7 @@ void OnStart()
       Print("QTS STOP TICKS: no bounded windows; no quotes exported");
       return;
    }
-   string status_file=export_folder+"\\\\export_status.csv";
+   string status_file=export_folder+"\\export_status.csv";
    int status=FileOpen(status_file,FILE_WRITE|FILE_CSV|FILE_ANSI,',');
    if(status==INVALID_HANDLE)
    {
