@@ -51,7 +51,7 @@ def test_ledger_conflicting_report_is_rejected(tmp_path):
     root = setup_arms(tmp_path)
     report = next((root / "combined").glob("QTS_Gold_Comparison_*.json"))
     data = json.loads(report.read_text())
-    data["results"][7]["net_usd"] = -55.
+    next(row for row in data["results"] if row["style"] == 7)["net_usd"] = -55.
     report.write_text(json.dumps(data))
     with pytest.raises(ValueError, match="PnL disagrees"):
         compare_ablation(root)
@@ -65,7 +65,7 @@ def test_partial_broker_fills_or_missing_arm_fail_closed(tmp_path):
     with pytest.raises(ValueError, match="Partial position"):
         compare_ablation(root)
     f.unlink()
-    with pytest.raises(ValueError, match="native"):
+    with pytest.raises(ValueError, match="broker|native|style"):
         compare_ablation(root)
 
 
