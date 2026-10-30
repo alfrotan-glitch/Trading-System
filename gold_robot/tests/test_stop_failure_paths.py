@@ -106,3 +106,55 @@ def test_read_only_code_contract_no_broker_order_api():
     assert "QTS_PRE_STOP_BROKER_TICKS" in runner
     assert "QTS_LOSING_STOP_PATHS.csv" in runner
     assert "QTS_POST_STOP_REVIEW.zip" in runner
+
+
+def test_mirrored_adaptive_and_fixed_stops_not_double_counted():
+    t = 1_780_000_000_000
+    a = stop("1:11", t, t + 90_000)
+    a["style"] = "1"
+    b = dict(a)
+    b["trade_id"] = "7:99"
+    b["style"] = "7"
+    windows = {
+        "5": {"complete": True, "max_adverse_R": -1.1},
+        "120": {
+            "complete": True, "first_target_touch_ms": None,
+            "reclaimed_entry": False, "max_adverse_R": -2.3,
+            "max_favorable_R": 0.2,
+            "favorable_extreme_executable_price": 98,
+            "first_target_touch_after_stop_minutes": None,
+        },
+    }
+    replay = {"individual_trade_windows": [
+        {"trade_id": item["trade_id"], "side": item["side"],
+         "original_tp_price": 110., "stop_exit_time_ms": int(item["exit_time_ms"]),
+         "windows": windows} for item in (a, b)
+    ]}
+    rows, summary = classify([a, b], replay)
+    assert summary["original_stop_cases"] == 2
+    assert summary["distinct_market_events"] == 1
+    assert summary["cross_style_mirrored_rows"] == 1
+    assert summary["cross_style_mirror_pairs"] == {"1,7": 1}
+    assert summary["deduplicated_post_120m_outcomes"] == {
+        "CONTINUED_AGAINST_NO_RECLAIM": 1
+    }
+    assert sorted(r["cross_style_mirror_of"] for r in rows) == ["", "1:11"]
+
+
+def test_mirrored_prices_with_conflicting_outcomes_fail_closed():
+    t = 1_780_000_000_000
+    a = stop("1:1", t, t + 90_000)
+    a["style"] = "1"
+    b = dict(a, trade_id="7:1", style="7")
+    def observation(row, reached):
+        return {"trade_id": row["trade_id"], "side": "BUY",
+                "original_tp_price": 110., "stop_exit_time_ms": int(row["exit_time_ms"]),
+                "windows": {"5": {"complete": True, "max_adverse_R": -1.5},
+                            "120": {"complete": True, "first_target_touch_ms": (
+                                int(row["exit_time_ms"]) + 60_000 if reached else None
+                            ), "reclaimed_entry": reached, "max_adverse_R": -2.,
+                            "favorable_extreme_executable_price": 100.,
+                            "first_target_touch_after_stop_minutes": 1. if reached else None}}}
+    replay = {"individual_trade_windows": [observation(a, False), observation(b, True)]}
+    with pytest.raises(ValueError, match="disagree"):
+        classify([a, b], replay)
