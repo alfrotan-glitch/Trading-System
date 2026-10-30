@@ -161,8 +161,12 @@ if(-not (Test-Path -LiteralPath $failureJson -PathType Leaf) -or
     throw 'Detailed failure report missing; do not claim completed analysis.'
 }
 
+# Keep both quote-export manifests with unique names inside the ZIP.
+# Compress-Archive otherwise collides on two export_status.json basenames.
+$preStatusForZip=Join-Path $review 'QTS_PRE_STOP_EXPORT_STATUS.json'
+Copy-Item -LiteralPath $preStatus -Destination $preStatusForZip -Force
 $zip=Join-Path $run.FullName 'QTS_POST_STOP_REVIEW.zip'
-$files=@($audit,$original,$cases,$statusPath,$preStatus,$failureJson,$failureCsv)
+$files=@($audit,$original,$cases,$statusPath,$preStatusForZip,$failureJson,$failureCsv)
 foreach($file in $files){if(-not (Test-Path -LiteralPath $file -PathType Leaf)){throw ('Missing review evidence: '+$file)}}
 Compress-Archive -LiteralPath $files -DestinationPath $zip -Force
 $summary=Get-Content -LiteralPath $audit -Raw | ConvertFrom-Json
