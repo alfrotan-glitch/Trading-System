@@ -933,7 +933,7 @@ void EvaluateNewEntry()
          (structural ? CompletedStructureSignal(atr,structure_level,structure_anchor) :
                        CompletedBarSignal(atr));
       if(side==0)
-         return;
+         return; // Preserve the stage-specific reason from causal signal logic.
      }
    if((quote.ask-quote.bid)>atr*MaxSpreadVsAtrPct/100.0)
      {

@@ -10,7 +10,7 @@
   "connected_demo_new_orders_permitted_by_strategy_gate": true,
   "default_order_permission": false,
   "market_order_entries_permitted": false,
-  "entry_policy": "Seven independent static LIMIT research strategies plus an eighth Tester-only closed-bar adaptive strategy router. The router evaluates multiple candidates per completed bar in trend, range and transition conditions, selects at most one feasible candidate or abstains. Styles 4-7 are Strategy Tester only; 0-3 retain existing restricted DEMO forward authorization. No strategy or router has validated positive after-cost expectancy. LIVE LOCKED.",
+  "entry_policy": "Seven independent static LIMIT research strategies (including old-stop limit and retest limit) plus an eighth Tester-only closed-bar adaptive strategy router. The router evaluates multiple candidates per completed bar in trend, range and transition conditions, selects at most one feasible candidate or abstains. Styles 4-7 are Strategy Tester only; 0-3 retain existing restricted DEMO forward authorization. No strategy or router has validated positive after-cost expectancy. LIVE LOCKED.",
   "tester_only_research_mode": {
     "input": "TesterIgnoreDailyAndPeakStops",
     "default": true,

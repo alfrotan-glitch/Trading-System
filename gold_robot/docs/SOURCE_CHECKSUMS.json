@@ -107,8 +107,8 @@
     },
     {
       "path": "docs/RELEASE_STATUS.json",
-      "bytes": 5631,
-      "sha256": "950a811a11ca86b73b000339fbe73bb3fb4cf8216d562ca2920f46cb687715f6"
+      "bytes": 5675,
+      "sha256": "3f7e8716c8b29157e3c28e73fb4b481d249690ce35c4bd3f03785e078cee0cb9"
     },
     {
       "path": "docs/WINDOWS_START.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 76014,
-      "sha256": "1fee635bfec17762c2778ef0890bea25f2c42e7032cff5809b354bb133e72b79"
+      "bytes": 76078,
+      "sha256": "f730ebc550216a89de15572bf6d342a89280251c1da3cf007b2525086b3539a4"
     },
     {
       "path": "mt5_robot/StructureResearch.mqh",
