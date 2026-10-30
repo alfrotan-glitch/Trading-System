@@ -212,8 +212,8 @@
     },
     {
       "path": "research/BuildTradeForensics.ps1",
-      "bytes": 11806,
-      "sha256": "6265eb174ee89577c173630b3f3c1cb3a9aba65a656ca6fc072548e667b3109a"
+      "bytes": 12655,
+      "sha256": "6f561c0aa3a9add0f3a1483afbd2d111f96901238a5030f9d7004f0c5a3113f4"
     },
     {
       "path": "research/CompareMT5Reports.ps1",
@@ -252,8 +252,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 21892,
-      "sha256": "b77bb66056966fd85f9ab5dc79fba0fc0ff37034b79a88d9691ab843f4de1061"
+      "bytes": 22244,
+      "sha256": "23b64265d54e44a53ef4bed5837e620861f6c2885bfaa51ab93f7e25fe993e1a"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -457,8 +457,8 @@
     },
     {
       "path": "tests/test_strategy_forensics_contract.py",
-      "bytes": 6679,
-      "sha256": "55d87f7067bf954f2285b39793ac134c73229bf76b8093306606e3b5796c10d9"
+      "bytes": 7286,
+      "sha256": "01c3a52bf7325c328ceaf4e44d943b55f83a132397871c17a8d2b238b9c7c291"
     },
     {
       "path": "tests/test_target_grid.py",
