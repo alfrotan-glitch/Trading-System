@@ -144,3 +144,24 @@ def test_daily_native_mt5_time_msc_tick_folder_cli(tmp_path):
     data = json.loads(output.read_text(encoding="utf-8"))
     assert data["horizons_minutes"]["15"]["post_stop_original_target_touch_count"] == 1
     assert data["individual_trade_windows"][0]["windows"]["15"]["first_target_touch_after_stop_minutes"] == 7
+
+
+def test_extreme_quote_is_best_observed_even_when_every_future_tick_is_adverse():
+    stops, _ = mod.load_stops([{
+        "trade_id": "z", "side": "BUY", "entry_time_ms": "0",
+        "exit_time_ms": "60000", "entry_price": "100",
+        "initial_stop_price": "95", "exit_price": "94",
+        "exit_reason": "SL", "initial_target_price": "107",
+    }])
+    ticks = []
+    for m in range(1, 132):
+        bid = 93 if m == 1 else (93.7 if m == 2 else 93.4)
+        ticks.append({"time_ms": str(60000 + m * 60000),
+                      "bid": str(bid), "ask": str(bid + .2)})
+    out = mod.audit(stops, ticks)
+    w = out["individual_trade_windows"][0]["windows"]["15"]
+    assert w["complete"]
+    assert w["favorable_extreme_executable_price"] == 93.7
+    assert w["favorable_extreme_time_ms"] == 60000 + 2 * 60000
+    assert w["adverse_extreme_executable_price"] == 93
+    assert w["first_target_touch_ms"] is None

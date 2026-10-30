@@ -45,8 +45,10 @@ class Window:
     first_target_touch_ms: int | None = None
     favorable_extreme_price: float | None = None
     favorable_extreme_ms: int | None = None
+    favorable_observed_r: float | None = None
     adverse_extreme_price: float | None = None
     adverse_extreme_ms: int | None = None
+    adverse_observed_r: float | None = None
     max_favorable_r: float = 0.0
     max_adverse_r: float = 0.0
 
@@ -78,10 +80,17 @@ class Window:
             self.first_entry_reclaim_ms = ms
         if reached_target and self.first_target_touch_ms is None:
             self.first_target_touch_ms = ms
-        if self.favorable_extreme_price is None or directional_r > self.max_favorable_r:
+        # Observed executable-price extrema must not use the zero-clamped
+        # favorable/adverse excursion baselines: if *all* post-stop ticks
+        # are unfavorable, the best observed tick can still be below zero R.
+        if (self.favorable_observed_r is None or
+                directional_r > self.favorable_observed_r):
+            self.favorable_observed_r = directional_r
             self.favorable_extreme_price = executable_exit
             self.favorable_extreme_ms = ms
-        if self.adverse_extreme_price is None or directional_r < self.max_adverse_r:
+        if (self.adverse_observed_r is None or
+                directional_r < self.adverse_observed_r):
+            self.adverse_observed_r = directional_r
             self.adverse_extreme_price = executable_exit
             self.adverse_extreme_ms = ms
         self.max_favorable_r = max(self.max_favorable_r, directional_r)

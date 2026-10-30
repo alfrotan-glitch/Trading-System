@@ -317,8 +317,8 @@
     },
     {
       "path": "research/stop_reversal_audit.py",
-      "bytes": 15102,
-      "sha256": "ea1ce6ab4a393b02467e879f507f15f52a72928785c89cbfdac85fea397d2f73"
+      "bytes": 15563,
+      "sha256": "b15bac4c20ec0f487e6f9cd476b433df9e32434ebc0201082e34e92a1ea1fa11"
     },
     {
       "path": "research/sweep_diagnostics.py",
@@ -362,8 +362,8 @@
     },
     {
       "path": "tests/test_post_stop_replay.py",
-      "bytes": 6440,
-      "sha256": "ce0ce2dd14c55956a839f86d43c7e89f249223dd6b94df680fe1c22e4159f97f"
+      "bytes": 7361,
+      "sha256": "3ab76f350e42f69f08a427aab160658b9ab3f8f0b7cc506d5fa8f9f5f8ecf11b"
     },
     {
       "path": "tests/test_reference_benchmark.py",
