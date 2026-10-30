@@ -145,6 +145,11 @@ def audit(stops: list[Stop], ticks: Iterable[dict[str, str]],
           *, max_gap_ms: int = 60000) -> dict:
     if max_gap_ms < 1:
         raise ValueError("gap threshold must be positive")
+    # A Stop object may be replayed with a second tick feed. Reusing stale
+    # Window.complete/reached_target flags is a dangerous false TP proof.
+    # Reinitialize all horizon state before EACH audit, including an empty feed.
+    for stop in stops:
+        stop.windows = {minutes: Window(minutes * 60000) for minutes in HORIZONS_MIN}
     next_stop = 0
     active: list[Stop] = []
     last_tick: int | None = None

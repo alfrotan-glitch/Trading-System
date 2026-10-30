@@ -70,7 +70,10 @@ quote touch is **not** a tradable counterfactual.
   executable bid/ask recovery checks for 5,15,30,60,120-minute
   horizons. It now also measures **the first touch of the original TP
   after SL**, its elapsed minutes and the extreme executable quote
-  price/time in each complete horizon. A missing quote window is UNKNOWN
+  price/time in each complete horizon. A regression also found that
+  reusing already-audited Stop objects without resetting their horizon
+  state could report a false historical TP touch; the tool now resets
+  those windows before every replay. A missing quote window is UNKNOWN
   with a null fraction, not a negative observation.
 - \`--tick-dir\` accepts the daily \`ticks_<epoch-day>.csv\` files generated
   by the existing *read-only* \`research/ExportBrokerData.mq5\`. These

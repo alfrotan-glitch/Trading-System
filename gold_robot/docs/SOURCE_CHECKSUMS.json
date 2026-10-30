@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/POST_STOP_FORENSIC_EVIDENCE_2026-10-30.md",
-      "bytes": 6794,
-      "sha256": "4de3db623b42c9d775688ee83cbeff85c9a37a44580d87bead329d2214cb9e4f"
+      "bytes": 7001,
+      "sha256": "47f64c3b7dd6dccb35c021b80281334f77c8e333c3353240002da90964113e6c"
     },
     {
       "path": "docs/PRODUCTION_EVIDENCE_2026-10-29.md",
@@ -317,8 +317,8 @@
     },
     {
       "path": "research/stop_reversal_audit.py",
-      "bytes": 14763,
-      "sha256": "f004cee42135a9654dd31c83f2aec6e09bbf551d0b11f21e006e8439b2874484"
+      "bytes": 15102,
+      "sha256": "ea1ce6ab4a393b02467e879f507f15f52a72928785c89cbfdac85fea397d2f73"
     },
     {
       "path": "research/sweep_diagnostics.py",
