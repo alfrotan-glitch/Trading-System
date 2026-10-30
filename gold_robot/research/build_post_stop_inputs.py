@@ -1,4 +1,4 @@
-"""Build auditable post-SL replay inputs from QTS's actual eight-style MT5 deal ZIP.
+"""Build auditable post-SL replay inputs from QTS native MT5 deal ZIPs.
 
 Read only. No MT5 connection or order API. This creates STOP case files; it
 does NOT claim any post-stop reversal without future broker bid/ask ticks.
@@ -44,16 +44,45 @@ def build(bundle: Path) -> tuple[list[dict], dict]:
     excluded = defaultdict(int)
     with ZipFile(bundle) as z:
         names = set(z.namelist())
-        required = {"comparison.json", "QTS_TRADE_BY_TRADE.json"} | {
-            f"native/QTS_{i}_trades.csv" for i in range(8)
-        }
-        if not required.issubset(names):
-            raise ValueError(f"Missing required full eight-style evidence: {sorted(required - names)}")
+        if not {"comparison.json", "QTS_TRADE_BY_TRADE.json"}.issubset(names):
+            raise ValueError("Missing native comparison or position evidence")
         comparison = json.loads(z.read("comparison.json"))
         forensic = json.loads(z.read("QTS_TRADE_BY_TRADE.json"))
-        if forensic.get("status") != "IMPORTED_FOR_REVIEW" or comparison.get("reports_parsed") != 8:
-            raise ValueError("Incomplete or unverified native MT5 evidence")
-        results = {int(r["style"]): r for r in comparison["results"]}
+        if "OPEN_RESULTS.json" in names:
+            run = json.loads(z.read("OPEN_RESULTS.json"))
+        else:
+            run = {}
+        if run.get("targeted") is True:
+            selected = run.get("selected_styles")
+            if (not isinstance(selected, list) or not selected
+                    or any(type(i) is not int or not 0 <= i <= 9 for i in selected)
+                    or len(selected) != len(set(selected))):
+                raise ValueError("Invalid selected-style native run manifest")
+            if run.get("state") != "SELECTED_TESTS_FINISHED_REVIEW_REQUIRED":
+                raise ValueError("Targeted run did not pass per-style forensic gates")
+            if (len(run.get("results", [])) != len(selected) or
+                    any(r.get("status") != "REPORT_AND_FORENSICS_SAVED"
+                        or r.get("style_id") not in selected for r in run["results"])):
+                raise ValueError("Selected native reports/forensics are incomplete")
+            present = {int(e.get("style")) for e in forensic.get("evidence", [])
+                       if e.get("status") == "IMPORTED" and int(e.get("deals", 0)) > 0}
+            if not set(selected).issubset(present):
+                raise ValueError("Missing original selected-style deal evidence")
+        else:
+            # Backward-compatible full-run evidence. Unselected styles must
+            # never be silently dropped from a complete review.
+            parsed = comparison.get("reports_parsed")
+            if forensic.get("status") != "IMPORTED_FOR_REVIEW" or parsed not in (8, 10):
+                raise ValueError("Incomplete or unverified full-run MT5 evidence")
+            selected = list(range(parsed))
+        required = {f"native/QTS_{i}_trades.csv" for i in selected}
+        if not required.issubset(names):
+            raise ValueError(f"Missing selected native deal files: {sorted(required - names)}")
+        results = {int(r["style"]): r for r in comparison["results"]
+                   if r.get("state", "PARSED") == "PARSED"}
+        if (comparison.get("reports_parsed") != len(selected)
+                or not set(selected).issubset(results)):
+            raise ValueError("Selected reports do not have verified style identity")
         reference = defaultdict(dict)
         for trade in forensic.get("trades", []):
             style = int(trade["style"])
@@ -61,7 +90,7 @@ def build(bundle: Path) -> tuple[list[dict], dict]:
             if ident in reference[style]:
                 raise ValueError("Duplicate position in forensic summary")
             reference[style][ident] = trade
-        for style in range(8):
+        for style in selected:
             blob = z.read(f"native/QTS_{style}_trades.csv")
             rows = list(csv.DictReader(io.StringIO(blob.decode("utf-8-sig")), delimiter=";"))
             if not rows or not set(REQUIRED).issubset(rows[0]):
