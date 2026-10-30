@@ -13,6 +13,8 @@ on:
       - "QTS_FINISH_STOP_TICKS.ps1"
       - "QTS_ONE_CLICK_ROBOT.bat"
       - "QTS_ONE_CLICK_ROBOT.ps1"
+      - "QTS_REVISED_COMPARE.bat"
+      - "QTS_REVISED_COMPARE.ps1"
       - "QTS_FAST_OPTIMIZE.bat"
       - "QTS_FAST_OPTIMIZE.ps1"
       - "QTS_SHARE_RESULTS.bat"
@@ -44,7 +46,7 @@ jobs:
           $stage = Join-Path $env:RUNNER_TEMP 'QTS Gold Customer Kit'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item -LiteralPath 'gold_robot' -Destination $stage -Recurse
-          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1')) {
+          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1')) {
             Copy-Item -LiteralPath $file -Destination $stage
           }
           @'
@@ -90,7 +92,7 @@ jobs:
           Expand-Archive -LiteralPath 'QTS-Gold-Windows-Research-Kit.zip' -DestinationPath $dst -Force
           Push-Location $dst
           try {
-            foreach($file in @('OPEN_FIRST.txt','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1')) {
+            foreach($file in @('OPEN_FIRST.txt','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1')) {
               if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing kit file: $file" }
             }
             python gold_robot/research/update_manifest.py --check
@@ -106,7 +108,7 @@ jobs:
       - name: Parse read-only bounded stop tick helpers on Windows
         shell: pwsh
         run: |
-          foreach($name in @('QTS_PREPARE_STOP_TICKS.ps1', 'QTS_FINISH_STOP_TICKS.ps1', 'QTS_ONE_CLICK_ROBOT.ps1')) {
+          foreach($name in @('QTS_PREPARE_STOP_TICKS.ps1', 'QTS_FINISH_STOP_TICKS.ps1', 'QTS_ONE_CLICK_ROBOT.ps1', 'QTS_REVISED_COMPARE.ps1')) {
             $tokens = $null
             $errors = $null
             $file = (Resolve-Path $name).Path
@@ -118,7 +120,7 @@ jobs:
           }
           python -m pip install --quiet pytest
           if($LASTEXITCODE -ne 0){ throw 'Could not install Python test runner' }
-          python -m pytest -q -o 'addopts=' gold_robot/tests/test_stop_tick_window_export.py gold_robot/tests/test_auto_stop_ticks.py gold_robot/tests/test_stop_failure_paths.py
+          python -m pytest -q -o 'addopts=' gold_robot/tests/test_stop_tick_window_export.py gold_robot/tests/test_auto_stop_ticks.py gold_robot/tests/test_stop_failure_paths.py gold_robot/tests/test_revised_v2_contract.py
           if($LASTEXITCODE -ne 0){ throw 'Stop tick plan unit regression failed' }
           Write-Host 'PASS: bounded 120-minute and automatic one-click broker quote research contracts'
 
