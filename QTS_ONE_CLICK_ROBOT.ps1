@@ -119,8 +119,50 @@ if(Test-Path -LiteralPath $quoteDir){
 }
 if(-not (Test-Path -LiteralPath $audit -PathType Leaf)){throw 'No post-stop quote audit generated.'}
 if(-not (Test-Path -LiteralPath $statusPath -PathType Leaf)){throw 'Missing original broker tick status.'}
+
+# Second-stage failure analysis: replay ENTRY to STOP, not just AFTER STOP.
+# Original post-stop price records are preserved unchanged.
+$prePlan=Join-Path $review 'QTS_PRE_STOP_WINDOWS.csv'
+$preDir=Join-Path $review 'QTS_PRE_STOP_BROKER_TICKS'
+$preStatus=Join-Path $preDir 'export_status.json'
+$failureCsv=Join-Path $review 'QTS_LOSING_STOP_PATHS.csv'
+$failureJson=Join-Path $review 'QTS_LOSING_STOP_SUMMARY.json'
+if(-not (Test-Path -LiteralPath $prePlan -PathType Leaf)){
+    RunPython -exe $python -arguments @((Join-Path $gold 'research\prepare_stop_tick_windows.py'),
+        '--stops',$cases,'--output',$prePlan,'--tag',$tag,'--phase','pre') -purpose 'entry-to-SL quote intervals'
+}
+if(-not (Test-Path -LiteralPath $preDir)){
+    Write-Host 'Analyzing losses before the stop: entry -> maximum TP progress -> SL...'
+    $preArgs=@((Join-Path $gold 'research\auto_stop_ticks.py'),
+        '--plan',$prePlan,'--tag',$tag,'--symbol','XAUUSD@',
+        '--terminal-data',$target,'--output',$preDir)
+    if($bridgeArgs -contains '--terminal-path'){
+        $ix=[array]::IndexOf($bridgeArgs,'--terminal-path')
+        $preArgs+=@('--terminal-path',$bridgeArgs[$ix+1])
+    }
+    & $python @preArgs
+    if(-not (Test-Path -LiteralPath $preStatus -PathType Leaf)){
+        throw 'Entry-to-SL tick export did not save its evidence status.'
+    }
+    $preResult=Get-Content -LiteralPath $preStatus -Raw | ConvertFrom-Json
+    if($preResult.ticks_written -le 0){
+        throw 'No executable pre-stop quotes are available. Never guess entry-to-SL paths.'
+    }
+    if($LASTEXITCODE -ne 0){
+        Write-Warning 'Some pre-stop quotes are missing; incomplete intervals will be UNKNOWN.'
+    }
+}elseif(-not (Test-Path -LiteralPath $preStatus -PathType Leaf)){
+    throw 'An interrupted pre-stop export exists. Original quote files retained for inspection.'
+}
+RunPython -exe $python -arguments @((Join-Path $gold 'research\analyze_stop_failure_paths.py'),
+    '--cases',$cases,'--post',$audit,'--pre-ticks',$preDir,'--out',$review) -purpose 'all stopped-trade failure and pre-SL audit'
+if(-not (Test-Path -LiteralPath $failureJson -PathType Leaf) -or
+   -not (Test-Path -LiteralPath $failureCsv -PathType Leaf)){
+    throw 'Detailed failure report missing; do not claim completed analysis.'
+}
+
 $zip=Join-Path $run.FullName 'QTS_POST_STOP_REVIEW.zip'
-$files=@($audit,$original,$cases,$statusPath)
+$files=@($audit,$original,$cases,$statusPath,$preStatus,$failureJson,$failureCsv)
 foreach($file in $files){if(-not (Test-Path -LiteralPath $file -PathType Leaf)){throw ('Missing review evidence: '+$file)}}
 Compress-Archive -LiteralPath $files -DestinationPath $zip -Force
 $summary=Get-Content -LiteralPath $audit -Raw | ConvertFrom-Json
