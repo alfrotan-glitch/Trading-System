@@ -267,8 +267,8 @@
     },
     {
       "path": "research/ablate_revised_variants.py",
-      "bytes": 6376,
-      "sha256": "bbd5761c03e42f4f3052ff8dd4abb0275596df9b519b4165f7875610057b03e2"
+      "bytes": 8121,
+      "sha256": "a98774bafb398ce094f69edebffd7f7ab8fc7803c3e264afd5e88ad11c44593d"
     },
     {
       "path": "research/alternatives.py",
@@ -522,8 +522,8 @@
     },
     {
       "path": "tests/test_v2_ablation_contract.py",
-      "bytes": 3377,
-      "sha256": "2108cdcfbb93ee67e175dfd21999e05c2b80e4512854d6546af2dd23edb287d1"
+      "bytes": 4303,
+      "sha256": "1e98b333954f7636eb7e1d8da4692c04034a62ed4e650c8bcddd0987bd5d871b"
     },
     {
       "path": "tests/windows_report_smoke.ps1",
