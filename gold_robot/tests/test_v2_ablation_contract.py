@@ -65,7 +65,7 @@ def test_ledger_conflicting_report_is_rejected(tmp_path):
     data = json.loads(report.read_text())
     next(row for row in data["results"] if row["style"] == 7)["net_usd"] = -55.
     report.write_text(json.dumps(data))
-    with pytest.raises(ValueError, match="PnL disagrees"):
+    with pytest.raises(ValueError, match="Native HTML metric mismatch: Total Net Profit"):
         compare_ablation(root)
 
 
