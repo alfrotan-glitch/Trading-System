@@ -442,8 +442,8 @@
     },
     {
       "path": "tests/test_autonomous_learning.py",
-      "bytes": 4699,
-      "sha256": "16e4268746d7866bd5a7a60a2597966bdc27ef5e91d4ee394877df16e248bf49"
+      "bytes": 4765,
+      "sha256": "3ffab962b27e81b201afd00efc0384d3b7d1f82b8d91ccb4ddb3e0edd0eb934d"
     },
     {
       "path": "tests/test_broker_preflight.py",
