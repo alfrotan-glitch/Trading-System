@@ -272,8 +272,8 @@
     },
     {
       "path": "research/ablate_revised_variants.py",
-      "bytes": 8781,
-      "sha256": "6585b100b07dda9108a3adc6fce4395111150513969ae40311c5b029436f07f4"
+      "bytes": 11588,
+      "sha256": "526600767ac22b392b0757db75e16d811a8c43e8e86fdad72b8087f9ceba5cc7"
     },
     {
       "path": "research/alternatives.py",
@@ -302,8 +302,8 @@
     },
     {
       "path": "research/autonomous_learning.py",
-      "bytes": 14397,
-      "sha256": "b0db859fe36bcdfa2a8e6e0ef96ae2468c403d78df6da5bbd57b2ec045785967"
+      "bytes": 16892,
+      "sha256": "8b86cc41b0b2c1df1f44a1e793b453a327e4e6dfb2581839cd29cac9384be040"
     },
     {
       "path": "research/build_post_stop_inputs.py",
@@ -442,8 +442,8 @@
     },
     {
       "path": "tests/test_autonomous_learning.py",
-      "bytes": 4765,
-      "sha256": "3ffab962b27e81b201afd00efc0384d3b7d1f82b8d91ccb4ddb3e0edd0eb934d"
+      "bytes": 8190,
+      "sha256": "32634fc185008ba778720bc9e11ed1d219a50e22dbc7de5cdc09f2805ecb6d28"
     },
     {
       "path": "tests/test_broker_preflight.py",
@@ -482,8 +482,8 @@
     },
     {
       "path": "tests/test_revised_v2_contract.py",
-      "bytes": 4722,
-      "sha256": "2330004f27e4f2950aed69672230b4f8080804bc0998bfa512c83a9ccf54c3bf"
+      "bytes": 5258,
+      "sha256": "cac8e834d872ef59b2643fcb82cd6315e49d61fd6ff2d9ca51af1b04e7268ad8"
     },
     {
       "path": "tests/test_robot.py",
