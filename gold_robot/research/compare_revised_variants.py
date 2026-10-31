@@ -1,13 +1,14 @@
 """Independent native MT5 A/B read-only outcome comparison for QTS Gold V2.
 
-Requires both variants on same untouched out-of-sample dates and real-tick
-broker author reports. Never add style results into hypothetical portfolio PnL.
+Requires both variants on matched historical dates and broker deal reports.
+October 2026 has already been inspected and is EXPLORATORY, not an unseen holdout. Never add style results into hypothetical portfolio PnL.
 Positive backtests do NOT certify a deployable edge.
 """
 from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from paired_variant_diagnostics import paired_diagnostic
 
 STYLES = (1, 3, 7, 8)
 REQUIRED_STATUS = "SELECTED_TESTS_FINISHED_REVIEW_REQUIRED"
@@ -52,11 +53,20 @@ def compare(baseline: Path, combined: Path) -> dict:
     if any(a.get(key) != b.get(key) for key in keys):
         raise ValueError("A/B test inputs, dates or deposit do not match")
     if a.get("from_date") != "2026.10.01" or a.get("to_date") != "2026.10.30":
-        raise ValueError("Out-of-sample October 2026 was not used")
+        raise ValueError("Expected October 2026 exploratory window")
     results = []
     for style in STYLES:
         left, right = old[style], new[style]
+        paired = paired_diagnostic(
+            baseline / "native" / f"QTS_{style}_trades.csv",
+            combined / "native" / f"QTS_{style}_trades.csv",
+            expected_base_trades=int(left["trades"]),
+            expected_revised_trades=int(right["trades"]),
+            expected_base_net=float(left["net_usd"]),
+            expected_revised_net=float(right["net_usd"]),
+        )
         results.append({
+            "native_pair_audit": paired,
             "style": style,
             "baseline": {
                 "trades": int(left["trades"]),
@@ -78,7 +88,7 @@ def compare(baseline: Path, combined: Path) -> dict:
         })
     return {
         "schema": "qts.mt5.preregistered_v2_october_2026.v1",
-        "state": "OOS_COMPARISON_RESEARCH_ONLY",
+        "state": "POST_HOC_EXPLORATORY_COMPARISON_ONLY",
         "symbol": "XAUUSD@",
         "from_date": a["from_date"],
         "to_date": a["to_date"],
@@ -90,10 +100,10 @@ def compare(baseline: Path, combined: Path) -> dict:
         "edge_validated": False,
         "live": "LOCKED",
         "limits": [
-            "October 2026 is an untouched holdout for these rules only if no later tuning used it.",
+            "October 2026 was previously inspected. This is NOT an independent untouched holdout.",
             "The selected four styles were screened in sample; comparison is descriptive.",
             "Same-broker real-tick tester does not substitute for measured real execution costs.",
-            "A single one-month holdout cannot validate persistent expectancy.",
+            "A single one-month exploratory comparison cannot validate persistent expectancy.",
             "Mirrored trades across styles must not be summed as an executable portfolio.",
         ],
     }
@@ -108,7 +118,7 @@ def main() -> int:
     result = compare(x.baseline, x.combined)
     x.output.parent.mkdir(parents=True, exist_ok=True)
     x.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    print("QTS V2 OUT-OF-SAMPLE RESULTS: RESEARCH ONLY / LIVE LOCKED")
+    print("QTS V2 POST-HOC EXPLORATORY RESULTS: RESEARCH ONLY / LIVE LOCKED")
     print("Style | Baseline trades/net/PF/DD | V2 trades/net/PF/DD | Delta net")
     for row in result["strategy_reports"]:
         left, right = row["baseline"], row["combined"]
