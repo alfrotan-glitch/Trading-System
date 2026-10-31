@@ -8,7 +8,11 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
+import html
 import json
+import math
+import re
 from collections import Counter
 from pathlib import Path
 from datetime import date, datetime, timedelta
@@ -64,6 +68,64 @@ def ledger(root: Path, style: int) -> dict:
     }
 
 
+
+def verify_original_report(folder: Path, style: int, row: dict) -> None:
+    """Reconcile reported MT5 metrics against the preserved, hash-matched HTML."""
+    path = folder / "native" / f"QTS_{style}.htm"
+    original = path.read_bytes()
+    checksum = hashlib.sha256(original).hexdigest()
+    if checksum != str(row["sha256"]).lower():
+        raise ValueError(f"Native HTML checksum mismatch: style={style}")
+    if original.startswith((b"\xff\xfe", b"\xfe\xff")):
+        document = original.decode("utf-16")
+    elif b"\x00" in original[:100]:
+        document = original.decode("utf-16-le")
+    else:
+        try:
+            document = original.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            document = original.decode("cp1252")
+    if re.search(r"(?is)<html\b|<!doctype\s+html\b", document) is None:
+        raise ValueError(f"Native HTML report invalid: style={style}")
+    visible = html.unescape(re.sub(r"(?is)<[^>]+>", " ", document))
+    styles = re.findall(r"(?i)\bEntryStyle\s*=\s*([0-9])\b", visible)
+    if not styles or any(int(found) != style for found in styles):
+        raise ValueError(f"Native HTML EntryStyle mismatch: style={style}")
+    fields = ("Total Net Profit", "Profit Factor",
+              "Total Trades", "Equity Drawdown Maximal")
+    found = {}
+    for match in re.finditer(r"(?is)<tr\b[^>]*>(.*?)</tr>", document):
+        cells = [
+            html.unescape(re.sub(r"(?is)<[^>]*>", "", item.group(1))).strip()
+            for item in re.finditer(r"(?is)<td\b[^>]*>(.*?)</td>", match.group(1))
+        ]
+        for index, cell in enumerate(cells[:-1]):
+            label = cell.rstrip(":").strip()
+            if label in fields and label not in found:
+                found[label] = cells[index + 1]
+    if set(found) != set(fields):
+        raise ValueError(f"Native HTML metrics missing: style={style}")
+    def numeric(value: str) -> float:
+        first = value.split("(", 1)[0]
+        cleaned = re.sub(r"[\s,\u00a0\u202f]", "", first)
+        result = float(cleaned)
+        if not math.isfinite(result):
+            raise ValueError("Nonfinite MT5 HTML metric")
+        return result
+    expected = {
+        "Total Net Profit": float(row["net_usd"]),
+        "Profit Factor": float(row["profit_factor"]),
+        "Total Trades": float(row["trades"]),
+        "Equity Drawdown Maximal": float(row["maximal_equity_drawdown"]),
+    }
+    for label, reported in expected.items():
+        observed = numeric(found[label])
+        if not math.isfinite(reported) or abs(observed - reported) > (
+                0 if label == "Total Trades" else 0.021):
+            raise ValueError(f"Native HTML metric mismatch: {label} style={style}")
+
+
+
 def compare_ablation(root: Path) -> dict:
     loaded = {}
     for arm in ARMS:
@@ -93,6 +155,7 @@ def compare_ablation(root: Path) -> dict:
         for arm in ARMS:
             folder, _, parsed = loaded[arm]
             row = parsed[style]
+            verify_original_report(folder, style, row)
             raw = ledger(folder, style)
             if abs(raw["recorded_net_usd"] - float(row["net_usd"])) > 0.02:
                 raise ValueError(f"Broker deal PnL disagrees with native report: {arm} style={style}")
