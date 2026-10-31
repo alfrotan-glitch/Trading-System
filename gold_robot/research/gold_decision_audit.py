@@ -100,7 +100,13 @@ def news_gate(news: dict, now: datetime) -> list[str]:
     if not isinstance(events, list):
         return ["NEWS_EVENTS_NOT_AVAILABLE"]
     for event in events:
-        if event.get("impact") != "high" or event.get("currency") not in ("USD", "GLOBAL"):
+        if not isinstance(event, dict) or any(k not in event for k in ("impact", "currency", "at")):
+            return ["INVALID_NEWS_EVENT"]
+        if event.get("impact") not in ("low", "medium", "high"):
+            return ["UNKNOWN_NEWS_IMPACT"]
+        if event.get("currency") not in ("USD", "GLOBAL", "OTHER"):
+            return ["UNKNOWN_NEWS_CURRENCY"]
+        if event["impact"] != "high" or event["currency"] == "OTHER":
             continue
         try:
             seconds = (now - instant(event.get("at"))).total_seconds()
@@ -229,8 +235,10 @@ def audit(snapshot: dict) -> dict:
                 # Full-lot step, margin and risk cap all restrict position size.
                 limit = min(equity * min(risk_pct, RESEARCH_RISK_CAP_PCT) / 100 / risk_per_lot,
                             free_margin * 0.20 / margin_per_lot, max_lot)
-                units = math.floor((limit + 1e-12) / step)
-                lot = round(units * step, 8)
+                # Broker lot steps are normally measured FROM minimum volume.
+                # E.g. min=0.03, step=0.02 => 0.03, 0.05, 0.07 (not 0.04).
+                units = math.floor((limit - min_lot + 1e-12) / step)
+                lot = round(min_lot + max(0, units) * step, 8) if limit >= min_lot else 0.0
                 if lot < min_lot:
                     reasons.append("MINIMUM_LOT_EXCEEDS_RISK_OR_MARGIN")
                 if not reasons:
