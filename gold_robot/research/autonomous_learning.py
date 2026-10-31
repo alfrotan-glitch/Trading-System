@@ -74,14 +74,15 @@ def read_verified_archive(path: Path) -> dict:
                 rel = member.filename.replace("\\", "/")
                 parts = rel.split("/")
                 if (rel.startswith("/") or ".." in parts or
-                    not (len(parts) == 2 and parts[0] in
-                         tuple(a.lower() for a in ARMS))):
+                    not (len(parts) in (2, 3) and parts[0] in
+                         tuple(a.lower() for a in ARMS)) or
+                    (len(parts) == 3 and parts[1] != "native")):
                     # Top-level comparison JSON and RUN_STATUS.txt are
                     # supplementary, and never treated as authoritative.
                     if rel in ("QTS_V2_ABLATION_COMPARISON.json", "RUN_STATUS.txt"):
                         continue
                     raise ValueError("Unrecognized or unsafe ZIP member")
-                name = parts[1]
+                name = parts[-1]
                 is_native = (name.startswith("QTS_") and
                              name.endswith("_trades.csv") and
                              name[4:-11].isdigit() and
@@ -94,11 +95,12 @@ def read_verified_archive(path: Path) -> dict:
                 if member.file_size > MAX_MEMBER:
                     raise ValueError("Oversized native evidence member")
                 total += member.file_size
-                if total > 35_000_000 or rel in present:
+                canonical = parts[0] + "/" + ("native/" if is_native else "") + name
+                if total > 35_000_000 or canonical in present:
                     raise ValueError("Duplicate or oversized ZIP evidence")
-                present.add(rel)
-                dest = root / parts[0] / name
-                dest.parent.mkdir(exist_ok=True)
+                present.add(canonical)
+                dest = (root / parts[0] / ("native" if is_native else "") / name)
+                dest.parent.mkdir(parents=True, exist_ok=True)
                 data = archive.read(member)
                 if len(data) != member.file_size:
                     raise ValueError("Truncated compressed evidence")
@@ -108,7 +110,7 @@ def read_verified_archive(path: Path) -> dict:
             if f"{low}/OPEN_RESULTS.json" not in present:
                 raise ValueError("Missing arm research manifest")
             for style in STYLES:
-                if f"{low}/QTS_{style}_trades.csv" not in present:
+                if f"{low}/native/QTS_{style}_trades.csv" not in present:
                     raise ValueError("Missing native position ledger")
         result = compare_ablation(root)
     if result["live"] != "LOCKED" or result["edge_validated"] is not False:
@@ -241,7 +243,6 @@ def lessons(receipts: list[dict]) -> dict:
 
 def next_window(today: date, receipts: list[dict], attempts: dict) -> dict | None:
     # First genuinely new month is November 2026. No repeat of October as OOS.
-    last_start = month_after(date(today.year, today.month, 1))  # next month
     completed = date(today.year, today.month, 1)  # this month's first
     earliest = date(2026, 11, 1)
     if completed <= earliest:
