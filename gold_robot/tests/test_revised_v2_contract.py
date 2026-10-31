@@ -1,5 +1,6 @@
 """Preregistered V2 MT5 variants: read-only off-by-default A/B acceptance."""
 from __future__ import annotations
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -29,9 +30,19 @@ def fake_run(root: Path, variant: str, *, profit: float = 1.0) -> None:
             f"{style};{style*10+1};DEAL_ENTRY_IN;DEAL_TYPE_BUY;1791000000000;0.01;4180;4170;4190;DEAL_REASON_EXPERT;0;0;0;0\n"
             f"{style};{style*10+2};DEAL_ENTRY_OUT;DEAL_TYPE_SELL;1791000060000;0.01;4181;4170;4190;DEAL_REASON_TP;{profit};0;0;0\n",
             encoding="utf-8")
+        native_html = (
+            f"<!doctype html><html><body>EntryStyle={style}<table>"
+            f"<tr><td>Total Net Profit</td><td>{profit}</td></tr>"
+            "<tr><td>Profit Factor</td><td>1.1</td></tr>"
+            "<tr><td>Total Trades</td><td>1</td></tr>"
+            "<tr><td>Equity Drawdown Maximal</td><td>15.0</td></tr>"
+            "</table></body></html>"
+        ).encode("utf-8")
+        (root / "native" / f"QTS_{style}.htm").write_bytes(native_html)
         rows.append({
             "style": style, "state": "PARSED", "style_identity": "STYLE_VERIFIED",
-            "sha256": "a"*64, "trades": 1, "net_usd": profit,
+            "sha256": hashlib.sha256(native_html).hexdigest(),
+            "trades": 1, "net_usd": profit,
             "profit_factor": 1.1, "maximal_equity_drawdown": 15.0,
         })
     (root / "QTS_Gold_Comparison_sample.json").write_text(json.dumps({
