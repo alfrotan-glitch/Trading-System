@@ -9,7 +9,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "research"))
-from ablate_revised_variants import compare_ablation
+from ablate_revised_variants import compare_ablation, factorial_interaction
 from test_revised_v2_contract import fake_run
 
 
@@ -19,9 +19,9 @@ def setup_arms(tmp_path):
         for style in (1, 3, 7, 8):
             raw = tmp_path / arm.lower() / "native" / f"QTS_{style}_trades.csv"
             raw.write_text(
-                "position_id;deal_id;entry;volume;gross;commission;swap;fee\n"
-                "4;1;DEAL_ENTRY_IN;0.02;0;0;0;0\n"
-                "4;2;DEAL_ENTRY_OUT;0.02;5;0;0;0\n",
+                "position_id;deal_id;entry;type;time_msc;volume;price;sl;tp;reason;gross;commission;swap;fee\n"
+                "4;1;DEAL_ENTRY_IN;DEAL_TYPE_BUY;1791000000000;0.02;4180;4170;4190;DEAL_REASON_EXPERT;0;0;0;0\n"
+                "4;2;DEAL_ENTRY_OUT;DEAL_TYPE_SELL;1791000060000;0.02;4181;4170;4190;DEAL_REASON_TP;5;0;0;0\n",
                 encoding="utf-8",
             )
         report = next((tmp_path / arm.lower()).glob("QTS_Gold_Comparison_*.json"))
@@ -44,8 +44,20 @@ def test_four_arm_native_ledger_reconciliation_and_cost_scenarios(tmp_path):
         assert set(study["arms"]) == {"BASELINE", "ENTRY_FILTER", "NEAR_TP", "COMBINED"}
         assert study["arms"]["BASELINE"]["recorded_net_usd"] == 5.
         assert study["arms"]["BASELINE"]["entry_lots_sum"] == .02
+        assert study["exact_entry_pair_audit"]["ENTRY_FILTER"]["matched_entries"] == 1
+        assert study["exact_entry_pair_audit"]["NEAR_TP"]["matched_entries"] == 1
+        assert study["exact_entry_pair_audit"]["COMBINED"]["matched_entries"] == 1
+        assert study["entry_exit_interaction_usd"] == 0
+        assert not study["non_additive_entry_exit_interaction"]
+        assert not study["evidence_sufficient_for_automatic_promotion"]
         assert study["arms"]["BASELINE"]["additional_round_turn_cost_10_per_lot_usd"] == 4.8
 
+
+
+def test_non_additive_adaptive_interaction_is_flagged_without_promotion():
+    # Exact PnL values reproduced from the uploaded exploratory 16-arm MT5 study.
+    assert factorial_interaction(-234.48, -234.48, -236.32, -217.85) == 18.47
+    assert factorial_interaction(21.86, 33.90, 21.86, 33.90) == 0.0
 
 def test_ledger_conflicting_report_is_rejected(tmp_path):
     root = setup_arms(tmp_path)
