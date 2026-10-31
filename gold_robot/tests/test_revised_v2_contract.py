@@ -24,11 +24,14 @@ def fake_run(root: Path, variant: str, *, profit: float = 1.0) -> None:
     }), encoding="utf-8")
     rows = []
     for style in (1, 3, 7, 8):
-        (root / "native" / f"QTS_{style}_trades.csv").write_text("broker;deals\n",
-                                                                 encoding="utf-8")
+        (root / "native" / f"QTS_{style}_trades.csv").write_text(
+            "position_id;deal_id;entry;type;time_msc;volume;price;sl;tp;reason;gross;commission;swap;fee\n"
+            f"{style};{style*10+1};DEAL_ENTRY_IN;DEAL_TYPE_BUY;1791000000000;0.01;4180;4170;4190;DEAL_REASON_EXPERT;0;0;0;0\n"
+            f"{style};{style*10+2};DEAL_ENTRY_OUT;DEAL_TYPE_SELL;1791000060000;0.01;4181;4170;4190;DEAL_REASON_TP;{profit};0;0;0\n",
+            encoding="utf-8")
         rows.append({
             "style": style, "state": "PARSED", "style_identity": "STYLE_VERIFIED",
-            "sha256": "a"*64, "trades": 12, "net_usd": profit,
+            "sha256": "a"*64, "trades": 1, "net_usd": profit,
             "profit_factor": 1.1, "maximal_equity_drawdown": 15.0,
         })
     (root / "QTS_Gold_Comparison_sample.json").write_text(json.dumps({
@@ -42,11 +45,11 @@ def test_frozen_october_holdout_uses_same_native_evidence(tmp_path):
     fake_run(baseline, "BASELINE", profit=2.)
     fake_run(combined, "COMBINED", profit=-3.)
     result = compare(baseline, combined)
-    assert result["state"] == "OOS_COMPARISON_RESEARCH_ONLY"
+    assert result["state"] == "POST_HOC_EXPLORATORY_COMPARISON_ONLY"
     assert result["live"] == "LOCKED"
     assert result["edge_validated"] is False
     assert len(result["strategy_reports"]) == 4
-    assert result["strategy_reports"][0]["net_difference_usd"] == -5.
+    assert result["strategy_reports"][0]["net_difference_usd"] == -5.\n    assert result["strategy_reports"][0]["native_pair_audit"]["matched_entries"] == 1\n    assert not result["strategy_reports"][0]["native_pair_audit"]["evidence_sufficient_for_automatic_promotion"]
     assert result["individual_styles_are_not_an_executable_portfolio"]
 
 
