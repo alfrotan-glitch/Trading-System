@@ -19,6 +19,7 @@ from test_revised_v2_contract import fake_run
 
 
 def bundle(root: Path, destination: Path) -> Path:
+    root.mkdir(parents=True, exist_ok=True)
     for arm in ("BASELINE", "ENTRY_FILTER", "NEAR_TP", "COMBINED"):
         fake_run(root / arm.lower(), arm, profit=5.)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -103,4 +104,4 @@ def test_scheduled_windows_runner_keeps_money_locked():
     assert "QTS_AUTONOMOUS_RESEARCH.ps1" in launcher
     assert "order_send" not in runner.lower()
     assert "EnableDemoForwardOrders" not in runner
-    assert "LIVE LOCKED" in native
+    assert "CONNECTED LIVE/DEMO ORDERS LOCKED" in native
