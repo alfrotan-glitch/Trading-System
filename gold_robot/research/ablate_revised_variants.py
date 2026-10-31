@@ -76,28 +76,28 @@ def verify_original_report(folder: Path, style: int, row: dict) -> None:
     checksum = hashlib.sha256(original).hexdigest()
     if checksum != str(row["sha256"]).lower():
         raise ValueError(f"Native HTML checksum mismatch: style={style}")
-    if original.startswith((b"\\xff\\xfe", b"\\xfe\\xff")):
+    if original.startswith((b"\xff\xfe", b"\xfe\xff")):
         document = original.decode("utf-16")
-    elif b"\\x00" in original[:100]:
+    elif b"\x00" in original[:100]:
         document = original.decode("utf-16-le")
     else:
         try:
             document = original.decode("utf-8-sig")
         except UnicodeDecodeError:
             document = original.decode("cp1252")
-    if re.search(r"(?is)<html\\b|<!doctype\\s+html\\b", document) is None:
+    if re.search(r"(?is)<html\b|<!doctype\s+html\b", document) is None:
         raise ValueError(f"Native HTML report invalid: style={style}")
     visible = html.unescape(re.sub(r"(?is)<[^>]+>", " ", document))
-    styles = re.findall(r"(?i)\\bEntryStyle\\s*=\\s*([0-9])\\b", visible)
+    styles = re.findall(r"(?i)\bEntryStyle\s*=\s*([0-9])\b", visible)
     if not styles or any(int(found) != style for found in styles):
         raise ValueError(f"Native HTML EntryStyle mismatch: style={style}")
     fields = ("Total Net Profit", "Profit Factor",
               "Total Trades", "Equity Drawdown Maximal")
     found = {}
-    for match in re.finditer(r"(?is)<tr\\b[^>]*>(.*?)</tr>", document):
+    for match in re.finditer(r"(?is)<tr\b[^>]*>(.*?)</tr>", document):
         cells = [
             html.unescape(re.sub(r"(?is)<[^>]*>", "", item.group(1))).strip()
-            for item in re.finditer(r"(?is)<td\\b[^>]*>(.*?)</td>", match.group(1))
+            for item in re.finditer(r"(?is)<td\b[^>]*>(.*?)</td>", match.group(1))
         ]
         for index, cell in enumerate(cells[:-1]):
             label = cell.rstrip(":").strip()
@@ -107,7 +107,7 @@ def verify_original_report(folder: Path, style: int, row: dict) -> None:
         raise ValueError(f"Native HTML metrics missing: style={style}")
     def numeric(value: str) -> float:
         first = value.split("(", 1)[0]
-        cleaned = re.sub(r"[\\s,\\u00a0\\u202f]", "", first)
+        cleaned = re.sub(r"[\s,\u00a0\u202f]", "", first)
         result = float(cleaned)
         if not math.isfinite(result):
             raise ValueError("Nonfinite MT5 HTML metric")
