@@ -86,6 +86,11 @@
       "sha256": "3e42c4619b5af705e42021a2344eb06f0e3a205e3db86ae7eb0e1f519ca77bf9"
     },
     {
+      "path": "docs/GOLD_DECISION_AUDIT.md",
+      "bytes": 6048,
+      "sha256": "54e1148ed6610207fcd999b221be5b478d6cdda059a68bdd5fa389aaf7180359"
+    },
+    {
       "path": "docs/IMPORT_AUDIT.md",
       "bytes": 3746,
       "sha256": "c998cdb0399554591103399e9dd16242ec0ee7fb285c18ab551aad77ae8dc54a"
@@ -336,6 +341,11 @@
       "sha256": "79a21b7e8678d246f5dd64d55f42e22f973877c7a71f22e0b73bb42caa79cc52"
     },
     {
+      "path": "research/gold_decision_audit.py",
+      "bytes": 13281,
+      "sha256": "17fc5fdc6fba30cf7aeaa2142c3362fcd34835591f0d1699698b5edb6a6055a7"
+    },
+    {
       "path": "research/native_trade_diagnostics.py",
       "bytes": 4845,
       "sha256": "49c436f4ed9c6af6bba8596377be55e29676314d00b84707632aaaf8b5463143"
@@ -459,6 +469,11 @@
       "path": "tests/test_evaluate_ledger.py",
       "bytes": 7984,
       "sha256": "c004b3ace31fedd876c9545db2648fd76841fbced6b830683bfe000208f693ca"
+    },
+    {
+      "path": "tests/test_gold_decision_audit.py",
+      "bytes": 6570,
+      "sha256": "fa5db21690cc23abd895239b05e519f991221823614fe07af92b970cb0ea664a"
     },
     {
       "path": "tests/test_log_audit.py",
