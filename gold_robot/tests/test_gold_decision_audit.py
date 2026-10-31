@@ -164,6 +164,23 @@ def test_invalid_missing_market_evidence_rejects_instead_of_crashing():
     assert "REQUIRED_MARKET_OR_BROKER_DATA_INVALID" in str(result["candidate_audit"][0]["reasons"])
 
 
+def test_news_calendar_malformed_rows_fail_closed():
+    s = snapshot()
+    s["news"]["events"] = [None]
+    assert "INVALID_NEWS_EVENT" in audit(s)["candidate_audit"][0]["reasons"]
+    s["news"]["events"] = [{"impact": "mystery", "currency": "USD", "at": s["as_of"]}]
+    assert "UNKNOWN_NEWS_IMPACT" in audit(s)["candidate_audit"][0]["reasons"]
+
+
+def test_broker_volume_steps_start_at_min_lot_not_zero():
+    s = snapshot()
+    s["broker"]["min_lot"] = 0.03
+    s["broker"]["lot_step"] = 0.02
+    result = audit(s)
+    assert result["candidate_audit"][0]["status"] == "RESEARCH_ELIGIBLE"
+    assert result["candidate_audit"][0]["lot_research_only"] == 0.09
+
+
 def test_no_order_sender_or_live_unlock_in_module():
     script = (ROOT / "research" / "gold_decision_audit.py").read_text("utf-8")
     assert "order_send(" not in script
