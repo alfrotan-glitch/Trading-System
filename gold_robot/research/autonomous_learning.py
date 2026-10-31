@@ -130,7 +130,7 @@ def read_verified_archive(path: Path) -> dict:
 def make_receipt(digest: str, result: dict) -> dict:
     """Derive every learned metric solely from validated native evidence."""
     receipt = {
-        "schema": SCHEMA, "sha256": digest, "source_name": path.name,
+        "schema": SCHEMA, "sha256": digest, "source_name": "QTS_V2_ABLATION_EVIDENCE.zip",
         "period_start": result["from_date"],
         "period_end": result["to_date"],
         "status": result["status"], "live": "LOCKED",
