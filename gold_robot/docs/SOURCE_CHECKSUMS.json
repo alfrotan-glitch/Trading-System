@@ -467,8 +467,8 @@
     },
     {
       "path": "tests/test_revised_v2_contract.py",
-      "bytes": 4724,
-      "sha256": "9d4e62d74d2a7f751acec0ab9946032e43fb94cfb711cf9f67b379319e81420d"
+      "bytes": 4722,
+      "sha256": "2330004f27e4f2950aed69672230b4f8080804bc0998bfa512c83a9ccf54c3bf"
     },
     {
       "path": "tests/test_robot.py",
