@@ -11,6 +11,7 @@ import csv
 import json
 from collections import Counter
 from pathlib import Path
+from datetime import date, datetime, timedelta
 
 from compare_revised_variants import load_run
 from paired_variant_diagnostics import paired_diagnostic
@@ -73,8 +74,19 @@ def compare_ablation(root: Path) -> dict:
     base = loaded["BASELINE"][1]
     if any(loaded[arm][1].get(key) != base.get(key) for arm in ARMS for key in keys):
         raise ValueError("Native four-arm strategy tester settings do not match")
-    if base.get("from_date") != "2026.10.01" or base.get("to_date") != "2026.10.30":
-        raise ValueError("Expected exact October 2026 exploratory test interval")
+    try:
+        start = datetime.strptime(base["from_date"], "%Y.%m.%d").date()
+        end = datetime.strptime(base["to_date"], "%Y.%m.%d").date()
+    except (KeyError, ValueError) as exc:
+        raise ValueError("Malformed native test interval") from exc
+    legacy_october = (start == date(2026, 10, 1) and end == date(2026, 10, 30))
+    future_calendar_month = (
+        start >= date(2026, 11, 1) and start.day == 1 and
+        end == (date(start.year + 1, 1, 1) if start.month == 12
+                else date(start.year, start.month + 1, 1))
+    )
+    if not (legacy_october or future_calendar_month):
+        raise ValueError("Ablation only accepts original October study or complete future calendar months")
     studies = []
     for style in STYLES:
         arms = {}
@@ -133,7 +145,7 @@ def compare_ablation(root: Path) -> dict:
         })
     return {
         "schema": "qts.mt5.v2.four_arm_exploratory_ablation.v2",
-        "status": "RESEARCH_ONLY_POST_HOC_OCTOBER",
+        "status": "RESEARCH_ONLY_POST_HOC_OCTOBER" if legacy_october else "RESEARCH_ONLY_NEW_MONTH_NO_TRADE_APPROVAL",
         "from_date": base["from_date"], "to_date": base["to_date"],
         "arms": {
             "BASELINE": ["EntryQualityV2=off", "ProtectNearTPV2=off"],
@@ -146,7 +158,7 @@ def compare_ablation(root: Path) -> dict:
         "live": "LOCKED",
         "edge_validated": False,
         "warnings": [
-            "October results were already reviewed, so this is a mechanistic exploratory ablation and NOT a fresh independent holdout.",
+            "Historical replay or repeated inspection cannot establish independent future performance. October 2026 was previously inspected.",
             "Interaction and differences in executed entries must be investigated before claiming one filter caused an improvement.",
             "A one-month outcome or selected style cannot certify repeatable positive expectancy.",
             "No strategy is automatically promoted or enabled on connected broker accounts.",
@@ -164,7 +176,7 @@ def main() -> int:
     data = compare_ablation(args.root)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    print("QTS GOLD FOUR ARM ABLATION - OCTOBER DATA ALREADY SEEN / LIVE LOCKED")
+    print("QTS GOLD FOUR ARM ABLATION - RESEARCH ONLY / LIVE LOCKED")
     for s in data["studies"]:
         print(f"Style {s['style']}: " + ", ".join(
             f"{arm}={s['arms'][arm]['recorded_net_usd']:+.2f}"
