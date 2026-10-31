@@ -49,7 +49,9 @@ def test_frozen_october_holdout_uses_same_native_evidence(tmp_path):
     assert result["live"] == "LOCKED"
     assert result["edge_validated"] is False
     assert len(result["strategy_reports"]) == 4
-    assert result["strategy_reports"][0]["net_difference_usd"] == -5.\n    assert result["strategy_reports"][0]["native_pair_audit"]["matched_entries"] == 1\n    assert not result["strategy_reports"][0]["native_pair_audit"]["evidence_sufficient_for_automatic_promotion"]
+    assert result["strategy_reports"][0]["net_difference_usd"] == -5.
+    assert result["strategy_reports"][0]["native_pair_audit"]["matched_entries"] == 1
+    assert not result["strategy_reports"][0]["native_pair_audit"]["evidence_sufficient_for_automatic_promotion"]
     assert result["individual_styles_are_not_an_executable_portfolio"]
 
 
