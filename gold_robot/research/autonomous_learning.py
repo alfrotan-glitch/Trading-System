@@ -316,14 +316,16 @@ def cycle(evidence_root: Path, store: Path, today: date) -> dict:
     receipts, issues = ingest(evidence_root, store)
     attempts_path = store / "attempts.json"
     attempts = json.loads(attempts_path.read_text(encoding="utf-8")) if attempts_path.exists() else {}
+    integrity_blocked = any(issue["parent"] == "journal" for issue in issues)
     info = {
-        "schema": SCHEMA, "state": "AUTONOMOUS_RESEARCH_READY",
+        "schema": SCHEMA,
+        "state": "JOURNAL_INTEGRITY_BLOCKED" if integrity_blocked else "AUTONOMOUS_RESEARCH_READY",
         "live": "LOCKED", "edge_validated": False,
         "orders_sent": 0, "auto_modify_ea": False,
         "independent_broker_costs_verified": False,
         "evidence_receipts": len(receipts), "rejected_evidence": issues,
         "lessons": lessons(receipts),
-        "next_monthly_test": next_window(today, receipts, attempts),
+        "next_monthly_test": None if integrity_blocked else next_window(today, receipts, attempts),
         "warning": "Monthly MT5 tests on the owner's Windows PC only; no automatic trade authorization or code rewriting.",
     }
     safe_save(store / "QTS_AUTONOMOUS_STATUS.json", info)
