@@ -81,6 +81,7 @@ foreach($arm in @('baseline','entry_filter','near_tp','combined')){
               Select-Object -ExpandProperty FullName)
     foreach($style in @(1,3,7,8)){
         $files+=,(Join-Path $source ('native\QTS_'+$style+'_trades.csv'))
+        $files+=,(Join-Path $source ('native\QTS_'+$style+'.htm'))
     }
     foreach($file in $files){
         if(-not (Test-Path -LiteralPath $file -PathType Leaf)){
