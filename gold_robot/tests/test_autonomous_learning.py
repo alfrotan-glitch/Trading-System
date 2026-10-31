@@ -91,6 +91,81 @@ def test_invalid_zip_does_not_leak_into_lessons(tmp_path):
     assert result["lessons"]["unique_periods"] == 0
 
 
+
+def test_oldest_missed_completed_month_is_recovered():
+    period = next_window(date(2027, 3, 1), [], {})
+    assert period["from_date"] == "2026.11.01"
+    completed = [{"period_start": "2026.11.01", "period_end": "2026.12.01"}]
+    assert next_window(date(2027, 3, 1), completed, {})["from_date"] == "2026.12.01"
+    assert next_window(date(2027, 3, 1), [], {"2026.11.01": 2})["from_date"] == "2026.12.01"
+
+
+def test_tampered_receipt_cannot_contribute_to_lessons(tmp_path):
+    bundle(tmp_path / "native", tmp_path / "evidence" / "a" /
+           "QTS_V2_ABLATION_EVIDENCE.zip")
+    state = tmp_path / "journal"
+    first = cycle(tmp_path / "evidence", state, date(2026, 12, 1))
+    assert first["lessons"]["unique_periods"] == 1
+    receipt = next((state / "evidence").glob("*.json"))
+    changed = json.loads(receipt.read_text("utf-8"))
+    changed["studies"][0]["arms"]["BASELINE"]["net_usd"] = 999999
+    receipt.write_text(json.dumps(changed), encoding="utf-8")
+    result = cycle(tmp_path / "evidence", state, date(2026, 12, 1))
+    assert result["lessons"]["unique_periods"] == 0
+    assert result["rejected_evidence"]
+    assert any("Untrusted stored receipt" in issue["error"]
+               for issue in result["rejected_evidence"])
+
+
+def test_modified_preserved_archive_is_not_trusted(tmp_path):
+    bundle(tmp_path / "native", tmp_path / "evidence" / "a" /
+           "QTS_V2_ABLATION_EVIDENCE.zip")
+    state = tmp_path / "journal"
+    cycle(tmp_path / "evidence", state, date(2026, 12, 1))
+    archived = next((state / "archives").glob("*.zip"))
+    with archived.open("ab") as stream:
+        stream.write(b"tamper")
+    result = cycle(tmp_path / "evidence", state, date(2026, 12, 1))
+    assert result["lessons"]["unique_periods"] == 0
+    assert result["rejected_evidence"]
+
+
+def test_original_html_missing_or_modified_is_rejected(tmp_path):
+    source = bundle(tmp_path / "native", tmp_path / "evidence" / "a" /
+                    "QTS_V2_ABLATION_EVIDENCE.zip")
+    rewritten = source.with_name("modified.zip")
+    with zipfile.ZipFile(source) as original, zipfile.ZipFile(rewritten, "w") as dest:
+        for name in original.namelist():
+            if name == "baseline/native/QTS_1.htm":
+                continue
+            dest.writestr(name, original.read(name))
+    with pytest.raises(ValueError, match="original MT5 HTML"):
+        read_verified_archive(rewritten)
+
+    with zipfile.ZipFile(source) as original, zipfile.ZipFile(rewritten, "w") as dest:
+        for name in original.namelist():
+            data = original.read(name)
+            if name == "baseline/native/QTS_1.htm":
+                data += b"<!-- modified after report generation -->"
+            dest.writestr(name, data)
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        read_verified_archive(rewritten)
+
+
+def test_archive_discovery_does_not_ignore_item_301(tmp_path):
+    evidence = tmp_path / "evidence"
+    for index in range(300):
+        path = evidence / f"{index:03}" / "QTS_V2_ABLATION_EVIDENCE.zip"
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"invalid ZIP")
+    bundle(tmp_path / "native", evidence / "zzz" /
+           "QTS_V2_ABLATION_EVIDENCE.zip")
+    result = cycle(evidence, tmp_path / "journal", date(2026, 12, 1))
+    assert result["evidence_receipts"] == 1
+    assert result["lessons"]["unique_periods"] == 1
+    assert len(result["rejected_evidence"]) == 300
+
+
 def test_scheduled_windows_runner_keeps_money_locked():
     runner = (ROOT.parent / "QTS_AUTONOMOUS_RESEARCH.ps1").read_text("utf-8")
     launcher = (ROOT.parent / "QTS_AUTONOMOUS_RESEARCH.bat").read_text("utf-8")
