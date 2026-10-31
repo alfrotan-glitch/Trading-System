@@ -3,7 +3,7 @@
 # No connected orders, historical source overwrites, or live authorization.
 [CmdletBinding()]
 param([string]$FromDate='2026.10.01', [string]$ToDate='2026.10.30',
-      [string]$OutputDirectory='')
+      [string]$OutputDirectory='', [switch]$NoOpen)
 $ErrorActionPreference='Stop'
 $repo=Split-Path -Parent $PSCommandPath
 $gold=Join-Path $repo 'gold_robot'
@@ -93,4 +93,4 @@ Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $bundle -Force
 Write-Host ('DONE: '+$report)
 Write-Host ('SEND THE ZIP FOR REVIEW: '+$bundle)
 Write-Host 'NO LIVE APPROVAL. Every monthly window requires independent review.'
-Start-Process -FilePath explorer.exe -ArgumentList ('/select,"'+$bundle+'"') | Out-Null
+if(-not $NoOpen){Start-Process -FilePath explorer.exe -ArgumentList ('/select,"'+$bundle+'"') | Out-Null}
