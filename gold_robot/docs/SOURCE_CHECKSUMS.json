@@ -342,8 +342,8 @@
     },
     {
       "path": "research/gold_decision_audit.py",
-      "bytes": 13281,
-      "sha256": "17fc5fdc6fba30cf7aeaa2142c3362fcd34835591f0d1699698b5edb6a6055a7"
+      "bytes": 13833,
+      "sha256": "8df12283f87f0564dc0b96b943234a6ca18d88f287153c713b81d0ed6efd4079"
     },
     {
       "path": "research/native_trade_diagnostics.py",
@@ -472,8 +472,8 @@
     },
     {
       "path": "tests/test_gold_decision_audit.py",
-      "bytes": 6570,
-      "sha256": "fa5db21690cc23abd895239b05e519f991221823614fe07af92b970cb0ea664a"
+      "bytes": 7231,
+      "sha256": "485e9689643abd8553047ca1b142d321e3e98d8ca500337173f509b6dcf3ef8b"
     },
     {
       "path": "tests/test_log_audit.py",
