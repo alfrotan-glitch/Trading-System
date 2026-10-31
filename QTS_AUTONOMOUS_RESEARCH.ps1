@@ -39,6 +39,9 @@ function InvokeCycle {
         if($status.live -ne 'LOCKED' -or $status.edge_validated -ne $false) {
             throw 'Unexpected research authority; no tester launched.'
         }
+        if($status.state -eq 'JOURNAL_INTEGRITY_BLOCKED') {
+            throw 'Research journal integrity failed. Inspect rejected_evidence; no automatic tester may run.'
+        }
         $window=$status.next_monthly_test
         if($null -eq $window) {
             Write-Host 'No new completed, untested monthly window. Evidence lessons are up to date.'
