@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import tempfile
 import zipfile
 from collections import defaultdict
@@ -83,10 +84,14 @@ def read_verified_archive(path: Path) -> dict:
                         continue
                     raise ValueError("Unrecognized or unsafe ZIP member")
                 name = parts[-1]
-                is_native = (name.startswith("QTS_") and
-                             name.endswith("_trades.csv") and
-                             name[4:-11].isdigit() and
-                             int(name[4:-11]) in STYLES)
+                is_native = (
+                    name.startswith("QTS_") and (
+                        (name.endswith("_trades.csv") and
+                         name[4:-11].isdigit() and int(name[4:-11]) in STYLES) or
+                        (name.endswith(".htm") and
+                         name[4:-4].isdigit() and int(name[4:-4]) in STYLES)
+                    )
+                )
                 is_summary = (name == "OPEN_RESULTS.json" or
                               re.fullmatch(r"QTS_Gold_Comparison_[\w-]+\.json", name))
                 is_detail = name == "QTS_TRADE_BY_TRADE.json"
@@ -112,6 +117,8 @@ def read_verified_archive(path: Path) -> dict:
             for style in STYLES:
                 if f"{low}/native/QTS_{style}_trades.csv" not in present:
                     raise ValueError("Missing native position ledger")
+                if f"{low}/native/QTS_{style}.htm" not in present:
+                    raise ValueError("Missing original MT5 HTML report")
         result = compare_ablation(root)
     if result["live"] != "LOCKED" or result["edge_validated"] is not False:
         raise ValueError("Unsafe or unsupported reported trade authority")
@@ -120,59 +127,108 @@ def read_verified_archive(path: Path) -> dict:
     return result
 
 
-def read_receipts(store: Path) -> list[dict]:
-    reports = []
+def make_receipt(digest: str, result: dict) -> dict:
+    """Derive every learned metric solely from validated native evidence."""
+    receipt = {
+        "schema": SCHEMA, "sha256": digest, "source_name": path.name,
+        "period_start": result["from_date"],
+        "period_end": result["to_date"],
+        "status": result["status"], "live": "LOCKED",
+        "trading_authority": False,
+        "studies": [{
+            "style": s["style"],
+            "arms": {arm: {
+                "net_usd": s["arms"][arm]["recorded_net_usd"],
+                "positions": s["arms"][arm]["positions"],
+                "lots": s["arms"][arm]["entry_lots_sum"],
+                "cost_stress_10": s["arms"][arm]["additional_round_turn_cost_10_per_lot_usd"],
+                "drawdown_usd": s["arms"][arm]["max_equity_drawdown_usd"],
+            } for arm in ARMS},
+            "interaction_usd": s["entry_exit_interaction_usd"],
+            "paired": {arm: {
+                "matched": s["exact_entry_pair_audit"][arm]["matched_entries"],
+                "baseline_only": s["exact_entry_pair_audit"][arm]["baseline_only_entries"],
+                "variant_only": s["exact_entry_pair_audit"][arm]["revised_only_entries"],
+            } for arm in ARMS[1:]},
+        } for s in result["studies"]],
+    }
+    return receipt
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def preserve_archive(source: Path, target: Path, digest: str) -> None:
+    """Keep an independent, content-addressed source for every receipt."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        if sha256_file(target) != digest:
+            raise ValueError("Stored original evidence checksum mismatch")
+        return
+    with tempfile.NamedTemporaryFile(dir=target.parent, suffix=".tmp", delete=False) as stream:
+        temporary = Path(stream.name)
+        try:
+            with source.open("rb") as original:
+                shutil.copyfileobj(original, stream)
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
+    try:
+        if sha256_file(temporary) != digest:
+            raise ValueError("Evidence changed while being archived")
+        os.replace(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def read_receipts(store: Path) -> tuple[list[dict], list[dict]]:
+    """Fail closed for any modified or unbacked receipt; never trust JSON alone."""
+    reports, problems = [], []
     for path in sorted((store / "evidence").glob("*.json")):
         try:
             result = json.loads(path.read_text(encoding="utf-8"))
-            if result.get("schema") != SCHEMA or not result.get("sha256"):
-                raise ValueError("Invalid receipt schema")
+            digest = result.get("sha256")
+            if (result.get("schema") != SCHEMA or
+                not isinstance(digest, str) or
+                re.fullmatch(r"[0-9a-f]{64}", digest) is None or
+                path.name != digest + ".json"):
+                raise ValueError("Invalid content-addressed receipt")
+            original = store / "archives" / (digest + ".zip")
+            if not original.is_file() or sha256_file(original) != digest:
+                raise ValueError("Original ZIP missing or checksum mismatch")
+            rebuilt = make_receipt(digest, read_verified_archive(original))
+            if result != rebuilt:
+                raise ValueError("Receipt does not match independently rederived native data")
             reports.append(result)
-        except (ValueError, KeyError) as exc:
-            raise ValueError(f"Malformed immutable research receipt: {path}") from exc
-    return reports
+        except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile) as exc:
+            problems.append({"filename": path.name, "parent": "journal",
+                             "error": ("Untrusted stored receipt: " + str(exc))[:250]})
+    return reports, problems
 
 
 def ingest(evidence_root: Path, store: Path) -> tuple[list[dict], list[dict]]:
-    # The newest and the oldest archive both matter. Do not cherry-pick winners.
-    receipts = read_receipts(store)
+    receipts, issues = read_receipts(store)
     existing = {r["sha256"] for r in receipts}
-    issues = []
-    paths = sorted(evidence_root.glob("**/QTS_V2_ABLATION_EVIDENCE.zip"))
-    for path in paths[:300]:
-        digest = hashlib.sha256(path.read_bytes()).hexdigest() if (
-            path.stat().st_size <= MAX_ARCHIVE) else "OVERSIZED"
-        if digest in existing:
-            continue
+    # Never truncate discovery: old/new periods are not cherry-picked.
+    for path in sorted(evidence_root.glob("**/QTS_V2_ABLATION_EVIDENCE.zip")):
         try:
+            if path.stat().st_size > MAX_ARCHIVE:
+                raise ValueError("Oversized evidence archive")
+            digest = sha256_file(path)
+            if digest in existing:
+                continue
+            destination = store / "evidence" / (digest + ".json")
+            if destination.exists():
+                raise ValueError("Existing receipt is untrusted; inspect or quarantine it first")
             result = read_verified_archive(path)
-            receipt = {
-                "schema": SCHEMA, "sha256": digest, "source_name": path.name,
-                "period_start": result["from_date"],
-                "period_end": result["to_date"],
-                "status": result["status"], "live": "LOCKED",
-                "trading_authority": False,
-                "studies": [{
-                    "style": s["style"],
-                    "arms": {arm: {
-                        "net_usd": s["arms"][arm]["recorded_net_usd"],
-                        "positions": s["arms"][arm]["positions"],
-                        "lots": s["arms"][arm]["entry_lots_sum"],
-                        "cost_stress_10": s["arms"][arm]["additional_round_turn_cost_10_per_lot_usd"],
-                        "drawdown_usd": s["arms"][arm]["max_equity_drawdown_usd"],
-                    } for arm in ARMS},
-                    "interaction_usd": s["entry_exit_interaction_usd"],
-                    "paired": {arm: {
-                        "matched": s["exact_entry_pair_audit"][arm]["matched_entries"],
-                        "baseline_only": s["exact_entry_pair_audit"][arm]["baseline_only_entries"],
-                        "variant_only": s["exact_entry_pair_audit"][arm]["revised_only_entries"],
-                    } for arm in ARMS[1:]},
-                } for s in result["studies"]],
-            }
-            dest = store / "evidence" / (digest + ".json")
-            if dest.exists():
-                raise ValueError("Collision in content-addressed receipt")
-            safe_save(dest, receipt)
+            receipt = make_receipt(digest, result)
+            preserve_archive(path, store / "archives" / (digest + ".zip"), digest)
+            safe_save(destination, receipt)
             receipts.append(receipt)
             existing.add(digest)
         except (OSError, ValueError, zipfile.BadZipFile,
@@ -242,21 +298,18 @@ def lessons(receipts: list[dict]) -> dict:
 
 
 def next_window(today: date, receipts: list[dict], attempts: dict) -> dict | None:
-    # First genuinely new month is November 2026. No repeat of October as OOS.
-    completed = date(today.year, today.month, 1)  # this month's first
-    earliest = date(2026, 11, 1)
-    if completed <= earliest:
-        return None
-    start = date(completed.year - (completed.month == 1),
-                 12 if completed.month == 1 else completed.month - 1, 1)
-    if start < earliest:
-        return None
-    a, b = start.strftime("%Y.%m.%d"), completed.strftime("%Y.%m.%d")
-    if any(r["period_start"] == a and r["period_end"] == b for r in receipts):
-        return None
-    if attempts.get(a, 0) >= 2:
-        return None
-    return {"from_date": a, "to_date": b, "attempts_so_far": attempts.get(a, 0)}
+    """Oldest missing completed calendar month first; no retroactive holdout claims."""
+    completed = date(today.year, today.month, 1)
+    start = date(2026, 11, 1)
+    recorded = {(r["period_start"], r["period_end"]) for r in receipts}
+    while start < completed:
+        end = month_after(start)
+        a, b = start.strftime("%Y.%m.%d"), end.strftime("%Y.%m.%d")
+        if (a, b) not in recorded and attempts.get(a, 0) < 2:
+            return {"from_date": a, "to_date": b,
+                    "attempts_so_far": attempts.get(a, 0)}
+        start = end
+    return None
 
 
 def cycle(evidence_root: Path, store: Path, today: date) -> dict:
