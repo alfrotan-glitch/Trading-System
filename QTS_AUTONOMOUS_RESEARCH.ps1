@@ -57,7 +57,7 @@ function InvokeCycle {
         $name='autopilot_'+($window.from_date -replace '\.','')+'_'+(Get-Date -Format 'yyyyMMdd_HHmmss')
         $destination=Join-Path $evidence $name
         Write-Host ('Native future-month four-arm study: '+$window.from_date+' to '+$window.to_date)
-        & $ablation -FromDate $window.from_date -ToDate $window.to_date -OutputDirectory $destination
+        & $ablation -FromDate $window.from_date -ToDate $window.to_date -OutputDirectory $destination -NoOpen
         if($LASTEXITCODE -ne 0) {throw 'Native MT5 ablation failed.'}
         $zip=Join-Path $destination 'QTS_V2_ABLATION_EVIDENCE.zip'
         if(-not (Test-Path -LiteralPath $zip -PathType Leaf)) {
