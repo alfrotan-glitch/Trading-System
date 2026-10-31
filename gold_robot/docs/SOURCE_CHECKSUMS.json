@@ -52,8 +52,8 @@
     },
     {
       "path": "docs/AUTONOMOUS_RESEARCH.md",
-      "bytes": 4086,
-      "sha256": "7a5dc769af058e1afbcc0a3d9714822861bc852e94dafcb300676cde6ea5ca5f"
+      "bytes": 5702,
+      "sha256": "aada320d81c1852d4c41ca770bbb9c6400a3ab47b5b43e86210bc84b321dc1ef"
     },
     {
       "path": "docs/DEMO_FORWARD_OPERATIONS.md",
@@ -442,8 +442,8 @@
     },
     {
       "path": "tests/test_autonomous_learning.py",
-      "bytes": 8190,
-      "sha256": "32634fc185008ba778720bc9e11ed1d219a50e22dbc7de5cdc09f2805ecb6d28"
+      "bytes": 8239,
+      "sha256": "a443a9bd14cef80ce86ce2a51d7051a9815b0c3a585fdcb0bf3f91d4d7364b82"
     },
     {
       "path": "tests/test_broker_preflight.py",
@@ -537,8 +537,8 @@
     },
     {
       "path": "tests/test_v2_ablation_contract.py",
-      "bytes": 4303,
-      "sha256": "1e98b333954f7636eb7e1d8da4692c04034a62ed4e650c8bcddd0987bd5d871b"
+      "bytes": 4335,
+      "sha256": "b0d2487ff188cb287a56bbb9c8fe8c0cf4243a4c6c25ae7d6601de4877c098d4"
     },
     {
       "path": "tests/windows_report_smoke.ps1",
