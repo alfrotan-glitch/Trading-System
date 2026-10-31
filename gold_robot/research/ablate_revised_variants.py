@@ -13,9 +13,16 @@ from collections import Counter
 from pathlib import Path
 
 from compare_revised_variants import load_run
+from paired_variant_diagnostics import paired_diagnostic
 
 ARMS = ("BASELINE", "ENTRY_FILTER", "NEAR_TP", "COMBINED")
 STYLES = (1, 3, 7, 8)
+
+
+def factorial_interaction(baseline: float, entry_only: float,
+                          exit_only: float, combined: float) -> float:
+    """Non-additive A/B interaction; not a causal estimate of live PnL."""
+    return round(combined - entry_only - exit_only + baseline, 2)
 
 
 def ledger(root: Path, style: int) -> dict:
@@ -89,8 +96,31 @@ def compare_ablation(root: Path) -> dict:
                     raw["recorded_net_usd"] / raw["positions"], 4)
                 if raw["positions"] else None,
             }
+        # Do not describe a net difference as an entry/exit improvement until
+        # executed broker entries are aligned. Different fills/order sequence
+        # explain changes that naive PnL subtraction cannot attribute.
+        paired = {}
+        for variant in ARMS[1:]:
+            paired[variant] = paired_diagnostic(
+                loaded["BASELINE"][0] / "native" / f"QTS_{style}_trades.csv",
+                loaded[variant][0] / "native" / f"QTS_{style}_trades.csv",
+                expected_base_trades=arms["BASELINE"]["positions"],
+                expected_revised_trades=arms[variant]["positions"],
+                expected_base_net=arms["BASELINE"]["recorded_net_usd"],
+                expected_revised_net=arms[variant]["recorded_net_usd"],
+            )
+        interaction = factorial_interaction(
+            arms["BASELINE"]["recorded_net_usd"],
+            arms["ENTRY_FILTER"]["recorded_net_usd"],
+            arms["NEAR_TP"]["recorded_net_usd"],
+            arms["COMBINED"]["recorded_net_usd"],
+        )
         studies.append({
             "style": style, "arms": arms,
+            "exact_entry_pair_audit": paired,
+            "entry_exit_interaction_usd": interaction,
+            "non_additive_entry_exit_interaction": abs(interaction) >= 0.01,
+            "evidence_sufficient_for_automatic_promotion": False,
             "delta_entry_filter_usd": round(
                 arms["ENTRY_FILTER"]["recorded_net_usd"] -
                 arms["BASELINE"]["recorded_net_usd"], 2),
@@ -102,7 +132,7 @@ def compare_ablation(root: Path) -> dict:
                 arms["BASELINE"]["recorded_net_usd"], 2),
         })
     return {
-        "schema": "qts.mt5.v2.four_arm_exploratory_ablation.v1",
+        "schema": "qts.mt5.v2.four_arm_exploratory_ablation.v2",
         "status": "RESEARCH_ONLY_POST_HOC_OCTOBER",
         "from_date": base["from_date"], "to_date": base["to_date"],
         "arms": {
@@ -117,6 +147,7 @@ def compare_ablation(root: Path) -> dict:
         "edge_validated": False,
         "warnings": [
             "October results were already reviewed, so this is a mechanistic exploratory ablation and NOT a fresh independent holdout.",
+            "Interaction and differences in executed entries must be investigated before claiming one filter caused an improvement.",
             "A one-month outcome or selected style cannot certify repeatable positive expectancy.",
             "No strategy is automatically promoted or enabled on connected broker accounts.",
             "Each strategy was tested separately. Do not sum the PnL into a portfolio.",
