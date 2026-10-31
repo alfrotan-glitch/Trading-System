@@ -180,3 +180,4 @@ def test_scheduled_windows_runner_keeps_money_locked():
     assert "order_send" not in runner.lower()
     assert "EnableDemoForwardOrders" not in runner
     assert "CONNECTED LIVE/DEMO ORDERS LOCKED" in native
+    assert "JOURNAL_INTEGRITY_BLOCKED" in runner
