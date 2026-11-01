@@ -4,6 +4,11 @@
 // No current (shift=0) candle is read; no future data, no news assumptions.
 // Native MT5 broker time is not automatically London/New York local time.
 #define QTS_V3_M15_HISTORY 18
+// The code-level V3 acceptance floor is 1.25 before and after costs.
+// Several native setup families target exactly RewardToRisk; a 1.0 preset
+// therefore cannot satisfy V3 even in a frictionless market. A 1.50
+// *research* target gives positive headroom; it is NOT optimized alpha.
+#define QTS_V3_MIN_CONFIGURED_RR 1.50
 
 // Native tester-only source-of-truth counts for every V3 rejection reason.
 // Historic logs are not sufficient: export this even if no order ever existed.
