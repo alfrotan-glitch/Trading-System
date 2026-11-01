@@ -77,6 +77,11 @@ def test_saved_runs_auto_discovered_no_retests_or_manual_path(tmp_path):
     assert len(list((tmp_path / "context_auto").glob("QTS_CONTEXT_*.json"))) == 2
     assert result["live"] == "LOCKED"
     assert result["validated_edge"] is False
+    assert result["shadow_report_status"] == "SHADOW_DATA_INCOMPLETE_NO_GO"
+    shadow = json.loads((tmp_path / "context_auto" /
+                         "QTS_SHADOW_FILTER_REVIEW.json").read_text("utf-8"))
+    assert shadow["validated_edge"] is False
+    assert shadow["status"] == "SHADOW_DATA_INCOMPLETE_NO_GO"
 
 
 def test_duplicate_archives_do_not_double_count_trades(tmp_path):
