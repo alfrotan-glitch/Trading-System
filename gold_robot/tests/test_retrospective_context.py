@@ -31,6 +31,14 @@ def fixtures():
         "net_usd": 11.0,
         "gross_usd": 11.0,
         "charges_usd": 0.0,
+        "exit_legs": [{
+            "deal_id": "exit-1",
+            "reason": "DEAL_REASON_TP",
+            "time_msc": str(ENTRY + 30000),
+            "lots": 0.03,
+            "gross": 11.0,
+            "charges": 0.0,
+        }],
     }
     forensic = {
         "schema": "qts.mt5.trade_forensics.v1",
@@ -153,7 +161,69 @@ def test_duplicate_positions_bad_broker_or_unknown_exit_are_rejected():
         validate_evidence(f, m)
     m["symbol"] = "XAUUSD@"
     f["trades"][0]["exit_reason"] = "MIXED_EXIT_REASONS"
-    with pytest.raises(ValueError, match="partial"):
+    with pytest.raises(ValueError, match="mixed-exit"):
+        validate_evidence(f, m)
+
+
+def test_reconciled_two_leg_mixed_exits_are_included_without_false_sl_tp():
+    f, m = fixtures()
+    trade = f["trades"][0]
+    trade["status"] = "COMPLETE_MULTI_EXIT"
+    trade["exit_reason"] = "MIXED_EXIT_REASONS"
+    trade["exit_legs"] = [
+        {"deal_id": "a", "time_msc": str(ENTRY + 10000),
+         "reason": "DEAL_REASON_TP", "lots": 0.01},
+        {"deal_id": "b", "time_msc": str(ENTRY + 30000),
+         "reason": "DEAL_REASON_EXPERT", "lots": 0.02},
+    ]
+    validate_evidence(f, m)
+    result = evaluate(f, m, "mixed-evidence", FakeMT5())
+    assert result["status"] == "DESCRIPTIVE_ONLY_REVIEW_REQUIRED"
+    assert result["complete_market_snapshots"] == 1
+    assert result["complete_multi_exit_positions"] == 1
+    assert result["other_or_mixed_exit_positions"] == 1
+    assert result["cohorts"]["exit_category"]["1:BROKER_OTHER_OR_MIXED"]["native_net_usd"] == 11
+    assert result["positions"][0]["exit_leg_count"] == 2
+    assert result["positions"][0]["exit_category"] == "BROKER_OTHER_OR_MIXED"
+    assert result["can_autotune_or_promote"] is False
+
+
+def test_non_sl_exit_reason_with_complete_broker_leg_is_descriptive():
+    f, m = fixtures()
+    f["trades"][0]["exit_reason"] = "DEAL_REASON_EXPERT"
+    f["trades"][0]["exit_legs"][0]["reason"] = "DEAL_REASON_EXPERT"
+    result = evaluate(f, m, "expert-evidence", FakeMT5())
+    assert result["other_or_mixed_exit_positions"] == 1
+    assert result["cohorts"]["exit_category"]["1:BROKER_OTHER_OR_MIXED"]["positions"] == 1
+
+
+@pytest.mark.parametrize("bad_status", ["PARTIAL_OR_OPEN", "REVERSAL_UNSUPPORTED", "INCOMPLETE_POSITION"])
+def test_partial_open_or_reversal_remains_hard_no_go(bad_status):
+    f, m = fixtures()
+    f["trades"][0]["status"] = bad_status
+    with pytest.raises(ValueError, match="incomplete/reversed"):
+        validate_evidence(f, m)
+
+
+def test_fake_multi_exit_with_missing_fill_is_hard_no_go():
+    f, m = fixtures()
+    trade = f["trades"][0]
+    trade["status"] = "COMPLETE_MULTI_EXIT"
+    trade["exit_reason"] = "MIXED_EXIT_REASONS"
+    trade["exit_legs"] = [
+        {"deal_id": "a", "time_msc": str(ENTRY + 10000),
+         "reason": "DEAL_REASON_TP", "lots": 0.01},
+        {"deal_id": "b", "time_msc": str(ENTRY + 30000),
+         "reason": "DEAL_REASON_SL", "lots": 0.01},
+    ]
+    with pytest.raises(ValueError, match="incomplete or out-of-order"):
+        validate_evidence(f, m)
+
+
+def test_mismatched_reported_exit_and_leg_reason_is_hard_no_go():
+    f, m = fixtures()
+    f["trades"][0]["exit_legs"][0]["reason"] = "DEAL_REASON_SL"
+    with pytest.raises(ValueError, match="disagrees"):
         validate_evidence(f, m)
 
 
