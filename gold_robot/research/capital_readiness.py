@@ -253,12 +253,51 @@ def audit(pairs: list[tuple[Path, Path]], *, as_of: date,
     }
 
 
+def discover_pairs(root: Path) -> tuple[list[tuple[Path, Path]], list[dict]]:
+    """Inspect every matching native run; never silently cherry-pick winners."""
+    buckets: dict[str, dict[str, list[Path]]] = {}
+    problems: list[dict] = []
+    if not root.is_dir():
+        return [], [{"reason": "No local automatic tester output directory exists"}]
+    for path in sorted(root.glob("**/OPEN_RESULTS.json")):
+        try:
+            row = json.loads(path.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError, TypeError) as exc:
+            problems.append({"file": str(path), "reason": "Malformed run manifest: " + str(exc)[:100]})
+            continue
+        if not isinstance(row, dict) or row.get("research_variant") not in (
+                REQUIRED_BASELINE, REQUIRED_CANDIDATE):
+            continue
+        # Only explicitly scoped Adaptive style-7 runs are comparable. Other
+        # strategies are not silently combined into an imaginary portfolio.
+        if row.get("selected_styles") != [STYLE] or row.get("targeted") is not True:
+            continue
+        period = (str(row.get("from_date")) + ":" + str(row.get("to_date")))
+        records = buckets.setdefault(period, {REQUIRED_BASELINE: [], REQUIRED_CANDIDATE: []})
+        records[row["research_variant"]].append(path.parent)
+    paired = []
+    for period, members in sorted(buckets.items()):
+        base = members[REQUIRED_BASELINE]
+        revised = members[REQUIRED_CANDIDATE]
+        if len(base) == 1 and len(revised) == 1:
+            paired.append((base[0], revised[0]))
+        else:
+            problems.append({
+                "period": period,
+                "reason": ("Missing or duplicate baseline/V3 native runs; "
+                           f"baseline={len(base)} V3={len(revised)}"),
+            })
+    return paired, problems
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pair", nargs=2, type=Path, action="append",
                         metavar=("BASELINE_FOLDER", "V3_FOLDER"), default=[])
     parser.add_argument("--as-of", default=datetime.now(timezone.utc).date().isoformat(),
                         help="UTC YYYY-MM-DD for deterministic completed-month checks")
+    parser.add_argument("--auto-discover", type=Path, default=None,
+                        help="Scan every captured native BASELINE/CONTEXT_V3 style-7 run")
     parser.add_argument("--capital", type=float, default=200.0,
                         help="Target real-capital USD; comparing a $3000 tester to $200 is not qualification")
     parser.add_argument("--output", type=Path, required=True)
@@ -267,7 +306,15 @@ def main() -> int:
         as_of = date.fromisoformat(args.as_of)
     except ValueError as exc:
         parser.error("Invalid --as-of date: " + str(exc))
-    result = audit(args.pair, as_of=as_of, target_capital_usd=args.capital)
+    discovered, discovery_issues = (discover_pairs(args.auto_discover)
+                                   if args.auto_discover is not None else ([], []))
+    result = audit(args.pair + discovered, as_of=as_of,
+                   target_capital_usd=args.capital)
+    if discovery_issues:
+        result["native_evidence_issues"].extend(discovery_issues)
+        result["blockers"] = sorted(set(result["blockers"] +
+                                        ["NATIVE_EVIDENCE_INVALID_OR_INCOMPLETE"]))
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(f"QTS CAPITAL DECISION: {result['capital_decision']}; "
