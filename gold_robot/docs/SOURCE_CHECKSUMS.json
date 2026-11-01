@@ -162,8 +162,8 @@
     },
     {
       "path": "docs/TEN_TRADE_LEARNING.md",
-      "bytes": 5452,
-      "sha256": "d1648df8b80b0add6745d526f40f2fe9f9202d67dc1a078032209662576c0ca2"
+      "bytes": 6561,
+      "sha256": "f2e73760f89b57b456387cb90976a6b026b4775c1db108a545fa857460763e13"
     },
     {
       "path": "docs/V4_POSITION_INTELLIGENCE.md",
@@ -482,8 +482,8 @@
     },
     {
       "path": "research/ten_trade_learning.py",
-      "bytes": 15369,
-      "sha256": "86db34c771c63d7b3e604c249810306aba5ba5036236a8d0cad883eb8168b552"
+      "bytes": 18165,
+      "sha256": "d88769341d3b682fd75e51793ff837d6db20d27ed779b7fcf01edc89c19edcb7"
     },
     {
       "path": "research/update_manifest.py",
@@ -627,8 +627,8 @@
     },
     {
       "path": "tests/test_ten_trade_learning.py",
-      "bytes": 10326,
-      "sha256": "b2b3c8ebf1a654010aff04fb8f6cf5e719fd743578664e2474f5003b197fb471"
+      "bytes": 11697,
+      "sha256": "ae6592bfa6bd58792db2331b173ff7a671567762eb183e94eb9d51727203eb77"
     },
     {
       "path": "tests/test_v2_ablation_contract.py",
