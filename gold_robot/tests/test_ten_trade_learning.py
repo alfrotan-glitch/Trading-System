@@ -227,3 +227,32 @@ def test_policy_honours_original_native_broker_exit_reason():
     rows[0]["exit_reason"] = "made_up"
     with pytest.raises(ValueError, match="Unknown broker exit cause"):
         reflect(attribution(*rows))
+
+
+def test_first_ten_generate_candidate_next_ten_are_evaluated_only_forward():
+    first = [position(i, net=-3.0) for i in range(1, 11)]
+    second = [position(i, net=15.0, reason="DEAL_REASON_TP") for i in range(11, 21)]
+    result = reflect(attribution(*(first+second)))
+    reviews = result["next_checkpoint_observational_shadow_reviews"]
+    assert len(reviews) == 1
+    v = reviews[0]
+    assert v["origin_checkpoint"] == 1
+    assert v["evaluated_on_checkpoint"] == 2
+    assert v["future_trade_count"] == 10
+    assert v["future_observed_stressed_net_usd"] > 0
+    assert v["status"] == "OBSERVED_EXCLUSION_HURTS_NET"
+    assert v["not_a_replayed_alternative_portfolio"] is True
+    assert v["never_promote"] is True
+    assert result["can_self_promote_strategy"] is False
+
+
+def test_forward_batch_that_supports_veto_still_cannot_promote():
+    rows = [position(i, net=-5.0) for i in range(1, 21)]
+    result = reflect(attribution(*rows))
+    review = result["next_checkpoint_observational_shadow_reviews"][0]
+    assert review["status"] == "OBSERVED_EXCLUSION_HELPS_NET"
+    assert review["origin_frozen_after_ms"] < result[
+        "nonoverlapping_chronological_checkpoints"][1]["first_exit_ms"]
+    assert review["observed_exclusion_sensitivity_usd"] > 0
+    assert review["replacement_trade_path_unknown"] is True
+    assert result["can_send_orders"] is False
