@@ -166,6 +166,11 @@
       "sha256": "cb0a3acda7eeeba8d9195863c83bf57a1f9840216cd96591797f4e37cd66dcc8"
     },
     {
+      "path": "docs/V4_POST_STOP_COHORTS.md",
+      "bytes": 3873,
+      "sha256": "186ea00685883f12172428b0df6d19f5bf7295bc45ee2adfeb097c0369932399"
+    },
+    {
       "path": "docs/WINDOWS_START.md",
       "bytes": 11669,
       "sha256": "55f9ffd8c9dfb332c3f07ff213c12ab5d514c9c1ef676d3d0e2faf06433c5f1c"
@@ -297,8 +302,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 26262,
-      "sha256": "ce8e35cff7ee3c832918cd9ba7d04bf018fd3249be4349fe0b52c2c5075617ca"
+      "bytes": 27587,
+      "sha256": "5b4df5231e152c5bd209cd46fd21933bf18abe769e6fab1fef1a64edf1b09340"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -481,6 +486,11 @@
       "sha256": "2bec8df72de7db8d7af4e3d0b87dfed03218c18612441885ea13f8f20dd60b20"
     },
     {
+      "path": "research/v4_post_stop_cohorts.py",
+      "bytes": 13383,
+      "sha256": "87ca2e4c62d736872f7f67ac447576d4ec420babe0380b1d29756b450d8a23ae"
+    },
+    {
       "path": "tests/ReceiptSelftest.mq5",
       "bytes": 1005,
       "sha256": "793293feef8ead8436456fd2398745776bd4b0f60268415b8be5e5babf8858ca"
@@ -614,6 +624,11 @@
       "path": "tests/test_v4_position_attribution.py",
       "bytes": 8559,
       "sha256": "228b4da7267cded86afb53cd3456d6b5f38e6473bcd0c68a9b5fd23b1dae1988"
+    },
+    {
+      "path": "tests/test_v4_post_stop_cohorts.py",
+      "bytes": 7800,
+      "sha256": "da649e4cfd25f0cae7c7ad8744c7b6cd63f5974ba36a109cd15c2f8be25c78a4"
     },
     {
       "path": "tests/windows_report_smoke.ps1",
