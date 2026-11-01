@@ -1970,6 +1970,7 @@ void RecordNativeForwardShadow(const int side,const double atr_value)
    MqlTick tick={};
    if(!SymbolInfoTick(_Symbol,tick) || tick.ask<=tick.bid ||
       tick.bid<=0.0 || tick.time_msc<=0 ||
+      TimeCurrent()<tick.time ||
       TimeCurrent()-tick.time>MaxTickAgeSeconds)
      {
       Print("QTS SHADOW: absent or stale native tick; candidate not recorded");
