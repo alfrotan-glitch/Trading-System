@@ -417,6 +417,26 @@ try{
                $stopFact.live -ne 'LOCKED' -or $stopFact.edge_validated -ne $false){
                 throw 'V4 automatic stop-path report made an unsupported price-outcome claim.'
             }
+            # Every ten completed broker positions, write an automatic trader
+            # critique and PRE-REGISTERABLE SHADOW alternative. This learner
+            # never writes back to a .set, MQL5, broker or trade permissions.
+            $tenTradeScript=Join-Path $gold 'research\ten_trade_learning.py'
+            $tenTradeReport=Join-Path $OutputDirectory 'QTS_TEN_TRADE_REFLECTION.json'
+            if(Get-Command py -ErrorAction SilentlyContinue){
+                & $interpreter.Source -3 $tenTradeScript --attribution $attr --post-stop $stopSummary --output $tenTradeReport
+            }else{
+                & $interpreter.Source $tenTradeScript --attribution $attr --post-stop $stopSummary --output $tenTradeReport
+            }
+            if($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tenTradeReport -PathType Leaf)){
+                throw 'Native 10-position research reflection could not be verified.'
+            }
+            $reflection=Get-Content -LiteralPath $tenTradeReport -Raw -Encoding UTF8 | ConvertFrom-Json
+            if($reflection.live -ne 'LOCKED' -or $reflection.edge_validated -ne $false -or
+               $reflection.can_send_orders -ne $false -or $reflection.can_edit_ea -ne $false -or
+               $reflection.can_self_promote_strategy -ne $false -or
+               $reflection.status -notin @('WAITING_FOR_TEN_COMPLETE_TRADES','TEN_TRADE_CHECKPOINTS_READY_RESEARCH_ONLY')){
+                throw 'Ten-trade auto-reflection attempted unsupported orders, mutation or promotion.'
+            }
         }
         $latest=Get-ChildItem -LiteralPath $OutputDirectory -Filter 'QTS_Gold_Comparison_*.html' |
             Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1

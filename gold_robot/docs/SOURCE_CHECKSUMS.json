@@ -161,6 +161,11 @@
       "sha256": "b076aa46fe91391fb6e935fc91964a43623f834d4f0a7ce26a59956967e3ba6e"
     },
     {
+      "path": "docs/TEN_TRADE_LEARNING.md",
+      "bytes": 6561,
+      "sha256": "f2e73760f89b57b456387cb90976a6b026b4775c1db108a545fa857460763e13"
+    },
+    {
       "path": "docs/V4_POSITION_INTELLIGENCE.md",
       "bytes": 4788,
       "sha256": "cb0a3acda7eeeba8d9195863c83bf57a1f9840216cd96591797f4e37cd66dcc8"
@@ -302,8 +307,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 27587,
-      "sha256": "5b4df5231e152c5bd209cd46fd21933bf18abe769e6fab1fef1a64edf1b09340"
+      "bytes": 29133,
+      "sha256": "82aea339f77ec25738da024df284ef174d7a79fb11bd3384acf1c5557d478bf4"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -476,6 +481,11 @@
       "sha256": "870b47de34c1c7b6f03b7361c02f2ca8818f91b9164b0ac69d2a38580db6fa1d"
     },
     {
+      "path": "research/ten_trade_learning.py",
+      "bytes": 18165,
+      "sha256": "d88769341d3b682fd75e51793ff837d6db20d27ed779b7fcf01edc89c19edcb7"
+    },
+    {
       "path": "research/update_manifest.py",
       "bytes": 3058,
       "sha256": "4ef25e79d94c26fcb43266a71eebabf00f4d35eeca47d2554d1caf824a099443"
@@ -614,6 +624,11 @@
       "path": "tests/test_target_grid.py",
       "bytes": 2344,
       "sha256": "8edc5615e4637abcaea5c2ed97fb49968c4976a3c42d0da6d48eeb47e4346cb6"
+    },
+    {
+      "path": "tests/test_ten_trade_learning.py",
+      "bytes": 11697,
+      "sha256": "ae6592bfa6bd58792db2331b173ff7a671567762eb183e94eb9d51727203eb77"
     },
     {
       "path": "tests/test_v2_ablation_contract.py",
