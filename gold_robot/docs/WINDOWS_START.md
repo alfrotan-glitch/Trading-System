@@ -65,6 +65,30 @@ volume, sufficient sample size and independent holdout have been examined.
 An SL followed later by the original TP is NOT proof that widening the
 original SL would have been profitable. Unknown quote windows remain UNKNOWN.
 
+## Audit H1 trend, M15 ATR, spread and entry hour (READ ONLY)
+
+This is *descriptive retrospective research*, not a new trading bot and
+not an automatic change to Retest or Sweep/Reclaim. On Windows, open your
+WMMarkets **DEMO** MT5 terminal, then double-click `START_HERE.bat` and
+select **6 (Advanced) > B (Historical market-context audit)**. Paste the
+full absolute path to the **QTS_HOLDOUT_REVIEW.zip** from your targeted
+native Strategy Tester run. This runs the existing Python interpreter
+(`py -3`) and the MetaTrader5 Python package; no connected orders are sent.
+
+The output is saved in the same folder as
+`QTS_MARKET_CONTEXT_REVIEW.json`. It records closed H1 EMA20/EMA50 trend,
+closed M15 ATR14 relative to trailing history, historical executable
+bid/ask spread and UTC entry hour **at or before each trade's entry**.
+Current forming candles and ticks after entry are excluded. For missing
+quotes, stale bars, unverified DEMO broker or partial evidence the
+analysis fails closed; it never fabricates market context.
+
+Review the `cohorts` section to compare historical BUY vs SELL,
+H1-aligned vs countertrend, volatility and spread groups. All these
+months have already been inspected, so **no cohort is a proven edge**.
+Do not turn a retrospective grouping into an EA veto until tested with
+predeclared rules, actual broker costs and future untouched data.
+
 ## Safety and installation troubleshooting
 
 - Only the repository `main` is the active development branch.
