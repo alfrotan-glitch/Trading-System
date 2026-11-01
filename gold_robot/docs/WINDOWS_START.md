@@ -121,9 +121,9 @@ Current live permission remains **LOCKED**.
 ## Forward Shadow | prospective native DEMO candidates, no orders
 
 **6 > C** in `START_HERE.bat` creates the immutable local registration
-`gold_robot/reports_local/forward_shadow/QTS_FORWARD_SHADOW_FROZEN.json`
+`gold_robot/reports_local/forward_shadow/QTS_FORWARD_SHADOW_V2_FROZEN.json`
 and summarizes *only subsequently observed* signals in
-`QTS_FORWARD_SHADOW_REPORT.json`. Run C once to register the evaluation
+`QTS_FORWARD_SHADOW_V2_REPORT.json`. Run C once to register the evaluation
 **before** observing any new signals. Running it again reads new events;
 it never resets the frozen date/rules or reuses historical tester trades.
 
@@ -143,12 +143,16 @@ its existing closed-bar `ObserveUnarmedDemoSignal()` path. To observe both:
    It reads the MT5 `FILE_COMMON` CSV files directly; no ZIP or path entry.
 
 Native candidate CSV filenames:
-`%APPDATA%\MetaQuotes\Terminal\Common\Files\QTS_ForwardShadow_Style1_YYYYMM.csv`
+`%APPDATA%\MetaQuotes\Terminal\Common\Files\QTS_ForwardShadowV2_Style1_YYYYMM.csv`
 and `...Style3_YYYYMM.csv`.
 
 The exporter records the genuinely occurring native closed-bar BUY/SELL
-direction, bar/tick times, Bid/Ask, ATR(14), and median ATR from **20 older
-completed bars**. No account identifiers or orders are exported.
+direction, bar/tick times, Bid/Ask, ATR(14), and median of **48 prior rolling 14-TR ATR
+measurements** from completed M15 bars. No account identifiers or orders are exported.
+This is version V2; earlier experimental signal CSVs (V1) are not imported
+or merged. The 14-period ATR uses the simple mean of true ranges, not MT5's
+Wilder iATR. This matches the prior historical audit formula (which used
+48 prior ATR readings for the median), but broker quote feeds can still differ.
 The Python reader verifies structural fields and rejects stale/pre-registration
 events, duplicate same-bar records, impossible timing and inconsistent ATR
 labels. It freezes a source hash and two predetermined shadow rules; any local
