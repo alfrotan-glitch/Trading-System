@@ -123,6 +123,49 @@ def test_files_with_other_symbols_or_style_mismatch_are_no_go(tmp_path):
     assert out["status"] == "EVIDENCE_GAPS_NO_GO"
 
 
+def test_forward_14tr_48reference_definition_matches_retrospective():
+    # Verify the EXACT rolling TR arithmetic used in the native MQL5 loop
+    # against the historic Python market context formula, with varied OHLC.
+    import statistics
+    from retrospective_context import atr_at
+
+    bars = []
+    for i in range(64):
+        close = 2400.0 + i * 0.17 + (i % 7) * 0.11
+        bars.append({
+            "open": close - 0.2,
+            "high": close + 0.45 + (i % 5) * 0.03,
+            "low": close - 0.35 - (i % 3) * 0.07,
+            "close": close,
+        })
+    values = []
+    for stop in range(16, 65):
+        trsum = 0.0
+        for k in range(stop - 14, stop):
+            current = bars[k]
+            prev = bars[k - 1]["close"]
+            trsum += max(
+                current["high"] - current["low"],
+                abs(current["high"] - prev),
+                abs(current["low"] - prev),
+            )
+        avg_tr = trsum / 14.0
+        assert avg_tr == pytest.approx(atr_at(bars, stop))
+        if stop < 64:
+            values.append(avg_tr)
+        else:
+            current_atr = avg_tr
+    assert len(values) == 48
+    assert statistics.median(values) == pytest.approx(
+        statistics.median(atr_at(bars, i) for i in range(16, 64))
+    )
+    assert current_atr == pytest.approx(atr_at(bars, 64))
+    code = (GOLD / "mt5_robot" / "QTS_Gold_Robot.mq5").read_text("utf-8")
+    assert "for(int stop=16;stop<=64;stop++)" in code
+    assert "for(int k=stop-14;k<stop;k++)" in code
+    assert "historical_atr[23]+historical_atr[24]" in code
+
+
 def test_observational_path_excludes_broker_execution_and_historical_fitting():
     source = (GOLD / "research" / "forward_shadow_observer.py").read_text("utf-8")
     ea = (GOLD / "mt5_robot" / "QTS_Gold_Robot.mq5").read_text("utf-8")
