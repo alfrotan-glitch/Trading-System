@@ -204,3 +204,10 @@ def test_one_click_native_study_enforces_two_arms_and_no_live_orders():
     assert "-ResearchVariant ADAPTIVE_V5_VETO" in script
     assert "Study output already exists" in script
     assert "LIVE LOCKED" in script or "No REAL trading" in script
+
+
+def test_windows_tester_preset_accepts_only_two_dormant_veto_sentinels():
+    presets=(ROOT/"research/MakeTesterPresets.ps1").read_text("utf-8")
+    assert "$dormantVeto=$name -in @('TesterVetoStyleV5','TesterVetoRegimeV5') -and $value -eq '-1'" in presets
+    assert "-not $dormantVeto -and $value -notmatch" in presets
+    assert "if($style -eq 9)" in presets
