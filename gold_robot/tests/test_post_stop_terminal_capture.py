@@ -233,3 +233,70 @@ def test_quarantine_prevents_packing_a_stale_prior_quote_result():
     assert "A failed new query must NEVER re-share stale" in batch
     assert "del /f /q" in batch
     assert "stale post-stop analysis file could not be cleared" in batch
+
+
+class MT5SecondBoundaryFake(FakeMT5):
+    """MT5 may include quote ticks in the UTC second containing the stop."""
+    def copy_ticks_range(self, symbol, start, end, mode):
+        assert int(start.timestamp() * 1000) == (EXIT // 1000) * 1000
+        assert int(end.timestamp() * 1000) == ((EXIT + 121 * 60_000 + 999) // 1000) * 1000
+        rows = super().copy_ticks_range(symbol, start, end, mode)
+        rows[:0] = [
+            {"time_msc": EXIT - 160, "bid": 99.1, "ask": 99.3},
+            {"time_msc": EXIT - 10, "bid": 99.1, "ask": 99.3},
+        ]
+        return rows
+
+
+def test_second_boundary_quotes_are_ignored_without_falsifying_tp_paths():
+    replay, cohorts = replay_from_mt5(attribution(), MT5SecondBoundaryFake())
+    assert cohorts["status"] == "QUOTE_PATHS_ATTRIBUTED_RESEARCH_ONLY"
+    quality = replay["quote_data_quality"]
+    assert quality["ignored_pre_stop_boundary_rows"] == 2
+    assert quality["out_of_range_rows"] == 0
+    assert quality["out_of_order_rows"] == 0
+    assert quality["per_stop"][0]["ignored_pre_stop_boundary_rows"] == 2
+    assert cohorts["stopped_positions"][0]["horizons"]["120"]["original_tp_touched"] is True
+
+
+def test_only_post_buffer_boundary_overfetch_is_ignored():
+    class AfterBuffer(FakeMT5):
+        def copy_ticks_range(self, symbol, start, end, mode):
+            rows = super().copy_ticks_range(symbol, start, end, mode)
+            end_ms = EXIT + 121 * 60_000
+            rows.append({"time_msc": end_ms + 200, "bid": 102.0, "ask": 102.1})
+            return rows
+
+    replay, cohorts = replay_from_mt5(attribution(), AfterBuffer())
+    assert replay["quote_data_quality"]["ignored_post_buffer_boundary_rows"] == 1
+    assert replay["quote_data_quality"]["out_of_range_rows"] == 0
+    assert cohorts["status"] == "QUOTE_PATHS_ATTRIBUTED_RESEARCH_ONLY"
+
+
+@pytest.mark.parametrize("bad_ms_delta", [-1500, 121 * 60_000 + 1500])
+def test_materially_outside_requested_seconds_cannot_validate_recovery(bad_ms_delta):
+    class WrongDate(FakeMT5):
+        def copy_ticks_range(self, symbol, start, end, mode):
+            rows = super().copy_ticks_range(symbol, start, end, mode)
+            rows.append({"time_msc": EXIT + bad_ms_delta, "bid": 102.0, "ask": 102.1})
+            rows.sort(key=lambda item: item["time_msc"])
+            return rows
+
+    replay, cohorts = replay_from_mt5(attribution(), WrongDate())
+    assert replay["quote_data_quality"]["out_of_range_rows"] == 1
+    assert all(
+        w["quote_evidence"] == "UNKNOWN"
+        for w in cohorts["stopped_positions"][0]["horizons"].values()
+    )
+
+
+def test_out_of_order_boundary_quote_remains_unknown():
+    class WrongBoundaryOrder(MT5SecondBoundaryFake):
+        def copy_ticks_range(self, *args):
+            rows = super().copy_ticks_range(*args)
+            rows[0], rows[1] = rows[1], rows[0]
+            return rows
+
+    replay, cohorts = replay_from_mt5(attribution(), WrongBoundaryOrder())
+    assert replay["quote_data_quality"]["out_of_order_rows"] == 1
+    assert cohorts["status"] == "INCOMPLETE_TICK_COVERAGE_NO_GO"
