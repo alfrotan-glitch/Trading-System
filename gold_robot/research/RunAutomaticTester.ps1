@@ -4,7 +4,7 @@ param([string]$TerminalExe="",[string]$TerminalDataFolder="",
       [string]$OutputDirectory="",[string]$FromDate="",[string]$ToDate="",
       [int]$TimeoutMinutesPerRun=90,[switch]$PrepareOnly,[switch]$NoOpen,
       [string]$OnlyStyles='',
-      [ValidateSet('BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED')]
+      [ValidateSet('BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3')]
       [string]$ResearchVariant='BASELINE')
 $ErrorActionPreference='Stop'
 $gold=Split-Path -Parent $PSScriptRoot
@@ -30,6 +30,11 @@ if($targeted){
     }
 }
 
+# V3 is a NEW strategy hypothesis, never a hidden replacement for V2 or the baseline.
+# Only Style 7 / M15 is allowed to use the opt-in V3 native market-context filter.
+if($ResearchVariant -eq 'CONTEXT_V3' -and ($OnlyStyles -ne '7')){
+    throw 'CONTEXT_V3 requires -OnlyStyles 7 (M15 adaptive research only).'
+}
 $today=(Get-Date).Date
 $endMonth=[datetime]::new($today.Year,$today.Month,1)
 if(-not $FromDate){$FromDate=$endMonth.AddMonths(-6).ToString('yyyy.MM.dd')}
@@ -224,11 +229,12 @@ try{
         $flags=[ordered]@{
             'TesterUseEntryQualityV2'=($ResearchVariant -in @('ENTRY_FILTER','COMBINED'))
             'TesterProtectNearTPV2'=($ResearchVariant -in @('NEAR_TP','COMBINED'))
+            'TesterUseMarketContextV3'=($ResearchVariant -eq 'CONTEXT_V3')
         }
         $profileLines=@(Get-Content -LiteralPath $preset -Encoding Unicode)
         foreach($key in $flags.Keys){
             if(@($profileLines | Where-Object {$_ -match ('^'+$key+'=')}).Count -ne 1){
-                throw ('V2 research flag missing or duplicated: '+$key)
+                throw ('Research flag missing or duplicated: '+$key)
             }
             $value=if($flags[$key]){'true'}else{'false'}
             $profileLines=@($profileLines | ForEach-Object {

@@ -181,6 +181,11 @@ bool SelectAdaptiveCandidate(const MqlTick &quote,
          continue;
       // An untradeable broker minimum lot cannot win the routing decision.
       if(SizedLots(candidate_side,p,sl)<=0.0) continue;
+      // V3 researches EACH executable setup before candidate ranking.
+      // A failed top candidate cannot hide another valid alternative.
+      if(TesterUseMarketContextV3 &&
+         !TesterMarketContextV3(candidate_side,style,quote,candidate_atr,p,sl,tp))
+         continue;
       double ratio=reward/risk;
       if(regime==1 && (priority<ROUTER_TRANSITION_MIN_PRIORITY || ratio<1.0))
          continue;
