@@ -67,9 +67,26 @@ def run(tmp_path, name, rows, plan, *, variant):
         "real_money_orders": False, "state": "SELECTED_TESTS_FINISHED_REVIEW_REQUIRED",
         "challenger_veto_style": (8 if variant.endswith("_VETO") else None),
         "challenger_veto_regime": (2 if variant.endswith("_VETO") else None),
+        "compiled_ex5_sha256": "a"*64,
+        "terminal_exe_sha256": "b"*64,
     }
     (root/"OPEN_RESULTS.json").write_text(json.dumps(payload))
     (root/"QTS_V4_POSITION_ATTRIBUTION.json").write_text(json.dumps(attributed(rows)))
+    preset = {
+        "EntryStyle": "7", "SignalTimeframe": "15",
+        "EnableDemoOrders": "true", "EnableDemoForwardOrders": "false",
+        "TesterIgnoreDailyAndPeakStops": "false", "RiskPerTradePct": "0.50",
+        "TesterUseMarketContextV3": "true", "TesterUseAdaptiveRouterV4": "true",
+        "TesterUsePreregisteredVetoV5": (
+            "true" if variant == "ADAPTIVE_V5_VETO" else "false"),
+        "TesterVetoStyleV5": "8" if variant == "ADAPTIVE_V5_VETO" else "-1",
+        "TesterVetoRegimeV5": "2" if variant == "ADAPTIVE_V5_VETO" else "-1",
+        "MaxSpreadPoints": "90",
+        "MaximumPendingOrdersPerDay": "20",
+    }
+    (root/"presets").mkdir()
+    (root/"presets"/f"research_{variant}_7.set").write_text(
+        "\n".join(f"{k}={v}" for k,v in preset.items())+"\n", encoding="utf-16")
     return root
 
 
@@ -211,3 +228,64 @@ def test_windows_tester_preset_accepts_only_two_dormant_veto_sentinels():
     assert "$dormantVeto=$name -in @('TesterVetoStyleV5','TesterVetoRegimeV5') -and $value -eq '-1'" in presets
     assert "-not $dormantVeto -and $value -notmatch" in presets
     assert "if($style -eq 9)" in presets
+
+
+def test_different_compiled_ex5_in_two_arms_fails_closed(tmp_path):
+    plan=study()
+    c=run(tmp_path,"champ",[pos(1,when=FUTURE)],plan,variant="ADAPTIVE_V4")
+    v=run(tmp_path,"veto",[pos(2,style=1,regime="RANGE",when=FUTURE)],plan,variant="ADAPTIVE_V5_VETO")
+    f=v/"OPEN_RESULTS.json"
+    payload=json.loads(f.read_text())
+    payload["compiled_ex5_sha256"]="c"*64
+    f.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="DIFFERENT compiled EX5"):
+        compare(plan,MANIFEST,c,v,now=datetime(2027,1,3,tzinfo=timezone.utc))
+
+
+def test_different_terminal_builds_fail_closed(tmp_path):
+    plan=study()
+    c=run(tmp_path,"champ",[pos(1,when=FUTURE)],plan,variant="ADAPTIVE_V4")
+    v=run(tmp_path,"veto",[pos(2,style=1,regime="RANGE",when=FUTURE)],plan,variant="ADAPTIVE_V5_VETO")
+    f=v/"OPEN_RESULTS.json"
+    payload=json.loads(f.read_text())
+    payload["terminal_exe_sha256"]="c"*64
+    f.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="DIFFERENT MT5 terminal"):
+        compare(plan,MANIFEST,c,v,now=datetime(2027,1,3,tzinfo=timezone.utc))
+
+
+def test_risk_or_spread_or_fee_input_difference_cannot_disguise_challenger(tmp_path):
+    plan=study()
+    c=run(tmp_path,"champ",[pos(1,when=FUTURE)],plan,variant="ADAPTIVE_V4")
+    v=run(tmp_path,"veto",[pos(2,style=1,regime="RANGE",when=FUTURE)],plan,variant="ADAPTIVE_V5_VETO")
+    file=v/"presets"/"research_ADAPTIVE_V5_VETO_7.set"
+    original=file.read_text(encoding="utf-16")
+    file.write_text(original.replace("MaxSpreadPoints=90","MaxSpreadPoints=45"),encoding="utf-16")
+    with pytest.raises(ValueError, match="non-V5 MT5 input differs"):
+        compare(plan,MANIFEST,c,v,now=datetime(2027,1,3,tzinfo=timezone.utc))
+
+
+def test_unregistered_native_veto_or_missing_profile_is_rejected(tmp_path):
+    plan=study()
+    c=run(tmp_path,"champ",[pos(1,when=FUTURE)],plan,variant="ADAPTIVE_V4")
+    v=run(tmp_path,"veto",[pos(2,style=1,regime="RANGE",when=FUTURE)],plan,variant="ADAPTIVE_V5_VETO")
+    file=v/"presets"/"research_ADAPTIVE_V5_VETO_7.set"
+    text=file.read_text(encoding="utf-16")
+    file.write_text(text.replace("TesterVetoStyleV5=8","TesterVetoStyleV5=3"),encoding="utf-16")
+    with pytest.raises(ValueError, match="nonfrozen native MT5 input"):
+        compare(plan,MANIFEST,c,v,now=datetime(2027,1,3,tzinfo=timezone.utc))
+    file.unlink()
+    with pytest.raises(FileNotFoundError):
+        compare(plan,MANIFEST,c,v,now=datetime(2027,1,3,tzinfo=timezone.utc))
+
+
+def test_compilation_covers_every_local_ea_header_and_capture_binary_hash():
+    runner=(ROOT/"research"/"RunAutomaticTester.ps1").read_text("utf-8")
+    ea=(ROOT/"mt5_robot"/"QTS_Gold_Robot.mq5").read_text("utf-8")
+    local_headers = set(__import__("re").findall(
+        r'^#include "([^"]+)"', ea, flags=__import__("re").MULTILINE))
+    checked = set(__import__("re").findall(
+        r"'([^']+\.mqh)'", runner[runner.index("function CompiledCurrent"):runner.index("$state='FAILED'")]))
+    assert local_headers.issubset(checked)
+    assert "compiled_ex5_sha256=$script:verifiedEx5Sha256" in runner
+    assert "terminal_exe_sha256=$script:verifiedTerminalSha256" in runner
