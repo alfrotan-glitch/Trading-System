@@ -287,8 +287,8 @@
     },
     {
       "path": "research/MakeTesterPresets.ps1",
-      "bytes": 10920,
-      "sha256": "e05ea6cb02655c4ede9de06000f70c1d604b6baf1d82ec47a2c96da629e73fbd"
+      "bytes": 6527,
+      "sha256": "f50ee8d5dad3b2823df2cc36660138735a441a6e1fdcbd2168287be74ee9c751"
     },
     {
       "path": "research/MakeWindowsReport.ps1",
