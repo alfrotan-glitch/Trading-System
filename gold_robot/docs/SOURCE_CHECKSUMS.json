@@ -352,8 +352,8 @@
     },
     {
       "path": "research/auto_context_review.py",
-      "bytes": 8574,
-      "sha256": "16b788ba61c26da70d765af6b98d3665fda84e02d5fac73408464bef3c68a157"
+      "bytes": 9264,
+      "sha256": "0bf41479674051c01e72c82e189c4861b77d2b6aba1f7656fca9c364f03f89e9"
     },
     {
       "path": "research/auto_stop_ticks.py",
@@ -547,8 +547,8 @@
     },
     {
       "path": "tests/test_auto_context_review.py",
-      "bytes": 5409,
-      "sha256": "6fe4bf967ed9016f3bfec52a63aa3eda318baffd547cbe4a51ebe3d51112f470"
+      "bytes": 6076,
+      "sha256": "96f215a88b91bd648714d0e2fd60a890c2814176d9ca5c18d7af05045cc2334e"
     },
     {
       "path": "tests/test_auto_stop_ticks.py",
