@@ -182,8 +182,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 11669,
-      "sha256": "55f9ffd8c9dfb332c3f07ff213c12ab5d514c9c1ef676d3d0e2faf06433c5f1c"
+      "bytes": 4621,
+      "sha256": "c7b50255e65832bef6264d9efcf6c64660f0ea984c3ade9280c2a87b9dcbfa3f"
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
@@ -312,8 +312,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 44240,
-      "sha256": "e3e25c1ad05294d355434f1f71128e575a3b82b501cab13a5b77bafdd2d25b1d"
+      "bytes": 44387,
+      "sha256": "a7955aaf5bb3dd70f831157a2d209fc45db657a1cd09fe9b856e1df630f32245"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
