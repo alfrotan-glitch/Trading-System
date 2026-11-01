@@ -42,8 +42,11 @@ goto MENU
 echo.
 echo Research comparison: same EA, native broker real ticks, Styles 1 and 3.
 echo Older positive screens are NOT proof of durable profit.
+setlocal
+set "QTS_NO_PAUSE=1"
 call "%QTS_ROOT_DIR%QTS_AUTO_TEST.bat" champions
-set "CODE=%ERRORLEVEL%"
+set "SUBCODE=%ERRORLEVEL%"
+endlocal & set "CODE=%SUBCODE%"
 if not "%CODE%"=="0" echo Research NO-GO: review the new run, not an older report.
 echo.
 pause
@@ -52,8 +55,11 @@ goto MENU
 :RUN_ALL
 echo.
 echo Full ten-style research, never connected broker orders.
+setlocal
+set "QTS_NO_PAUSE=1"
 call "%QTS_ROOT_DIR%QTS_AUTO_TEST.bat"
-set "CODE=%ERRORLEVEL%"
+set "SUBCODE=%ERRORLEVEL%"
+endlocal & set "CODE=%SUBCODE%"
 if not "%CODE%"=="0" echo Native results incomplete or evidence unavailable.
 echo.
 pause
