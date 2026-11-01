@@ -182,8 +182,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 5990,
-      "sha256": "aa285322bf8b6880df3a144d7ce010eb62610a8f8eac65de6129b0d2b3c9954b"
+      "bytes": 6266,
+      "sha256": "e443649ebb76511a243d6fa35607584e786d4eee7b968b3af5eb305acaf2495a"
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
@@ -349,6 +349,11 @@
       "path": "research/audit_mt5_logs.py",
       "bytes": 17563,
       "sha256": "1c8874483f56e8391c888adc378fec898922a11552fab7823cf862dea05cfa60"
+    },
+    {
+      "path": "research/auto_context_review.py",
+      "bytes": 8574,
+      "sha256": "16b788ba61c26da70d765af6b98d3665fda84e02d5fac73408464bef3c68a157"
     },
     {
       "path": "research/auto_stop_ticks.py",
@@ -539,6 +544,11 @@
       "path": "tests/test_adaptive_v4_contract.py",
       "bytes": 4320,
       "sha256": "5fa276c2b6142af54f663b2ac8bb83857740be2982ff9fdcc0743d95493193bc"
+    },
+    {
+      "path": "tests/test_auto_context_review.py",
+      "bytes": 5409,
+      "sha256": "6fe4bf967ed9016f3bfec52a63aa3eda318baffd547cbe4a51ebe3d51112f470"
     },
     {
       "path": "tests/test_auto_stop_ticks.py",
