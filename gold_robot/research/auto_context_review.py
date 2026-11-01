@@ -217,6 +217,8 @@ def main() -> int:
         print("LIVE LOCKED | NO CONNECTED ORDERS")
         return 2
     print("QTS HISTORICAL CONTEXT: " + result["status"])
+    if result["status"] != "DESCRIPTIVE_COMPARISON_ONLY_NOT_VALIDATED":
+        print("RESEARCH NO-GO: missing, conflicted or incomplete historical evidence.")
     if result.get("problem"):
         print("Reason: " + result["problem"])
     for row in result["runs"]:
