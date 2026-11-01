@@ -182,8 +182,8 @@
     },
     {
       "path": "mt5_robot/Install_QTS_Gold_Robot.ps1",
-      "bytes": 20824,
-      "sha256": "34a3bce61512d6bdb66409f8559eec8760ad106eb1c2a2024ed7f3f84b346af0"
+      "bytes": 22268,
+      "sha256": "b3bea64340ce9aa09d53e4b69da05f5a32d2d4f6fbaa3b3c247c70c26e75abe9"
     },
     {
       "path": "mt5_robot/MarketContextV3.mqh",
@@ -487,8 +487,8 @@
     },
     {
       "path": "tests/test_market_context_v3_contract.py",
-      "bytes": 3848,
-      "sha256": "1d17160218591716ca56c243c8a2b5c78e67d198c04e7b55f5216a1a7eb99082"
+      "bytes": 4756,
+      "sha256": "0187224a4208bdc8b496b37850cf2b747b65e5c9882dfe8e7508918eac5e3bd5"
     },
     {
       "path": "tests/test_post_stop_replay.py",
