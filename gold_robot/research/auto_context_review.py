@@ -15,6 +15,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from retrospective_context import SYMBOL, evaluate, load_evidence
+from shadow_filter_review import review as review_shadow_filter
 
 SCHEMA = "qts.mt5.auto_context_review.v1"
 MAX_ARCHIVES = 40
@@ -51,6 +52,7 @@ def review(root: Path, output_dir: Path, mt5=None) -> dict:
         }
     output_dir.mkdir(parents=True, exist_ok=True)
     runs: list[dict] = []
+    evaluated_contexts: list[dict] = []
     skipped: list[dict] = []
     seen: set[str] = set()
     periods: dict[str, list[tuple[str, str]]] = defaultdict(list)
@@ -80,6 +82,7 @@ def review(root: Path, output_dir: Path, mt5=None) -> dict:
             continue
         seen.add(identity_sha)
         evaluation = evaluate(forensic, manifest, source_sha, mt5)
+        evaluated_contexts.append(evaluation)
         digest = identity_sha[:16]
         name = "QTS_CONTEXT_" + digest + ".json"
         details = output_dir / name
@@ -119,6 +122,29 @@ def review(root: Path, output_dir: Path, mt5=None) -> dict:
         "INCOMPLETE_OR_QUARANTINED_EVIDENCE_NO_GO" if any_gaps else
         "DESCRIPTIVE_COMPARISON_ONLY_NOT_VALIDATED"
     )
+    # Shadow candidates are post-hoc reporting only. Incomplete or stale
+    # historical context is never treated as evidence for selection.
+    if status == "DESCRIPTIVE_COMPARISON_ONLY_NOT_VALIDATED" and len(runs) >= 2:
+        try:
+            shadow = review_shadow_filter(evaluated_contexts)
+        except (ValueError, KeyError, TypeError) as exc:
+            shadow = {
+                "status": "SHADOW_INPUT_REJECTED_NO_GO",
+                "reason": str(exc)[:200], "live": "LOCKED",
+                "validated_edge": False, "can_autotune_or_promote": False,
+            }
+    else:
+        shadow = {
+            "status": "SHADOW_DATA_INCOMPLETE_NO_GO",
+            "reason": ("Need at least two complete, non-conflicting "
+                       "historical market-context reports."),
+            "live": "LOCKED", "validated_edge": False,
+            "can_autotune_or_promote": False,
+        }
+    shadow_name = "QTS_SHADOW_FILTER_REVIEW.json"
+    (output_dir / shadow_name).write_text(
+        json.dumps(shadow, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8")
     return {
         "schema": SCHEMA,
         "status": status,
@@ -130,6 +156,8 @@ def review(root: Path, output_dir: Path, mt5=None) -> dict:
         "runs": runs,
         "skipped": skipped,
         "research_filters_applied_to_trading": False,
+        "shadow_report_file": shadow_name,
+        "shadow_report_status": shadow["status"],
         "data_snooping_warning": (
             "These historical periods have already been examined; "
             "favorable subgroups are NOT independent out-of-sample evidence."
@@ -230,6 +258,9 @@ def main() -> int:
         print("  CONFLICT: repeated period " + row["period"])
     for row in result["skipped"]:
         print("  SKIPPED: " + row["archive"] + " (" + row["status"] + ")")
+    if result.get("shadow_report_file"):
+        print("Shadow comparison: " + str(output_dir / result["shadow_report_file"]))
+        print("Shadow status: " + result["shadow_report_status"])
     print("Full summary: " + str(path))
     print("LIVE LOCKED | PROFITABLE EDGE NOT VALIDATED")
     return 0 if result["status"] == "DESCRIPTIVE_COMPARISON_ONLY_NOT_VALIDATED" else 2
