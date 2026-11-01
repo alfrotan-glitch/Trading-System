@@ -159,7 +159,7 @@ jobs:
           New-Item -ItemType Directory -Path (Join-Path $install 'MQL5\Profiles') -Force | Out-Null
           $exe = Join-Path $install 'terminal64.exe'
           [IO.File]::WriteAllText($exe,'TEST-ONLY FAKE TERMINAL - NEVER EXECUTE')
-          foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
+          foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','MarketContextV3.mqh','AdaptiveV4Research.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
             Copy-Item -LiteralPath (Join-Path gold_robot/mt5_robot $name) -Destination (Join-Path $experts $name)
           }
           $binary = Join-Path $experts 'QTS_Gold_Robot.ex5'
@@ -168,6 +168,13 @@ jobs:
           ./gold_robot/research/RunAutomaticTester.ps1 -TerminalExe $exe -TerminalDataFolder $data -OutputDirectory $out -FromDate '2026.04.01' -ToDate '2026.09.01' -PrepareOnly -NoOpen
           if ($LASTEXITCODE -ne 0) { throw "One-click configuration preflight failed" }
           $json = Get-Content (Join-Path $out 'OPEN_RESULTS.json') -Raw | ConvertFrom-Json
+          # This is an intentionally fake PREPARE-ONLY binary in CI. The
+          # test must still prove that native EX5/terminal fingerprints are
+          # captured, not fabricate an actual broker compile/pass.
+          if($json.compiled_ex5_sha256 -ne (Get-FileHash -LiteralPath $binary -Algorithm SHA256).Hash.ToLowerInvariant() -or
+             $json.terminal_exe_sha256 -ne (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()) {
+            throw 'Native PREPARE-ONLY executable SHA256 provenance was not captured correctly'
+          }
           if ($json.state -ne 'PREPARED_ONLY' -or $json.live -ne 'LOCKED' -or
               $json.validated_edge -ne $false -or $json.real_money_orders -ne $false) {
             throw 'Preparation did not preserve simulation-only fail-closed state'
