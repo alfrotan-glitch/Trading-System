@@ -205,9 +205,50 @@ def reflect(attributed: dict, post: dict | None = None, *,
     batches = []
     revisions = []
     repeated: dict[tuple[int, str], int] = defaultdict(int)
+    previous_shadow: list[dict] = []
+    shadow_forward_reviews: list[dict] = []
     for start in range(0, len(rows) - BATCH + 1, BATCH):
         ten = rows[start:start+BATCH]
         brief = batch_summary(ten, start, extra_cost)
+        # A candidate frozen AFTER the PREVIOUS 10 trades is examined on the
+        # NEXT complete batch only. No outcome from that next batch may have
+        # influenced its original hypothesis or routing rule. This remains
+        # OBSERVATIONAL: actual alternative routing was never executed.
+        next_shadow_reviews = []
+        for proposal in previous_shadow:
+            if ten[0]["exit_time_msc"] <= proposal["frozen_after_ms"]:
+                # Same-time exits cannot supply clean prospective evidence.
+                next_shadow_reviews.append({
+                    "candidate": proposal["candidate_repair"],
+                    "origin_checkpoint": proposal["checkpoint"],
+                    "style": proposal["style"], "regime": proposal["regime"],
+                    "status": "UNSAFE_OVERLAPPING_BROKER_EXIT_TIMESTAMPS",
+                    "never_promote": True,
+                })
+                continue
+            future = [r for r in ten if
+                      r["selected_style"] == proposal["style"] and
+                      r["regime"] == proposal["regime"]]
+            future_net = sum(r["broker_net_usd"]-extra_cost*r["lots"] for r in future)
+            next_shadow_reviews.append({
+                "candidate": proposal["candidate_repair"],
+                "origin_checkpoint": proposal["checkpoint"],
+                "evaluated_on_checkpoint": brief["checkpoint"],
+                "style": proposal["style"], "regime": proposal["regime"],
+                "origin_frozen_after_ms": proposal["frozen_after_ms"],
+                "future_trade_count": len(future),
+                "future_observed_stressed_net_usd": round(future_net, 2),
+                "observed_exclusion_sensitivity_usd": round(-future_net, 2),
+                "status": ("NO_FUTURE_OBSERVATIONS" if not future else
+                           "OBSERVED_EXCLUSION_HURTS_NET" if future_net > 0 else
+                           "OBSERVED_EXCLUSION_HELPS_NET" if future_net < 0 else
+                           "OBSERVED_EXCLUSION_NEUTRAL"),
+                "not_a_replayed_alternative_portfolio": True,
+                "replacement_trade_path_unknown": True,
+                "never_promote": True,
+            })
+        brief["prior_shadow_hypotheses_on_this_next_batch"] = next_shadow_reviews
+        shadow_forward_reviews.extend(next_shadow_reviews)
         group = defaultdict(list)
         for row in ten:
             group[(row["selected_style"], row["regime"])].append(row)
@@ -242,6 +283,11 @@ def reflect(attributed: dict, post: dict | None = None, *,
             brief["next_step"] = "KEEP_CURRENT_ROUTER_FROZEN; EVALUATE_PROPOSED_CHANGE_IN_SHADOW"
         batches.append(brief)
         revisions.extend({**p, "checkpoint": brief["checkpoint"]} for p in proposals)
+        previous_shadow = [
+            {**p, "checkpoint": brief["checkpoint"],
+             "frozen_after_ms": brief["last_exit_ms"]}
+            for p in proposals
+        ]
     issues = []
     if any(row["exit_reason"] == "DEAL_REASON_SO" for row in rows):
         issues.append("BROKER_STOP_OUT_PRESENT; DO_NOT_AUTOMATICALLY_RESUME_EXECUTION")
@@ -260,12 +306,14 @@ def reflect(attributed: dict, post: dict | None = None, *,
         "nonoverlapping_chronological_checkpoints": batches,
         "review_all_trades": reflections,
         "proposed_shadow_only_revisions": revisions,
+        "next_checkpoint_observational_shadow_reviews": shadow_forward_reviews,
         "unresolved_evidence": issues,
         "independent_shadow_acceptance": SHADOW_CRITERIA,
         "research_limits": [
             "A 10-trade checkpoint cannot establish a statistically reliable trading edge.",
             "A cohort seen repeatedly in losing samples is a SHADOW hypothesis, not a deployed fix.",
             "No code, lot, stop, take profit, broker order or risk setting is automatically modified.",
+            "The next-batch shadow exclusion sensitivity is NOT a real alternative portfolio.",
             "No implied profitability from retrospectively deleting losing historical trades.",
             "Post-SL TP touches are not realized profit; UNKNOWN quotes must not be filled in.",
             "The complete native source, tick quality, independent test period and broker fees are required.",
