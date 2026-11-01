@@ -75,6 +75,15 @@ $contextV3Hash = (Get-FileHash -LiteralPath $contextV3 -Algorithm SHA256).Hash
 if ($contextV3Hash.ToUpperInvariant() -ne ([string]$contextV3Rows[0].sha256).ToUpperInvariant()) {
     throw 'V3 market-context include checksum mismatch.'
 }
+$v4 = Join-Path $PSScriptRoot 'AdaptiveV4Research.mqh'
+$v4Rows = @($manifest.sha256_files | Where-Object { $_.path -eq 'mt5_robot/AdaptiveV4Research.mqh' })
+if ($v4Rows.Count -ne 1 -or -not (Test-Path -LiteralPath $v4 -PathType Leaf)) {
+    throw 'Missing V4 per-opportunity strategy router include or manifest entry.'
+}
+$v4Hash = (Get-FileHash -LiteralPath $v4 -Algorithm SHA256).Hash
+if ($v4Hash.ToUpperInvariant() -ne ([string]$v4Rows[0].sha256).ToUpperInvariant()) {
+    throw 'V4 adaptive router source checksum mismatch.'
+}
 
 # REPAIR 2026-10-30: the EA #includes SmcResearch.mqh and ScalpResearch.mqh
 # (QTS_Gold_Robot.mq5 lines 584-585), but this installer previously
@@ -202,6 +211,7 @@ $destStructure = Join-Path $experts 'StructureResearch.mqh'
 $destOpportunity = Join-Path $experts 'OpportunityResearch.mqh'
 $destAdaptive = Join-Path $experts 'AdaptiveResearch.mqh'
 $destContextV3 = Join-Path $experts 'MarketContextV3.mqh'
+$destV4 = Join-Path $experts 'AdaptiveV4Research.mqh'
 $destSmc = Join-Path $experts 'SmcResearch.mqh'
 $destScalp = Join-Path $experts 'ScalpResearch.mqh'
 $log = Join-Path $experts 'QTS_Gold_Robot.log'
@@ -214,10 +224,12 @@ $backupStructure = Join-Path $backupDir ($stamp + '_StructureResearch.mqh')
 $backupOpportunity = Join-Path $backupDir ($stamp + '_OpportunityResearch.mqh')
 $backupAdaptive = Join-Path $backupDir ($stamp + '_AdaptiveResearch.mqh')
 $backupContextV3 = Join-Path $backupDir ($stamp + '_MarketContextV3.mqh')
+$backupV4 = Join-Path $backupDir ($stamp + '_AdaptiveV4Research.mqh')
 $backupSmc = Join-Path $backupDir ($stamp + '_SmcResearch.mqh')
 $backupScalp = Join-Path $backupDir ($stamp + '_ScalpResearch.mqh')
 $hadAdaptive = Test-Path -LiteralPath $destAdaptive -PathType Leaf
 $hadContextV3 = Test-Path -LiteralPath $destContextV3 -PathType Leaf
+$hadV4 = Test-Path -LiteralPath $destV4 -PathType Leaf
 $hadSmc = Test-Path -LiteralPath $destSmc -PathType Leaf
 $hadScalp = Test-Path -LiteralPath $destScalp -PathType Leaf
 $hadOpportunity = Test-Path -LiteralPath $destOpportunity -PathType Leaf
@@ -227,7 +239,7 @@ $hadSource = Test-Path -LiteralPath $dest -PathType Leaf
 $hadEX5 = Test-Path -LiteralPath $compiled -PathType Leaf
 $completed = $false
 
-if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity -or $hadAdaptive -or $hadContextV3 -or $hadSmc -or $hadScalp) {
+if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity -or $hadAdaptive -or $hadContextV3 -or $hadV4 -or $hadSmc -or $hadScalp) {
     New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
     if ($hadSource) { Copy-Item -LiteralPath $dest -Destination $backupSource }
     if ($hadEX5) { Copy-Item -LiteralPath $compiled -Destination $backupEX5 }
@@ -236,6 +248,7 @@ if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity 
     if ($hadOpportunity) { Copy-Item -LiteralPath $destOpportunity -Destination $backupOpportunity }
     if ($hadAdaptive) { Copy-Item -LiteralPath $destAdaptive -Destination $backupAdaptive }
     if ($hadContextV3) { Copy-Item -LiteralPath $destContextV3 -Destination $backupContextV3 }
+    if ($hadV4) { Copy-Item -LiteralPath $destV4 -Destination $backupV4 }
     if ($hadSmc) { Copy-Item -LiteralPath $destSmc -Destination $backupSmc }
     if ($hadScalp) { Copy-Item -LiteralPath $destScalp -Destination $backupScalp }
 }
@@ -249,6 +262,7 @@ try {
     Copy-Item -LiteralPath $opportunity -Destination $destOpportunity -Force
     Copy-Item -LiteralPath $adaptive -Destination $destAdaptive -Force
     Copy-Item -LiteralPath $contextV3 -Destination $destContextV3 -Force
+    Copy-Item -LiteralPath $v4 -Destination $destV4 -Force
     Copy-Item -LiteralPath $smc -Destination $destSmc -Force
     Copy-Item -LiteralPath $scalp -Destination $destScalp -Force
     Copy-Item -LiteralPath $source -Destination $dest -Force
@@ -314,6 +328,9 @@ try {
     if ((Get-FileHash -LiteralPath $destContextV3 -Algorithm SHA256).Hash -ne $contextV3Hash) {
         throw 'V3 market-context include changed during compilation.'
     }
+    if ((Get-FileHash -LiteralPath $destV4 -Algorithm SHA256).Hash -ne $v4Hash) {
+        throw 'V4 adaptive router source changed during compilation.'
+    }
     if ((Get-FileHash -LiteralPath $destSmc -Algorithm SHA256).Hash -ne $smcHash) {
         throw 'SMC research include changed during compilation.'
     }
@@ -338,6 +355,11 @@ try {
     Write-Host 'No validated trading advantage; real-money trading is refused.'
 } finally {
     if (-not $completed) {
+        if ($hadV4 -and (Test-Path -LiteralPath $backupV4 -PathType Leaf)) {
+            Copy-Item -LiteralPath $backupV4 -Destination $destV4 -Force
+        } elseif (Test-Path -LiteralPath $destV4 -PathType Leaf) {
+            Remove-Item -LiteralPath $destV4 -Force
+        }
         if ($hadContextV3 -and (Test-Path -LiteralPath $backupContextV3 -PathType Leaf)) {
             Copy-Item -LiteralPath $backupContextV3 -Destination $destContextV3 -Force
         } elseif (Test-Path -LiteralPath $destContextV3 -PathType Leaf) {
