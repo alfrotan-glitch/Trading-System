@@ -98,7 +98,12 @@ def _fake_mt5(*, trade_mode: int = 0, symbol: str = "XAUUSD@", tick_age_s: float
         symbol_info=lambda name: symbol_info if name == symbol else None,
         symbol_select=lambda name, enable: name == symbol,
         symbol_info_tick=lambda name: _tick() if name == symbol else None,
-        copy_rates_from_pos=lambda name, tf, start, count: [{"time": int(time.time() // 60 * 60)}],
+        # Fake terminal M1 bar uses the same simulated server-clock basis as
+        # its tick. Using real current-minute open while tick_age_s is 1s
+        # makes a healthy demo mock falsely stale near minute rollover.
+        copy_rates_from_pos=lambda name, tf, start, count: [
+            {"time": int((time.time() - tick_age_s) // 60 * 60)}
+        ],
         order_check=_order_check,
         order_send=_order_send,
         positions_get=lambda **kwargs: (),
@@ -173,6 +178,17 @@ def _session(tmp_path: Path, **mt5_kwargs) -> DemoSession:
 
 
 # ---------------------------------------------------------------------- tests
+
+
+def test_fake_m1_server_time_matches_tick_at_minute_rollover(monkeypatch):
+    # Mock-only regression; production tick/bar freshness checks remain strict.
+    monkeypatch.setattr(time, "time", lambda: 120.25)
+    fake = _fake_mt5(tick_age_s=1.0)
+    tick = fake.symbol_info_tick("XAUUSD@")
+    bar = fake.copy_rates_from_pos("XAUUSD@", fake.TIMEFRAME_M1, 0, 1)[0]
+    assert tick.time == 119
+    assert bar["time"] == 60
+    assert bar["time"] <= tick.time < bar["time"] + 60
 
 
 def test_stage_1_connectivity_passes_on_a_healthy_demo_terminal(tmp_path: Path, authorization):
