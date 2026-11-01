@@ -91,6 +91,10 @@ def inspect_position(row: dict) -> dict:
         raise ValueError("ENTRY_EXIT_VOLUME_MISMATCH")
     if integer(row.get("deal_count"), "deal_count") < 2:
         raise ValueError("NATIVE_DEAL_LEGS_MISSING")
+    entry_time = integer(row.get("entry_time_msc"), "entry_time_msc")
+    exit_time = integer(row.get("exit_time_msc"), "exit_time_msc")
+    if entry_time <= 0 or exit_time <= entry_time:
+        raise ValueError("BROKER_TIMESTAMP_ORDER_INVALID")
     legs = row.get("exit_legs")
     if not isinstance(legs, list) or not legs:
         raise ValueError("EXIT_LEGS_MISSING")
@@ -98,6 +102,7 @@ def inspect_position(row: dict) -> dict:
         raise ValueError("MULTI_EXIT_EVIDENCE_MISLABELED")
     leg_volume = 0.0
     unique_deals: set[str] = set()
+    last_leg_ms = None
     for leg in legs:
         if not isinstance(leg, dict):
             raise ValueError("MALFORMED_EXIT_LEG")
@@ -105,6 +110,12 @@ def inspect_position(row: dict) -> dict:
         if not identifier or identifier in unique_deals:
             raise ValueError("DUPLICATE_OR_MISSING_EXIT_DEAL_ID")
         unique_deals.add(identifier)
+        leg_ms = integer(leg.get("time_msc"), "exit_leg_time_msc")
+        if leg_ms < entry_time or leg_ms > exit_time:
+            raise ValueError("EXIT_LEG_TIMESTAMP_OUTSIDE_POSITION")
+        if last_leg_ms is not None and leg_ms < last_leg_ms:
+            raise ValueError("EXIT_LEG_TIMESTAMPS_OUT_OF_ORDER")
+        last_leg_ms = leg_ms
         leg_volume += number(leg, "lots", positive=True)
         number(leg, "price", positive=True)
         number(leg, "gross")
@@ -130,6 +141,8 @@ def inspect_position(row: dict) -> dict:
         "side": row["side"], "entry_price": entry,
         "initial_sl": stop, "initial_tp": target,
         "exit_price": exit_price, "lots": entry_lots,
+        "entry_time_msc": entry_time, "exit_time_msc": exit_time,
+        "broker_exit_deal_ids": sorted(unique_deals),
         "broker_net_usd": net,
         "gross_usd": gross, "recorded_charges_usd": charges,
         "exit_reason": str(row.get("exit_reason", "UNKNOWN")),
@@ -182,13 +195,17 @@ def audit(document: dict, *, extra_cost: float = 10.0) -> dict:
     valid = []
     issues = []
     seen = set()
+    seen_exit_deals: set[str] = set()
     for idx, row in enumerate(positions):
         position_id = row.get("position_id") if isinstance(row, dict) else None
         try:
             fact = inspect_position(row)
             if fact["position_id"] in seen:
                 raise ValueError("DUPLICATE_NATIVE_POSITION")
+            if any(deal in seen_exit_deals for deal in fact["broker_exit_deal_ids"]):
+                raise ValueError("CROSS_POSITION_DUPLICATE_BROKER_DEAL_ID")
             seen.add(fact["position_id"])
+            seen_exit_deals.update(fact["broker_exit_deal_ids"])
             valid.append(fact)
         except (TypeError, ValueError, KeyError) as exc:
             issues.append({"row_index": idx, "position_id": position_id,
@@ -203,6 +220,16 @@ def audit(document: dict, *, extra_cost: float = 10.0) -> dict:
                      **cohort([x for x in valid if x["selected_style"] == style], extra_cost)}
         for style in STRATEGIES
     }
+    # Chronological CLOSED-position equity path, not equity drawdown based
+    # on floating positions. Never call it a live margin liquidation estimate.
+    chronology = sorted(valid, key=lambda x: (x["exit_time_msc"], x["position_id"]))
+    realised = 0.0
+    realised_peak = 0.0
+    worst_realised_drawdown = 0.0
+    for fact in chronology:
+        realised += fact["broker_net_usd"] - extra_cost * fact["lots"]
+        realised_peak = max(realised_peak, realised)
+        worst_realised_drawdown = max(worst_realised_drawdown, realised_peak - realised)
     by_regime_strategy = [
         {"selected_style": style, "strategy": STRATEGIES[style], "regime": regime,
          **cohort(rows, extra_cost)}
@@ -218,6 +245,8 @@ def audit(document: dict, *, extra_cost: float = 10.0) -> dict:
         "native_positions_attributed": len(valid),
         "issues": issues,
         "overall_attributed": cohort(valid, extra_cost),
+        "maximum_closed_trade_path_drawdown_after_stress_usd": round(worst_realised_drawdown, 2),
+        "closed_trade_drawdown_is_not_intratrade_equity_drawdown": True,
         "by_strategy": by_strategy,
         "by_strategy_and_regime": by_regime_strategy,
         "positions": valid,
