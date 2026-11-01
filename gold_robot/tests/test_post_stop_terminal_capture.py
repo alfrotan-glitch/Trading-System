@@ -41,6 +41,7 @@ def attribution():
 
 class FakeMT5:
     COPY_TICKS_ALL = 0
+    COPY_TICKS_INFO = 1
 
     def __init__(self, *, gap_ms=30_000, server="WMMarkets-Demo", reach=True):
         self.gap_ms = gap_ms
@@ -59,7 +60,7 @@ class FakeMT5:
 
     def copy_ticks_range(self, symbol, start, end, mode):
         assert symbol == "XAUUSD@"
-        assert mode == self.COPY_TICKS_ALL
+        assert mode == self.COPY_TICKS_INFO
         assert start.tzinfo == timezone.utc
         self.called += 1
         limit = int(end.timestamp() * 1000)
@@ -158,3 +159,77 @@ def test_partial_real_tick_coverage_is_packaged_with_no_go_exit():
     assert 'call "%REPO%QTS_SHARE_RESULTS.bat"' in batch
     assert "'post_stop_review/'+$name" in pack
     assert "raw broker ticks" in pack
+
+
+class BrokenQuoteFakeMT5(FakeMT5):
+    def copy_ticks_range(self, symbol, start, end, mode):
+        rows = super().copy_ticks_range(symbol, start, end, mode)
+        # Native MT5 may provide historical records with incomplete or
+        # crossed executable quotes. The short pre-anomaly horizon is valid.
+        rows.append({
+            "time_msc": EXIT + 20 * 60_000,
+            "bid": 0.0,
+            "ask": 0.0,
+        })
+        rows.sort(key=lambda x: x["time_msc"])
+        return rows
+
+
+def test_zero_quote_does_not_abort_all_stops_or_falsify_long_horizon():
+    replay, cohorts = replay_from_mt5(attribution(), BrokenQuoteFakeMT5())
+    assert replay["quote_data_quality"]["mt5_tick_selection"] == "COPY_TICKS_INFO_BID_ASK_CHANGES_ONLY"
+    assert replay["quote_data_quality"]["bad_bid_ask_rows"] == 1
+    assert replay["quote_data_quality"]["per_stop"][0]["affected_unknown_horizons_minutes"] == [30, 60, 120]
+    by_h = cohorts["stopped_positions"][0]["horizons"]
+    assert by_h["5"]["quote_evidence"] == "COMPLETE"
+    assert by_h["15"]["quote_evidence"] == "COMPLETE"
+    for horizon in ("30", "60", "120"):
+        assert by_h[horizon]["quote_evidence"] == "UNKNOWN"
+        assert by_h[horizon]["original_tp_touched"] is None
+    assert cohorts["status"] == "INCOMPLETE_TICK_COVERAGE_NO_GO"
+
+
+def test_crossed_bid_ask_is_quarantined_without_trusting_tp_recovery():
+    class Crossed(BrokenQuoteFakeMT5):
+        def copy_ticks_range(self, *args):
+            rows = super().copy_ticks_range(*args)
+            rows[-100]["bid"] = 102.0
+            rows[-100]["ask"] = 101.0
+            return rows
+
+    replay, cohorts = replay_from_mt5(attribution(), Crossed())
+    assert replay["quote_data_quality"]["bad_bid_ask_rows"] >= 2
+    assert cohorts["stopped_positions"][0]["horizons"]["120"]["quote_evidence"] == "UNKNOWN"
+
+
+def test_out_of_order_native_broker_ticks_invalidate_all_windows():
+    class Backward(FakeMT5):
+        def copy_ticks_range(self, *args):
+            rows = super().copy_ticks_range(*args)
+            rows[12], rows[13] = rows[13], rows[12]
+            return rows
+
+    replay, cohorts = replay_from_mt5(attribution(), Backward())
+    assert replay["quote_data_quality"]["out_of_order_rows"] == 1
+    assert all(
+        x["quote_evidence"] == "UNKNOWN"
+        for x in cohorts["stopped_positions"][0]["horizons"].values()
+    )
+
+
+def test_failed_one_stop_history_read_is_unknown_not_total_exception():
+    class Failed(FakeMT5):
+        def copy_ticks_range(self, *args):
+            return None
+
+    replay, cohorts = replay_from_mt5(attribution(), Failed())
+    assert replay["quote_data_quality"]["failed_history_reads"] == 1
+    assert cohorts["status"] == "INCOMPLETE_TICK_COVERAGE_NO_GO"
+    assert cohorts["stopped_positions"][0]["horizons"]["120"]["quote_evidence"] == "UNKNOWN"
+
+
+def test_quarantine_prevents_packing_a_stale_prior_quote_result():
+    batch = (ROOT.parent / "QTS_POST_STOP_REVIEW.bat").read_text("utf-8")
+    assert "A failed new query must NEVER re-share stale" in batch
+    assert "del /f /q" in batch
+    assert "stale post-stop analysis file could not be cleared" in batch

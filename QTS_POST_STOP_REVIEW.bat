@@ -31,6 +31,14 @@ echo QTS STOP REVIEW - READ ONLY / LIVE LOCKED
 if errorlevel 1 goto FAIL
 echo.
 echo Stop cases created, but post-stop TP/reversal remains UNKNOWN without tick history.
+REM A failed new query must NEVER re-share stale successful historical results.
+for %%F in (QTS_V4_POST_STOP_STRATEGY_COHORTS.json QTS_POST_STOP_REAL_TICK_REVIEW.json QTS_POST_STOP_SUMMARY.txt) do (
+  if exist "%OUT%\%%F" del /f /q "%OUT%\%%F"
+  if exist "%OUT%\%%F" (
+    echo ERROR: stale post-stop analysis file could not be cleared: %%F
+    goto FAIL
+  )
+)
 if defined QTS_BROKER_TICKS_DIR (
   echo Auditing native broker quote path from QTS_BROKER_TICKS_DIR...
   %PY% "%REPO%gold_robot\research\stop_reversal_audit.py" --stops "%OUT%\QTS_STOP_CASES.csv" --tick-dir "%QTS_BROKER_TICKS_DIR%" --output "%OUT%\QTS_POST_STOP_REAL_TICK_REVIEW.json"
