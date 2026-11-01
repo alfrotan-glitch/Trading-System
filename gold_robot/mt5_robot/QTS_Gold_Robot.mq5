@@ -1955,6 +1955,76 @@ void OnTimer()
    DisplayStatus();
   }
 
+// Shadow-only observation of NATIVE closed-bar signals, not order intents.
+// CSV is written ONLY on WMMarkets DEMO when BOTH order toggles are OFF.
+// ATR(14) comparison uses 20 OLDER, already closed M15 bars (shift=2..21).
+void RecordNativeForwardShadow(const int side,const double atr_value)
+  {
+   if(MQLInfoInteger(MQL_TESTER)!=0 ||
+      AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO ||
+      EnableDemoOrders || EnableDemoForwardOrders ||
+      _Symbol!="XAUUSD@" || SignalTimeframe!=PERIOD_M15 ||
+      (EntryStyle!=QTS_RETEST_LIMIT && EntryStyle!=QTS_SWEEP_RECLAIM) ||
+      side==0 || !MathIsValidNumber(atr_value) || atr_value<=0.0)
+      return;
+   MqlTick tick={};
+   if(!SymbolInfoTick(_Symbol,tick) || tick.ask<=tick.bid ||
+      tick.bid<=0.0 || tick.time_msc<=0 ||
+      TimeCurrent()-tick.time>MaxTickAgeSeconds)
+     {
+      Print("QTS SHADOW: absent or stale native tick; candidate not recorded");
+      return;
+     }
+   datetime bar=iTime(_Symbol,PERIOD_M15,1);
+   if(bar<=0 || bar!=last_closed_bar)
+      return;
+   double historical_atr[];
+   ArrayResize(historical_atr,20);
+   if(CopyBuffer(atr_handle,0,2,20,historical_atr)!=20)
+     {
+      Print("QTS SHADOW: reference ATR not available; no classification");
+      return;
+     }
+   for(int n=0;n<20;n++)
+      if(!MathIsValidNumber(historical_atr[n]) || historical_atr[n]<=0.0)
+         return;
+   ArraySort(historical_atr);
+   double median=(historical_atr[9]+historical_atr[10])*0.5;
+   if(!MathIsValidNumber(median) || median<=0.0)
+      return;
+   datetime utc_now=TimeGMT();
+   MqlDateTime parts={};
+   TimeToStruct(utc_now,parts);
+   string filename=StringFormat("QTS_ForwardShadow_Style%d_%04d%02d.csv",
+                               (int)EntryStyle,parts.year,parts.mon);
+   ResetLastError();
+   int handle=FileOpen(filename,FILE_READ|FILE_WRITE|FILE_CSV|
+                       FILE_COMMON|FILE_ANSI,';');
+   if(handle==INVALID_HANDLE)
+     {
+      PrintFormat("QTS SHADOW: local CSV open failed error=%d",GetLastError());
+      return;
+     }
+   if(FileSize(handle)==0)
+      FileWrite(handle,"schema","observed_utc_s","closed_bar_open_server_s",
+                "tick_server_time_msc","symbol","timeframe","style",
+                "side","bid","ask","atr14","prior_20_atr_median","atr_band",
+                "source");
+   FileSeek(handle,0,SEEK_END);
+   uint written=FileWrite(handle,"qts.mt5.forward_shadow_signal.v1",
+                (long)utc_now,(long)bar,(long)tick.time_msc,
+                _Symbol,"M15",(int)EntryStyle,side>0 ? "BUY" : "SELL",
+                DoubleToString(tick.bid,_Digits),DoubleToString(tick.ask,_Digits),
+                DoubleToString(atr_value,8),DoubleToString(median,8),
+                atr_value>median ? "ABOVE_TRAILING_MEDIAN" :
+                                   "AT_OR_BELOW_TRAILING_MEDIAN",
+                "NATIVE_CLOSED_BAR_UNARMED_DEMO");
+   FileFlush(handle);
+   FileClose(handle);
+   if(written==0)
+      Print("QTS SHADOW: append failed");
+  }
+
 // An unarmed DEMO should still explain which CLOSED-BAR signal conditions
 // passed or failed. This function has NO order preparation or submission path.
 // It lets operators diagnose missed signals without enabling Demo Forward.
@@ -1973,6 +2043,8 @@ void ObserveUnarmedDemoSignal()
       (EntryStyle==QTS_M1_SCALP ? CompletedScalpSignal(atr,level,anchor) :
       (opportunity ? CompletedOpportunitySignal(atr,level,anchor) :
       (structural ? CompletedStructureSignal(atr,level,anchor) : CompletedBarSignal(atr))));
+   // Prospective native signal record. No limit order, trade sizing or send.
+   RecordNativeForwardShadow(side,atr);
    if(side>0)
       status_text="OBSERVE: unvalidated BUY candidate; orders not authorized";
    else if(side<0)
