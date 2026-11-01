@@ -677,8 +677,8 @@
     },
     {
       "path": "tests/test_v4_position_attribution.py",
-      "bytes": 16960,
-      "sha256": "cf348e5da3c2b0521fdc5b2667d5d6d8ae394efff8f9bf0d23c28e9e52c8438c"
+      "bytes": 17100,
+      "sha256": "b3bda6894d7cb6f1943e9cd249d7642c006737142f083438282286b7b89fda6a"
     },
     {
       "path": "tests/test_v4_post_stop_cohorts.py",
