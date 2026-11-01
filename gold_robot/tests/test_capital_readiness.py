@@ -11,7 +11,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "research"))
-from capital_readiness import InvalidEvidence, audit, load_native
+from capital_readiness import InvalidEvidence, audit, load_native, discover_pairs
 
 FIRST = date(2026, 11, 1)
 SOURCE = "a" * 64
@@ -162,6 +162,41 @@ def test_unrealistic_positive_synthetic_results_do_not_unlock(tmp_path):
     assert result["capital_decision"] == "DO_NOT_ENTRUST_REAL_CAPITAL"
     assert "REAL_MONEY_ORDER_AUTHORIZATION_NOT_AVAILABLE" in result["blockers"]
     assert result["can_send_orders"] is False
+
+
+def test_auto_discovery_rejects_missing_and_duplicate_arms(tmp_path):
+    root = tmp_path / "collected"
+    single = fixture(root / "one", "BASELINE", FIRST)
+    paths, problems = discover_pairs(root)
+    assert paths == []
+    assert any("Missing or duplicate" in p["reason"] for p in problems)
+    other = fixture(root / "two", "CONTEXT_V3", FIRST)
+    paths, problems = discover_pairs(root)
+    assert paths == [(single, other)]
+    assert not problems
+    fixture(root / "three", "CONTEXT_V3", FIRST)
+    paths, problems = discover_pairs(root)
+    assert paths == []
+    assert problems
+
+
+def test_out_of_period_broker_trade_cannot_fake_month(tmp_path):
+    a, b = pair(tmp_path)
+    csv = b / "native" / "QTS_7_trades.csv"
+    txt = csv.read_text("utf-8")
+    original = int(datetime(2026, 11, 5, 12, tzinfo=timezone.utc).timestamp() * 1000)
+    outside = int(datetime(2026, 10, 5, 12, tzinfo=timezone.utc).timestamp() * 1000)
+    csv.write_text(txt.replace(str(original), str(outside)), encoding="utf-8")
+    with pytest.raises(InvalidEvidence, match="timestamps outside"):
+        load_native(b, "CONTEXT_V3", date(2026, 12, 1))
+
+
+def test_quick_run_remains_read_only():
+    launcher = (ROOT / "REVIEW_CAPITAL_READINESS.bat").read_text("utf-8")
+    assert "capital_readiness.py" in launcher
+    assert "--auto-discover" in launcher
+    assert "LIVE: LOCKED" in launcher
+    assert "OrderSend(" not in launcher
 
 
 def test_no_real_order_code_or_unlocked_status():
