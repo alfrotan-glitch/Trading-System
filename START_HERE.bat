@@ -177,8 +177,8 @@ set "QTS_FORWARD_DIR=%QTS_ROOT_DIR%gold_robot\reports_local\forward_shadow"
 py -3 "%QTS_ROOT_DIR%gold_robot\research\forward_shadow_observer.py" --report-dir "%QTS_FORWARD_DIR%"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" echo FORWARD SHADOW NO-GO: see report for exact problem.
-if exist "%QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_REPORT.json" (
-  start "" notepad.exe "%QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_REPORT.json"
+if exist "%QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_V2_REPORT.json" (
+  start "" notepad.exe "%QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_V2_REPORT.json"
 )
 echo.
 echo Frozen registration and results: %QTS_FORWARD_DIR%
