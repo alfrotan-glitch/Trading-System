@@ -41,7 +41,10 @@ foreach($m in $found){
         'PERIOD_H1' { $value='16385';break }
     }
     # All inputs must be literal numeric/boolean; fail if EA adds unknown enum.
-    if($value -notmatch '^(?:true|false|\d+(?:\.\d+)?)$'){
+    # Only the two exact default-off V5 inputs may use the -1 sentinel.
+    # Every other EA input must remain nonnegative numeric/boolean.
+    $dormantVeto=$name -in @('TesterVetoStyleV5','TesterVetoRegimeV5') -and $value -eq '-1'
+    if(-not $dormantVeto -and $value -notmatch '^(?:true|false|\d+(?:\.\d+)?)$'){
         throw ("Unexpected EA input value for {0}: {1}" -f $name,$value)
     }
     $inputs.Add($name,$value)

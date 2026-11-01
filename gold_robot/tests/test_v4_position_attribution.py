@@ -184,7 +184,7 @@ def test_reference_immutable_broker_comment_extraction():
 
 def test_auto_tester_requires_attribution_for_v4_without_tuning_or_live():
     runner = (GOLD / "research" / "RunAutomaticTester.ps1").read_text("utf-8")
-    assert "if($ResearchVariant -eq 'ADAPTIVE_V4')" in runner
+    assert "if($ResearchVariant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO'))" in runner
     assert "research\\v4_position_attribution.py" in runner
     assert "QTS_V4_POSITION_ATTRIBUTION.json" in runner
     assert "if($LASTEXITCODE -ne 0" in runner

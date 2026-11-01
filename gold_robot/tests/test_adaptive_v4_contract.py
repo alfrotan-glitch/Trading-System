@@ -13,7 +13,7 @@ OLD = (ROOT / "mt5_robot/AdaptiveResearch.mqh").read_text("utf-8")
 def test_v4_default_off_and_not_allowed_on_real_or_demo():
     assert "input bool            TesterUseAdaptiveRouterV4  = false;" in EA
     assert "TesterUseAdaptiveRouterV4 && !TesterUseMarketContextV3" in EA
-    assert "TesterUseAdaptiveRouterV4) &&" in EA
+    assert "TesterUseAdaptiveRouterV4 || TesterUsePreregisteredVetoV5) &&" in EA
     assert "MQLInfoInteger(MQL_TESTER)==0" in ROUTER
     assert "EntryStyle!=QTS_ADAPTIVE_ROUTER" in ROUTER
     assert "SignalTimeframe!=PERIOD_M15" in ROUTER
@@ -67,9 +67,9 @@ def test_frozen_baseline_router_not_replaced_or_retuned():
 
 def test_v4_is_tested_in_separate_native_arm():
     assert "'ADAPTIVE_V4'" in RUNNER
-    assert "$ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4')" in RUNNER
-    assert "'TesterUseMarketContextV3'=($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4'))" in RUNNER
-    assert "'TesterUseAdaptiveRouterV4'=($ResearchVariant -eq 'ADAPTIVE_V4')" in RUNNER
+    assert "$ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO')" in RUNNER
+    assert "'TesterUseMarketContextV3'=($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO'))" in RUNNER
+    assert "'TesterUseAdaptiveRouterV4'=($ResearchVariant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO'))" in RUNNER
     assert "research_variant=$ResearchVariant" in RUNNER
     assert "source_manifest_sha256=$sourceManifestSha256" in RUNNER
 

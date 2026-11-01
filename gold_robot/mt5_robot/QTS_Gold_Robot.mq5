@@ -70,6 +70,10 @@ input bool            TesterUseEntryQualityV2    = false;
 input bool            TesterProtectNearTPV2      = false;
 input bool            TesterUseMarketContextV3   = false; // Independent closed-bar context gate; Tester-only, OFF.
 input bool            TesterUseAdaptiveRouterV4  = false; // Each opportunity chooses among 0-6 + SMC 8; Tester-only.
+// Frozen single-intervention challenger: do not re-route or alter lots/SL/TP.
+input bool            TesterUsePreregisteredVetoV5 = false; // TESTER ONLY, default OFF.
+input int             TesterVetoStyleV5          = -1; // Allowed 0-6,8 ONLY when veto enabled.
+input int             TesterVetoRegimeV5         = -1; // Closed-bar 0 range,1 transition,2 trend.
 
 
 CTrade trader;
@@ -1568,7 +1572,7 @@ int OnInit()
       return INIT_PARAMETERS_INCORRECT;
      }
    if((TesterUseEntryQualityV2 || TesterProtectNearTPV2 || TesterUseMarketContextV3 ||
-       TesterUseAdaptiveRouterV4) &&
+       TesterUseAdaptiveRouterV4 || TesterUsePreregisteredVetoV5) &&
       MQLInfoInteger(MQL_TESTER)==0)
      {
       Print("QTS: research V2 variants are Strategy Tester ONLY.");
@@ -1592,6 +1596,24 @@ int OnInit()
    if(TesterUseAdaptiveRouterV4 && !TesterUseMarketContextV3)
      {
       Print("QTS: adaptive V4 requires independent V3 context checks enabled.");
+      return INIT_PARAMETERS_INCORRECT;
+     }
+   if(TesterUsePreregisteredVetoV5 &&
+      (MQLInfoInteger(MQL_TESTER)==0 ||
+       EntryStyle!=QTS_ADAPTIVE_ROUTER ||
+       SignalTimeframe!=PERIOD_M15 ||
+       !TesterUseAdaptiveRouterV4 || !TesterUseMarketContextV3 ||
+       TesterVetoStyleV5<0 || TesterVetoStyleV5>8 ||
+       TesterVetoStyleV5==QTS_ADAPTIVE_ROUTER ||
+       TesterVetoRegimeV5<0 || TesterVetoRegimeV5>2))
+     {
+      Print("QTS: V5 veto requires frozen valid style/regime and V4 M15 Strategy Tester.");
+      return INIT_PARAMETERS_INCORRECT;
+     }
+   if(!TesterUsePreregisteredVetoV5 &&
+      (TesterVetoStyleV5!=-1 || TesterVetoRegimeV5!=-1))
+     {
+      Print("QTS: V5 veto parameters cannot affect the frozen V4 champion.");
       return INIT_PARAMETERS_INCORRECT;
      }
    evaluated_style=(int)EntryStyle;
