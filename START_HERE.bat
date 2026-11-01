@@ -89,8 +89,10 @@ echo  [7] Exit QTS
 echo  [8] Audit saved MT5 agent logs
 echo  [9] Diagnose adaptive V4 decisions (last completed month)
 echo  [A] Review historical post-stop broker quote paths
+echo  [B] Audit H1 / M15 ATR / spread at historical trade entry (read-only)
 echo.
-choice /C 123456789A /N /M "Choose 1-9 or A: "
+choice /C 123456789AB /N /M "Choose 1-9, A or B: "
+if errorlevel 11 goto MARKET_CONTEXT
 if errorlevel 10 goto STOP_QUOTES
 if errorlevel 9 goto V4_DIAGNOSE
 if errorlevel 8 goto AUDIT
@@ -141,6 +143,27 @@ call "%QTS_ROOT_DIR%gold_robot\MAKE_TEST_PRESETS.bat"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" echo Tester presets were not created.
 echo.
+pause
+goto MENU
+
+:MARKET_CONTEXT
+echo.
+echo QTS: READ-ONLY H1 / ATR / SPREAD AUDIT. WMMarkets DEMO must be OPEN.
+echo Enter the FULL path to QTS_HOLDOUT_REVIEW.zip from a completed native test.
+echo If dates/broker quotes are missing this audit reports UNKNOWN, never a winner.
+set "QTS_CONTEXT_FILE="
+set /p "QTS_CONTEXT_FILE=Evidence ZIP path: "
+set "QTS_CONTEXT_FILE=%QTS_CONTEXT_FILE:"=%"
+if not exist "%QTS_CONTEXT_FILE%" (
+  echo No matching evidence ZIP. Nothing was modified.
+  pause
+  goto MENU
+)
+for %%F in ("%QTS_CONTEXT_FILE%") do set "QTS_CONTEXT_DIR=%%~dpF"
+py -3 "%QTS_ROOT_DIR%gold_robot\research\retrospective_context.py" --forensics "%QTS_CONTEXT_FILE%" --output "%QTS_CONTEXT_DIR%QTS_MARKET_CONTEXT_REVIEW.json" --mt5
+set "CODE=%ERRORLEVEL%"
+if not "%CODE%"=="0" echo INCOMPLETE / NO-GO: Check MT5 history, DEMO server, and output JSON.
+echo Open the generated QTS_MARKET_CONTEXT_REVIEW.json to review H1, ATR, spread and sessions.
 pause
 goto MENU
 
