@@ -140,6 +140,33 @@ def test_sell_excursions_use_ask_not_bid(tmp_path):
     assert row["adverse_quote_excursion_price"] > 0
 
 
+def test_bounded_review_processes_newest_not_stuck_on_first_64(tmp_path):
+    reports, signals, src = make(tmp_path)
+    csv_path = next(signals.glob("QTS_ForwardShadowV2_Style3_*.csv"))
+    with csv_path.open("a", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(FIELDS), delimiter=";")
+        for i in range(1, 66):
+            when = START + 60 + i * 900
+            writer.writerow({
+                "schema": "qts.mt5.forward_shadow_signal.v2",
+                "observed_utc_s": when,
+                "closed_bar_open_server_s": when - 965,
+                "tick_server_time_msc": (when - 1) * 1000,
+                "symbol": "XAUUSD@", "timeframe": "M15",
+                "style": 3, "side": "SELL",
+                "bid": 2450.21, "ask": 2450.42,
+                "atr14": 6.0, "prior_48_atr_median": 10.0,
+                "atr_band": "AT_OR_BELOW_TRAILING_MEDIAN",
+                "source": "NATIVE_CLOSED_BAR_UNARMED_DEMO",
+            })
+    out = review(reports, signals, src, QuoteTerminal(), now_utc_s=START + 100000)
+    assert out["prospective_signals_seen"] == 66
+    assert out["not_reviewed_due_to_bounded_batch"] == 2
+    assert out["quote_paths_complete_by_gap_heuristic"] == 64
+    assert out["status"] == "QUOTE_PATHS_UNKNOWN_NO_GO"
+    assert out["post_signal_price_paths"][-1]["signal_event_utc_s"] == START + 60 + 65 * 900
+
+
 def test_quote_path_source_is_read_only():
     source = (GOLD / "research" / "forward_shadow_paths.py").read_text(encoding="utf-8")
     for illegal in ("order_send(", "OrderSend(", "mt5.login(", "strategy_promotion("):
