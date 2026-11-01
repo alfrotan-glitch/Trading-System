@@ -161,12 +161,23 @@ if(-not (Test-Path -LiteralPath $failureJson -PathType Leaf) -or
     throw 'Detailed failure report missing; do not claim completed analysis.'
 }
 
+# Cross-check broker attribution, post-stop TP chronology, pre-stop
+# evidence status, and reject any causal or out-of-sample promotion.
+# This is an offline report only; it cannot edit EA settings.
+$causality=Join-Path $review 'QTS_STOP_ENTRY_CAUSALITY_GATE.json'
+RunPython -exe $python -arguments @((Join-Path $gold 'research\verify_stop_causality_gate.py'),
+    '--bundle',$bundle,'--post',$audit,'--pre-summary',$failureJson,
+    '--out',$causality) -purpose 'independent stop-entry causality and holdout gate'
+if(-not (Test-Path -LiteralPath $causality -PathType Leaf)){
+    throw 'Stop-entry causality gate missing. Trading stays locked.'
+}
+
 # Keep both quote-export manifests with unique names inside the ZIP.
 # Compress-Archive otherwise collides on two export_status.json basenames.
 $preStatusForZip=Join-Path $review 'QTS_PRE_STOP_EXPORT_STATUS.json'
 Copy-Item -LiteralPath $preStatus -Destination $preStatusForZip -Force
 $zip=Join-Path $run.FullName 'QTS_POST_STOP_REVIEW.zip'
-$files=@($audit,$original,$cases,$statusPath,$preStatusForZip,$failureJson,$failureCsv)
+$files=@($audit,$original,$cases,$statusPath,$preStatusForZip,$failureJson,$failureCsv,$causality)
 foreach($file in $files){if(-not (Test-Path -LiteralPath $file -PathType Leaf)){throw ('Missing review evidence: '+$file)}}
 Compress-Archive -LiteralPath $files -DestinationPath $zip -Force
 $summary=Get-Content -LiteralPath $audit -Raw | ConvertFrom-Json
