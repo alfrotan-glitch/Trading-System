@@ -6,6 +6,7 @@ EA = (ROOT / "mt5_robot/QTS_Gold_Robot.mq5").read_text("utf-8")
 V3 = (ROOT / "mt5_robot/MarketContextV3.mqh").read_text("utf-8")
 RUNNER = (ROOT / "research/RunAutomaticTester.ps1").read_text("utf-8")
 ADAPTIVE = (ROOT / "mt5_robot/AdaptiveResearch.mqh").read_text("utf-8")
+INSTALLER = (ROOT / "mt5_robot/Install_QTS_Gold_Robot.ps1").read_text("utf-8")
 
 
 def test_v3_is_unarmed_and_tester_only():
@@ -58,6 +59,21 @@ def test_candidate_ranking_does_not_hide_valid_alternatives():
     assert ADAPTIVE.index("!TesterMarketContextV3(candidate_side") < ADAPTIVE.index("double score=")
     assert "A failed top candidate cannot hide another valid alternative." in ADAPTIVE
     assert "bool TesterMarketContextV3(const int side,const int style," in EA
+
+
+def test_windows_installer_installs_all_required_context_includes_atomically():
+    assert "MarketContextV3.mqh" in INSTALLER
+    for phrase in (
+        "$contextV3Rows", "$contextV3Hash", "$destContextV3",
+        "$backupContextV3", "$hadContextV3",
+        "Copy-Item -LiteralPath $contextV3 -Destination $destContextV3 -Force",
+        "Copy-Item -LiteralPath $backupContextV3 -Destination $destContextV3 -Force",
+        "Remove-Item -LiteralPath $destContextV3 -Force",
+        "V3 market-context include changed during compilation.",
+    ):
+        assert phrase in INSTALLER, phrase
+    assert INSTALLER.index("Missing V3 market-context include") < INSTALLER.index("$experts = ")
+    assert INSTALLER.index("$contextV3Hash = ") < INSTALLER.index("Copy-Item -LiteralPath $contextV3 -Destination $destContextV3 -Force")
 
 
 def test_broker_minimum_lot_step_and_budget_are_never_rounded_up():
