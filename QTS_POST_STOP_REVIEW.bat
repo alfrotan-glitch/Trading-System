@@ -1,6 +1,7 @@
 @echo off
 REM QTS GOLD - read-only STOP audit. May READ WMMarkets MT5 tick history; never sends orders.
 setlocal EnableExtensions DisableDelayedExpansion
+set "QTS_POST_STOP_PARTIAL="
 set "REPO=%~dp0"
 set "AUTO=%REPO%gold_robot\reports_local\auto_runs"
 set "BUNDLE="
