@@ -4,8 +4,8 @@ param([string]$TerminalExe="",[string]$TerminalDataFolder="",
       [string]$OutputDirectory="",[string]$FromDate="",[string]$ToDate="",
       [int]$TimeoutMinutesPerRun=90,[switch]$PrepareOnly,[switch]$NoOpen,
       [string]$OnlyStyles='',
-      [ValidateSet('BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3','ADAPTIVE_V4')]
-      [string]$ResearchVariant='BASELINE')
+      [ValidateSet('BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO')]
+      [string]$ResearchVariant='BASELINE',[int]$VetoStyle=-1,[int]$VetoRegime=-1)
 $ErrorActionPreference='Stop'
 $gold=Split-Path -Parent $PSScriptRoot
 $sourceManifestFile=Join-Path $gold 'docs\SOURCE_CHECKSUMS.json'
@@ -38,8 +38,16 @@ if($targeted){
 
 # V3 is a NEW strategy hypothesis, never a hidden replacement for V2 or the baseline.
 # Only Style 7 / M15 is allowed to use the opt-in V3 native market-context filter.
-if($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4') -and ($OnlyStyles -ne '7')){
-    throw 'CONTEXT_V3 and ADAPTIVE_V4 require -OnlyStyles 7 (M15 adaptive research only).'
+if($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO') -and ($OnlyStyles -ne '7')){
+    throw 'Adaptive V3/V4/V5 variants require -OnlyStyles 7 (M15 research only).'
+}
+if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){
+    if($VetoStyle -lt 0 -or $VetoStyle -gt 8 -or $VetoStyle -eq 7 -or
+       $VetoRegime -lt 0 -or $VetoRegime -gt 2){
+        throw 'V5 challenger requires the exact frozen veto style (0-6,8) and regime (0-2).'
+    }
+}elseif($VetoStyle -ne -1 -or $VetoRegime -ne -1){
+    throw 'V5 veto parameters cannot contaminate another research arm.'
 }
 $today=(Get-Date).Date
 $endMonth=[datetime]::new($today.Year,$today.Month,1)
@@ -110,6 +118,8 @@ An incomplete or missing report means NO-GO.</p></section></main></body></html>
         from_date=$FromDate;to_date=$ToDate;comparison=$comparison;
         selected_styles=@($selectedStyles);targeted=$targeted;
         research_variant=$ResearchVariant;
+        challenger_veto_style=$(if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){$VetoStyle}else{$null});
+        challenger_veto_regime=$(if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){$VetoRegime}else{$null});
         source_manifest_sha256=$sourceManifestSha256;
         results=@($results.ToArray())
     } | ConvertTo-Json -Depth 7 |
@@ -236,10 +246,20 @@ try{
         $flags=[ordered]@{
             'TesterUseEntryQualityV2'=($ResearchVariant -in @('ENTRY_FILTER','COMBINED'))
             'TesterProtectNearTPV2'=($ResearchVariant -in @('NEAR_TP','COMBINED'))
-            'TesterUseMarketContextV3'=($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4'))
-            'TesterUseAdaptiveRouterV4'=($ResearchVariant -eq 'ADAPTIVE_V4')
+            'TesterUseMarketContextV3'=($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO'))
+            'TesterUseAdaptiveRouterV4'=($ResearchVariant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO'))
+            'TesterUsePreregisteredVetoV5'=($ResearchVariant -eq 'ADAPTIVE_V5_VETO')
         }
         $profileLines=@(Get-Content -LiteralPath $preset -Encoding Unicode)
+        if(@($profileLines | Where-Object {$_ -match '^TesterVetoStyleV5='}).Count -ne 1 -or
+           @($profileLines | Where-Object {$_ -match '^TesterVetoRegimeV5='}).Count -ne 1){
+            throw 'Missing unique veto inputs in native MT5 safety-on preset.'
+        }
+        $profileLines=@($profileLines | ForEach-Object {
+            if($_ -match '^TesterVetoStyleV5='){ 'TesterVetoStyleV5='+$VetoStyle }
+            elseif($_ -match '^TesterVetoRegimeV5='){ 'TesterVetoRegimeV5='+$VetoRegime }
+            else{$_}
+        })
         foreach($key in $flags.Keys){
             if(@($profileLines | Where-Object {$_ -match ('^'+$key+'=')}).Count -ne 1){
                 throw ('Research flag missing or duplicated: '+$key)
@@ -372,7 +392,7 @@ try{
         }else{
             & (Join-Path $gold 'research\BuildTradeForensics.ps1') -InputDirectory $native -OutputDirectory $OutputDirectory -NoOpen
         }
-        if($ResearchVariant -eq 'ADAPTIVE_V4'){
+        if($ResearchVariant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO')){
             # Attach the actual selected sub-strategy and frozen market regime
             # from the broker's ORIGINAL entry-order comment to every V4 fill.
             # Never silently mark the tester run as reviewed when any native
