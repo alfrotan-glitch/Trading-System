@@ -577,8 +577,8 @@
     },
     {
       "path": "tests/test_preregistered_v5_study.py",
-      "bytes": 13910,
-      "sha256": "2936cdf1a65641995644bd70ec22fabc79b7dcfbb3f313c68947e4a011266baa"
+      "bytes": 13984,
+      "sha256": "7e18a9c5de2d3a8db5f34d5a6ad33f25ad9ad98f250be44aa4c9383aaef591df"
     },
     {
       "path": "tests/test_reference_benchmark.py",
