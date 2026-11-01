@@ -5,8 +5,91 @@
 // Native MT5 broker time is not automatically London/New York local time.
 #define QTS_V3_M15_HISTORY 18
 
+// Native tester-only source-of-truth counts for every V3 rejection reason.
+// Historic logs are not sufficient: export this even if no order ever existed.
+#define QTS_V3_REJECTION_REASONS 25
+int g_v3_rejection_counts[QTS_V3_REJECTION_REASONS];
+int g_v3_accepted_count=0;
+string V3ReasonText(const int idx)
+  {
+   string reasons[]={
+      "not an authorized M15 adaptive tester",
+      "M15/M5/H1 closed bars unavailable",
+      "M15 signal bar not closed at evaluation",
+      "M15 history gap; do not infer structure",
+      "M5 confirmation not aligned with M15 decision",
+      "H1 candle not causally available",
+      "higher-timeframe indicators unavailable",
+      "missing supported trade direction",
+      "invalid volatility, tick or planned prices",
+      "invalid previous M15 price structure",
+      "last closed candle data invalid",
+      "SL/entry/TP direction invalid",
+      "weak SL room or gross reward/risk",
+      "spread dominates ATR or structural stop",
+      "unsupported router family",
+      "H1 directional trend or M15 EMA rejected",
+      "M5 closed candle did not confirm direction",
+      "range BUY lacks support reclaim",
+      "BUY sweep did not pierce prior support",
+      "range SELL lacks resistance rejection",
+      "SELL sweep did not pierce prior resistance",
+      "minimum broker lot is unknown",
+      "broker did not quote planned profit",
+      "after-cost and slipped-stop reward/risk below 1.25",
+      "UNKNOWN_V3_VETO"
+   };
+   if(idx<0 || idx>=ArraySize(reasons)) return "UNKNOWN_V3_VETO";
+   return reasons[idx];
+  }
+string V3ReasonCode(const int idx)
+  {
+   string codes[]={
+      "UNAUTHORIZED_M15",
+      "M15_M5_H1_BARS_MISSING",
+      "M15_BAR_NOT_CLOSED",
+      "M15_HISTORY_GAP",
+      "M5_M15_MISALIGNED",
+      "H1_BAR_NOT_CAUSAL",
+      "EMA_INDICATORS_MISSING",
+      "INVALID_TRADE_SIDE",
+      "INVALID_ATR_QUOTE_PRICE",
+      "INVALID_M15_PRIOR_STRUCTURE",
+      "INVALID_CLOSED_CANDLE",
+      "INVALID_SL_ENTRY_TP_DIRECTION",
+      "WEAK_STOP_ROOM_OR_GROSS_RR",
+      "SPREAD_OR_STOP_ROOM",
+      "UNSUPPORTED_STRATEGY_FAMILY",
+      "H1_TREND_OR_M15_EMA",
+      "M5_DIRECTION_NOT_CONFIRMED",
+      "RANGE_BUY_NO_SUPPORT_RECLAIM",
+      "BUY_SWEEP_NO_SUPPORT_PIERCE",
+      "RANGE_SELL_NO_RESISTANCE_REJECT",
+      "SELL_SWEEP_NO_RESISTANCE_PIERCE",
+      "BROKER_MINIMUM_LOT_UNKNOWN",
+      "BROKER_PROFIT_QUOTE_UNAVAILABLE",
+      "NET_RR_BELOW_1_25",
+      "UNKNOWN_V3_VETO"
+   };
+   if(idx<0 || idx>=ArraySize(codes)) return "UNKNOWN_V3_VETO";
+   return codes[idx];
+  }
+void V3CountRejection(const string why)
+  {
+   if(MQLInfoInteger(MQL_TESTER)==0 || !TesterUseMarketContextV3) return;
+   int idx=QTS_V3_REJECTION_REASONS-1;
+   for(int i=0;i<QTS_V3_REJECTION_REASONS-1;i++)
+      if(why==V3ReasonText(i))
+        {
+         idx=i;
+         break;
+        }
+   g_v3_rejection_counts[idx]++;
+  }
+
 bool MarketContextV3Reject(const string why)
   {
+   V3CountRejection(why);
    status_text="V3 MARKET CONTEXT: "+why;
    if(EnableEntryDiagnostics)
       Print("QTS V3 veto closed-bar market context: ",why);
@@ -140,6 +223,7 @@ bool TesterMarketContextV3(const int side,const int style,
    double net_tp=gross_tp-AssumedRoundTurnFeePerLot*min_lot;
    if(risk<=0.0 || net_tp<=0.0 || net_tp/risk<1.25)
       return MarketContextV3Reject("after-cost and slipped-stop reward/risk below 1.25");
+   if(MQLInfoInteger(MQL_TESTER)!=0) g_v3_accepted_count++;
    if(EnableEntryDiagnostics)
       PrintFormat("QTS V3 ACCEPT research-only style=%d side=%d H1=%.5f H1_EMA=%.5f M15=%.5f M5=%.5f support=%.5f resistance=%.5f netRR=%.3f",
                   style,side,h1[0].close,h1_ema[0],m15[last].close,
