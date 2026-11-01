@@ -90,8 +90,10 @@ echo  [8] Audit saved MT5 agent logs
 echo  [9] Diagnose adaptive V4 decisions (last completed month)
 echo  [A] Review historical post-stop broker quote paths
 echo  [B] AUTO-REVIEW saved Retest/Sweep reports (no ZIP path or new tester)
+echo  [C] Forward Shadow: freeze rules / read native DEMO signal journal (NO ORDERS)
 echo.
-choice /C 123456789AB /N /M "Choose 1-9, A or B: "
+choice /C 123456789ABC /N /M "Choose 1-9, A, B or C: "
+if errorlevel 12 goto FORWARD_SHADOW
 if errorlevel 11 goto MARKET_CONTEXT
 if errorlevel 10 goto STOP_QUOTES
 if errorlevel 9 goto V4_DIAGNOSE
@@ -160,6 +162,27 @@ if exist "%QTS_CONTEXT_DIR%\QTS_CONTEXT_AUTO_SUMMARY.json" (
 )
 echo.
 echo Results: %QTS_CONTEXT_DIR%
+pause
+goto MENU
+
+:FORWARD_SHADOW
+echo.
+echo QTS: FORWARD SHADOW - native closed-bar signal journal only.
+echo No connected broker orders; MT5 DEMO must be OPEN for the EA to log signals.
+echo Attach the installed QTS EA to TWO XAUUSD@ M15 charts:
+echo Chart A: EntryStyle=1 (Retest). Chart B: EntryStyle=3 (Sweep/Reclaim).
+echo Keep EnableDemoOrders=false AND EnableDemoForwardOrders=false on both.
+echo Keep EnableEntryDiagnostics=true. Do NOT enable Algo Trading.
+set "QTS_FORWARD_DIR=%QTS_ROOT_DIR%gold_robot\reports_local\forward_shadow"
+py -3 "%QTS_ROOT_DIR%gold_robot\research\forward_shadow_observer.py" --report-dir "%QTS_FORWARD_DIR%"
+set "CODE=%ERRORLEVEL%"
+if not "%CODE%"=="0" echo FORWARD SHADOW NO-GO: see report for exact problem.
+if exist "%QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_REPORT.json" (
+  start "" notepad.exe "%QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_REPORT.json"
+)
+echo.
+echo Frozen registration and results: %QTS_FORWARD_DIR%
+echo This records native signals only; trades, fills, SL/TP and profits remain UNKNOWN.
 pause
 goto MENU
 
