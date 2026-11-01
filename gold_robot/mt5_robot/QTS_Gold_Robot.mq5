@@ -621,7 +621,7 @@ int CompletedBarSignal(double &atr_value)
 #include "StructureResearch.mqh"
 #include "OpportunityResearch.mqh"
 #include "AdaptiveResearch.mqh"
-#include "MarketContextV3.mqh"
+
 #include "SmcResearch.mqh"
 #include "ScalpResearch.mqh"
 
@@ -646,6 +646,8 @@ double EstimatedMonetaryLoss(const int side,const double volume,
    double cost=-pnl+AssumedRoundTurnFeePerLot*volume;
    return MathIsValidNumber(cost) && cost>0.0 ? cost : -1.0;
   }
+
+#include "MarketContextV3.mqh"
 
 // A current-equity breach latch prevents the NEXT trade after the limit.
 // This additional pre-order budget prevents the NEXT stop from consuming
