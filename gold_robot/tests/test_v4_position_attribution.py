@@ -23,9 +23,11 @@ def trade(*, pos="p1", tag="QTSV4-S8-R2", gross=12.0, charges=-1.0,
         "gross_usd": gross, "charges_usd": charges,
         "net_usd": round(gross + charges, 2), "deal_count": 2,
         "exit_reason": exit_reason, "minutes_held": 31,
+        "entry_time_msc": "1780000000000",
+        "exit_time_msc": "1780001860000",
         "exit_legs": [{
             "deal_id": pos + "-exit", "reason": exit_reason,
-            "time_msc": "1780000030000", "lots": lots,
+            "time_msc": "1780001860000", "lots": lots,
             "price": 4016, "gross": gross, "charges": charges,
         }],
     }
@@ -140,6 +142,37 @@ def test_native_ea_order_comment_bound_to_selected_strategy_before_ordercheck():
     assert "if(RealAccountBlocked())" in ea
     assert "OrderSend(" not in (GOLD / "research" / "v4_position_attribution.py").read_text("utf-8")
 
+
+
+def test_tampered_native_exit_timestamps_fail_closed():
+    bad = trade()
+    bad["exit_time_msc"] = "1779999999000"
+    with pytest.raises(ValueError, match="BROKER_TIMESTAMP_ORDER_INVALID"):
+        inspect_position(bad)
+    bad = trade()
+    bad["exit_legs"][0]["time_msc"] = "1780001960000"
+    with pytest.raises(ValueError, match="EXIT_LEG_TIMESTAMP_OUTSIDE"):
+        inspect_position(bad)
+
+
+def test_cross_position_duplicate_deal_id_is_rejected():
+    first = trade(pos="x")
+    second = trade(pos="y", tag="QTSV4-S3-R0")
+    second["exit_legs"][0]["deal_id"] = first["exit_legs"][0]["deal_id"]
+    result = audit(source(first, second))
+    assert result["status"] == "INCOMPLETE_STRATEGY_ATTRIBUTION_NO_GO"
+    assert result["native_positions_attributed"] == 1
+    assert result["issues"][0]["reason"] == "CROSS_POSITION_DUPLICATE_BROKER_DEAL_ID"
+
+
+def test_realised_drawdown_is_not_floating_equity_drawdown():
+    t1 = trade(pos="a", gross=10, charges=0)
+    t2 = trade(pos="b", tag="QTSV4-S2-R2", gross=-25, charges=0)
+    t2["exit_time_msc"] = "1780001900000"
+    t2["exit_legs"][0]["time_msc"] = "1780001900000"
+    report = audit(source(t1, t2), extra_cost=0)
+    assert report["maximum_closed_trade_path_drawdown_after_stress_usd"] == 25.0
+    assert report["closed_trade_drawdown_is_not_intratrade_equity_drawdown"] is True
 
 def test_reference_immutable_broker_comment_extraction():
     ea = (GOLD / "mt5_robot" / "QTS_Gold_Robot.mq5").read_text("utf-8")
