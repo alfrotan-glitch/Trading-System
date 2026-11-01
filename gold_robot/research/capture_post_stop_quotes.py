@@ -277,7 +277,7 @@ def main(argv=None, *, mt5_module=None) -> int:
         f"Bad or crossed bid/ask quote rows: {replay['quote_data_quality']['bad_bid_ask_rows']}\n"
         f"Ignored UTC-second boundary-only rows: "
         f"{replay['quote_data_quality']['ignored_pre_stop_boundary_rows'] + replay['quote_data_quality']['ignored_post_buffer_boundary_rows']}\n"
-        f"Malformed/out-of-order/out-of-range rows: 
+        f"Malformed/out-of-order/out-of-range rows: "
         f"{replay['quote_data_quality']['malformed_rows'] + replay['quote_data_quality']['out_of_order_rows'] + replay['quote_data_quality']['out_of_range_rows']}\n"
         f"Failed/oversized tick reads: "
         f"{replay['quote_data_quality']['failed_history_reads'] + replay['quote_data_quality']['oversized_history_reads']}\n"
