@@ -197,3 +197,33 @@ def test_no_order_or_ea_mutation_inside_learner():
         assert text not in learner
     assert '"can_edit_ea": False' in learner
     assert '"can_self_promote_strategy": False' in learner
+
+
+def test_native_mt5_v4_tester_automatically_runs_evidence_review():
+    runner = (GOLD / "research" / "RunAutomaticTester.ps1").read_text("utf-8")
+    assert "if($ResearchVariant -eq 'ADAPTIVE_V4')" in runner
+    assert "research\\ten_trade_learning.py" in runner
+    assert "QTS_TEN_TRADE_REFLECTION.json" in runner
+    assert "--attribution $attr --post-stop $stopSummary --output $tenTradeReport" in runner
+    assert "if($LASTEXITCODE -ne 0" in runner
+    assert "'WAITING_FOR_TEN_COMPLETE_TRADES','TEN_TRADE_CHECKPOINTS_READY_RESEARCH_ONLY'" in runner
+    assert "$reflection.can_send_orders -ne $false" in runner
+    assert "$reflection.can_self_promote_strategy -ne $false" in runner
+
+
+def test_missing_style_identity_or_nan_cannot_be_substituted_after_ten():
+    rows = [position(i) for i in range(1, 11)]
+    rows[0]["selected_style"] = 7
+    with pytest.raises(ValueError, match="Unknown ex-ante"):
+        reflect(attribution(*rows))
+    rows = [position(i) for i in range(1, 11)]
+    rows[0]["recorded_charges_usd"] = float("nan")
+    with pytest.raises(ValueError, match="nonfinite"):
+        reflect(attribution(*rows))
+
+
+def test_policy_honours_original_native_broker_exit_reason():
+    rows = [position(i) for i in range(1, 11)]
+    rows[0]["exit_reason"] = "made_up"
+    with pytest.raises(ValueError, match="Unknown broker exit cause"):
+        reflect(attribution(*rows))
