@@ -118,6 +118,56 @@ subgroup appears profitable. Independent future DEMO trading and verified
 broker execution costs are required before any profitability claim.
 Current live permission remains **LOCKED**.
 
+## Forward Shadow | prospective native DEMO candidates, no orders
+
+**6 > C** in `START_HERE.bat` creates the immutable local registration
+`gold_robot/reports_local/forward_shadow/QTS_FORWARD_SHADOW_FROZEN.json`
+and summarizes *only subsequently observed* signals in
+`QTS_FORWARD_SHADOW_REPORT.json`. Run C once to register the evaluation
+**before** observing any new signals. Running it again reads new events;
+it never resets the frozen date/rules or reuses historical tester trades.
+
+The canonical `QTS_Gold_Robot.mq5` can now append candidate events from
+its existing closed-bar `ObserveUnarmedDemoSignal()` path. To observe both:
+
+1. Install/compile the current canonical EA with main menu **3**.
+   Compilation must succeed; GitHub's Python CI cannot prove that MetaEditor
+   compiled the EX5 inside your actual terminal.
+2. Open **WMMarkets DEMO**, make two charts for **XAUUSD@**, both **M15**.
+   Attach the canonical EA to each: `EntryStyle=1` Retest on the first,
+   `EntryStyle=3` Sweep/Reclaim on the second.
+3. On **both** charts: `EnableDemoOrders=false`,
+   `EnableDemoForwardOrders=false`, `EnableEntryDiagnostics=true`.
+   Keep MT5 Algo Trading disabled. Do not attach to a REAL account.
+4. Use **6 > C** again to review the candidates whenever needed.
+   It reads the MT5 `FILE_COMMON` CSV files directly; no ZIP or path entry.
+
+Native candidate CSV filenames:
+`%APPDATA%\MetaQuotes\Terminal\Common\Files\QTS_ForwardShadow_Style1_YYYYMM.csv`
+and `...Style3_YYYYMM.csv`.
+
+The exporter records the genuinely occurring native closed-bar BUY/SELL
+direction, bar/tick times, Bid/Ask, ATR(14), and median ATR from **20 older
+completed bars**. No account identifiers or orders are exported.
+The Python reader verifies structural fields and rejects stale/pre-registration
+events, duplicate same-bar records, impossible timing and inconsistent ATR
+labels. It freezes a source hash and two predetermined shadow rules; any local
+source/rule change requires a **new, explicitly identified** prospective
+evaluation, never resetting the original registration.
+
+The output contains **counts of genuine native signals only**. The initial
+phase does **not** record a complete tick stream, price trajectories,
+actual entry-limit orders, fills, SL, TP, slippage, fees or realized P/L.
+Do **not** interpret a recorded BUY/SELL candidate as an executable order
+or profit. No forward win-rate, expectancy or validated edge is available
+until an independently audited future path/fill contract is designed.
+It also does not cryptographically authenticate the installed EX5 or local CSV:
+source-hash match is not proof of binary provenance.
+
+The observer cannot set live permissions, automatically adapt filters,
+access order submission, or change an EA trade parameter.
+**LIVE stays LOCKED.**
+
 ## Safety and installation troubleshooting
 
 - Only the repository `main` is the active development branch.
