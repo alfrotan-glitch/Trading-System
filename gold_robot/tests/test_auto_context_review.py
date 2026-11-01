@@ -135,6 +135,45 @@ def test_empty_archive_set_fail_closed(tmp_path):
     assert result["live"] == "LOCKED"
 
 
+def test_missing_terminal_writes_no_go_summary_without_traceback(tmp_path, monkeypatch, capsys):
+    import auto_context_review as module
+    archive(tmp_path, "jan")
+
+    def unavailable():
+        raise ValueError("WMMarkets DEMO is not connected")
+
+    monkeypatch.setattr(module, "_readonly_demo_terminal", unavailable)
+    monkeypatch.setattr(sys, "argv", [
+        "auto_context_review.py", "--reports-root", str(tmp_path),
+        "--output-dir", str(tmp_path / "result"),
+    ])
+    assert module.main() == 2
+    out = json.loads((tmp_path / "result" / "QTS_CONTEXT_AUTO_SUMMARY.json")
+                     .read_text(encoding="utf-8"))
+    assert out["status"] == "AUTOMATIC_REVIEW_BLOCKED_NO_GO"
+    assert "WMMarkets DEMO" in out["problem"]
+    assert out["live"] == "LOCKED"
+    assert out["connected_orders_authorized"] is False
+    printed = capsys.readouterr().out
+    assert "NO-GO" in printed
+    assert "Traceback" not in printed
+
+
+def test_offline_main_auto_writes_no_go_summary_without_user_path(tmp_path, monkeypatch):
+    import auto_context_review as module
+    archive(tmp_path, "jan")
+    monkeypatch.setattr(sys, "argv", [
+        "auto_context_review.py", "--reports-root", str(tmp_path),
+        "--offline",
+    ])
+    assert module.main() == 2
+    out = json.loads((tmp_path / "context_auto" /
+                      "QTS_CONTEXT_AUTO_SUMMARY.json").read_text(encoding="utf-8"))
+    assert out["status"] == "INCOMPLETE_OR_QUARANTINED_EVIDENCE_NO_GO"
+    assert out["studied_runs"] == 1
+    assert out["live"] == "LOCKED"
+
+
 def test_never_runs_order_sender_or_changes_ea():
     source = (GOLD / "research" / "auto_context_review.py").read_text("utf-8")
     for forbidden in ("order_send(", "mt5.login(", "OrderSend(", "ENABLE_LIVE"):
