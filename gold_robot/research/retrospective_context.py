@@ -99,7 +99,7 @@ def validate_evidence(forensic: dict, manifest: dict) -> None:
                   f"Position {identity}: invalid broker exit reason {reason!r}")
         key = (row["style"], identity)
         _required(identity not in ("", "None", "UNKNOWN") and key not in unique,
-                  "Missing or duplicate native broker position identity")
+                  "Duplicate or missing native broker position identity")
         unique.add(key)
         first = int(row["entry_time_msc"])
         last = int(row["exit_time_msc"])
