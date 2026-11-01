@@ -1956,8 +1956,11 @@ void OnTimer()
   }
 
 // Shadow-only observation of NATIVE closed-bar signals, not order intents.
-// CSV is written ONLY on WMMarkets DEMO when BOTH order toggles are OFF.
-// ATR(14) comparison uses 20 OLDER, already closed M15 bars (shift=2..21).
+// CSV written ONLY on WMMarkets DEMO when BOTH order toggles are OFF.
+// Historical compatibility: TR14 simple average; reference median of 48
+// earlier ATR observations. All inputs are closed M15 rates, shift=1..64.
+// This deliberately does NOT use iATR (Wilder), which differs from the
+// fixed 14-bar TR mean in retrospective_context.py::market_at_entry.
 void RecordNativeForwardShadow(const int side,const double atr_value)
   {
    if(MQLInfoInteger(MQL_TESTER)!=0 ||
@@ -1979,24 +1982,52 @@ void RecordNativeForwardShadow(const int side,const double atr_value)
    datetime bar=iTime(_Symbol,PERIOD_M15,1);
    if(bar<=0 || bar!=last_closed_bar)
       return;
-   double historical_atr[];
-   ArrayResize(historical_atr,20);
-   if(CopyBuffer(atr_handle,0,2,20,historical_atr)!=20)
+   MqlRates closed_bars[];
+   ArrayResize(closed_bars,64);
+   // CopyRates physical index 0 = oldest. Shift 0 (running bar) excluded.
+   if(CopyRates(_Symbol,PERIOD_M15,1,64,closed_bars)!=64 ||
+      closed_bars[63].time!=bar)
      {
-      Print("QTS SHADOW: reference ATR not available; no classification");
+      Print("QTS SHADOW: 64 closed M15 bars unavailable");
       return;
      }
-   for(int n=0;n<20;n++)
-      if(!MathIsValidNumber(historical_atr[n]) || historical_atr[n]<=0.0)
+   double historical_atr[];
+   ArrayResize(historical_atr,48);
+   double atr_now=0.0;
+   // Historical Python uses atr_at(bars, stop) for stop = N-48..N-1
+   // for the median and stop=N for the current ATR (N=64 here).
+   for(int stop=16;stop<=64;stop++)
+     {
+      double tr_sum=0.0;
+      for(int k=stop-14;k<stop;k++)
+        {
+         MqlRates current=closed_bars[k];
+         double previous=closed_bars[k-1].close;
+         if(current.high<current.low || current.low<=0.0 || previous<=0.0)
+            return;
+         double tr=MathMax(current.high-current.low,
+                      MathMax(MathAbs(current.high-previous),
+                              MathAbs(current.low-previous)));
+         if(!MathIsValidNumber(tr) || tr<0.0)
+            return;
+         tr_sum+=tr;
+        }
+      double mean_tr=tr_sum/14.0;
+      if(!MathIsValidNumber(mean_tr) || mean_tr<=0.0)
          return;
+      if(stop==64)
+         atr_now=mean_tr;
+      else
+         historical_atr[stop-16]=mean_tr;
+     }
    ArraySort(historical_atr);
-   double median=(historical_atr[9]+historical_atr[10])*0.5;
+   double median=(historical_atr[23]+historical_atr[24])*0.5;
    if(!MathIsValidNumber(median) || median<=0.0)
       return;
    datetime utc_now=TimeGMT();
    MqlDateTime parts={};
    TimeToStruct(utc_now,parts);
-   string filename=StringFormat("QTS_ForwardShadow_Style%d_%04d%02d.csv",
+   string filename=StringFormat("QTS_ForwardShadowV2_Style%d_%04d%02d.csv",
                                (int)EntryStyle,parts.year,parts.mon);
    ResetLastError();
    int handle=FileOpen(filename,FILE_READ|FILE_WRITE|FILE_CSV|
@@ -2009,16 +2040,16 @@ void RecordNativeForwardShadow(const int side,const double atr_value)
    if(FileSize(handle)==0)
       FileWrite(handle,"schema","observed_utc_s","closed_bar_open_server_s",
                 "tick_server_time_msc","symbol","timeframe","style",
-                "side","bid","ask","atr14","prior_20_atr_median","atr_band",
+                "side","bid","ask","atr14","prior_48_atr_median","atr_band",
                 "source");
    FileSeek(handle,0,SEEK_END);
-   uint written=FileWrite(handle,"qts.mt5.forward_shadow_signal.v1",
+   uint written=FileWrite(handle,"qts.mt5.forward_shadow_signal.v2",
                 (long)utc_now,(long)bar,(long)tick.time_msc,
                 _Symbol,"M15",(int)EntryStyle,side>0 ? "BUY" : "SELL",
                 DoubleToString(tick.bid,_Digits),DoubleToString(tick.ask,_Digits),
-                DoubleToString(atr_value,8),DoubleToString(median,8),
-                atr_value>median ? "ABOVE_TRAILING_MEDIAN" :
-                                   "AT_OR_BELOW_TRAILING_MEDIAN",
+                DoubleToString(atr_now,8),DoubleToString(median,8),
+                atr_now>median ? "ABOVE_TRAILING_MEDIAN" :
+                                 "AT_OR_BELOW_TRAILING_MEDIAN",
                 "NATIVE_CLOSED_BAR_UNARMED_DEMO");
    FileFlush(handle);
    FileClose(handle);
