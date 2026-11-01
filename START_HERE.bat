@@ -89,7 +89,7 @@ echo  [7] Exit QTS
 echo  [8] Audit saved MT5 agent logs
 echo  [9] Diagnose adaptive V4 decisions (last completed month)
 echo  [A] Review historical post-stop broker quote paths
-echo  [B] Audit H1 / M15 ATR / spread at historical trade entry (read-only)
+echo  [B] AUTO-REVIEW saved Retest/Sweep reports (no ZIP path or new tester)
 echo.
 choice /C 123456789AB /N /M "Choose 1-9, A or B: "
 if errorlevel 11 goto MARKET_CONTEXT
@@ -148,22 +148,18 @@ goto MENU
 
 :MARKET_CONTEXT
 echo.
-echo QTS: READ-ONLY H1 / ATR / SPREAD AUDIT. WMMarkets DEMO must be OPEN.
-echo Enter the FULL path to QTS_HOLDOUT_REVIEW.zip from a completed native test.
-echo If dates/broker quotes are missing this audit reports UNKNOWN, never a winner.
-set "QTS_CONTEXT_FILE="
-set /p "QTS_CONTEXT_FILE=Evidence ZIP path: "
-set "QTS_CONTEXT_FILE=%QTS_CONTEXT_FILE:"=%"
-if not exist "%QTS_CONTEXT_FILE%" (
-  echo No matching evidence ZIP. Nothing was modified.
-  pause
-  goto MENU
-)
-for %%F in ("%QTS_CONTEXT_FILE%") do set "QTS_CONTEXT_DIR=%%~dpF"
-py -3 "%QTS_ROOT_DIR%gold_robot\research\retrospective_context.py" --forensics "%QTS_CONTEXT_FILE%" --output "%QTS_CONTEXT_DIR%QTS_MARKET_CONTEXT_REVIEW.json" --mt5
+echo QTS: AUTO-REVIEW OF SAVED RETEST/SWEEP REPORTS ONLY.
+echo No new backtest, no ZIP path entry, no broker orders.
+echo Research-only terminal history requires WMMarkets DEMO to be OPEN.
+set "QTS_CONTEXT_DIR=%QTS_ROOT_DIR%gold_robot\reports_local\context_auto"
+py -3 "%QTS_ROOT_DIR%gold_robot\research\auto_context_review.py" --reports-root "%QTS_ROOT_DIR%gold_robot\reports_local" --output-dir "%QTS_CONTEXT_DIR%"
 set "CODE=%ERRORLEVEL%"
-if not "%CODE%"=="0" echo INCOMPLETE / NO-GO: Check MT5 history, DEMO server, and output JSON.
-echo Open the generated QTS_MARKET_CONTEXT_REVIEW.json to review H1, ATR, spread and sessions.
+if not "%CODE%"=="0" echo RESEARCH NO-GO: see the automatic summary for missing or conflicted evidence.
+if exist "%QTS_CONTEXT_DIR%\QTS_CONTEXT_AUTO_SUMMARY.json" (
+  start "" notepad.exe "%QTS_CONTEXT_DIR%\QTS_CONTEXT_AUTO_SUMMARY.json"
+)
+echo.
+echo Results: %QTS_CONTEXT_DIR%
 pause
 goto MENU
 
