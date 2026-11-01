@@ -68,6 +68,7 @@ input double          MinimumTargetFeeMultiple  = 2.0;  // Gross TP profit must 
 // Defaults preserve the original strategy, SL/TP and broker execution exactly.
 input bool            TesterUseEntryQualityV2    = false;
 input bool            TesterProtectNearTPV2      = false;
+input bool            TesterUseMarketContextV3   = false; // Independent closed-bar context gate; Tester-only, OFF.
 
 
 CTrade trader;
@@ -620,6 +621,7 @@ int CompletedBarSignal(double &atr_value)
 #include "StructureResearch.mqh"
 #include "OpportunityResearch.mqh"
 #include "AdaptiveResearch.mqh"
+#include "MarketContextV3.mqh"
 #include "SmcResearch.mqh"
 #include "ScalpResearch.mqh"
 
@@ -698,8 +700,13 @@ double SizedLots(const int side,const double price,const double stop)
    double one_lot_cost=EstimatedMonetaryLoss(side,1.0,price,stop);
    if(one_lot_cost<=0.0 || budget<=0.0)
       return 0.0;
-   double units=MathFloor(budget/(one_lot_cost*step)+1e-9);
-   double volume=NormalizeDouble(MathMin(units*step,maximum),8);
+   // Broker volume steps are relative to SYMBOL_VOLUME_MIN, not assumed
+   // to be multiples from zero. Never round UP into a greater risk.
+   if(budget<minimum*one_lot_cost)
+      return 0.0;
+   double risk_limit=MathMin(budget/one_lot_cost,maximum);
+   double units=MathFloor((risk_limit-minimum)/step+1e-9);
+   double volume=NormalizeDouble(minimum+units*step,8);
    if(volume<minimum || !MathIsValidNumber(volume))
       return 0.0;
    double loss=EstimatedMonetaryLoss(side,volume,price,stop);
@@ -1019,6 +1026,8 @@ void EvaluateNewEntry()
         }
      }
    if(!TesterEntryQualityV2(side,quote,atr,price,stop))
+      return;
+   if(!TesterMarketContextV3(side,evaluated_style,quote,atr,price,stop,target))
       return;
    datetime deadline=0;
    if(!PendingExpiration(deadline))
@@ -1526,7 +1535,7 @@ int OnInit()
       Print("QTS: invalid parameters, no initialization.");
       return INIT_PARAMETERS_INCORRECT;
      }
-   if((TesterUseEntryQualityV2 || TesterProtectNearTPV2) &&
+   if((TesterUseEntryQualityV2 || TesterProtectNearTPV2 || TesterUseMarketContextV3) &&
       MQLInfoInteger(MQL_TESTER)==0)
      {
       Print("QTS: research V2 variants are Strategy Tester ONLY.");
@@ -1540,16 +1549,23 @@ int OnInit()
       Print("QTS: M1 scalp requires PERIOD_M1 and MaxPositionMinutes=15.");
       return INIT_PARAMETERS_INCORRECT;
      }
+   if(TesterUseMarketContextV3 &&
+      (MQLInfoInteger(MQL_TESTER)==0 ||
+       EntryStyle!=QTS_ADAPTIVE_ROUTER || SignalTimeframe!=PERIOD_M15))
+     {
+      Print("QTS: V3 market context is M15 adaptive Strategy Tester ONLY.");
+      return INIT_PARAMETERS_INCORRECT;
+     }
    evaluated_style=(int)EntryStyle;
    fast_handle=iMA(_Symbol,SignalTimeframe,FastEmaPeriod,0,MODE_EMA,PRICE_CLOSE);
    slow_handle=iMA(_Symbol,SignalTimeframe,SlowEmaPeriod,0,MODE_EMA,PRICE_CLOSE);
    atr_handle=iATR(_Symbol,SignalTimeframe,AtrPeriod);
    adx_handle=iADX(_Symbol,SignalTimeframe,AdxPeriod);
-   if(EnableH1TrendFilter)
+   if(EnableH1TrendFilter || TesterUseMarketContextV3)
       h1_handle=iMA(_Symbol,PERIOD_H1,50,0,MODE_EMA,PRICE_CLOSE);
    if(fast_handle==INVALID_HANDLE || slow_handle==INVALID_HANDLE ||
       atr_handle==INVALID_HANDLE || adx_handle==INVALID_HANDLE ||
-      (EnableH1TrendFilter && h1_handle==INVALID_HANDLE))
+      ((EnableH1TrendFilter || TesterUseMarketContextV3) && h1_handle==INVALID_HANDLE))
      {
       Print("QTS: indicator initialization failed.");
       return INIT_FAILED;
