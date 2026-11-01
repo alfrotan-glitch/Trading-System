@@ -4,7 +4,7 @@ param([string]$TerminalExe="",[string]$TerminalDataFolder="",
       [string]$OutputDirectory="",[string]$FromDate="",[string]$ToDate="",
       [int]$TimeoutMinutesPerRun=90,[switch]$PrepareOnly,[switch]$NoOpen,
       [string]$OnlyStyles='',
-      [ValidateSet('BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3')]
+      [ValidateSet('BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3','ADAPTIVE_V4')]
       [string]$ResearchVariant='BASELINE')
 $ErrorActionPreference='Stop'
 $gold=Split-Path -Parent $PSScriptRoot
@@ -38,8 +38,8 @@ if($targeted){
 
 # V3 is a NEW strategy hypothesis, never a hidden replacement for V2 or the baseline.
 # Only Style 7 / M15 is allowed to use the opt-in V3 native market-context filter.
-if($ResearchVariant -eq 'CONTEXT_V3' -and ($OnlyStyles -ne '7')){
-    throw 'CONTEXT_V3 requires -OnlyStyles 7 (M15 adaptive research only).'
+if($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4') -and ($OnlyStyles -ne '7')){
+    throw 'CONTEXT_V3 and ADAPTIVE_V4 require -OnlyStyles 7 (M15 adaptive research only).'
 }
 $today=(Get-Date).Date
 $endMonth=[datetime]::new($today.Year,$today.Month,1)
@@ -236,7 +236,8 @@ try{
         $flags=[ordered]@{
             'TesterUseEntryQualityV2'=($ResearchVariant -in @('ENTRY_FILTER','COMBINED'))
             'TesterProtectNearTPV2'=($ResearchVariant -in @('NEAR_TP','COMBINED'))
-            'TesterUseMarketContextV3'=($ResearchVariant -eq 'CONTEXT_V3')
+            'TesterUseMarketContextV3'=($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4'))
+            'TesterUseAdaptiveRouterV4'=($ResearchVariant -eq 'ADAPTIVE_V4')
         }
         $profileLines=@(Get-Content -LiteralPath $preset -Encoding Unicode)
         foreach($key in $flags.Keys){
