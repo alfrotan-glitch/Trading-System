@@ -164,7 +164,7 @@ def test_risk_budget_uses_broker_contract_facts_no_roundup():
     size = body_of('SizedLots')
     for term in ('OrderCalcMargin(', 'SYMBOL_VOLUME_MIN',
                  'SYMBOL_VOLUME_MAX', 'SYMBOL_VOLUME_STEP',
-                 'MathFloor(budget/(one_lot_cost*step)', 'if(volume<minimum',
+                 'MathFloor((risk_limit-minimum)/step', 'if(volume<minimum',
                  'MaxMarginUsePct', 'EstimatedMonetaryLoss('):
         assert term in size, term
     monetary = body_of('EstimatedMonetaryLoss')
