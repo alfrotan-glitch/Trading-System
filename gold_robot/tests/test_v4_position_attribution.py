@@ -310,3 +310,34 @@ def test_native_v4_test_presets_attested_from_actual_ea_not_just_copied_file():
     assert "Zero trades cannot be attributed to a strategy" in runner
     assert "expected '+$expectedInputs[$key]" in runner
     assert "MISSING_OR_DUPLICATED" in runner
+
+
+def test_v3_native_rejections_have_complete_distinct_reasons():
+    import re
+    v3=(GOLD / "mt5_robot" / "MarketContextV3.mqh").read_text("utf-8")
+    reasons=re.findall(r'MarketContextV3Reject\("([^"]+)"\)',v3)
+    assert len(reasons)==24
+    assert len(set(reasons))==len(reasons)
+    assert "QTS_V3_REJECTION_REASONS 25" in v3  # plus unknown
+    assert "V3CountRejection(why);" in v3
+    assert "g_v3_rejection_counts[idx]++;" in v3
+    assert "g_v3_accepted_count++;" in v3
+    assert "MQLInfoInteger(MQL_TESTER)==0" in v3
+    assert "OrderSend(" not in v3
+
+
+def test_v4_tester_reports_v3_explanations_and_refuses_incomplete_reason_export():
+    v4=(GOLD / "mt5_robot" / "AdaptiveV4Research.mqh").read_text("utf-8")
+    runner=(GOLD / "research" / "RunAutomaticTester.ps1").read_text("utf-8")
+    assert 'FileWrite(file,"V3_VETO",-1,V3ReasonCode(v3),g_v3_rejection_counts[v3]);' in v4
+    assert 'FileWrite(file,"V3_ACCEPT",-1,"TOTAL",g_v3_accepted_count);' in v4
+    assert "$v3Rows.Count -ne 25" in runner
+    assert "$v3Accepted.Count -ne 1" in runner
+    assert "V3 native reason export missing/duplicated" in runner
+    assert "Native V3 diagnostic counters do not cover all V4 context decisions" in runner
+    assert "exact V3 veto reasons:" in runner
+    assert "V3 accepts=" in runner
+    assert "V4 ZERO_EXECUTED_BROKER_DEALS_NO_GO" in runner
+    # A diagnosis is not permission to execute on a connected live account.
+    ea=(GOLD / "mt5_robot" / "QTS_Gold_Robot.mq5").read_text("utf-8")
+    assert 'if(RealAccountBlocked())' in ea
