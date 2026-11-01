@@ -65,29 +65,37 @@ volume, sufficient sample size and independent holdout have been examined.
 An SL followed later by the original TP is NOT proof that widening the
 original SL would have been profitable. Unknown quote windows remain UNKNOWN.
 
-## Audit H1 trend, M15 ATR, spread and entry hour (READ ONLY)
+## Automatically audit SAVED historical Retest/Sweep runs (READ ONLY)
 
-This is *descriptive retrospective research*, not a new trading bot and
-not an automatic change to Retest or Sweep/Reclaim. On Windows, open your
-WMMarkets **DEMO** MT5 terminal, then double-click `START_HERE.bat` and
-select **6 (Advanced) > B (Historical market-context audit)**. Paste the
-full absolute path to the **QTS_HOLDOUT_REVIEW.zip** from your targeted
-native Strategy Tester run. This runs the existing Python interpreter
-(`py -3`) and the MetaTrader5 Python package; no connected orders are sent.
+Do **not** repeat the Strategy Tester and do **not** paste any ZIP paths.
+Open the existing WMMarkets **DEMO** terminal and double-click
+`START_HERE.bat`. Select **6 (Advanced) > B (Auto-review saved runs)**.
 
-The output is saved in the same folder as
-`QTS_MARKET_CONTEXT_REVIEW.json`. It records closed H1 EMA20/EMA50 trend,
-closed M15 ATR14 relative to trailing history, historical executable
-bid/ask spread and UTC entry hour **at or before each trade's entry**.
-Current forming candles and ticks after entry are excluded. For missing
-quotes, stale bars, unverified DEMO broker or partial evidence the
-analysis fails closed; it never fabricates market context.
+QTS automatically discovers `QTS_SHARE_RESULTS.zip` inside the existing
+`gold_robot/reports_local/auto_runs/*/` folders and any
+`QTS_HOLDOUT_REVIEW.zip` inside `reports_local/holdout_*/`.
+Only native **baseline** `XAUUSD@`/M15 real-tick Style **1 and 3** runs
+with matching broker evidence are studied. It does not run another MT5 test,
+change the EA, write broker orders, or upload private account information.
 
-Review the `cohorts` section to compare historical BUY vs SELL,
-H1-aligned vs countertrend, volatility and spread groups. All these
-months have already been inspected, so **no cohort is a proven edge**.
-Do not turn a retrospective grouping into an EA veto until tested with
-predeclared rules, actual broker costs and future untouched data.
+The output opens automatically in Notepad:
+
+`gold_robot/reports_local/context_auto/QTS_CONTEXT_AUTO_SUMMARY.json`
+
+Each unique archived run also has its own `QTS_CONTEXT_<hash>.json` report
+in the same folder with individual entry-time closed H1 EMA trend,
+closed M15 ATR, and historical Bid/Ask spread. The original ZIPs are untouched.
+
+**Fail-closed behavior:** missing broker data, incomplete/open positions,
+mixed or expert exits with missing evidence, and multiple conflicting
+ledgers for the same historical period are marked **NO-GO**. Duplicate
+identical archives are never counted twice. No eligible ZIP is also NO-GO.
+Incomplete-position gains are not silently counted as verified P/L.
+
+Reports remain **historical descriptive research only**, even if a
+subgroup appears profitable. Independent future DEMO trading and verified
+broker execution costs are required before any profitability claim.
+Current live permission remains **LOCKED**.
 
 ## Safety and installation troubleshooting
 
