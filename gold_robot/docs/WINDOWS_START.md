@@ -86,6 +86,27 @@ Each unique archived run also has its own `QTS_CONTEXT_<hash>.json` report
 in the same folder with individual entry-time closed H1 EMA trend,
 closed M15 ATR, and historical Bid/Ask spread. The original ZIPs are untouched.
 
+A second report is generated automatically from the **same saved run data**:
+
+`gold_robot/reports_local/context_auto/QTS_SHADOW_FILTER_REVIEW.json`
+
+It compares the unchanged Style 3 baseline to two **POST-HOC, read-only**
+counterfactual subsets: (1) retain only entries with M15 ATR at or below
+its trailing median; (2) omit BUY entries when ATR is above its median.
+It includes per-period retained position counts, wins, native profit,
+hypothetical extra costs of $10/$20 per lot, excluded positions, and
+monthly descriptive P/L. Original EA orders, risks and .set files are
+never modified; the program does not send signals or broker orders.
+
+**Important:** These rules were suggested AFTER inspecting the historical
+data. Retaining only historical fills is *not* a replacement Strategy
+Tester replay, and changes to capital, ordering or overlapping positions
+are unmeasured. A positive hypothetical filtered P/L does not verify
+future profitability. The report's `approval` is always
+`NOT_APPROVED_POST_HOC`, `validated_edge` is false, and `LIVE` stays
+`LOCKED`. A future prospective DEMO evaluation would need separate,
+unchanged preregistered rules and broker-cost evidence.
+
 **Fail-closed behavior:** missing broker data, incomplete/open positions,
 mixed or expert exits with missing evidence, and multiple conflicting
 ledgers for the same historical period are marked **NO-GO**. Duplicate
