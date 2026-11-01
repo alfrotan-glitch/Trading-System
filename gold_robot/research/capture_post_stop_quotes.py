@@ -79,6 +79,8 @@ def replay_from_mt5(data: dict, mt5, *, symbol: str = "XAUUSD@") -> tuple[dict, 
         "bad_bid_ask_rows": 0,
         "out_of_order_rows": 0,
         "out_of_range_rows": 0,
+        "ignored_pre_stop_boundary_rows": 0,
+        "ignored_post_buffer_boundary_rows": 0,
         "malformed_rows": 0,
         "failed_history_reads": 0,
         "oversized_history_reads": 0,
@@ -89,10 +91,12 @@ def replay_from_mt5(data: dict, mt5, *, symbol: str = "XAUUSD@") -> tuple[dict, 
         if ignored != 0 or len(stops) != 1:
             raise ValueError("Broker stop identity/geometry did not validate")
         exit_ms = row["exit_time_msc"]
-        begin_ms = exit_ms + 1
         end_ms = exit_ms + POST_STOP_MS + FINISH_BUFFER_MS
-        begin = datetime.fromtimestamp(begin_ms / 1000, timezone.utc)
-        end = datetime.fromtimestamp(end_ms / 1000, timezone.utc)
+        # MT5 tick-history queries are second-based even though executions have
+        # millisecond timestamps. Deliberately request the containing UTC
+        # seconds, then isolate boundary-only quotes below.
+        begin = datetime.fromtimestamp(exit_ms // 1000, timezone.utc)
+        end = datetime.fromtimestamp((end_ms + 999) // 1000, timezone.utc)
         # Broker quote-only changes avoid last/volume-only trade ticks.
         # On actual MT5 terminals, COPY_TICKS_ALL can include rows with
         # missing/unusable bid/ask, which used to abort ALL 33 stops.
@@ -104,13 +108,17 @@ def replay_from_mt5(data: dict, mt5, *, symbol: str = "XAUUSD@") -> tuple[dict, 
             "bad_bid_ask_rows": 0,
             "out_of_order_rows": 0,
             "out_of_range_rows": 0,
+            "ignored_pre_stop_boundary_rows": 0,
+            "ignored_post_buffer_boundary_rows": 0,
+            "query_start_utc": begin.isoformat(),
+            "query_end_utc": end.isoformat(),
             "malformed_rows": 0,
             "read_status": "OK",
             "affected_unknown_horizons_minutes": [],
         }
         observed = []
         invalid_horizons = set()
-        previous = exit_ms
+        previous = None
         if original is None:
             diagnostics["read_status"] = "HISTORICAL_QUOTE_READ_FAILED"
             quality["failed_history_reads"] += 1
@@ -132,17 +140,32 @@ def replay_from_mt5(data: dict, mt5, *, symbol: str = "XAUUSD@") -> tuple[dict, 
                     quality["malformed_rows"] += 1
                     invalid_horizons.update(HORIZONS_MIN)
                     continue
-                if ms <= exit_ms or ms > end_ms:
-                    diagnostics["out_of_range_rows"] += 1
-                    quality["out_of_range_rows"] += 1
-                    invalid_horizons.update(HORIZONS_MIN)
-                    continue
-                if ms < previous:
+                # A row supplied out of order is a genuine chronology fault,
+                # including when it lies in the query's boundary seconds.
+                if previous is not None and ms < previous:
                     diagnostics["out_of_order_rows"] += 1
                     quality["out_of_order_rows"] += 1
                     invalid_horizons.update(HORIZONS_MIN)
                     continue
                 previous = ms
+                # MT5 can return several ticks from the whole *second*
+                # containing an SL execution. These are not post-stop quotes.
+                # They must not invalidate otherwise complete later horizons.
+                if ms <= exit_ms and exit_ms - ms < 1000:
+                    diagnostics["ignored_pre_stop_boundary_rows"] += 1
+                    quality["ignored_pre_stop_boundary_rows"] += 1
+                    continue
+                # Likewise discard <=1-second overfetch past the extra
+                # 60-second completion buffer, never from within a horizon.
+                if ms > end_ms and ms - end_ms < 1000:
+                    diagnostics["ignored_post_buffer_boundary_rows"] += 1
+                    quality["ignored_post_buffer_boundary_rows"] += 1
+                    continue
+                if ms <= exit_ms or ms > end_ms:
+                    diagnostics["out_of_range_rows"] += 1
+                    quality["out_of_range_rows"] += 1
+                    invalid_horizons.update(HORIZONS_MIN)
+                    continue
                 if (not math.isfinite(bid) or not math.isfinite(ask) or
                         bid <= 0 or ask <= bid):
                     diagnostics["bad_bid_ask_rows"] += 1
@@ -199,7 +222,8 @@ def replay_from_mt5(data: dict, mt5, *, symbol: str = "XAUUSD@") -> tuple[dict, 
         "same_source_as_native_tester_not_proven": True,
         "historical_quote_fingerprint_sha256": fingerprint.hexdigest(),
         "warnings": [
-            "Invalid bid/ask, chronology or missing broker quote rows invalidate the affected time windows; they never count as TP touches.",
+            "Boundary-only quotes before an SL or beyond the completion buffer are excluded without inventing post-stop paths.",
+            "Materially out-of-range, invalid bid/ask, chronology or missing quote rows keep affected windows UNKNOWN.",
             "Terminal historical ticks may differ from MT5 tester ticks: real-tick mode can replace inconsistent or missing minute ticks.",
             "Missing or non-contiguous post-stop quote windows are UNKNOWN, never a missed/achieved target.",
             "Original TP touched AFTER SL is not a hypothetical executable winning trade.",
@@ -251,7 +275,9 @@ def main(argv=None, *, mt5_module=None) -> int:
         f"Original TP touched after stop in complete 120-minute windows: {touch}\n"
         f"Unknown/incomplete: {cohorts['native_stop_exits'] - coverage}\n"
         f"Bad or crossed bid/ask quote rows: {replay['quote_data_quality']['bad_bid_ask_rows']}\n"
-        f"Malformed/out-of-order/out-of-range rows: "
+        f"Ignored UTC-second boundary-only rows: "
+        f"{replay['quote_data_quality']['ignored_pre_stop_boundary_rows'] + replay['quote_data_quality']['ignored_post_buffer_boundary_rows']}\n"
+        f"Malformed/out-of-order/out-of-range rows: 
         f"{replay['quote_data_quality']['malformed_rows'] + replay['quote_data_quality']['out_of_order_rows'] + replay['quote_data_quality']['out_of_range_rows']}\n"
         f"Failed/oversized tick reads: "
         f"{replay['quote_data_quality']['failed_history_reads'] + replay['quote_data_quality']['oversized_history_reads']}\n"
