@@ -53,11 +53,13 @@ def load_evidence(path: Path) -> tuple[dict, dict, str]:
         raw = path.read_bytes()
         manifest = _json_bytes((path.parent / "OPEN_RESULTS.json").read_bytes())
     forensic = _json_bytes(raw)
-    validate_evidence(forensic, manifest)
+    # Keep malformed individual deals visible for quarantined NO-GO audit.
+    # Envelope identity must still be strict before opening any MT5 history.
+    validate_envelope(forensic, manifest)
     return forensic, manifest, hashlib.sha256(raw).hexdigest()
 
 
-def validate_evidence(forensic: dict, manifest: dict) -> None:
+def validate_envelope(forensic: dict, manifest: dict) -> tuple[datetime, datetime]:
     _required(forensic.get("schema") == "qts.mt5.trade_forensics.v1"
               and forensic.get("status") == "SELECTED_IMPORTED_FOR_REVIEW",
               "Unrecognized/incomplete native deal ledger")
@@ -79,71 +81,82 @@ def validate_evidence(forensic: dict, manifest: dict) -> None:
     start = datetime.strptime(manifest["from_date"], "%Y.%m.%d").replace(tzinfo=UTC)
     end = datetime.strptime(manifest["to_date"], "%Y.%m.%d").replace(tzinfo=UTC)
     _required(start < end, "Invalid test date window")
-    unique = set()
+    return start, end
+
+
+def validate_position(row: dict, start: datetime, end: datetime,
+                      unique: set[tuple[int, str]]) -> None:
+    _required(isinstance(row, dict), "Invalid native broker position record")
+    identity = str(row.get("position_id", "UNKNOWN"))
+    quality = row.get("status")
+    reason = row.get("exit_reason")
+    _required(row.get("style") in STYLES and row.get("side") in ("BUY", "SELL"),
+              f"Position {identity}: unknown style or direction")
+    # The canonical broker exporter marks fully reconciled multi-exit
+    # positions COMPLETE_MULTI_EXIT. Reject incomplete, open and reversal
+    # evidence, but do NOT reject valid multi-leg exits or expert/stop-out
+    # exit causes merely because they are not a simple SL/TP.
+    _required(quality in ("COMPLETE", "COMPLETE_MULTI_EXIT"),
+              f"Position {identity}: evidence status {quality!r}; "
+              "incomplete/reversed broker positions cannot be studied")
+    _required(isinstance(reason, str) and
+              (reason.startswith("DEAL_REASON_") or reason == "MIXED_EXIT_REASONS"),
+              f"Position {identity}: invalid broker exit reason {reason!r}")
+    key = (row["style"], identity)
+    _required(identity not in ("", "None", "UNKNOWN") and key not in unique,
+              "Duplicate or missing native broker position identity")
+    unique.add(key)
+    first = int(row["entry_time_msc"])
+    last = int(row["exit_time_msc"])
+    _required(start.timestamp() * 1000 <= first < end.timestamp() * 1000
+              and first < last, f"Position {identity}: outside native test window")
+    lots = float(row["entry_lots"])
+    exit_lots = float(row["exit_lots"])
+    net = float(row["net_usd"])
+    gross = float(row["gross_usd"])
+    charges = float(row["charges_usd"])
+    _required(all(math.isfinite(v) for v in (lots, exit_lots, net, gross, charges))
+              and lots > 0 and abs(lots - exit_lots) < 0.000001
+              and abs(net - gross - charges) < 0.05,
+              f"Position {identity}: unreconciled broker position P/L or volume")
+    legs = row.get("exit_legs")
+    _required(isinstance(legs, list) and legs,
+              f"Position {identity}: missing broker exit legs")
+    _required((quality == "COMPLETE_MULTI_EXIT") == (len(legs) > 1),
+              f"Position {identity}: exit-leg count contradicts broker status")
+    _required((reason == "MIXED_EXIT_REASONS") ==
+              (len({leg.get("reason") for leg in legs
+                    if isinstance(leg, dict)}) > 1),
+              f"Position {identity}: mixed-exit attribution disagrees with legs")
+    leg_total = 0.0
+    leg_times = []
+    for leg in legs:
+        _required(isinstance(leg, dict)
+                  and isinstance(leg.get("reason"), str)
+                  and leg["reason"].startswith("DEAL_REASON_"),
+                  f"Position {identity}: invalid broker exit leg")
+        leg_lots = float(leg["lots"])
+        leg_time = int(leg["time_msc"])
+        _required(math.isfinite(leg_lots) and leg_lots > 0
+                  and first <= leg_time <= last,
+                  f"Position {identity}: invalid exit volume/time")
+        leg_total += leg_lots
+        leg_times.append(leg_time)
+    _required(abs(leg_total - exit_lots) < 0.000001
+              and leg_times == sorted(leg_times)
+              and leg_times[-1] == last,
+              f"Position {identity}: incomplete or out-of-order exit evidence")
+    if reason != "MIXED_EXIT_REASONS":
+        _required(all(leg["reason"] == reason for leg in legs),
+                  f"Position {identity}: broker exit reason disagrees with legs")
+
+
+def validate_evidence(forensic: dict, manifest: dict) -> None:
+    """Strict contract for tests and any caller that requires zero exclusions."""
+    start, end = validate_envelope(forensic, manifest)
+    unique: set[tuple[int, str]] = set()
     for row in forensic["trades"]:
-        _required(isinstance(row, dict), "Invalid native broker position record")
-        identity = str(row.get("position_id", "UNKNOWN"))
-        quality = row.get("status")
-        reason = row.get("exit_reason")
-        _required(row.get("style") in STYLES and row.get("side") in ("BUY", "SELL"),
-                  f"Position {identity}: unknown style or direction")
-        # The canonical broker exporter marks fully reconciled multi-exit
-        # positions COMPLETE_MULTI_EXIT. Reject incomplete, open and reversal
-        # evidence, but do NOT reject valid multi-leg exits or expert/stop-out
-        # exit causes merely because they are not a simple SL/TP.
-        _required(quality in ("COMPLETE", "COMPLETE_MULTI_EXIT"),
-                  f"Position {identity}: evidence status {quality!r}; "
-                  "incomplete/reversed broker positions cannot be studied")
-        _required(isinstance(reason, str) and
-                  (reason.startswith("DEAL_REASON_") or reason == "MIXED_EXIT_REASONS"),
-                  f"Position {identity}: invalid broker exit reason {reason!r}")
-        key = (row["style"], identity)
-        _required(identity not in ("", "None", "UNKNOWN") and key not in unique,
-                  "Duplicate or missing native broker position identity")
-        unique.add(key)
-        first = int(row["entry_time_msc"])
-        last = int(row["exit_time_msc"])
-        _required(start.timestamp() * 1000 <= first < end.timestamp() * 1000
-                  and first < last, f"Position {identity}: outside native test window")
-        lots = float(row["entry_lots"])
-        exit_lots = float(row["exit_lots"])
-        net = float(row["net_usd"])
-        gross = float(row["gross_usd"])
-        charges = float(row["charges_usd"])
-        _required(all(math.isfinite(v) for v in (lots, exit_lots, net, gross, charges))
-                  and lots > 0 and abs(lots - exit_lots) < 0.000001
-                  and abs(net - gross - charges) < 0.05,
-                  f"Position {identity}: unreconciled broker position P/L or volume")
-        legs = row.get("exit_legs")
-        _required(isinstance(legs, list) and legs,
-                  f"Position {identity}: missing broker exit legs")
-        _required((quality == "COMPLETE_MULTI_EXIT") == (len(legs) > 1),
-                  f"Position {identity}: exit-leg count contradicts broker status")
-        _required((reason == "MIXED_EXIT_REASONS") ==
-                  (len({leg.get("reason") for leg in legs
-                        if isinstance(leg, dict)}) > 1),
-                  f"Position {identity}: mixed-exit attribution disagrees with legs")
-        leg_total = 0.0
-        leg_times = []
-        for leg in legs:
-            _required(isinstance(leg, dict)
-                      and isinstance(leg.get("reason"), str)
-                      and leg["reason"].startswith("DEAL_REASON_"),
-                      f"Position {identity}: invalid broker exit leg")
-            leg_lots = float(leg["lots"])
-            leg_time = int(leg["time_msc"])
-            _required(math.isfinite(leg_lots) and leg_lots > 0
-                      and first <= leg_time <= last,
-                      f"Position {identity}: invalid exit volume/time")
-            leg_total += leg_lots
-            leg_times.append(leg_time)
-        _required(abs(leg_total - exit_lots) < 0.000001
-                  and leg_times == sorted(leg_times)
-                  and leg_times[-1] == last,
-                  f"Position {identity}: incomplete or out-of-order exit evidence")
-        if reason != "MIXED_EXIT_REASONS":
-            _required(all(leg["reason"] == reason for leg in legs),
-                      f"Position {identity}: broker exit reason disagrees with legs")
+        validate_position(row, start, end, unique)
 
 
 def ema(closes: list[float], period: int) -> float:
@@ -255,9 +268,28 @@ def _cohort(rows: list[dict]) -> dict:
 
 
 def evaluate(forensic: dict, manifest: dict, source_sha256: str, mt5=None) -> dict:
-    validate_evidence(forensic, manifest)
+    start, end = validate_envelope(forensic, manifest)
+    unique: set[tuple[int, str]] = set()
+    quarantined: list[dict] = []
     rows = []
     for item in forensic["trades"]:
+        try:
+            validate_position(item, start, end, unique)
+        except (ValueError, TypeError, KeyError, OverflowError) as exc:
+            # A single incomplete, partially closed or malformed broker
+            # position must never crash the whole read-only report or be
+            # silently dropped from its coverage denominator.
+            quarantined.append({
+                "style": item.get("style") if isinstance(item, dict) else None,
+                "position_id": str(item.get("position_id", "UNKNOWN"))[:80]
+                               if isinstance(item, dict) else "UNKNOWN",
+                "status": str(item.get("status", "INVALID"))[:80]
+                          if isinstance(item, dict) else "INVALID",
+                "exit_reason": str(item.get("exit_reason", "UNKNOWN"))[:80]
+                               if isinstance(item, dict) else "UNKNOWN",
+                "problem": str(exc)[:200],
+            })
+            continue
         stamp = int(item["entry_time_msc"])
         dt = datetime.fromtimestamp(stamp / 1000, UTC)
         features = (market_at_entry(mt5, stamp) if mt5 is not None
@@ -305,17 +337,26 @@ def evaluate(forensic: dict, manifest: dict, source_sha256: str, mt5=None) -> di
     complete = sum(r["market"]["status"] == "COMPLETE_CLOSED_BAR_AND_BID_ASK" for r in rows)
     unusual = sum(r["exit_category"] == "BROKER_OTHER_OR_MIXED" for r in rows)
     multi = sum(r["exit_status"] == "COMPLETE_MULTI_EXIT" for r in rows)
+    total_source = len(forensic["trades"])
+    output_status = ("FORENSIC_POSITION_GAPS_NO_GO" if quarantined else
+                     "DESCRIPTIVE_ONLY_REVIEW_REQUIRED" if complete == len(rows)
+                     else "MARKET_HISTORY_INCOMPLETE_NO_GO")
     return {
         "schema": SCHEMA,
-        "status": ("DESCRIPTIVE_ONLY_REVIEW_REQUIRED" if complete == len(rows)
-                   else "MARKET_HISTORY_INCOMPLETE_NO_GO"),
+        "status": output_status,
         "source_forensics_sha256": source_sha256,
         "source_manifest_sha256": manifest.get("source_manifest_sha256"),
         "source_compiled_ex5_sha256": manifest.get("compiled_ex5_sha256"),
         "symbol": SYMBOL,
         "test_period": [manifest["from_date"], manifest["to_date"]],
         "complete_market_snapshots": complete,
-        "total_positions": len(rows),
+        "total_positions": total_source,
+        "validated_positions": len(rows),
+        "quarantined_position_count": len(quarantined),
+        "quarantined_positions": quarantined,
+        "coverage_warning": ("NO-GO: some native positions are excluded from P/L cohorts; "
+                             "never treat those cohorts as reconciled to the full MT5 report"
+                             if quarantined else "All native positions structurally reconciled."),
         "complete_multi_exit_positions": multi,
         "other_or_mixed_exit_positions": unusual,
         "exit_cause_warning": "Mixed, manual, expert and stop-out exits remain separate; do not infer a stopped or TP trade from their net profit.",
@@ -370,7 +411,7 @@ def main() -> int:
     print(f"QTS CONTEXT {result['status']}: {result['complete_market_snapshots']}"
           f"/{result['total_positions']} complete; LIVE LOCKED")
     print(f"Report: {args.output}")
-    return 0 if result["complete_market_snapshots"] == result["total_positions"] else 2
+    return 0 if result["status"] == "DESCRIPTIVE_ONLY_REVIEW_REQUIRED" else 2
 
 
 if __name__ == "__main__":
