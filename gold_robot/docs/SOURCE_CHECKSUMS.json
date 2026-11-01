@@ -202,8 +202,8 @@
     },
     {
       "path": "mt5_robot/AdaptiveV4Research.mqh",
-      "bytes": 14705,
-      "sha256": "c967ee25efbd233ad6c2cbac8f2e6a434a53c524688902779ec023e4ccf180b1"
+      "bytes": 15506,
+      "sha256": "dff1422a0ffd82b1be51f0d3ede210099f171f18d392f226fedeedbcae340809"
     },
     {
       "path": "mt5_robot/ExecutionPolicy.mqh",
@@ -312,8 +312,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 39339,
-      "sha256": "b3e3406c9dd9682574e9b4221dba0dae58a0f034f2cbfa2a914e9279d84cc226"
+      "bytes": 40973,
+      "sha256": "b9e147a29d319278344c0f6d1673bb91c6c019270a95552da3fbeadea22f8c92"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
@@ -657,8 +657,8 @@
     },
     {
       "path": "tests/test_v4_position_attribution.py",
-      "bytes": 13252,
-      "sha256": "2f66b6be85e5f59e85f1b18d28ab5c3a6a6966c90bb3fa0ffddda1b0599bfd41"
+      "bytes": 14148,
+      "sha256": "61e69e72e14755868d43d2a620e80128bbcf5920d24cc0ebed25a59b62215cfa"
     },
     {
       "path": "tests/test_v4_post_stop_cohorts.py",
