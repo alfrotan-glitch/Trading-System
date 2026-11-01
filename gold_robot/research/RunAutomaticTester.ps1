@@ -68,6 +68,8 @@ if($TimeoutMinutesPerRun -lt 1 -or $TimeoutMinutesPerRun -gt 480){
 function EscapeHtml([object]$value){
     return [System.Net.WebUtility]::HtmlEncode([string]$value)
 }
+$script:verifiedEx5Sha256=''
+$script:verifiedTerminalSha256=''
 function SaveOutcome([string]$state,[string]$message,[string]$comparison){
     $rows=@()
     foreach($item in $results){
@@ -121,6 +123,8 @@ An incomplete or missing report means NO-GO.</p></section></main></body></html>
         challenger_veto_style=$(if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){$VetoStyle}else{$null});
         challenger_veto_regime=$(if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){$VetoRegime}else{$null});
         source_manifest_sha256=$sourceManifestSha256;
+        compiled_ex5_sha256=$script:verifiedEx5Sha256;
+        terminal_exe_sha256=$script:verifiedTerminalSha256;
         results=@($results.ToArray())
     } | ConvertTo-Json -Depth 7 |
         Set-Content -LiteralPath (Join-Path $OutputDirectory 'OPEN_RESULTS.json') -Encoding UTF8
@@ -170,14 +174,14 @@ function SameHash([string]$a,[string]$b){
 }
 function CompiledCurrent([string]$data){
     $mql=Join-Path $data 'MQL5\Experts'
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','MarketContextV3.mqh','AdaptiveV4Research.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
         if(-not (SameHash (Join-Path $gold ('mt5_robot\'+$name)) (Join-Path $mql $name))){return $false}
     }
     $binary=Join-Path $mql 'QTS_Gold_Robot.ex5'
     if(-not (Test-Path -LiteralPath $binary -PathType Leaf)){return $false}
     if((Get-Item -LiteralPath $binary).Length -lt 1000){return $false}
     $binaryTime=(Get-Item -LiteralPath $binary).LastWriteTimeUtc
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','MarketContextV3.mqh','AdaptiveV4Research.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
         if($binaryTime -lt (Get-Item -LiteralPath (Join-Path $mql $name)).LastWriteTimeUtc.AddSeconds(-2)){return $false}
     }
     return $true
@@ -187,7 +191,7 @@ $message=''
 $comparison=''
 try{
     $manifest=Get-Content -LiteralPath (Join-Path $gold 'docs\SOURCE_CHECKSUMS.json') -Raw | ConvertFrom-Json
-    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh','mt5_robot/OpportunityResearch.mqh','mt5_robot/AdaptiveResearch.mqh','mt5_robot/SmcResearch.mqh','mt5_robot/ScalpResearch.mqh')){
+    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh','mt5_robot/OpportunityResearch.mqh','mt5_robot/AdaptiveResearch.mqh','mt5_robot/MarketContextV3.mqh','mt5_robot/AdaptiveV4Research.mqh','mt5_robot/SmcResearch.mqh','mt5_robot/ScalpResearch.mqh')){
         $entry=@($manifest.sha256_files|Where-Object {$_.path -eq $rel})
         if($entry.Count -ne 1){throw ('Manifest does not identify '+$rel)}
         $path=Join-Path $gold ($rel.Replace('/','\'))
@@ -214,6 +218,12 @@ try{
         }
         & (Join-Path $gold 'mt5_robot\Install_QTS_Gold_Robot.ps1') -TerminalDataFolder $data -MetaEditorPath $editor
         if(-not (CompiledCurrent $data)){throw 'Native compilation did not verify the installed EA.'}
+    }
+    $script:verifiedEx5Sha256=(Get-FileHash -LiteralPath (Join-Path $data 'MQL5\Experts\QTS_Gold_Robot.ex5') -Algorithm SHA256).Hash.ToLowerInvariant()
+    $script:verifiedTerminalSha256=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+    if($script:verifiedEx5Sha256 -notmatch '^[0-9a-f]{64}$' -or
+       $script:verifiedTerminalSha256 -notmatch '^[0-9a-f]{64}$'){
+        throw 'Native EA/terminal binary provenance incomplete.'
     }
     $presetDir=Join-Path $OutputDirectory 'presets'
     & (Join-Path $gold 'research\MakeTesterPresets.ps1') -OutputDirectory $presetDir -NoPrompt
