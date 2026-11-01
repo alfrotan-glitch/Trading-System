@@ -202,8 +202,8 @@
     },
     {
       "path": "mt5_robot/AdaptiveV4Research.mqh",
-      "bytes": 15847,
-      "sha256": "472450d28dbb3a8e234ea8f51b58774cdaea07c7ae014840cac5b809892d1b3f"
+      "bytes": 15923,
+      "sha256": "0fa1004e01621e45f5707e4b838b7e4071c80034eb48b2f141a6954ec2ae6566"
     },
     {
       "path": "mt5_robot/ExecutionPolicy.mqh",
@@ -227,8 +227,8 @@
     },
     {
       "path": "mt5_robot/MarketContextV3.mqh",
-      "bytes": 10125,
-      "sha256": "ca1ddb95bae39333cc0a8cd2f44cb1b85f03d7319345d86483c090007cf7aee5"
+      "bytes": 10450,
+      "sha256": "ccdfdf529283e5cdc3da0d41e84fed06f124b2cbeef139371d0ee99d77394cdf"
     },
     {
       "path": "mt5_robot/OpportunityResearch.mqh",
@@ -237,8 +237,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 86259,
-      "sha256": "a82a21cfd8c67e027fab3a86fc8bf815f8ff0b95b777978ddb58189222dda62a"
+      "bytes": 86793,
+      "sha256": "ab0c2722751dfa5e49df5aa5b511a893f02cb15e02a165cdad40e452d1a8fb69"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -312,8 +312,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 43335,
-      "sha256": "c8e9ff1ccd206047910889ef57e5e6841fbe578ed9cde683f3508fb63dd933e2"
+      "bytes": 44240,
+      "sha256": "e3e25c1ad05294d355434f1f71128e575a3b82b501cab13a5b77bafdd2d25b1d"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
@@ -657,8 +657,8 @@
     },
     {
       "path": "tests/test_v4_position_attribution.py",
-      "bytes": 15699,
-      "sha256": "1713213bb8362cbabadb63715cd857784194d302309936595b4a57bfb08938d9"
+      "bytes": 16960,
+      "sha256": "cf348e5da3c2b0521fdc5b2667d5d6d8ae394efff8f9bf0d23c28e9e52c8438c"
     },
     {
       "path": "tests/test_v4_post_stop_cohorts.py",
