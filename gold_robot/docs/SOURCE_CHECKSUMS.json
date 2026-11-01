@@ -87,8 +87,8 @@
     },
     {
       "path": "docs/GOLD_DECISION_AUDIT.md",
-      "bytes": 6048,
-      "sha256": "54e1148ed6610207fcd999b221be5b478d6cdda059a68bdd5fa389aaf7180359"
+      "bytes": 8880,
+      "sha256": "740dec930b3def41f66e6e9871a901fd4a07a0a1b5fcbf63117016b2520ae3f1"
     },
     {
       "path": "docs/IMPORT_AUDIT.md",
@@ -186,14 +186,19 @@
       "sha256": "34a3bce61512d6bdb66409f8559eec8760ad106eb1c2a2024ed7f3f84b346af0"
     },
     {
+      "path": "mt5_robot/MarketContextV3.mqh",
+      "bytes": 7121,
+      "sha256": "395e2c8a427b011360cc611473060797d379c8287f9e0c3f401d652aeafcfd1a"
+    },
+    {
       "path": "mt5_robot/OpportunityResearch.mqh",
       "bytes": 7855,
       "sha256": "cca483abbc2f8bb705a416e3cc71f680e7811a1df38704441e4ea01c46ec8e85"
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 81989,
-      "sha256": "e7d807534a76b0e260698df0c005d5765ecf4e75a56f66c4fa93305a7f895ef2"
+      "bytes": 82839,
+      "sha256": "9ca970b70578ce8fd048bf295f67b90691fe021493cab769fde1ff4d4e5022f9"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -267,8 +272,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 23614,
-      "sha256": "fd6d8c7666b1117c15a2c20a16d02436e66f3cad27a636a7c463ad10e22cd5f4"
+      "bytes": 24012,
+      "sha256": "6df729e81d8f56ce0b55432e96419b0a41981cc933c3ad2d285f72364a70c17b"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -481,6 +486,11 @@
       "sha256": "97a60e616e9e2d966f0460085837b6828827377031a5d4aa95acff6538e901b8"
     },
     {
+      "path": "tests/test_market_context_v3_contract.py",
+      "bytes": 3291,
+      "sha256": "c8427c9cb75d1bc139f1de7d1791b3bdae55d33f084ded52a74d21ba58ee89cd"
+    },
+    {
       "path": "tests/test_post_stop_replay.py",
       "bytes": 9981,
       "sha256": "a3bd8d1d53c3741c8fd16c1d2c31c85bd3cf1df207aee41c108b9fa1b0e65d94"
@@ -502,8 +512,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 37074,
-      "sha256": "f21842421dfc4a0e6b3b81cc402e14f6bd2bc62d9e4e19e44e7f16699318d9df"
+      "bytes": 37073,
+      "sha256": "6a846029afc30794a64075a36357141debbb6618d91be17e30c25abfc7f9ef25"
     },
     {
       "path": "tests/test_router_hardening.py",
