@@ -145,3 +145,16 @@ def test_one_click_review_is_read_only_and_does_not_modify_live_permissions():
     assert "goto STOP_QUOTES" in menu
     assert "capture_post_stop_quotes.py" in launcher
     assert "QTS_BROKER_TICKS_DIR" in launcher
+
+
+def test_partial_real_tick_coverage_is_packaged_with_no_go_exit():
+    batch = (ROOT.parent / "QTS_POST_STOP_REVIEW.bat").read_text("utf-8")
+    pack = (ROOT / "research" / "PackTradeEvidence.ps1").read_text("utf-8")
+    assert 'set "QTS_POST_STOP_PARTIAL="' in batch
+    assert 'if exist "%OUT%\\QTS_V4_POST_STOP_STRATEGY_COHORTS.json"' in batch
+    assert 'set "QTS_POST_STOP_PARTIAL=1"' in batch
+    assert "if defined QTS_POST_STOP_PARTIAL (" in batch
+    assert "exit /b 2" in batch
+    assert 'call "%REPO%QTS_SHARE_RESULTS.bat"' in batch
+    assert "'post_stop_review/'+$name" in pack
+    assert "raw broker ticks" in pack
