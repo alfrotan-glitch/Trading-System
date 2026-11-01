@@ -171,7 +171,10 @@ wrong accounts, bad spread or missing data are explicitly UNKNOWN/NO-GO.
 
 For each usable window it records the most favorable/adverse **executable-side
 Bid or Ask excursion in XAUUSD price units** (not account USD), and descriptive
-medians for the three predetermined Sweep filter cohorts. Broker history is
+medians for the three predetermined Sweep filter cohorts.
+For resource safety one review inspects the **latest 64** prospective signals.
+Any omitted older events are explicitly counted and make the path report
+NO-GO for full sample coverage; do not silently treat the 64 as all signals. Broker history is
 retrieved AFTER the prospectively recorded signal: it is not a guaranteed
 complete/signed tick stream, and local CSV evidence is not authenticated.
 
