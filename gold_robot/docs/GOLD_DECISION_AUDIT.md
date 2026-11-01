@@ -45,3 +45,24 @@ The output includes `session`, `regime`, `h1_bias`, `decision`, `selected_candid
 - Require independent risk, broker integration and native Windows acceptance before any real trading authority; profitable training scores are not enough.
 
 **No guarantee of profits, no claim this is a best-performing strategy and no connected trading permission.**
+
+
+## Native M15 Adaptive Market-Context V3 hypothesis
+
+The existing EntryStyle 7 adaptive router is NOT retrospectively replaced. A new separately preregistered flag `TesterUseMarketContextV3=false` preserves the original behaviour by default. Only `MQL_TESTER`, EntryStyle 7 and M15 can activate it. The gate executes in `EvaluateNewEntry` **after** the adaptive router chooses and prepares an actual LIMIT candidate but **before** `OrderCheck` or `OrderSend`.
+
+V3 uses `CopyRates(..., shift=1)` from 18 M15 bars, two M5 bars and one H1 bar, plus only closed H1 EMA50/M15 EMA20 buffers. It checks continuity, chronological causal alignment, the previous M15 swing zone, a closed M5 directional candle and the H1 trend for trend-family entries. For range entries it checks a previously observed M15 boundary; sweep setups must have pierced then reclaimed the prior edge. It vetoes insufficient stop room, bad directional stop geometry, spread-heavy signals and broker-quoted after-fee reward/risk below 1.25, using the same `EstimatedMonetaryLoss` slippage/fee stress function as the canonical EA. Each veto has a specific Experts-log reason; the same signal cannot bypass this gate on the way to the broker.
+
+V3 has **no verified real-time economic-event calendar or DST-aligned trading-session gate inside MQL5**. The offline `gold_decision_audit.py` does implement these gates when trusted timestamped market/news snapshots are supplied. The native V3 is therefore a *partial, explicitly labelled technical-context hypothesis* for isolated native testing; it is not the same as the full offline audit.
+
+A Windows operator may compare baseline versus V3 on the **same untouched MT5 history and real-tick model**, in separate output folders:
+
+```powershell
+# Both commands are TESTER ONLY; connected live orders stay blocked.
+.\gold_robot\research\RunAutomaticTester.ps1 -OnlyStyles '7' -ResearchVariant BASELINE -FromDate '2026.04.01' -ToDate '2026.10.01' -NoOpen
+.\gold_robot\research\RunAutomaticTester.ps1 -OnlyStyles '7' -ResearchVariant CONTEXT_V3 -FromDate '2026.04.01' -ToDate '2026.10.01' -NoOpen
+```
+
+This historical April-October 2026 window is **exploratory and already examined in earlier research**. It is not fresh holdout evidence. Do NOT choose V3 merely because it looks better than baseline there. A truly new completed month, native replay after observed broker costs, chronological walk-forward, and independent prospective validation are required. The V3 policy is fixed before evaluating new periods; modifying these thresholds restarts the prospective clock.
+
+**Native MT5 MetaEditor compilation and WMMarkets terminal integration are not proved by GitHub Python/static tests.** Compile with the actual compiler and verify its exit code and diagnostics on Windows before relying on Strategy Tester results.
