@@ -42,6 +42,7 @@ not a current claim of tested performance:
 cd "$env:USERPROFILE\Trading-System-Clean"
 python gold_robot\research\v5_study.py freeze `
   --reflection "gold_robot\reports_local\auto_runs\ORIGINAL_RUN\QTS_TEN_TRADE_REFLECTION.json" `
+  --native-attribution "gold_robot\reports_local\auto_runs\ORIGINAL_RUN\QTS_V4_POSITION_ATTRIBUTION.json" `
   --style 8 --regime TREND --checkpoint 1 `
   --from-date 2026.12.01 --to-date 2027.01.01 `
   --manifest gold_robot\docs\SOURCE_CHECKSUMS.json `
