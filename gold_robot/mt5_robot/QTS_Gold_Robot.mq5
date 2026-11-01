@@ -617,6 +617,12 @@ int CompletedBarSignal(double &atr_value)
    return result;
   }
 
+// Forward declaration: the context gate implementation is included after
+// the broker monetary risk helper; the router invokes it per candidate.
+bool TesterMarketContextV3(const int side,const int style,
+                           const MqlTick &quote,const double atr,
+                           const double entry,const double stop,
+                           const double target);
 // After all signal globals and input declarations are available.
 #include "StructureResearch.mqh"
 #include "OpportunityResearch.mqh"
