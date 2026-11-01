@@ -159,9 +159,28 @@ labels. It freezes a source hash and two predetermined shadow rules; any local
 source/rule change requires a **new, explicitly identified** prospective
 evaluation, never resetting the original registration.
 
-The output contains **counts of genuine native signals only**. The initial
-phase does **not** record a complete tick stream, price trajectories,
-actual entry-limit orders, fills, SL, TP, slippage, fees or realized P/L.
+The baseline observer reports counts of genuine native signals only.
+**Advanced 6 > C also produces a separate 60-minute post-signal quote audit**:
+`gold_robot/reports_local/forward_shadow/QTS_FORWARD_SHADOW_V2_QUOTE_PATHS.json`.
+Only signals recorded AFTER the immutable V2 registration qualify. No historical
+signal reconstruction, backtest rerun, connected order or operator ZIP path is
+needed. It uses the already-open WMMarkets DEMO terminal's broker tick history
+after a full 60-minute horizon has elapsed. Quotes with missing initial/final
+coverage, long missing intervals, implausible local UTC vs broker timestamps,
+wrong accounts, bad spread or missing data are explicitly UNKNOWN/NO-GO.
+
+For each usable window it records the most favorable/adverse **executable-side
+Bid or Ask excursion in XAUUSD price units** (not account USD), and descriptive
+medians for the three predetermined Sweep filter cohorts. Broker history is
+retrieved AFTER the prospectively recorded signal: it is not a guaranteed
+complete/signed tick stream, and local CSV evidence is not authenticated.
+
+**The quote-path audit does NOT reconstruct the EA's actual pending limit order,
+fills, lot sizing, original SL/TP, fees, risk management, slippage, execution
+sequence, or trade profit.** It cannot establish win rate or edge. Those
+components require a distinct verified forward fill/evidence contract, not an
+assumed "enter at signal" price. The tool is read-only and the complete path
+report remains NO-GO for trading.
 Do **not** interpret a recorded BUY/SELL candidate as an executable order
 or profit. No forward win-rate, expectancy or validated edge is available
 until an independently audited future path/fill contract is designed.
