@@ -27,8 +27,10 @@ echo  [6] Compare saved MT5 Strategy Tester reports
 echo  [7] Exit
 echo  [8] Find saved MT5 logs and open an easy-to-read report
 echo  [9] One-click V4 trade-decision diagnosis (last completed month)
+echo  [A] Analyze actual post-SL broker tick paths (saved trades, no re-test)
 echo.
-choice /C 123456789 /N /M "Choose 1-9: "
+choice /C 123456789A /N /M "Choose 1-9 or A: "
+if errorlevel 10 goto STOP_QUOTES
 if errorlevel 9 goto V4_DIAGNOSE
 if errorlevel 8 goto AUDIT
 if errorlevel 7 goto END
@@ -77,6 +79,14 @@ goto MENU
 call "%QTS_ROOT_DIR%gold_robot\MAKE_TEST_PRESETS.bat"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" echo Tester presets were not created.
+echo.
+pause
+goto MENU
+
+:STOP_QUOTES
+call "%QTS_ROOT_DIR%QTS_POST_STOP_REVIEW.bat"
+set "CODE=%ERRORLEVEL%"
+if not "%CODE%"=="0" echo Post-stop tick evidence incomplete or MT5 history unavailable.
 echo.
 pause
 goto MENU

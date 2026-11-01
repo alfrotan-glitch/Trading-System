@@ -297,8 +297,8 @@
     },
     {
       "path": "research/PackTradeEvidence.ps1",
-      "bytes": 6387,
-      "sha256": "b30bc45166a3511824660c1d9bf4263e2033638f82ea144a88790b22099221d6"
+      "bytes": 7090,
+      "sha256": "80451b2459d72a2efdab5eac44b725ae34a3991072b4f24c470b9c709e9bddd9"
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",
@@ -374,6 +374,11 @@
       "path": "research/capital_readiness.py",
       "bytes": 16640,
       "sha256": "cb58ffdc8061b1ccf559ece3faa519ab19f6ad7bb1df9f5c80df8e9fccecdc28"
+    },
+    {
+      "path": "research/capture_post_stop_quotes.py",
+      "bytes": 9246,
+      "sha256": "5968dc70295973933c550345007adf480e641e7e283820af53beae90e24e02b0"
     },
     {
       "path": "research/compare_revised_variants.py",
@@ -574,6 +579,11 @@
       "path": "tests/test_post_stop_replay.py",
       "bytes": 9981,
       "sha256": "a3bd8d1d53c3741c8fd16c1d2c31c85bd3cf1df207aee41c108b9fa1b0e65d94"
+    },
+    {
+      "path": "tests/test_post_stop_terminal_capture.py",
+      "bytes": 5476,
+      "sha256": "53d3c7c2ffa09d3f5ed6f5fff5cbd14ee940da37e0a77f09f9bef52611376afd"
     },
     {
       "path": "tests/test_preregistered_v5_study.py",
