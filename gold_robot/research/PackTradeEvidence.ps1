@@ -74,6 +74,17 @@ if($outcome.research_variant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO') -and
         $missing+=,'QTS_7_decisions.csv'
     }
 }
+# A later read-only WMMarkets terminal history review is a distinct source
+# from the original native Strategy Tester run. Keep both, label the source,
+# and never package raw ticks or terminal account metadata.
+foreach($name in @('QTS_V4_POST_STOP_STRATEGY_COHORTS.json',
+                   'QTS_POST_STOP_REAL_TICK_REVIEW.json',
+                   'QTS_POST_STOP_SUMMARY.txt')){
+    $p=Join-Path (Join-Path $RunDirectory 'post_stop_review') $name
+    if(Test-Path -LiteralPath $p -PathType Leaf){
+        [void]$allowed.Add(@($p,('post_stop_review/'+$name)))
+    }
+}
 if($allowed.Count -eq 0){throw 'No allowlisted research evidence exists in the selected run folder.'}
 $status=if($missing.Count -eq 0){
     if($outcome.targeted -eq $true){'SELECTED_CSV_FILES_PRESENT'}
@@ -86,7 +97,8 @@ $manifest=@(
     'Run folder name: '+(Split-Path -Leaf $RunDirectory),
     'Included: only allowlisted QTS research JSON, V4 audit issues and trade-level CSV.',
     'Any native position IDs and order comments are broker research evidence. Review before sharing.',
-    'Excluded: MT5 native HTML, logins, terminal history, account statements, journals, passwords.',
+    'Excluded: MT5 native HTML, raw broker ticks, logins, terminal history, account statements, journals, passwords.',
+    'Optional post_stop_review is from LATER terminal historical quotes and is not proof of tester tick identity.',
     'Important: included CSV files may contain trade and broker-order IDs and comments.',
     'Missing forensic CSV: '+($(if($missing.Count){$missing -join ', '}else{'none'})),
     'Broker exit reason identifies SL/TP, but does not establish signal quality.',
