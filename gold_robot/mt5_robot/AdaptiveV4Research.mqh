@@ -114,6 +114,11 @@ bool V4ExportDiagnostics()
    FileWrite(file,"INPUT",7,"TesterUsePreregisteredVetoV5",(int)TesterUsePreregisteredVetoV5);
    FileWrite(file,"INPUT",7,"TesterVetoStyleV5",TesterVetoStyleV5);
    FileWrite(file,"INPUT",7,"TesterVetoRegimeV5",TesterVetoRegimeV5);
+   // Native V3 diagnostics are independent of candidate scores and preserve
+   // why ALL market-context attempts were refused. No adaptive tuning.
+   for(int v3=0;v3<QTS_V3_REJECTION_REASONS;v3++)
+      FileWrite(file,"V3_VETO",-1,V3ReasonCode(v3),g_v3_rejection_counts[v3]);
+   FileWrite(file,"V3_ACCEPT",-1,"TOTAL",g_v3_accepted_count);
    for(int i=0;i<QTS_V4_BAR_GATES;i++)
       FileWrite(file,"CLOSED_BAR",-1,V4GateName(i),g_v4_diagnostic_gates[i]);
    for(int style=0;style<=8;style++)
