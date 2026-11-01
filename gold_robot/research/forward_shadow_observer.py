@@ -5,6 +5,8 @@ This reader NEVER generates a signal from market history, sends broker orders,
 simulates fills, or changes any EA parameters. It locks candidate policies at
 the first use and excludes every event at/before that registration timestamp.
 Candidate count is NOT an executed trade or verified economic edge.
+Historical-compatible ATR = simple mean of 14 closed-bar true ranges;
+reference median = 48 preceding such ATR readings, excluding current ATR.
 """
 from __future__ import annotations
 
@@ -18,24 +20,24 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA = "qts.mt5.forward_shadow_observer.v1"
-EVENT_SCHEMA = "qts.mt5.forward_shadow_signal.v1"
-FREEZE_SCHEMA = "qts.mt5.forward_shadow_freeze.v1"
+SCHEMA = "qts.mt5.forward_shadow_observer.v2"
+EVENT_SCHEMA = "qts.mt5.forward_shadow_signal.v2"
+FREEZE_SCHEMA = "qts.mt5.forward_shadow_freeze.v2"
 FIELDS = (
     "schema", "observed_utc_s", "closed_bar_open_server_s",
     "tick_server_time_msc", "symbol", "timeframe", "style", "side",
-    "bid", "ask", "atr14", "prior_20_atr_median", "atr_band", "source",
+    "bid", "ask", "atr14", "prior_48_atr_median", "atr_band", "source",
 )
 POLICIES = {
     "BASELINE": "Keep all native closed-bar style 3 signals",
-    "SHADOW_ATR_LOW": "Keep only style 3 ATR14 <= median of 20 older closed ATR values",
+    "SHADOW_ATR_LOW": "Keep only style 3 ATR14 <= median of 48 older rolling-TR14 ATR readings",
     "SHADOW_NO_BUY_HIGH_ATR": "Keep style 3 unless BUY and ATR14 > older-bar median",
 }
 POLICY_DIGEST = hashlib.sha256(
     json.dumps(POLICIES, sort_keys=True).encode("ascii")
 ).hexdigest()
 SOURCES = {1: "RETEST", 3: "SWEEP_RECLAIM"}
-FILE_PATTERN = re.compile(r"^QTS_ForwardShadow_Style([13])_(\d{6})\.csv$")
+FILE_PATTERN = re.compile(r"^QTS_ForwardShadowV2_Style([13])_(\d{6})\.csv$")
 
 
 def _required(condition: bool, reason: str) -> None:
@@ -60,7 +62,7 @@ def _sha256(path: Path) -> str:
 def freeze(report_dir: Path, ea_source: Path, *, now_utc_s: int) -> dict:
     _required(ea_source.is_file(), "Canonical native EA source is missing")
     _required(now_utc_s > 0, "Invalid UTC registration time")
-    marker = report_dir / "QTS_FORWARD_SHADOW_FROZEN.json"
+    marker = report_dir / "QTS_FORWARD_SHADOW_V2_FROZEN.json"
     if not marker.exists():
         try:
             _write_once(marker, {
@@ -118,7 +120,7 @@ def _valid_row(row: dict, filename: str, now_utc_s: int) -> dict:
     side = row["side"]
     _required(side in ("BUY", "SELL"), "Invalid native signal direction")
     bid, ask, atr, median = (
-        float(row[k]) for k in ("bid", "ask", "atr14", "prior_20_atr_median")
+        float(row[k]) for k in ("bid", "ask", "atr14", "prior_48_atr_median")
     )
     _required(all(math.isfinite(x) and x > 0 for x in (bid, ask, atr, median))
               and ask > bid, "Invalid bid/ask/closed-bar ATR")
@@ -128,7 +130,7 @@ def _valid_row(row: dict, filename: str, now_utc_s: int) -> dict:
     return {"style": style, "side": side, "bar_server_s": candle,
             "observed_utc_s": observation, "tick_server_msc": tick_ms,
             "atr_band": band, "bid": bid, "ask": ask,
-            "atr14": atr, "prior_20_atr_median": median}
+            "atr14": atr, "prior_48_atr_median": median}
 
 
 def _event_files(signal_dir: Path) -> list[Path]:
@@ -242,7 +244,7 @@ def main() -> int:
     parser.add_argument("--ea-source", type=Path)
     args = parser.parse_args()
     report_dir = args.report_dir.resolve()
-    marker_path = report_dir / "QTS_FORWARD_SHADOW_FROZEN.json"
+    marker_path = report_dir / "QTS_FORWARD_SHADOW_V2_FROZEN.json"
     source = args.ea_source or (Path(__file__).resolve().parents[1] /
                                "mt5_robot" / "QTS_Gold_Robot.mq5")
     try:
@@ -258,7 +260,7 @@ def main() -> int:
                   "performance_pnl_available": False}
     try:
         report_dir.mkdir(parents=True, exist_ok=True)
-        path = report_dir / "QTS_FORWARD_SHADOW_REPORT.json"
+        path = report_dir / "QTS_FORWARD_SHADOW_V2_REPORT.json"
         path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n",
                         encoding="utf-8")
     except OSError as exc:
