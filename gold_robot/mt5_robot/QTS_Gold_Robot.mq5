@@ -731,8 +731,6 @@ double SizedLots(const int side,const double price,const double stop)
    return volume;
   }
 
-#include "AdaptiveV4Research.mqh"
-
 // Owner-defined relocation: the former hypothetical stop becomes the LIMIT ENTRY.
 // Long old plan: near support E_old, SL_old = swing low minus buffer.
 // New plan: E_new = SL_old; SL_new = E_new - safe broker/volatility spacing.
@@ -948,6 +946,8 @@ void LatchExecutionHalt(const string reason)
    status_text="EXECUTION HALTED - inspect broker pending orders and deals";
    Print("QTS execution incident: ",reason);
   }
+
+#include "AdaptiveV4Research.mqh"
 
 // Only called under the atomic cross-chart entry mutex.
 void EvaluateNewEntry()
