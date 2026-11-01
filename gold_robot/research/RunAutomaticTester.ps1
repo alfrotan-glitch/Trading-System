@@ -398,6 +398,25 @@ try{
                $v4Fact.live -ne 'LOCKED' -or $v4Fact.edge_validated -ne $false){
                 throw 'V4 broker attribution is incomplete, inconsistent or unsafe.'
             }
+            # Real-tick MT5 tester fills alone do not contain a continuous
+            # 120-minute AFTER-STOP bid/ask series. Publish UNKNOWN explicitly
+            # until a separately matched native tick export is available.
+            $stopAudit=Join-Path $gold 'research\v4_post_stop_cohorts.py'
+            $stopSummary=Join-Path $OutputDirectory 'QTS_V4_POST_STOP_STRATEGY_COHORTS.json'
+            if(Get-Command py -ErrorAction SilentlyContinue){
+                & $interpreter.Source -3 $stopAudit --attribution $attr --output $stopSummary --allow-missing-ticks
+            }else{
+                & $interpreter.Source $stopAudit --attribution $attr --output $stopSummary --allow-missing-ticks
+            }
+            if($LASTEXITCODE -ne 0 -or
+               -not (Test-Path -LiteralPath $stopSummary -PathType Leaf)){
+                throw 'V4 post-stop UNKNOWN/coverage diagnostics could not be verified.'
+            }
+            $stopFact=Get-Content -LiteralPath $stopSummary -Raw -Encoding UTF8 | ConvertFrom-Json
+            if($stopFact.status -notin @('TICKS_MISSING_NO_GO','NO_BROKER_STOPS_TO_REPLAY') -or
+               $stopFact.live -ne 'LOCKED' -or $stopFact.edge_validated -ne $false){
+                throw 'V4 automatic stop-path report made an unsupported price-outcome claim.'
+            }
         }
         $latest=Get-ChildItem -LiteralPath $OutputDirectory -Filter 'QTS_Gold_Comparison_*.html' |
             Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
