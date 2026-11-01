@@ -44,6 +44,15 @@ if defined QTS_BROKER_TICKS_DIR (
     goto FAIL
   )
 )
+REM Repackage ONLY explicit read-only JSON and summary, never raw historical ticks.
+if exist "%OUT%\QTS_V4_POST_STOP_STRATEGY_COHORTS.json" (
+  set "QTS_NO_PAUSE=1"
+  call "%REPO%QTS_SHARE_RESULTS.bat"
+  if errorlevel 1 (
+    echo Read-only tick review saved locally but safe ZIP packaging failed.
+    goto FAIL
+  )
+)
 explorer "%OUT%"
 if /I not "%QTS_NO_PAUSE%"=="1" pause
 exit /b 0
