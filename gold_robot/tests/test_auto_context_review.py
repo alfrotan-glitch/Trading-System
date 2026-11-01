@@ -18,7 +18,7 @@ UTC = timezone.utc
 
 def archive(root: Path, dirname: str, from_date="2026.01.01",
             to_date="2026.04.01", *, gross=12.0,
-            evidence_gaps=False, style_ids=(1, 3)):
+            evidence_gaps=False, style_ids=(1, 3), build="same-ea"):
     folder = root / "auto_runs" / dirname
     folder.mkdir(parents=True, exist_ok=True)
     entry = datetime.strptime(from_date, "%Y.%m.%d").replace(
@@ -48,6 +48,9 @@ def archive(root: Path, dirname: str, from_date="2026.01.01",
         "targeted": True, "selected_styles": list(style_ids),
         "research_variant": "BASELINE", "symbol": "XAUUSD@", "model": 4,
         "from_date": from_date, "to_date": to_date,
+        "source_manifest_sha256": "canonical-source",
+        "compiled_ex5_sha256": build,
+        "terminal_exe_sha256": "wm-demo-terminal",
     }
     path = folder / "QTS_SHARE_RESULTS.zip"
     with zipfile.ZipFile(path, "w") as f:
@@ -82,7 +85,7 @@ def test_duplicate_archives_do_not_double_count_trades(tmp_path):
     result = review(tmp_path, tmp_path / "output")
     assert result["studied_runs"] == 1
     assert result["archives_discovered"] == 2
-    assert result["skipped"][0]["status"] == "DUPLICATE_IDENTICAL_LEDGER"
+    assert result["skipped"][0]["status"] == "DUPLICATE_IDENTICAL_LEDGER_AND_BUILD"
     assert result["period_conflicts"] == []
 
 
@@ -93,6 +96,17 @@ def test_conflicting_ledgers_in_same_period_are_no_go(tmp_path):
     assert result["status"] == "CONFLICTING_PERIOD_EVIDENCE_NO_GO"
     assert len(result["period_conflicts"]) == 1
     assert result["period_conflicts"][0]["distinct_forensic_ledgers"] == 2
+    assert result["validated_edge"] is False
+
+
+def test_identical_deals_from_different_compiled_robot_is_conflict(tmp_path):
+    archive(tmp_path, "original", build="ea-v1")
+    archive(tmp_path, "other", build="ea-v2")
+    result = review(tmp_path, tmp_path / "output")
+    assert result["studied_runs"] == 2
+    assert result["status"] == "CONFLICTING_PERIOD_EVIDENCE_NO_GO"
+    assert len(result["period_conflicts"]) == 1
+    assert len({r["run_identity_sha256"] for r in result["runs"]}) == 2
     assert result["validated_edge"] is False
 
 
