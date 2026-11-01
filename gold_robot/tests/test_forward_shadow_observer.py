@@ -31,16 +31,16 @@ def append_native(signals, *, style=3, side="BUY", high=True,
     if bar is None:
         bar = at - 965
     month = datetime.fromtimestamp(at, tz=timezone.utc).strftime("%Y%m")
-    f = signals / f"QTS_ForwardShadow_Style{style}_{month}.csv"
+    f = signals / f"QTS_ForwardShadowV2_Style{style}_{month}.csv"
     vals = {
-        "schema": "qts.mt5.forward_shadow_signal.v1",
+        "schema": "qts.mt5.forward_shadow_signal.v2",
         "observed_utc_s": at, "closed_bar_open_server_s": bar,
         "tick_server_time_msc": (bar + 964) * 1000,
         "symbol": "XAUUSD@", "timeframe": "M15",
         "style": style, "side": side,
         "bid": "2450.21", "ask": "2450.42",
         "atr14": "15.0" if high else "6.0",
-        "prior_20_atr_median": "10.0",
+        "prior_48_atr_median": "10.0",
         "atr_band": ("ABOVE_TRAILING_MEDIAN" if high
                      else "AT_OR_BELOW_TRAILING_MEDIAN"),
         "source": "NATIVE_CLOSED_BAR_UNARMED_DEMO",
@@ -88,7 +88,7 @@ def test_three_frozen_shadow_cohorts_never_claim_profit(tmp_path):
 
 def test_policy_and_ea_source_are_immutable_in_same_registration(tmp_path):
     reports, signals, ea = fresh(tmp_path)
-    first = json.loads((reports / "QTS_FORWARD_SHADOW_FROZEN.json").read_text())
+    first = json.loads((reports / "QTS_FORWARD_SHADOW_V2_FROZEN.json").read_text())
     second = freeze(reports, ea, now_utc_s=START + 1000)
     assert second["frozen_at_utc_s"] == START
     assert second["policy_sha256"] == first["policy_sha256"]
@@ -128,7 +128,7 @@ def test_observational_path_excludes_broker_execution_and_historical_fitting():
     ea = (GOLD / "mt5_robot" / "QTS_Gold_Robot.mq5").read_text("utf-8")
     assert "RecordNativeForwardShadow(side,atr);" in ea
     assert "EnableDemoOrders || EnableDemoForwardOrders" in ea
-    assert "CopyBuffer(atr_handle,0,2,20,historical_atr)" in ea
+    assert "CopyRates(_Symbol,PERIOD_M15,1,64,closed_bars)" in ea
     assert "NATIVE_CLOSED_BAR_UNARMED_DEMO" in ea
     for prohibited in ("order_send(", "mt5.login(", "OrderSend(", "ENABLE_LIVE",
                        "optimization_fit(", "broker.execute("):
