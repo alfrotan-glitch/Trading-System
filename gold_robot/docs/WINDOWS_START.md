@@ -1,102 +1,83 @@
-# QTS Gold MT5 — Windows Operator Guide
+# QTS Gold | Windows Operator Guide
 
-**Scope:** WMMarkets MetaTrader 5, XAUUSD@, Strategy Tester and controlled DEMO evaluation. LIVE trading is locked. No profitable edge has been independently validated.
+Canonical repository: alfrotan-glitch/Trading-System (`main`).
+Canonical MT5 Expert Advisor: `gold_robot/mt5_robot/QTS_Gold_Robot.mq5`.
+Supported target: WMMarkets MetaTrader 5, `XAUUSD@`.
+
+**Safety status: LIVE LOCKED. No independently validated after-cost profitable edge.**
+All native Strategy Tester orders are simulated. Connecting a DEMO account does
+not itself authorize forward trading. Real-money orders remain forbidden.
 
 ## One-click automatic research testing
 
-For ordinary use, **close the WMMarkets MT5 terminal** and double-click `QTS_AUTO_TEST.bat` in the repository root. No tester menus, manual .set loading or report naming are required. The script resolves the one installed QTS terminal through MetaQuotes `origin.txt`, verifies matching canonical source and EX5 (or compiles via the matching MetaEditor), copies and checks each Tester parameter profile in the available terminal data/install folders (refusing mismatched copies), prepares eight risk-stops-active `EntryStyle=0..7` profiles (seven fixed strategies and one adaptive router), and runs command-line MT5 Strategy Tester jobs sequentially. The common symbol is `XAUUSD@`, M15, model 4 (real ticks), USD 3,000 simulated, latest six completed calendar months, local agents only. It saves all exports and a local `OPEN_RESULTS.html` under `gold_robot/reports_local/auto_runs/<timestamp>/`. If the terminal is open, multiple targets exist, native ticks are not confirmed, or MT5 cannot export a fresh report, it does not claim success. Do not use a real account; LIVE remains blocked in the EA.
+Double-click **`START_HERE.bat`** in the repository root. This is the supported
+daily Windows entry point; the other root `QTS_*.bat` launchers are maintained
+as technical/research compatibility tools, not separate production robots.
 
-**Trade-by-trade reporting:** each completed native test attempts to export a broker-history forensic CSV from the MT5 Common Files folder. The automatic runner copies it into `native/QTS_0_trades.csv` through `native/QTS_7_trades.csv` and builds `QTS_TRADE_BY_TRADE.html`. Each position is grouped by broker position ID and shows entry/exit, initial versus closing SL/TP, broker exit reason, fees, holding time, exit slippage and incomplete evidence flags. A missing CSV is a research evidence gap, not success. Exact market path, MFE/MAE, and counterfactual reasons for a stop-out require more market data than a deal ledger.
+| Menu | Action |
+| --- | --- |
+| 1 | Retest vs Sweep/Reclaim: native MT5 real-tick tests of Styles 1 and 3 |
+| 2 | Full native tests of ten independent styles: 0-8 on M15, Style 9 on M1 |
+| 3 | Install/update the single canonical MT5 Expert Advisor |
+| 4 | Open the most recent saved native tester HTML summary |
+| 5 | Generate a local broker/installation readiness report |
+| 6 | Advanced tools: presets, V4 decision diagnosis, post-stop data, saved-report comparison, research desktop |
+| 7 | Exit |
 
-**Attribution of the 8th (adaptive) strategy without new tests:** close MT5 and run `QTS_SHARE_RESULTS.bat` after updating main. It generates `QTS_ADAPTIVE_REVIEW.html` and `.json` alongside the original run. This reconciles every Style 7 broker position with native MT5 trade count and net PnL and groups actual broker entry comments by the selected fixed family. It is not a causal proof of the optimal counterfactual strategy or an independent validation; without original closed-bar decision records market regime per trade remains unknown. Unrecognized setup comments and incomplete transactions are flagged explicitly.
+**First-time install:** Install the broker's Windows MT5 terminal, sign in to
+a WMMarkets DEMO account and close MT5 before running installation or unattended
+native Strategy Tester jobs. Choose menu 3, verify zero MetaEditor compilation
+errors, and use menu 5 to inspect readiness and broker restrictions.
 
-**Sharing evidence without another backtest:** after closing MT5, double-click `QTS_SHARE_RESULTS.bat` from the repository root. It locates the newest completed local run and opens the folder containing `QTS_SHARE_RESULTS.zip` (auto-created after future runs as well). The ZIP contains only summaries and per-position deal CSVs; it deliberately excludes account-bearing native MT5 HTML, terminal logs, account statements and passwords. If any of seven deal CSVs is missing it marks the package INCOMPLETE_FORENSIC_EVIDENCE. Share the ZIP for actual individual-trade analysis; a plain comparison table cannot answer why specific positions reached SL or TP.
+**Run comparison:** Choose menu 1. Historical positive results for Style 1
+(Retest) and Style 3 (Sweep/Reclaim) are research candidates, not approved
+winners. The same installed canonical EA, broker, real-tick model and configured
+date window are used for both. Missing trades, zero fills, incomplete quotes
+or non-reconciled broker fees must be treated as incomplete evidence.
 
-**Important:** Native completion and real-tick mode still do not prove an after-cost profitable edge. The actual broker charges, trade count, drawdown, unseen performance and MT5 report inputs remain subject to verification.
+**Run all styles:** Choose menu 2. The native runner handles the fixed styles,
+adaptive router and SMC on M15 plus the separately configured M1 scalp style.
+The sample period defaults to the last six completed calendar months.
+This is a research screen; previously examined months are NOT an untouched
+holdout. A fresh out-of-sample/forward period is required before selecting
+the strongest strategy.
 
-## Installation
+## Native tester evidence and interpretation
 
-1. Install WMMarkets MetaTrader 5 and log into a DEMO account. Detach any old QTS EA from the chart.
-2. Clone the `main` branch into a new directory. For an unmodified existing clone use `git pull --ff-only origin main`.
-3. Run `START_HERE.bat`, option **1**. Select one MT5 Data Folder and its matching MetaEditor. The installer backs up existing files and installs the EA, both include files and broker-preflight script in that same terminal. It must produce **0 errors, 0 warnings** and a fresh EX5 for both components. On failure, inspect the compile log; installation must not be considered successful.
-4. Open `XAUUSD@` in the DEMO terminal, refresh Navigator > Scripts and run `QTS_Broker_Preflight`. Return to `START_HERE.bat`, option **2**, to generate a local HTML/JSON readiness report under `gold_robot/reports_local/`.
+Every automatic run creates its own unique directory at
+`gold_robot/reports_local/auto_runs/<timestamp>/` with `OPEN_RESULTS.html`,
+`OPEN_RESULTS.json`, simulator reports and, when valid, native broker-deal CSVs.
+Evidence ZIP packaging is pinned to that exact run. Failed or incomplete
+runs do NOT borrow files from a previous run. `QTS_SHARE_RESULTS.bat` can be
+used separately to package existing research, with its own source disclosure.
 
-## Launcher options
+The MT5 tester uses **Every tick based on real ticks** for `XAUUSD@` and a
+research-only simulated USD 3,000 initial balance. This balance does not
+establish the broker's minimum real deposit. The usual research presets
+limit per-trade risk to 0.50%. Tester-only flags may intentionally bypass
+daily equity stops for an opportunity census; never interpret that as an
+operationally safe/live configuration. Re-run any candidate with ordinary
+risk stops enabled and broker costs reconciled.
 
-| Option | Action | Broker orders |
-|---|---|---|
-| 1 | Install and compile the MT5 EA and preflight script | None |
-| 2 | Generate a local read-only readiness report | None |
-| 3 | Open the separate Python research desktop | None |
-| 4 | Open this guide | None |
-| 5 | Generate seven MT5 Strategy Tester `.set` profiles | None |
-| 6 | Compare seven saved native MT5 tester reports | None |
-| 7 | Exit | None |
-| 8 | Find saved MT5 logs in common folders or choose a file, then open HTML/JSON audit | None |
+Treat every positive backtest as exploratory until real bid/ask history,
+execution fees, commissions, swap, slippage, drawdown, minimum tradable
+volume, sufficient sample size and independent holdout have been examined.
+An SL followed later by the original TP is NOT proof that widening the
+original SL would have been profitable. Unknown quote windows remain UNKNOWN.
 
-`ROBOT.bat` is the separate Python research/DEMO entry point. For the MT5 Expert Advisor use `START_HERE.bat`. The MT5 workflow does not require the Python desktop.
+## Safety and installation troubleshooting
 
-## Strategy Tester
+- Only the repository `main` is the active development branch.
+- Never attach the EA to a real-money account or disable real-account gates.
+- The EA defaults to disabled connected DEMO orders; any forward DEMO test
+  requires separate explicit authorization and the correct broker identity.
+- If MetaEditor compilation, binary/source checksum verification, terminal
+  selection or quote history fails, treat the operation as NO-GO.
+- If native MT5 exports are incomplete, inspect the relevant
+  `OPEN_RESULTS.json` and broker history rather than reusing an older report.
+- An untracked local file may exist without being part of Git; examine
+  `git status --short` before stashing, moving or deleting it.
 
-Press `Ctrl+R` in MetaTrader 5. Select Expert `QTS_Gold_Robot`, symbol `XAUUSD@`, timeframe **M15** (then test **M5** separately), model **Every tick based on real ticks**, and initial deposit **USD 3,000** (the smallest amount observed as selectable in this operator's terminal). This is a tester setting, not a required real-money deposit.
-
-Use menu option **5** to generate seven profiles in `gold_robot/reports_local/tester_presets/`. Load one profile at a time under Tester > Inputs:
-
-- `EntryStyle=0,1,2,3,4,5,6` in seven separate runs with identical dates, spread/cost conditions and deposit.
-- `EnableDemoOrders=true` **in Strategy Tester only**; `EnableDemoForwardOrders=false`.
-- `TesterIgnoreDailyAndPeakStops=true` for the experimental opportunity census; this bypass affects only Tester.
-- `RiskPerTradePct=0.5` and `EnableEntryDiagnostics=true` for like-for-like research.
-
-The tester-only bypass does **not** disable per-trade risk, minimum lot, margin, protective stops, spread limits or incident halts. The seven candidates are research hypotheses, not approved trading strategies. Option 5 also creates seven `tester_presets/safety_on/` files with the ordinary daily/peak stops ACTIVE. Rerun any promising candidate with the safety-on version; results from stop-bypassed census tests are not production-like.
-
-Let each run finish and confirm the Strategy Tester completion message. From the Tester Backtest/Report results, use Save as Report to export the native HTML report; a MetaTester agent log (including a file renamed to .htm) is NOT an HTML performance report. Export the MT5 Deals, Orders and Journal separately. Save the native HTML reports as `QTS_0.htm` through `QTS_6.htm` in `gold_robot/reports_local/native/`; use menu option **6** for a read-only comparison. Missing files or zero trades are not successful results.
-
-For logs accidentally saved as `.htm`, or journal files with other names, use menu **8**. It checks `gold_robot/reports_local/native/`, Downloads, Desktop and Documents (including OneDrive copies where configured), and identifies MT5 agent logs by their content rather than filenames. If no log is found, Windows offers a file picker. Selecting a saved log does not move or rename it; the program still opens an HTML summary when no file was found. Actual native MT5 HTML performance reports belong in option 6. Option 8 needs Python 3; its figures are diagnostics, not validated profitability.
-
-## Connected virtual DEMO
-
-DEMO-forward orders require a successfully compiled EA, a valid broker preflight, a verified WMMarkets DEMO USD account, the exact `XAUUSD@` symbol and both `EnableDemoOrders=true` and `EnableDemoForwardOrders=true`. Defaults are off. The independent connected-DEMO risk cap defaults to **0.25% per trade** and daily drawdown controls remain active. See [DEMO Forward Operations](DEMO_FORWARD_OPERATIONS.md).
-
-## Troubleshooting and acceptance
-
-- If MetaEditor is missing, press F4 in MT5 and locate the corresponding `metaeditor64.exe`; use File > Open Data Folder to identify the same terminal.
-- If the source hashes, compile log, EX5 or preflight CSV are missing/stale, the readiness report must show `ACTION_REQUIRED`. Re-run preflight after installing current sources.
-- If the broker reports `BLOCKED_MIN_LOT` or a risk/margin block, do not narrow the stop just to force an order.
-- Check Experts/Journal for spread, market hours, real ticks, authorization and diagnostic rejection reasons. Signal counts are not executed-trade counts.
-- Neither successful installation nor `READY_FOR_TESTER_ONLY` demonstrates after-cost profit or real-money permission.
-
-Broker data and generated reports are local and excluded from Git. Do not share account credentials. Further reading: [Tester Research](MT5_3000_UNLIMITED_TESTER_2026-10-26.md) and [Stop-Loss Forensics](OWNER_PLAN_STOPLOSS_ROOTCAUSE_2026-10-26.md).
-
-## Adaptive strategy router (Style 7, research only)
-
-Style 7 does **not** know the best strategy in advance and does not use realized future returns. Each M15 completed candle, it reads closed-bar ADX, EMA separation and ATR, classifies market context as range / transition / trend, and checks allowed family-specific signals and feasible LIMIT entries. If multiple candidates qualify, fixed ex-ante priorities and reward-to-risk/spread estimates choose one, with one shared broker execution and risk pipeline. If none qualify, there is no trade. `QTS ROUTER DECISION` identifies the selected family and closed-bar context; the broker deal CSV preserves the actual setup as order comment. No online learning, dynamic historical performance fitting, or profit guarantee is claimed. All historical comparisons of Style 7 must be performed **after this decision logic is fixed**; the earlier six months used to evaluate the seven static hypotheses are not an untouched holdout. LIVE is still locked.
-
-## Investigate SL and price reversal after exit
-
-After eight native tests finish, run \`QTS_SHARE_RESULTS.bat\`, then
-\`QTS_POST_STOP_REVIEW.bat\`. It reads the latest local ZIP (no MT5 orders)
-and writes \`post_stop_review/QTS_STOP_CASES.csv\` plus a report stating
-that future SL→TP outcomes are UNKNOWN without quotes. These exported
-cases include the original SL and original TP from the exact broker
-entry order and the timestamp of the exact broker SL exit.
-
-To replay quotes:
-1. On a WMMarkets DEMO terminal with \`XAUUSD@\` selected, use the existing
-   read-only \`gold_robot/research/ExportBrokerData.mq5\` to export
-   historical bid/ask ticks. Verify that the data have the same account
-   server, symbol, tick timestamps and test period; quote files may be
-   large and download availability is not guaranteed.
-2. In PowerShell set \`$env:QTS_BROKER_TICKS_DIR\` to the folder containing
-   \`ticks_<epoch-day>.csv\`; run \`QTS_POST_STOP_REVIEW.bat\` again.
-   No quote data = no post-stop TP/rebound claim.
-3. Read \`post_stop_review/QTS_POST_STOP_REAL_TICK_REVIEW.json\`. Each SL
-   shows first original-TP quote touch (if any), its timestamp, maximum
-   favorable and adverse executable quote prices and timestamps over
-   5/15/30/60/120-minute windows. A window requires continuous quote
-   coverage with no gap above the configured 60 seconds. Missing windows
-   produce null results and must never be counted as non-reversals.
-
-This is a **descriptive event study**, not a backtest of a wider SL.
-Seeing the original TP quoted AFTER an executed SL does not prove it
-could have been held to TP under the original safety constraints.
-Results are not training labels for a retrospective strategy selector.
+Advanced background: [Gold EA overview](../README.md),
+[Connected DEMO operations](DEMO_FORWARD_OPERATIONS.md),
+[Post-stop investigations](OWNER_PLAN_STOPLOSS_ROOTCAUSE_2026-10-26.md).
