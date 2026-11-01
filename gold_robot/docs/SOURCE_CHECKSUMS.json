@@ -87,8 +87,8 @@
     },
     {
       "path": "docs/GOLD_DECISION_AUDIT.md",
-      "bytes": 8880,
-      "sha256": "740dec930b3def41f66e6e9871a901fd4a07a0a1b5fcbf63117016b2520ae3f1"
+      "bytes": 9133,
+      "sha256": "bcaa5961dd984e03edbba93ffbef34efe63fa419efede50a6985c84549fa714b"
     },
     {
       "path": "docs/IMPORT_AUDIT.md",
@@ -162,8 +162,8 @@
     },
     {
       "path": "mt5_robot/AdaptiveResearch.mqh",
-      "bytes": 9125,
-      "sha256": "0abf34ae17d7c44cef7c2b84b7a8f7cd22b084c99be983bfc022cea2631a2d5c"
+      "bytes": 9406,
+      "sha256": "9ebb28d49cb5397604ad6901b1becafc1c6ae20e0d5796e8832bf675fb5bbc1b"
     },
     {
       "path": "mt5_robot/ExecutionPolicy.mqh",
@@ -197,8 +197,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 82839,
-      "sha256": "9ca970b70578ce8fd048bf295f67b90691fe021493cab769fde1ff4d4e5022f9"
+      "bytes": 83225,
+      "sha256": "03ae4f0bed43dcc70e999df660772f4e180b0a55309cdf5d597cedad900256de"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -487,8 +487,8 @@
     },
     {
       "path": "tests/test_market_context_v3_contract.py",
-      "bytes": 3291,
-      "sha256": "c8427c9cb75d1bc139f1de7d1791b3bdae55d33f084ded52a74d21ba58ee89cd"
+      "bytes": 3848,
+      "sha256": "1d17160218591716ca56c243c8a2b5c78e67d198c04e7b55f5216a1a7eb99082"
     },
     {
       "path": "tests/test_post_stop_replay.py",
