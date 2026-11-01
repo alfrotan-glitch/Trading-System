@@ -1,5 +1,5 @@
 @echo off
-REM QTS GOLD - evidence-only STOP audit. Never connects MT5 or submits orders.
+REM QTS GOLD - read-only STOP audit. May READ WMMarkets MT5 tick history; never sends orders.
 setlocal EnableExtensions DisableDelayedExpansion
 set "REPO=%~dp0"
 set "AUTO=%REPO%gold_robot\reports_local\auto_runs"
@@ -35,7 +35,14 @@ if defined QTS_BROKER_TICKS_DIR (
   %PY% "%REPO%gold_robot\research\stop_reversal_audit.py" --stops "%OUT%\QTS_STOP_CASES.csv" --tick-dir "%QTS_BROKER_TICKS_DIR%" --output "%OUT%\QTS_POST_STOP_REAL_TICK_REVIEW.json"
   if errorlevel 1 goto FAIL
 ) else (
-  echo To replay future paths, export WMMarkets bid/ask ticks and set QTS_BROKER_TICKS_DIR.
+  echo Reading historical executable bid/ask ticks from the connected WMMarkets MT5 terminal...
+  echo No orders, no trading changes, no backtest rerun.
+  %PY% "%REPO%gold_robot\research\capture_post_stop_quotes.py" --bundle "%BUNDLE%" --output-directory "%OUT%"
+  if errorlevel 1 (
+    echo Original price-after-stop remains UNKNOWN. MT5 historical ticks unavailable or incomplete.
+    echo Check the terminal connection and install the official MetaTrader5 Python package if missing.
+    goto FAIL
+  )
 )
 explorer "%OUT%"
 if /I not "%QTS_NO_PAUSE%"=="1" pause
