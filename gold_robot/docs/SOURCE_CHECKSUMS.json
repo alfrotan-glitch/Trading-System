@@ -457,8 +457,8 @@
     },
     {
       "path": "research/retrospective_context.py",
-      "bytes": 15711,
-      "sha256": "8d22f9d62d88f087e80c1fa5f1625cf8b7719d7dd68a0be260b018b78a4a2e9b"
+      "bytes": 19046,
+      "sha256": "a1f8c5add6d24d12f97b84b228cfb3752d17397ab004eff0e63b8aa6e903c403"
     },
     {
       "path": "research/router_logic.py",
@@ -612,8 +612,8 @@
     },
     {
       "path": "tests/test_retrospective_context.py",
-      "bytes": 5832,
-      "sha256": "ef7c84fd0950533bb31212b68942ee492b6e8fc8d6f313b60e1aaff577a8df88"
+      "bytes": 8704,
+      "sha256": "edd85ee064a0f15a4f0f611876362e0ab781d414ad4221c8e062c0c08a802b68"
     },
     {
       "path": "tests/test_revised_v2_contract.py",
