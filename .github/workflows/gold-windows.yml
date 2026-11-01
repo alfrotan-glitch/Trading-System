@@ -483,6 +483,9 @@ jobs:
             throw 'Tampered V4 attribution was not independently rejected'
           }
           Write-Host 'Native V4 broker-tag independent reconciliation and fail-closed tampering: PASS'
+          # Negative subprocess returned nonzero by design; prevent pwsh's
+          # LASTEXITCODE from incorrectly failing an otherwise successful step.
+          $global:LASTEXITCODE=0
       - name: Simulate clean and blocked MT5 broker reports (no trading)
         shell: pwsh
         run: ./gold_robot/tests/windows_report_smoke.ps1
