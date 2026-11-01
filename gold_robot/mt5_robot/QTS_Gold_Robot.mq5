@@ -1105,6 +1105,23 @@ void EvaluateNewEntry()
                    evaluated_style==QTS_SMC_FVG_OB ? "QTS SMC FVG OB" :
                    evaluated_style==QTS_M1_SCALP ? "QTS M1 SCALP" :
                                                      "QTS INSIDE BREAK";
+   // V4 forensic identity is embedded in the ORIGINAL broker pending order.
+   // The native deal exporter reads HistoryOrderGetString(...,ORDER_COMMENT)
+   // from the executed entry's order ID. Do not infer the winning strategy
+   // retrospectively from PnL, side, chart or today's current regime.
+   // A broker may truncate/replace comments; audits then mark UNKNOWN.
+   if(TesterUseAdaptiveRouterV4)
+     {
+      if(evaluated_style<0 || evaluated_style>QTS_SMC_FVG_OB ||
+         evaluated_style==QTS_ADAPTIVE_ROUTER ||
+         g_router_confirmed_regime<0 || g_router_confirmed_regime>2)
+        {
+         status_text="V4: strategy/regime identity is not auditable";
+         return;
+        }
+      request.comment=StringFormat("QTSV4-S%d-R%d",
+                                   evaluated_style,g_router_confirmed_regime);
+     }
    ResetLastError();
    if(!OrderCheck(request,check) || (check.retcode!=0 && check.retcode!=TRADE_RETCODE_DONE))
      {

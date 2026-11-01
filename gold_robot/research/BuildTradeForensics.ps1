@@ -141,6 +141,10 @@ for($style=0;$style -lt $names.Count;$style++){
         [void]$positions.Add([ordered]@{
             style=$style;strategy=$names[$style];position_id=[string]$group.Name;
             setup_reason=$entrySetup;exit_legs=$exitLegs;
+            # Original broker event timestamps allow an accurate per-style
+            # chronological realised-PnL path. This is NOT intratrade equity.
+            entry_time_msc=if($first){[string]$first.time_msc}else{$null};
+            exit_time_msc=if($last){[string]$last.time_msc}else{$null};
             status=$quality;side=$side;entry_price=[Math]::Round($entryPrice,5);
             exit_price=[Math]::Round($exitPrice,5);initial_sl=$initialSL;
             initial_tp=$initialTP;exit_sl=$exitSL;exit_tp=$exitTP;
