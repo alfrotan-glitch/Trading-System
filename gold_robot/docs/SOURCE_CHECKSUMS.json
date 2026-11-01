@@ -182,8 +182,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 4621,
-      "sha256": "c7b50255e65832bef6264d9efcf6c64660f0ea984c3ade9280c2a87b9dcbfa3f"
+      "bytes": 5990,
+      "sha256": "aa285322bf8b6880df3a144d7ce010eb62610a8f8eac65de6129b0d2b3c9954b"
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
@@ -456,6 +456,11 @@
       "sha256": "7ad5ba6906ed98b56c9bc71944d8f4de9743014b130d7b757c8dbb5b25d60f1b"
     },
     {
+      "path": "research/retrospective_context.py",
+      "bytes": 15711,
+      "sha256": "8d22f9d62d88f087e80c1fa5f1625cf8b7719d7dd68a0be260b018b78a4a2e9b"
+    },
+    {
       "path": "research/router_logic.py",
       "bytes": 9963,
       "sha256": "322bad287f09055558d110f8869d8e937602cd23cd913459f1b833c06812836c"
@@ -604,6 +609,11 @@
       "path": "tests/test_research.py",
       "bytes": 3685,
       "sha256": "85b85920778cff7598f2c8e776f99f4bab04a255d57c0b3a03ab7caca95a404c"
+    },
+    {
+      "path": "tests/test_retrospective_context.py",
+      "bytes": 5832,
+      "sha256": "ef7c84fd0950533bb31212b68942ee492b6e8fc8d6f313b60e1aaff577a8df88"
     },
     {
       "path": "tests/test_revised_v2_contract.py",
