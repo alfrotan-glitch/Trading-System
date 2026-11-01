@@ -287,8 +287,8 @@
     },
     {
       "path": "research/MakeTesterPresets.ps1",
-      "bytes": 6272,
-      "sha256": "e4ff486e94633a93b8e291bd00247b45b3e6256762d93eaac085041c8535dfc0"
+      "bytes": 10920,
+      "sha256": "e05ea6cb02655c4ede9de06000f70c1d604b6baf1d82ec47a2c96da629e73fbd"
     },
     {
       "path": "research/MakeWindowsReport.ps1",
@@ -577,8 +577,8 @@
     },
     {
       "path": "tests/test_preregistered_v5_study.py",
-      "bytes": 9477,
-      "sha256": "f87a472112018bfc1edff89e929dd574f5c1e914c6b2bdefee6c557c3b89918c"
+      "bytes": 9841,
+      "sha256": "6dc045df62fa029904414e4158e80f76598cd7f493ff6d23b3b5d72f3cdc97a9"
     },
     {
       "path": "tests/test_reference_benchmark.py",
