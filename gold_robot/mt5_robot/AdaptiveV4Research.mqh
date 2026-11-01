@@ -8,6 +8,128 @@
 // Price, SL, TP and broker lot preflight are based on ONE chosen strategy.
 #define QTS_V4_MIN_NET_RR 1.25
 
+
+#define QTS_V4_DECISIONS 10
+#define QTS_V4_BAR_GATES 20
+int g_v4_diagnostic_candidates[9][QTS_V4_DECISIONS];
+int g_v4_diagnostic_gates[QTS_V4_BAR_GATES];
+
+string V4DecisionName(const int n)
+  {
+   string names[]={"REJECT_SIGNAL","REJECT_LIMIT","REJECT_GEOMETRY",
+      "REJECT_SIZE","REJECT_MARKET_CONTEXT","REJECT_COST","REJECT_RR",
+      "REJECT_TRANSITION","REJECT_SCORE","ELIGIBLE"};
+   if(n<0 || n>=ArraySize(names)) return "UNKNOWN";
+   return names[n];
+  }
+void V4CountCandidate(const int style,const string decision)
+  {
+   if(MQLInfoInteger(MQL_TESTER)==0 || EntryStyle!=QTS_ADAPTIVE_ROUTER ||
+      !TesterUseAdaptiveRouterV4 || style<0 || style>8) return;
+   for(int j=0;j<QTS_V4_DECISIONS;j++)
+      if(decision==V4DecisionName(j))
+        {
+         g_v4_diagnostic_candidates[style][j]++;
+         return;
+        }
+  }
+// Exactly one CLOSED-BAR decision is counted after ConsiderNewEntry.
+// The long-form QTS ENTRY AUDIT remains the detailed broker-time evidence.
+string V4GateName(const int n)
+  {
+   string names[]={"TOTAL_CLOSED_BARS","NO_ELIGIBLE_SETUP",
+      "REGIME_WARMUP","REGIME_UNAVAILABLE","VOLATILITY_VETO",
+      "RESEARCH_CONFIGURATION_VETO","FROZEN_V5_VETO",
+      "OUTSIDE_BROKER_SESSION","RISK_OR_INCIDENT_VETO",
+      "QUOTE_OR_SPREAD_VETO","EXISTING_ORDER_OR_POSITION",
+      "ENTRY_MUTEX_VETO","FINAL_V3_CONTEXT_VETO",
+      "BROKER_ORDER_CHECK_VETO","LOT_LIMIT_OR_COST_VETO",
+      "PENDING_ORDER_ACCEPTED","PENDING_ORDER_REJECTED",
+      "FINAL_EXECUTION_VETO","PRICE_OR_EXPIRY_VETO",
+      "OTHER_NO_SUBMISSION"};
+   if(n<0 || n>=ArraySize(names)) return "UNKNOWN";
+   return names[n];
+  }
+void V4RecordClosedBarDecision(const string reason)
+  {
+   if(MQLInfoInteger(MQL_TESTER)==0 || EntryStyle!=QTS_ADAPTIVE_ROUTER ||
+      !TesterUseAdaptiveRouterV4) return;
+   g_v4_diagnostic_gates[0]++;
+   int category=19;
+   if(StringFind(reason,"V4: NO_TRADE")==0) category=1;
+   else if(StringFind(reason,"V4: regime has not persisted")==0) category=2;
+   else if(StringFind(reason,"V4: missing closed-bar regime")==0) category=3;
+   else if(StringFind(reason,"V4: ATR percentile")==0) category=4;
+   else if(StringFind(reason,"V4: requires M15")==0 ||
+           StringFind(reason,"Research gate:")==0 ||
+           StringFind(reason,"ENTRY: disabled")==0 ||
+           StringFind(reason,"ENTRY: operator pause")==0) category=5;
+   else if(StringFind(reason,"QTS V5 PREREGISTERED_VETO")==0) category=6;
+   else if(StringFind(reason,"ENTRY: outside broker session")==0) category=7;
+   else if(StringFind(reason,"Quote, spread")==0 ||
+           StringFind(reason,"Spread too large")==0) category=9;
+   else if(StringFind(reason,"Another chart/strategy")==0) category=10;
+   else if(StringFind(reason,"Another EA has the entry lock")==0) category=11;
+   else if(StringFind(reason,"V3 MARKET CONTEXT")==0) category=12;
+   else if(StringFind(reason,"Broker preflight")==0) category=13;
+   else if(StringFind(reason,"SIZE:")==0 ||
+           StringFind(reason,"MARGIN:")==0 ||
+           StringFind(reason,"TP reward")==0 ||
+           StringFind(reason,"Pending-order daily")==0) category=14;
+   else if(StringFind(reason,"LIMIT submission accepted")==0) category=15;
+   else if(StringFind(reason,"Broker rejected setup")==0) category=16;
+   else if(StringFind(reason,"Final execution/risk guard")==0) category=17;
+   else if(StringFind(reason,"Price reached limit")==0 ||
+           StringFind(reason,"Broker has no safe server")==0) category=18;
+   else if(StringFind(reason,"risk",0)>=0 ||
+           StringFind(reason,"Risk",0)>=0 ||
+           StringFind(reason,"Execution incident")==0 ||
+           StringFind(reason,"halt",0)>=0 ||
+           StringFind(reason,"Daily trade count")==0) category=8;
+   g_v4_diagnostic_gates[category]++;
+  }
+// Native tester's own CSV survives even when all trade signals are vetoed.
+// No order credentials, chart objects, broker account IDs or position data.
+bool V4ExportDiagnostics()
+  {
+   // Export even if a wrong/stale .set DISABLED V4. Native configuration
+   // must be observed from within the EA, not inferred from the .ini label.
+   if(MQLInfoInteger(MQL_TESTER)==0 || EntryStyle!=QTS_ADAPTIVE_ROUTER)
+      return true;
+   string filename=StringFormat("QTS_V4_DIAGNOSTICS_STYLE_%d_%I64u.csv",
+                                (int)EntryStyle,GetTickCount64());
+   int file=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,';');
+   if(file==INVALID_HANDLE)
+     {
+      PrintFormat("QTS V4 DIAGNOSTIC EXPORT ERROR=%d",GetLastError());
+      return false;
+     }
+   FileWrite(file,"scope","style","verdict","count");
+   // Independently verify the parameters the MT5 engine ACTUALLY used.
+   FileWrite(file,"INPUT",7,"EntryStyle",(int)EntryStyle);
+   FileWrite(file,"INPUT",7,"SignalTimeframe",(int)SignalTimeframe);
+   FileWrite(file,"INPUT",7,"EnableDemoOrders",(int)EnableDemoOrders);
+   FileWrite(file,"INPUT",7,"TesterUseMarketContextV3",(int)TesterUseMarketContextV3);
+   FileWrite(file,"INPUT",7,"TesterUseAdaptiveRouterV4",(int)TesterUseAdaptiveRouterV4);
+   FileWrite(file,"INPUT",7,"TesterUsePreregisteredVetoV5",(int)TesterUsePreregisteredVetoV5);
+   FileWrite(file,"INPUT",7,"TesterVetoStyleV5",TesterVetoStyleV5);
+   FileWrite(file,"INPUT",7,"TesterVetoRegimeV5",TesterVetoRegimeV5);
+   for(int i=0;i<QTS_V4_BAR_GATES;i++)
+      FileWrite(file,"CLOSED_BAR",-1,V4GateName(i),g_v4_diagnostic_gates[i]);
+   for(int style=0;style<=8;style++)
+     {
+      if(style==QTS_ADAPTIVE_ROUTER) continue;
+      for(int decision=0;decision<QTS_V4_DECISIONS;decision++)
+         FileWrite(file,"CANDIDATE",style,V4DecisionName(decision),
+                   g_v4_diagnostic_candidates[style][decision]);
+     }
+   FileFlush(file);
+   FileClose(file);
+   PrintFormat("QTS V4 DIAGNOSTICS EXPORTED bar_evaluations=%d file=%s",
+               g_v4_diagnostic_gates[0],filename);
+   return true;
+  }
+
 int V4RegimePriority(const int regime,const int style)
   {
    if(style==QTS_SMC_FVG_OB)
@@ -19,6 +141,7 @@ int V4RegimePriority(const int regime,const int style)
 void V4LogCandidate(const int regime,const int style,const string decision,
                     const string details)
   {
+   V4CountCandidate(style,decision);
    if(EnableEntryDiagnostics && MQLInfoInteger(MQL_TESTER)!=0)
       PrintFormat("QTS V4 CANDIDATE regime=%d style=%d verdict=%s details=%s",
                   regime,style,decision,details);

@@ -1848,6 +1848,10 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
 double OnTester()
   {
    if(MQLInfoInteger(MQL_TESTER)==0) return 0.0;
+   // Decision-stage evidence is exported even if there are ZERO broker deals.
+   // The absence of a deal must never be confused with a profitable strategy.
+   if(!V4ExportDiagnostics())
+      Print("QTS V4 WARNING: decision gate export failed; no quality approval.");
    if(!HistorySelect(0,TimeCurrent()))
      {
       Print("QTS FORENSIC ERROR: tester history could not be selected");
@@ -1979,7 +1983,10 @@ void OnTick()
    if(closed>0 && last_closed_bar>0 && closed!=last_closed_bar)
      {
       last_closed_bar=closed;
+      if(MQLInfoInteger(MQL_TESTER)!=0 && TesterUseAdaptiveRouterV4)
+         status_text="ENTRY_AUDIT_PENDING";
       ConsiderNewEntry();
+      V4RecordClosedBarDecision(status_text);
       ObserveUnarmedDemoSignal();
       // Closed-bar diagnostics also work on WMMarkets connected DEMO.
       // Logs are observational and never authorize orders or contain logins.

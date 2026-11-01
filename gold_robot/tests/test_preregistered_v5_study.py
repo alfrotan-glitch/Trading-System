@@ -204,7 +204,8 @@ def test_mql_native_v5_isolated_veto_and_all_original_risk_guards():
     assert "TesterVetoRegimeV5         = -1" in ea
     assert "if(TesterUsePreregisteredVetoV5 &&" in router
     assert "chosen_style==TesterVetoStyleV5 && regime==TesterVetoRegimeV5" in router
-    assert router.index("evaluated_style=chosen_style;") < router.index("QTS V5 PREREGISTERED_VETO")
+    selector=router[router.index("bool SelectAdaptiveCandidateV4("):]
+    assert selector.index("evaluated_style=chosen_style;") < selector.index("QTS V5 PREREGISTERED_VETO")
     assert "QTS V5 PREREGISTERED_VETO" in router
     assert "if(RealAccountBlocked())" in ea
     assert "OrderCheck(request,check)" in ea

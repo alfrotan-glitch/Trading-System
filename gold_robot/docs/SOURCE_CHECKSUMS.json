@@ -202,8 +202,8 @@
     },
     {
       "path": "mt5_robot/AdaptiveV4Research.mqh",
-      "bytes": 9583,
-      "sha256": "85204c008333b8735e7311ae35eaa5bce26a45889dddecf7594a916343ee1a0d"
+      "bytes": 15506,
+      "sha256": "dff1422a0ffd82b1be51f0d3ede210099f171f18d392f226fedeedbcae340809"
     },
     {
       "path": "mt5_robot/ExecutionPolicy.mqh",
@@ -237,8 +237,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 85830,
-      "sha256": "271429381fc5f0ce6c02d3c70e5001f3c62bcf0fb874e0b24998845d562c12c0"
+      "bytes": 86259,
+      "sha256": "a82a21cfd8c67e027fab3a86fc8bf815f8ff0b95b777978ddb58189222dda62a"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -297,8 +297,8 @@
     },
     {
       "path": "research/PackTradeEvidence.ps1",
-      "bytes": 5862,
-      "sha256": "1b432a32e4e5dff43c4c5fa4a0dcc105b49b5c323971e2e866b6de083a7b5ea9"
+      "bytes": 6387,
+      "sha256": "b30bc45166a3511824660c1d9bf4263e2033638f82ea144a88790b22099221d6"
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",
@@ -312,8 +312,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 35300,
-      "sha256": "b4bfe1379beb5d4f728e0fc98b5fa6c70c3152f672d8f6ec432d7e67df3dde95"
+      "bytes": 40973,
+      "sha256": "b9e147a29d319278344c0f6d1673bb91c6c019270a95552da3fbeadea22f8c92"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
@@ -577,8 +577,8 @@
     },
     {
       "path": "tests/test_preregistered_v5_study.py",
-      "bytes": 13910,
-      "sha256": "2936cdf1a65641995644bd70ec22fabc79b7dcfbb3f313c68947e4a011266baa"
+      "bytes": 13984,
+      "sha256": "7e18a9c5de2d3a8db5f34d5a6ad33f25ad9ad98f250be44aa4c9383aaef591df"
     },
     {
       "path": "tests/test_reference_benchmark.py",
@@ -657,8 +657,8 @@
     },
     {
       "path": "tests/test_v4_position_attribution.py",
-      "bytes": 11030,
-      "sha256": "818f4463bf6050bae33ceac550658b454b11762b5b603541221ccacd742e8715"
+      "bytes": 14148,
+      "sha256": "61e69e72e14755868d43d2a620e80128bbcf5920d24cc0ebed25a59b62215cfa"
     },
     {
       "path": "tests/test_v4_post_stop_cohorts.py",

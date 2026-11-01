@@ -63,6 +63,17 @@ foreach($i in $requiredStyles){
         $missing+=,$file
     }
 }
+# Include only the native TESTER's compact strategy-decision counters.
+# This CSV contains cause categories and counts; never broker account data.
+if($outcome.research_variant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO') -and
+   7 -in $requiredStyles){
+    $decisionCsv=Join-Path (Join-Path $RunDirectory 'native') 'QTS_7_decisions.csv'
+    if(Test-Path -LiteralPath $decisionCsv -PathType Leaf){
+        [void]$allowed.Add(@($decisionCsv,'native/QTS_7_decisions.csv'))
+    }else{
+        $missing+=,'QTS_7_decisions.csv'
+    }
+}
 if($allowed.Count -eq 0){throw 'No allowlisted research evidence exists in the selected run folder.'}
 $status=if($missing.Count -eq 0){
     if($outcome.targeted -eq $true){'SELECTED_CSV_FILES_PRESENT'}

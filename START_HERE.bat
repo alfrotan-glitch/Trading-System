@@ -26,8 +26,10 @@ echo  [5] Create ten MT5 Strategy Tester presets (no orders)
 echo  [6] Compare saved MT5 Strategy Tester reports
 echo  [7] Exit
 echo  [8] Find saved MT5 logs and open an easy-to-read report
+echo  [9] One-click V4 trade-decision diagnosis (last completed month)
 echo.
-choice /C 12345678 /N /M "Choose 1-8: "
+choice /C 123456789 /N /M "Choose 1-9: "
+if errorlevel 9 goto V4_DIAGNOSE
 if errorlevel 8 goto AUDIT
 if errorlevel 7 goto END
 if errorlevel 6 goto COMPARE
@@ -75,6 +77,14 @@ goto MENU
 call "%QTS_ROOT_DIR%gold_robot\MAKE_TEST_PRESETS.bat"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" echo Tester presets were not created.
+echo.
+pause
+goto MENU
+
+:V4_DIAGNOSE
+call "%QTS_ROOT_DIR%QTS_AUTO_TEST.bat" v4
+set "CODE=%ERRORLEVEL%"
+if not "%CODE%"=="0" echo Decision diagnosis is NO-GO or incomplete. Review the last report.
 echo.
 pause
 goto MENU

@@ -249,3 +249,64 @@ def test_actual_header_only_csv_from_native_tester_has_no_data_rows(tmp_path):
     path.write_text(header+"\n",encoding="utf-8")
     with path.open(encoding="utf-8",newline="") as stream:
         assert list(csv.DictReader(stream,delimiter=";")) == []
+
+
+def test_native_v4_diagnostics_record_every_evaluated_closed_bar_and_candidate_veto():
+    ea=(GOLD / "mt5_robot" / "QTS_Gold_Robot.mq5").read_text("utf-8")
+    v4=(GOLD / "mt5_robot" / "AdaptiveV4Research.mqh").read_text("utf-8")
+    assert "V4RecordClosedBarDecision(status_text);" in ea
+    assert "if(!V4ExportDiagnostics())" in ea
+    assert "g_v4_diagnostic_gates[0]++" in v4
+    assert "g_v4_diagnostic_gates[category]++" in v4
+    assert "V4CountCandidate(style,decision);" in v4
+    for stage in ("REJECT_SIGNAL", "REJECT_LIMIT", "REJECT_SIZE",
+                  "REJECT_MARKET_CONTEXT", "REJECT_COST", "REJECT_RR",
+                  "ELIGIBLE", "PENDING_ORDER_ACCEPTED", "OTHER_NO_SUBMISSION"):
+        assert stage in v4
+    assert 'FileWrite(file,"scope","style","verdict","count")' in v4
+    assert 'QTS_V4_DIAGNOSTICS_STYLE_%d_%I64u.csv' in v4
+    # Only read-only Strategy Tester instrumentation; live account remains blocked.
+    assert "MQLInfoInteger(MQL_TESTER)==0" in v4
+    assert "OrderSend(" not in v4
+
+
+def test_native_runner_reconciles_v4_gate_counts_and_packages_no_trade_evidence():
+    runner=(GOLD / "research" / "RunAutomaticTester.ps1").read_text("utf-8")
+    pack=(GOLD / "research" / "PackTradeEvidence.ps1").read_text("utf-8")
+    for text in ("QTS_V4_DIAGNOSTICS_STYLE_7_*.csv",
+                 "QTS_7_decisions.csv", "TOTAL_CLOSED_BARS",
+                 "DECISION_DIAGNOSTICS_INVALID_NO_GO",
+                 "DECISION_DIAGNOSTICS_MISSING_NO_GO"):
+        assert text in runner
+    assert "$gateSum -ne $barCount" in runner
+    assert "QTS_7_decisions.csv" in pack
+    assert "native/QTS_7_decisions.csv" in pack
+
+
+def test_windows_existing_single_menu_exposes_guided_one_month_v4_diagnosis():
+    root=GOLD.parent
+    main=(root / "START_HERE.bat").read_text("utf-8")
+    launcher=(root / "QTS_AUTO_TEST.bat").read_text("utf-8")
+    assert 'call "%QTS_ROOT_DIR%QTS_AUTO_TEST.bat" v4' in main
+    assert '"== "v4"' not in launcher
+    assert 'if /I "%~1"=="v4" goto V4_DIAGNOSE' in launcher
+    assert "-OnlyStyles 7 -ResearchVariant ADAPTIVE_V4" in launcher
+    assert "AddMonths(-1)" in launcher
+    assert "QTS_SHARE_RESULTS.bat" in launcher
+    assert "LIVE LOCKED" in launcher
+
+
+def test_native_v4_test_presets_attested_from_actual_ea_not_just_copied_file():
+    ea=(GOLD / "mt5_robot" / "AdaptiveV4Research.mqh").read_text("utf-8")
+    runner=(GOLD / "research" / "RunAutomaticTester.ps1").read_text("utf-8")
+    # Both broker profile and diagnostic are from the same native OnTester.
+    for control in ("EntryStyle", "SignalTimeframe", "EnableDemoOrders",
+                    "TesterUseMarketContextV3", "TesterUseAdaptiveRouterV4",
+                    "TesterUsePreregisteredVetoV5", "TesterVetoStyleV5",
+                    "TesterVetoRegimeV5"):
+        assert f'FileWrite(file,"INPUT",7,"{control}"' in ea
+        assert control in runner
+    assert "MT5 tester native INPUT MISMATCH" in runner
+    assert "Zero trades cannot be attributed to a strategy" in runner
+    assert "expected '+$expectedInputs[$key]" in runner
+    assert "MISSING_OR_DUPLICATED" in runner
