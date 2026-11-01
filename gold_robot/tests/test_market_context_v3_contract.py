@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EA = (ROOT / "mt5_robot/QTS_Gold_Robot.mq5").read_text("utf-8")
 V3 = (ROOT / "mt5_robot/MarketContextV3.mqh").read_text("utf-8")
 RUNNER = (ROOT / "research/RunAutomaticTester.ps1").read_text("utf-8")
+ADAPTIVE = (ROOT / "mt5_robot/AdaptiveResearch.mqh").read_text("utf-8")
 
 
 def test_v3_is_unarmed_and_tester_only():
@@ -49,6 +50,14 @@ def test_v3_only_uses_completed_multitimeframe_data():
     assert "CopyRates(_Symbol,PERIOD_M5,0," not in V3
     assert "CopyRates(_Symbol,PERIOD_M15,0," not in V3
     assert "CopyBuffer(h1_handle,0,0," not in V3
+
+
+def test_candidate_ranking_does_not_hide_valid_alternatives():
+    assert "if(TesterUseMarketContextV3 &&" in ADAPTIVE
+    assert "!TesterMarketContextV3(candidate_side,style,quote,candidate_atr,p,sl,tp)" in ADAPTIVE
+    assert ADAPTIVE.index("!TesterMarketContextV3(candidate_side") < ADAPTIVE.index("double score=")
+    assert "A failed top candidate cannot hide another valid alternative." in ADAPTIVE
+    assert "bool TesterMarketContextV3(const int side,const int style," in EA
 
 
 def test_broker_minimum_lot_step_and_budget_are_never_rounded_up():
