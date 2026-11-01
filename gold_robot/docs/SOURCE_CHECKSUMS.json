@@ -377,8 +377,8 @@
     },
     {
       "path": "research/capture_post_stop_quotes.py",
-      "bytes": 13227,
-      "sha256": "28bd7317b8473643dad2887cce8a3a6687ed21391675682b300189f6f69c8edc"
+      "bytes": 15013,
+      "sha256": "2b9881b65c81fb87b3fa82c4733b14acad3ef89d585db4e95c10c44597dc6895"
     },
     {
       "path": "research/compare_revised_variants.py",
@@ -582,8 +582,8 @@
     },
     {
       "path": "tests/test_post_stop_terminal_capture.py",
-      "bytes": 9286,
-      "sha256": "96a8cd458b211a8a3dfb16157e59faba441926779626b6b86faddd1145b40e8d"
+      "bytes": 12346,
+      "sha256": "2733cc00951cec8c64e814223d15c66bdb852cc8b0824769168f6dcc8e163006"
     },
     {
       "path": "tests/test_preregistered_v5_study.py",
