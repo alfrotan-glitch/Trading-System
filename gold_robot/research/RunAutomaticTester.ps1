@@ -372,6 +372,33 @@ try{
         }else{
             & (Join-Path $gold 'research\BuildTradeForensics.ps1') -InputDirectory $native -OutputDirectory $OutputDirectory -NoOpen
         }
+        if($ResearchVariant -eq 'ADAPTIVE_V4'){
+            # Attach the actual selected sub-strategy and frozen market regime
+            # from the broker's ORIGINAL entry-order comment to every V4 fill.
+            # Never silently mark the tester run as reviewed when any native
+            # order comment has been lost, clipped or has an unknown style.
+            $interpreter=Get-Command py -ErrorAction SilentlyContinue
+            $attr=Join-Path $OutputDirectory 'QTS_V4_POSITION_ATTRIBUTION.json'
+            $entrypoint=Join-Path $gold 'research\\v4_position_attribution.py'
+            $sourcePositions=Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json'
+            if($interpreter){
+                & $interpreter.Source -3 $entrypoint --input $sourcePositions --output $attr
+            }else{
+                $interpreter=Get-Command python -ErrorAction SilentlyContinue
+                if(-not $interpreter){
+                    throw 'V4 attribution needs Python 3 to check every original broker order identity.'
+                }
+                & $interpreter.Source $entrypoint --input $sourcePositions --output $attr
+            }
+            if($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $attr -PathType Leaf)){
+                throw 'V4 native broker strategy attribution has gaps. No trade-quality claim is allowed.'
+            }
+            $v4Fact=Get-Content -LiteralPath $attr -Raw -Encoding UTF8 | ConvertFrom-Json
+            if($v4Fact.status -ne 'ATTRIBUTED_FOR_RESEARCH_ONLY' -or
+               $v4Fact.live -ne 'LOCKED' -or $v4Fact.edge_validated -ne $false){
+                throw 'V4 broker attribution is incomplete, inconsistent or unsafe.'
+            }
+        }
         $latest=Get-ChildItem -LiteralPath $OutputDirectory -Filter 'QTS_Gold_Comparison_*.html' |
             Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
         if($latest){$comparison=$latest.Name}
