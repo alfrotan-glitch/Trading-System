@@ -459,9 +459,40 @@ try{
                                 } | Sort-Object {[int]$_.count} -Descending |
                                     Select-Object -First 3 |
                                     ForEach-Object {'S'+$_.style+':'+$_.verdict+'='+$_.count})
+                                # Individual V3 reasons answer WHY no router candidate
+                                # was eligible, without logs or weakening any veto.
+                                $v3Rows=@($decisions | Where-Object {$_.scope -eq 'V3_VETO'})
+                                $v3Accepted=@($decisions | Where-Object {
+                                    $_.scope -eq 'V3_ACCEPT' -and $_.verdict -eq 'TOTAL'
+                                })
+                                if($v3Rows.Count -ne 25 -or $v3Accepted.Count -ne 1 -or
+                                   @($v3Rows | Select-Object -ExpandProperty verdict -Unique).Count -ne 25){
+                                    throw 'V3 native reason export missing/duplicated; cannot certify the market-context veto causes.'
+                                }
+                                $v3Total=0
+                                foreach($record in @($v3Rows)+@($v3Accepted)){
+                                    $count=0
+                                    if(-not [int]::TryParse([string]$record.count,[ref]$count) -or $count -lt 0){
+                                        throw 'Invalid negative/non-numeric V3 reason count; no quality claim.'
+                                    }
+                                    $v3Total+=$count
+                                }
+                                $requiredV3=@($decisions | Where-Object {
+                                    $_.scope -eq 'CANDIDATE' -and
+                                    $_.verdict -in @('REJECT_MARKET_CONTEXT','ELIGIBLE')
+                                } | Measure-Object -Property count -Sum).Sum
+                                if($v3Total -lt [int]$requiredV3){
+                                    throw 'Native V3 diagnostic counters do not cover all V4 context decisions.'
+                                }
+                                $topV3=@($v3Rows | Where-Object {[int]$_.count -gt 0} |
+                                    Sort-Object {[int]$_.count} -Descending |
+                                    Select-Object -First 5 |
+                                    ForEach-Object {$_.verdict+'='+$_.count})
                                 $item.detail+=(' Native V4 bars='+$barCount+
                                     '; top gates: '+($topGates -join ', ')+
                                     '; candidate vetoes: '+($topCandidateVetoes -join ', ')+
+                                    '; exact V3 veto reasons: '+$(if($topV3.Count){$topV3 -join ', '}else{'NONE'})+
+                                    '; V3 accepts='+$v3Accepted[0].count+
                                     '. The full decision CSV is saved locally.')
                             }
                         }
