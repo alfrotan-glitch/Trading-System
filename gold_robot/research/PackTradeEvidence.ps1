@@ -24,7 +24,14 @@ if(-not $RunDirectory.StartsWith($root+'\',[StringComparison]::OrdinalIgnoreCase
     throw 'Refusing to package a folder outside QTS reports_local/auto_runs.'
 }
 $allowed=New-Object System.Collections.ArrayList
-foreach($name in @('OPEN_RESULTS.json','QTS_TRADE_BY_TRADE.json','QTS_ADAPTIVE_REVIEW.json')){
+# Include only explicitly allowlisted research JSON. On failed native V4
+# attribution, its issues are essential evidence; hiding them forces a rerun.
+# Never copy native MT5 HTML, logs, account statements or credentials.
+foreach($name in @('OPEN_RESULTS.json','QTS_TRADE_BY_TRADE.json',
+                    'QTS_ADAPTIVE_REVIEW.json',
+                    'QTS_V4_POSITION_ATTRIBUTION.json',
+                    'QTS_V4_POST_STOP_STRATEGY_COHORTS.json',
+                    'QTS_TEN_TRADE_REFLECTION.json')){
     $p=Join-Path $RunDirectory $name
     if(Test-Path -LiteralPath $p -PathType Leaf){[void]$allowed.Add(@($p,$name))}
 }
@@ -66,7 +73,8 @@ $manifest=@(
     'LIVE LOCKED. NO PROFITABLE EDGE VERIFIED.',
     'Package state: '+$status,
     'Run folder name: '+(Split-Path -Leaf $RunDirectory),
-    'Included: only QTS research JSON and trade-level CSV.',
+    'Included: only allowlisted QTS research JSON, V4 audit issues and trade-level CSV.',
+    'Any native position IDs and order comments are broker research evidence. Review before sharing.',
     'Excluded: MT5 native HTML, logins, terminal history, account statements, journals, passwords.',
     'Important: included CSV files may contain trade and broker-order IDs and comments.',
     'Missing forensic CSV: '+($(if($missing.Count){$missing -join ', '}else{'none'})),
