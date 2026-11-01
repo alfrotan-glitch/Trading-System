@@ -16,7 +16,7 @@ int g_v4_diagnostic_gates[QTS_V4_BAR_GATES];
 
 string V4DecisionName(const int n)
   {
-   const string names[]={"REJECT_SIGNAL","REJECT_LIMIT","REJECT_GEOMETRY",
+   string names[]={"REJECT_SIGNAL","REJECT_LIMIT","REJECT_GEOMETRY",
       "REJECT_SIZE","REJECT_MARKET_CONTEXT","REJECT_COST","REJECT_RR",
       "REJECT_TRANSITION","REJECT_SCORE","ELIGIBLE"};
    if(n<0 || n>=ArraySize(names)) return "UNKNOWN";
@@ -37,7 +37,7 @@ void V4CountCandidate(const int style,const string decision)
 // The long-form QTS ENTRY AUDIT remains the detailed broker-time evidence.
 string V4GateName(const int n)
   {
-   const string names[]={"TOTAL_CLOSED_BARS","NO_ELIGIBLE_SETUP",
+   string names[]={"TOTAL_CLOSED_BARS","NO_ELIGIBLE_SETUP",
       "REGIME_WARMUP","REGIME_UNAVAILABLE","VOLATILITY_VETO",
       "RESEARCH_CONFIGURATION_VETO","FROZEN_V5_VETO",
       "OUTSIDE_BROKER_SESSION","RISK_OR_INCIDENT_VETO",
@@ -66,11 +66,6 @@ void V4RecordClosedBarDecision(const string reason)
            StringFind(reason,"ENTRY: operator pause")==0) category=5;
    else if(StringFind(reason,"QTS V5 PREREGISTERED_VETO")==0) category=6;
    else if(StringFind(reason,"ENTRY: outside broker session")==0) category=7;
-   else if(StringFind(reason,"risk",0)>=0 ||
-           StringFind(reason,"Risk",0)>=0 ||
-           StringFind(reason,"Execution incident")==0 ||
-           StringFind(reason,"halt",0)>=0 ||
-           StringFind(reason,"Daily trade count")==0) category=8;
    else if(StringFind(reason,"Quote, spread")==0 ||
            StringFind(reason,"Spread too large")==0) category=9;
    else if(StringFind(reason,"Another chart/strategy")==0) category=10;
@@ -86,6 +81,11 @@ void V4RecordClosedBarDecision(const string reason)
    else if(StringFind(reason,"Final execution/risk guard")==0) category=17;
    else if(StringFind(reason,"Price reached limit")==0 ||
            StringFind(reason,"Broker has no safe server")==0) category=18;
+   else if(StringFind(reason,"risk",0)>=0 ||
+           StringFind(reason,"Risk",0)>=0 ||
+           StringFind(reason,"Execution incident")==0 ||
+           StringFind(reason,"halt",0)>=0 ||
+           StringFind(reason,"Daily trade count")==0) category=8;
    g_v4_diagnostic_gates[category]++;
   }
 // Native tester's own CSV survives even when all trade signals are vetoed.
