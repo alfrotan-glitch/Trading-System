@@ -2,10 +2,10 @@
 
 No MT5 connection or broker trade is needed for these static safety checks.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[2]
 
