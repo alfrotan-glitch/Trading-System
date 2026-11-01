@@ -199,3 +199,30 @@ def test_forensic_export_retains_native_event_timestamps_without_price_predictio
     assert "exit_time_msc=if($last){[string]$last.time_msc}" in native
     assert "initial_sl=$initialSL;" in native
     assert "initial_tp=$initialTP;" in native
+
+
+def test_v4_failed_native_attribution_exposes_actual_issue_counts_without_trading():
+    runner=(GOLD / "research" / "RunAutomaticTester.ps1").read_text("utf-8")
+    assert "Group-Object reason" in runner
+    assert "native_positions_attributed" in runner
+    assert "native_positions_seen" in runner
+    assert "unrecognized_original_tags" in runner
+    assert "incomplete_positions" in runner
+    assert "V4 native broker strategy attribution has gaps" in runner
+    assert "throw ('V4 native broker strategy attribution has gaps." in runner
+    # Never make a broken provenance run appear as a validated edge.
+    assert "ATTRIBUTED_FOR_RESEARCH_ONLY" in runner
+    assert "LIVE LOCKED" in (GOLD / "research" / "RunNativeV5Challenge.ps1").read_text("utf-8")
+
+
+def test_v4_issue_evidence_is_in_allowlisted_share_zip_without_raw_mt5_html():
+    pack=(GOLD / "research" / "PackTradeEvidence.ps1").read_text("utf-8")
+    for name in ("QTS_V4_POSITION_ATTRIBUTION.json",
+                 "QTS_V4_POST_STOP_STRATEGY_COHORTS.json",
+                 "QTS_TEN_TRADE_REFLECTION.json",
+                 "QTS_TRADE_BY_TRADE.json"):
+        assert name in pack
+    assert "ZipFileExtensions" in pack
+    assert "QTS_V4_POSITION_ATTRIBUTION.json" in pack
+    assert "NEVER included" in pack
+    assert "QTS_SHARE_RESULTS.zip" in pack
