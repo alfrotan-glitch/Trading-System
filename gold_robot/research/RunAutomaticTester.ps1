@@ -8,6 +8,12 @@ param([string]$TerminalExe="",[string]$TerminalDataFolder="",
       [string]$ResearchVariant='BASELINE')
 $ErrorActionPreference='Stop'
 $gold=Split-Path -Parent $PSScriptRoot
+$sourceManifestFile=Join-Path $gold 'docs\SOURCE_CHECKSUMS.json'
+if(-not (Test-Path -LiteralPath $sourceManifestFile -PathType Leaf)){
+    throw 'Cannot attest test build source: canonical source checksum manifest missing.'
+}
+$sourceManifestSha256=(Get-FileHash -LiteralPath $sourceManifestFile -Algorithm SHA256).Hash.ToLowerInvariant()
+
 if(-not $OutputDirectory){
     $OutputDirectory=Join-Path $gold ('reports_local\auto_runs\'+(Get-Date -Format 'yyyyMMdd_HHmmss'))
 }
@@ -104,6 +110,7 @@ An incomplete or missing report means NO-GO.</p></section></main></body></html>
         from_date=$FromDate;to_date=$ToDate;comparison=$comparison;
         selected_styles=@($selectedStyles);targeted=$targeted;
         research_variant=$ResearchVariant;
+        source_manifest_sha256=$sourceManifestSha256;
         results=@($results.ToArray())
     } | ConvertTo-Json -Depth 7 |
         Set-Content -LiteralPath (Join-Path $OutputDirectory 'OPEN_RESULTS.json') -Encoding UTF8

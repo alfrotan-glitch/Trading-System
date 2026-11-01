@@ -41,6 +41,11 @@
       "sha256": "75a85c376db482da06904c06877c914843967378b07b55e86347c1df15715159"
     },
     {
+      "path": "REVIEW_CAPITAL_READINESS.bat",
+      "bytes": 965,
+      "sha256": "e275835cab5927047551574752e6c8164f7325cb2d81516968db75c8a64f77a0"
+    },
+    {
       "path": "SETUP_MT5_GOLD.bat",
       "bytes": 4395,
       "sha256": "a1eea1ed5bca744d8e90805912e5bde736d88f0dabd63cb204fb02fff8586826"
@@ -54,6 +59,11 @@
       "path": "docs/AUTONOMOUS_RESEARCH.md",
       "bytes": 5702,
       "sha256": "aada320d81c1852d4c41ca770bbb9c6400a3ab47b5b43e86210bc84b321dc1ef"
+    },
+    {
+      "path": "docs/CAPITAL_READINESS.md",
+      "bytes": 5028,
+      "sha256": "7b48cc16c6bb138bd3500b2b3b70465087be84a4fc961643f9ca2392b1dd1ff1"
     },
     {
       "path": "docs/DEMO_FORWARD_OPERATIONS.md",
@@ -272,8 +282,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 24012,
-      "sha256": "6df729e81d8f56ce0b55432e96419b0a41981cc933c3ad2d285f72364a70c17b"
+      "bytes": 24405,
+      "sha256": "59b04fea1d44a4b5e3b641857de400b5541f4c9f37d15229c051cc63fb11820d"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -324,6 +334,11 @@
       "path": "research/build_report.py",
       "bytes": 8887,
       "sha256": "f625005f0bf1d941335956789b09ba887c1720ca424546973b23eeca935fb152"
+    },
+    {
+      "path": "research/capital_readiness.py",
+      "bytes": 16640,
+      "sha256": "cb58ffdc8061b1ccf559ece3faa519ab19f6ad7bb1df9f5c80df8e9fccecdc28"
     },
     {
       "path": "research/compare_revised_variants.py",
@@ -442,8 +457,8 @@
     },
     {
       "path": "research/update_manifest.py",
-      "bytes": 3014,
-      "sha256": "00a3990e811fa99df66a2ff5a4a86f47f892955b18dfcb7d03e4f1f38e6554df"
+      "bytes": 3058,
+      "sha256": "4ef25e79d94c26fcb43266a71eebabf00f4d35eeca47d2554d1caf824a099443"
     },
     {
       "path": "tests/ReceiptSelftest.mq5",
@@ -464,6 +479,11 @@
       "path": "tests/test_broker_preflight.py",
       "bytes": 4537,
       "sha256": "0688fde1fa33983f16292bdc051b9e668509d511a34262bd2d79964850a5287e"
+    },
+    {
+      "path": "tests/test_capital_readiness.py",
+      "bytes": 9078,
+      "sha256": "627c1dd74dfd274691c9e1afa70677edbc94974b624f9ddb78496dc071046404"
     },
     {
       "path": "tests/test_edge_gate.py",
