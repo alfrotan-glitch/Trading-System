@@ -180,3 +180,22 @@ def test_reference_immutable_broker_comment_extraction():
     assert '"fee","setup_reason"' in ea
     forensics = (GOLD / "research" / "BuildTradeForensics.ps1").read_text("utf-8")
     assert "setup_reason=$entrySetup;exit_legs=$exitLegs" in forensics
+
+
+def test_auto_tester_requires_attribution_for_v4_without_tuning_or_live():
+    runner = (GOLD / "research" / "RunAutomaticTester.ps1").read_text("utf-8")
+    assert "if($ResearchVariant -eq 'ADAPTIVE_V4')" in runner
+    assert "research\\v4_position_attribution.py" in runner
+    assert "QTS_V4_POSITION_ATTRIBUTION.json" in runner
+    assert "if($LASTEXITCODE -ne 0" in runner
+    assert "ATTRIBUTED_FOR_RESEARCH_ONLY" in runner
+    assert "V4 native broker strategy attribution has gaps" in runner
+    assert "OrderSend(" not in (GOLD / "research" / "v4_position_attribution.py").read_text("utf-8")
+
+
+def test_forensic_export_retains_native_event_timestamps_without_price_predictions():
+    native = (GOLD / "research" / "BuildTradeForensics.ps1").read_text("utf-8")
+    assert "entry_time_msc=if($first){[string]$first.time_msc}" in native
+    assert "exit_time_msc=if($last){[string]$last.time_msc}" in native
+    assert "initial_sl=$initialSL;" in native
+    assert "initial_tp=$initialTP;" in native
