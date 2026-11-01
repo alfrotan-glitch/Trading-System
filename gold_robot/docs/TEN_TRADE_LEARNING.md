@@ -62,6 +62,24 @@ It must not be mistaken for proof that not taking those trades would have
 increased profits. The original 10 trades are not a valid test of this
 candidate: selection, capital use and subsequent positions would differ.
 
+**NEW — subsequent ten-trade sensitivity:** a proposal created at checkpoint N
+is frozen using only exits up through checkpoint N. At checkpoint N+1, the
+automatic reviewer asks how the NEXT, never-before-seen ten original-broker
+positions actually performed for that same strategy/regime. If that group
+earned money, the proposed exclusion would have removed profitable fills;
+if it lost money, the exclusion is a *plausible* idea to test further.
+The record `next_checkpoint_observational_shadow_reviews` reports
+`OBSERVED_EXCLUSION_HURTS_NET`, `OBSERVED_EXCLUSION_HELPS_NET`,
+`NO_FUTURE_OBSERVATIONS` or `OBSERVED_EXCLUSION_NEUTRAL`.
+
+**Important:** this is still observational sensitivity, **NOT** a
+counterfactual MT5 simulation. Preventing one fill changes open exposure,
+possible replacement entries, position timing, margin and later orders.
+Neither next-ten performance nor two bad checkpoints authorizes promotion.
+An independent, same-cost native broker Strategy Tester challenger must
+re-run the revised frozen routing rule on unseen ticks before any serious
+comparison or deployment decision.
+
 If the same cohort has independently adverse outcomes in **two distinct,
 non-overlapping 10-trade checkpoints**, it is flagged for an *unseen*
 challenger experiment. Neither rule authorizes automatically disabling the
