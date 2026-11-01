@@ -1,33 +1,88 @@
 @echo off
-REM QTS - single Windows entry point. No live orders or automatic trading.
+REM QTS Gold: one canonical operator menu; no connected broker orders.
+REM Advanced research utilities remain available without extra desktop bots.
 setlocal EnableExtensions DisableDelayedExpansion
 set "QTS_ROOT_DIR=%~dp0"
 cd /d "%QTS_ROOT_DIR%"
 if not exist "gold_robot\SETUP_MT5_GOLD.bat" (
-  echo ERROR: Missing gold_robot folder. Clone the complete main branch.
+  echo ERROR: Missing gold_robot folder. Obtain the complete main branch.
   pause
   exit /b 1
 )
 if /I "%~1"=="/verify-setup" goto VERIFY_SETUP
+
 :MENU
 cls
 echo.
 echo  ============================================================
-echo                QTS GOLD - WINDOWS CONTROL
+echo                 QTS GOLD - SINGLE CONTROL PANEL
 echo  ============================================================
-echo  WMMarkets MT5 - XAUUSD@ - RESEARCH / STRATEGY TESTER
-echo  LIVE: LOCKED             PROFITABLE EDGE: NOT VALIDATED
+echo  WMMarkets MT5 - XAUUSD@ - NATIVE STRATEGY TESTER
+echo  LIVE LOCKED / NO VALIDATED PROFITABLE EDGE
 echo.
-echo  [1] Install / update MT5 Gold Robot and broker check
-echo  [2] Create professional local readiness report
-echo  [3] Open QTS research desktop (no orders)
-echo  [4] Read the short MT5 Windows guide
-echo  [5] Create ten MT5 Strategy Tester presets (no orders)
-echo  [6] Compare saved MT5 Strategy Tester reports
+echo  [1] Test Retest vs Sweep/Reclaim (Styles 1 and 3)
+echo  [2] Test all ten strategy styles (M15 and M1 as required)
+echo  [3] Install / update the canonical MT5 Gold Robot
+echo  [4] Open the most recent native tester results
+echo  [5] Generate broker and installation readiness report
+echo  [6] Advanced research and diagnostics
 echo  [7] Exit
-echo  [8] Find saved MT5 logs and open an easy-to-read report
-echo  [9] One-click V4 trade-decision diagnosis (last completed month)
-echo  [A] Analyze actual post-SL broker tick paths (saved trades, no re-test)
+echo.
+choice /C 1234567 /N /M "Choose 1-7: "
+if errorlevel 7 goto END
+if errorlevel 6 goto ADVANCED
+if errorlevel 5 goto REPORT
+if errorlevel 4 goto LATEST_RESULTS
+if errorlevel 3 goto INSTALL
+if errorlevel 2 goto RUN_ALL
+if errorlevel 1 goto RUN_CHAMPIONS
+goto MENU
+
+:RUN_CHAMPIONS
+echo.
+echo Research comparison: same EA, native broker real ticks, Styles 1 and 3.
+echo Older positive screens are NOT proof of durable profit.
+call "%QTS_ROOT_DIR%QTS_AUTO_TEST.bat" champions
+set "CODE=%ERRORLEVEL%"
+if not "%CODE%"=="0" echo Research NO-GO: review the new run, not an older report.
+echo.
+pause
+goto MENU
+
+:RUN_ALL
+echo.
+echo Full ten-style research, never connected broker orders.
+call "%QTS_ROOT_DIR%QTS_AUTO_TEST.bat"
+set "CODE=%ERRORLEVEL%"
+if not "%CODE%"=="0" echo Native results incomplete or evidence unavailable.
+echo.
+pause
+goto MENU
+
+:LATEST_RESULTS
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -Command "$root='gold_robot\reports_local\auto_runs'; $dirs=Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending; $last=$dirs | ForEach-Object { Join-Path $_.FullName 'OPEN_RESULTS.html' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1; if($last){Start-Process -FilePath $last; Write-Host ('Opened: '+$last)}else{Write-Host 'No native result yet. Run option 1 or 2.'}"
+echo.
+pause
+goto MENU
+
+:ADVANCED
+cls
+echo.
+echo  ============================================================
+echo             QTS GOLD - ADVANCED RESEARCH TOOLS
+echo  ============================================================
+echo  Simulation/read-only controls. LIVE LOCKED.
+echo.
+echo  [1] Install and compile MT5 EA
+echo  [2] Generate readiness report
+echo  [3] Open separate Python research desktop (no orders)
+echo  [4] Read MT5 Windows guide
+echo  [5] Create ten Strategy Tester presets (no orders)
+echo  [6] Compare saved MT5 reports
+echo  [7] Exit QTS
+echo  [8] Audit saved MT5 agent logs
+echo  [9] Diagnose adaptive V4 decisions (last completed month)
+echo  [A] Review historical post-stop broker quote paths
 echo.
 choice /C 123456789A /N /M "Choose 1-9 or A: "
 if errorlevel 10 goto STOP_QUOTES
@@ -40,7 +95,7 @@ if errorlevel 4 goto GUIDE
 if errorlevel 3 goto DESKTOP
 if errorlevel 2 goto REPORT
 if errorlevel 1 goto INSTALL
-goto END
+goto MENU
 
 :INSTALL
 call "%QTS_ROOT_DIR%gold_robot\SETUP_MT5_GOLD.bat"
@@ -94,7 +149,7 @@ goto MENU
 :V4_DIAGNOSE
 call "%QTS_ROOT_DIR%QTS_AUTO_TEST.bat" v4
 set "CODE=%ERRORLEVEL%"
-if not "%CODE%"=="0" echo Decision diagnosis is NO-GO or incomplete. Review the last report.
+if not "%CODE%"=="0" echo Decision diagnosis is NO-GO or incomplete. Review its own run.
 echo.
 pause
 goto MENU
@@ -104,6 +159,7 @@ call "%QTS_ROOT_DIR%gold_robot\AUDIT_LOGS.bat"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" echo Log audit could not be created. Check the saved QTS files.
 echo.
+pause
 goto MENU
 
 :GUIDE
@@ -116,11 +172,11 @@ start "" notepad.exe "%QTS_ROOT_DIR%gold_robot\docs\WINDOWS_START.md"
 goto MENU
 
 :VERIFY_SETUP
-REM Noninteractive Windows smoke test, validates menu -> setup BAT paths.
+REM Noninteractive Windows CI smoke test; does not touch a real broker.
 set "QTS_SETUP_VALIDATE_ONLY=1"
 call "gold_robot\SETUP_MT5_GOLD.bat"
 exit /b %ERRORLEVEL%
 
 :END
-echo QTS closed; no orders were requested by this menu.
+echo QTS closed. No live orders were requested.
 exit /b 0
