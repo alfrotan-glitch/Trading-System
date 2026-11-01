@@ -212,7 +212,8 @@ def test_v4_failed_native_attribution_exposes_actual_issue_counts_without_tradin
     assert "throw ('V4 native broker strategy attribution has gaps." in runner
     # Never make a broken provenance run appear as a validated edge.
     assert "ATTRIBUTED_FOR_RESEARCH_ONLY" in runner
-    assert "LIVE LOCKED" in (GOLD / "research" / "RunNativeV5Challenge.ps1").read_text("utf-8")
+    assert "live='LOCKED'" in runner
+    assert "real_money_orders=$false" in runner
 
 
 def test_v4_issue_evidence_is_in_allowlisted_share_zip_without_raw_mt5_html():
