@@ -1,0 +1,72 @@
+"""Frozen M15 adaptive V3: source review checks, NOT native MetaEditor compilation."""
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+EA = (ROOT / "mt5_robot/QTS_Gold_Robot.mq5").read_text("utf-8")
+V3 = (ROOT / "mt5_robot/MarketContextV3.mqh").read_text("utf-8")
+RUNNER = (ROOT / "research/RunAutomaticTester.ps1").read_text("utf-8")
+
+
+def test_v3_is_unarmed_and_tester_only():
+    assert "input bool            TesterUseMarketContextV3   = false;" in EA
+    assert "#include \"MarketContextV3.mqh\"" in EA
+    assert "(TesterUseEntryQualityV2 || TesterProtectNearTPV2 || TesterUseMarketContextV3)" in EA
+    assert "EntryStyle!=QTS_ADAPTIVE_ROUTER || SignalTimeframe!=PERIOD_M15" in EA
+    assert "MQLInfoInteger(MQL_TESTER)==0" in V3
+    assert "if(!TesterUseMarketContextV3)" in V3
+    assert "return true;" in V3
+    assert "LIVE" not in V3 or "Strategy Tester ONLY" in V3
+
+
+def test_v3_context_veto_precedes_any_broker_order():
+    at = EA.index("if(!TesterMarketContextV3(side,evaluated_style,quote,atr,price,stop,target))")
+    check = EA.index("OrderCheck(request,check)")
+    send = EA.index("OrderSend(request,result)")
+    assert at < check < send
+    assert "double risk=EstimatedMonetaryLoss(side,min_lot,entry,stop);" in V3
+    assert "net_tp/risk<1.25" in V3
+    assert "gap<3.0*spread" in V3
+    assert "QTS V3 ACCEPT research-only" in V3
+    assert "QTS V3 veto closed-bar market context" in V3
+
+
+def test_v3_only_uses_completed_multitimeframe_data():
+    for fragment in (
+        "CopyRates(_Symbol,PERIOD_M15,1,QTS_V3_M15_HISTORY,m15)",
+        "CopyRates(_Symbol,PERIOD_M5,1,2,m5)",
+        "CopyRates(_Symbol,PERIOD_H1,1,1,h1)",
+        "CopyBuffer(h1_handle,0,1,1,h1_ema)",
+        "CopyBuffer(fast_handle,0,1,1,m15_ema)",
+        "m15[QTS_V3_M15_HISTORY-1].time+900!=asof",
+        "m5[1].time+300>asof",
+        "m15[k].time-m15[k-1].time!=900",
+        "m5[1].close<m5[0].close",
+        "h1[0].close<=h1_ema[0]",
+        "m15[last].low>=support",
+        "m15[last].high<=resistance",
+    ):
+        assert fragment in V3, fragment
+    assert "CopyRates(_Symbol,PERIOD_M5,0," not in V3
+    assert "CopyRates(_Symbol,PERIOD_M15,0," not in V3
+    assert "CopyBuffer(h1_handle,0,0," not in V3
+
+
+def test_broker_minimum_lot_step_and_budget_are_never_rounded_up():
+    start = EA.index("double SizedLots(")
+    end = EA.index("// Owner-defined relocation:", start)
+    body = EA[start:end]
+    assert "risk_limit=MathMin(budget/one_lot_cost,maximum)" in body
+    assert "MathFloor((risk_limit-minimum)/step+1e-9)" in body
+    assert "NormalizeDouble(minimum+units*step,8)" in body
+    assert "if(volume<minimum" in body
+    assert "loss>budget+1e-8" in body
+
+
+def test_automated_tester_v3_is_isolated_from_baseline():
+    assert "'BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3'" in RUNNER
+    assert "$ResearchVariant -eq 'CONTEXT_V3' -and ($OnlyStyles -ne '7')" in RUNNER
+    assert "'TesterUseMarketContextV3'=($ResearchVariant -eq 'CONTEXT_V3')" in RUNNER
+    assert "'TesterUseEntryQualityV2'=($ResearchVariant -in @('ENTRY_FILTER','COMBINED'))" in RUNNER
+    assert "'TesterProtectNearTPV2'=($ResearchVariant -in @('NEAR_TP','COMBINED'))" in RUNNER
+    assert "EnableDemoForwardOrders" not in V3
+    assert "OrderSend(" not in V3
