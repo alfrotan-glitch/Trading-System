@@ -161,6 +161,11 @@
       "sha256": "b076aa46fe91391fb6e935fc91964a43623f834d4f0a7ce26a59956967e3ba6e"
     },
     {
+      "path": "docs/V4_POSITION_INTELLIGENCE.md",
+      "bytes": 4788,
+      "sha256": "cb0a3acda7eeeba8d9195863c83bf57a1f9840216cd96591797f4e37cd66dcc8"
+    },
+    {
       "path": "docs/WINDOWS_START.md",
       "bytes": 11669,
       "sha256": "55f9ffd8c9dfb332c3f07ff213c12ab5d514c9c1ef676d3d0e2faf06433c5f1c"
@@ -217,8 +222,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 83840,
-      "sha256": "cec31b3f99e3e245cf3b6ca89b3fcf249b9d9add91c87e0c2d4a0d544f1628b7"
+      "bytes": 84681,
+      "sha256": "d44fa4a298345fd03d7fd9c015e7873c7e23c74ca2faeb8d8a79c79aef7f1ae8"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -247,8 +252,8 @@
     },
     {
       "path": "research/BuildTradeForensics.ps1",
-      "bytes": 12655,
-      "sha256": "6f561c0aa3a9add0f3a1483afbd2d111f96901238a5030f9d7004f0c5a3113f4"
+      "bytes": 12955,
+      "sha256": "294ad56b03f3710aa809fc8df6ff6188456afcdd58793f84ebe0357ee1013bae"
     },
     {
       "path": "research/CompareMT5Reports.ps1",
@@ -292,8 +297,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 24545,
-      "sha256": "65a8f805b4c1dcbcbe3f4a16f3236275c15a5b8c246d62703712fd2e5de67ee1"
+      "bytes": 26263,
+      "sha256": "07a207cc198624d0744cb6de69246d365f8eca0648c3fcd82e2dc40ad946955b"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -471,6 +476,11 @@
       "sha256": "4ef25e79d94c26fcb43266a71eebabf00f4d35eeca47d2554d1caf824a099443"
     },
     {
+      "path": "research/v4_position_attribution.py",
+      "bytes": 13953,
+      "sha256": "2bec8df72de7db8d7af4e3d0b87dfed03218c18612441885ea13f8f20dd60b20"
+    },
+    {
       "path": "tests/ReceiptSelftest.mq5",
       "bytes": 1005,
       "sha256": "793293feef8ead8436456fd2398745776bd4b0f60268415b8be5e5babf8858ca"
@@ -599,6 +609,11 @@
       "path": "tests/test_v2_ablation_contract.py",
       "bytes": 4335,
       "sha256": "b0d2487ff188cb287a56bbb9c8fe8c0cf4243a4c6c25ae7d6601de4877c098d4"
+    },
+    {
+      "path": "tests/test_v4_position_attribution.py",
+      "bytes": 8559,
+      "sha256": "228b4da7267cded86afb53cd3456d6b5f38e6473bcd0c68a9b5fd23b1dae1988"
     },
     {
       "path": "tests/windows_report_smoke.ps1",
