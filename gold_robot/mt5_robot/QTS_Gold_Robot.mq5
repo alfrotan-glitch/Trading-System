@@ -1598,6 +1598,16 @@ int OnInit()
       Print("QTS: adaptive V4 requires independent V3 context checks enabled.");
       return INIT_PARAMETERS_INCORRECT;
      }
+   // Hard contradiction guard: RR=1.0 cannot pass V3's gross >=1.25
+   // plus after-cost >=1.25 for fixed-RR setup families. Do NOT
+   // silently run months of zero-fill research with impossible geometry.
+   if(TesterUseMarketContextV3 &&
+      RewardToRisk<QTS_V3_MIN_CONFIGURED_RR)
+     {
+      PrintFormat("QTS CONFIG NO-GO: V3 requires research target RR >= %.2f, native configured RR=%.2f. Not a profitable-edge claim.",
+                  QTS_V3_MIN_CONFIGURED_RR,RewardToRisk);
+      return INIT_PARAMETERS_INCORRECT;
+     }
    if(TesterUsePreregisteredVetoV5 &&
       (MQLInfoInteger(MQL_TESTER)==0 ||
        EntryStyle!=QTS_ADAPTIVE_ROUTER ||
