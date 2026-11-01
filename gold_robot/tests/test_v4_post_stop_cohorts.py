@@ -162,3 +162,15 @@ def test_no_order_or_unlocked_permissions_in_any_stop_cohort_code():
     assert "order_send(" not in content
     assert '"real_orders_permitted": False' in content
     assert '"automated_model_promotion": False' in content
+
+
+def test_native_runner_writes_explicit_unknown_not_made_up_post_stop_win():
+    runner = (ROOT / "research" / "RunAutomaticTester.ps1").read_text("utf-8")
+    assert "QTS_V4_POST_STOP_STRATEGY_COHORTS.json" in runner
+    assert "research\\v4_post_stop_cohorts.py" in runner
+    assert "--allow-missing-ticks" in runner
+    assert "'TICKS_MISSING_NO_GO','NO_BROKER_STOPS_TO_REPLAY'" in runner
+    assert "unsupported price-outcome claim" in runner
+    source = (ROOT / "research" / "v4_post_stop_cohorts.py").read_text("utf-8")
+    assert 'if (args.allow_missing_ticks and args.post_stop_replay is None' in source
+    assert '"automated_model_promotion": False' in source
