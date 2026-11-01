@@ -1,0 +1,83 @@
+name: QTS one-time safe branch archive and cleanup
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/qts-branch-cleanup-once.yml'
+permissions:
+  contents: write
+jobs:
+  archive-and-remove-obsolete-branches:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Archive each exact branch head before deleting the branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          branches=(
+            'feature/adaptive-per-opportunity-v4-20261101'
+            'feature/gold-decision-audit-20261031'
+            'feature/preregistered-v5-champion-challenger-20261101'
+            'feature/ten-trade-shadow-learning-20261101'
+            'feature/v4-position-strategy-attribution-20261101'
+            'feature/v4-stop-rebound-cohorts-20261101'
+            'fix/mt5-invalid-quote-per-stop-20261101'
+            'fix/one-click-v4-gate-diagnostics-20261101'
+            'fix/poststop-partial-evidence-handoff-20261101'
+            'fix/read-only-poststop-broker-ticks-20261101'
+            'fix/v3-context-exact-veto-reasons-20261101'
+            'fix/v4-adaptive-review-consistency-20261101'
+            'fix/v4-native-attribution-actionable-failure-report-20261101'
+            'fix/v4-rr-v3-feasibility-guard-20261101'
+            'fix/v4-zero-deals-honest-no-go-20261101'
+            'fix/v5-binary-profile-provenance-20261101'
+            'review/capital-readiness-20261101'
+            'review/fix-autonomous-evidence-20261031'
+          )
+          for branch in "${branches[@]}"; do
+            remote_line=$(git ls-remote --heads origin "refs/heads/$branch")
+            if [ -z "$remote_line" ]; then
+              echo "Already absent, skip: $branch"
+              continue
+            fi
+            head_sha=${remote_line%%[[:space:]]*}
+            if ! git cat-file -e "${head_sha}^{commit}" 2>/dev/null; then
+              git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
+            fi
+            test "$(git rev-parse "${head_sha}^{commit}")" = "$head_sha"
+            tag="qts-archive/2026-11-02/${branch//\//-}"
+            archived_line=$(git ls-remote --tags origin "refs/tags/$tag")
+            if [ -z "$archived_line" ]; then
+              git tag "$tag" "$head_sha"
+              git push origin "refs/tags/$tag"
+            else
+              archived_sha=${archived_line%%[[:space:]]*}
+              if [ "$archived_sha" != "$head_sha" ]; then
+                echo "ABORT: Archive tag differs from current branch head: $branch" >&2
+                exit 2
+              fi
+            fi
+            verified=$(git ls-remote --tags origin "refs/tags/$tag")
+            verified_sha=${verified%%[[:space:]]*}
+            if [ "$verified_sha" != "$head_sha" ]; then
+              echo "ABORT: Archive tag was not verified: $branch" >&2
+              exit 3
+            fi
+            latest_line=$(git ls-remote --heads origin "refs/heads/$branch")
+            latest_sha=${latest_line%%[[:space:]]*}
+            if [ "$latest_sha" != "$head_sha" ]; then
+              echo "ABORT: Branch moved during archive: $branch" >&2
+              exit 4
+            fi
+            git push origin --delete "$branch"
+            echo "ARCHIVED_AND_DELETED: $branch -> $tag @ $head_sha"
+          done
+          echo 'Done. Main untouched. Commit history is recoverable from qts-archive tags.'
