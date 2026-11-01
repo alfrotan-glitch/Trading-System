@@ -74,44 +74,117 @@ def replay_from_mt5(data: dict, mt5, *, symbol: str = "XAUUSD@") -> tuple[dict, 
                           "not_eligible_or_incomplete": 0} for m in HORIZONS_MIN}
     tick_total = 0
     fingerprint = hashlib.sha256()
+    quality = {
+        "mt5_tick_selection": "COPY_TICKS_INFO_BID_ASK_CHANGES_ONLY",
+        "bad_bid_ask_rows": 0,
+        "out_of_order_rows": 0,
+        "out_of_range_rows": 0,
+        "malformed_rows": 0,
+        "failed_history_reads": 0,
+        "oversized_history_reads": 0,
+        "per_stop": [],
+    }
     for row in stopped:
         stops, ignored = load_stops([stop_source(row)])
         if ignored != 0 or len(stops) != 1:
             raise ValueError("Broker stop identity/geometry did not validate")
         exit_ms = row["exit_time_msc"]
-        # Ask for at least one tick AFTER the last horizon. This is required
-        # by stop_reversal_audit to prove uninterrupted endpoint coverage.
         begin_ms = exit_ms + 1
         end_ms = exit_ms + POST_STOP_MS + FINISH_BUFFER_MS
         begin = datetime.fromtimestamp(begin_ms / 1000, timezone.utc)
         end = datetime.fromtimestamp(end_ms / 1000, timezone.utc)
-        original = mt5.copy_ticks_range(symbol, begin, end, mt5.COPY_TICKS_ALL)
-        if original is None:
-            raise ValueError("MT5 failed retrieving historical quotes: " + str(mt5.last_error()))
-        if len(original) > MAX_TICKS_PER_STOP:
-            raise ValueError("Native quote window exceeds per-stop memory cap; no partial proof")
+        # Broker quote-only changes avoid last/volume-only trade ticks.
+        # On actual MT5 terminals, COPY_TICKS_ALL can include rows with
+        # missing/unusable bid/ask, which used to abort ALL 33 stops.
+        original = mt5.copy_ticks_range(symbol, begin, end, mt5.COPY_TICKS_INFO)
+        diagnostics = {
+            "position_id": str(row["position_id"]),
+            "tick_rows_returned": 0,
+            "usable_bid_ask_rows": 0,
+            "bad_bid_ask_rows": 0,
+            "out_of_order_rows": 0,
+            "out_of_range_rows": 0,
+            "malformed_rows": 0,
+            "read_status": "OK",
+            "affected_unknown_horizons_minutes": [],
+        }
         observed = []
+        invalid_horizons = set()
         previous = exit_ms
-        for tick in original:
-            ms = int(tick["time_msc"])
-            bid = float(tick["bid"])
-            ask = float(tick["ask"])
-            if (ms <= exit_ms or ms > end_ms or ms < previous or
-                not math.isfinite(bid) or not math.isfinite(ask) or
-                bid <= 0 or ask <= bid):
-                raise ValueError("Broker quote chronology or executable bid/ask invalid")
-            previous = ms
-            observed.append({"time_ms": str(ms), "bid": repr(bid), "ask": repr(ask)})
-            fingerprint.update(f"{row['position_id']}|{ms}|{bid:.8f}|{ask:.8f}\n".encode("ascii"))
+        if original is None:
+            diagnostics["read_status"] = "HISTORICAL_QUOTE_READ_FAILED"
+            quality["failed_history_reads"] += 1
+            invalid_horizons.update(HORIZONS_MIN)
+        elif len(original) > MAX_TICKS_PER_STOP:
+            diagnostics["read_status"] = "HISTORICAL_QUOTE_WINDOW_TOO_LARGE"
+            diagnostics["tick_rows_returned"] = len(original)
+            quality["oversized_history_reads"] += 1
+            invalid_horizons.update(HORIZONS_MIN)
+        else:
+            diagnostics["tick_rows_returned"] = len(original)
+            for tick in original:
+                try:
+                    ms = int(tick["time_msc"])
+                    bid = float(tick["bid"])
+                    ask = float(tick["ask"])
+                except (KeyError, ValueError, TypeError, OverflowError):
+                    diagnostics["malformed_rows"] += 1
+                    quality["malformed_rows"] += 1
+                    invalid_horizons.update(HORIZONS_MIN)
+                    continue
+                if ms <= exit_ms or ms > end_ms:
+                    diagnostics["out_of_range_rows"] += 1
+                    quality["out_of_range_rows"] += 1
+                    invalid_horizons.update(HORIZONS_MIN)
+                    continue
+                if ms < previous:
+                    diagnostics["out_of_order_rows"] += 1
+                    quality["out_of_order_rows"] += 1
+                    invalid_horizons.update(HORIZONS_MIN)
+                    continue
+                previous = ms
+                if (not math.isfinite(bid) or not math.isfinite(ask) or
+                        bid <= 0 or ask <= bid):
+                    diagnostics["bad_bid_ask_rows"] += 1
+                    quality["bad_bid_ask_rows"] += 1
+                    # Never turn a broken quote into proof of a recovery.
+                    # Valid shorter horizons ending BEFORE the anomaly can
+                    # still be reported; the affected and longer ones cannot.
+                    invalid_horizons.update(
+                        h for h in HORIZONS_MIN if ms <= exit_ms + h * 60_000
+                    )
+                    continue
+                observed.append({"time_ms": str(ms), "bid": repr(bid), "ask": repr(ask)})
+                fingerprint.update(
+                    f"{row['position_id']}|{ms}|{bid:.8f}|{ask:.8f}\n".encode("ascii")
+                )
         single = audit(stops, observed)
         tick_total += len(observed)
-        all_individual.extend(single["individual_trade_windows"])
-        for m in HORIZONS_MIN:
-            key = str(m)
-            b = single["horizons_minutes"][key]
+        individual = single["individual_trade_windows"][0]
+        for minutes in invalid_horizons:
+            window = individual["windows"][str(minutes)]
+            window["complete"] = False
+            # Never leak a hindsight TP / reclaim from an untrusted window.
+            for key in list(window):
+                if key != "complete":
+                    window[key] = False if key == "reclaimed_entry" else None
+        diagnostics["usable_bid_ask_rows"] = len(observed)
+        diagnostics["affected_unknown_horizons_minutes"] = sorted(invalid_horizons)
+        quality["per_stop"].append(diagnostics)
+        all_individual.append(individual)
+        for minutes in HORIZONS_MIN:
+            key = str(minutes)
+            window = individual["windows"][key]
             dest = aggregate[key]
-            for name in dest:
-                dest[name] += b[name]
+            if window["complete"]:
+                dest["eligible_stops_with_contiguous_executable_quotes"] += 1
+                dest["target_eligible_stops"] += 1
+                if window["reclaimed_entry"]:
+                    dest["reclaimed_entry_count"] += 1
+                if window["first_target_touch_ms"] is not None:
+                    dest["post_stop_original_target_touch_count"] += 1
+            else:
+                dest["not_eligible_or_incomplete"] += 1
     # This summary is an independent, read-only comparison of quotes from a
     # connected broker terminal, NOT evidence that the tester used each tick.
     replay = {
@@ -122,9 +195,11 @@ def replay_from_mt5(data: dict, mt5, *, symbol: str = "XAUUSD@") -> tuple[dict, 
         "horizons_minutes": aggregate,
         "individual_trade_windows": all_individual,
         "quote_source": "WMMarkets_CONNECTED_MT5_TERMINAL_HISTORICAL_TICKS",
+        "quote_data_quality": quality,
         "same_source_as_native_tester_not_proven": True,
         "historical_quote_fingerprint_sha256": fingerprint.hexdigest(),
         "warnings": [
+            "Invalid bid/ask, chronology or missing broker quote rows invalidate the affected time windows; they never count as TP touches.",
             "Terminal historical ticks may differ from MT5 tester ticks: real-tick mode can replace inconsistent or missing minute ticks.",
             "Missing or non-contiguous post-stop quote windows are UNKNOWN, never a missed/achieved target.",
             "Original TP touched AFTER SL is not a hypothetical executable winning trade.",
@@ -175,6 +250,11 @@ def main(argv=None, *, mt5_module=None) -> int:
         f"Quote-complete 120-minute windows: {coverage}\n"
         f"Original TP touched after stop in complete 120-minute windows: {touch}\n"
         f"Unknown/incomplete: {cohorts['native_stop_exits'] - coverage}\n"
+        f"Bad or crossed bid/ask quote rows: {replay['quote_data_quality']['bad_bid_ask_rows']}\n"
+        f"Malformed/out-of-order/out-of-range rows: "
+        f"{replay['quote_data_quality']['malformed_rows'] + replay['quote_data_quality']['out_of_order_rows'] + replay['quote_data_quality']['out_of_range_rows']}\n"
+        f"Failed/oversized tick reads: "
+        f"{replay['quote_data_quality']['failed_history_reads'] + replay['quote_data_quality']['oversized_history_reads']}\n"
         f"Status: {cohorts['status']}\n"
         "Broker terminal historical quotes may differ from tester execution history.\n"
         "A touch after SL does NOT prove holding longer or moving SL would win.\n"
