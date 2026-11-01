@@ -297,8 +297,8 @@
     },
     {
       "path": "research/PackTradeEvidence.ps1",
-      "bytes": 5316,
-      "sha256": "2fbffa687304e69ee5cd5f505b06102ae9b7c9efe74c9de6f6b8f75467bde5bb"
+      "bytes": 5862,
+      "sha256": "1b432a32e4e5dff43c4c5fa4a0dcc105b49b5c323971e2e866b6de083a7b5ea9"
     },
     {
       "path": "research/QTS_Broker_Preflight.mq5",
@@ -312,8 +312,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 31280,
-      "sha256": "e127a523e4838da413d703ee14d1755e4bab226625dd8265a93dd1340af9a64d"
+      "bytes": 33742,
+      "sha256": "a790b6a16a3c95ab7813ef6f8602375f06c931b5bd44c321d3f063db493d1af9"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
@@ -657,8 +657,8 @@
     },
     {
       "path": "tests/test_v4_position_attribution.py",
-      "bytes": 8581,
-      "sha256": "c9ba162f96cf7332427d24a64133f168a7f2a5173b2c1d0d2db05f0bc69e7148"
+      "bytes": 9895,
+      "sha256": "7ccce43fb53194a8a4f123197cb99bfb106f8f91c999b882059a4a7a4ab50723"
     },
     {
       "path": "tests/test_v4_post_stop_cohorts.py",
