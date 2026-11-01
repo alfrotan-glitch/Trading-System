@@ -277,8 +277,8 @@
     },
     {
       "path": "research/ExplainAdaptiveRouter.ps1",
-      "bytes": 10425,
-      "sha256": "f74f2b26d02d6565c24042ecbb933bd9d2f574a2c10544d6e95dd5cedb8ee009"
+      "bytes": 13764,
+      "sha256": "13e1b3e750564a2f40c8af9eb30da2b52d0117a3004dd48539d5c1290b1e0961"
     },
     {
       "path": "research/ExportBrokerData.mq5",
@@ -637,8 +637,8 @@
     },
     {
       "path": "tests/test_strategy_forensics_contract.py",
-      "bytes": 7286,
-      "sha256": "01c3a52bf7325c328ceaf4e44d943b55f83a132397871c17a8d2b238b9c7c291"
+      "bytes": 8532,
+      "sha256": "941b60286bfa9ce023a5e1237a1845331eddd3f9f39c03eb4eda746323402db6"
     },
     {
       "path": "tests/test_target_grid.py",

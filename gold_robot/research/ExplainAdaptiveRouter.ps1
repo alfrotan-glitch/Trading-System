@@ -18,6 +18,15 @@ if(-not (Test-Path -LiteralPath $forensicPath -PathType Leaf)){
     throw 'Missing QTS_TRADE_BY_TRADE.json: no individual positions to audit.'
 }
 $forensics=Get-Content -LiteralPath $forensicPath -Raw -Encoding UTF8|ConvertFrom-Json
+# A V4 run carries ORIGINAL broker order tags QTSV4-Sn-Rn, not
+# legacy 'QTS TREND IMPULSE' free-text comments. Prefer independently
+# checked V4 position attribution and fail closed if it is inconsistent.
+$v4Path=Join-Path $RunDirectory 'QTS_V4_POSITION_ATTRIBUTION.json'
+$v4Source=$null
+$v4ByPosition=@{}
+if(Test-Path -LiteralPath $v4Path -PathType Leaf){
+    $v4Source=Get-Content -LiteralPath $v4Path -Raw -Encoding UTF8|ConvertFrom-Json
+}
 $comparison=@(Get-ChildItem -LiteralPath $RunDirectory -Filter 'QTS_Gold_Comparison_*.json' -File |
     Sort-Object LastWriteTimeUtc -Descending|Select-Object -First 1)
 if($comparison.Count -ne 1){throw 'Missing native MT5 comparison JSON: cannot reconcile Adaptive.'}
@@ -35,20 +44,77 @@ $names=@{
  'QTS RANGE REJECT'='Range rejection'
  'QTS INSIDE BREAK'='Inside-bar breakout'
 }
+$v4Names=@{
+ '0'='Former stop'
+ '1'='Retest'
+ '2'='Break and retest'
+ '3'='Sweep and reclaim'
+ '4'='Trend impulse'
+ '5'='Range rejection'
+ '6'='Inside-bar breakout'
+ '8'='SMC FVG OB'
+}
 $groups=[ordered]@{}
 foreach($n in @('Former stop','Retest','Break and retest','Sweep and reclaim',
-                 'Trend impulse','Range rejection','Inside-bar breakout','UNKNOWN')){
+                 'Trend impulse','Range rejection','Inside-bar breakout','SMC FVG OB','UNKNOWN')){
     $groups[$n]=New-Object System.Collections.ArrayList
 }
 $trades=@($forensics.trades|Where-Object {[int]$_.style -eq 7})
 $errors=New-Object System.Collections.ArrayList
-if([string]$forensics.status -ne 'IMPORTED_FOR_REVIEW'){
+if([string]$forensics.status -notin @('IMPORTED_FOR_REVIEW','SELECTED_IMPORTED_FOR_REVIEW')){
     [void]$errors.Add('Trade ledger contains incomplete/missing position evidence.')
+}
+$isV4Tagged=@($trades|Where-Object {([string]$_.setup_reason) -match '^QTSV4-'}).Count -gt 0
+if($null -ne $v4Source){
+    if($v4Source.schema -ne 'qts.mt5.v4.position_strategy_attribution.v1' -or
+       $v4Source.status -ne 'ATTRIBUTED_FOR_RESEARCH_ONLY' -or
+       $v4Source.live -ne 'LOCKED' -or $v4Source.edge_validated -ne $false -or
+       $v4Source.can_autotune_or_promote -ne $false -or
+       [int]$v4Source.native_positions_attributed -ne $trades.Count -or
+       [int]$v4Source.native_positions_seen -ne $trades.Count){
+        [void]$errors.Add('Independent original-order V4 attribution is incomplete, mismatched or unsafe.')
+    }
+    foreach($position in @($v4Source.positions)){
+        $identity=[string]$position.position_id
+        if(-not $identity -or $v4ByPosition.ContainsKey($identity)){
+            [void]$errors.Add('Invalid or duplicate V4 original broker position identity.')
+        }else{
+            $v4ByPosition[$identity]=$position
+        }
+    }
+    if($v4ByPosition.Count -ne $trades.Count){
+        [void]$errors.Add('V4 independently attributed positions do not reconcile with native trade ledger.')
+    }
+}
+elseif($isV4Tagged){
+    [void]$errors.Add('Native V4 tags present but QTS_V4_POSITION_ATTRIBUTION.json is missing: no independently verified family identity.')
 }
 foreach($t in $trades){
     $label='UNKNOWN'
     $comment=([string]$t.setup_reason).Trim().ToUpperInvariant()
-    if($names.ContainsKey($comment)){$label=$names[$comment]}
+    if($comment -cmatch '^QTSV4-S([0-6]|8)-R([0-2])$'){
+        $familyCode=[string]$Matches[1]
+        $regimeCode=[int]$Matches[2]
+        $label=$v4Names[$familyCode]
+        if($null -ne $v4Source){
+            $positionId=[string]$t.position_id
+            if(-not $v4ByPosition.ContainsKey($positionId)){
+                [void]$errors.Add(('Position '+$positionId+' absent from independently verified V4 attribution.'))
+            }else{
+                $sourcePosition=$v4ByPosition[$positionId]
+                if([int]$sourcePosition.selected_style -ne [int]$familyCode -or
+                   [int]$sourcePosition.regime_id -ne $regimeCode -or
+                   [math]::Abs([double]$sourcePosition.broker_net_usd-[double]$t.net_usd) -gt 0.05 -or
+                   [string]$sourcePosition.exit_reason -ne [string]$t.exit_reason){
+                    [void]$errors.Add(('Original broker order identity/net/exit mismatch on position '+$positionId))
+                }
+            }
+        }
+    }
+    elseif($names.ContainsKey($comment)){$label=$names[$comment]}
+    elseif($null -ne $v4Source){
+        [void]$errors.Add(('Native V4 position '+[string]$t.position_id+' lacks a valid original QTSV4 order comment.'))
+    }
     if([string]$t.status -notin @('COMPLETE','COMPLETE_MULTI_EXIT')){
         [void]$errors.Add(('Position '+[string]$t.position_id+' incomplete: '+[string]$t.status))
     }
@@ -142,13 +208,14 @@ $out=[ordered]@{
     schema='qts.adaptive_attribution.v1'
     status=$state;live='LOCKED';edge_validated=$false
     source='QTS_TRADE_BY_TRADE.json and style-7 native comparison'
-    does_not_establish='The market regime at order time, the counterfactual winner, future profitability, MFE/MAE or actual unreported broker fees.'
+    does_not_establish='A causally signed market regime independent of the original broker order comment, the counterfactual winner, future profitability, MFE/MAE or unreported broker fees.'
     native_report=[ordered]@{
         style=7;trades=$expectedTrades;net_usd=$expectedNet
         profit_factor=$mt[0].profit_factor
         maximal_equity_drawdown=$mt[0].maximal_equity_drawdown
     }
     broker_positions=$total
+    native_v4_identity_source=$(if($null -ne $v4Source){'INDEPENDENT_POSITION_ATTRIBUTION_CROSSCHECKED'}else{'LEGACY_ORDER_COMMENT_ONLY'})
     selected_family=$breakdown
     by_exit_month_utc=$monthly
     incremental_cost_scenarios=$costCases

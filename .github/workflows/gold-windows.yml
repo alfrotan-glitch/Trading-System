@@ -446,6 +446,46 @@ jobs:
              throw 'Missing local adaptive HTML'
           }
           Write-Host 'Adaptive per-position provenance and reconciled family report: PASS'
+      - name: Verify original V4 broker-tag attribution and mismatched-tag rejection
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $r=Join-Path $env:RUNNER_TEMP 'qts native v4 adaptive review'
+          New-Item -ItemType Directory -Path $r -Force|Out-Null
+          $position=@{style=7;position_id='3';setup_reason='QTSV4-S4-R2';status='COMPLETE';net_usd=-13.68;charges_usd=0.0;exit_reason='DEAL_REASON_SL';exit_adverse_slippage_price=0.08;minutes_held=22.96;exit_legs=@(@{time_msc='1790847549171'})}
+          $forensics=@{schema='qts.mt5.trade_forensics.v1';status='SELECTED_IMPORTED_FOR_REVIEW';trades=@($position)}
+          $forensics|ConvertTo-Json -Depth 10|Set-Content (Join-Path $r 'QTS_TRADE_BY_TRADE.json')
+          $comparison=@{results=@(@{style=7;state='PARSED';trades=1;net_usd=-13.68;profit_factor=0.0;maximal_equity_drawdown=13.68})}
+          $comparison|ConvertTo-Json -Depth 6|Set-Content (Join-Path $r 'QTS_Gold_Comparison_Test.json')
+          $v4=@{schema='qts.mt5.v4.position_strategy_attribution.v1';status='ATTRIBUTED_FOR_RESEARCH_ONLY';live='LOCKED';edge_validated=$false;can_autotune_or_promote=$false;native_positions_seen=1;native_positions_attributed=1;positions=@(@{position_id='3';selected_style=4;regime_id=2;broker_net_usd=-13.68;exit_reason='DEAL_REASON_SL'})}
+          $v4|ConvertTo-Json -Depth 10|Set-Content (Join-Path $r 'QTS_V4_POSITION_ATTRIBUTION.json')
+          $script=(Resolve-Path gold_robot/research/ExplainAdaptiveRouter.ps1).Path
+          & $script -RunDirectory $r -NoOpen
+          if($LASTEXITCODE -ne 0){throw 'Original QTSV4 broker-tag family report unexpectedly failed'}
+          $report=Get-Content (Join-Path $r 'QTS_ADAPTIVE_REVIEW.json') -Raw|ConvertFrom-Json
+          if($report.status -ne 'RECONCILED_REVIEW_REQUIRED' -or
+             $report.native_v4_identity_source -ne 'INDEPENDENT_POSITION_ATTRIBUTION_CROSSCHECKED' -or
+             @($report.selected_family).Count -ne 1 -or
+             $report.selected_family[0].family -ne 'Trend impulse' -or
+             $report.selected_family[0].net_usd -ne -13.68 -or
+             $report.broker_positions.net_usd -ne -13.68){
+            throw 'QTSV4 original broker tags not reconciled against independently attributed position'
+          }
+          $position.setup_reason='QTSV4-S1-R2'
+          $forensics.trades=@($position)
+          $forensics|ConvertTo-Json -Depth 10|Set-Content (Join-Path $r 'QTS_TRADE_BY_TRADE.json')
+          $nativePwsh=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+          & $nativePwsh -NoProfile -ExecutionPolicy Bypass -File $script -RunDirectory $r -NoOpen
+          if($LASTEXITCODE -eq 0){throw 'Tampered V4 original order style was accepted'}
+          $bad=Get-Content (Join-Path $r 'QTS_ADAPTIVE_REVIEW.json') -Raw|ConvertFrom-Json
+          if($bad.status -ne 'EVIDENCE_CONFLICT_NO_GO' -or
+             @($bad.evidence_gaps|Where-Object {$_ -like '*identity/net/exit mismatch*'}).Count -ne 1){
+            throw 'Tampered V4 attribution was not independently rejected'
+          }
+          Write-Host 'Native V4 broker-tag independent reconciliation and fail-closed tampering: PASS'
+          # Negative subprocess returned nonzero by design; prevent pwsh's
+          # LASTEXITCODE from incorrectly failing an otherwise successful step.
+          $global:LASTEXITCODE=0
       - name: Simulate clean and blocked MT5 broker reports (no trading)
         shell: pwsh
         run: ./gold_robot/tests/windows_report_smoke.ps1

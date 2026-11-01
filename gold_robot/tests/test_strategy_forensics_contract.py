@@ -142,3 +142,29 @@ def test_selected_trade_by_trade_report_never_claims_absent_styles_are_missing()
     assert "selected_styles=@($requiredStyles)" in report
     assert "-SelectedStyles $selectedStyles -NoOpen" in AUTORUN
     assert "$forensicSummary.status -eq 'SELECTED_IMPORTED_FOR_REVIEW'" in AUTORUN
+
+
+def test_adaptive_review_uses_canonical_v4_order_identity_for_each_position():
+    review = (ROOT / "research" / "ExplainAdaptiveRouter.ps1").read_text("utf-8")
+    assert "QTS_V4_POSITION_ATTRIBUTION.json" in review
+    assert "SELECTED_IMPORTED_FOR_REVIEW" in review
+    assert "'SMC FVG OB'" in review
+    assert "^QTSV4-S([0-6]|8)-R([0-2])$" in review
+    assert "ATTRIBUTED_FOR_RESEARCH_ONLY" in review
+    assert "sourcePosition.selected_style" in review
+    assert "sourcePosition.regime_id" in review
+    assert "sourcePosition.broker_net_usd" in review
+    assert "native_v4_identity_source" in review
+    assert "INDEPENDENT_POSITION_ATTRIBUTION_CROSSCHECKED" in review
+    assert "Original broker order identity/net/exit mismatch" in review
+    assert "can_autotune_or_promote -ne $false" in review
+    assert "OrderSend(" not in review
+
+
+def test_windows_smoke_exercises_actual_v4_tag_and_tampering():
+    smoke = (ROOT.parent / ".github/workflows/gold-windows.yml").read_text("utf-8")
+    assert "Verify original V4 broker-tag attribution" in smoke
+    assert "QTSV4-S4-R2" in smoke
+    assert "QTSV4-S1-R2" in smoke
+    assert "Tampered V4 original order style was accepted" in smoke
+    assert "EVIDENCE_CONFLICT_NO_GO" in smoke
