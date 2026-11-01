@@ -396,7 +396,7 @@ def _git_status_paths() -> set[str]:
     """
     try:
         proc = subprocess.run(
-            ["git", "status", "--porcelain=v1", "-z"],
+            ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
             cwd=_REPO_ROOT,
             capture_output=True,
             timeout=30,
