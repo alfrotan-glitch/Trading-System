@@ -64,24 +64,36 @@ def review(root: Path, output_dir: Path, mt5=None) -> dict:
                             "reason": str(exc)[:240]})
             continue
         period = manifest["from_date"] + ".." + manifest["to_date"]
-        # Duplicated identical ledger is one sample, never additional trades.
-        if source_sha in seen:
-            skipped.append({"archive": display, "status": "DUPLICATE_IDENTICAL_LEDGER",
-                            "source_sha256": source_sha})
+        # Identical deals from a DIFFERENT compiled EA or source manifest
+        # are not interchangeable evidence: preserve as conflicting runs.
+        identity = "|".join((source_sha,
+                             str(manifest.get("source_manifest_sha256")),
+                             str(manifest.get("compiled_ex5_sha256")),
+                             str(manifest.get("terminal_exe_sha256")),
+                             period))
+        identity_sha = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+        if identity_sha in seen:
+            skipped.append({"archive": display,
+                            "status": "DUPLICATE_IDENTICAL_LEDGER_AND_BUILD",
+                            "source_sha256": source_sha,
+                            "run_identity_sha256": identity_sha})
             continue
-        seen.add(source_sha)
+        seen.add(identity_sha)
         evaluation = evaluate(forensic, manifest, source_sha, mt5)
-        digest = hashlib.sha256((period + "|" + source_sha).encode("utf-8")).hexdigest()[:16]
+        digest = identity_sha[:16]
         name = "QTS_CONTEXT_" + digest + ".json"
         details = output_dir / name
         details.write_text(json.dumps(evaluation, indent=2, sort_keys=True) + "\n",
                            encoding="utf-8")
-        periods[period].append((source_sha, display))
+        periods[period].append((identity_sha, display))
         totals = evaluation["cohorts"].get("style", {})
         runs.append({
             "archive": display,
             "period": period,
             "source_forensics_sha256": source_sha,
+            "run_identity_sha256": identity_sha,
+            "source_manifest_sha256": manifest.get("source_manifest_sha256"),
+            "compiled_ex5_sha256": manifest.get("compiled_ex5_sha256"),
             "run_status": evaluation["status"],
             "review_file": name,
             "native_position_count": evaluation["total_positions"],
