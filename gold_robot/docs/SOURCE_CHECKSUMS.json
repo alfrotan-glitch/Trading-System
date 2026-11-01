@@ -312,8 +312,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 30477,
-      "sha256": "e114254d6053afe1ef997cf7bca338fe8d3385f7acf38bd77d84fe201a838ef8"
+      "bytes": 31280,
+      "sha256": "e127a523e4838da413d703ee14d1755e4bab226625dd8265a93dd1340af9a64d"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
@@ -512,8 +512,8 @@
     },
     {
       "path": "research/v5_study.py",
-      "bytes": 15933,
-      "sha256": "30c5f350992bb40b6dcb6d8d0780c118e08c8c42c5744c057c4f3d368e68d22c"
+      "bytes": 19026,
+      "sha256": "fbf68e478225d695e29ebac26cce0c09ad95b9c88d4b4acf949a6c7e4b5e69e7"
     },
     {
       "path": "tests/ReceiptSelftest.mq5",
@@ -577,8 +577,8 @@
     },
     {
       "path": "tests/test_preregistered_v5_study.py",
-      "bytes": 9841,
-      "sha256": "6dc045df62fa029904414e4158e80f76598cd7f493ff6d23b3b5d72f3cdc97a9"
+      "bytes": 13910,
+      "sha256": "2936cdf1a65641995644bd70ec22fabc79b7dcfbb3f313c68947e4a011266baa"
     },
     {
       "path": "tests/test_reference_benchmark.py",
