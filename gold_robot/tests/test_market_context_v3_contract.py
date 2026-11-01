@@ -12,7 +12,7 @@ INSTALLER = (ROOT / "mt5_robot/Install_QTS_Gold_Robot.ps1").read_text("utf-8")
 def test_v3_is_unarmed_and_tester_only():
     assert "input bool            TesterUseMarketContextV3   = false;" in EA
     assert "#include \"MarketContextV3.mqh\"" in EA
-    assert "(TesterUseEntryQualityV2 || TesterProtectNearTPV2 || TesterUseMarketContextV3)" in EA
+    assert "(TesterUseEntryQualityV2 || TesterProtectNearTPV2 || TesterUseMarketContextV3 ||" in EA
     assert "EntryStyle!=QTS_ADAPTIVE_ROUTER || SignalTimeframe!=PERIOD_M15" in EA
     assert "MQLInfoInteger(MQL_TESTER)==0" in V3
     assert "if(!TesterUseMarketContextV3)" in V3
@@ -88,9 +88,9 @@ def test_broker_minimum_lot_step_and_budget_are_never_rounded_up():
 
 
 def test_automated_tester_v3_is_isolated_from_baseline():
-    assert "'BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3'" in RUNNER
-    assert "$ResearchVariant -eq 'CONTEXT_V3' -and ($OnlyStyles -ne '7')" in RUNNER
-    assert "'TesterUseMarketContextV3'=($ResearchVariant -eq 'CONTEXT_V3')" in RUNNER
+    assert "'BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3','ADAPTIVE_V4'" in RUNNER
+    assert "$ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4') -and ($OnlyStyles -ne '7')" in RUNNER
+    assert "'TesterUseMarketContextV3'=($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4'))" in RUNNER
     assert "'TesterUseEntryQualityV2'=($ResearchVariant -in @('ENTRY_FILTER','COMBINED'))" in RUNNER
     assert "'TesterProtectNearTPV2'=($ResearchVariant -in @('NEAR_TP','COMBINED'))" in RUNNER
     assert "EnableDemoForwardOrders" not in V3

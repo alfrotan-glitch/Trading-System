@@ -87,7 +87,8 @@ bool TesterMarketContextV3(const int side,const int style,
    bool trend_style=(style==QTS_RETEST_LIMIT ||
                      style==QTS_BREAK_ACCEPT_RETEST ||
                      style==QTS_TREND_IMPULSE ||
-                     style==QTS_INSIDE_BREAKOUT);
+                     style==QTS_INSIDE_BREAKOUT ||
+                     style==QTS_SMC_FVG_OB);
    bool range_style=(style==QTS_FORMER_STOP_LIMIT ||
                      style==QTS_SWEEP_RECLAIM ||
                      style==QTS_RANGE_REJECTION);

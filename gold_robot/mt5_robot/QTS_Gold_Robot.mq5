@@ -69,6 +69,7 @@ input double          MinimumTargetFeeMultiple  = 2.0;  // Gross TP profit must 
 input bool            TesterUseEntryQualityV2    = false;
 input bool            TesterProtectNearTPV2      = false;
 input bool            TesterUseMarketContextV3   = false; // Independent closed-bar context gate; Tester-only, OFF.
+input bool            TesterUseAdaptiveRouterV4  = false; // Each opportunity chooses among 0-6 + SMC 8; Tester-only.
 
 
 CTrade trader;
@@ -946,6 +947,8 @@ void LatchExecutionHalt(const string reason)
    Print("QTS execution incident: ",reason);
   }
 
+#include "AdaptiveV4Research.mqh"
+
 // Only called under the atomic cross-chart entry mutex.
 void EvaluateNewEntry()
   {
@@ -975,8 +978,12 @@ void EvaluateNewEntry()
    if(adaptive)
      {
       int selected=-1;
-      if(!SelectAdaptiveCandidate(quote,side,atr,structure_level,structure_anchor,
-                                  price,stop,target,selected))
+      bool selected_ok=TesterUseAdaptiveRouterV4 ?
+           SelectAdaptiveCandidateV4(quote,side,atr,structure_level,structure_anchor,
+                                     price,stop,target,selected) :
+           SelectAdaptiveCandidate(quote,side,atr,structure_level,structure_anchor,
+                                   price,stop,target,selected);
+      if(!selected_ok)
          return;
      }
    else
@@ -1543,7 +1550,8 @@ int OnInit()
       Print("QTS: invalid parameters, no initialization.");
       return INIT_PARAMETERS_INCORRECT;
      }
-   if((TesterUseEntryQualityV2 || TesterProtectNearTPV2 || TesterUseMarketContextV3) &&
+   if((TesterUseEntryQualityV2 || TesterProtectNearTPV2 || TesterUseMarketContextV3 ||
+       TesterUseAdaptiveRouterV4) &&
       MQLInfoInteger(MQL_TESTER)==0)
      {
       Print("QTS: research V2 variants are Strategy Tester ONLY.");
@@ -1562,6 +1570,11 @@ int OnInit()
        EntryStyle!=QTS_ADAPTIVE_ROUTER || SignalTimeframe!=PERIOD_M15))
      {
       Print("QTS: V3 market context is M15 adaptive Strategy Tester ONLY.");
+      return INIT_PARAMETERS_INCORRECT;
+     }
+   if(TesterUseAdaptiveRouterV4 && !TesterUseMarketContextV3)
+     {
+      Print("QTS: adaptive V4 requires independent V3 context checks enabled.");
       return INIT_PARAMETERS_INCORRECT;
      }
    evaluated_style=(int)EntryStyle;

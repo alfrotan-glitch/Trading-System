@@ -56,6 +56,11 @@
       "sha256": "99ae0e4f3d77f0c3ba0b819aa8481fdf04addea17b2282bdc1fff4820d1665af"
     },
     {
+      "path": "docs/ADAPTIVE_V4.md",
+      "bytes": 4936,
+      "sha256": "4d0fb9bc55fdb539fbd3fc5171f9d80769bb4a3dba5c34233399c1535323f3a8"
+    },
+    {
       "path": "docs/AUTONOMOUS_RESEARCH.md",
       "bytes": 5702,
       "sha256": "aada320d81c1852d4c41ca770bbb9c6400a3ab47b5b43e86210bc84b321dc1ef"
@@ -176,6 +181,11 @@
       "sha256": "9ebb28d49cb5397604ad6901b1becafc1c6ae20e0d5796e8832bf675fb5bbc1b"
     },
     {
+      "path": "mt5_robot/AdaptiveV4Research.mqh",
+      "bytes": 8741,
+      "sha256": "bbc0cb2916dee85bcf09a96a7ef9e72c184a1de96d3ee4143845b172f5f9728a"
+    },
+    {
       "path": "mt5_robot/ExecutionPolicy.mqh",
       "bytes": 1480,
       "sha256": "997f6900e2451ce95305429bef377e0df0bb45b24546383ac86fb5e01a450bd0"
@@ -192,13 +202,13 @@
     },
     {
       "path": "mt5_robot/Install_QTS_Gold_Robot.ps1",
-      "bytes": 22268,
-      "sha256": "b3bea64340ce9aa09d53e4b69da05f5a32d2d4f6fbaa3b3c247c70c26e75abe9"
+      "bytes": 23558,
+      "sha256": "f9037adf6bcba9f7bae4c0c768414771fa11b1901fd46eac513c3a15aeba3b61"
     },
     {
       "path": "mt5_robot/MarketContextV3.mqh",
-      "bytes": 7121,
-      "sha256": "395e2c8a427b011360cc611473060797d379c8287f9e0c3f401d652aeafcfd1a"
+      "bytes": 7167,
+      "sha256": "52639a6e707c11195a8a418fd5ad58dbe7b405a9aa0ed9014a7689caa9b4a664"
     },
     {
       "path": "mt5_robot/OpportunityResearch.mqh",
@@ -207,8 +217,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 83225,
-      "sha256": "03ae4f0bed43dcc70e999df660772f4e180b0a55309cdf5d597cedad900256de"
+      "bytes": 83840,
+      "sha256": "cec31b3f99e3e245cf3b6ca89b3fcf249b9d9add91c87e0c2d4a0d544f1628b7"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -282,8 +292,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 24405,
-      "sha256": "59b04fea1d44a4b5e3b641857de400b5541f4c9f37d15229c051cc63fb11820d"
+      "bytes": 24545,
+      "sha256": "65a8f805b4c1dcbcbe3f4a16f3236275c15a5b8c246d62703712fd2e5de67ee1"
     },
     {
       "path": "research/RunNativeValidation.ps1",
@@ -466,6 +476,11 @@
       "sha256": "793293feef8ead8436456fd2398745776bd4b0f60268415b8be5e5babf8858ca"
     },
     {
+      "path": "tests/test_adaptive_v4_contract.py",
+      "bytes": 4228,
+      "sha256": "be5e53e6d26655388bc5ae7203a2f43e2e3ed083fddaa7d0c71553816440e79a"
+    },
+    {
       "path": "tests/test_auto_stop_ticks.py",
       "bytes": 4029,
       "sha256": "d2dead2bf23ca586de82c8be5845c3b8334539f94ac9a40233670757f46bf821"
@@ -507,8 +522,8 @@
     },
     {
       "path": "tests/test_market_context_v3_contract.py",
-      "bytes": 4756,
-      "sha256": "0187224a4208bdc8b496b37850cf2b747b65e5c9882dfe8e7508918eac5e3bd5"
+      "bytes": 4806,
+      "sha256": "63d2914fa4efde8c14b90faeb5b94b5e956864ebdb6006e30c3967e889d127c2"
     },
     {
       "path": "tests/test_post_stop_replay.py",
