@@ -92,8 +92,10 @@ void V4RecordClosedBarDecision(const string reason)
 // No order credentials, chart objects, broker account IDs or position data.
 bool V4ExportDiagnostics()
   {
-   if(MQLInfoInteger(MQL_TESTER)==0 || EntryStyle!=QTS_ADAPTIVE_ROUTER ||
-      !TesterUseAdaptiveRouterV4) return true;
+   // Export even if a wrong/stale .set DISABLED V4. Native configuration
+   // must be observed from within the EA, not inferred from the .ini label.
+   if(MQLInfoInteger(MQL_TESTER)==0 || EntryStyle!=QTS_ADAPTIVE_ROUTER)
+      return true;
    string filename=StringFormat("QTS_V4_DIAGNOSTICS_STYLE_%d_%I64u.csv",
                                 (int)EntryStyle,GetTickCount64());
    int file=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,';');
@@ -103,6 +105,15 @@ bool V4ExportDiagnostics()
       return false;
      }
    FileWrite(file,"scope","style","verdict","count");
+   // Independently verify the parameters the MT5 engine ACTUALLY used.
+   FileWrite(file,"INPUT",7,"EntryStyle",(int)EntryStyle);
+   FileWrite(file,"INPUT",7,"SignalTimeframe",(int)SignalTimeframe);
+   FileWrite(file,"INPUT",7,"EnableDemoOrders",(int)EnableDemoOrders);
+   FileWrite(file,"INPUT",7,"TesterUseMarketContextV3",(int)TesterUseMarketContextV3);
+   FileWrite(file,"INPUT",7,"TesterUseAdaptiveRouterV4",(int)TesterUseAdaptiveRouterV4);
+   FileWrite(file,"INPUT",7,"TesterUsePreregisteredVetoV5",(int)TesterUsePreregisteredVetoV5);
+   FileWrite(file,"INPUT",7,"TesterVetoStyleV5",TesterVetoStyleV5);
+   FileWrite(file,"INPUT",7,"TesterVetoRegimeV5",TesterVetoRegimeV5);
    for(int i=0;i<QTS_V4_BAR_GATES;i++)
       FileWrite(file,"CLOSED_BAR",-1,V4GateName(i),g_v4_diagnostic_gates[i]);
    for(int style=0;style<=8;style++)
