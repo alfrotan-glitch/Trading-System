@@ -582,8 +582,8 @@
     },
     {
       "path": "tests/test_post_stop_terminal_capture.py",
-      "bytes": 5476,
-      "sha256": "53d3c7c2ffa09d3f5ed6f5fff5cbd14ee940da37e0a77f09f9bef52611376afd"
+      "bytes": 6108,
+      "sha256": "387faa31309e95295bf45dac6a8b1168c32e17413c3b3867bf21efc4e8f9a489"
     },
     {
       "path": "tests/test_preregistered_v5_study.py",
