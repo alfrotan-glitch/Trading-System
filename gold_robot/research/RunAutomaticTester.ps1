@@ -261,6 +261,18 @@ try{
             'TesterUsePreregisteredVetoV5'=($ResearchVariant -eq 'ADAPTIVE_V5_VETO')
         }
         $profileLines=@(Get-Content -LiteralPath $preset -Encoding Unicode)
+        if($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO')){
+            # Research feasibility, NOT an in-sample profitable parameter:
+            # 1.0 original TP RR is mathematically below V3 >=1.25
+            # gross and after-cost threshold for fixed-RR candidates.
+            # Freeze 1.50 in each V3-enabled research arm, never baseline.
+            if(@($profileLines | Where-Object {$_ -match '^RewardToRisk='}).Count -ne 1){
+                throw 'Native V3 research target reward/risk missing or duplicated.'
+            }
+            $profileLines=@($profileLines | ForEach-Object {
+                if($_ -match '^RewardToRisk='){'RewardToRisk=1.50'}else{$_}
+            })
+        }
         if(@($profileLines | Where-Object {$_ -match '^TesterVetoStyleV5='}).Count -ne 1 -or
            @($profileLines | Where-Object {$_ -match '^TesterVetoRegimeV5='}).Count -ne 1){
             throw 'Missing unique veto inputs in native MT5 safety-on preset.'
@@ -298,6 +310,9 @@ try{
         foreach($key in $flags.Keys){
             $expect=if($flags[$key]){'true'}else{'false'}
             $musts+=@($key+'='+$expect)
+        }
+        if($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO')){
+            $musts+=@('RewardToRisk=1.50')
         }
         # Style 9 is M1-only with a 15-minute cap in the EA; a preset
         # without both is not Style 9 and must fail here, not in OnInit
@@ -407,6 +422,7 @@ try{
                         $expectedInputs=[ordered]@{
                             EntryStyle='7'
                             SignalTimeframe='15'
+                            RewardToRisk='1.50'
                             EnableDemoOrders='1'
                             TesterUseMarketContextV3='1'
                             TesterUseAdaptiveRouterV4='1'

@@ -341,3 +341,27 @@ def test_v4_tester_reports_v3_explanations_and_refuses_incomplete_reason_export(
     # A diagnosis is not permission to execute on a connected live account.
     ea=(GOLD / "mt5_robot" / "QTS_Gold_Robot.mq5").read_text("utf-8")
     assert 'if(RealAccountBlocked())' in ea
+
+
+def test_v3_research_cannot_launch_with_mathematically_infeasible_target_rr():
+    ea=(GOLD / "mt5_robot" / "QTS_Gold_Robot.mq5").read_text("utf-8")
+    v3=(GOLD / "mt5_robot" / "MarketContextV3.mqh").read_text("utf-8")
+    assert "QTS_V3_MIN_CONFIGURED_RR 1.50" in v3
+    assert "RewardToRisk<QTS_V3_MIN_CONFIGURED_RR" in ea
+    assert "QTS CONFIG NO-GO" in ea
+    assert "return INIT_PARAMETERS_INCORRECT;" in ea
+    assert "if(gap<0.35*atr || gross<gap*1.25)" in v3
+    assert "net_tp/risk<1.25" in v3
+    assert "input double          RewardToRisk              = 1.0;" in ea
+    assert "OrderSend(" not in v3
+
+
+def test_v3_v4_v5_research_profiles_use_one_new_feasible_rr_not_baseline_default():
+    runner=(GOLD / "research" / "RunAutomaticTester.ps1").read_text("utf-8")
+    v4=(GOLD / "mt5_robot" / "AdaptiveV4Research.mqh").read_text("utf-8")
+    assert runner.count("'CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO'") >= 3
+    assert "'RewardToRisk=1.50'" in runner
+    assert "RewardToRisk='1.50'" in runner
+    assert "if($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO'))" in runner
+    assert 'FileWrite(file,"INPUT",7,"RewardToRisk",DoubleToString(RewardToRisk,2));' in v4
+    assert "MT5 tester native INPUT MISMATCH" in runner
