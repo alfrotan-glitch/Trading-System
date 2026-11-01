@@ -1,6 +1,7 @@
 @echo off
 REM QTS GOLD - read-only STOP audit. May READ WMMarkets MT5 tick history; never sends orders.
 setlocal EnableExtensions DisableDelayedExpansion
+set "QTS_POST_STOP_PARTIAL="
 set "REPO=%~dp0"
 set "AUTO=%REPO%gold_robot\reports_local\auto_runs"
 set "BUNDLE="
@@ -39,9 +40,14 @@ if defined QTS_BROKER_TICKS_DIR (
   echo No orders, no trading changes, no backtest rerun.
   %PY% "%REPO%gold_robot\research\capture_post_stop_quotes.py" --bundle "%BUNDLE%" --output-directory "%OUT%"
   if errorlevel 1 (
-    echo Original price-after-stop remains UNKNOWN. MT5 historical ticks unavailable or incomplete.
-    echo Check the terminal connection and install the official MetaTrader5 Python package if missing.
-    goto FAIL
+    echo Incomplete quote coverage OR unavailable MT5 history. No stop is credited without complete quotes.
+    if exist "%OUT%\QTS_V4_POST_STOP_STRATEGY_COHORTS.json" (
+      echo Partial native broker history saved as research-only evidence; original missing windows remain UNKNOWN.
+      set "QTS_POST_STOP_PARTIAL=1"
+    ) else (
+      echo Check the WMMarkets terminal and the official MetaTrader5 Python package.
+      goto FAIL
+    )
   )
 )
 REM Repackage ONLY explicit read-only JSON and summary, never raw historical ticks.
@@ -54,6 +60,11 @@ if exist "%OUT%\QTS_V4_POST_STOP_STRATEGY_COHORTS.json" (
   )
 )
 explorer "%OUT%"
+if defined QTS_POST_STOP_PARTIAL (
+  echo POST-STOP PARTIAL EVIDENCE: safely packaged; NOT A COMPLETE AUDIT OR TRADE AUTHORIZATION.
+  if /I not "%QTS_NO_PAUSE%"=="1" pause
+  exit /b 2
+)
 if /I not "%QTS_NO_PAUSE%"=="1" pause
 exit /b 0
 :FAIL
