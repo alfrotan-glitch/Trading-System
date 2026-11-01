@@ -402,6 +402,27 @@ try{
                         $decisionDest=Join-Path $native 'QTS_7_decisions.csv'
                         Copy-Item -LiteralPath $decisionExports[0].FullName -Destination $decisionDest
                         $decisions=@(Import-Csv -LiteralPath $decisionDest -Delimiter ';')
+                        # A .set copied to disk is NOT proof that native MT5
+                        # loaded its settings. Read them from inside OnTester.
+                        $expectedInputs=[ordered]@{
+                            EntryStyle='7'
+                            SignalTimeframe='15'
+                            EnableDemoOrders='1'
+                            TesterUseMarketContextV3='1'
+                            TesterUseAdaptiveRouterV4='1'
+                            TesterUsePreregisteredVetoV5=$(if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){'1'}else{'0'})
+                            TesterVetoStyleV5=$(if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){[string]$VetoStyle}else{'-1'})
+                            TesterVetoRegimeV5=$(if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){[string]$VetoRegime}else{'-1'})
+                        }
+                        foreach($key in $expectedInputs.Keys){
+                            $original=@($decisions | Where-Object {$_.scope -eq 'INPUT' -and $_.verdict -eq $key})
+                            if($original.Count -ne 1 -or [string]$original[0].count -ne [string]$expectedInputs[$key]){
+                                throw ('MT5 tester native INPUT MISMATCH '+$key+
+                                       '; expected '+$expectedInputs[$key]+
+                                       '; actual '+$(if($original.Count -eq 1){$original[0].count}else{'MISSING_OR_DUPLICATED'})+
+                                       '. Stop: native tester profile was not applied. Zero trades cannot be attributed to a strategy.')
+                            }
+                        }
                         $totals=@($decisions | Where-Object {$_.scope -eq 'CLOSED_BAR' -and $_.verdict -eq 'TOTAL_CLOSED_BARS'})
                         $barCount=0
                         if($totals.Count -ne 1 -or
