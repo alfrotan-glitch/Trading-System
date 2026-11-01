@@ -379,7 +379,7 @@ try{
             # order comment has been lost, clipped or has an unknown style.
             $interpreter=Get-Command py -ErrorAction SilentlyContinue
             $attr=Join-Path $OutputDirectory 'QTS_V4_POSITION_ATTRIBUTION.json'
-            $entrypoint=Join-Path $gold 'research\\v4_position_attribution.py'
+            $entrypoint=Join-Path $gold 'research\v4_position_attribution.py'
             $sourcePositions=Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json'
             if($interpreter){
                 & $interpreter.Source -3 $entrypoint --input $sourcePositions --output $attr
