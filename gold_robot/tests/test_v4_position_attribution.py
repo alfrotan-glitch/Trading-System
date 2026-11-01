@@ -292,7 +292,9 @@ def test_windows_existing_single_menu_exposes_guided_one_month_v4_diagnosis():
     assert 'if /I "%~1"=="v4" goto V4_DIAGNOSE' in launcher
     assert "-OnlyStyles 7 -ResearchVariant ADAPTIVE_V4" in launcher
     assert "AddMonths(-1)" in launcher
-    assert "QTS_SHARE_RESULTS.bat" in launcher
+    # Pin V4 partial evidence to this exact run; never package an older one.
+    assert "PackTradeEvidence.ps1" in launcher
+    assert '-RunDirectory "%QTS_RUN_DIR%" -NoOpen' in launcher
     assert "LIVE LOCKED" in launcher
 
 
