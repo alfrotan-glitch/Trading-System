@@ -40,11 +40,13 @@ def load_evidence(path: Path) -> tuple[dict, dict, str]:
     """Read only the two named evidence records, never arbitrary ZIP entries."""
     if zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as archive:
-            _required(len(archive.infolist()) < 100, "Oversized research archive")
-            _required(sum(x.filename == "QTS_TRADE_BY_TRADE.json"
-                          for x in archive.infolist()) == 1, "Forensics missing/duplicated")
-            _required(sum(x.filename == "OPEN_RESULTS.json"
-                          for x in archive.infolist()) == 1, "Run manifest missing/duplicated")
+            entries = archive.infolist()
+            _required(len(entries) < 100, "Oversized research archive")
+            for name in ("QTS_TRADE_BY_TRADE.json", "OPEN_RESULTS.json"):
+                matching = [e for e in entries if e.filename == name]
+                _required(len(matching) == 1, f"{name}: missing or duplicated")
+                _required(matching[0].file_size <= MAX_SOURCE_BYTES,
+                          f"{name}: oversized broker evidence")
             raw = archive.read("QTS_TRADE_BY_TRADE.json")
             manifest = _json_bytes(archive.read("OPEN_RESULTS.json"))
     else:
@@ -61,8 +63,9 @@ def load_evidence(path: Path) -> tuple[dict, dict, str]:
 
 def validate_envelope(forensic: dict, manifest: dict) -> tuple[datetime, datetime]:
     _required(forensic.get("schema") == "qts.mt5.trade_forensics.v1"
-              and forensic.get("status") == "SELECTED_IMPORTED_FOR_REVIEW",
-              "Unrecognized/incomplete native deal ledger")
+              and forensic.get("status") in ("SELECTED_IMPORTED_FOR_REVIEW",
+                                             "EVIDENCE_GAPS_NO_GO"),
+              "Unrecognized native deal ledger state")
     _required(forensic.get("live") == "LOCKED"
               and forensic.get("edge_validated") is False
               and manifest.get("live") == "LOCKED"
@@ -338,7 +341,8 @@ def evaluate(forensic: dict, manifest: dict, source_sha256: str, mt5=None) -> di
     unusual = sum(r["exit_category"] == "BROKER_OTHER_OR_MIXED" for r in rows)
     multi = sum(r["exit_status"] == "COMPLETE_MULTI_EXIT" for r in rows)
     total_source = len(forensic["trades"])
-    output_status = ("FORENSIC_POSITION_GAPS_NO_GO" if quarantined else
+    output_status = ("FORENSIC_POSITION_GAPS_NO_GO"
+                     if quarantined or forensic["status"] == "EVIDENCE_GAPS_NO_GO" else
                      "DESCRIPTIVE_ONLY_REVIEW_REQUIRED" if complete == len(rows)
                      else "MARKET_HISTORY_INCOMPLETE_NO_GO")
     return {
