@@ -159,7 +159,11 @@ def review(report_dir: Path, signal_dir: Path, ea_source: Path,
     events, unknown, excluded_old = _native_events(
         signal_dir, registration["frozen_at_utc_s"], now_utc_s)
     results, pending = [], []
-    for event in events[:MAX_EVENTS_PER_REVIEW]:
+    # Always inspect the newest bounded batch, not the first 64 forever:
+    # otherwise a collector with 65+ native signals would never inspect
+    # any subsequently recorded signal. Excluded older events remain
+    # prominently counted and invalidate completeness claims.
+    for event in events[-MAX_EVENTS_PER_REVIEW:]:
         key = {
             "style": event["style"], "event_utc_s": event["observed_utc_s"],
             "bar_server_s": event["bar_server_s"],
