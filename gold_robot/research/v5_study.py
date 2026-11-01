@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -151,11 +152,51 @@ def verify(plan: dict, *, manifest_bytes: bytes,
         raise ValueError("Future test window has not completed")
 
 
-def run_facts(folder: Path, variant: str, plan: dict) -> tuple[dict, list[dict]]:
+def native_preset(folder: Path, variant: str, plan: dict) -> dict[str, str]:
+    """Independently inspect the actual native UTF-16 tester .set, not a label."""
+    path = folder / "presets" / f"research_{variant}_7.set"
+    content = path.read_text(encoding="utf-16")
+    values: dict[str, str] = {}
+    for item in content.splitlines():
+        line = item.strip()
+        if not line or line.startswith(";"):
+            continue
+        if "=" not in line:
+            raise ValueError("Malformed native MT5 .set parameter line")
+        key, value = line.split("=", 1)
+        key, value = key.strip(), value.strip()
+        if not key or not value or key in values:
+            raise ValueError("Duplicate/empty native MT5 .set input")
+        values[key] = value
+    mandatory = {
+        "EntryStyle": "7",
+        "SignalTimeframe": "15",
+        "EnableDemoOrders": "true",
+        "EnableDemoForwardOrders": "false",
+        "TesterIgnoreDailyAndPeakStops": "false",
+        "RiskPerTradePct": "0.50",
+        "TesterUseMarketContextV3": "true",
+        "TesterUseAdaptiveRouterV4": "true",
+        "TesterUsePreregisteredVetoV5": "true" if variant == "ADAPTIVE_V5_VETO" else "false",
+        "TesterVetoStyleV5": str(plan["frozen_style"] if variant == "ADAPTIVE_V5_VETO" else -1),
+        "TesterVetoRegimeV5": str(plan["frozen_regime_id"] if variant == "ADAPTIVE_V5_VETO" else -1),
+    }
+    for key, expected in mandatory.items():
+        if values.get(key) != expected:
+            raise ValueError(f"Unsafe or nonfrozen native MT5 input {key}")
+    return values
+
+
+def run_facts(folder: Path, variant: str, plan: dict) -> tuple[dict, list[dict], dict[str, str]]:
     run = json.loads((folder / "OPEN_RESULTS.json").read_text(encoding="utf-8-sig"))
     attr = json.loads((folder / "QTS_V4_POSITION_ATTRIBUTION.json").read_text(encoding="utf-8-sig"))
     if run.get("research_variant") != variant or run.get("source_manifest_sha256") != plan["source_manifest_sha256"]:
         raise ValueError("Native source/variant differs across study arms")
+    for name in ("compiled_ex5_sha256", "terminal_exe_sha256"):
+        value = run.get(name)
+        if not isinstance(value, str) or not re.fullmatch("[a-f0-9]{64}", value):
+            raise ValueError("Missing original native compiled EA or terminal fingerprint")
+    actual_parameters = native_preset(folder, variant, plan)
     if run.get("from_date") != plan["from_date"] or run.get("to_date") != plan["to_date"]:
         raise ValueError("Native evaluation dates differ from registered study")
     if (run.get("symbol") != "XAUUSD@" or run.get("model") != 4 or
@@ -179,7 +220,7 @@ def run_facts(folder: Path, variant: str, plan: dict) -> tuple[dict, list[dict]]
         r["regime"] == plan["frozen_regime"] for r in positions
     ):
         raise ValueError("Native challenger violated its frozen veto")
-    return run, positions
+    return run, positions, actual_parameters
 
 
 def cohort_metrics(rows: list[dict], extra_per_lot: float) -> dict:
@@ -210,8 +251,22 @@ def compare(plan: dict, manifest_bytes: bytes, champion_dir: Path,
     verify(plan, manifest_bytes=manifest_bytes, now=now, completed=True)
     if not math.isfinite(extra_per_lot) or extra_per_lot < 0:
         raise ValueError("Unbounded or negative fee stress")
-    cr, cp = run_facts(champion_dir, VARIANTS[0], plan)
-    vr, vp = run_facts(challenger_dir, VARIANTS[1], plan)
+    cr, cp, champion_parameters = run_facts(champion_dir, VARIANTS[0], plan)
+    vr, vp, challenger_parameters = run_facts(challenger_dir, VARIANTS[1], plan)
+    if cr["compiled_ex5_sha256"] != vr["compiled_ex5_sha256"]:
+        raise ValueError("Champion and challenger used DIFFERENT compiled EX5 binaries")
+    if cr["terminal_exe_sha256"] != vr["terminal_exe_sha256"]:
+        raise ValueError("Champion and challenger ran DIFFERENT MT5 terminal binaries")
+    allowed_difference = {
+        "TesterUsePreregisteredVetoV5", "TesterVetoStyleV5", "TesterVetoRegimeV5"
+    }
+    base = {k: v for k, v in champion_parameters.items() if k not in allowed_difference}
+    challenger_base = {k: v for k, v in challenger_parameters.items()
+                       if k not in allowed_difference}
+    if base != challenger_base:
+        raise ValueError("A non-V5 MT5 input differs across native study arms")
+    if not isinstance(champion_dir, Path) or not isinstance(challenger_dir, Path):
+        raise ValueError("Distinct independent output directories are mandatory")
     champion = cohort_metrics(cp, extra_per_lot)
     challenger = cohort_metrics(vp, extra_per_lot)
     vetoed = [p for p in cp if
@@ -226,6 +281,9 @@ def compare(plan: dict, manifest_bytes: bytes, champion_dir: Path,
     return {
         "schema": OUTPUT_SCHEMA, "status": status,
         "study_id": plan["study_id"], "source_manifest_sha256": plan["source_manifest_sha256"],
+        "identical_compiled_ex5_sha256": cr["compiled_ex5_sha256"],
+        "identical_terminal_exe_sha256": cr["terminal_exe_sha256"],
+        "only_frozen_veto_inputs_differed": True,
         "from_date": plan["from_date"], "to_date": plan["to_date"],
         "champion": champion, "challenger": challenger,
         "actual_champion_positions_matching_veto": len(vetoed),
