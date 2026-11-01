@@ -5,9 +5,19 @@
 
 ---
 
-## Windows: one file to start QTS Gold MT5
+## Windows: one supported operator entry point
 
-**Clone the canonical `main` branch and run `START_HERE.bat`:**
+**On Windows, double-click `START_HERE.bat` in the canonical `main` checkout.** The first menu is a small daily workflow:
+
+1. **Retest vs Sweep/Reclaim**: native WMMarkets MT5 Strategy Tester, Styles 1 and 3 only, same EA binary, symbol, broker model, dates, and safety settings. These are historical *research candidates*, not verified profitable strategies.
+2. **All ten styles**: test the original seven M15 entry styles, the M15 adaptive router, SMC, and the independent M1 scalp.
+3. **Install or update** the single canonical `gold_robot/mt5_robot/QTS_Gold_Robot.mq5` Expert Advisor.
+4. **Open the latest test results**, or generate a broker/installation readiness report.
+5. **Advanced tools** (the previous numbered commands, post-stop evidence and native report comparison) remain available in one submenu.
+
+Automated tester output is scoped to **a fresh, uniquely named** `gold_robot/reports_local/auto_runs/` directory. Evidence packaging is pinned to the same run and cannot silently reuse an older successful ZIP if the current run fails. The new menu is a simplification of the operator workflow, **not** a new trading engine or a strategy claim. Older `QTS_*.bat` entry points are retained temporarily for compatibility and audit reproducibility; they are not competing trading bots. `ROBOT.bat` is a separate Python research workstation, not a second MT5 EA.
+
+For a fresh clone:
 
 ```powershell
 git clone --branch main --single-branch https://github.com/alfrotan-glitch/Trading-System.git
@@ -15,13 +25,9 @@ cd Trading-System
 .\START_HERE.bat
 ```
 
-Choose **1** to install/compile the existing QTS Gold MT5 Expert Advisor and the read-only broker audit. Choose **2** to generate a clear local HTML/JSON readiness report. Choose **5** for four no-order Strategy Tester preset profiles (one per EntryStyle), then choose **6** to compare saved native MT5 HTML backtest reports. These two choices require **WMMarkets MetaTrader 5 on Windows, not Python**. The report is stored locally under `gold_robot/reports_local/` and is not uploaded to GitHub.
+**Risk and evidence:** Past positive small-sample screens are preserved, but do not establish durable after-cost profitability. The original EA order rules, protective stops, broker feasibility checks, and structural real-money lock are unchanged by the operator-menu consolidation. A clean current-source MetaEditor compilation, matching WMMarkets real-tick tests, reconciled per-trade evidence, and independent forward/out-of-sample validation remain required. No connected real-money orders are authorized.
 
-After install, open `XAUUSD@` in MT5, refresh **Navigator → Scripts** and run `QTS_Broker_Preflight` on that chart. Then use option **2** for the report. When the broker/compile checks pass, use **MT5 Strategy Tester** with the user-observed minimum deposit **USD 3,000** and real ticks. The EA offers four `EntryStyle` research candidates; the optional tester-only opportunity census deliberately bypasses daily session limits **only in Strategy Tester**, not in connected accounts. **LIVE stays locked; none of these strategies has verified positive after-cost expectancy.**
-
-[Quick Windows installation and tester guide](gold_robot/docs/WINDOWS_START.md) · [Technical research details](gold_robot/docs/MT5_3000_UNLIMITED_TESTER_2026-10-26.md)
-
-**Two distinct launchers:** `START_HERE.bat` is the recommended MT5 Gold installation/report entry point. `ROBOT.bat` runs the separate QTS Python desktop and has its own gated DEMO controls. Do not mistake opening the Python desktop for installing the MT5 Expert Advisor.
+[Windows guide](gold_robot/docs/WINDOWS_START.md) · [Gold EA technical documentation](gold_robot/README.md) · [Canonical source](gold_robot/mt5_robot/QTS_Gold_Robot.mq5)
 
 ---
 
