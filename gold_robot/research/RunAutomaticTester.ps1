@@ -68,6 +68,8 @@ if($TimeoutMinutesPerRun -lt 1 -or $TimeoutMinutesPerRun -gt 480){
 function EscapeHtml([object]$value){
     return [System.Net.WebUtility]::HtmlEncode([string]$value)
 }
+$script:verifiedEx5Sha256=''
+$script:verifiedTerminalSha256=''
 function SaveOutcome([string]$state,[string]$message,[string]$comparison){
     $rows=@()
     foreach($item in $results){
@@ -121,6 +123,10 @@ An incomplete or missing report means NO-GO.</p></section></main></body></html>
         challenger_veto_style=$(if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){$VetoStyle}else{$null});
         challenger_veto_regime=$(if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){$VetoRegime}else{$null});
         source_manifest_sha256=$sourceManifestSha256;
+        # Both true native arms must run the IDENTICAL compiled EA and
+        # terminal program, not merely have the same text source manifest.
+        compiled_ex5_sha256=$script:verifiedEx5Sha256;
+        terminal_exe_sha256=$script:verifiedTerminalSha256;
         results=@($results.ToArray())
     } | ConvertTo-Json -Depth 7 |
         Set-Content -LiteralPath (Join-Path $OutputDirectory 'OPEN_RESULTS.json') -Encoding UTF8
@@ -170,14 +176,14 @@ function SameHash([string]$a,[string]$b){
 }
 function CompiledCurrent([string]$data){
     $mql=Join-Path $data 'MQL5\Experts'
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','MarketContextV3.mqh','AdaptiveV4Research.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
         if(-not (SameHash (Join-Path $gold ('mt5_robot\'+$name)) (Join-Path $mql $name))){return $false}
     }
     $binary=Join-Path $mql 'QTS_Gold_Robot.ex5'
     if(-not (Test-Path -LiteralPath $binary -PathType Leaf)){return $false}
     if((Get-Item -LiteralPath $binary).Length -lt 1000){return $false}
     $binaryTime=(Get-Item -LiteralPath $binary).LastWriteTimeUtc
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','MarketContextV3.mqh','AdaptiveV4Research.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
         if($binaryTime -lt (Get-Item -LiteralPath (Join-Path $mql $name)).LastWriteTimeUtc.AddSeconds(-2)){return $false}
     }
     return $true
@@ -187,7 +193,7 @@ $message=''
 $comparison=''
 try{
     $manifest=Get-Content -LiteralPath (Join-Path $gold 'docs\SOURCE_CHECKSUMS.json') -Raw | ConvertFrom-Json
-    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh','mt5_robot/OpportunityResearch.mqh','mt5_robot/AdaptiveResearch.mqh','mt5_robot/SmcResearch.mqh','mt5_robot/ScalpResearch.mqh')){
+    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh','mt5_robot/OpportunityResearch.mqh','mt5_robot/AdaptiveResearch.mqh','mt5_robot/MarketContextV3.mqh','mt5_robot/AdaptiveV4Research.mqh','mt5_robot/SmcResearch.mqh','mt5_robot/ScalpResearch.mqh')){
         $entry=@($manifest.sha256_files|Where-Object {$_.path -eq $rel})
         if($entry.Count -ne 1){throw ('Manifest does not identify '+$rel)}
         $path=Join-Path $gold ($rel.Replace('/','\'))
@@ -214,6 +220,610 @@ try{
         }
         & (Join-Path $gold 'mt5_robot\Install_QTS_Gold_Robot.ps1') -TerminalDataFolder $data -MetaEditorPath $editor
         if(-not (CompiledCurrent $data)){throw 'Native compilation did not verify the installed EA.'}
+    }
+    $script:verifiedEx5Sha256=(Get-FileHash -LiteralPath (Join-Path $data 'MQL5\Experts\QTS_Gold_Robot.ex5') -Algorithm SHA256).Hash.ToLowerInvariant()
+    $script:verifiedTerminalSha256=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+    if($script:verifiedEx5Sha256 -notmatch '^[0-9a-f]{64}Join-Path $OutputDirectory 'presets'
+    & (Join-Path $gold 'research\MakeTesterPresets.ps1') -OutputDirectory $presetDir -NoPrompt
+    # MT5 builds/documentation differ on whether Tester profiles resolve
+    # from the data folder or the installation folder. Support both when the
+    # installation's MQL5 profile tree actually exists; never use an unverified
+    # fallback to EA defaults because that silently tests EntryStyle=0 nine times.
+    $testerProfiles=Join-Path $data 'MQL5\Profiles\Tester'
+    $profileLocations=@($testerProfiles)
+    $installProfileRoot=Join-Path $install 'MQL5\Profiles'
+    if(Test-Path -LiteralPath $installProfileRoot -PathType Container){
+        $profileLocations+=,(Join-Path $installProfileRoot 'Tester')
+    }
+    $profileLocations=@($profileLocations|Select-Object -Unique)
+    foreach($root in $profileLocations){
+        try{New-Item -ItemType Directory -Path $root -Force -ErrorAction Stop|Out-Null}
+        catch{throw ('MT5 tester parameter folder not writable: '+$root)}
+    }
+    $codes=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM',
+            'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER','SMC_FVG_OB','M1_SCALP')
+    for($i=0;$i -lt $names.Count;$i++){
+        # REPAIR 2026-10-30: Style 9 presets are M1 (QTS_M1_M1_SCALP_*),
+        # not M15. The old path silently missed Style 9's preset and the
+        # old loop never ran it at all (nine styles, not ten).
+        $tfLabel=$(if($i -eq 9){'M1'}else{'M15'})
+        $preset=Join-Path $presetDir ('safety_on\QTS_'+$tfLabel+'_'+$codes[$i]+'_SAFETY_ON.set')
+        if(-not (Test-Path -LiteralPath $preset -PathType Leaf)){throw ('Missing safety-on preset '+$i)}
+        # Native A/B comparison: mutate a new, isolated tester preset.
+        # The untouched baseline and compiled EA are the same in both arms.
+        $flags=[ordered]@{
+            'TesterUseEntryQualityV2'=($ResearchVariant -in @('ENTRY_FILTER','COMBINED'))
+            'TesterProtectNearTPV2'=($ResearchVariant -in @('NEAR_TP','COMBINED'))
+            'TesterUseMarketContextV3'=($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO'))
+            'TesterUseAdaptiveRouterV4'=($ResearchVariant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO'))
+            'TesterUsePreregisteredVetoV5'=($ResearchVariant -eq 'ADAPTIVE_V5_VETO')
+        }
+        $profileLines=@(Get-Content -LiteralPath $preset -Encoding Unicode)
+        if(@($profileLines | Where-Object {$_ -match '^TesterVetoStyleV5='}).Count -ne 1 -or
+           @($profileLines | Where-Object {$_ -match '^TesterVetoRegimeV5='}).Count -ne 1){
+            throw 'Missing unique veto inputs in native MT5 safety-on preset.'
+        }
+        $profileLines=@($profileLines | ForEach-Object {
+            if($_ -match '^TesterVetoStyleV5='){ 'TesterVetoStyleV5='+$VetoStyle }
+            elseif($_ -match '^TesterVetoRegimeV5='){ 'TesterVetoRegimeV5='+$VetoRegime }
+            else{$_}
+        })
+        foreach($key in $flags.Keys){
+            if(@($profileLines | Where-Object {$_ -match ('^'+$key+'=')}).Count -ne 1){
+                throw ('Research flag missing or duplicated: '+$key)
+            }
+            $value=if($flags[$key]){'true'}else{'false'}
+            $profileLines=@($profileLines | ForEach-Object {
+                if($_ -match ('^'+$key+'=')){ $key+'='+$value }else{ $_ }
+            })
+        }
+        $variantPreset=Join-Path $presetDir ('research_'+$ResearchVariant+'_'+$i+'.set')
+        [IO.File]::WriteAllLines($variantPreset,$profileLines,[Text.Encoding]::Unicode)
+        $preset=$variantPreset
+        $setName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i+'.set'
+        foreach($root in $profileLocations){
+            $setFile=Join-Path $root $setName
+            try{Copy-Item -LiteralPath $preset -Destination $setFile -Force -ErrorAction Stop}
+            catch{throw ('Cannot install this Strategy Tester .set file: '+$setFile)}
+            if(-not (SameHash $preset $setFile)){
+                throw ('Tester profile checksum mismatch: '+$setFile)
+            }
+        }
+        $lines=Get-Content -LiteralPath (Join-Path $testerProfiles $setName) -Encoding Unicode
+        $musts=@(('EntryStyle='+$i),'EnableDemoOrders=true',
+                    'EnableDemoForwardOrders=false','TesterIgnoreDailyAndPeakStops=false',
+                    'RiskPerTradePct=0.50')
+        foreach($key in $flags.Keys){
+            $expect=if($flags[$key]){'true'}else{'false'}
+            $musts+=@($key+'='+$expect)
+        }
+        # Style 9 is M1-only with a 15-minute cap in the EA; a preset
+        # without both is not Style 9 and must fail here, not in OnInit
+        # after a wasted run (or worse, on the wrong timeframe).
+        if($i -eq 9){ $musts+=@('SignalTimeframe=1','MaxPositionMinutes=15') }
+        else { $musts+=@('SignalTimeframe=15') }
+        foreach($must in $musts){
+            if($must -notin $lines){throw ('Unsafe MT5 parameter set: '+$must)}
+        }
+        $reportName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i
+        $ini=Join-Path $configs ('style_'+$i+'.ini')
+        $iniLines=@('[Common]','KeepPrivate=1','[Experts]','Enabled=0',
+            'AllowLiveTrading=0','AllowDllImport=0','[Tester]',
+            'Expert=QTS_Gold_Robot.ex5',('ExpertParameters='+$setName),
+            'Symbol=XAUUSD@',('Period='+$(if($i -eq 9){'M1'}else{'M15'})),'Model=4','Optimization=0',
+            'ForwardMode=0',('FromDate='+$FromDate),('ToDate='+$ToDate),
+            'Deposit=3000','Currency=USD','Leverage=1:100',
+            'UseLocal=1','UseRemote=0','UseCloud=0','Visual=0',
+            ('Report='+$reportName),'ReplaceReport=1','ShutdownTerminal=1')
+        [IO.File]::WriteAllLines($ini,$iniLines,[Text.Encoding]::Unicode)
+    }
+    if($PrepareOnly){
+        $state='PREPARED_ONLY'
+        $message='Ten configurations with risk stops active. MT5 was not launched.'
+    }else{
+        $runningIndex=0
+        foreach($i in $selectedStyles){
+            $runningIndex++
+            $item=[ordered]@{style=$names[$i];style_id=$i;status='PENDING';detail='';report=''}
+            $null=$results.Add($item)
+            $reportName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i
+            $ini=Join-Path $configs ('style_'+$i+'.ini')
+            $began=[datetime]::UtcNow
+            $process=$null
+            try{
+                Write-Host ("Running native MT5 test {0}/{1}: {2} (Style {3})" -f $runningIndex,$selectedStyles.Count,$names[$i],$i)
+                $process=Start-Process -FilePath $exe -ArgumentList ('/config:"{0}"' -f $ini) -PassThru
+                $deadline=(Get-Date).AddMinutes($TimeoutMinutesPerRun)
+                while(-not $process.HasExited){
+                    Start-Sleep -Seconds 5
+                    $process.Refresh()
+                    if((Get-Date) -gt $deadline){throw ('Native MT5 test timed out for style '+$i)}
+                }
+                $candidates=@((Join-Path $install ($reportName+'.htm')),
+                              (Join-Path $data ($reportName+'.htm')))
+                $fresh=@($candidates|Where-Object{
+                    (Test-Path -LiteralPath $_ -PathType Leaf) -and
+                    (Get-Item -LiteralPath $_).LastWriteTimeUtc -ge $began.AddSeconds(-2)
+                })
+                if($fresh.Count -ne 1){
+                    throw ('No fresh native MT5 HTML report for style '+$i+'. Check broker tick history and report write permissions.')
+                }
+                $reportText=Get-Content -LiteralPath $fresh[0] -Raw
+                if($reportText -notmatch '(?i)<html|<!doctype'){throw 'MT5 did not create a native HTML report.'}
+                $destination=Join-Path $native ('QTS_'+$i+'.htm')
+                Copy-Item -LiteralPath $fresh[0] -Destination $destination
+                $item.report='QTS_'+$i+'.htm'
+                # OnTester exports each broker deal with position ID, entry/exit,
+                # exit reason and original/current SL/TP into MT5 Common/Files.
+                # Do not certify individual trades without this native evidence.
+                $common=Join-Path $env:APPDATA 'MetaQuotes\Terminal\Common\Files'
+                $pattern='QTS_FORENSIC_STYLE_'+$i+'_*.csv'
+                $forensic=@(Get-ChildItem -LiteralPath $common -Filter $pattern -File -ErrorAction SilentlyContinue |
+                    Where-Object {$_.LastWriteTimeUtc -ge $began.AddSeconds(-2)} |
+                    Sort-Object LastWriteTimeUtc -Descending)
+                # Never overwrite a missing forensic export with REPORT_SAVED.
+                # A native HTML file is not a position-by-position audit.
+                $hasForensics=$forensic.Count -eq 1
+                if($hasForensics){
+                    $forensicTarget=Join-Path $native ('QTS_'+$i+'_trades.csv')
+                    Copy-Item -LiteralPath $forensic[0].FullName -Destination $forensicTarget
+                    if((Get-Item -LiteralPath $forensicTarget).Length -le 0){
+                        $hasForensics=$false
+                    }
+                }
+                if(-not $hasForensics){
+                    $item.status='FORENSIC_MISSING'
+                    $item.detail='Native MT5 HTML exists, but exactly one fresh nonempty broker position/deal CSV is required.'
+                }elseif($reportText -notmatch '(?i)real ticks'){
+                    $item.status='MODEL_UNVERIFIED'
+                    $item.detail='Broker deal CSV captured, but report did not verify real-tick model.'
+                }else{
+                    $item.status='REPORT_AND_FORENSICS_SAVED'
+                    $item.detail='Fresh report and broker deal evidence saved; costs and profitability remain unverified.'
+                }
+            }catch{
+                $item.status='FAILED'
+                $item.detail=$_.Exception.Message
+                throw
+            }finally{
+                if($process){
+                    $process.Refresh()
+                    if(-not $process.HasExited){
+                        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+                    }
+                }
+            }
+        }
+        & (Join-Path $gold 'research\CompareMT5Reports.ps1') -ReportDirectory $native -OutputDirectory $OutputDirectory -NoOpen
+        if($targeted){
+            & (Join-Path $gold 'research\BuildTradeForensics.ps1') -InputDirectory $native -OutputDirectory $OutputDirectory -SelectedStyles $selectedStyles -NoOpen
+        }else{
+            & (Join-Path $gold 'research\BuildTradeForensics.ps1') -InputDirectory $native -OutputDirectory $OutputDirectory -NoOpen
+        }
+        if($ResearchVariant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO')){
+            # Attach the actual selected sub-strategy and frozen market regime
+            # from the broker's ORIGINAL entry-order comment to every V4 fill.
+            # Never silently mark the tester run as reviewed when any native
+            # order comment has been lost, clipped or has an unknown style.
+            $interpreter=Get-Command py -ErrorAction SilentlyContinue
+            $attr=Join-Path $OutputDirectory 'QTS_V4_POSITION_ATTRIBUTION.json'
+            $entrypoint=Join-Path $gold 'research\v4_position_attribution.py'
+            $sourcePositions=Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json'
+            if($interpreter){
+                & $interpreter.Source -3 $entrypoint --input $sourcePositions --output $attr
+            }else{
+                $interpreter=Get-Command python -ErrorAction SilentlyContinue
+                if(-not $interpreter){
+                    throw 'V4 attribution needs Python 3 to check every original broker order identity.'
+                }
+                & $interpreter.Source $entrypoint --input $sourcePositions --output $attr
+            }
+            if($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $attr -PathType Leaf)){
+                throw 'V4 native broker strategy attribution has gaps. No trade-quality claim is allowed.'
+            }
+            $v4Fact=Get-Content -LiteralPath $attr -Raw -Encoding UTF8 | ConvertFrom-Json
+            if($v4Fact.status -ne 'ATTRIBUTED_FOR_RESEARCH_ONLY' -or
+               $v4Fact.live -ne 'LOCKED' -or $v4Fact.edge_validated -ne $false){
+                throw 'V4 broker attribution is incomplete, inconsistent or unsafe.'
+            }
+            # Real-tick MT5 tester fills alone do not contain a continuous
+            # 120-minute AFTER-STOP bid/ask series. Publish UNKNOWN explicitly
+            # until a separately matched native tick export is available.
+            $stopAudit=Join-Path $gold 'research\v4_post_stop_cohorts.py'
+            $stopSummary=Join-Path $OutputDirectory 'QTS_V4_POST_STOP_STRATEGY_COHORTS.json'
+            if(Get-Command py -ErrorAction SilentlyContinue){
+                & $interpreter.Source -3 $stopAudit --attribution $attr --output $stopSummary --allow-missing-ticks
+            }else{
+                & $interpreter.Source $stopAudit --attribution $attr --output $stopSummary --allow-missing-ticks
+            }
+            if($LASTEXITCODE -ne 0 -or
+               -not (Test-Path -LiteralPath $stopSummary -PathType Leaf)){
+                throw 'V4 post-stop UNKNOWN/coverage diagnostics could not be verified.'
+            }
+            $stopFact=Get-Content -LiteralPath $stopSummary -Raw -Encoding UTF8 | ConvertFrom-Json
+            if($stopFact.status -notin @('TICKS_MISSING_NO_GO','NO_BROKER_STOPS_TO_REPLAY') -or
+               $stopFact.live -ne 'LOCKED' -or $stopFact.edge_validated -ne $false){
+                throw 'V4 automatic stop-path report made an unsupported price-outcome claim.'
+            }
+            # Every ten completed broker positions, write an automatic trader
+            # critique and PRE-REGISTERABLE SHADOW alternative. This learner
+            # never writes back to a .set, MQL5, broker or trade permissions.
+            $tenTradeScript=Join-Path $gold 'research\ten_trade_learning.py'
+            $tenTradeReport=Join-Path $OutputDirectory 'QTS_TEN_TRADE_REFLECTION.json'
+            if(Get-Command py -ErrorAction SilentlyContinue){
+                & $interpreter.Source -3 $tenTradeScript --attribution $attr --post-stop $stopSummary --output $tenTradeReport
+            }else{
+                & $interpreter.Source $tenTradeScript --attribution $attr --post-stop $stopSummary --output $tenTradeReport
+            }
+            if($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tenTradeReport -PathType Leaf)){
+                throw 'Native 10-position research reflection could not be verified.'
+            }
+            $reflection=Get-Content -LiteralPath $tenTradeReport -Raw -Encoding UTF8 | ConvertFrom-Json
+            if($reflection.live -ne 'LOCKED' -or $reflection.edge_validated -ne $false -or
+               $reflection.can_send_orders -ne $false -or $reflection.can_edit_ea -ne $false -or
+               $reflection.can_self_promote_strategy -ne $false -or
+               $reflection.status -notin @('WAITING_FOR_TEN_COMPLETE_TRADES','TEN_TRADE_CHECKPOINTS_READY_RESEARCH_ONLY')){
+                throw 'Ten-trade auto-reflection attempted unsupported orders, mutation or promotion.'
+            }
+        }
+        $latest=Get-ChildItem -LiteralPath $OutputDirectory -Filter 'QTS_Gold_Comparison_*.html' |
+            Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+        if($latest){$comparison=$latest.Name}
+        $forensicSummary=Get-Content -LiteralPath (Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json') -Raw | ConvertFrom-Json
+        # Both independent controls must pass. A completed test with missing
+        # original input identity, missing deal evidence or unverified model
+        # must remain an explicit research failure, never an approval.
+        $badRuns=@($results | Where-Object {$_.status -ne 'REPORT_AND_FORENSICS_SAVED'})
+        $nativeSummary=Get-ChildItem -LiteralPath $OutputDirectory -Filter 'QTS_Gold_Comparison_*.json' |
+            Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+        if(-not $nativeSummary){
+            throw 'No native MT5 comparison JSON was produced.'
+        }
+        $nativeResult=Get-Content -LiteralPath $nativeSummary.FullName -Raw | ConvertFrom-Json
+        if($targeted){
+            $verified=$true
+            foreach($style in $selectedStyles){
+                $r=@($nativeResult.results | Where-Object {
+                    $_.style -eq $style -and $_.state -eq 'PARSED'
+                })
+                $d=@($forensicSummary.evidence | Where-Object {
+                    $_.style -eq $style -and $_.status -eq 'IMPORTED' -and $_.deals -gt 0
+                })
+                if($r.Count -ne 1 -or $d.Count -ne 1){$verified=$false}
+            }
+            if($badRuns.Count -eq 0 -and $results.Count -eq $selectedStyles.Count -and $verified -and
+               $forensicSummary.status -eq 'SELECTED_IMPORTED_FOR_REVIEW' -and
+               $forensicSummary.targeted -eq $true){
+                $state='SELECTED_TESTS_FINISHED_REVIEW_REQUIRED'
+            }else{
+                $state='SELECTED_TESTS_WITH_EVIDENCE_GAPS'
+            }
+            $message='Selected native reports and individual deal evidence checked. Profitability unvalidated.'
+        }else{
+            $allInputStylesVerified=($nativeResult.reports_parsed -eq $names.Count -and
+                                     $nativeResult.all_styles_identified -eq $true)
+            if($forensicSummary.status -eq 'IMPORTED_FOR_REVIEW' -and
+               $badRuns.Count -eq 0 -and $allInputStylesVerified){
+                $state='TESTS_FINISHED_REVIEW_REQUIRED'
+            }else{
+                $state='TESTS_FINISHED_WITH_EVIDENCE_GAPS'
+            }
+            $message='Ten native reports collected. Position-by-position evidence checked; positive after-cost expectancy unvalidated.'
+        }
+    }
+}catch{
+    $message=$_.Exception.Message
+    Write-Warning $message
+}finally{
+    SaveOutcome $state $message $comparison
+}
+# A run missing native evidence must fail the caller even when some
+# HTML reports exist. Preserve the diagnostic JSON/HTML for inspection.
+if($state -notin @('PREPARED_ONLY','TESTS_FINISHED_REVIEW_REQUIRED',
+                   'SELECTED_TESTS_FINISHED_REVIEW_REQUIRED')){exit 2}
+exit 0
+ -or
+       $script:verifiedTerminalSha256 -notmatch '^[0-9a-f]{64}Join-Path $OutputDirectory 'presets'
+    & (Join-Path $gold 'research\MakeTesterPresets.ps1') -OutputDirectory $presetDir -NoPrompt
+    # MT5 builds/documentation differ on whether Tester profiles resolve
+    # from the data folder or the installation folder. Support both when the
+    # installation's MQL5 profile tree actually exists; never use an unverified
+    # fallback to EA defaults because that silently tests EntryStyle=0 nine times.
+    $testerProfiles=Join-Path $data 'MQL5\Profiles\Tester'
+    $profileLocations=@($testerProfiles)
+    $installProfileRoot=Join-Path $install 'MQL5\Profiles'
+    if(Test-Path -LiteralPath $installProfileRoot -PathType Container){
+        $profileLocations+=,(Join-Path $installProfileRoot 'Tester')
+    }
+    $profileLocations=@($profileLocations|Select-Object -Unique)
+    foreach($root in $profileLocations){
+        try{New-Item -ItemType Directory -Path $root -Force -ErrorAction Stop|Out-Null}
+        catch{throw ('MT5 tester parameter folder not writable: '+$root)}
+    }
+    $codes=@('FORMER_STOP','RETEST','BREAK_ACCEPT_RETEST','SWEEP_RECLAIM',
+            'TREND_IMPULSE','RANGE_REJECTION','INSIDE_BREAKOUT','ADAPTIVE_ROUTER','SMC_FVG_OB','M1_SCALP')
+    for($i=0;$i -lt $names.Count;$i++){
+        # REPAIR 2026-10-30: Style 9 presets are M1 (QTS_M1_M1_SCALP_*),
+        # not M15. The old path silently missed Style 9's preset and the
+        # old loop never ran it at all (nine styles, not ten).
+        $tfLabel=$(if($i -eq 9){'M1'}else{'M15'})
+        $preset=Join-Path $presetDir ('safety_on\QTS_'+$tfLabel+'_'+$codes[$i]+'_SAFETY_ON.set')
+        if(-not (Test-Path -LiteralPath $preset -PathType Leaf)){throw ('Missing safety-on preset '+$i)}
+        # Native A/B comparison: mutate a new, isolated tester preset.
+        # The untouched baseline and compiled EA are the same in both arms.
+        $flags=[ordered]@{
+            'TesterUseEntryQualityV2'=($ResearchVariant -in @('ENTRY_FILTER','COMBINED'))
+            'TesterProtectNearTPV2'=($ResearchVariant -in @('NEAR_TP','COMBINED'))
+            'TesterUseMarketContextV3'=($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO'))
+            'TesterUseAdaptiveRouterV4'=($ResearchVariant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO'))
+            'TesterUsePreregisteredVetoV5'=($ResearchVariant -eq 'ADAPTIVE_V5_VETO')
+        }
+        $profileLines=@(Get-Content -LiteralPath $preset -Encoding Unicode)
+        if(@($profileLines | Where-Object {$_ -match '^TesterVetoStyleV5='}).Count -ne 1 -or
+           @($profileLines | Where-Object {$_ -match '^TesterVetoRegimeV5='}).Count -ne 1){
+            throw 'Missing unique veto inputs in native MT5 safety-on preset.'
+        }
+        $profileLines=@($profileLines | ForEach-Object {
+            if($_ -match '^TesterVetoStyleV5='){ 'TesterVetoStyleV5='+$VetoStyle }
+            elseif($_ -match '^TesterVetoRegimeV5='){ 'TesterVetoRegimeV5='+$VetoRegime }
+            else{$_}
+        })
+        foreach($key in $flags.Keys){
+            if(@($profileLines | Where-Object {$_ -match ('^'+$key+'=')}).Count -ne 1){
+                throw ('Research flag missing or duplicated: '+$key)
+            }
+            $value=if($flags[$key]){'true'}else{'false'}
+            $profileLines=@($profileLines | ForEach-Object {
+                if($_ -match ('^'+$key+'=')){ $key+'='+$value }else{ $_ }
+            })
+        }
+        $variantPreset=Join-Path $presetDir ('research_'+$ResearchVariant+'_'+$i+'.set')
+        [IO.File]::WriteAllLines($variantPreset,$profileLines,[Text.Encoding]::Unicode)
+        $preset=$variantPreset
+        $setName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i+'.set'
+        foreach($root in $profileLocations){
+            $setFile=Join-Path $root $setName
+            try{Copy-Item -LiteralPath $preset -Destination $setFile -Force -ErrorAction Stop}
+            catch{throw ('Cannot install this Strategy Tester .set file: '+$setFile)}
+            if(-not (SameHash $preset $setFile)){
+                throw ('Tester profile checksum mismatch: '+$setFile)
+            }
+        }
+        $lines=Get-Content -LiteralPath (Join-Path $testerProfiles $setName) -Encoding Unicode
+        $musts=@(('EntryStyle='+$i),'EnableDemoOrders=true',
+                    'EnableDemoForwardOrders=false','TesterIgnoreDailyAndPeakStops=false',
+                    'RiskPerTradePct=0.50')
+        foreach($key in $flags.Keys){
+            $expect=if($flags[$key]){'true'}else{'false'}
+            $musts+=@($key+'='+$expect)
+        }
+        # Style 9 is M1-only with a 15-minute cap in the EA; a preset
+        # without both is not Style 9 and must fail here, not in OnInit
+        # after a wasted run (or worse, on the wrong timeframe).
+        if($i -eq 9){ $musts+=@('SignalTimeframe=1','MaxPositionMinutes=15') }
+        else { $musts+=@('SignalTimeframe=15') }
+        foreach($must in $musts){
+            if($must -notin $lines){throw ('Unsafe MT5 parameter set: '+$must)}
+        }
+        $reportName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i
+        $ini=Join-Path $configs ('style_'+$i+'.ini')
+        $iniLines=@('[Common]','KeepPrivate=1','[Experts]','Enabled=0',
+            'AllowLiveTrading=0','AllowDllImport=0','[Tester]',
+            'Expert=QTS_Gold_Robot.ex5',('ExpertParameters='+$setName),
+            'Symbol=XAUUSD@',('Period='+$(if($i -eq 9){'M1'}else{'M15'})),'Model=4','Optimization=0',
+            'ForwardMode=0',('FromDate='+$FromDate),('ToDate='+$ToDate),
+            'Deposit=3000','Currency=USD','Leverage=1:100',
+            'UseLocal=1','UseRemote=0','UseCloud=0','Visual=0',
+            ('Report='+$reportName),'ReplaceReport=1','ShutdownTerminal=1')
+        [IO.File]::WriteAllLines($ini,$iniLines,[Text.Encoding]::Unicode)
+    }
+    if($PrepareOnly){
+        $state='PREPARED_ONLY'
+        $message='Ten configurations with risk stops active. MT5 was not launched.'
+    }else{
+        $runningIndex=0
+        foreach($i in $selectedStyles){
+            $runningIndex++
+            $item=[ordered]@{style=$names[$i];style_id=$i;status='PENDING';detail='';report=''}
+            $null=$results.Add($item)
+            $reportName='QTS_AUTO_'+(Split-Path -Leaf $OutputDirectory)+'_'+$i
+            $ini=Join-Path $configs ('style_'+$i+'.ini')
+            $began=[datetime]::UtcNow
+            $process=$null
+            try{
+                Write-Host ("Running native MT5 test {0}/{1}: {2} (Style {3})" -f $runningIndex,$selectedStyles.Count,$names[$i],$i)
+                $process=Start-Process -FilePath $exe -ArgumentList ('/config:"{0}"' -f $ini) -PassThru
+                $deadline=(Get-Date).AddMinutes($TimeoutMinutesPerRun)
+                while(-not $process.HasExited){
+                    Start-Sleep -Seconds 5
+                    $process.Refresh()
+                    if((Get-Date) -gt $deadline){throw ('Native MT5 test timed out for style '+$i)}
+                }
+                $candidates=@((Join-Path $install ($reportName+'.htm')),
+                              (Join-Path $data ($reportName+'.htm')))
+                $fresh=@($candidates|Where-Object{
+                    (Test-Path -LiteralPath $_ -PathType Leaf) -and
+                    (Get-Item -LiteralPath $_).LastWriteTimeUtc -ge $began.AddSeconds(-2)
+                })
+                if($fresh.Count -ne 1){
+                    throw ('No fresh native MT5 HTML report for style '+$i+'. Check broker tick history and report write permissions.')
+                }
+                $reportText=Get-Content -LiteralPath $fresh[0] -Raw
+                if($reportText -notmatch '(?i)<html|<!doctype'){throw 'MT5 did not create a native HTML report.'}
+                $destination=Join-Path $native ('QTS_'+$i+'.htm')
+                Copy-Item -LiteralPath $fresh[0] -Destination $destination
+                $item.report='QTS_'+$i+'.htm'
+                # OnTester exports each broker deal with position ID, entry/exit,
+                # exit reason and original/current SL/TP into MT5 Common/Files.
+                # Do not certify individual trades without this native evidence.
+                $common=Join-Path $env:APPDATA 'MetaQuotes\Terminal\Common\Files'
+                $pattern='QTS_FORENSIC_STYLE_'+$i+'_*.csv'
+                $forensic=@(Get-ChildItem -LiteralPath $common -Filter $pattern -File -ErrorAction SilentlyContinue |
+                    Where-Object {$_.LastWriteTimeUtc -ge $began.AddSeconds(-2)} |
+                    Sort-Object LastWriteTimeUtc -Descending)
+                # Never overwrite a missing forensic export with REPORT_SAVED.
+                # A native HTML file is not a position-by-position audit.
+                $hasForensics=$forensic.Count -eq 1
+                if($hasForensics){
+                    $forensicTarget=Join-Path $native ('QTS_'+$i+'_trades.csv')
+                    Copy-Item -LiteralPath $forensic[0].FullName -Destination $forensicTarget
+                    if((Get-Item -LiteralPath $forensicTarget).Length -le 0){
+                        $hasForensics=$false
+                    }
+                }
+                if(-not $hasForensics){
+                    $item.status='FORENSIC_MISSING'
+                    $item.detail='Native MT5 HTML exists, but exactly one fresh nonempty broker position/deal CSV is required.'
+                }elseif($reportText -notmatch '(?i)real ticks'){
+                    $item.status='MODEL_UNVERIFIED'
+                    $item.detail='Broker deal CSV captured, but report did not verify real-tick model.'
+                }else{
+                    $item.status='REPORT_AND_FORENSICS_SAVED'
+                    $item.detail='Fresh report and broker deal evidence saved; costs and profitability remain unverified.'
+                }
+            }catch{
+                $item.status='FAILED'
+                $item.detail=$_.Exception.Message
+                throw
+            }finally{
+                if($process){
+                    $process.Refresh()
+                    if(-not $process.HasExited){
+                        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+                    }
+                }
+            }
+        }
+        & (Join-Path $gold 'research\CompareMT5Reports.ps1') -ReportDirectory $native -OutputDirectory $OutputDirectory -NoOpen
+        if($targeted){
+            & (Join-Path $gold 'research\BuildTradeForensics.ps1') -InputDirectory $native -OutputDirectory $OutputDirectory -SelectedStyles $selectedStyles -NoOpen
+        }else{
+            & (Join-Path $gold 'research\BuildTradeForensics.ps1') -InputDirectory $native -OutputDirectory $OutputDirectory -NoOpen
+        }
+        if($ResearchVariant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO')){
+            # Attach the actual selected sub-strategy and frozen market regime
+            # from the broker's ORIGINAL entry-order comment to every V4 fill.
+            # Never silently mark the tester run as reviewed when any native
+            # order comment has been lost, clipped or has an unknown style.
+            $interpreter=Get-Command py -ErrorAction SilentlyContinue
+            $attr=Join-Path $OutputDirectory 'QTS_V4_POSITION_ATTRIBUTION.json'
+            $entrypoint=Join-Path $gold 'research\v4_position_attribution.py'
+            $sourcePositions=Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json'
+            if($interpreter){
+                & $interpreter.Source -3 $entrypoint --input $sourcePositions --output $attr
+            }else{
+                $interpreter=Get-Command python -ErrorAction SilentlyContinue
+                if(-not $interpreter){
+                    throw 'V4 attribution needs Python 3 to check every original broker order identity.'
+                }
+                & $interpreter.Source $entrypoint --input $sourcePositions --output $attr
+            }
+            if($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $attr -PathType Leaf)){
+                throw 'V4 native broker strategy attribution has gaps. No trade-quality claim is allowed.'
+            }
+            $v4Fact=Get-Content -LiteralPath $attr -Raw -Encoding UTF8 | ConvertFrom-Json
+            if($v4Fact.status -ne 'ATTRIBUTED_FOR_RESEARCH_ONLY' -or
+               $v4Fact.live -ne 'LOCKED' -or $v4Fact.edge_validated -ne $false){
+                throw 'V4 broker attribution is incomplete, inconsistent or unsafe.'
+            }
+            # Real-tick MT5 tester fills alone do not contain a continuous
+            # 120-minute AFTER-STOP bid/ask series. Publish UNKNOWN explicitly
+            # until a separately matched native tick export is available.
+            $stopAudit=Join-Path $gold 'research\v4_post_stop_cohorts.py'
+            $stopSummary=Join-Path $OutputDirectory 'QTS_V4_POST_STOP_STRATEGY_COHORTS.json'
+            if(Get-Command py -ErrorAction SilentlyContinue){
+                & $interpreter.Source -3 $stopAudit --attribution $attr --output $stopSummary --allow-missing-ticks
+            }else{
+                & $interpreter.Source $stopAudit --attribution $attr --output $stopSummary --allow-missing-ticks
+            }
+            if($LASTEXITCODE -ne 0 -or
+               -not (Test-Path -LiteralPath $stopSummary -PathType Leaf)){
+                throw 'V4 post-stop UNKNOWN/coverage diagnostics could not be verified.'
+            }
+            $stopFact=Get-Content -LiteralPath $stopSummary -Raw -Encoding UTF8 | ConvertFrom-Json
+            if($stopFact.status -notin @('TICKS_MISSING_NO_GO','NO_BROKER_STOPS_TO_REPLAY') -or
+               $stopFact.live -ne 'LOCKED' -or $stopFact.edge_validated -ne $false){
+                throw 'V4 automatic stop-path report made an unsupported price-outcome claim.'
+            }
+            # Every ten completed broker positions, write an automatic trader
+            # critique and PRE-REGISTERABLE SHADOW alternative. This learner
+            # never writes back to a .set, MQL5, broker or trade permissions.
+            $tenTradeScript=Join-Path $gold 'research\ten_trade_learning.py'
+            $tenTradeReport=Join-Path $OutputDirectory 'QTS_TEN_TRADE_REFLECTION.json'
+            if(Get-Command py -ErrorAction SilentlyContinue){
+                & $interpreter.Source -3 $tenTradeScript --attribution $attr --post-stop $stopSummary --output $tenTradeReport
+            }else{
+                & $interpreter.Source $tenTradeScript --attribution $attr --post-stop $stopSummary --output $tenTradeReport
+            }
+            if($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $tenTradeReport -PathType Leaf)){
+                throw 'Native 10-position research reflection could not be verified.'
+            }
+            $reflection=Get-Content -LiteralPath $tenTradeReport -Raw -Encoding UTF8 | ConvertFrom-Json
+            if($reflection.live -ne 'LOCKED' -or $reflection.edge_validated -ne $false -or
+               $reflection.can_send_orders -ne $false -or $reflection.can_edit_ea -ne $false -or
+               $reflection.can_self_promote_strategy -ne $false -or
+               $reflection.status -notin @('WAITING_FOR_TEN_COMPLETE_TRADES','TEN_TRADE_CHECKPOINTS_READY_RESEARCH_ONLY')){
+                throw 'Ten-trade auto-reflection attempted unsupported orders, mutation or promotion.'
+            }
+        }
+        $latest=Get-ChildItem -LiteralPath $OutputDirectory -Filter 'QTS_Gold_Comparison_*.html' |
+            Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+        if($latest){$comparison=$latest.Name}
+        $forensicSummary=Get-Content -LiteralPath (Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json') -Raw | ConvertFrom-Json
+        # Both independent controls must pass. A completed test with missing
+        # original input identity, missing deal evidence or unverified model
+        # must remain an explicit research failure, never an approval.
+        $badRuns=@($results | Where-Object {$_.status -ne 'REPORT_AND_FORENSICS_SAVED'})
+        $nativeSummary=Get-ChildItem -LiteralPath $OutputDirectory -Filter 'QTS_Gold_Comparison_*.json' |
+            Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+        if(-not $nativeSummary){
+            throw 'No native MT5 comparison JSON was produced.'
+        }
+        $nativeResult=Get-Content -LiteralPath $nativeSummary.FullName -Raw | ConvertFrom-Json
+        if($targeted){
+            $verified=$true
+            foreach($style in $selectedStyles){
+                $r=@($nativeResult.results | Where-Object {
+                    $_.style -eq $style -and $_.state -eq 'PARSED'
+                })
+                $d=@($forensicSummary.evidence | Where-Object {
+                    $_.style -eq $style -and $_.status -eq 'IMPORTED' -and $_.deals -gt 0
+                })
+                if($r.Count -ne 1 -or $d.Count -ne 1){$verified=$false}
+            }
+            if($badRuns.Count -eq 0 -and $results.Count -eq $selectedStyles.Count -and $verified -and
+               $forensicSummary.status -eq 'SELECTED_IMPORTED_FOR_REVIEW' -and
+               $forensicSummary.targeted -eq $true){
+                $state='SELECTED_TESTS_FINISHED_REVIEW_REQUIRED'
+            }else{
+                $state='SELECTED_TESTS_WITH_EVIDENCE_GAPS'
+            }
+            $message='Selected native reports and individual deal evidence checked. Profitability unvalidated.'
+        }else{
+            $allInputStylesVerified=($nativeResult.reports_parsed -eq $names.Count -and
+                                     $nativeResult.all_styles_identified -eq $true)
+            if($forensicSummary.status -eq 'IMPORTED_FOR_REVIEW' -and
+               $badRuns.Count -eq 0 -and $allInputStylesVerified){
+                $state='TESTS_FINISHED_REVIEW_REQUIRED'
+            }else{
+                $state='TESTS_FINISHED_WITH_EVIDENCE_GAPS'
+            }
+            $message='Ten native reports collected. Position-by-position evidence checked; positive after-cost expectancy unvalidated.'
+        }
+    }
+}catch{
+    $message=$_.Exception.Message
+    Write-Warning $message
+}finally{
+    SaveOutcome $state $message $comparison
+}
+# A run missing native evidence must fail the caller even when some
+# HTML reports exist. Preserve the diagnostic JSON/HTML for inspection.
+if($state -notin @('PREPARED_ONLY','TESTS_FINISHED_REVIEW_REQUIRED',
+                   'SELECTED_TESTS_FINISHED_REVIEW_REQUIRED')){exit 2}
+exit 0
+){
+        throw 'Native EA/terminal binary provenance incomplete.'
     }
     $presetDir=Join-Path $OutputDirectory 'presets'
     & (Join-Path $gold 'research\MakeTesterPresets.ps1') -OutputDirectory $presetDir -NoPrompt
