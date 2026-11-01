@@ -237,6 +237,8 @@ def main() -> int:
     p.add_argument("--attribution", type=Path, required=True)
     p.add_argument("--post-stop-replay", type=Path,
                    help="Actual stop_reversal_audit.py native executable-bid/ask quote output")
+    p.add_argument("--allow-missing-ticks", action="store_true",
+                   help="For automatic native runs: save explicit UNKNOWN report without inventing price history")
     p.add_argument("--output", type=Path, required=True)
     args = p.parse_args()
     attribution = json.loads(args.attribution.read_text(encoding="utf-8-sig"))
@@ -247,6 +249,9 @@ def main() -> int:
     args.output.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"V4 STOP COHORTS: {report['status']}; stops={report['native_stop_exits']}")
     print(f"READ ONLY: {args.output}; LIVE LOCKED")
+    if (args.allow_missing_ticks and args.post_stop_replay is None and
+            report["status"] == "TICKS_MISSING_NO_GO"):
+        return 0  # diagnostic artifact only, NOT trade qualification
     return 0 if report["status"] in (
         "QUOTE_PATHS_ATTRIBUTED_RESEARCH_ONLY", "NO_BROKER_STOPS_TO_REPLAY") else 2
 
