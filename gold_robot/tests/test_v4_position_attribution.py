@@ -227,3 +227,25 @@ def test_v4_issue_evidence_is_in_allowlisted_share_zip_without_raw_mt5_html():
     assert "QTS_V4_POSITION_ATTRIBUTION.json" in pack
     assert "NEVER included" in pack
     assert "QTS_SHARE_RESULTS.zip" in pack
+
+
+def test_v4_header_only_native_deal_file_must_not_be_treated_as_a_trade():
+    from pathlib import Path
+    with Path(__file__).resolve().parents[1].joinpath("research/RunAutomaticTester.ps1").open(encoding="utf-8-sig") as file:
+        runner=file.read()
+    assert "Import-Csv -LiteralPath $forensicTarget -Delimiter ';'" in runner
+    assert "$item.status='ZERO_NATIVE_DEALS_NO_GO'" in runner
+    assert "V4 ZERO_EXECUTED_BROKER_DEALS_NO_GO" in runner
+    assert "A zero-trade report is NOT breakeven evidence" in runner
+    assert "QTS ENTRY AUDIT" in runner
+    assert "no strategy threshold was relaxed" in runner.lower()
+    assert "V4 native broker strategy attribution has gaps" in runner
+
+
+def test_actual_header_only_csv_from_native_tester_has_no_data_rows(tmp_path):
+    import csv
+    path=tmp_path / "QTS_7_trades.csv"
+    header="position_id;deal_id;order_id;entry;reason;type;time_msc;volume;price;sl;tp;gross;commission;swap;fee;setup_reason"
+    path.write_text(header+"\n",encoding="utf-8")
+    with path.open(encoding="utf-8",newline="") as stream:
+        assert list(csv.DictReader(stream,delimiter=";")) == []

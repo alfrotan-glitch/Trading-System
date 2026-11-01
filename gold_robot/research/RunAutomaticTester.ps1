@@ -376,6 +376,12 @@ try{
                 if(-not $hasForensics){
                     $item.status='FORENSIC_MISSING'
                     $item.detail='Native MT5 HTML exists, but exactly one fresh nonempty broker position/deal CSV is required.'
+                }elseif(@(Import-Csv -LiteralPath $forensicTarget -Delimiter ';').Count -eq 0){
+                    # A header-only CSV is NOT completed broker deal evidence.
+                    # The MT5 run can be valid and still produce zero trades.
+                    # Do not call it REPORT_AND_FORENSICS_SAVED or profitable.
+                    $item.status='ZERO_NATIVE_DEALS_NO_GO'
+                    $item.detail='MT5 tester finished but exported ZERO executed QTS broker deals. Inspect MT5 Experts/Tester QTS ENTRY AUDIT reasons and pending-order history; no economic conclusion.'
                 }elseif($reportText -notmatch '(?i)real ticks'){
                     $item.status='MODEL_UNVERIFIED'
                     $item.detail='Broker deal CSV captured, but report did not verify real-tick model.'
@@ -411,6 +417,16 @@ try{
             $attr=Join-Path $OutputDirectory 'QTS_V4_POSITION_ATTRIBUTION.json'
             $entrypoint=Join-Path $gold 'research\v4_position_attribution.py'
             $sourcePositions=Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json'
+            # An empty broker deal CSV has no trade identity to attribute.
+            # Stop with a distinct, actionable ZERO-DEALS result instead
+            # of misleading BROKER_ORDER_COMMENT_MISSING / attribution gaps.
+            $nativePositions=Get-Content -LiteralPath $sourcePositions -Raw -Encoding UTF8 | ConvertFrom-Json
+            if(@($nativePositions.trades).Count -eq 0){
+                $selected=@($nativePositions.evidence | Where-Object {$_.style -eq 7})
+                $details=if($selected.Count -eq 1){[string]$selected[0].status}else{'MISSING_STYLE_7_EVIDENCE'}
+                throw ('V4 ZERO_EXECUTED_BROKER_DEALS_NO_GO: no completed or attributed MT5 QTS trades, source='+$details+
+                       '. A zero-trade report is NOT breakeven evidence. Inspect native Tester Experts/Journal QTS ENTRY AUDIT rejection reasons, broker order history and symbol execution permissions. No strategy threshold was relaxed.')
+            }
             if($interpreter){
                 & $interpreter.Source -3 $entrypoint --input $sourcePositions --output $attr
             }else{
