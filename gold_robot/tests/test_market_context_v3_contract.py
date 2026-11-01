@@ -88,9 +88,9 @@ def test_broker_minimum_lot_step_and_budget_are_never_rounded_up():
 
 
 def test_automated_tester_v3_is_isolated_from_baseline():
-    assert "'BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3','ADAPTIVE_V4'" in RUNNER
-    assert "$ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4') -and ($OnlyStyles -ne '7')" in RUNNER
-    assert "'TesterUseMarketContextV3'=($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4'))" in RUNNER
+    assert "'BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO'" in RUNNER
+    assert "$ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO') -and ($OnlyStyles -ne '7')" in RUNNER
+    assert "'TesterUseMarketContextV3'=($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO'))" in RUNNER
     assert "'TesterUseEntryQualityV2'=($ResearchVariant -in @('ENTRY_FILTER','COMBINED'))" in RUNNER
     assert "'TesterProtectNearTPV2'=($ResearchVariant -in @('NEAR_TP','COMBINED'))" in RUNNER
     assert "EnableDemoForwardOrders" not in V3
