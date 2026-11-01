@@ -182,8 +182,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 7448,
-      "sha256": "64ff738ac1502a431f6ad028fbe588b05d0fa6121841503ea8ec802263aa4017"
+      "bytes": 10237,
+      "sha256": "8a8c6e9a10ad8dcfc6bc4a3173109bf84256026522b83efb547409b3a47a9bb3"
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
@@ -237,8 +237,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 86793,
-      "sha256": "ab0c2722751dfa5e49df5aa5b511a893f02cb15e02a165cdad40e452d1a8fb69"
+      "bytes": 89946,
+      "sha256": "4939a993943c530cff711c7bc9999bdc3192a1d01c406b1380ca57f1671f391b"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -404,6 +404,11 @@
       "path": "research/evaluate_ledger.py",
       "bytes": 27933,
       "sha256": "79a21b7e8678d246f5dd64d55f42e22f973877c7a71f22e0b73bb42caa79cc52"
+    },
+    {
+      "path": "research/forward_shadow_observer.py",
+      "bytes": 12815,
+      "sha256": "2a443278713cf2e9cff4d5b7c8cdc930a42417ce20a5dceb9132a6125ef45d69"
     },
     {
       "path": "research/gold_decision_audit.py",
@@ -584,6 +589,11 @@
       "path": "tests/test_evaluate_ledger.py",
       "bytes": 7984,
       "sha256": "c004b3ace31fedd876c9545db2648fd76841fbced6b830683bfe000208f693ca"
+    },
+    {
+      "path": "tests/test_forward_shadow_observer.py",
+      "bytes": 5801,
+      "sha256": "c64bde1a44523839a400c6b2ff2f037d0eef4c05e7fdeca79f703cc7c94e50ec"
     },
     {
       "path": "tests/test_gold_decision_audit.py",
