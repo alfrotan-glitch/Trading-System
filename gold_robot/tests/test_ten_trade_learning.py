@@ -201,7 +201,7 @@ def test_no_order_or_ea_mutation_inside_learner():
 
 def test_native_mt5_v4_tester_automatically_runs_evidence_review():
     runner = (GOLD / "research" / "RunAutomaticTester.ps1").read_text("utf-8")
-    assert "if($ResearchVariant -eq 'ADAPTIVE_V4')" in runner
+    assert "if($ResearchVariant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO'))" in runner
     assert "research\\ten_trade_learning.py" in runner
     assert "QTS_TEN_TRADE_REFLECTION.json" in runner
     assert "--attribution $attr --post-stop $stopSummary --output $tenTradeReport" in runner
