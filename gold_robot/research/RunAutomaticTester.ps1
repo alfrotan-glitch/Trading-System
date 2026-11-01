@@ -70,6 +70,9 @@ function EscapeHtml([object]$value){
 }
 $script:verifiedEx5Sha256=''
 $script:verifiedTerminalSha256=''
+$script:timeframeScope=if(9 -in $selectedStyles){
+    if($selectedStyles.Count -eq 1){'M1'}else{'M15+M1'}
+}else{'M15'}
 function SaveOutcome([string]$state,[string]$message,[string]$comparison){
     $rows=@()
     foreach($item in $results){
@@ -98,11 +101,11 @@ section{background:white;border:1px solid #dce4ee;border-radius:10px;margin-top:
 table{width:100%;border-collapse:collapse}td,th{padding:12px;border-bottom:1px solid #dee6ed;text-align:left}
 th{background:#edf2f9}.warning{border-left:4px solid #c28a25;padding-left:12px}</style></head><body>
 <main><header><h1>QTS Gold | Automatic Strategy Tester</h1>
-<p>WMMarkets · XAUUSD@ · M15 · Real ticks · USD 3000 simulated deposit</p>
+<p>WMMarkets · XAUUSD@ · $script:timeframeScope · Real ticks · USD 3000 simulated deposit</p>
 <p>LIVE LOCKED · PROFITABLE EDGE NOT VALIDATED</p></header>
 <section><h2>$safeState</h2><p>$safeMessage</p>
 <p>Test period: $FromDate to $ToDate</p></section>
-<section><h2>Seven fixed strategies plus adaptive router</h2><p><a href="QTS_TRADE_BY_TRADE.html">Individual trade forensics (each position, reason for exit)</a></p><table>
+<section><h2>Selected native MT5 strategy styles</h2><p><a href="QTS_TRADE_BY_TRADE.html">Individual trade forensics (each position, reason for exit)</a></p><table>
 <tr><th>Strategy</th><th>State</th><th>Details</th><th>Native report</th></tr>
 $tableRows
 </table><p>$cmp</p></section>
@@ -116,7 +119,7 @@ An incomplete or missing report means NO-GO.</p></section></main></body></html>
     [ordered]@{
         schema='qts.mt5.auto_tester.v1';state=$state;message=$message;
         live='LOCKED';validated_edge=$false;real_money_orders=$false;
-        symbol='XAUUSD@';model=4;timeframe='M15';deposit_usd=3000;
+        symbol='XAUUSD@';model=4;timeframe=$script:timeframeScope;deposit_usd=3000;
         from_date=$FromDate;to_date=$ToDate;comparison=$comparison;
         selected_styles=@($selectedStyles);targeted=$targeted;
         research_variant=$ResearchVariant;
