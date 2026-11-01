@@ -177,12 +177,19 @@ set "QTS_FORWARD_DIR=%QTS_ROOT_DIR%gold_robot\reports_local\forward_shadow"
 py -3 "%QTS_ROOT_DIR%gold_robot\research\forward_shadow_observer.py" --report-dir "%QTS_FORWARD_DIR%"
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" echo FORWARD SHADOW NO-GO: see report for exact problem.
+echo Reviewing only completed 60-minute broker Bid/Ask windows after native signals.
+echo This never reconstructs fills, TP/SL or P/L.
+py -3 "%QTS_ROOT_DIR%gold_robot\research\forward_shadow_paths.py" --report-dir "%QTS_FORWARD_DIR%"
+set "QTS_PATH_CODE=%ERRORLEVEL%"
+if not "%QTS_PATH_CODE%"=="0" echo PRICE PATH UNKNOWN/NO-GO: read the local quote-path report.
 if exist "%QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_V2_REPORT.json" (
   start "" notepad.exe "%QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_V2_REPORT.json"
 )
 echo.
 echo Frozen registration and results: %QTS_FORWARD_DIR%
-echo This records native signals only; trades, fills, SL/TP and profits remain UNKNOWN.
+echo The saved 60-minute report shows quote excursions only, never a trade win or P/L.
+echo Report: %QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_V2_QUOTE_PATHS.json
+echo Native signals, actual fills, SL/TP and profits must not be conflated.
 pause
 goto MENU
 
