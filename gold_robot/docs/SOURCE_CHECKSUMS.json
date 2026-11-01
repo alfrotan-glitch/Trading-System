@@ -377,8 +377,8 @@
     },
     {
       "path": "research/capture_post_stop_quotes.py",
-      "bytes": 15013,
-      "sha256": "2b9881b65c81fb87b3fa82c4733b14acad3ef89d585db4e95c10c44597dc6895"
+      "bytes": 15014,
+      "sha256": "709900fb833c2cbc7b29c99df0578c149cf89be965e82f01f3494cfa924b219e"
     },
     {
       "path": "research/compare_revised_variants.py",
