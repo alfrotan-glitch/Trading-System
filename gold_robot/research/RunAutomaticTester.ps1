@@ -420,8 +420,43 @@ try{
                 }
                 & $interpreter.Source $entrypoint --input $sourcePositions --output $attr
             }
-            if($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $attr -PathType Leaf)){
-                throw 'V4 native broker strategy attribution has gaps. No trade-quality claim is allowed.'
+            # The Python validator always writes per-position issues when
+            # broker records were readable. Surface the exact evidence gap;
+            # never replace an unavailable/mutated identity with a guess.
+            $attributionExitCode=$LASTEXITCODE
+            if($attributionExitCode -ne 0 -or -not (Test-Path -LiteralPath $attr -PathType Leaf)){
+                $detail='Native source could not be validated. Check QTS_TRADE_BY_TRADE.json.'
+                if(Test-Path -LiteralPath $attr -PathType Leaf){
+                    try{
+                        $failedAttribution=Get-Content -LiteralPath $attr -Raw -Encoding UTF8 | ConvertFrom-Json
+                        $grouped=@($failedAttribution.issues | Group-Object reason |
+                            Sort-Object Count -Descending | Select-Object -First 5 |
+                            ForEach-Object { '{0}={1}' -f $_.Name,$_.Count })
+                        $detail=('Attributed {0}/{1}; {2}' -f
+                                 $failedAttribution.native_positions_attributed,
+                                 $failedAttribution.native_positions_seen,
+                                 $(if($grouped.Count){$grouped -join '; '}else{'UNKNOWN_ISSUE'}))
+                    }catch{
+                        $detail='Cannot parse the broker attribution audit JSON; original native file preserved.'
+                    }
+                }elseif(Test-Path -LiteralPath $sourcePositions -PathType Leaf){
+                    try{
+                        $sourceFact=Get-Content -LiteralPath $sourcePositions -Raw -Encoding UTF8 | ConvertFrom-Json
+                        $missingTags=@($sourceFact.trades | Where-Object {
+                            [string]$_.setup_reason -notmatch '^QTSV4-S[0-68]-R[0-2]$'
+                        })
+                        $incomplete=@($sourceFact.trades | Where-Object {
+                            $_.status -notin @('COMPLETE','COMPLETE_MULTI_EXIT')
+                        })
+                        $detail=('Source={0}; positions={1}; unrecognized_original_tags={2}; incomplete_positions={3}' -f
+                                 $sourceFact.status,@($sourceFact.trades).Count,
+                                 $missingTags.Count,$incomplete.Count)
+                    }catch{
+                        $detail='Broker deal/position source not parseable; preserve original JSON and CSV.'
+                    }
+                }
+                throw ('V4 native broker strategy attribution has gaps. No trade-quality claim is allowed. '+
+                       $detail+'; diagnostics: QTS_V4_POSITION_ATTRIBUTION.json and QTS_TRADE_BY_TRADE.json')
             }
             $v4Fact=Get-Content -LiteralPath $attr -Raw -Encoding UTF8 | ConvertFrom-Json
             if($v4Fact.status -ne 'ATTRIBUTED_FOR_RESEARCH_ONLY' -or
