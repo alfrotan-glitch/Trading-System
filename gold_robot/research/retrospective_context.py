@@ -300,9 +300,12 @@ def main() -> int:
         account = terminal.account_info()
         symbol = terminal.symbol_info(SYMBOL)
         server = str(getattr(account, "server", "")).lower().replace(" ", "")
-        if "wmmarkets" not in server or symbol is None:
+        demo_mode = getattr(terminal, "ACCOUNT_TRADE_MODE_DEMO", None)
+        is_demo = (demo_mode is not None and account is not None
+                   and getattr(account, "trade_mode", None) == demo_mode)
+        if "wmmarkets" not in server or symbol is None or not is_demo:
             terminal.shutdown()
-            raise SystemExit("Wrong broker or symbol; historical context NOT collected")
+            raise SystemExit("WMMarkets DEMO broker/symbol identity unavailable; NO-GO")
     try:
         result = evaluate(forensic, manifest, source_hash, terminal)
     finally:
