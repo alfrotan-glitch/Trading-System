@@ -35,7 +35,7 @@ def append_native(signals, *, style=3, side="BUY", high=True,
     vals = {
         "schema": "qts.mt5.forward_shadow_signal.v1",
         "observed_utc_s": at, "closed_bar_open_server_s": bar,
-        "tick_server_time_msc": (bar + 901) * 1000,
+        "tick_server_time_msc": (bar + 964) * 1000,
         "symbol": "XAUUSD@", "timeframe": "M15",
         "style": style, "side": side,
         "bid": "2450.21", "ask": "2450.42",
