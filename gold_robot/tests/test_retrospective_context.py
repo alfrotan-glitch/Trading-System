@@ -227,6 +227,62 @@ def test_mismatched_reported_exit_and_leg_reason_is_hard_no_go():
         validate_evidence(f, m)
 
 
+def test_partial_older_run_is_quarantined_without_faking_missing_profit():
+    f, m = fixtures()
+    bad = dict(f["trades"][0])
+    bad["position_id"] = "p2"
+    bad["status"] = "PARTIAL_OR_OPEN"
+    bad["entry_lots"] = 0.04
+    bad["exit_lots"] = 0.02
+    bad["net_usd"] = 9000.0
+    f["trades"].append(bad)
+    f["status"] = "EVIDENCE_GAPS_NO_GO"
+    result = evaluate(f, m, "sha256-synthetic", FakeMT5())
+    assert result["status"] == "FORENSIC_POSITION_GAPS_NO_GO"
+    assert result["total_positions"] == 2
+    assert result["validated_positions"] == 1
+    assert result["quarantined_position_count"] == 1
+    assert result["complete_market_snapshots"] == 1
+    assert result["quarantined_positions"][0]["position_id"] == "p2"
+    assert result["cohorts"]["style"]["1"]["native_net_usd"] == 11
+    assert "9000" not in json.dumps(result["cohorts"])
+    assert result["validated_edge"] is False
+    assert result["can_autotune_or_promote"] is False
+
+
+def test_selected_archive_with_partial_rows_is_read_and_reported_no_go(tmp_path):
+    import zipfile
+    from retrospective_context import load_evidence
+
+    f, m = fixtures()
+    f["trades"][0]["status"] = "PARTIAL_OR_OPEN"
+    f["status"] = "EVIDENCE_GAPS_NO_GO"
+    p = tmp_path / "QTS_SHARE_RESULTS.zip"
+    with zipfile.ZipFile(p, "w") as z:
+        z.writestr("QTS_TRADE_BY_TRADE.json", json.dumps(f))
+        z.writestr("OPEN_RESULTS.json", json.dumps(m))
+    out_f, out_m, digest = load_evidence(p)
+    result = evaluate(out_f, out_m, digest, FakeMT5())
+    assert result["status"] == "FORENSIC_POSITION_GAPS_NO_GO"
+    assert result["validated_positions"] == 0
+    assert result["quarantined_position_count"] == 1
+    assert result["cohorts"] == {"style": {}} or result["cohorts"] == {}
+
+
+def test_archive_missing_envelope_is_still_hard_rejected(tmp_path):
+    import zipfile
+    from retrospective_context import load_evidence
+
+    f, m = fixtures()
+    m["symbol"] = "XAUUSD"
+    p = tmp_path / "QTS_SHARE_RESULTS.zip"
+    with zipfile.ZipFile(p, "w") as z:
+        z.writestr("QTS_TRADE_BY_TRADE.json", json.dumps(f))
+        z.writestr("OPEN_RESULTS.json", json.dumps(m))
+    with pytest.raises(ValueError, match="identity"):
+        load_evidence(p)
+
+
 def test_never_has_order_sender_or_authentication():
     source = (GOLD / "research" / "retrospective_context.py").read_text("utf-8")
     for forbidden in ("order_send(", "OrderSend(", "mt5.login(", "ENABLE_LIVE"):
