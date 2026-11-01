@@ -198,6 +198,22 @@ bool SelectAdaptiveCandidateV4(const MqlTick &quote,
       return false;
      }
    evaluated_style=chosen_style;
+   // V5 challenger ONLY: veto exactly the selected V4 setup when the
+   // preregistered style and closed-bar regime agree. No alternate search,
+   // stop widening, risk increase or hindsight signal substitution.
+   // The unmodified V4 champion still selects the exact same candidate.
+   if(TesterUsePreregisteredVetoV5 &&
+      chosen_style==TesterVetoStyleV5 && regime==TesterVetoRegimeV5)
+     {
+      status_text=StringFormat("QTS V5 PREREGISTERED_VETO chosen=%d regime=%d bar=%s",
+                               chosen_style,regime,
+                               TimeToString(iTime(_Symbol,PERIOD_M15,1),TIME_DATE|TIME_MINUTES));
+      if(EnableEntryDiagnostics) Print(status_text);
+      evaluated_style=(int)EntryStyle;
+      side=0;atr=0;level=0;anchor=0;price=0;stop=0;target=0;
+      chosen_style=-1;
+      return false;
+     }
    status_text=StringFormat("V4: selected strategy %d from %d eligible in regime %d",
                             chosen_style,approved,regime);
    if(EnableEntryDiagnostics)
