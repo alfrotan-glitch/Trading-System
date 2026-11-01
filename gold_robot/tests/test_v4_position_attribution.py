@@ -294,3 +294,19 @@ def test_windows_existing_single_menu_exposes_guided_one_month_v4_diagnosis():
     assert "AddMonths(-1)" in launcher
     assert "QTS_SHARE_RESULTS.bat" in launcher
     assert "LIVE LOCKED" in launcher
+
+
+def test_native_v4_test_presets_attested_from_actual_ea_not_just_copied_file():
+    ea=(GOLD / "mt5_robot" / "AdaptiveV4Research.mqh").read_text("utf-8")
+    runner=(GOLD / "research" / "RunAutomaticTester.ps1").read_text("utf-8")
+    # Both broker profile and diagnostic are from the same native OnTester.
+    for control in ("EntryStyle", "SignalTimeframe", "EnableDemoOrders",
+                    "TesterUseMarketContextV3", "TesterUseAdaptiveRouterV4",
+                    "TesterUsePreregisteredVetoV5", "TesterVetoStyleV5",
+                    "TesterVetoRegimeV5"):
+        assert f'FileWrite(file,"INPUT",7,"{control}"' in ea
+        assert control in runner
+    assert "MT5 tester native INPUT MISMATCH" in runner
+    assert "Zero trades cannot be attributed to a strategy" in runner
+    assert "expected '+$expectedInputs[$key]" in runner
+    assert "MISSING_OR_DUPLICATED" in runner
