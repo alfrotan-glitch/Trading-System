@@ -182,8 +182,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 6266,
-      "sha256": "e443649ebb76511a243d6fa35607584e786d4eee7b968b3af5eb305acaf2495a"
+      "bytes": 7448,
+      "sha256": "64ff738ac1502a431f6ad028fbe588b05d0fa6121841503ea8ec802263aa4017"
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
@@ -352,8 +352,8 @@
     },
     {
       "path": "research/auto_context_review.py",
-      "bytes": 10502,
-      "sha256": "14f8d5e71413478c64f8cb73a1e6343768aa4570eda5365cad827e031e8f928f"
+      "bytes": 12028,
+      "sha256": "5ca89362aad297b437258d47869ec7712933232ce7345678a3c56bd0d7ec628b"
     },
     {
       "path": "research/auto_stop_ticks.py",
@@ -476,6 +476,11 @@
       "sha256": "246a1c1233a0bb8a619bbce413afa963a0aee1e1c5e0b73769b6b51f208316d3"
     },
     {
+      "path": "research/shadow_filter_review.py",
+      "bytes": 10158,
+      "sha256": "f3ff991f41d4540740cff84bcc14417bc242c53e55be11e53c610354d4622ba6"
+    },
+    {
       "path": "research/sim_limit.py",
       "bytes": 4305,
       "sha256": "73ec2c086f770515a1c79399898570867268aa10d497e7b17f097731b1bfd2cf"
@@ -547,8 +552,8 @@
     },
     {
       "path": "tests/test_auto_context_review.py",
-      "bytes": 7628,
-      "sha256": "e0b4de6ebd1356b2ae788f8f29eb80a3255f3f23d29b3368a00ee28a3462559b"
+      "bytes": 7942,
+      "sha256": "76b71af455b645f7c57684cc9322401f80274da439fb0e1b7c998c8cce213f82"
     },
     {
       "path": "tests/test_auto_stop_ticks.py",
@@ -644,6 +649,11 @@
       "path": "tests/test_scalp_signals.py",
       "bytes": 1598,
       "sha256": "68f6f3b04d076a7f92a3c721f27c06acd1216832fe05153b4f9654243947bd50"
+    },
+    {
+      "path": "tests/test_shadow_filter_review.py",
+      "bytes": 5782,
+      "sha256": "44d2a3e73e87a9f7274da2ccc86500b9963997fa1e2bf58acd6c4d7887e7df30"
     },
     {
       "path": "tests/test_sim_limit.py",
