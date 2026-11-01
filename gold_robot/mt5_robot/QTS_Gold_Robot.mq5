@@ -2024,6 +2024,11 @@ void RecordNativeForwardShadow(const int side,const double atr_value)
    double median=(historical_atr[23]+historical_atr[24])*0.5;
    if(!MathIsValidNumber(median) || median<=0.0)
       return;
+   // Classify exactly the same 8-decimal values exported to CSV.
+   double exported_atr=NormalizeDouble(atr_now,8);
+   double exported_median=NormalizeDouble(median,8);
+   if(exported_atr<=0.0 || exported_median<=0.0)
+      return;
    datetime utc_now=TimeGMT();
    MqlDateTime parts={};
    TimeToStruct(utc_now,parts);
@@ -2047,9 +2052,10 @@ void RecordNativeForwardShadow(const int side,const double atr_value)
                 (long)utc_now,(long)bar,(long)tick.time_msc,
                 _Symbol,"M15",(int)EntryStyle,side>0 ? "BUY" : "SELL",
                 DoubleToString(tick.bid,_Digits),DoubleToString(tick.ask,_Digits),
-                DoubleToString(atr_now,8),DoubleToString(median,8),
-                atr_now>median ? "ABOVE_TRAILING_MEDIAN" :
-                                 "AT_OR_BELOW_TRAILING_MEDIAN",
+                DoubleToString(exported_atr,8),
+                DoubleToString(exported_median,8),
+                exported_atr>exported_median ? "ABOVE_TRAILING_MEDIAN" :
+                                               "AT_OR_BELOW_TRAILING_MEDIAN",
                 "NATIVE_CLOSED_BAR_UNARMED_DEMO");
    FileFlush(handle);
    FileClose(handle);
