@@ -389,6 +389,63 @@ try{
                     $item.status='REPORT_AND_FORENSICS_SAVED'
                     $item.detail='Fresh report and broker deal evidence saved; costs and profitability remain unverified.'
                 }
+                if($ResearchVariant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO') -and $i -eq 7){
+                    # Native agent evidence: decision counts exist even when no
+                    # entry order was ever placed. Never mistake a header-only
+                    # deal CSV for an executed trade or a successful signal.
+                    $decisionExports=@(Get-ChildItem -LiteralPath $common -Filter 'QTS_V4_DIAGNOSTICS_STYLE_7_*.csv' -File -ErrorAction SilentlyContinue |
+                        Where-Object {$_.LastWriteTimeUtc -ge $began.AddSeconds(-2)})
+                    if($decisionExports.Count -ne 1){
+                        $item.status='DECISION_DIAGNOSTICS_MISSING_NO_GO'
+                        $item.detail='Native V4 gate-count export missing or ambiguous; inspect Tester Experts/Journal, cannot explain zero deals.'
+                    }else{
+                        $decisionDest=Join-Path $native 'QTS_7_decisions.csv'
+                        Copy-Item -LiteralPath $decisionExports[0].FullName -Destination $decisionDest
+                        $decisions=@(Import-Csv -LiteralPath $decisionDest -Delimiter ';')
+                        $totals=@($decisions | Where-Object {$_.scope -eq 'CLOSED_BAR' -and $_.verdict -eq 'TOTAL_CLOSED_BARS'})
+                        $barCount=0
+                        if($totals.Count -ne 1 -or
+                           -not [int]::TryParse([string]$(if($totals.Count -eq 1){$totals[0].count}else{''}),[ref]$barCount) -or
+                           $barCount -le 0){
+                            $item.status='DECISION_DIAGNOSTICS_INVALID_NO_GO'
+                            $item.detail='Native V4 decision export has no valid evaluated closed bars.'
+                        }else{
+                            $gateSum=0
+                            foreach($gate in @($decisions | Where-Object {
+                                $_.scope -eq 'CLOSED_BAR' -and $_.verdict -ne 'TOTAL_CLOSED_BARS'
+                            })){
+                                $gateCount=0
+                                if(-not [int]::TryParse([string]$gate.count,[ref]$gateCount) -or $gateCount -lt 0){
+                                    $gateSum=-1
+                                    break
+                                }
+                                $gateSum+=$gateCount
+                            }
+                            if($gateSum -ne $barCount){
+                                $item.status='DECISION_DIAGNOSTICS_INVALID_NO_GO'
+                                $item.detail='Native V4 decision stage counts do not reconcile with closed-bar evaluations.'
+                            }else{
+                                $topGates=@($decisions | Where-Object {
+                                    $_.scope -eq 'CLOSED_BAR' -and
+                                    $_.verdict -ne 'TOTAL_CLOSED_BARS' -and
+                                    [int]$_.count -gt 0
+                                } | Sort-Object {[int]$_.count} -Descending |
+                                    Select-Object -First 4 |
+                                    ForEach-Object {$_.verdict+'='+$_.count})
+                                $topCandidateVetoes=@($decisions | Where-Object {
+                                    $_.scope -eq 'CANDIDATE' -and
+                                    $_.verdict -ne 'ELIGIBLE' -and [int]$_.count -gt 0
+                                } | Sort-Object {[int]$_.count} -Descending |
+                                    Select-Object -First 3 |
+                                    ForEach-Object {'S'+$_.style+':'+$_.verdict+'='+$_.count})
+                                $item.detail+=(' Native V4 bars='+$barCount+
+                                    '; top gates: '+($topGates -join ', ')+
+                                    '; candidate vetoes: '+($topCandidateVetoes -join ', ')+
+                                    '. The full decision CSV is saved locally.')
+                            }
+                        }
+                    }
+                }
             }catch{
                 $item.status='FAILED'
                 $item.detail=$_.Exception.Message
