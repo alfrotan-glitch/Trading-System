@@ -155,6 +155,7 @@ def _readonly_demo_terminal():
     except ImportError as exc:
         raise ValueError("MetaTrader5 Python package unavailable") from exc
     if not mt5.initialize():
+        mt5.shutdown()
         raise ValueError("WMMarkets DEMO terminal is unavailable")
     account = mt5.account_info()
     symbol = mt5.symbol_info(SYMBOL)
@@ -173,26 +174,51 @@ def main() -> int:
     parser.add_argument("--reports-root", required=True, type=Path)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--offline", action="store_true",
-                        help="Unit-test/research mode only; absent H1/ATR/quotes stays UNKNOWN")
+                        help="Unit-test/research mode; absent historical quotes stays UNKNOWN")
     args = parser.parse_args()
     root = args.reports_root.resolve()
     output_dir = (args.output_dir.resolve() if args.output_dir else
                   root / "context_auto")
-    # Do not start MT5 if no local research archives exist.
-    files = candidates(root)
     mt5 = None
-    if files and not args.offline:
-        mt5 = _readonly_demo_terminal()
     try:
+        files = candidates(root)
+        if files and not args.offline:
+            mt5 = _readonly_demo_terminal()
         result = review(root, output_dir, mt5)
+    except (ValueError, TypeError, OSError, RuntimeError, KeyError,
+            zipfile.BadZipFile) as exc:
+        # The operator must receive a usable NO-GO, never a raw traceback
+        # for missing MT5, corrupt archives, unavailable history or folder.
+        result = {
+            "schema": SCHEMA,
+            "status": "AUTOMATIC_REVIEW_BLOCKED_NO_GO",
+            "problem": str(exc)[:300],
+            "archives_discovered": 0,
+            "studied_runs": 0,
+            "runs": [],
+            "skipped": [],
+            "period_conflicts": [],
+            "live": "LOCKED",
+            "validated_edge": False,
+            "can_autotune_or_promote": False,
+            "connected_orders_authorized": False,
+            "recommendation": "Review only saved historical evidence; no trade permissions.",
+        }
     finally:
         if mt5 is not None:
             mt5.shutdown()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    path = output_dir / "QTS_CONTEXT_AUTO_SUMMARY.json"
-    path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n",
-                    encoding="utf-8")
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        path = output_dir / "QTS_CONTEXT_AUTO_SUMMARY.json"
+        path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8")
+    except OSError as exc:
+        print("QTS CONTEXT NO-GO: Unable to save local summary: " + str(exc)[:180])
+        print("LIVE LOCKED | NO CONNECTED ORDERS")
+        return 2
     print("QTS HISTORICAL CONTEXT: " + result["status"])
+    if result.get("problem"):
+        print("Reason: " + result["problem"])
     for row in result["runs"]:
         print(f"  {row['period']}: {row['native_position_count']} positions; "
               f"{row['excluded_position_count']} quarantined; "
@@ -205,7 +231,6 @@ def main() -> int:
     print("Full summary: " + str(path))
     print("LIVE LOCKED | PROFITABLE EDGE NOT VALIDATED")
     return 0 if result["status"] == "DESCRIPTIVE_COMPARISON_ONLY_NOT_VALIDATED" else 2
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
