@@ -312,8 +312,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 33742,
-      "sha256": "a790b6a16a3c95ab7813ef6f8602375f06c931b5bd44c321d3f063db493d1af9"
+      "bytes": 35300,
+      "sha256": "b4bfe1379beb5d4f728e0fc98b5fa6c70c3152f672d8f6ec432d7e67df3dde95"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
@@ -657,8 +657,8 @@
     },
     {
       "path": "tests/test_v4_position_attribution.py",
-      "bytes": 9895,
-      "sha256": "7ccce43fb53194a8a4f123197cb99bfb106f8f91c999b882059a4a7a4ab50723"
+      "bytes": 11030,
+      "sha256": "818f4463bf6050bae33ceac550658b454b11762b5b603541221ccacd742e8715"
     },
     {
       "path": "tests/test_v4_post_stop_cohorts.py",
