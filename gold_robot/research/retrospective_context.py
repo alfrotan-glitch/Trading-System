@@ -81,19 +81,30 @@ def validate_evidence(forensic: dict, manifest: dict) -> None:
     _required(start < end, "Invalid test date window")
     unique = set()
     for row in forensic["trades"]:
-        _required(isinstance(row, dict)
-                  and row.get("style") in STYLES
-                  and row.get("status") == "COMPLETE"
-                  and row.get("side") in ("BUY", "SELL")
-                  and row.get("exit_reason") in ("DEAL_REASON_SL", "DEAL_REASON_TP"),
-                  "Unknown, partial, or mixed-exit broker position")
-        key = (row["style"], str(row.get("position_id")))
-        _required(key not in unique, "Duplicate native broker position")
+        _required(isinstance(row, dict), "Invalid native broker position record")
+        identity = str(row.get("position_id", "UNKNOWN"))
+        quality = row.get("status")
+        reason = row.get("exit_reason")
+        _required(row.get("style") in STYLES and row.get("side") in ("BUY", "SELL"),
+                  f"Position {identity}: unknown style or direction")
+        # The canonical broker exporter marks fully reconciled multi-exit
+        # positions COMPLETE_MULTI_EXIT. Reject incomplete, open and reversal
+        # evidence, but do NOT reject valid multi-leg exits or expert/stop-out
+        # exit causes merely because they are not a simple SL/TP.
+        _required(quality in ("COMPLETE", "COMPLETE_MULTI_EXIT"),
+                  f"Position {identity}: evidence status {quality!r}; "
+                  "incomplete/reversed broker positions cannot be studied")
+        _required(isinstance(reason, str) and
+                  (reason.startswith("DEAL_REASON_") or reason == "MIXED_EXIT_REASONS"),
+                  f"Position {identity}: invalid broker exit reason {reason!r}")
+        key = (row["style"], identity)
+        _required(identity not in ("", "None", "UNKNOWN") and key not in unique,
+                  "Missing or duplicate native broker position identity")
         unique.add(key)
         first = int(row["entry_time_msc"])
         last = int(row["exit_time_msc"])
         _required(start.timestamp() * 1000 <= first < end.timestamp() * 1000
-                  and first < last, "Native position outside manifest window")
+                  and first < last, f"Position {identity}: outside native test window")
         lots = float(row["entry_lots"])
         exit_lots = float(row["exit_lots"])
         net = float(row["net_usd"])
@@ -102,7 +113,37 @@ def validate_evidence(forensic: dict, manifest: dict) -> None:
         _required(all(math.isfinite(v) for v in (lots, exit_lots, net, gross, charges))
                   and lots > 0 and abs(lots - exit_lots) < 0.000001
                   and abs(net - gross - charges) < 0.05,
-                  "Unreconciled native broker position")
+                  f"Position {identity}: unreconciled broker position P/L or volume")
+        legs = row.get("exit_legs")
+        _required(isinstance(legs, list) and legs,
+                  f"Position {identity}: missing broker exit legs")
+        _required((quality == "COMPLETE_MULTI_EXIT") == (len(legs) > 1),
+                  f"Position {identity}: exit-leg count contradicts broker status")
+        _required((reason == "MIXED_EXIT_REASONS") ==
+                  (len({leg.get("reason") for leg in legs
+                        if isinstance(leg, dict)}) > 1),
+                  f"Position {identity}: mixed-exit attribution disagrees with legs")
+        leg_total = 0.0
+        leg_times = []
+        for leg in legs:
+            _required(isinstance(leg, dict)
+                      and isinstance(leg.get("reason"), str)
+                      and leg["reason"].startswith("DEAL_REASON_"),
+                      f"Position {identity}: invalid broker exit leg")
+            leg_lots = float(leg["lots"])
+            leg_time = int(leg["time_msc"])
+            _required(math.isfinite(leg_lots) and leg_lots > 0
+                      and first <= leg_time <= last,
+                      f"Position {identity}: invalid exit volume/time")
+            leg_total += leg_lots
+            leg_times.append(leg_time)
+        _required(abs(leg_total - exit_lots) < 0.000001
+                  and leg_times == sorted(leg_times)
+                  and leg_times[-1] == last,
+                  f"Position {identity}: incomplete or out-of-order exit evidence")
+        if reason != "MIXED_EXIT_REASONS":
+            _required(all(leg["reason"] == reason for leg in legs),
+                      f"Position {identity}: broker exit reason disagrees with legs")
 
 
 def ema(closes: list[float], period: int) -> float:
@@ -229,6 +270,11 @@ def evaluate(forensic: dict, manifest: dict, source_sha256: str, mt5=None) -> di
             "entry_lots": float(item["entry_lots"]),
             "side": item["side"],
             "exit_reason": item["exit_reason"],
+            "exit_status": item["status"],
+            "exit_leg_count": len(item["exit_legs"]),
+            "exit_category": (item["exit_reason"] if item["exit_reason"]
+                              in ("DEAL_REASON_TP", "DEAL_REASON_SL")
+                              else "BROKER_OTHER_OR_MIXED"),
             "net_usd": float(item["net_usd"]),
             "month_utc": dt.strftime("%Y-%m"),
             "utc_entry_hour": dt.hour,
@@ -249,12 +295,16 @@ def evaluate(forensic: dict, manifest: dict, source_sha256: str, mt5=None) -> di
         cohorts["style"][str(row["style"])].append(row)
         cohorts["month"][row["month_utc"] + ":style_" + str(row["style"])].append(row)
         cohorts["side"][str(row["style"]) + ":" + row["side"]].append(row)
+        cohorts["exit_category"][str(row["style"]) + ":" +
+                                 row["exit_category"]].append(row)
         if row["market"]["status"] == "COMPLETE_CLOSED_BAR_AND_BID_ASK":
             for dim in ("h1_alignment", "spread_atr_band", "atr_band"):
                 cohorts[dim][str(row["style"]) + ":" + row[dim]].append(row)
             cohorts["utc_hour"][str(row["style"]) + ":" +
                                 str(row["utc_entry_hour"])].append(row)
     complete = sum(r["market"]["status"] == "COMPLETE_CLOSED_BAR_AND_BID_ASK" for r in rows)
+    unusual = sum(r["exit_category"] == "BROKER_OTHER_OR_MIXED" for r in rows)
+    multi = sum(r["exit_status"] == "COMPLETE_MULTI_EXIT" for r in rows)
     return {
         "schema": SCHEMA,
         "status": ("DESCRIPTIVE_ONLY_REVIEW_REQUIRED" if complete == len(rows)
@@ -266,6 +316,9 @@ def evaluate(forensic: dict, manifest: dict, source_sha256: str, mt5=None) -> di
         "test_period": [manifest["from_date"], manifest["to_date"]],
         "complete_market_snapshots": complete,
         "total_positions": len(rows),
+        "complete_multi_exit_positions": multi,
+        "other_or_mixed_exit_positions": unusual,
+        "exit_cause_warning": "Mixed, manual, expert and stop-out exits remain separate; do not infer a stopped or TP trade from their net profit.",
         "cohorts": {dim: {key: _cohort(value) for key, value in sorted(groups.items())}
                     for dim, groups in sorted(cohorts.items())},
         "positions": rows,
