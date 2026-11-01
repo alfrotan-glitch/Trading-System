@@ -99,8 +99,9 @@ def test_policy_and_ea_source_are_immutable_in_same_registration(tmp_path):
 
 def test_duplicate_same_bar_candidate_is_no_go(tmp_path):
     reports, signals, ea = fresh(tmp_path)
-    append_native(signals, at=START + 65)
-    append_native(signals, at=START + 66)
+    bar = START - 900
+    append_native(signals, at=START + 65, bar=bar)
+    append_native(signals, at=START + 66, bar=bar)
     out = review(reports, signals, ea, now_utc_s=START + 150)
     assert out["status"] == "EVIDENCE_GAPS_NO_GO"
     assert len(out["evidence_gaps"]) == 1
