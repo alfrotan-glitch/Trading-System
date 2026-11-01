@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from pathlib import Path
 
 from ablate_revised_variants import verify_original_report
@@ -120,7 +120,16 @@ def load_native(root: Path, expected_variant: str, as_of: date) -> dict:
     if (totals["positions"] != int(row["trades"]) or
         abs(totals["recorded_net_usd"] - finite(row["net_usd"], "net")) > 0.02):
         raise InvalidEvidence("Native broker deals conflict with MT5 HTML report")
+    first_ms = int(datetime.combine(a, time.min, tzinfo=timezone.utc).timestamp() * 1000)
+    final_ms = int(datetime.combine(b, time.min, tzinfo=timezone.utc).timestamp() * 1000)
     for position in positions:
+        try:
+            entry_ms = int(position["open"]["time_msc"])
+            exit_ms = int(position["close"]["time_msc"])
+        except (TypeError, ValueError, KeyError) as exc:
+            raise InvalidEvidence("Malformed UTC broker timestamp") from exc
+        if not (first_ms <= entry_ms <= exit_ms < final_ms):
+            raise InvalidEvidence("Deal timestamps outside claimed native month")
         if (position["open"]["type"] not in ("DEAL_TYPE_BUY", "DEAL_TYPE_SELL") or
             position["close"]["type"] not in ("DEAL_TYPE_BUY", "DEAL_TYPE_SELL") or
             finite(position["open"]["sl"], "SL") <= 0 or
@@ -142,8 +151,11 @@ def load_native(root: Path, expected_variant: str, as_of: date) -> dict:
     }
 
 
-def audit(pairs: list[tuple[Path, Path]], *, as_of: date) -> dict:
+def audit(pairs: list[tuple[Path, Path]], *, as_of: date,
+          target_capital_usd: float = 200.0) -> dict:
     """Defensive acceptance diagnostic; positive research never unlocks LIVE."""
+    if not math.isfinite(target_capital_usd) or target_capital_usd <= 0:
+        raise ValueError("target capital must be a finite positive USD amount")
     problems = []
     month_results = []
     used_periods = set()
@@ -205,12 +217,17 @@ def audit(pairs: list[tuple[Path, Path]], *, as_of: date) -> dict:
         blockers.append("NO_POSITIVE_AFTER_COST_STRESS_CANDIDATE_EXPECTANCY")
     if month_results and candidate_sums <= baseline_sums:
         blockers.append("V3_NOT_BETTER_THAN_MATCHED_BASELINE_AFTER_STRESS")
+    if month_results and any(row["v3"]["deposit_usd"] != target_capital_usd
+                             for row in month_results):
+        blockers.append("REAL_CAPITAL_SIZE_NOT_REPLAYED_WITH_BROKER_MINIMUM_LOT")
     if month_results and (candidate_drawdown_peak > 0.10 * month_results[-1]["v3"]["deposit_usd"]):
         blockers.append("NATIVE_EQUITY_DRAWDOWN_EXCEEDS_RESEARCH_TOLERANCE")
     # The point of this gate is NEVER a machine-generated release token.
     return {
         "schema": SCHEMA,
         "as_of": as_of.isoformat(),
+        "target_capital_usd": target_capital_usd,
+        "capital_sizing_qualified": False,
         "capital_decision": "DO_NOT_ENTRUST_REAL_CAPITAL",
         "live": "LOCKED",
         "edge_validated": False,
@@ -242,13 +259,15 @@ def main() -> int:
                         metavar=("BASELINE_FOLDER", "V3_FOLDER"), default=[])
     parser.add_argument("--as-of", default=datetime.now(timezone.utc).date().isoformat(),
                         help="UTC YYYY-MM-DD for deterministic completed-month checks")
+    parser.add_argument("--capital", type=float, default=200.0,
+                        help="Target real-capital USD; comparing a $3000 tester to $200 is not qualification")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
         as_of = date.fromisoformat(args.as_of)
     except ValueError as exc:
         parser.error("Invalid --as-of date: " + str(exc))
-    result = audit(args.pair, as_of=as_of)
+    result = audit(args.pair, as_of=as_of, target_capital_usd=args.capital)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(f"QTS CAPITAL DECISION: {result['capital_decision']}; "
