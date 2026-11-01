@@ -247,6 +247,8 @@ def main() -> int:
     cmd = p.add_subparsers(dest="command", required=True)
     f = cmd.add_parser("freeze")
     f.add_argument("--reflection", type=Path, required=True)
+    f.add_argument("--native-attribution", type=Path, required=True,
+                   help="Exact original broker attribution file whose SHA256 the reflection attests")
     f.add_argument("--style", type=int, required=True)
     f.add_argument("--regime", required=True)
     f.add_argument("--checkpoint", type=int, required=True)
@@ -269,6 +271,14 @@ def main() -> int:
     raw = a.manifest.read_bytes()
     if a.command == "freeze":
         reflection = json.loads(a.reflection.read_text(encoding="utf-8-sig"))
+        native_bytes = a.native_attribution.read_bytes()
+        if (reflection.get("read_only_native_attribution_sha256") != digest(native_bytes)):
+            raise ValueError("Ten-trade lesson does not match its original native broker attribution")
+        original = json.loads(native_bytes.decode("utf-8-sig"))
+        native_positions = validate_positions(original)
+        if (reflection.get("native_completed_positions") != len(native_positions) or
+            reflection.get("complete_checkpoints") != len(native_positions)//10):
+            raise ValueError("Ten-trade reflection count differs from original native positions")
         plan = freeze(reflection, raw, style=a.style, regime=a.regime, checkpoint=a.checkpoint,
                       from_date=a.from_date, to_date=a.to_date)
         save_json(a.output, plan)
