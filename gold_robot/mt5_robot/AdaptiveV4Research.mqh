@@ -108,6 +108,7 @@ bool V4ExportDiagnostics()
    // Independently verify the parameters the MT5 engine ACTUALLY used.
    FileWrite(file,"INPUT",7,"EntryStyle",(int)EntryStyle);
    FileWrite(file,"INPUT",7,"SignalTimeframe",(int)SignalTimeframe);
+   FileWrite(file,"INPUT",7,"RewardToRisk",DoubleToString(RewardToRisk,2));
    FileWrite(file,"INPUT",7,"EnableDemoOrders",(int)EnableDemoOrders);
    FileWrite(file,"INPUT",7,"TesterUseMarketContextV3",(int)TesterUseMarketContextV3);
    FileWrite(file,"INPUT",7,"TesterUseAdaptiveRouterV4",(int)TesterUseAdaptiveRouterV4);
