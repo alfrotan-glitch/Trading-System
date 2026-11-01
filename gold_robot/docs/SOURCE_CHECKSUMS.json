@@ -521,6 +521,11 @@
       "sha256": "fbf68e478225d695e29ebac26cce0c09ad95b9c88d4b4acf949a6c7e4b5e69e7"
     },
     {
+      "path": "research/verify_stop_causality_gate.py",
+      "bytes": 12800,
+      "sha256": "c261872345ce7d77120e17acd57b2aaff9b316b669765489ebd4dbb0638ac38f"
+    },
+    {
       "path": "tests/ReceiptSelftest.mq5",
       "bytes": 1005,
       "sha256": "793293feef8ead8436456fd2398745776bd4b0f60268415b8be5e5babf8858ca"
@@ -629,6 +634,11 @@
       "path": "tests/test_small_account_risk.py",
       "bytes": 1373,
       "sha256": "703c28cbc05039184c8be8c8acb612541ba4e9e2206a41faf7b030d7d6e0786c"
+    },
+    {
+      "path": "tests/test_stop_causality_gate.py",
+      "bytes": 5859,
+      "sha256": "c82c4421d4d672e7f85d78a5b34bdd79322931fa639e4f25114b2fa189150998"
     },
     {
       "path": "tests/test_stop_failure_paths.py",
