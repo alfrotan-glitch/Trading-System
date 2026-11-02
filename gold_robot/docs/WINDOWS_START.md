@@ -162,6 +162,22 @@ gold_robot/reports_local/forward_shadow/
 - QTS_FORWARD_SHADOW_V2_REPORT.json: genuine native signals and beacon checks
 - QTS_FORWARD_SHADOW_V2_QUOTE_PATHS.json: descriptive 60-minute quote excursions
 
+The supervisor now treats both child report exit codes and the JSON status as
+authoritative: an analyst NO-GO is `FORWARD_ANALYSIS_BLOCKED_NO_GO`, not a
+successful report cycle. The saved status includes both analyst errors/reasons
+and return codes. If there are no mature native signals, the quote-path tool
+does **not** initialize a separate MT5 API session just to report "waiting".
+
+When canonical EA source changes after a prior frozen study, the original
+study and root reports are archived under `legacy_epochs/<old-source-sha>/`.
+A fresh versioned prospective cohort is created under
+`epochs/<new-source-sha>/`; the active top-level reports state which cohort
+they represent. The old UTC freeze and its observations are never silently
+reused as future observations. A corrupted original freeze remains NO-GO.
+The supervisor also checks the installed EA source hash against the current
+canonical source; a previously running stale binary cannot be silently
+reclassified as current evidence.
+
 Only post-registration signals count. The native ATR uses the mean of 14
 true ranges and median of 48 prior readings, consistent with the historical
 forensics; V1 and V2 CSV files are not mixed. At most the latest 64 events
