@@ -84,6 +84,15 @@ $dualHash = (Get-FileHash -LiteralPath $dual -Algorithm SHA256).Hash
 if ($dualHash.ToUpperInvariant() -ne ([string]$dualRows[0].sha256).ToUpperInvariant()) {
     throw 'Dual-strategy research source checksum mismatch.'
 }
+$ledger = Join-Path $PSScriptRoot 'DualOpportunityLedger.mqh'
+$ledgerRows = @($manifest.sha256_files | Where-Object { $_.path -eq 'mt5_robot/DualOpportunityLedger.mqh' })
+if ($ledgerRows.Count -ne 1 -or -not (Test-Path -LiteralPath $ledger -PathType Leaf)) {
+    throw 'Missing native dual opportunity ledger or canonical fingerprint.'
+}
+$ledgerHash = (Get-FileHash -LiteralPath $ledger -Algorithm SHA256).Hash
+if ($ledgerHash.ToUpperInvariant() -ne ([string]$ledgerRows[0].sha256).ToUpperInvariant()) {
+    throw 'Dual opportunity ledger source checksum mismatch.'
+}
 $v4 = Join-Path $PSScriptRoot 'AdaptiveV4Research.mqh'
 $v4Rows = @($manifest.sha256_files | Where-Object { $_.path -eq 'mt5_robot/AdaptiveV4Research.mqh' })
 if ($v4Rows.Count -ne 1 -or -not (Test-Path -LiteralPath $v4 -PathType Leaf)) {
@@ -222,6 +231,7 @@ $destAdaptive = Join-Path $experts 'AdaptiveResearch.mqh'
 $destContextV3 = Join-Path $experts 'MarketContextV3.mqh'
 $destV4 = Join-Path $experts 'AdaptiveV4Research.mqh'
 $destDual = Join-Path $experts 'DualResearch.mqh'
+$destLedger = Join-Path $experts 'DualOpportunityLedger.mqh'
 $destSmc = Join-Path $experts 'SmcResearch.mqh'
 $destScalp = Join-Path $experts 'ScalpResearch.mqh'
 $log = Join-Path $experts 'QTS_Gold_Robot.log'
@@ -236,12 +246,14 @@ $backupAdaptive = Join-Path $backupDir ($stamp + '_AdaptiveResearch.mqh')
 $backupContextV3 = Join-Path $backupDir ($stamp + '_MarketContextV3.mqh')
 $backupV4 = Join-Path $backupDir ($stamp + '_AdaptiveV4Research.mqh')
 $backupDual = Join-Path $backupDir ($stamp + '_DualResearch.mqh')
+$backupLedger = Join-Path $backupDir ($stamp + '_DualOpportunityLedger.mqh')
 $backupSmc = Join-Path $backupDir ($stamp + '_SmcResearch.mqh')
 $backupScalp = Join-Path $backupDir ($stamp + '_ScalpResearch.mqh')
 $hadAdaptive = Test-Path -LiteralPath $destAdaptive -PathType Leaf
 $hadContextV3 = Test-Path -LiteralPath $destContextV3 -PathType Leaf
 $hadV4 = Test-Path -LiteralPath $destV4 -PathType Leaf
 $hadDual = Test-Path -LiteralPath $destDual -PathType Leaf
+$hadLedger = Test-Path -LiteralPath $destLedger -PathType Leaf
 $hadSmc = Test-Path -LiteralPath $destSmc -PathType Leaf
 $hadScalp = Test-Path -LiteralPath $destScalp -PathType Leaf
 $hadOpportunity = Test-Path -LiteralPath $destOpportunity -PathType Leaf
@@ -251,7 +263,7 @@ $hadSource = Test-Path -LiteralPath $dest -PathType Leaf
 $hadEX5 = Test-Path -LiteralPath $compiled -PathType Leaf
 $completed = $false
 
-if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity -or $hadAdaptive -or $hadContextV3 -or $hadV4 -or $hadDual -or $hadSmc -or $hadScalp) {
+if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity -or $hadAdaptive -or $hadContextV3 -or $hadV4 -or $hadDual -or $hadLedger -or $hadSmc -or $hadScalp) {
     New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
     if ($hadSource) { Copy-Item -LiteralPath $dest -Destination $backupSource }
     if ($hadEX5) { Copy-Item -LiteralPath $compiled -Destination $backupEX5 }
@@ -262,6 +274,7 @@ if ($hadSource -or $hadEX5 -or $hadPolicy -or $hadStructure -or $hadOpportunity 
     if ($hadContextV3) { Copy-Item -LiteralPath $destContextV3 -Destination $backupContextV3 }
     if ($hadV4) { Copy-Item -LiteralPath $destV4 -Destination $backupV4 }
     if ($hadDual) { Copy-Item -LiteralPath $destDual -Destination $backupDual }
+    if ($hadLedger) { Copy-Item -LiteralPath $destLedger -Destination $backupLedger }
     if ($hadSmc) { Copy-Item -LiteralPath $destSmc -Destination $backupSmc }
     if ($hadScalp) { Copy-Item -LiteralPath $destScalp -Destination $backupScalp }
 }
@@ -277,6 +290,7 @@ try {
     Copy-Item -LiteralPath $contextV3 -Destination $destContextV3 -Force
     Copy-Item -LiteralPath $v4 -Destination $destV4 -Force
     Copy-Item -LiteralPath $dual -Destination $destDual -Force
+    Copy-Item -LiteralPath $ledger -Destination $destLedger -Force
     Copy-Item -LiteralPath $smc -Destination $destSmc -Force
     Copy-Item -LiteralPath $scalp -Destination $destScalp -Force
     Copy-Item -LiteralPath $source -Destination $dest -Force
@@ -348,6 +362,9 @@ try {
     if ((Get-FileHash -LiteralPath $destV4 -Algorithm SHA256).Hash -ne $v4Hash) {
         throw 'V4 adaptive router source changed during compilation.'
     }
+    if ((Get-FileHash -LiteralPath $destLedger -Algorithm SHA256).Hash -ne $ledgerHash) {
+        throw 'Dual opportunity ledger source changed during compilation.'
+    }
     if ((Get-FileHash -LiteralPath $destSmc -Algorithm SHA256).Hash -ne $smcHash) {
         throw 'SMC research include changed during compilation.'
     }
@@ -372,6 +389,11 @@ try {
     Write-Host 'No validated trading advantage; real-money trading is refused.'
 } finally {
     if (-not $completed) {
+        if ($hadLedger -and (Test-Path -LiteralPath $backupLedger -PathType Leaf)) {
+            Copy-Item -LiteralPath $backupLedger -Destination $destLedger -Force
+        } elseif (Test-Path -LiteralPath $destLedger -PathType Leaf) {
+            Remove-Item -LiteralPath $destLedger -Force
+        }
         if ($hadDual -and (Test-Path -LiteralPath $backupDual -PathType Leaf)) {
             Copy-Item -LiteralPath $backupDual -Destination $destDual -Force
         } elseif (Test-Path -LiteralPath $destDual -PathType Leaf) {
