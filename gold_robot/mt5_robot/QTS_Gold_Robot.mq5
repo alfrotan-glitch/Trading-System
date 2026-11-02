@@ -955,6 +955,7 @@ void LatchExecutionHalt(const string reason)
 
 #include "AdaptiveV4Research.mqh"
 #include "DualResearch.mqh"
+#include "DualOpportunityLedger.mqh"
 
 // Only called under the atomic cross-chart entry mutex.
 void EvaluateNewEntry()
@@ -1751,6 +1752,11 @@ int OnInit()
       audit_file=StringFormat("QTS_tester_deals_%I64u.csv",GetTickCount64());
    if(!ReconcileBrokerDealAudit())
       LatchExecutionHalt("restart deal history reconciliation failed");
+   if(!QtsOpenDualOpportunityLedger())
+     {
+      Print("QTS DUAL NO_GO: native opportunity ledger could not be initialized");
+      return INIT_FAILED;
+     }
    broker_was_connected=(bool)TerminalInfoInteger(TERMINAL_CONNECTED);
    if(MQLInfoInteger(MQL_TESTER)!=0)
       status_text=EnableDemoOrders ? "Strategy Tester research enabled" :
@@ -1928,6 +1934,16 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
 double OnTester()
   {
    if(MQLInfoInteger(MQL_TESTER)==0) return 0.0;
+   if(TesterDualStrategyMode>0)
+     {
+      QtsCloseDualOpportunityLedger();
+      PrintFormat("QTS DUAL OPPORTUNITY: bars=%I64d rows=%I64d fault=%d file=%s",
+                  qts_opportunity_bars,qts_opportunity_rows,(int)qts_opportunity_fault,
+                  qts_opportunity_filename);
+      if(qts_opportunity_fault || qts_opportunity_bars<=0 ||
+         qts_opportunity_rows!=2*qts_opportunity_bars)
+         Print("QTS DUAL OPPORTUNITY NO_GO: incomplete native ledger");
+     }
    // Decision-stage evidence is exported even if there are ZERO broker deals.
    // The absence of a deal must never be confused with a profitable strategy.
    if(!V4ExportDiagnostics())
@@ -1999,6 +2015,7 @@ double OnTester()
 
 void OnDeinit(const int reason)
   {
+   QtsCloseDualOpportunityLedger();
    EventKillTimer();
    // Removing/restarting the EA is not authorization to leave a new order
    // resting indefinitely; server expiry remains primary if offline.
@@ -2214,6 +2231,9 @@ void OnTick()
       if(MQLInfoInteger(MQL_TESTER)!=0 && TesterUseAdaptiveRouterV4)
          status_text="ENTRY_AUDIT_PENDING";
       ConsiderNewEntry();
+      // Observer runs AFTER the existing decision. It cannot cause an order
+      // or change the frozen decision for this closed M15 bar.
+      QtsObserveDualOpportunities(closed,status_text);
       V4RecordClosedBarDecision(status_text);
       ObserveUnarmedDemoSignal();
       // Closed-bar diagnostics also work on WMMarkets connected DEMO.
