@@ -737,8 +737,8 @@
     },
     {
       "path": "tests/test_post_fill_safety_audit.py",
-      "bytes": 8867,
-      "sha256": "550239ffb79128c1f29bf17b856267bb317a19890d477167bcc9eb51d6f14ace"
+      "bytes": 9368,
+      "sha256": "b361e87ad93b1df659f1c6f01e577d949a2bb3639333e4e208b8de97fbb097d4"
     },
     {
       "path": "tests/test_post_stop_replay.py",
