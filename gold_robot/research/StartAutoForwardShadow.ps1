@@ -8,6 +8,9 @@ $repo=Split-Path -Parent $gold
 $out=Join-Path $gold 'reports_local\forward_shadow'
 $report=Join-Path $out 'QTS_FORWARD_AUTO_STATUS.json'
 $start=(Get-Date).ToUniversalTime()
+# One Windows logon session may own one read-only Shadow supervisor.
+$lock=New-Object System.Threading.Mutex($false,'Local\QTS_DEMO_FORWARD_SHADOW_SUPERVISOR')
+if(-not $lock.WaitOne(0)){Write-Host 'QTS Shadow is already running; no second process needed.';exit 0}
 New-Item -Path $out -ItemType Directory -Force|Out-Null
 function Save([string]$status,[string]$reason,[hashtable]$facts=@{}){
     $obj=[ordered]@{
@@ -121,7 +124,7 @@ try{
           'EnableEntryDiagnostics=true',
           'ResetExecutionHalt=false',
           'EmergencyFlattenOwned=false'
-        )|Set-Content -LiteralPath $preset -Encoding ASCII
+        )|Set-Content -LiteralPath $preset -Encoding Unicode
         $config=Join-Path $out 'QTS_ForwardShadow_Auto.ini'
         @(
           '[Experts]','AllowLiveTrading=0','AllowDllImport=0','Enabled=1',
@@ -129,7 +132,7 @@ try{
           '[StartUp]','Expert=QTS_Gold_Robot',
           'ExpertParameters=QTS_ForwardShadow_Auto.set',
           'Symbol=XAUUSD@','Period=M15'
-        )|Set-Content -LiteralPath $config -Encoding ASCII
+        )|Set-Content -LiteralPath $config -Encoding Unicode
         $arg='/config:"{0}"' -f $config
         Start-Process -FilePath $target.terminal -ArgumentList $arg|Out-Null
         Save 'START_REQUESTED_NOT_YET_VERIFIED' 'Waiting for a verified native DEMO heartbeat.'
@@ -182,4 +185,6 @@ try{
 }catch{
     Save 'AUTO_FORWARD_BLOCKED_NO_GO' ([string]$_.Exception.Message)
     exit 2
+}finally{
+    if($lock){$lock.ReleaseMutex();$lock.Dispose()}
 }
