@@ -138,7 +138,7 @@ def test_mql5_compile_regression_reserved_identifier_not_parameter():
     import re
     ledger=(GOLD/"mt5_robot/DualOpportunityLedger.mqh").read_text(encoding="utf-8")
     assert "QtsOpportunityCsvSafe(const string raw_text)" in ledger
-    assert not re.search(r"\\bconst\\s+string\\s+input\\b", ledger)
+    assert not re.search(r"\bconst\s+string\s+input\b", ledger)
     assert "string cleaned=raw_text;" in ledger
 
 
