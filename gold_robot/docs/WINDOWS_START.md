@@ -43,6 +43,49 @@ This is a research screen; previously examined months are NOT an untouched
 holdout. A fresh out-of-sample/forward period is required before selecting
 the strongest strategy.
 
+## Two-strategy research — one shared risk book
+
+QTS has two new **OFF-by-default Strategy Tester-only** dual-signal
+hypotheses under existing EntryStyle **7** (`TesterDualStrategyMode`):
+
+- `1` / `DUAL_BOTH`: evaluate *Retest* (Style 1) and
+  *Sweep/Reclaim* (Style 3) independently for either BUY or SELL, at each
+  closed M15 bar.
+- `2` / `DUAL_DIRECTIONAL`: consider **Retest BUY only** and
+  **Sweep SELL only**. This was proposed after examining the May–October
+  results; it is an exploratory **post-hoc** hypothesis, NOT a verified
+  edge or a strategy ready for deployment.
+- `0` (default): preserve every pre-existing EA mode unchanged.
+
+This is **multi-strategy scanning and conditional selection** inside a
+single EA, NOT a claim that two independent positions will be opened at
+the same time. When both candidates are independently executable on the
+same closed bar, the router **ABSTAINS** rather than secretly optimizing
+the tie or opening correlated positions. When exactly one passes, it
+retains the original signal geometry and order comment tagging
+`QTS-DUAL-M*-S*`, then applies all existing account/symbol/order
+conflict checks, stop, lot, margin, broker check, risk latches and
+pending-order expiry. The new mode is refused outside native M15
+Strategy Tester and cannot combine with V2/V3/V4/V5 optional changes.
+
+For a two-arm native experiment choose option **9** in
+`START_HERE.bat`, or double-click `QTS_DUAL_RESEARCH.bat` after
+updating and fully verifying installation. The runner performs both
+separate `EntryStyle=7` native studies with the same date, WMMarkets
+real-tick engine, USD 3,000 simulated deposit and original risk policy.
+It produces separate evidence in
+`gold_robot/reports_local/dual_research/<timestamp>/DUAL_BOTH` and
+`DUAL_DIRECTIONAL`. Each native report must verify
+`TesterDualStrategyMode` and `EntryStyle=7`; an unverified native
+input is NO-GO. **Never add their PnL** or compare the sum of two
+separately run strategies against a real combined portfolio.
+
+The MQL include is subject to fresh local MetaEditor compilation and
+compiler-log verification. CI's offline Windows smoke does NOT prove
+broker compilation. Do not claim an approved strategy until independent
+unseen chronological native tests, commission/slippage stress and
+realistic small-account lot/margin constraints pass. REAL stays locked.
+
 ## Immediate owner verdict — no waiting, no trading
 
 From `START_HERE.bat` choose **8**, or double-click
