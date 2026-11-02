@@ -77,8 +77,8 @@
     },
     {
       "path": "docs/DUAL_STRATEGY_SELECTION_PROTOCOL.md",
-      "bytes": 3891,
-      "sha256": "e09464d5cc1dc8a9b6bccfbfe7f2fc5c558b9eb06820d5147773989f7b1c811d"
+      "bytes": 4848,
+      "sha256": "c32e8959b9aa0240852ae6d6440b62f5f19bb2374b536eed1d08a8336c1cdb35"
     },
     {
       "path": "docs/ENGINEERING_AUDIT.md",
@@ -412,8 +412,8 @@
     },
     {
       "path": "research/compare_dual_modes.py",
-      "bytes": 8267,
-      "sha256": "16be1f90e087708a90114e3bce162d7cd2eb6198e3822c020647d393be997fdf"
+      "bytes": 8209,
+      "sha256": "bf0312d1474fb2e2b9798576ae95e5781f22453890b556d5f9482d7b8a15cda1"
     },
     {
       "path": "research/compare_revised_variants.py",
@@ -647,8 +647,8 @@
     },
     {
       "path": "tests/test_compare_dual_modes.py",
-      "bytes": 4323,
-      "sha256": "d6e5aa60da99b838afa82f7f234caa2b0b6ef4b044e13c68bcf031ec345c7792"
+      "bytes": 4747,
+      "sha256": "10f39f9b4ddaa21ba88b72f5660d8ddc0bf5518af182b7227e00eac08e55ec28"
     },
     {
       "path": "tests/test_dual_atr_market_audit.py",
