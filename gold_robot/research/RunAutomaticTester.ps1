@@ -425,6 +425,44 @@ try{
                     $item.status='REPORT_AND_FORENSICS_SAVED'
                     $item.detail='Fresh report and broker deal evidence saved; costs and profitability remain unverified.'
                 }
+                if($ResearchVariant -in @('DUAL_BOTH','DUAL_DIRECTIONAL') -and $i -eq 7){
+                    # Native observation is required in ADDITION to fills.
+                    # Source: MQL5 tester FILE_COMMON, not a simulated Python signal.
+                    $opportunities=@(Get-ChildItem -LiteralPath $common -Filter 'QTS_DUAL_OPPORTUNITY_STYLE_7_*.csv' -File -ErrorAction SilentlyContinue |
+                        Where-Object {$_.LastWriteTimeUtc -ge $began.AddSeconds(-2)})
+                    if($opportunities.Count -ne 1){
+                        $item.status='DUAL_OPPORTUNITY_MISSING_NO_GO'
+                        $item.detail='Dual tester did not produce exactly one fresh native opportunity CSV.'
+                    }else{
+                        $nativeOpportunity=Join-Path $native 'QTS_7_opportunities.csv'
+                        Copy-Item -LiteralPath $opportunities[0].FullName -Destination $nativeOpportunity
+                        $verify=Join-Path $gold 'research\verify_dual_opportunity.py'
+                        $summary=Join-Path $OutputDirectory 'QTS_DUAL_OPPORTUNITY_SUMMARY.json'
+                        $py=Get-Command py -ErrorAction SilentlyContinue
+                        if($py){
+                            & $py.Source -3 $verify --input $nativeOpportunity --mode $dualMode --output $summary
+                        }else{
+                            $py=Get-Command python -ErrorAction SilentlyContinue
+                            if(-not $py){throw 'Python 3 required for native opportunity evidence verification.'}
+                            & $py.Source $verify --input $nativeOpportunity --mode $dualMode --output $summary
+                        }
+                        $verifyCode=$LASTEXITCODE
+                        if($verifyCode -ne 0 -or -not (Test-Path -LiteralPath $summary -PathType Leaf)){
+                            $item.status='DUAL_OPPORTUNITY_INVALID_NO_GO'
+                            $item.detail='Native opportunity ledger could not be verified; open QTS_DUAL_OPPORTUNITY_SUMMARY.json.'
+                        }else{
+                            $facts=Get-Content -LiteralPath $summary -Raw | ConvertFrom-Json
+                            if($facts.status -ne 'NATIVE_OPPORTUNITIES_VERIFIED_RESEARCH_ONLY' -or
+                               $facts.live -ne 'LOCKED' -or $facts.edge_validated -ne $false -or
+                               [int]$facts.rows -ne 2*[int]$facts.bars -or [int]$facts.bars -le 0){
+                                $item.status='DUAL_OPPORTUNITY_INVALID_NO_GO'
+                                $item.detail='Native opportunities failed coverage or safety invariant.'
+                            }else{
+                                $item.detail+=(' Both strategies observed for '+$facts.bars+' closed bars. No missed-fill profitability inference.')
+                            }
+                        }
+                    }
+                }
                 if($ResearchVariant -in @('ADAPTIVE_V4','ADAPTIVE_V5_VETO') -and $i -eq 7){
                     # Native agent evidence: decision counts exist even when no
                     # entry order was ever placed. Never mistake a header-only
