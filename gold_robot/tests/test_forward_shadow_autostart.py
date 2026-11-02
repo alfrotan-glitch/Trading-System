@@ -10,6 +10,8 @@ MQL = ROOT / "gold_robot" / "mt5_robot" / "QTS_Gold_Robot.mq5"
 PS1 = ROOT / "gold_robot" / "research" / "StartAutoForwardShadow.ps1"
 BAT = ROOT / "QTS_AUTO_FORWARD.bat"
 MENU = ROOT / "START_HERE.bat"
+REFRESH = ROOT / "gold_robot" / "research" / "RefreshAutoForwardShadow.ps1"
+REFRESH_BAT = ROOT / "QTS_REFRESH_FORWARD.bat"
 
 
 def test_one_chart_dual_style_is_disabled_by_default_and_permanently_unarmed():
@@ -88,6 +90,28 @@ def test_permanent_no_go_stops_bounded_retries_without_touching_mt5():
     blocked, healthy = loop.split("}else{", 1)
     assert "QTS_Demo_Shadow" not in blocked
     assert "QTS_Demo_Shadow" in healthy
+
+
+def test_refresh_helper_only_targets_exact_qts_reporting_script():
+    source = REFRESH.read_text("utf-8")
+    bat = REFRESH_BAT.read_text("utf-8")
+    assert "RefreshAutoForwardShadow.ps1" in bat
+    assert "StartAutoForwardShadow.ps1" in source
+    assert "[regex]::Escape($supervisor)" in source
+    assert 'Stop-Process -Id $processes[0].ProcessId -Force' in source
+    assert "$processes.Count -gt 1" in source
+    assert "Get-CimInstance Win32_Process" in source
+    assert "pull --ff-only origin main" in source
+    assert "MAIN_REQUIRED_NO_GO" in source
+    assert "STATIC_CHECK_OK_NOT_RUNNING" in source
+    assert "REFRESH_REQUESTED_NOT_YET_VERIFIED" in source
+    assert "Start-Process -FilePath $launcher" in source
+    assert "Stop-Process -Name terminal64" not in source
+    assert "taskkill" not in source.lower()
+    assert "Read-Host" not in source
+    assert "Get-Credential" not in source
+    assert "order_send(" not in source
+    assert "OrderSend(" not in source
 
 
 def test_one_click_and_control_panel_do_not_request_manual_chart_or_zip():
