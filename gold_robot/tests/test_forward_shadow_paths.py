@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -165,6 +166,21 @@ def test_bounded_review_processes_newest_not_stuck_on_first_64(tmp_path):
     assert out["quote_paths_complete_by_gap_heuristic"] == 64
     assert out["status"] == "QUOTE_PATHS_UNKNOWN_NO_GO"
     assert out["post_signal_price_paths"][-1]["signal_event_utc_s"] == START + 60 + 65 * 900
+
+
+def test_no_signals_produces_waiting_report_without_terminal(tmp_path, monkeypatch):
+    import forward_shadow_paths as module
+
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.setattr(module, "_demo_terminal",
+                        lambda: (_ for _ in ()).throw(RuntimeError("Unexpected broker call")))
+    monkeypatch.setattr(sys, "argv", ["forward_shadow_paths.py",
+                                      "--report-dir", str(tmp_path / "reports")])
+    assert module.main() == 0
+    result = json.loads((tmp_path / "reports" /
+                         "QTS_FORWARD_SHADOW_V2_QUOTE_PATHS.json").read_text("utf-8"))
+    assert result["status"] == "WAITING_FOR_NEW_NATIVE_SIGNALS"
+    assert result["validated_edge"] is False
 
 
 def test_quote_path_source_is_read_only():
