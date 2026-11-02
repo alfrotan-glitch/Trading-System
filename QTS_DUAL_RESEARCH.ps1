@@ -81,7 +81,14 @@ finally {
     } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $summary -Encoding UTF8
     Write-Host ('QTS DUAL STATUS: '+$summary)
 }
-if($state -eq 'FAILED_NO_GO'){exit 2}
+if($state -eq 'FAILED_NO_GO'){
+    if(-not $PrepareOnly){
+        # Even a failed audit must be visible. Never hide a diagnostic folder.
+        try { Start-Process -FilePath $folder -ErrorAction Stop }
+        catch { Write-Warning ('Open diagnostic folder manually: '+$folder) }
+    }
+    exit 2
+}
 if(-not $PrepareOnly){
     $html=Join-Path $folder 'QTS_DUAL_EVIDENCE_AUDIT.html'
     if(Test-Path -LiteralPath $html -PathType Leaf){
