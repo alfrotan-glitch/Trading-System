@@ -217,8 +217,8 @@
     },
     {
       "path": "mt5_robot/DualResearch.mqh",
-      "bytes": 7361,
-      "sha256": "2c29d93543fcb020ce1a0b4917405b5c74aa36ead4691fcf0d80b06ae008d5af"
+      "bytes": 8348,
+      "sha256": "882b6d30ec2abf504635636f27a71e8cf8684ae2c2a8ecc8aa5a22388a725196"
     },
     {
       "path": "mt5_robot/ExecutionPolicy.mqh",
@@ -412,8 +412,8 @@
     },
     {
       "path": "research/compare_dual_modes.py",
-      "bytes": 8209,
-      "sha256": "bf0312d1474fb2e2b9798576ae95e5781f22453890b556d5f9482d7b8a15cda1"
+      "bytes": 8444,
+      "sha256": "f3ad8f75e2d28266d8536cb410fb1597dfafa17b181461ea35a7ab736fae13ed"
     },
     {
       "path": "research/compare_revised_variants.py",
@@ -647,8 +647,8 @@
     },
     {
       "path": "tests/test_compare_dual_modes.py",
-      "bytes": 4747,
-      "sha256": "10f39f9b4ddaa21ba88b72f5660d8ddc0bf5518af182b7227e00eac08e55ec28"
+      "bytes": 5288,
+      "sha256": "4fc73f5549e84cdb34c3c4889be1669d74ebef1ab61d70bf8bef4b99367bb3b8"
     },
     {
       "path": "tests/test_dual_atr_market_audit.py",
@@ -672,8 +672,8 @@
     },
     {
       "path": "tests/test_dual_research.py",
-      "bytes": 5281,
-      "sha256": "8dacb9d6668194fe1d23fdab07d9f1222d1ad8060c6fd88520eb28f4ec314496"
+      "bytes": 5809,
+      "sha256": "a522f2ffe962ae31aa47ac8d94de9034cf2678d0a1600c273976ca906acbc231"
     },
     {
       "path": "tests/test_edge_gate.py",
