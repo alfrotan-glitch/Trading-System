@@ -1630,8 +1630,7 @@ int OnInit()
       return INIT_PARAMETERS_INCORRECT;
      }
    if((TesterUseEntryQualityV2 || TesterProtectNearTPV2 || TesterUseMarketContextV3 ||
-       TesterUseAdaptiveRouterV4 || TesterUsePreregisteredVetoV5 ||
-        TesterDualStrategyMode>0) &&
+       TesterUseAdaptiveRouterV4 || TesterUsePreregisteredVetoV5) &&
       MQLInfoInteger(MQL_TESTER)==0)
      {
       Print("QTS: research V2 variants are Strategy Tester ONLY.");
