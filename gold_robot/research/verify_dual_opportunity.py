@@ -48,7 +48,16 @@ def verify(path:Path,mode:int)->dict:
             observed+=1
             if observed>350_000:raise LedgerError("Unbounded native row count")
             if None in row or any(value is None for value in row.values()):
-                raise LedgerError("Malformed native ledger CSV row")
+                # MQL5 FileWrite(FILE_CSV) does not provide an authenticated
+                # row schema. A semicolon in a reason creates an extra column.
+                # Report only structural metadata, never raw account/price text.
+                extra=len(row.get(None) or [])
+                absent=sum(value is None for key,value in row.items() if key is not None)
+                actual=len(FIELDS)+extra-absent
+                raise LedgerError(
+                    "Malformed native ledger CSV row at record {} physical_line {}: "
+                    "expected_fields={} actual_fields={}".format(
+                        observed,reader.line_num,len(FIELDS),actual))
             try:
                 bar=datetime.strptime(row["bar_time_server"],"%Y.%m.%d %H:%M:%S")
                 when=datetime.strptime(row["observed_time_server"],"%Y.%m.%d %H:%M:%S")
