@@ -207,8 +207,8 @@
     },
     {
       "path": "mt5_robot/DualOpportunityLedger.mqh",
-      "bytes": 5449,
-      "sha256": "896fa175da3e5fcbcbb3e17364faab36f94b31c590e060c05c1f26b2ed7701ae"
+      "bytes": 5511,
+      "sha256": "b85be8f31b731de9467d417b38b673ace7a801bc4984f01dc2916cc9c006a117"
     },
     {
       "path": "mt5_robot/DualResearch.mqh",
@@ -247,8 +247,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 96995,
-      "sha256": "f34045fe324bd4b489d1ee02d2feb9529c7809d1ec22af0013f9cdfa7411a438"
+      "bytes": 97338,
+      "sha256": "8953137858d62cacdcd81393baf22dc266f9af17f0e4da2cf33dc1dbd9944c3e"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -587,8 +587,8 @@
     },
     {
       "path": "research/verify_dual_opportunity.py",
-      "bytes": 5727,
-      "sha256": "3e14a79a2cf24f60a92412d19342eb29d6426b63eba700a0855ff86ad822d61b"
+      "bytes": 6366,
+      "sha256": "8b2797e0c80274b98aea11a41f5d94c65aef0f0ecd8ac9f0ce77f7906d81478b"
     },
     {
       "path": "research/verify_stop_causality_gate.py",
@@ -642,8 +642,8 @@
     },
     {
       "path": "tests/test_dual_opportunity_contract.py",
-      "bytes": 4530,
-      "sha256": "d159f5a603184bc8732bcefb03599943f0509dd5aefe8dfb7567c6299da1ed03"
+      "bytes": 4951,
+      "sha256": "53da3356710e5c80a10389da0a512ac33fc13479f03c3ea3ef541a500f6b1465"
     },
     {
       "path": "tests/test_dual_research.py",
