@@ -67,6 +67,8 @@ def test_auto_supervisor_surfaces_child_failures_instead_of_claiming_success():
     assert "price_path_exit=$pathCode" in source
     assert "observer_reason=$observerReason" in source
     assert "price_path_reason=$pathsReason" in source
+    assert "--terminal-path $target.terminal" in source
+    assert "--terminal-data-dir (Split-Path -Parent $target.mql)" in source
     assert "INSTALLED_EA_SOURCE_MISMATCH_NO_GO" in source
     assert "Get-FileHash -LiteralPath $installedSource" in source
 
