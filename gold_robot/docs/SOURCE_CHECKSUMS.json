@@ -207,8 +207,8 @@
     },
     {
       "path": "mt5_robot/DualOpportunityLedger.mqh",
-      "bytes": 6897,
-      "sha256": "8a778bb1ce7d936947ea3fcbe82dba999b8d51f51c0475151f1e8818858242cd"
+      "bytes": 6903,
+      "sha256": "510fc8c8d06f7f7b8292cf6134639ad35347ed5256ed822d52cc5db7b71b5b07"
     },
     {
       "path": "mt5_robot/DualResearch.mqh",
@@ -232,8 +232,8 @@
     },
     {
       "path": "mt5_robot/Install_QTS_Gold_Robot.ps1",
-      "bytes": 26284,
-      "sha256": "e84250a91c195739351b630a205a8d51b978af003dc1ec811258311d95a699e7"
+      "bytes": 26837,
+      "sha256": "5ce197fd51501f971c16d23f0310ab7ad58eb292e6cfe486e031b16b73f3e7b0"
     },
     {
       "path": "mt5_robot/MarketContextV3.mqh",
@@ -647,8 +647,8 @@
     },
     {
       "path": "tests/test_dual_opportunity_contract.py",
-      "bytes": 8094,
-      "sha256": "6fb0dabe67e55ff1d9dd7e5582fee3c0998d7ba5aa445642cea9c63a348c49bb"
+      "bytes": 9021,
+      "sha256": "af040d53fb873338286c948c81d2167a84acf977885c6676b10ddb4a2d1da450"
     },
     {
       "path": "tests/test_dual_opportunity_crosscheck.py",
