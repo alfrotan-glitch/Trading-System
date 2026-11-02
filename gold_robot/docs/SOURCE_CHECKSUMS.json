@@ -207,13 +207,13 @@
     },
     {
       "path": "mt5_robot/DualOpportunityLedger.mqh",
-      "bytes": 5511,
-      "sha256": "b85be8f31b731de9467d417b38b673ace7a801bc4984f01dc2916cc9c006a117"
+      "bytes": 5961,
+      "sha256": "6f9aa4993f65f5c4cd73ab7db80ecca9380989a3c6dee114586c9bf200d7e393"
     },
     {
       "path": "mt5_robot/DualResearch.mqh",
-      "sha256": "adc9fad311c8de4b23afeb2d60daaedce9939398106c9aaf32e459b4c801b22e",
-      "bytes": 3955
+      "bytes": 4486,
+      "sha256": "e2fc245fdceec206b99a6cafb99ecf6a338530df92ba1f706b5c101dfed82a3e"
     },
     {
       "path": "mt5_robot/ExecutionPolicy.mqh",
@@ -247,8 +247,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 97338,
-      "sha256": "8953137858d62cacdcd81393baf22dc266f9af17f0e4da2cf33dc1dbd9944c3e"
+      "bytes": 97574,
+      "sha256": "507626b86081bb6bef556f6006421f2aeebdc14fb9ed5150422b5773cc67917d"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -409,6 +409,11 @@
       "path": "research/compare_revised_variants.py",
       "bytes": 6546,
       "sha256": "cd3a2589bc96c4b71a75aa3a3dbfc73014dbd3fbc56410d974dbf18a0dea101a"
+    },
+    {
+      "path": "research/crosscheck_dual_opportunities.py",
+      "bytes": 4745,
+      "sha256": "60a617df8d60e018419348749ad9653418bf18606359525970d9189eb61d7878"
     },
     {
       "path": "research/daily_direction.py",
@@ -587,8 +592,8 @@
     },
     {
       "path": "research/verify_dual_opportunity.py",
-      "bytes": 6366,
-      "sha256": "8b2797e0c80274b98aea11a41f5d94c65aef0f0ecd8ac9f0ce77f7906d81478b"
+      "bytes": 8759,
+      "sha256": "9e7767cb43c90bd56be268026c276fa17916f655e997296981ae18900a337dec"
     },
     {
       "path": "research/verify_stop_causality_gate.py",
@@ -642,8 +647,13 @@
     },
     {
       "path": "tests/test_dual_opportunity_contract.py",
-      "bytes": 4951,
-      "sha256": "53da3356710e5c80a10389da0a512ac33fc13479f03c3ea3ef541a500f6b1465"
+      "bytes": 6636,
+      "sha256": "98881e89751d2ea5b49599b2599042982f4a727ffe6472f24efdcf90c2f31f19"
+    },
+    {
+      "path": "tests/test_dual_opportunity_crosscheck.py",
+      "bytes": 3509,
+      "sha256": "7052123c85ca095ed6150fd7d9b54d568d909169dcbcbefb3bae1ca87a5b54b8"
     },
     {
       "path": "tests/test_dual_research.py",
