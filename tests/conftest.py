@@ -452,13 +452,6 @@ def _cost_evidence_store_is_per_test(tmp_path, monkeypatch):
     (ticket 770002, time 1970-01-01) landed in the operator's evidence store.
     """
     monkeypatch.setenv("QTS_COST_EVIDENCE_PATH", str(tmp_path / "cost_evidence" / "demo_cost_evidence.jsonl"))
-    # Test code must NEVER create a SQLite rollback journal beside the
-    # operator's canonical data/sqlite/qts.db. A no-argument
-    # artifact_path("db") otherwise resolves to the actual checkout and a
-    # failed/aborted transaction can leave an untracked qts.db-journal.
-    # Keep the production resolver unchanged; isolate the test default.
-    monkeypatch.setenv("QTS_DB_PATH", str(tmp_path / "sqlite" / "qts.db"))
-    (tmp_path / "sqlite").mkdir(exist_ok=True)
 
 
 @pytest.fixture(scope="session", autouse=True)
