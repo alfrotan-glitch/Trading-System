@@ -43,6 +43,7 @@ def setup_arm(root:Path,variant:str):
     trade={
         "status":"COMPLETE","setup_reason":f"QTS-DUAL-M{mode}-S1",
         "side":"BUY","net_usd":9.0,"entry_lots":0.02,
+        "exit_lots":0.02,"deal_count":2,
         "charges_usd":0.0,"entry_price":4000.0,"initial_sl":3995.0
     }
     forensic={"edge_validated":False,"live":"LOCKED","trades":[trade]}
@@ -86,6 +87,16 @@ def test_raw_market_signals_mismatch_fails_closed(tmp_path):
         writer.writeheader();writer.writerows(data)
     with pytest.raises(LedgerError,match="Mismatched broker-native"):
         compare(folders)
+
+def test_partial_or_unreconciled_broker_volume_refuses_ranking(tmp_path):
+    folders=setup_three(tmp_path)
+    p=folders["DUAL_QUALITY"]/"QTS_TRADE_BY_TRADE.json"
+    d=json.loads(p.read_text(encoding="utf-8"))
+    d["trades"][0]["exit_lots"]=0.01
+    p.write_text(json.dumps(d),encoding="utf-8")
+    with pytest.raises(LedgerError,match="Unreconciled"):
+        compare(folders)
+
 
 def test_wrong_side_stop_is_reported_not_silently_normalized(tmp_path):
     folders=setup_three(tmp_path)
