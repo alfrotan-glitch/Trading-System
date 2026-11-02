@@ -25,15 +25,18 @@ $args=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$runner,
 & (Join-Path $PSHOME 'powershell.exe') @args
 $childExitCode=[int]$LASTEXITCODE
 $outcome=Join-Path $folder 'OPEN_RESULTS.json'
-if($childExitCode -ne 0){
-    throw ('Native mode-3 test failed (exit '+$childExitCode+'). Inspect '+$outcome)
-}
 if(-not (Test-Path -LiteralPath $outcome -PathType Leaf)){
-    throw 'No native research outcome. Result cannot be inferred.'
+    throw ('No native outcome after MT5 tester exit '+$childExitCode)
 }
 $report=Get-Content -LiteralPath $outcome -Raw -Encoding UTF8 | ConvertFrom-Json
+$incident=($childExitCode -eq 2 -and
+           [string]$report.state -ceq 'SELECTED_TESTS_WITH_SAFETY_INCIDENT_NO_GO')
+if($childExitCode -ne 0 -and -not $incident){
+    throw ('Native mode-3 test failed (exit '+$childExitCode+'). Inspect '+$outcome)
+}
 if([string]$report.research_variant -cne 'DUAL_QUALITY' -or
-   [string]$report.state -cne 'SELECTED_TESTS_FINISHED_REVIEW_REQUIRED' -or
+   [string]$report.state -cnotin @('SELECTED_TESTS_FINISHED_REVIEW_REQUIRED',
+                                   'SELECTED_TESTS_WITH_SAFETY_INCIDENT_NO_GO') -or
    [string]$report.live -cne 'LOCKED' -or
    $report.validated_edge -ne $false -or
    $report.real_money_orders -ne $false){
@@ -61,13 +64,30 @@ if([string]$nativeResult.status -cne 'NATIVE_OPPORTUNITIES_VERIFIED_RESEARCH_ONL
    [string]$nativeResult.live -cne 'LOCKED'){
     throw 'Native mode-3 paired opportunity validation failed or evidence was incomplete.'
 }
+if($incident){
+    $safetyFile=Join-Path $folder 'QTS_POST_FILL_SAFETY_AUDIT.json'
+    if(-not (Test-Path -LiteralPath $safetyFile -PathType Leaf)){
+        throw 'Safety incident was reported but native incident audit JSON is missing.'
+    }
+    $safety=Get-Content -LiteralPath $safetyFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    if([string]$safety.status -cne 'POST_FILL_SAFETY_INCIDENT_NO_GO' -or
+       [string]$safety.live -cne 'LOCKED' -or
+       $safety.edge_validated -ne $false -or
+       $safety.trade_permission -ne $false){
+        throw 'Unsafe-fill incident audit state is invalid. Fail closed.'
+    }
+}
 $stage=Join-Path $folder 'QTS_DUAL_QUALITY_EVIDENCE'
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
 foreach($relative in @('OPEN_RESULTS.json','QTS_TRADE_BY_TRADE.json',
                        'QTS_DUAL_OPPORTUNITY_SUMMARY.json',
                        'native\QTS_7_opportunities.csv',
                        'native\QTS_7_trades.csv',
-                       'native\QTS_7.htm')){
+                       'native\QTS_7.htm',
+                       'QTS_POST_FILL_SAFETY_AUDIT.json')){
+    if($relative -eq 'QTS_POST_FILL_SAFETY_AUDIT.json' -and -not $incident){
+        continue
+    }
     $source=Join-Path $folder $relative
     if(-not (Test-Path -LiteralPath $source -PathType Leaf)){
         throw ('Missing native mode-3 evidence: '+$source)
@@ -81,6 +101,11 @@ Compress-Archive -LiteralPath $stage -DestinationPath $zip -CompressionLevel Opt
 if(-not (Test-Path -LiteralPath $zip -PathType Leaf)){
     throw 'Native mode-3 evidence ZIP missing; no approval.'
 }
-Write-Host ('MODE 3 RESEARCH EVIDENCE ONLY: '+$zip) -ForegroundColor Green
+if($incident){
+    Write-Host ('MT5 SAFETY INCIDENT NO-GO. Send ZIP for review: '+$zip) -ForegroundColor Red
+}else{
+    Write-Host ('MODE 3 RESEARCH EVIDENCE ONLY: '+$zip) -ForegroundColor Green
+}
 Write-Host 'No profitability validation. LIVE LOCKED.'
 try {explorer.exe /select,"$zip"}catch {Write-Warning ('Open file manually: '+$zip)}
+if($incident){exit 2}
