@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +33,10 @@ def verify(path:Path,mode:int)->dict:
         previous=None
         bars=set()
         observed=0
+        atr_known=0
+        rank_known=0
+        signaled=0
+        signal_exposed=0
         for row in reader:
             observed+=1
             if observed>350_000:raise LedgerError("Unbounded native row count")
@@ -44,9 +49,12 @@ def verify(path:Path,mode:int)->dict:
                 exposed=int(row["exposure_blocked"]);veto=int(row["mode_direction_veto"])
                 atr=float(row["atr14_closed"]);rank=float(row["atr_rank_prior_192_pct"])
                 adx=float(row["adx_closed"])
+                h1=float(row["h1_close_minus_ema50"])
                 bid=float(row["bid"]);ask=float(row["ask"]);spread=float(row["spread"])
             except (ValueError,TypeError) as e:
                 raise LedgerError("Invalid native data value") from e
+            if not all(math.isfinite(value) for value in (atr,rank,adx,h1,bid,ask,spread)):
+                raise LedgerError("Non-finite native indicator or quote")
             if m!=mode or style not in (1,3) or side not in (-1,0,1) or exposed not in (0,1) or veto not in (0,1):
                 raise LedgerError("Bad mode/style/side/exposure identity")
             if when<bar or not row["signal_reason"] or not row["entry_decision_reason"]:
@@ -72,6 +80,10 @@ def verify(path:Path,mode:int)->dict:
             if counts[(bar,style)]>1:raise LedgerError("Duplicate style within closed bar")
             bars.add(bar)
             classified[(style,row["candidate_class"])]+=1
+            atr_known+=int(atr>0)
+            rank_known+=int(rank>=0)
+            signaled+=int(side!=0)
+            signal_exposed+=int(side!=0 and exposed==1)
         if observed<2 or len(bars)*2!=observed:
             raise LedgerError("Missing bars or incomplete two-style coverage")
         if any(counts[(bar,style)]!=1 for bar in bars for style in (1,3)):
@@ -82,6 +94,8 @@ def verify(path:Path,mode:int)->dict:
         "live":"LOCKED","edge_validated":False,
         "fills_inferred":False,"skipped_trade_outcomes_inferred":False,
         "mode":mode,"bars":len(bars),"rows":observed,
+        "atr_available_rows":atr_known,"atr_rank_available_rows":rank_known,
+        "raw_signal_rows":signaled,"raw_signal_while_exposed_rows":signal_exposed,
         "by_strategy_class":[{"style":style,"category":c,"rows":n} for (style,c),n in sorted(classified.items())],
         "atr_rank_is_native_iatr_not_retro_simple_tr":True,
         "limitation":"Closed-bar signals are not executable missed fills or counterfactual profits."
