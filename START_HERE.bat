@@ -29,8 +29,10 @@ echo  [6] Advanced research and diagnostics
 echo  [7] Exit
 echo  [8] OWNER VERDICT - instant offline evidence review (no MT5 orders)
 echo  [9] DUAL STRATEGY RESEARCH - both signals vs BUY-Retest/SELL-Sweep
+echo  [A] DUAL ATR MARKET REVIEW - saved trades, broker price history, NO ORDERS
 echo.
-choice /C 123456789 /N /M "Choose 1-9: "
+choice /C 123456789A /N /M "Choose 1-9 or A: "
+if errorlevel 10 goto DUAL_ATR
 if errorlevel 9 goto DUAL_RESEARCH
 if errorlevel 8 goto OWNER_VERDICT
 if errorlevel 7 goto END
@@ -65,6 +67,17 @@ call "%QTS_ROOT_DIR%QTS_AUTO_TEST.bat"
 set "SUBCODE=%ERRORLEVEL%"
 endlocal & set "CODE=%SUBCODE%"
 if not "%CODE%"=="0" echo Native results incomplete or evidence unavailable.
+echo.
+pause
+goto MENU
+
+:DUAL_ATR
+echo.
+echo Read-only ATR enrichment: uses existing native dual trade evidence.
+echo MT5 historical bars and Bid/Ask required; no strategy edit or orders.
+call "%QTS_ROOT_DIR%QTS_DUAL_ATR_REVIEW.bat"
+set "CODE=%ERRORLEVEL%"
+if not "%CODE%"=="0" echo ATR history incomplete. Check the saved NO-GO evidence.
 echo.
 pause
 goto MENU
