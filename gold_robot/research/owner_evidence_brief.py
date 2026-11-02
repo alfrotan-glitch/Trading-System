@@ -93,11 +93,24 @@ def older_studies(root: Path) -> list[dict]:
     records = []
     for filename in STUDIES:
         item = read_json(base / filename)
-        decision = item.get("decision")
-        claim = item.get("edge_claim")
-        if claim != "NOT ESTABLISHED" or decision not in (
-            "REJECTED", "INCONCLUSIVE", "NO_PROMOTION"
-        ) or item.get("strategy_promoted") is not False:
+        # Some source reports have nested fixed-discovery 'scan' verdicts.
+        # The opening-range study has an explicit NO_PROMOTION decision
+        # without a separate boolean; never invent that missing field.
+        evidence = item.get("scan", item)
+        if not isinstance(evidence, dict):
+            raise ValueError("Invalid historical study scan object")
+        decision = evidence.get("decision")
+        claim = evidence.get("edge_claim")
+        promoted = evidence.get("strategy_promoted", item.get("strategy_promoted"))
+        safe = item.get("safety", {})
+        no_promotion = promoted is False or (
+            promoted is None and decision == "NO_PROMOTION"
+        )
+        if (claim != "NOT ESTABLISHED" or
+            decision not in ("REJECTED", "INCONCLUSIVE", "NO_PROMOTION") or
+            not no_promotion or
+            not isinstance(safe, dict) or
+            safe.get("LIVE") != "LOCKED" or safe.get("orders_submitted") != 0):
             raise ValueError("Historical study claims changed: requires a fresh independent audit")
         records.append({
             "source": f"data/evidence/{filename}",
