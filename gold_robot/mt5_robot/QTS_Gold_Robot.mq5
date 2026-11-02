@@ -2230,10 +2230,14 @@ void OnTick()
       last_closed_bar=closed;
       if(MQLInfoInteger(MQL_TESTER)!=0 && TesterUseAdaptiveRouterV4)
          status_text="ENTRY_AUDIT_PENDING";
+      // Observe exposure BEFORE the entry decision; a freshly placed order
+      // must not be misclassified as an already-blocking position.
+      bool dual_exposure_before=(TesterDualStrategyMode>0 && MQLInfoInteger(MQL_TESTER)!=0) ?
+                                 AnyConflictingPositionOrOrder() : false;
       ConsiderNewEntry();
-      // Observer runs AFTER the existing decision. It cannot cause an order
-      // or change the frozen decision for this closed M15 bar.
-      QtsObserveDualOpportunities(closed,status_text);
+      // Signals are inspected AFTER the decision, with its original status
+      // and the pre-decision exposure snapshot; no order path is altered.
+      QtsObserveDualOpportunities(closed,status_text,dual_exposure_before);
       V4RecordClosedBarDecision(status_text);
       ObserveUnarmedDemoSignal();
       // Closed-bar diagnostics also work on WMMarkets connected DEMO.
