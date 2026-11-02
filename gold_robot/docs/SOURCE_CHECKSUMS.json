@@ -607,8 +607,8 @@
     },
     {
       "path": "tests/test_forward_shadow_observer.py",
-      "bytes": 9223,
-      "sha256": "47da2e10175acf6c1e04baf5740e55a23af0d51a6ec71d91f22512a30b6d8118"
+      "bytes": 9239,
+      "sha256": "5b2f0baaeecaa41f153392279289234ac8780632848c46d838c7aa77c775f2c5"
     },
     {
       "path": "tests/test_forward_shadow_paths.py",
