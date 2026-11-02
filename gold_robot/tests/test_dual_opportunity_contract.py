@@ -25,6 +25,7 @@ def rows(mode=1,bars=2):
                 "mode":str(mode),"style":str(style),"side":str(side),
                 "signal_reason":"SIGNAL confirmed","entry_decision_reason":"Another chart/strategy has a position or order",
                 "exposure_blocked":"1","mode_direction_veto":str(veto),
+                "router_eligible_count":"-1","router_verdict":"NOT_EVALUATED",
                 "atr14_closed":"4.52","atr_rank_prior_192_pct":"68.75",
                 "adx_closed":"22.1","h1_close_minus_ema50":"-0.45",
                 "bid":"4010.20","ask":"4010.43","spread":"0.23",
@@ -57,6 +58,8 @@ def test_two_styles_per_bar_even_when_exposed(tmp_path):
     ("classifier","Misclassified native opportunity"),
     ("decision_mutated","Decision provenance changed"),
     ("exposure_mismatch","Pre-decision exposure snapshot differs"),
+    ("router_mismatch","Router eligibility differs"),
+    ("router_invalid","Invalid router eligibility"),
 ])
 def test_corruption_fails_closed(tmp_path,mutation,error):
     data=rows(2)
@@ -69,6 +72,8 @@ def test_corruption_fails_closed(tmp_path,mutation,error):
     elif mutation=="classifier":data[0]["candidate_class"]="UNKNOWN"
     elif mutation=="decision_mutated":data[1]["entry_decision_reason"]="SIGNAL: sell confirmed"
     elif mutation=="exposure_mismatch":data[1]["exposure_blocked"]="0";data[1]["candidate_class"]="SIGNAL_NOT_FILL_PROOF"
+    elif mutation=="router_mismatch":data[1]["router_eligible_count"]="1";data[1]["router_verdict"]="CANDIDATE_SELECTED"
+    elif mutation=="router_invalid":data[1]["router_eligible_count"]="2";data[1]["router_verdict"]="CANDIDATE_SELECTED"
     with pytest.raises(LedgerError,match=error):
         verify(write(tmp_path,data),2)
 
@@ -116,6 +121,10 @@ def test_native_tester_only_and_unchanged_trade_decision():
     assert "string dual_decision_snapshot=status_text;" in ea
     assert "string frozen_entry_decision=original_entry_reason;" in ledger
     assert "frozen_entry_decision,(int)exposure" in ledger
+    assert "qts_dual_router_eligible,qts_dual_router_verdict" in ledger
+    dual=(GOLD/"mt5_robot/DualResearch.mqh").read_text(encoding="utf-8")
+    assert "qts_dual_router_verdict=eligible==0" in dual
+    assert "qts_dual_router_eligible=eligible;" in dual
     assert "   if(MQLInfoInteger(MQL_TESTER)==0 || EntryStyle!=QTS_ADAPTIVE_ROUTER" in ledger
     assert "   if(TesterDualStrategyMode==0 || MQLInfoInteger(MQL_TESTER)==0)" in ledger
     assert "int original_style=evaluated_style;" in ledger
