@@ -87,6 +87,8 @@ int h1_handle = INVALID_HANDLE;
 datetime last_closed_bar = 0;
 string status_text = "Initialization";
 bool local_execution_halt = false;
+// A failed persistent unsafe-fill marker also forces defensive position review.
+bool qts_unsafe_fill_marker_failed=false;
 string audit_file="QTS_Gold_Robot_Broker_Deals.csv";
 bool broker_was_connected=false;
 // Research-only per-bar selected entry style. One candidate at a time.
@@ -1443,6 +1445,61 @@ void TesterProtectNearTPPosition(const ulong ticket,const double current_sl,
                ticket,proposed,original_tp);
   }
 
+// A broker-executed LIMIT may fill beyond its attached original SL.
+// Persist the affected POSITION_IDENTIFIER; never infer it from a chart or
+// retest/sweep strategy name. The halt survives terminal restarts.
+string QtsUnsafeFillKey(const long position_identifier)
+  {
+   if(position_identifier<=0) return "";
+   string key=AccountKey(StringFormat("BADF_%I64d",position_identifier));
+   return StringLen(key)<=63 ? key : "";
+  }
+
+void QtsMarkUnsafeFill(const long position_identifier,const string reason)
+  {
+   string key=QtsUnsafeFillKey(position_identifier);
+   if(key=="" || GlobalVariableSet(key,1.0)==0)
+      qts_unsafe_fill_marker_failed=true;
+   GlobalVariablesFlush();
+   LatchExecutionHalt(reason);
+  }
+
+bool QtsOwnedPositionFlagged()
+  {
+   if(qts_unsafe_fill_marker_failed) return true;
+   long identifier=PositionGetInteger(POSITION_IDENTIFIER);
+   string key=QtsUnsafeFillKey(identifier);
+   if(key=="") return true;
+   if(!GlobalVariableCheck(key)) return false;
+   double flagged=0.0;
+   if(!GlobalVariableGet(key,flagged)) return true;
+   return flagged>0.0;
+  }
+
+// A netting position may contain manual/foreign EA entry deals. Do not
+// silently liquidate an unidentified mixed-ownership account position.
+bool QtsPositionEntriesExclusivelyOwned(const long identifier)
+  {
+   if(identifier<=0 || !HistorySelect(0,TimeTradeServer()))
+      return false;
+   bool found=false;
+   for(int j=0;j<HistoryDealsTotal();j++)
+     {
+      ulong deal=HistoryDealGetTicket(j);
+      if(deal==0) return false;
+      if(HistoryDealGetInteger(deal,DEAL_POSITION_ID)!=identifier)
+         continue;
+      ENUM_DEAL_ENTRY kind=(ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal,DEAL_ENTRY);
+      if(kind!=DEAL_ENTRY_IN && kind!=DEAL_ENTRY_INOUT)
+         continue;
+      if(HistoryDealGetString(deal,DEAL_SYMBOL)!=_Symbol ||
+         (ulong)HistoryDealGetInteger(deal,DEAL_MAGIC)!=RobotMagic)
+         return false;
+      found=true;
+     }
+   return found;
+  }
+
 void ManageOwnedPositions()
   {
    if(RealAccountBlocked())
@@ -1467,7 +1524,16 @@ void ManageOwnedPositions()
       double tp=PositionGetDouble(POSITION_TP);
       datetime opened=(datetime)PositionGetInteger(POSITION_TIME);
       bool expired=opened>0 && TimeTradeServer()-opened>=MaxPositionMinutes*60;
-      bool must_close=EmergencyFlattenOwned || sl<=0.0 || tp<=0.0 ||
+      bool unsafe_fill=QtsOwnedPositionFlagged();
+      if(unsafe_fill &&
+         !QtsPositionEntriesExclusivelyOwned(PositionGetInteger(POSITION_IDENTIFIER)))
+        {
+         LatchExecutionHalt("unsafe fill has mixed/unverifiable netting ownership; operator reconciliation required");
+         PrintFormat("QTS CRITICAL: refusing automatic close of mixed/unverified position=%I64u",ticket);
+         continue;
+        }
+      bool must_close=EmergencyFlattenOwned || unsafe_fill ||
+                      sl<=0.0 || tp<=0.0 ||
                       expired || (FlattenOnEquityBreach && stop_risk);
       if(!must_close)
         {
@@ -1484,7 +1550,8 @@ void ManageOwnedPositions()
       uint code=trader.ResultRetcode();
       if(!sent || (code!=TRADE_RETCODE_DONE && code!=TRADE_RETCODE_DONE_PARTIAL))
         {
-         PrintFormat("QTS CRITICAL: protective close FAILED, position=%I64u ret=%u",ticket,code);
+         PrintFormat("QTS CRITICAL: protective close FAILED, position=%I64u ret=%u unsafe_fill=%d",
+                     ticket,code,(int)unsafe_fill);
          LatchExecutionHalt("protective close failed or broker outcome unknown");
         }
       else if(code==TRADE_RETCODE_DONE_PARTIAL)
