@@ -113,6 +113,16 @@ def test_mql5_challenger_is_default_off_and_cannot_touch_live():
     assert "$backupDual" in installer
 
 
+def test_native_quality_abstention_logs_scores_without_changing_orders():
+    dual=(ROOT/"mt5_robot/DualResearch.mqh").read_text(encoding="utf-8")
+    assert "double second_quality=-1.0;" in dual
+    assert "int candidate_side_before_reset=side;" in dual
+    assert "if(second_side!=candidate_side_before_reset)" in dual
+    assert "quality abstain: invalid stressed R score" in dual
+    assert "quality abstain: scores %.5f %.5f margin %.5f below 0.15" in dual
+    assert "eligible!=1 && !resolved_quality_collision" in dual
+
+
 def test_existing_single_style_defaults_are_unchanged():
     ea = (ROOT / "mt5_robot/QTS_Gold_Robot.mq5").read_text("utf-8")
     assert "QTS_ADAPTIVE_ROUTER=7" in ea
