@@ -4,7 +4,7 @@ param([string]$TerminalExe="",[string]$TerminalDataFolder="",
       [string]$OutputDirectory="",[string]$FromDate="",[string]$ToDate="",
       [int]$TimeoutMinutesPerRun=90,[switch]$PrepareOnly,[switch]$NoOpen,
       [string]$OnlyStyles='',
-      [ValidateSet('BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO','DUAL_BOTH','DUAL_DIRECTIONAL')]
+      [ValidateSet('BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO','DUAL_BOTH','DUAL_DIRECTIONAL','DUAL_QUALITY')]
       [string]$ResearchVariant='BASELINE',[int]$VetoStyle=-1,[int]$VetoRegime=-1)
 $ErrorActionPreference='Stop'
 $gold=Split-Path -Parent $PSScriptRoot
@@ -41,7 +41,7 @@ if($targeted){
 if($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO') -and ($OnlyStyles -ne '7')){
     throw 'Adaptive V3/V4/V5 variants require -OnlyStyles 7 (M15 research only).'
 }
-if($ResearchVariant -in @('DUAL_BOTH','DUAL_DIRECTIONAL') -and ($OnlyStyles -ne '7')){
+if($ResearchVariant -in @('DUAL_BOTH','DUAL_DIRECTIONAL','DUAL_QUALITY') -and ($OnlyStyles -ne '7')){
     throw 'Dual Retest/Sweep requires -OnlyStyles 7 (M15 research only).'
 }
 if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){
@@ -289,7 +289,8 @@ try{
             else{$_}
         })
         $dualMode=if($ResearchVariant -eq 'DUAL_BOTH'){1}
-                  elseif($ResearchVariant -eq 'DUAL_DIRECTIONAL'){2}else{0}
+                  elseif($ResearchVariant -eq 'DUAL_DIRECTIONAL'){2}
+                  elseif($ResearchVariant -eq 'DUAL_QUALITY'){3}else{0}
         if(@($profileLines | Where-Object {$_ -match '^TesterDualStrategyMode='}).Count -ne 1){
             throw 'Missing unique dual research input in native MT5 safety-on preset.'
         }
@@ -412,7 +413,7 @@ try{
                     # Do not call it REPORT_AND_FORENSICS_SAVED or profitable.
                     $item.status='ZERO_NATIVE_DEALS_NO_GO'
                     $item.detail='MT5 tester finished but exported ZERO executed QTS broker deals. Inspect MT5 Experts/Tester QTS ENTRY AUDIT reasons and pending-order history; no economic conclusion.'
-                }elseif($ResearchVariant -in @('DUAL_BOTH','DUAL_DIRECTIONAL') -and
+                }elseif($ResearchVariant -in @('DUAL_BOTH','DUAL_DIRECTIONAL','DUAL_QUALITY') -and
                          $i -eq 7 -and
                          ($reportText -notmatch ('TesterDualStrategyMode\s*=\s*'+[string]$dualMode) -or
                           $reportText -notmatch 'EntryStyle\s*=\s*7')){
@@ -425,7 +426,7 @@ try{
                     $item.status='REPORT_AND_FORENSICS_SAVED'
                     $item.detail='Fresh report and broker deal evidence saved; costs and profitability remain unverified.'
                 }
-                if($ResearchVariant -in @('DUAL_BOTH','DUAL_DIRECTIONAL') -and $i -eq 7){
+                if($ResearchVariant -in @('DUAL_BOTH','DUAL_DIRECTIONAL','DUAL_QUALITY') -and $i -eq 7){
                     # Native observation is required in ADDITION to fills.
                     # Source: MQL5 tester FILE_COMMON, not a simulated Python signal.
                     $opportunities=@(Get-ChildItem -LiteralPath $common -Filter 'QTS_DUAL_OPPORTUNITY_STYLE_7_*.csv' -File -ErrorAction SilentlyContinue |
