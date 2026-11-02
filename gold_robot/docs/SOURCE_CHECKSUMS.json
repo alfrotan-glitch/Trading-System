@@ -137,8 +137,8 @@
     },
     {
       "path": "docs/POST_FILL_EXECUTION_SAFETY.md",
-      "bytes": 3332,
-      "sha256": "61f201fabc62b5991af1ed10bf75bbdba89b271c4e4e23fcb543abe0d7272135"
+      "bytes": 4453,
+      "sha256": "33108bb8e3dca525c9e2f2e885e5d6e18c2ce9713b2793e8dac26ac4708ab480"
     },
     {
       "path": "docs/POST_STOP_FORENSIC_EVIDENCE_2026-10-30.md",
@@ -257,8 +257,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 107716,
-      "sha256": "1c802601539e6e76c4aafe5f608fd17c50f3e1902ae0f1794eee2a43df9b182d"
+      "bytes": 108078,
+      "sha256": "85fcd0a7389c15dc397e394a67ea1dec26f8beaf384aa6d091417526c5528101"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -337,8 +337,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 51702,
-      "sha256": "dfd9ccdc5b50478a2647d260c3f8d335da4d7858dfb64c49518df06b541bd05e"
+      "bytes": 51985,
+      "sha256": "cd6b28936e88bda462970ddb227ac2056cf60224af5bec6e9e8f398922a86b61"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
@@ -382,8 +382,8 @@
     },
     {
       "path": "research/audit_post_fill_safety.py",
-      "bytes": 5641,
-      "sha256": "9408108e13e7acad7a9ce700cdcae64c17861637509051906b6b152d27f16de7"
+      "bytes": 11018,
+      "sha256": "11f9160bf70509f4c17b76dc6c0c12d1e659d43033992080c1a3a7e1aa348923"
     },
     {
       "path": "research/auto_context_review.py",
@@ -697,8 +697,8 @@
     },
     {
       "path": "tests/test_execution_fill_safety.py",
-      "bytes": 5145,
-      "sha256": "9e14f43ee560f760673e86bbd53528cb3de779e591ae5b744cd715d841504ca7"
+      "bytes": 5903,
+      "sha256": "1cfe62a4d5b1d12848dc5cd30dd511858ee3c3b52fe36c99a0ea07a9c2bd097f"
     },
     {
       "path": "tests/test_forward_shadow_autostart.py",
@@ -737,8 +737,8 @@
     },
     {
       "path": "tests/test_post_fill_safety_audit.py",
-      "bytes": 4246,
-      "sha256": "7853b5c2416b90d92aee48098393c30bea256578d92d9a9368f3f8253d62d3cf"
+      "bytes": 8867,
+      "sha256": "550239ffb79128c1f29bf17b856267bb317a19890d477167bcc9eb51d6f14ace"
     },
     {
       "path": "tests/test_post_stop_replay.py",
