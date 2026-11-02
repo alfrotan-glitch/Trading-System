@@ -89,6 +89,7 @@ string status_text = "Initialization";
 bool local_execution_halt = false;
 // A failed persistent unsafe-fill marker also forces defensive position review.
 bool qts_unsafe_fill_marker_failed=false;
+long qts_unsafe_fill_runtime_identifier=0;
 string audit_file="QTS_Gold_Robot_Broker_Deals.csv";
 bool broker_was_connected=false;
 // Research-only per-bar selected entry style. One candidate at a time.
@@ -1459,17 +1460,26 @@ void QtsMarkUnsafeFill(const long position_identifier,const string reason)
   {
    string key=QtsUnsafeFillKey(position_identifier);
    if(key=="" || GlobalVariableSet(key,1.0)==0)
+     {
       qts_unsafe_fill_marker_failed=true;
+      if(position_identifier>0)
+         qts_unsafe_fill_runtime_identifier=position_identifier;
+     }
    GlobalVariablesFlush();
    LatchExecutionHalt(reason);
   }
 
 bool QtsOwnedPositionFlagged()
   {
-   if(qts_unsafe_fill_marker_failed) return true;
    long identifier=PositionGetInteger(POSITION_IDENTIFIER);
+   // Without an identifying broker position ID, never liquidate some other
+   // position merely because marker storage failed. Halt further entries.
+   if(qts_unsafe_fill_marker_failed &&
+      qts_unsafe_fill_runtime_identifier>0 &&
+      identifier==qts_unsafe_fill_runtime_identifier)
+      return true;
    string key=QtsUnsafeFillKey(identifier);
-   if(key=="") return true;
+   if(key=="") return false;
    if(!GlobalVariableCheck(key)) return false;
    double flagged=0.0;
    if(!GlobalVariableGet(key,flagged)) return true;
