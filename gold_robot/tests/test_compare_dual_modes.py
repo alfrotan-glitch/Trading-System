@@ -78,8 +78,9 @@ def test_raw_market_signals_mismatch_fails_closed(tmp_path):
     p=folders["DUAL_QUALITY"]/"native"/"QTS_7_opportunities.csv"
     with p.open(newline="",encoding="ascii") as f:
         data=list(csv.DictReader(f,delimiter=";"))
-    data[0]["bid"]="4009.20"
-    data[0]["ask"]="4009.43"
+    for row in data[:2]:
+        row["bid"]="4009.20"
+        row["ask"]="4009.43"
     with p.open("w",newline="",encoding="ascii") as f:
         writer=csv.DictWriter(f,FIELDS,delimiter=";")
         writer.writeheader();writer.writerows(data)
