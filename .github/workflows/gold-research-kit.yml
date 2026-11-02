@@ -20,6 +20,8 @@ on:
       - "QTS_DUAL_RESEARCH.ps1"
       - "QTS_DUAL_QUALITY.bat"
       - "QTS_DUAL_QUALITY.ps1"
+      - "QTS_DUAL_THREEWAY.bat"
+      - "QTS_DUAL_THREEWAY.ps1"
       - "QTS_DUAL_DIAGNOSE.bat"
       - "QTS_DUAL_DIAGNOSE.ps1"
       - "QTS_DUAL_ATR_REVIEW.bat"
@@ -75,7 +77,7 @@ jobs:
           )){
             Copy-Item -LiteralPath (Join-Path 'data/evidence' $name) -Destination $publicEvidence
           }
-          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','QTS_DUAL_RESEARCH.bat','QTS_DUAL_RESEARCH.ps1','QTS_DUAL_QUALITY.bat','QTS_DUAL_QUALITY.ps1','QTS_DUAL_DIAGNOSE.bat','QTS_DUAL_DIAGNOSE.ps1','QTS_DUAL_ATR_REVIEW.bat','QTS_DUAL_ATR_REVIEW.ps1','START_HERE.bat','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
+          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','QTS_DUAL_RESEARCH.bat','QTS_DUAL_RESEARCH.ps1','QTS_DUAL_QUALITY.bat','QTS_DUAL_QUALITY.ps1','QTS_DUAL_THREEWAY.bat','QTS_DUAL_THREEWAY.ps1','QTS_DUAL_DIAGNOSE.bat','QTS_DUAL_DIAGNOSE.ps1','QTS_DUAL_ATR_REVIEW.bat','QTS_DUAL_ATR_REVIEW.ps1','START_HERE.bat','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
             Copy-Item -LiteralPath $file -Destination $stage
           }
           @'
@@ -84,6 +86,9 @@ jobs:
           0z. DUAL TEST FAILURE READER: QTS_DUAL_DIAGNOSE.bat
               No rerun, no MT5 launch, no orders. Captures the newest failed
               child OPEN_RESULTS.json and a single safe diagnostic ZIP.
+          0c. DUAL THREE-WAY: QTS_DUAL_THREEWAY.bat
+              Repeat all three on SAME native EX5, tick series and dates.
+              Any ranking is RESEARCH ONLY and cannot authorize live orders.
           0b. DUAL QUALITY CHALLENGER: QTS_DUAL_QUALITY.bat
               Same Style-7 M15 Research only. Same-side quality collision
               tie-break; October is NOT independent holdout. LIVE LOCKED.
@@ -145,7 +150,7 @@ jobs:
           Expand-Archive -LiteralPath 'QTS-Gold-Windows-Research-Kit.zip' -DestinationPath $dst -Force
           Push-Location $dst
           try {
-            foreach($file in @('OPEN_FIRST.txt','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','QTS_DUAL_RESEARCH.bat','QTS_DUAL_RESEARCH.ps1','QTS_DUAL_QUALITY.bat','QTS_DUAL_QUALITY.ps1','QTS_DUAL_DIAGNOSE.bat','QTS_DUAL_DIAGNOSE.ps1','QTS_DUAL_ATR_REVIEW.bat','QTS_DUAL_ATR_REVIEW.ps1','START_HERE.bat','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','gold_robot\mt5_robot\DualResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
+            foreach($file in @('OPEN_FIRST.txt','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','QTS_DUAL_RESEARCH.bat','QTS_DUAL_RESEARCH.ps1','QTS_DUAL_QUALITY.bat','QTS_DUAL_QUALITY.ps1','QTS_DUAL_THREEWAY.bat','QTS_DUAL_THREEWAY.ps1','QTS_DUAL_DIAGNOSE.bat','QTS_DUAL_DIAGNOSE.ps1','QTS_DUAL_ATR_REVIEW.bat','QTS_DUAL_ATR_REVIEW.ps1','START_HERE.bat','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','gold_robot\mt5_robot\DualResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
               if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing kit file: $file" }
             }
             foreach($name in @('mt5_365d_microstructure_summary_20261023.json',
@@ -182,7 +187,7 @@ jobs:
       - name: Parse read-only bounded stop tick helpers on Windows
         shell: pwsh
         run: |
-          foreach($name in @('QTS_PREPARE_STOP_TICKS.ps1', 'QTS_FINISH_STOP_TICKS.ps1', 'QTS_ONE_CLICK_ROBOT.ps1', 'QTS_REVISED_COMPARE.ps1', 'QTS_V2_ABLATION.ps1', 'QTS_DUAL_RESEARCH.ps1', 'QTS_DUAL_QUALITY.ps1', 'QTS_DUAL_DIAGNOSE.ps1', 'QTS_DUAL_ATR_REVIEW.ps1')) {
+          foreach($name in @('QTS_PREPARE_STOP_TICKS.ps1', 'QTS_FINISH_STOP_TICKS.ps1', 'QTS_ONE_CLICK_ROBOT.ps1', 'QTS_REVISED_COMPARE.ps1', 'QTS_V2_ABLATION.ps1', 'QTS_DUAL_RESEARCH.ps1', 'QTS_DUAL_QUALITY.ps1', 'QTS_DUAL_THREEWAY.ps1', 'QTS_DUAL_DIAGNOSE.ps1', 'QTS_DUAL_ATR_REVIEW.ps1')) {
             $tokens = $null
             $errors = $null
             $file = (Resolve-Path $name).Path
@@ -194,7 +199,7 @@ jobs:
           }
           python -m pip install --quiet pytest
           if($LASTEXITCODE -ne 0){ throw 'Could not install Python test runner' }
-          python -m pytest -q -o 'addopts=' gold_robot/tests/test_stop_tick_window_export.py gold_robot/tests/test_auto_stop_ticks.py gold_robot/tests/test_stop_failure_paths.py gold_robot/tests/test_revised_v2_contract.py gold_robot/tests/test_v2_ablation_contract.py gold_robot/tests/test_dual_research.py gold_robot/tests/test_dual_evidence_audit.py gold_robot/tests/test_dual_atr_market_audit.py gold_robot/tests/test_dual_opportunity_contract.py gold_robot/tests/test_dual_opportunity_crosscheck.py gold_robot/tests/test_dual_diagnostics_contract.py
+          python -m pytest -q -o 'addopts=' gold_robot/tests/test_stop_tick_window_export.py gold_robot/tests/test_auto_stop_ticks.py gold_robot/tests/test_stop_failure_paths.py gold_robot/tests/test_revised_v2_contract.py gold_robot/tests/test_v2_ablation_contract.py gold_robot/tests/test_dual_research.py gold_robot/tests/test_dual_evidence_audit.py gold_robot/tests/test_dual_atr_market_audit.py gold_robot/tests/test_dual_opportunity_contract.py gold_robot/tests/test_dual_opportunity_crosscheck.py gold_robot/tests/test_compare_dual_modes.py gold_robot/tests/test_dual_diagnostics_contract.py
           if($LASTEXITCODE -ne 0){ throw 'Native research and audit contract regression failed' }
           Write-Host 'PASS: bounded 120-minute and automatic one-click broker quote research contracts'
 
