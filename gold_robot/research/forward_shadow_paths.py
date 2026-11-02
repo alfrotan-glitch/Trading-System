@@ -65,7 +65,7 @@ def _demo_terminal(*, executable: Path | None = None,
         import MetaTrader5 as mt5
     except ImportError as exc:
         raise ValueError("MetaTrader5 Python package unavailable") from exc
-    if not mt5.initialize(path=str(executable)):
+    if not mt5.initialize(str(executable)):
         mt5.shutdown()
         raise ValueError("PINNED_WMMARKETS_DEMO_NOT_CONNECTED_NO_GO")
     account = mt5.account_info()
