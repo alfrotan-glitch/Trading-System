@@ -45,6 +45,26 @@ is not claimed. A marker that cannot be persisted is tracked by the
 current process for the identifiable position, but does not guarantee
 restart recovery without broker history.
 
+## Missed events and diagnostic artifacts
+
+- The protective timer independently calls `QtsAuditActiveOriginalFills()`
+  while an owned position exists, so a lost/delayed `DEAL_ADD` callback is
+  not the only chance to identify unsafe entry fills. No real-account
+  permission is added.
+- The native audit reads **individual entry DEALs**, not only aggregated
+  position entry averages. An abnormal small partial fill cannot be masked
+  by an otherwise valid weighted-average fill. Original setup attribution,
+  entry and exit volumes, and entry timestamps must reconcile.
+- If the automatic tester encounters an unsafe original fill, it sets
+  `SELECTED_TESTS_WITH_SAFETY_INCIDENT_NO_GO`, exits with status 2, and
+  writes `QTS_POST_FILL_SAFETY_AUDIT.json`.
+- `QTS_DUAL_QUALITY.bat` preserves
+  `QTS_DUAL_QUALITY_EVIDENCE.zip` **including the incident audit** even
+  when the test exits NO-GO. `QTS_DUAL_THREEWAY.bat` stops comparison
+  immediately and instead preserves `QTS_SAFETY_INCIDENT_NO_GO.zip`.
+  Both show the evidence file and return failure; neither substitutes
+  an incomplete test for economic comparison.
+
 ## Verification gates
 
 - Python regression: `gold_robot/tests/test_execution_fill_safety.py`
