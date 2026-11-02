@@ -75,6 +75,7 @@ input bool            TesterUseAdaptiveRouterV4  = false; // Each opportunity ch
 input bool            TesterUsePreregisteredVetoV5 = false; // TESTER ONLY, default OFF.
 input int             TesterVetoStyleV5          = -1; // Allowed 0-6,8 ONLY when veto enabled.
 input int             TesterVetoRegimeV5         = -1; // Closed-bar 0 range,1 transition,2 trend.
+input int             TesterDualStrategyMode     = 0;  // 0 OFF; 1 both sides; 2 BUY-Retest/SELL-Sweep. TESTER ONLY.
 
 
 CTrade trader;
@@ -953,6 +954,7 @@ void LatchExecutionHalt(const string reason)
   }
 
 #include "AdaptiveV4Research.mqh"
+#include "DualResearch.mqh"
 
 // Only called under the atomic cross-chart entry mutex.
 void EvaluateNewEntry()
@@ -983,11 +985,14 @@ void EvaluateNewEntry()
    if(adaptive)
      {
       int selected=-1;
-      bool selected_ok=TesterUseAdaptiveRouterV4 ?
-           SelectAdaptiveCandidateV4(quote,side,atr,structure_level,structure_anchor,
-                                     price,stop,target,selected) :
-           SelectAdaptiveCandidate(quote,side,atr,structure_level,structure_anchor,
-                                   price,stop,target,selected);
+      bool selected_ok=TesterDualStrategyMode>0 ?
+           SelectDualResearchCandidate(quote,side,atr,structure_level,structure_anchor,
+                                       price,stop,target,selected) :
+           (TesterUseAdaptiveRouterV4 ?
+            SelectAdaptiveCandidateV4(quote,side,atr,structure_level,structure_anchor,
+                                      price,stop,target,selected) :
+            SelectAdaptiveCandidate(quote,side,atr,structure_level,structure_anchor,
+                                    price,stop,target,selected));
       if(!selected_ok)
          return;
      }
@@ -1115,6 +1120,16 @@ void EvaluateNewEntry()
    // from the executed entry's order ID. Do not infer the winning strategy
    // retrospectively from PnL, side, chart or today's current regime.
    // A broker may truncate/replace comments; audits then mark UNKNOWN.
+   if(TesterDualStrategyMode>0)
+     {
+      if(MQLInfoInteger(MQL_TESTER)==0 ||
+         (evaluated_style!=QTS_RETEST_LIMIT && evaluated_style!=QTS_SWEEP_RECLAIM))
+        {
+         status_text="DUAL: original strategy attribution unavailable";
+         return;
+        }
+      request.comment=StringFormat("QTS-DUAL-M%d-S%d",TesterDualStrategyMode,evaluated_style);
+     }
    if(TesterUseAdaptiveRouterV4)
      {
       if(evaluated_style<0 || evaluated_style>QTS_SMC_FVG_OB ||
@@ -1608,16 +1623,28 @@ int OnInit()
       RetestDepthAtr<0.1 || RetestDepthAtr>1.5 ||
       AssumedRoundTurnFeePerLot<0.0 || AssumedRoundTurnFeePerLot>100.0 ||
       AdverseStopSlipPrice<0.0 || AdverseStopSlipPrice>2.0 ||
-      MinimumTargetFeeMultiple<1.0 || MinimumTargetFeeMultiple>10.0)
+      MinimumTargetFeeMultiple<1.0 || MinimumTargetFeeMultiple>10.0 ||
+      TesterDualStrategyMode<0 || TesterDualStrategyMode>2)
      {
       Print("QTS: invalid parameters, no initialization.");
       return INIT_PARAMETERS_INCORRECT;
      }
    if((TesterUseEntryQualityV2 || TesterProtectNearTPV2 || TesterUseMarketContextV3 ||
-       TesterUseAdaptiveRouterV4 || TesterUsePreregisteredVetoV5) &&
+       TesterUseAdaptiveRouterV4 || TesterUsePreregisteredVetoV5 ||
+        TesterDualStrategyMode>0) &&
       MQLInfoInteger(MQL_TESTER)==0)
      {
       Print("QTS: research V2 variants are Strategy Tester ONLY.");
+      return INIT_PARAMETERS_INCORRECT;
+     }
+   if(TesterDualStrategyMode>0 &&
+      (MQLInfoInteger(MQL_TESTER)==0 ||
+       EntryStyle!=QTS_ADAPTIVE_ROUTER || SignalTimeframe!=PERIOD_M15 ||
+       TesterUseEntryQualityV2 || TesterProtectNearTPV2 ||
+       TesterUseMarketContextV3 || TesterUseAdaptiveRouterV4 ||
+       TesterUsePreregisteredVetoV5))
+     {
+      Print("QTS: dual Retest/Sweep requires M15 style 7 Strategy Tester; not combinable with V2/V3/V4/V5");
       return INIT_PARAMETERS_INCORRECT;
      }
    // M1 scalp is frozen: M1 only, 15-minute position cap. Any other
