@@ -1634,6 +1634,73 @@ void WriteForwardShadowHeartbeat(const string phase)
    FileClose(h);
   }
 
+// Rebuild fill-safety authority after an EA restart or lost terminal event.
+// An old incident marker is NOT cleared automatically. History for all
+// active QTS-owned positions is cross-checked against original entry DEALs.
+// Do not auto-close a netting position with foreign/manual entry history.
+void QtsAuditActiveOriginalFills()
+  {
+   if(RealAccountBlocked()) return;
+   if(!HistorySelect(0,TimeTradeServer()))
+     {
+      LatchExecutionHalt("entry-deal history not available for restart reconciliation");
+      return;
+     }
+   int deal_count=HistoryDealsTotal();
+   for(int i=PositionsTotal()-1;i>=0;i--)
+     {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket))
+        {
+         LatchExecutionHalt("cannot inspect positions on fill-safety restart");
+         continue;
+        }
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
+         (ulong)PositionGetInteger(POSITION_MAGIC)!=RobotMagic)
+         continue;
+      long identifier=PositionGetInteger(POSITION_IDENTIFIER);
+      bool seen=false,foreign=false,bad=false;
+      for(int j=0;j<deal_count;j++)
+        {
+         ulong deal=HistoryDealGetTicket(j);
+         if(deal==0)
+           {
+            bad=true;
+            break;
+           }
+         if(HistoryDealGetInteger(deal,DEAL_POSITION_ID)!=identifier)
+            continue;
+         ENUM_DEAL_ENTRY kind=(ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal,DEAL_ENTRY);
+         if(kind!=DEAL_ENTRY_IN && kind!=DEAL_ENTRY_INOUT)
+            continue;
+         if(HistoryDealGetString(deal,DEAL_SYMBOL)!=_Symbol ||
+            (ulong)HistoryDealGetInteger(deal,DEAL_MAGIC)!=RobotMagic)
+           {
+            foreign=true;
+            continue;
+           }
+         seen=true;
+         int side=HistoryDealGetInteger(deal,DEAL_TYPE)==DEAL_TYPE_BUY ? 1 :
+                  (HistoryDealGetInteger(deal,DEAL_TYPE)==DEAL_TYPE_SELL ? -1 : 0);
+         if(kind==DEAL_ENTRY_INOUT ||
+            !QtsFillStopsConsistent(side,
+                                   HistoryDealGetDouble(deal,DEAL_PRICE),
+                                   HistoryDealGetDouble(deal,DEAL_SL),
+                                   HistoryDealGetDouble(deal,DEAL_TP)))
+            bad=true;
+        }
+      if(foreign || !seen)
+        {
+         LatchExecutionHalt("mixed or unavailable original entry-deal provenance; manual reconciliation required");
+         PrintFormat("QTS FILL RESTART NO-GO: position=%I64u mixed=%d seen=%d",
+                     ticket,(int)foreign,(int)seen);
+        }
+      if(bad)
+         QtsMarkUnsafeFill(identifier,
+                           "unsafe original broker entry fill found on restart");
+     }
+  }
+
 int OnInit()
   {
    if(ForwardShadowObserveBothStyles && !ForwardShadowDualSafe())
@@ -1819,6 +1886,10 @@ int OnInit()
       audit_file=StringFormat("QTS_tester_deals_%I64u.csv",GetTickCount64());
    if(!ReconcileBrokerDealAudit())
       LatchExecutionHalt("restart deal history reconciliation failed");
+   QtsAuditActiveOriginalFills();
+   // A persistently flagged pure QTS position is protected immediately;
+   // the timer/tick paths continue attempts if the broker initially refuses.
+   ManageOwnedPositions();
    if(!QtsOpenDualOpportunityLedger())
      {
       Print("QTS DUAL NO_GO: native opportunity ledger could not be initialized");
