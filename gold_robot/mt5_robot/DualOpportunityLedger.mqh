@@ -8,6 +8,26 @@ long qts_opportunity_bars=0;
 long qts_opportunity_rows=0;
 bool qts_opportunity_fault=false;
 
+// MQL5 FileWrite(FILE_CSV) inserts semicolon delimiters, but raw status
+// strings can ALSO contain semicolons. That creates extra columns and
+// invalidates native evidence. Sanitize ONLY text exported to research CSV;
+// never mutate status_text, router logic, order requests, or risk checks.
+// ASCII bounded text prevents delimiter/newline injection and large records.
+string QtsOpportunityCsvSafe(const string input)
+  {
+   string cleaned=input;
+   StringReplace(cleaned,";"," |");
+   StringReplace(cleaned,"\\r"," ");
+   StringReplace(cleaned,"\\n"," ");
+   StringReplace(cleaned,"\\t"," ");
+   StringReplace(cleaned,"\"","'");
+   if(StringLen(cleaned)>256)
+      cleaned=StringSubstr(cleaned,0,256);
+   if(StringLen(cleaned)==0)
+      cleaned="EMPTY_REASON";
+   return cleaned;
+  }
+
 bool QtsOpenDualOpportunityLedger()
   {
    if(TesterDualStrategyMode==0)
@@ -111,11 +131,13 @@ void QtsObserveDualOpportunities(const datetime bar_time,
       string kind=signal==0 ? "NO_SIGNAL" :
           (exposure ? "SIGNAL_WHILE_EXPOSED" :
            (direction_veto ? "MODE_DIRECTION_VETO" : "SIGNAL_NOT_FILL_PROOF"));
+      string safe_signal_reason=QtsOpportunityCsvSafe(signal_reason);
+      string safe_entry_reason=QtsOpportunityCsvSafe(frozen_entry_decision);
       uint wrote=FileWrite(qts_opportunity_handle,
           TimeToString(bar_time,TIME_DATE|TIME_SECONDS),
           TimeToString(TimeCurrent(),TIME_DATE|TIME_SECONDS),
-          TesterDualStrategyMode,style,signal,signal_reason,
-          frozen_entry_decision,(int)exposure,(int)direction_veto,
+          TesterDualStrategyMode,style,signal,safe_signal_reason,
+          safe_entry_reason,(int)exposure,(int)direction_veto,
           qts_dual_router_eligible,qts_dual_router_verdict,
           DoubleToString(atr,8),DoubleToString(rank,4),
           DoubleToString(adx,6),DoubleToString(h1_delta,6),
