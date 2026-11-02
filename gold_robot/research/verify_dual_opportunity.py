@@ -13,7 +13,8 @@ from pathlib import Path
 
 FIELDS=("bar_time_server","observed_time_server","mode","style","side",
         "signal_reason","entry_decision_reason","exposure_blocked",
-        "mode_direction_veto","atr14_closed","atr_rank_prior_192_pct",
+        "mode_direction_veto","router_eligible_count","router_verdict",
+        "atr14_closed","atr_rank_prior_192_pct",
         "adx_closed","h1_close_minus_ema50","bid","ask","spread",
         "candidate_class")
 CATEGORIES={"NO_SIGNAL","SIGNAL_WHILE_EXPOSED","MODE_DIRECTION_VETO",
@@ -34,6 +35,8 @@ def verify(path:Path,mode:int)->dict:
         bars=set()
         decision_by_bar={}
         exposure_by_bar={}
+        router_by_bar={}
+        router_counts=Counter()
         quote_by_bar={}
         frozen_reason_evidence=0
         observed=0
@@ -51,6 +54,8 @@ def verify(path:Path,mode:int)->dict:
                 when=datetime.strptime(row["observed_time_server"],"%Y.%m.%d %H:%M:%S")
                 m=int(row["mode"]);style=int(row["style"]);side=int(row["side"])
                 exposed=int(row["exposure_blocked"]);veto=int(row["mode_direction_veto"])
+                router_eligible=int(row["router_eligible_count"])
+                router_verdict=row["router_verdict"]
                 atr=float(row["atr14_closed"]);rank=float(row["atr_rank_prior_192_pct"])
                 adx=float(row["adx_closed"])
                 h1=float(row["h1_close_minus_ema50"])
@@ -61,6 +66,10 @@ def verify(path:Path,mode:int)->dict:
                 raise LedgerError("Non-finite native indicator or quote")
             if m!=mode or style not in (1,3) or side not in (-1,0,1) or exposed not in (0,1) or veto not in (0,1):
                 raise LedgerError("Bad mode/style/side/exposure identity")
+            if (router_eligible,router_verdict) not in (
+                (-1,"NOT_EVALUATED"),(0,"NO_EXECUTABLE"),
+                (1,"CANDIDATE_SELECTED"),(2,"COLLISION_ABSTAIN")):
+                raise LedgerError("Invalid router eligibility/verdict")
             if when<bar or not row["signal_reason"] or not row["entry_decision_reason"]:
                 raise LedgerError("Missing native decision provenance")
             if atr!=-1 and atr<=0:raise LedgerError("Invalid ATR")
@@ -86,6 +95,11 @@ def verify(path:Path,mode:int)->dict:
             if bar in exposure_by_bar and exposed!=exposure_by_bar[bar]:
                 raise LedgerError("Pre-decision exposure snapshot differs across styles")
             exposure_by_bar[bar]=exposed
+            if bar in router_by_bar and router_by_bar[bar]!=(router_eligible,router_verdict):
+                raise LedgerError("Router eligibility differs across styles on one closed bar")
+            if bar not in router_by_bar:
+                router_counts[router_verdict]+=1
+            router_by_bar[bar]=(router_eligible,router_verdict)
             market=(row["observed_time_server"],row["atr14_closed"],
                     row["atr_rank_prior_192_pct"],row["adx_closed"],
                     row["h1_close_minus_ema50"],row["bid"],row["ask"],row["spread"])
@@ -120,6 +134,7 @@ def verify(path:Path,mode:int)->dict:
         "atr_available_rows":atr_known,"atr_rank_available_rows":rank_known,
         "raw_signal_rows":signaled,"raw_signal_while_exposed_rows":signal_exposed,
         "same_bar_decision_provenance_verified":True,
+        "router_verdicts_by_closed_bar":dict(sorted(router_counts.items())),
         "by_strategy_class":[{"style":style,"category":c,"rows":n} for (style,c),n in sorted(classified.items())],
         "atr_rank_is_native_iatr_not_retro_simple_tr":True,
         "limitation":"Closed-bar signals are not executable missed fills or counterfactual profits."
