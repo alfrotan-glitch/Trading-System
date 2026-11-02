@@ -68,6 +68,17 @@ def test_corruption_fails_closed(tmp_path,mutation,error):
     with pytest.raises(LedgerError,match=error):
         verify(write(tmp_path,data),2)
 
+def test_nonfinite_atr_or_quote_rejected(tmp_path):
+    data=rows(1)
+    data[0]["atr14_closed"]="nan"
+    with pytest.raises(LedgerError,match="Non-finite"):
+        verify(write(tmp_path,data),1)
+    data=rows(1)
+    data[0]["spread"]="inf"
+    with pytest.raises(LedgerError,match="Non-finite"):
+        verify(write(tmp_path,data),1)
+
+
 def test_no_signal_and_veto_provenance(tmp_path):
     data=rows(2)
     data[0]["side"]="0"
@@ -85,8 +96,9 @@ def test_native_tester_only_and_unchanged_trade_decision():
     installer=(GOLD/"mt5_robot/Install_QTS_Gold_Robot.ps1").read_text(encoding="utf-8")
     runner=(GOLD/"research/RunAutomaticTester.ps1").read_text(encoding="utf-8")
     assert '#include "DualOpportunityLedger.mqh"' in ea
-    assert "      ConsiderNewEntry();\n      // Observer runs AFTER" in ea
-    assert "      QtsObserveDualOpportunities(closed,status_text);" in ea
+    assert "      bool dual_exposure_before=" in ea
+    assert "      ConsiderNewEntry();\n      // Signals are inspected AFTER" in ea
+    assert "      QtsObserveDualOpportunities(closed,status_text,dual_exposure_before);" in ea
     assert "   if(MQLInfoInteger(MQL_TESTER)==0 || EntryStyle!=QTS_ADAPTIVE_ROUTER" in ledger
     assert "   if(TesterDualStrategyMode==0 || MQLInfoInteger(MQL_TESTER)==0)" in ledger
     assert "int original_style=evaluated_style;" in ledger
