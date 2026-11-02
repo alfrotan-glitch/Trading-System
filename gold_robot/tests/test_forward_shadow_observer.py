@@ -11,7 +11,7 @@ import pytest
 
 GOLD = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(GOLD / "research"))
-from forward_shadow_observer import FIELDS, freeze, review
+from forward_shadow_observer import FIELDS, freeze, review, native_heartbeat
 
 START = 1_780_000_000
 
@@ -54,9 +54,47 @@ def append_native(signals, *, style=3, side="BUY", high=True,
     return f
 
 
+
+def write_health(signals, at):
+    health = signals / "QTS_ForwardShadowV2_HEALTH.csv"
+    with health.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f, delimiter=";")
+        writer.writerow(["schema", "utc_s", "server_s", "bar_server_s",
+                         "symbol", "timeframe", "mode", "connected",
+                         "orders_authorized", "phase"])
+        writer.writerow(["qts.mt5.forward_shadow_health.v1", at, at,
+                         at - 900, "XAUUSD@", "M15",
+                         "ONE_CHART_TWO_STYLES", 1, 0, "WAITING_FOR_M15_CLOSE"])
+
+
+def test_no_native_beacon_cannot_be_mistaken_for_running_system(tmp_path):
+    reports, signals, ea = fresh(tmp_path)
+    out = review(reports, signals, ea, now_utc_s=START + 100)
+    assert out["status"] == "NATIVE_EA_HEARTBEAT_MISSING_NO_GO"
+    assert out["native_ea_health"]["status"] == "NATIVE_EA_HEARTBEAT_MISSING_NO_GO"
+    write_health(signals, START + 100)
+    out = review(reports, signals, ea, now_utc_s=START + 110)
+    assert out["status"] == "REGISTERED_WAITING_FOR_NATIVE_DEMO_SIGNALS"
+    assert out["native_ea_health"]["age_seconds"] == 10
+    out = review(reports, signals, ea, now_utc_s=START + 250)
+    assert out["status"] == "NATIVE_EA_HEARTBEAT_INVALID_OR_STALE_NO_GO"
+
+
+def test_order_authorized_beacon_is_not_trusted(tmp_path):
+    reports, signals, ea = fresh(tmp_path)
+    write_health(signals, START + 100)
+    health = signals / "QTS_ForwardShadowV2_HEALTH.csv"
+    text = health.read_text("utf-8").replace(
+        "ONE_CHART_TWO_STYLES;1;0;", "ONE_CHART_TWO_STYLES;1;1;"
+    )
+    health.write_text(text, encoding="utf-8")
+    assert native_heartbeat(signals, now_utc_s=START + 110)["status"].endswith("NO_GO")
+
+
 def test_one_time_freeze_ignores_prior_market_candidates(tmp_path):
     reports, signals, ea = fresh(tmp_path)
     append_native(signals, at=START - 40, bar=START - 1005)
+    write_health(signals, START + 120)
     before = review(reports, signals, ea, now_utc_s=START + 120)
     assert before["candidate_events_since_registration"] == 0
     assert before["pre_registration_events_excluded"] == 1
@@ -72,6 +110,7 @@ def test_three_frozen_shadow_cohorts_never_claim_profit(tmp_path):
     append_native(signals, side="BUY", high=False, at=START + 1865)
     append_native(signals, style=1, side="SELL",
                   high=False, at=START + 2765)
+    write_health(signals, START + 3000)
     output = review(reports, signals, ea, now_utc_s=START + 3000)
     assert output["status"] == "FORWARD_SIGNALS_OBSERVED_ONLY_NO_TRADE_OUTCOME"
     assert output["candidate_events_since_registration"] == 4
