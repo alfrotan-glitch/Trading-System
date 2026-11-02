@@ -18,6 +18,8 @@ on:
       - "QTS_OWNER_VERDICT.bat"
       - "QTS_DUAL_RESEARCH.bat"
       - "QTS_DUAL_RESEARCH.ps1"
+      - "QTS_DUAL_QUALITY.bat"
+      - "QTS_DUAL_QUALITY.ps1"
       - "QTS_DUAL_DIAGNOSE.bat"
       - "QTS_DUAL_DIAGNOSE.ps1"
       - "QTS_DUAL_ATR_REVIEW.bat"
@@ -73,7 +75,7 @@ jobs:
           )){
             Copy-Item -LiteralPath (Join-Path 'data/evidence' $name) -Destination $publicEvidence
           }
-          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','QTS_DUAL_RESEARCH.bat','QTS_DUAL_RESEARCH.ps1','QTS_DUAL_DIAGNOSE.bat','QTS_DUAL_DIAGNOSE.ps1','QTS_DUAL_ATR_REVIEW.bat','QTS_DUAL_ATR_REVIEW.ps1','START_HERE.bat','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
+          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','QTS_DUAL_RESEARCH.bat','QTS_DUAL_RESEARCH.ps1','QTS_DUAL_QUALITY.bat','QTS_DUAL_QUALITY.ps1','QTS_DUAL_DIAGNOSE.bat','QTS_DUAL_DIAGNOSE.ps1','QTS_DUAL_ATR_REVIEW.bat','QTS_DUAL_ATR_REVIEW.ps1','START_HERE.bat','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
             Copy-Item -LiteralPath $file -Destination $stage
           }
           @'
@@ -82,6 +84,9 @@ jobs:
           0z. DUAL TEST FAILURE READER: QTS_DUAL_DIAGNOSE.bat
               No rerun, no MT5 launch, no orders. Captures the newest failed
               child OPEN_RESULTS.json and a single safe diagnostic ZIP.
+          0b. DUAL QUALITY CHALLENGER: QTS_DUAL_QUALITY.bat
+              Same Style-7 M15 Research only. Same-side quality collision
+              tie-break; October is NOT independent holdout. LIVE LOCKED.
           0a. DUAL STRATEGY NATIVE RESEARCH: QTS_DUAL_RESEARCH.bat
               Two separate Style-7 test-only challenges: both directions
               Retest/Sweep, versus BUY Retest / SELL Sweep. Historical,
@@ -140,7 +145,7 @@ jobs:
           Expand-Archive -LiteralPath 'QTS-Gold-Windows-Research-Kit.zip' -DestinationPath $dst -Force
           Push-Location $dst
           try {
-            foreach($file in @('OPEN_FIRST.txt','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','QTS_DUAL_RESEARCH.bat','QTS_DUAL_RESEARCH.ps1','QTS_DUAL_DIAGNOSE.bat','QTS_DUAL_DIAGNOSE.ps1','QTS_DUAL_ATR_REVIEW.bat','QTS_DUAL_ATR_REVIEW.ps1','START_HERE.bat','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','gold_robot\mt5_robot\DualResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
+            foreach($file in @('OPEN_FIRST.txt','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','QTS_DUAL_RESEARCH.bat','QTS_DUAL_RESEARCH.ps1','QTS_DUAL_QUALITY.bat','QTS_DUAL_QUALITY.ps1','QTS_DUAL_DIAGNOSE.bat','QTS_DUAL_DIAGNOSE.ps1','QTS_DUAL_ATR_REVIEW.bat','QTS_DUAL_ATR_REVIEW.ps1','START_HERE.bat','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','gold_robot\mt5_robot\DualResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
               if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing kit file: $file" }
             }
             foreach($name in @('mt5_365d_microstructure_summary_20261023.json',
@@ -177,7 +182,7 @@ jobs:
       - name: Parse read-only bounded stop tick helpers on Windows
         shell: pwsh
         run: |
-          foreach($name in @('QTS_PREPARE_STOP_TICKS.ps1', 'QTS_FINISH_STOP_TICKS.ps1', 'QTS_ONE_CLICK_ROBOT.ps1', 'QTS_REVISED_COMPARE.ps1', 'QTS_V2_ABLATION.ps1', 'QTS_DUAL_RESEARCH.ps1', 'QTS_DUAL_DIAGNOSE.ps1', 'QTS_DUAL_ATR_REVIEW.ps1')) {
+          foreach($name in @('QTS_PREPARE_STOP_TICKS.ps1', 'QTS_FINISH_STOP_TICKS.ps1', 'QTS_ONE_CLICK_ROBOT.ps1', 'QTS_REVISED_COMPARE.ps1', 'QTS_V2_ABLATION.ps1', 'QTS_DUAL_RESEARCH.ps1', 'QTS_DUAL_QUALITY.ps1', 'QTS_DUAL_DIAGNOSE.ps1', 'QTS_DUAL_ATR_REVIEW.ps1')) {
             $tokens = $null
             $errors = $null
             $file = (Resolve-Path $name).Path
