@@ -118,81 +118,59 @@ subgroup appears profitable. Independent future DEMO trading and verified
 broker execution costs are required before any profitability claim.
 Current live permission remains **LOCKED**.
 
-## Forward Shadow | prospective native DEMO candidates, no orders
+## Automatic Forward Shadow | one chart, both styles, never orders
 
-**6 > C** in `START_HERE.bat` creates the immutable local registration
-`gold_robot/reports_local/forward_shadow/QTS_FORWARD_SHADOW_V2_FROZEN.json`
-and summarizes *only subsequently observed* signals in
-`QTS_FORWARD_SHADOW_V2_REPORT.json`. Run C once to register the evaluation
-**before** observing any new signals. Running it again reads new events;
-it never resets the frozen date/rules or reuses historical tester trades.
+**Operator workflow: one initial double-click on QTS_AUTO_FORWARD.bat.**
+No manual chart setup, Python commands, ZIP selection, tester reruns, or broker
+login prompts. Main menu **6 > C** starts the same automatic supervisor.
 
-The canonical `QTS_Gold_Robot.mq5` can now append candidate events from
-its existing closed-bar `ObserveUnarmedDemoSignal()` path. To observe both:
+The unattended supervisor does the following, in order:
+1. Detect exactly one eligible MT5 installation. A previously installed QTS
+   robot identifies the correct terminal only when unambiguous.
+2. Compile/install the canonical EA using that terminal's native MetaEditor.
+   An absent, stale or invalid EX5 is always **NO-GO**.
+3. Generate the built-in MT5 Startup configuration and safe preset with
+   AllowLiveTrading=0, AllowDllImport=0, EnableDemoOrders=false and
+   EnableDemoForwardOrders=false. The terminal opens **one** XAUUSD@ M15 chart,
+   running the canonical EA in **dual-observation mode** for both Retest
+   (Style 1) and Sweep/Reclaim (Style 3) on each newly completed M15 candle.
+4. Verify a native health beacon emitted every 10 seconds, including periods
+   without signals. Missing or stale health is not interpreted as a valid
+   signal-free observation session.
+5. Freeze research rules and continuously create read-only signal and
+   post-signal 60-minute Bid/Ask excursion reports. Once verified, register
+   per-user Windows logon auto-start for the supervisor.
 
-1. Install/compile the current canonical EA with main menu **3**.
-   Compilation must succeed; GitHub's Python CI cannot prove that MetaEditor
-   compiled the EX5 inside your actual terminal.
-2. Open **WMMarkets DEMO**, make two charts for **XAUUSD@**, both **M15**.
-   Attach the canonical EA to each: `EntryStyle=1` Retest on the first,
-   `EntryStyle=3` Sweep/Reclaim on the second.
-3. On **both** charts: `EnableDemoOrders=false`,
-   `EnableDemoForwardOrders=false`, `EnableEntryDiagnostics=true`.
-   Keep MT5 Algo Trading disabled. Do not attach to a REAL account.
-4. Use **6 > C** again to review the candidates whenever needed.
-   It reads the MT5 `FILE_COMMON` CSV files directly; no ZIP or path entry.
+The special input ForwardShadowObserveBothStyles is FALSE by default and
+will initialize only on a verified connected WMMarkets USD DEMO account,
+XAUUSD@ M15 chart, both order toggles OFF, and Style 1. The separate
+observer branch never enters ConsiderNewEntry, broker order submission,
+position modification or pending-order management. The launcher does not
+request or change broker account credentials.
 
-Native candidate CSV filenames:
-`%APPDATA%\MetaQuotes\Terminal\Common\Files\QTS_ForwardShadowV2_Style1_YYYYMM.csv`
-and `...Style3_YYYYMM.csv`.
+**Fail-closed automation:** if MT5 is already running without a fresh
+unarmed Shadow heartbeat, the supervisor does NOT forcibly restart it.
+Any ambiguous terminal, blocked compilation, absent DEMO account or
+unavailable quotes is recorded as NO-GO, never guessed away. This is a
+safety boundary, not a request for the user to manage broker accounts.
 
-The exporter records the genuinely occurring native closed-bar BUY/SELL
-direction, bar/tick times, Bid/Ask, ATR(14), and median of **48 prior rolling 14-TR ATR
-measurements** from completed M15 bars. No account identifiers or orders are exported.
-This is version V2; earlier experimental signal CSVs (V1) are not imported
-or merged. The 14-period ATR uses the simple mean of true ranges, not MT5's
-Wilder iATR. This matches the prior historical audit formula (which used
-48 prior ATR readings for the median), but broker quote feeds can still differ.
-The Python reader verifies structural fields and rejects stale/pre-registration
-events, duplicate same-bar records, impossible timing and inconsistent ATR
-labels. It freezes a source hash and two predetermined shadow rules; any local
-source/rule change requires a **new, explicitly identified** prospective
-evaluation, never resetting the original registration.
+All generated diagnostics are under:
+gold_robot/reports_local/forward_shadow/
 
-The baseline observer reports counts of genuine native signals only.
-**Advanced 6 > C also produces a separate 60-minute post-signal quote audit**:
-`gold_robot/reports_local/forward_shadow/QTS_FORWARD_SHADOW_V2_QUOTE_PATHS.json`.
-Only signals recorded AFTER the immutable V2 registration qualify. No historical
-signal reconstruction, backtest rerun, connected order or operator ZIP path is
-needed. It uses the already-open WMMarkets DEMO terminal's broker tick history
-after a full 60-minute horizon has elapsed. Quotes with missing initial/final
-coverage, long missing intervals, implausible local UTC vs broker timestamps,
-wrong accounts, bad spread or missing data are explicitly UNKNOWN/NO-GO.
+- QTS_FORWARD_AUTO_STATUS.json: current automatic supervisor health or NO-GO
+- QTS_FORWARD_SHADOW_V2_FROZEN.json: immutable registration date/policy
+- QTS_FORWARD_SHADOW_V2_REPORT.json: genuine native signals and beacon checks
+- QTS_FORWARD_SHADOW_V2_QUOTE_PATHS.json: descriptive 60-minute quote excursions
 
-For each usable window it records the most favorable/adverse **executable-side
-Bid or Ask excursion in XAUUSD price units** (not account USD), and descriptive
-medians for the three predetermined Sweep filter cohorts.
-For resource safety one review inspects the **latest 64** prospective signals.
-Any omitted older events are explicitly counted and make the path report
-NO-GO for full sample coverage; do not silently treat the 64 as all signals. Broker history is
-retrieved AFTER the prospectively recorded signal: it is not a guaranteed
-complete/signed tick stream, and local CSV evidence is not authenticated.
+Only post-registration signals count. The native ATR uses the mean of 14
+true ranges and median of 48 prior readings, consistent with the historical
+forensics; V1 and V2 CSV files are not mixed. At most the latest 64 events
+are inspected per quote-path review; omissions make overall coverage NO-GO.
 
-**The quote-path audit does NOT reconstruct the EA's actual pending limit order,
-fills, lot sizing, original SL/TP, fees, risk management, slippage, execution
-sequence, or trade profit.** It cannot establish win rate or edge. Those
-components require a distinct verified forward fill/evidence contract, not an
-assumed "enter at signal" price. The tool is read-only and the complete path
-report remains NO-GO for trading.
-Do **not** interpret a recorded BUY/SELL candidate as an executable order
-or profit. No forward win-rate, expectancy or validated edge is available
-until an independently audited future path/fill contract is designed.
-It also does not cryptographically authenticate the installed EX5 or local CSV:
-source-hash match is not proof of binary provenance.
-
-The observer cannot set live permissions, automatically adapt filters,
-access order submission, or change an EA trade parameter.
-**LIVE stays LOCKED.**
+**Not trading validation:** a signal is NOT a filled LIMIT order. The
+collector cannot establish actual SL/TP hits, lots, fees, slippage, realized
+profit, win rate, or a profitable trading edge. Native files are not
+cryptographically signed. LIVE remains LOCKED.
 
 ## Safety and installation troubleshooting
 
