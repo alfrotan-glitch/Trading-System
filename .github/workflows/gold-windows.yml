@@ -231,7 +231,7 @@ jobs:
           New-Item -ItemType Directory -Path (Join-Path $install 'MQL5\Profiles') -Force | Out-Null
           $exe = Join-Path $install 'terminal64.exe'
           [IO.File]::WriteAllText($exe,'TEST-ONLY FAKE TERMINAL - NEVER EXECUTE')
-          foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','MarketContextV3.mqh','AdaptiveV4Research.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
+          foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','MarketContextV3.mqh','AdaptiveV4Research.mqh','DualResearch.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
             Copy-Item -LiteralPath (Join-Path gold_robot/mt5_robot $name) -Destination (Join-Path $experts $name)
           }
           $binary = Join-Path $experts 'QTS_Gold_Robot.ex5'
