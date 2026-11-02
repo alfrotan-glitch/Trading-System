@@ -23,7 +23,7 @@ CATEGORIES={"NO_SIGNAL","SIGNAL_WHILE_EXPOSED","MODE_DIRECTION_VETO",
 class LedgerError(ValueError): pass
 
 def verify(path:Path,mode:int)->dict:
-    if mode not in (1,2):raise LedgerError("Invalid tester dual mode")
+    if mode not in (1,2,3):raise LedgerError("Invalid tester dual mode")
     if path.stat().st_size>25_000_000:raise LedgerError("Oversized native ledger")
     with path.open(newline="",encoding="ascii",errors="strict") as source:
         reader=csv.DictReader(source,delimiter=";")
@@ -34,6 +34,7 @@ def verify(path:Path,mode:int)->dict:
         previous=None
         bars=set()
         decision_by_bar={}
+        signals_by_bar={}
         exposure_by_bar={}
         router_by_bar={}
         router_counts=Counter()
@@ -75,9 +76,12 @@ def verify(path:Path,mode:int)->dict:
                 raise LedgerError("Non-finite native indicator or quote")
             if m!=mode or style not in (1,3) or side not in (-1,0,1) or exposed not in (0,1) or veto not in (0,1):
                 raise LedgerError("Bad mode/style/side/exposure identity")
-            if (router_eligible,router_verdict) not in (
+            valid_router=((router_eligible,router_verdict) in (
                 (-1,"NOT_EVALUATED"),(0,"NO_EXECUTABLE"),
-                (1,"CANDIDATE_SELECTED"),(2,"COLLISION_ABSTAIN")):
+                (1,"CANDIDATE_SELECTED"),(2,"COLLISION_ABSTAIN")))
+            if mode==3 and (router_eligible,router_verdict)==(2,"QUALITY_COLLISION_SELECTED"):
+                valid_router=True
+            if not valid_router:
                 raise LedgerError("Invalid router eligibility/verdict")
             if when<bar or not row["signal_reason"] or not row["entry_decision_reason"]:
                 raise LedgerError("Missing native decision provenance")
@@ -101,6 +105,7 @@ def verify(path:Path,mode:int)->dict:
             if bar in decision_by_bar and row["entry_decision_reason"]!=decision_by_bar[bar]:
                 raise LedgerError("Decision provenance changed between styles on one closed bar")
             decision_by_bar[bar]=row["entry_decision_reason"]
+            signals_by_bar[(bar,style)]=side
             if bar in exposure_by_bar and exposed!=exposure_by_bar[bar]:
                 raise LedgerError("Pre-decision exposure snapshot differs across styles")
             exposure_by_bar[bar]=exposed
@@ -134,6 +139,13 @@ def verify(path:Path,mode:int)->dict:
             raise LedgerError("Missing one strategy on closed bar")
         if frozen_reason_evidence==0:
             raise LedgerError("Decision reason aliases strategy signal_reason in all rows")
+        for bar in bars:
+            _, verdict=router_by_bar[bar]
+            if verdict=="QUALITY_COLLISION_SELECTED":
+                if mode!=3 or signals_by_bar[(bar,1)]==0 or (
+                    signals_by_bar[(bar,1)]!=signals_by_bar[(bar,3)]):
+                    raise LedgerError("Quality collision lacks same-side dual signals")
+
     return {
         "schema":"qts.dual_native_opportunity.v1",
         "status":"NATIVE_OPPORTUNITIES_VERIFIED_RESEARCH_ONLY",
