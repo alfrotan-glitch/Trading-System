@@ -97,3 +97,102 @@ def test_runner_marks_native_safety_incident_no_go():
     assert "if($state -notin @(" in runner
     assert "SELECTED_TESTS_WITH_SAFETY_INCIDENT_NO_GO" not in (
         runner.split("if($state -notin @(")[-1].split("exit 2")[0])
+
+
+def write_raw_broker_deals(tmp_path, entries, exits, mode=3):
+    path=tmp_path/"native_deals.csv"
+    columns=["position_id","deal_id","order_id","entry","reason","type",
+             "time_msc","volume","price","sl","tp","gross",
+             "commission","swap","fee","setup_reason"]
+    allrows=[]
+    for i,row in enumerate(entries):
+        allrows.append(dict(
+            position_id="26",deal_id=str(100+i),order_id=str(200+i),
+            entry="DEAL_ENTRY_IN",reason="DEAL_REASON_EXPERT",
+            type="DEAL_TYPE_BUY",time_msc=row["time_msc"],
+            volume=str(row["volume"]),price=str(row["price"]),
+            sl=str(row["sl"]),tp=str(row["tp"]),gross="0",
+            commission="0",swap="0",fee="0",
+            setup_reason=f"QTS-DUAL-M{mode}-S1"))
+    for i,row in enumerate(exits):
+        allrows.append(dict(
+            position_id="26",deal_id=str(900+i),order_id=str(800+i),
+            entry="DEAL_ENTRY_OUT",reason="DEAL_REASON_EXPERT",
+            type="DEAL_TYPE_SELL",time_msc=row["time_msc"],
+            volume=str(row["volume"]),price=str(row.get("price",4187.20)),
+            sl="4176.16",tp="4187.08",gross="0",
+            commission="0",swap="0",fee="0",setup_reason=""))
+    with path.open("w",newline="",encoding="ascii") as fh:
+        writer=csv.DictWriter(fh,columns,delimiter=";")
+        writer.writeheader()
+        writer.writerows(allrows)
+    return path
+
+
+def test_native_individual_partial_fills_detect_hidden_bad_stop(tmp_path):
+    f,o=make_sample(tmp_path)
+    source=json.loads(f.read_text(encoding="utf-8"))
+    trade=source["trades"][0]
+    # The aggregated entry is perfectly valid, but a smaller second fill
+    # crossed above its own attached original stop.
+    trade.update(entry_price=4177.078,initial_sl=4176.16,
+                 initial_tp=4187.08,entry_lots=0.10,exit_lots=0.10,
+                 entry_time_msc="1792078202590",exit_time_msc="1792078302590")
+    f.write_text(json.dumps(source),encoding="utf-8")
+    entry=[
+        {"time_msc":"1792078202590","volume":0.09,"price":4181.58,
+         "sl":4176.16,"tp":4187.08},
+        {"time_msc":"1792078202600","volume":0.01,"price":4136.56,
+         "sl":4142.64,"tp":4147.04}
+    ]
+    dealfile=write_raw_broker_deals(tmp_path,entry,[
+        {"time_msc":"1792078302590","volume":0.10}])
+    result=audit(f,o,broker_deals=dealfile,mode=3)
+    assert result["status"]=="POST_FILL_SAFETY_INCIDENT_NO_GO"
+    assert result["individual_entry_deals_verified"] is True
+    assert result["native_entry_deal_count"]==2
+    assert result["unsafe_original_fill_count"]==1
+    assert result["unsafe_fills"][0]["entry_deal_id"]=="101"
+    assert result["unsafe_fills"][0]["actual_entry"]==4136.56
+
+
+def test_broker_partial_fill_without_complete_exit_fails_closed(tmp_path):
+    f,o=make_sample(tmp_path)
+    raw=write_raw_broker_deals(tmp_path,[{
+        "time_msc":"1792078202590","volume":0.06,"price":4181.58,
+        "sl":4176.16,"tp":4187.08}],
+        [{"time_msc":"1792078252590","volume":0.03}])
+    with pytest.raises(SafetyAuditError,match="amounts or times mismatch"):
+        audit(f,o,broker_deals=raw,mode=3)
+
+
+def test_broker_wrong_strategy_mode_fails_closed(tmp_path):
+    f,o=make_sample(tmp_path)
+    raw=write_raw_broker_deals(tmp_path,[{
+        "time_msc":"1792078202590","volume":0.06,"price":4181.58,
+        "sl":4176.16,"tp":4187.08}],
+        [{"time_msc":"1792078252590","volume":0.06}],mode=2)
+    with pytest.raises(SafetyAuditError,match="style/mode attribution"):
+        audit(f,o,broker_deals=raw,mode=3)
+
+
+def test_safety_evidence_zip_survives_native_no_go():
+    quality=(ROOT.parent/"QTS_DUAL_QUALITY.ps1").read_text("utf-8")
+    threeway=(ROOT.parent/"QTS_DUAL_THREEWAY.ps1").read_text("utf-8")
+    for source in (quality,threeway):
+        assert "SELECTED_TESTS_WITH_SAFETY_INCIDENT_NO_GO" in source
+        assert "POST_FILL_SAFETY_INCIDENT_NO_GO" in source
+        assert "QTS_POST_FILL_SAFETY_AUDIT.json" in source
+        assert "Compress-Archive" in source
+        assert "exit 2" in source
+    assert "QTS_SAFETY_INCIDENT_NO_GO.zip" in threeway
+    assert "QTS_DUAL_QUALITY_EVIDENCE.zip" in quality
+
+
+def test_native_auditor_requires_each_broker_entry_deal():
+    audit_source=(ROOT/"research/audit_post_fill_safety.py").read_text("utf-8")
+    runner=(ROOT/"research/RunAutomaticTester.ps1").read_text("utf-8-sig")
+    assert "inspect_native_entry_deals(" in audit_source
+    assert "set(entries)!=set(positions)" in audit_source
+    assert "--deals $nativeDeals --mode $dualMode" in runner
+    assert "individual_entry_deals_verified -ne $true" in runner
