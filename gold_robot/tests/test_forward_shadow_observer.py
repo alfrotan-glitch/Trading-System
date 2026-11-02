@@ -11,7 +11,7 @@ import pytest
 
 GOLD = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(GOLD / "research"))
-from forward_shadow_observer import FIELDS, freeze, review, native_heartbeat
+from forward_shadow_observer import FIELDS, freeze, review, native_heartbeat, select_study_dir
 
 START = 1_780_000_000
 
@@ -65,6 +65,36 @@ def write_health(signals, at):
         writer.writerow(["qts.mt5.forward_shadow_health.v1", at, at,
                          at - 900, "XAUUSD@", "M15",
                          "ONE_CHART_TWO_STYLES", 1, 0, "WAITING_FOR_M15_CLOSE"])
+
+
+def test_source_upgrade_isolated_epoch_preserves_old_frozen_evidence(tmp_path):
+    reports, signals, source = fresh(tmp_path)
+    old_path = reports / "QTS_FORWARD_SHADOW_V2_FROZEN.json"
+    old_bytes = old_path.read_bytes()
+    assert select_study_dir(reports, source) == reports
+    source.write_text("modified future native source", encoding="utf-8")
+    epoch_dir = select_study_dir(reports, source)
+    assert epoch_dir != reports
+    assert "epochs" in epoch_dir.parts
+    assert epoch_dir == select_study_dir(reports, source)
+    write_health(signals, START + 200)
+    append_native(signals, at=START + 65)
+    observed = review(epoch_dir, signals, source, now_utc_s=START + 200)
+    assert observed["candidate_events_since_registration"] == 0
+    assert observed["pre_registration_events_excluded"] == 1
+    assert observed["frozen_at_utc_s"] == START + 200
+    assert old_path.read_bytes() == old_bytes
+
+
+def test_tampered_freeze_does_not_get_silently_migrated(tmp_path):
+    reports, signals, source = fresh(tmp_path)
+    marker = reports / "QTS_FORWARD_SHADOW_V2_FROZEN.json"
+    data = json.loads(marker.read_text("utf-8"))
+    data["policy_sha256"] = "tampered"
+    marker.write_text(json.dumps(data), encoding="utf-8")
+    source.write_text("new version", encoding="utf-8")
+    with pytest.raises(ValueError, match="corrupted or rules changed"):
+        select_study_dir(reports, source)
 
 
 def test_no_native_beacon_cannot_be_mistaken_for_running_system(tmp_path):
