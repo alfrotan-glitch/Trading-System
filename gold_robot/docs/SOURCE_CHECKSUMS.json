@@ -206,6 +206,11 @@
       "sha256": "0fa1004e01621e45f5707e4b838b7e4071c80034eb48b2f141a6954ec2ae6566"
     },
     {
+      "path": "mt5_robot/DualOpportunityLedger.mqh",
+      "bytes": 5449,
+      "sha256": "896fa175da3e5fcbcbb3e17364faab36f94b31c590e060c05c1f26b2ed7701ae"
+    },
+    {
       "path": "mt5_robot/DualResearch.mqh",
       "sha256": "adc9fad311c8de4b23afeb2d60daaedce9939398106c9aaf32e459b4c801b22e",
       "bytes": 3955
@@ -227,8 +232,8 @@
     },
     {
       "path": "mt5_robot/Install_QTS_Gold_Robot.ps1",
-      "bytes": 24873,
-      "sha256": "546299484abefcb7e28dda77caf88bd3b622951af8b1bb31db5ac9472a79d0d8"
+      "bytes": 26284,
+      "sha256": "e84250a91c195739351b630a205a8d51b978af003dc1ec811258311d95a699e7"
     },
     {
       "path": "mt5_robot/MarketContextV3.mqh",
@@ -242,8 +247,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 96076,
-      "sha256": "de52299dfa3f012ea0f72e88c2b3fb778e8ce6c3dc517dd8f74a3eefb822bbad"
+      "bytes": 96995,
+      "sha256": "f34045fe324bd4b489d1ee02d2feb9529c7809d1ec22af0013f9cdfa7411a438"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -322,8 +327,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 45697,
-      "sha256": "59f1834d29ab0bb7e0b876239100665afd8df49c749029e8a45a8a1cf97e6e5c"
+      "bytes": 48649,
+      "sha256": "477e638de14ce89fd31ea17182c812529c69b67f57ce2e4c2e7dca2593d8fc2d"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
@@ -581,6 +586,11 @@
       "sha256": "fbf68e478225d695e29ebac26cce0c09ad95b9c88d4b4acf949a6c7e4b5e69e7"
     },
     {
+      "path": "research/verify_dual_opportunity.py",
+      "bytes": 5727,
+      "sha256": "3e14a79a2cf24f60a92412d19342eb29d6426b63eba700a0855ff86ad822d61b"
+    },
+    {
       "path": "research/verify_stop_causality_gate.py",
       "bytes": 12800,
       "sha256": "c261872345ce7d77120e17acd57b2aaff9b316b669765489ebd4dbb0638ac38f"
@@ -629,6 +639,11 @@
       "path": "tests/test_dual_evidence_audit.py",
       "bytes": 4007,
       "sha256": "87c65ec726730885d5f169d4535ce1cbea5013ff98a2c84d50dd74adfc862bf5"
+    },
+    {
+      "path": "tests/test_dual_opportunity_contract.py",
+      "bytes": 4530,
+      "sha256": "d159f5a603184bc8732bcefb03599943f0509dd5aefe8dfb7567c6299da1ed03"
     },
     {
       "path": "tests/test_dual_research.py",
