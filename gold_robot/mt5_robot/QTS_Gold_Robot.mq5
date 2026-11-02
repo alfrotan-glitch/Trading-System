@@ -2237,7 +2237,8 @@ void OnTick()
       ConsiderNewEntry();
       // Signals are inspected AFTER the decision, with its original status
       // and the pre-decision exposure snapshot; no order path is altered.
-      QtsObserveDualOpportunities(closed,status_text,dual_exposure_before);
+      string dual_decision_snapshot=status_text;
+      QtsObserveDualOpportunities(closed,dual_decision_snapshot,dual_exposure_before);
       V4RecordClosedBarDecision(status_text);
       ObserveUnarmedDemoSignal();
       // Closed-bar diagnostics also work on WMMarkets connected DEMO.
