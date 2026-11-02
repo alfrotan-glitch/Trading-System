@@ -65,6 +65,19 @@ def test_native_threeway_comparison_is_research_only(tmp_path):
     assert len(review["variants"])==3
     assert review["variants"][0]["stressed_net_usd"]==8.8
 
+def test_future_calendar_date_cannot_self_certify_independent_holdout(tmp_path):
+    folders=setup_three(tmp_path)
+    for folder in folders.values():
+        p=folder/"OPEN_RESULTS.json"
+        data=json.loads(p.read_text(encoding="utf-8"))
+        data["from_date"]="2027.02.01"
+        data["to_date"]="2027.03.01"
+        p.write_text(json.dumps(data),encoding="utf-8")
+    review=compare(folders)
+    assert review["independent_holdout"] is False
+    assert review["holdout_verification"]=="NOT_VERIFIED_NO_PREREGISTRATION_EVIDENCE"
+
+
 def test_cross_arm_binary_identity_mismatch_fails_closed(tmp_path):
     folders=setup_three(tmp_path)
     p=folders["DUAL_QUALITY"]/"OPEN_RESULTS.json"
