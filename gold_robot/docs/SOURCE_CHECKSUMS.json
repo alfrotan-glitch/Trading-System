@@ -327,8 +327,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 48649,
-      "sha256": "477e638de14ce89fd31ea17182c812529c69b67f57ce2e4c2e7dca2593d8fc2d"
+      "bytes": 48743,
+      "sha256": "648ae4baaeaa2285e8276f4179b47ec33818c885fe45766a427692091f894ce5"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
