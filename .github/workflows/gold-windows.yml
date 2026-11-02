@@ -7,6 +7,8 @@ on:
       - "QTS_AUTO_FORWARD.bat"
       - "QTS_REFRESH_FORWARD.bat"
       - "QTS_OWNER_VERDICT.bat"
+      - "QTS_DUAL_RESEARCH.bat"
+      - "QTS_DUAL_RESEARCH.ps1"
       - "QTS_AUTO_TEST.bat"
       - "QTS_POST_STOP_REVIEW.bat"
       - "gold_robot/**"
@@ -67,6 +69,25 @@ jobs:
             throw 'Owner report wrong source or unsupported profit claim'
           }
           Write-Host 'Owner evidence report: source-backed, no broker, no orders, PASS'
+      - name: Parse and inspect test-only dual strategy launcher without launching MT5
+        shell: pwsh
+        run: |
+          $path=(Resolve-Path 'QTS_DUAL_RESEARCH.ps1').Path
+          $tokens=$null
+          $errors=$null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($path,[ref]$tokens,[ref]$errors)
+          if(@($errors).Count){ throw 'Dual research PowerShell syntax error' }
+          $batch=Get-Content -LiteralPath 'QTS_DUAL_RESEARCH.bat' -Raw
+          $source=Get-Content -LiteralPath $path -Raw
+          if($batch -notmatch 'QTS_DUAL_RESEARCH.ps1' -or
+             $source -notmatch 'DUAL_BOTH' -or
+             $source -notmatch 'DUAL_DIRECTIONAL' -or
+             $source -notmatch 'OnlyStyles' -or
+             $source -match 'OrderSend|terminal64.exe' -or
+             $source -notmatch 'edge_validated=') {
+            throw 'Dual launcher failed research-only isolation'
+          }
+          python -m py_compile gold_robot/research/dual_router_contract.py
       - name: Verify new automatic DEMO Shadow runner without launching MT5
         shell: pwsh
         run: |
