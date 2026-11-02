@@ -704,6 +704,38 @@ try{
                 throw 'Ten-trade auto-reflection attempted unsupported orders, mutation or promotion.'
             }
         }
+        # A native MT5 report and trade forensics can both be well-formed
+        # even when the EA halted on a dangerous original LIMIT fill.
+        # Never label that as an ordinary complete strategy test.
+        $safetyIncident=$false
+        $safetySummary=$null
+        if($ResearchVariant -in @('DUAL_BOTH','DUAL_DIRECTIONAL','DUAL_QUALITY') -and
+           $OnlyStyles -eq '7'){
+            $auditScript=Join-Path $gold 'research\\audit_post_fill_safety.py'
+            $auditOutput=Join-Path $OutputDirectory 'QTS_POST_FILL_SAFETY_AUDIT.json'
+            $forensicsFile=Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json'
+            $nativeEvents=Join-Path $native 'QTS_7_opportunities.csv'
+            $pythonLauncher=Get-Command py -ErrorAction SilentlyContinue
+            if($pythonLauncher){
+                & $pythonLauncher.Source -3 $auditScript --forensics $forensicsFile --opportunities $nativeEvents --output $auditOutput
+            }else{
+                $pythonLauncher=Get-Command python -ErrorAction SilentlyContinue
+                if(-not $pythonLauncher){throw 'Python required for strict post-fill safety audit.'}
+                & $pythonLauncher.Source $auditScript --forensics $forensicsFile --opportunities $nativeEvents --output $auditOutput
+            }
+            if($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $auditOutput -PathType Leaf)){
+                throw 'Native post-fill safety audit could not be verified. FAIL CLOSED.'
+            }
+            $safetySummary=Get-Content -LiteralPath $auditOutput -Raw -Encoding UTF8 | ConvertFrom-Json
+            if($safetySummary.live -ne 'LOCKED' -or
+               $safetySummary.edge_validated -ne $false -or
+               $safetySummary.trade_permission -ne $false -or
+               $safetySummary.status -notin @('NO_POST_FILL_SAFETY_INCIDENT_OBSERVED_RESEARCH_ONLY',
+                                               'POST_FILL_SAFETY_INCIDENT_NO_GO')){
+                throw 'Native post-fill safety audit state invalid. FAIL CLOSED.'
+            }
+            $safetyIncident=$safetySummary.status -eq 'POST_FILL_SAFETY_INCIDENT_NO_GO'
+        }
         $latest=Get-ChildItem -LiteralPath $OutputDirectory -Filter 'QTS_Gold_Comparison_*.html' |
             Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
         if($latest){$comparison=$latest.Name}
@@ -737,6 +769,15 @@ try{
                 $state='SELECTED_TESTS_WITH_EVIDENCE_GAPS'
             }
             $message='Selected native reports and individual deal evidence checked. Profitability unvalidated.'
+            if($safetyIncident){
+                $state='SELECTED_TESTS_WITH_SAFETY_INCIDENT_NO_GO'
+                $message=('Original broker LIMIT fill or execution halt detected. '+
+                   'Unsafe original fills='+[string]$safetySummary.unsafe_original_fill_count+
+                   '; halt bars='+[string]$safetySummary.native_execution_halt_bar_count+
+                   '; positions opened after incident='+[string]$safetySummary.new_positions_after_first_unsafe_fill+
+                   '. This truncated run is NOT comparable as a full-period strategy performance test. '+
+                   'See QTS_POST_FILL_SAFETY_AUDIT.json. LIVE LOCKED.')
+            }
         }else{
             $allInputStylesVerified=($nativeResult.reports_parsed -eq $names.Count -and
                                      $nativeResult.all_styles_identified -eq $true)
