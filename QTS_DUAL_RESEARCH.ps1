@@ -36,8 +36,8 @@ try {
         if([string]$data.state -cne $expectedState){
             throw ('Native outcome not accepted for '+$name+': expected '+$expectedState+', got '+[string]$data.state)
         }
-        if($data.edge_validated -eq $true){
-            throw ('Report unexpectedly claims validated profitable edge: '+$name)
+        if($data.validated_edge -ne $false -or $data.real_money_orders -ne $false){
+            throw ('Report lacks explicit no-edge/no-real-orders protection: '+$name)
         }
         if($data.live -ne 'LOCKED'){
             # Current native outcome schema does not necessarily include a
@@ -47,6 +47,18 @@ try {
             }
         }
         $results+=@{variant=$name;run_directory=$target;state=[string]$data.state}
+    }
+    # Native runs and their separate P/L remain authoritative. The paired
+    # diagnostic is observational only and can NEVER authorize trading.
+    if(-not $PrepareOnly){
+        $audit=Join-Path $repo 'gold_robot\research\dual_evidence_audit.py'
+        if(-not (Test-Path -LiteralPath $audit -PathType Leaf)){
+            throw 'Missing dual evidence audit; native trades retained for manual review.'
+        }
+        & py -3 $audit --both (Join-Path $folder 'DUAL_BOTH') --directional (Join-Path $folder 'DUAL_DIRECTIONAL') --out $folder
+        if($LASTEXITCODE -ne 0){
+            throw 'Dual evidence audit failed closed; inspect QTS_DUAL_EVIDENCE_AUDIT.json'
+        }
     }
     $state=if($PrepareOnly){'PREPARED_ONLY_NO_TRADES'}else{'TWO_NATIVE_RUNS_FINISHED_REVIEW_REQUIRED'}
     $reason='Each tested separately; no combined portfolio PnL, no profit approval.'
@@ -70,4 +82,11 @@ finally {
     Write-Host ('QTS DUAL STATUS: '+$summary)
 }
 if($state -eq 'FAILED_NO_GO'){exit 2}
+if(-not $PrepareOnly){
+    $html=Join-Path $folder 'QTS_DUAL_EVIDENCE_AUDIT.html'
+    if(Test-Path -LiteralPath $html -PathType Leaf){
+        try { Start-Process -FilePath $html -ErrorAction Stop }
+        catch { Write-Warning ('Report was generated but could not be opened automatically: '+$html) }
+    }
+}
 exit 0
