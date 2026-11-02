@@ -111,6 +111,11 @@
       "sha256": "bcaa5961dd984e03edbba93ffbef34efe63fa419efede50a6985c84549fa714b"
     },
     {
+      "path": "docs/HISTORICAL_2025_TO_DATE.md",
+      "bytes": 2557,
+      "sha256": "f572aec5f2a48b04a7ee3177d249df26d0b971c4e44e366d43625c31b9c50214"
+    },
+    {
       "path": "docs/IMPORT_AUDIT.md",
       "bytes": 3746,
       "sha256": "c998cdb0399554591103399e9dd16242ec0ee7fb285c18ab551aad77ae8dc54a"
@@ -571,6 +576,11 @@
       "sha256": "b15bac4c20ec0f487e6f9cd476b433df9e32434ebc0201082e34e92a1ea1fa11"
     },
     {
+      "path": "research/summarize_2025_history.py",
+      "bytes": 11168,
+      "sha256": "20d46002c47f5f6643924568201927018634477b29cdc7d6b2544eec60ad7cfe"
+    },
+    {
       "path": "research/sweep_diagnostics.py",
       "bytes": 3995,
       "sha256": "b57d35ebbae3278e7c584a62a78912f0215be1319d2d4f35d28780199d24300a"
@@ -612,8 +622,8 @@
     },
     {
       "path": "research/verify_dual_opportunity.py",
-      "bytes": 9954,
-      "sha256": "667ab53ad505ed7ae148fcac6e5e282db0798c7eb0046ce978a92cce7e2afb9e"
+      "bytes": 9955,
+      "sha256": "c73c86a4d6703626ad09dee0c10bd6ae928efd0efa715a1763ae24b0b6cff6d3"
     },
     {
       "path": "research/verify_stop_causality_gate.py",
@@ -624,6 +634,11 @@
       "path": "tests/ReceiptSelftest.mq5",
       "bytes": 1005,
       "sha256": "793293feef8ead8436456fd2398745776bd4b0f60268415b8be5e5babf8858ca"
+    },
+    {
+      "path": "tests/test_2025_history.py",
+      "bytes": 5627,
+      "sha256": "90ed8f38c93f8c8f0109ca9afd14c25e19ed06352a3398ad4b74be7061ea69de"
     },
     {
       "path": "tests/test_adaptive_v4_contract.py",
