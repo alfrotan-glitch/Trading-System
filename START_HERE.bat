@@ -27,8 +27,10 @@ echo  [4] Open the most recent native tester results
 echo  [5] Generate broker and installation readiness report
 echo  [6] Advanced research and diagnostics
 echo  [7] Exit
+echo  [8] OWNER VERDICT - instant offline evidence review (no MT5 orders)
 echo.
-choice /C 1234567 /N /M "Choose 1-7: "
+choice /C 12345678 /N /M "Choose 1-8: "
+if errorlevel 8 goto OWNER_VERDICT
 if errorlevel 7 goto END
 if errorlevel 6 goto ADVANCED
 if errorlevel 5 goto REPORT
@@ -61,6 +63,20 @@ call "%QTS_ROOT_DIR%QTS_AUTO_TEST.bat"
 set "SUBCODE=%ERRORLEVEL%"
 endlocal & set "CODE=%SUBCODE%"
 if not "%CODE%"=="0" echo Native results incomplete or evidence unavailable.
+echo.
+pause
+goto MENU
+
+:OWNER_VERDICT
+echo.
+echo QTS Gold: instant read-only evidence brief from existing research files.
+setlocal
+set "QTS_NO_OPEN=1"
+call "%QTS_ROOT_DIR%QTS_OWNER_VERDICT.bat"
+set "SUBCODE=%ERRORLEVEL%"
+endlocal & set "CODE=%SUBCODE%"
+if not "%CODE%"=="0" echo Research evidence report NO-GO: source inputs could not be verified.
+if "%CODE%"=="0" "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -Command "Start-Process -FilePath 'gold_robot\reports_local\owner_decision\QTS_OWNER_VERDICT.html'"
 echo.
 pause
 goto MENU
