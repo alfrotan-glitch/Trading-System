@@ -2265,9 +2265,15 @@ void OnTimer()
      }
    if(RealAccountBlocked())
       return;
+   bool connected=(bool)TerminalInfoInteger(TERMINAL_CONNECTED);
+   // A broker DEAL_ADD event can be missed or its order history can be
+   // temporarily unavailable. The timer independently reconstructs the
+   // original LIMIT fill/SL/risk for every currently owned position.
+   // Do not trust receipt callbacks as the only protective audit path.
+   if(connected && PositionsTotal()>0)
+      QtsAuditActiveOriginalFills();
    ManageOwnedPendingOrders();
    ManageOwnedPositions();
-   bool connected=(bool)TerminalInfoInteger(TERMINAL_CONNECTED);
    if(connected && !broker_was_connected && !ReconcileBrokerDealAudit())
       LatchExecutionHalt("reconnected deal history reconciliation failed");
    broker_was_connected=connected;
