@@ -183,7 +183,7 @@ try{
         }
         & $python (Join-Path $gold 'research\forward_shadow_observer.py') --report-dir $out
         $observerCode=$LASTEXITCODE
-        & $python (Join-Path $gold 'research\forward_shadow_paths.py') --report-dir $out
+        & $python (Join-Path $gold 'research\forward_shadow_paths.py') --report-dir $out --terminal-path $target.terminal --terminal-data-dir (Split-Path -Parent $target.mql)
         $pathCode=$LASTEXITCODE
         $observerStatus='REPORT_MISSING'
         $pathsStatus='REPORT_MISSING'
