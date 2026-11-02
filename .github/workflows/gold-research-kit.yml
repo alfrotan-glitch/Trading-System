@@ -184,7 +184,7 @@ jobs:
           }
           python -m pip install --quiet pytest
           if($LASTEXITCODE -ne 0){ throw 'Could not install Python test runner' }
-          python -m pytest -q -o 'addopts=' gold_robot/tests/test_stop_tick_window_export.py gold_robot/tests/test_auto_stop_ticks.py gold_robot/tests/test_stop_failure_paths.py gold_robot/tests/test_revised_v2_contract.py gold_robot/tests/test_v2_ablation_contract.py gold_robot/tests/test_dual_research.py gold_robot/tests/test_dual_evidence_audit.py gold_robot/tests/test_dual_atr_market_audit.py
+          python -m pytest -q -o 'addopts=' gold_robot/tests/test_stop_tick_window_export.py gold_robot/tests/test_auto_stop_ticks.py gold_robot/tests/test_stop_failure_paths.py gold_robot/tests/test_revised_v2_contract.py gold_robot/tests/test_v2_ablation_contract.py gold_robot/tests/test_dual_research.py gold_robot/tests/test_dual_evidence_audit.py gold_robot/tests/test_dual_atr_market_audit.py gold_robot/tests/test_dual_opportunity_contract.py
           if($LASTEXITCODE -ne 0){ throw 'Native research and audit contract regression failed' }
           Write-Host 'PASS: bounded 120-minute and automatic one-click broker quote research contracts'
 
