@@ -28,8 +28,10 @@ echo  [5] Generate broker and installation readiness report
 echo  [6] Advanced research and diagnostics
 echo  [7] Exit
 echo  [8] OWNER VERDICT - instant offline evidence review (no MT5 orders)
+echo  [9] DUAL STRATEGY RESEARCH - both signals vs BUY-Retest/SELL-Sweep
 echo.
-choice /C 12345678 /N /M "Choose 1-8: "
+choice /C 123456789 /N /M "Choose 1-9: "
+if errorlevel 9 goto DUAL_RESEARCH
 if errorlevel 8 goto OWNER_VERDICT
 if errorlevel 7 goto END
 if errorlevel 6 goto ADVANCED
@@ -63,6 +65,19 @@ call "%QTS_ROOT_DIR%QTS_AUTO_TEST.bat"
 set "SUBCODE=%ERRORLEVEL%"
 endlocal & set "CODE=%SUBCODE%"
 if not "%CODE%"=="0" echo Native results incomplete or evidence unavailable.
+echo.
+pause
+goto MENU
+
+:DUAL_RESEARCH
+echo.
+echo RESEARCH ONLY: compare two simultaneous-signal hypotheses separately.
+echo No connected orders. No summed portfolio P/L or automatic trading approval.
+setlocal
+call "%QTS_ROOT_DIR%QTS_DUAL_RESEARCH.bat"
+set "SUBCODE=%ERRORLEVEL%"
+endlocal & set "CODE=%SUBCODE%"
+if not "%CODE%"=="0" echo Dual Strategy Tester NO-GO. Check local diagnostic reports.
 echo.
 pause
 goto MENU
