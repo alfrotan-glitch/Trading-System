@@ -178,6 +178,13 @@ The supervisor also checks the installed EA source hash against the current
 canonical source; a previously running stale binary cannot be silently
 reclassified as current evidence.
 
+For mature 60-minute price windows, the Python MT5 quote connection is **pinned
+to the exact discovered terminal64.exe and MQL5 data folder**. Matching the
+WMMarkets DEMO server name alone is insufficient. A mismatch between the
+connected MT5 terminal installation/data paths and those verified by the
+supervisor is NO-GO, not a silent switch to a different account.
+
+
 Only post-registration signals count. The native ATR uses the mean of 14
 true ranges and median of 48 prior readings, consistent with the historical
 forensics; V1 and V2 CSV files are not mixed. At most the latest 64 events
