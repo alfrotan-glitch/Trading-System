@@ -4,7 +4,7 @@ param([string]$TerminalExe="",[string]$TerminalDataFolder="",
       [string]$OutputDirectory="",[string]$FromDate="",[string]$ToDate="",
       [int]$TimeoutMinutesPerRun=90,[switch]$PrepareOnly,[switch]$NoOpen,
       [string]$OnlyStyles='',
-      [ValidateSet('BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO')]
+      [ValidateSet('BASELINE','ENTRY_FILTER','NEAR_TP','COMBINED','CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO','DUAL_BOTH','DUAL_DIRECTIONAL')]
       [string]$ResearchVariant='BASELINE',[int]$VetoStyle=-1,[int]$VetoRegime=-1)
 $ErrorActionPreference='Stop'
 $gold=Split-Path -Parent $PSScriptRoot
@@ -38,8 +38,8 @@ if($targeted){
 
 # V3 is a NEW strategy hypothesis, never a hidden replacement for V2 or the baseline.
 # Only Style 7 / M15 is allowed to use the opt-in V3 native market-context filter.
-if($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO') -and ($OnlyStyles -ne '7')){
-    throw 'Adaptive V3/V4/V5 variants require -OnlyStyles 7 (M15 research only).'
+if($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO','DUAL_BOTH','DUAL_DIRECTIONAL') -and ($OnlyStyles -ne '7')){
+    throw 'Adaptive and dual strategy variants require -OnlyStyles 7 (M15 research only).'
 }
 if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){
     if($VetoStyle -lt 0 -or $VetoStyle -gt 8 -or $VetoStyle -eq 7 -or
@@ -177,14 +177,14 @@ function SameHash([string]$a,[string]$b){
 }
 function CompiledCurrent([string]$data){
     $mql=Join-Path $data 'MQL5\Experts'
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','MarketContextV3.mqh','AdaptiveV4Research.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','MarketContextV3.mqh','AdaptiveV4Research.mqh','DualResearch.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
         if(-not (SameHash (Join-Path $gold ('mt5_robot\'+$name)) (Join-Path $mql $name))){return $false}
     }
     $binary=Join-Path $mql 'QTS_Gold_Robot.ex5'
     if(-not (Test-Path -LiteralPath $binary -PathType Leaf)){return $false}
     if((Get-Item -LiteralPath $binary).Length -lt 1000){return $false}
     $binaryTime=(Get-Item -LiteralPath $binary).LastWriteTimeUtc
-    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','MarketContextV3.mqh','AdaptiveV4Research.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
+    foreach($name in @('QTS_Gold_Robot.mq5','ExecutionPolicy.mqh','StructureResearch.mqh','OpportunityResearch.mqh','AdaptiveResearch.mqh','MarketContextV3.mqh','AdaptiveV4Research.mqh','DualResearch.mqh','SmcResearch.mqh','ScalpResearch.mqh')){
         if($binaryTime -lt (Get-Item -LiteralPath (Join-Path $mql $name)).LastWriteTimeUtc.AddSeconds(-2)){return $false}
     }
     return $true
@@ -194,7 +194,7 @@ $message=''
 $comparison=''
 try{
     $manifest=Get-Content -LiteralPath (Join-Path $gold 'docs\SOURCE_CHECKSUMS.json') -Raw | ConvertFrom-Json
-    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh','mt5_robot/OpportunityResearch.mqh','mt5_robot/AdaptiveResearch.mqh','mt5_robot/MarketContextV3.mqh','mt5_robot/AdaptiveV4Research.mqh','mt5_robot/SmcResearch.mqh','mt5_robot/ScalpResearch.mqh')){
+    foreach($rel in @('mt5_robot/QTS_Gold_Robot.mq5','mt5_robot/ExecutionPolicy.mqh','mt5_robot/StructureResearch.mqh','mt5_robot/OpportunityResearch.mqh','mt5_robot/AdaptiveResearch.mqh','mt5_robot/MarketContextV3.mqh','mt5_robot/AdaptiveV4Research.mqh','mt5_robot/DualResearch.mqh','mt5_robot/SmcResearch.mqh','mt5_robot/ScalpResearch.mqh')){
         $entry=@($manifest.sha256_files|Where-Object {$_.path -eq $rel})
         if($entry.Count -ne 1){throw ('Manifest does not identify '+$rel)}
         $path=Join-Path $gold ($rel.Replace('/','\'))
@@ -285,6 +285,15 @@ try{
             elseif($_ -match '^TesterVetoRegimeV5='){ 'TesterVetoRegimeV5='+$VetoRegime }
             else{$_}
         })
+        $dualMode=if($ResearchVariant -eq 'DUAL_BOTH'){1}
+                  elseif($ResearchVariant -eq 'DUAL_DIRECTIONAL'){2}else{0}
+        if(@($profileLines | Where-Object {$_ -match '^TesterDualStrategyMode='}).Count -ne 1){
+            throw 'Missing unique dual research input in native MT5 safety-on preset.'
+        }
+        $profileLines=@($profileLines | ForEach-Object {
+            if($_ -match '^TesterDualStrategyMode='){'TesterDualStrategyMode='+$dualMode}
+            else{$_}
+        })
         foreach($key in $flags.Keys){
             if(@($profileLines | Where-Object {$_ -match ('^'+$key+'=')}).Count -ne 1){
                 throw ('Research flag missing or duplicated: '+$key)
@@ -307,7 +316,7 @@ try{
             }
         }
         $lines=Get-Content -LiteralPath (Join-Path $testerProfiles $setName) -Encoding Unicode
-        $musts=@(('EntryStyle='+$i),'EnableDemoOrders=true',
+        $musts=@(('EntryStyle='+$i),'EnableDemoOrders=true',('TesterDualStrategyMode='+$dualMode),
                     'EnableDemoForwardOrders=false','TesterIgnoreDailyAndPeakStops=false',
                     'RiskPerTradePct=0.50')
         foreach($key in $flags.Keys){
@@ -400,6 +409,12 @@ try{
                     # Do not call it REPORT_AND_FORENSICS_SAVED or profitable.
                     $item.status='ZERO_NATIVE_DEALS_NO_GO'
                     $item.detail='MT5 tester finished but exported ZERO executed QTS broker deals. Inspect MT5 Experts/Tester QTS ENTRY AUDIT reasons and pending-order history; no economic conclusion.'
+                }elseif($ResearchVariant -in @('DUAL_BOTH','DUAL_DIRECTIONAL') -and
+                         $i -eq 7 -and
+                         ($reportText -notmatch ('TesterDualStrategyMode\s*=\s*'+[string]$dualMode) -or
+                          $reportText -notmatch 'EntryStyle\s*=\s*7')){
+                    $item.status='NATIVE_DUAL_INPUT_UNVERIFIED_NO_GO'
+                    $item.detail='MT5 native report did not confirm exact dual mode and Style 7. No strategy identity or profit claim.'
                 }elseif($reportText -notmatch '(?i)real ticks'){
                     $item.status='MODEL_UNVERIFIED'
                     $item.detail='Broker deal CSV captured, but report did not verify real-tick model.'
