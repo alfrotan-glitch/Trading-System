@@ -73,6 +73,23 @@ def test_auto_supervisor_surfaces_child_failures_instead_of_claiming_success():
     assert "Get-FileHash -LiteralPath $installedSource" in source
 
 
+def test_permanent_no_go_stops_bounded_retries_without_touching_mt5():
+    source = PS1.read_text("utf-8")
+    assert "$consecutiveNoGo=0" in source
+    assert "$consecutiveNoGo+=1" in source
+    assert "$consecutiveNoGo -ge 3" in source
+    assert "FORWARD_ANALYSIS_STOPPED_NO_GO" in source
+    assert "exit 2" in source
+    assert "MT5 left untouched" in source
+    assert "if($RunOnce -or $consecutiveNoGo -ge 3)" in source
+    assert "if(-not $NoAutostart -and -not $autostartRegistered)" in source
+    # The auto-registration happens only inside the no-error branch.
+    loop = source.split("if($blocked){", 1)[1]
+    blocked, healthy = loop.split("}else{", 1)
+    assert "QTS_Demo_Shadow" not in blocked
+    assert "QTS_Demo_Shadow" in healthy
+
+
 def test_one_click_and_control_panel_do_not_request_manual_chart_or_zip():
     bat = BAT.read_text("utf-8")
     menu = MENU.read_text("utf-8")
