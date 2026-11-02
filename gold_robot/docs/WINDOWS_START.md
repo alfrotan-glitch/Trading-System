@@ -121,6 +121,21 @@ Current live permission remains **LOCKED**.
 ## Automatic Forward Shadow | one chart, both styles, never orders
 
 **Operator workflow: one initial double-click on QTS_AUTO_FORWARD.bat.**
+For an already-running older QTS reporting loop, use the dedicated
+`QTS_REFRESH_FORWARD.bat` update entrypoint. It identifies the exact older
+`StartAutoForwardShadow.ps1` PowerShell command, stops **only that QTS
+research process** (not terminal64.exe or any other EA), fast-forwards main,
+and requests the new supervisor. It reports
+`REFRESH_REQUESTED_NOT_YET_VERIFIED` until the NEW supervisor independently
+checks its native DEMO heartbeat and analysis results. Ambiguous processes,
+local Git conflicts or missing installation fail closed with local reports.
+
+The refreshed supervisor no longer loops indefinitely over a failed report:
+a hard NO-GO gets at most **three** analysis cycles and then stops the
+research process, leaving MT5 untouched. Windows logon auto-start is
+registered **only after BOTH analysis tools complete without NO-GO**; a
+native heartbeat alone is not sufficient evidence of operational readiness.
+
 No manual chart setup, Python commands, ZIP selection, tester reruns, or broker
 login prompts. Main menu **6 > C** starts the same automatic supervisor.
 
