@@ -41,6 +41,22 @@ forensics, not parameter-fitting or automatic promotion.
 Mode 2 is therefore the **provisional historical leader**, not the
 best proven trading strategy. Neither mode has an independently validated edge.
 
+## Repeatable research execution
+
+1. Close all MT5 terminals. Update the Git working tree to the canonical main.
+2. Run `QTS_DUAL_THREEWAY.bat` from the repo root. It launches THREE separate
+   broker-native Strategy Tester runs, verifies the same exact source, compiled
+   EX5, market/tick observations and dates, and produces one
+   `QTS_DUAL_THREEWAY_EVIDENCE.zip` to review.
+3. Default dates (2026.10.01 to 2026.11.01) are for engineering regression
+   and historical comparison ONLY, not independent strategy validation.
+4. A future preregistered period can be selected with the corresponding
+   PowerShell launcher parameters `-FromDate yyyy.MM.dd -ToDate yyyy.MM.dd`.
+   Do not move dates or thresholds in response to a losing holdout.
+5. A three-way comparison has a *historical sample leader* metric using a
+   clearly hypothetical USD 10/lot cost adjustment. No report grants trade
+   permission, and partial/mismatched broker fills fail closed.
+
 ## Frozen selection criteria — no cherry-picking
 
 1. Verify `OPEN_RESULTS.json` declares completed targeted Style 7; its native
