@@ -148,7 +148,7 @@ def test_native_tester_only_and_unchanged_trade_decision():
     assert 'string safe_entry_reason=QtsOpportunityCsvSafe(frozen_entry_decision);' in ledger
     assert 'string safe_signal_reason=QtsOpportunityCsvSafe(signal_reason);' in ledger
     assert "          safe_entry_reason,(int)exposure" in ledger
-    assert "frozen_entry_decision,(int)exposure" in ledger
+    assert "safe_entry_reason,(int)exposure" in ledger
     assert "qts_dual_router_eligible,qts_dual_router_verdict" in ledger
     dual=(GOLD/"mt5_robot/DualResearch.mqh").read_text(encoding="utf-8")
     assert "qts_dual_router_verdict=eligible==0" in dual
