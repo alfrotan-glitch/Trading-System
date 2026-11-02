@@ -182,8 +182,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 12841,
-      "sha256": "64aac2ff41f68073d20bc5db90ce59aa792c51b6d37679305a10c99a5a3fa437"
+      "bytes": 14465,
+      "sha256": "3998f407840815663adebc9b37d5d3db6d9789de1a210a63581b034bea997362"
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
@@ -436,6 +436,11 @@
       "sha256": "49c436f4ed9c6af6bba8596377be55e29676314d00b84707632aaaf8b5463143"
     },
     {
+      "path": "research/owner_evidence_brief.py",
+      "bytes": 12447,
+      "sha256": "7e4fb4119ea377bdd430bb751348b2eac884a413a16d6139b2a11558d265a05d"
+    },
+    {
       "path": "research/paired_variant_diagnostics.py",
       "bytes": 6899,
       "sha256": "887cc1bbcd7a61589acf859e2e263b70532488a84c0db9d96a4a08403dc0eb74"
@@ -634,6 +639,11 @@
       "path": "tests/test_market_context_v3_contract.py",
       "bytes": 4863,
       "sha256": "386d4e0577f46d7ffeca04ed4cc42e5cae98649b0f038d163fee7fba45487074"
+    },
+    {
+      "path": "tests/test_owner_evidence_brief.py",
+      "bytes": 4235,
+      "sha256": "a054ebb6261e37454a44282fdc25e67b82685b4708f136a54a8213c0730617f7"
     },
     {
       "path": "tests/test_post_stop_replay.py",
