@@ -71,6 +71,8 @@ def test_source_upgrade_isolated_epoch_preserves_old_frozen_evidence(tmp_path):
     reports, signals, source = fresh(tmp_path)
     old_path = reports / "QTS_FORWARD_SHADOW_V2_FROZEN.json"
     old_bytes = old_path.read_bytes()
+    legacy_report = reports / "QTS_FORWARD_SHADOW_V2_REPORT.json"
+    legacy_report.write_text('{"status":"LEGACY_DESCRIPTIVE_ONLY"}', encoding="utf-8")
     assert select_study_dir(reports, source) == reports
     source.write_text("modified future native source", encoding="utf-8")
     epoch_dir = select_study_dir(reports, source)
@@ -84,6 +86,9 @@ def test_source_upgrade_isolated_epoch_preserves_old_frozen_evidence(tmp_path):
     assert observed["pre_registration_events_excluded"] == 1
     assert observed["frozen_at_utc_s"] == START + 200
     assert old_path.read_bytes() == old_bytes
+    archive = reports / "legacy_epochs" / json.loads(old_bytes)["ea_source_sha256"][:24]
+    assert (archive / old_path.name).read_bytes() == old_bytes
+    assert (archive / legacy_report.name).read_bytes() == legacy_report.read_bytes()
 
 
 def test_tampered_freeze_does_not_get_silently_migrated(tmp_path):
