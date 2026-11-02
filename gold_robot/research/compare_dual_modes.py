@@ -121,14 +121,17 @@ def compare(folders: dict[str,Path]) -> dict:
             raise LedgerError("Incomparable date/symbol/EX5/source/terminal across arms")
         if base["native_signals"]!=other["native_signals"]:
             raise LedgerError("Mismatched broker-native bars, prices or raw strategy signals")
-    historical=base["meta"]["from_date"]<="2026.11.03"
+    # A calendar date cannot prove an experiment was preregistered or unseen.
+    # The read-only result must never self-certify an independent holdout.
+    # That requires a separate tamper-evident precommitment and audit.
     # Largest stressed net is a descriptive SAMPLE leader, never live approval.
     leader=max(result,key=lambda x:result[x]["stressed_net_usd"])
     return {
         "schema":"qts.dual_threeway_selection_review.v1",
         "status":"THREE_MODE_RESEARCH_REVIEW_ONLY",
         "live":"LOCKED","edge_validated":False,"trade_permission":False,
-        "independent_holdout":not historical,
+        "independent_holdout":False,
+        "holdout_verification":"NOT_VERIFIED_NO_PREREGISTRATION_EVIDENCE",
         "same_native_source_and_signals_verified":True,
         "test_period":[base["meta"]["from_date"],base["meta"]["to_date"]],
         "historical_sample_leader_after_assumed_fee_stress":leader,
