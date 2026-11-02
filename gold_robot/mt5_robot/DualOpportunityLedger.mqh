@@ -51,6 +51,11 @@ void QtsObserveDualOpportunities(const datetime bar_time,
      }
    int original_style=evaluated_style;
    string original_status=status_text;
+   // MQL5 strings passed from a mutable global may alias that global.
+   // The signal functions below overwrite status_text on every style.
+   // Snapshot the DECISION once, before mutating status_text, and use the
+   // independent local string in BOTH rows for the same closed bar.
+   string frozen_entry_decision=original_entry_reason;
    MqlTick q={};
    bool quote_ok=SymbolInfoTick(_Symbol,q) && q.ask>q.bid && q.bid>0.0;
    double raw_atr[1],raw_adx[1],raw_h1[1],raw_h1_close[1];
@@ -109,7 +114,7 @@ void QtsObserveDualOpportunities(const datetime bar_time,
           TimeToString(bar_time,TIME_DATE|TIME_SECONDS),
           TimeToString(TimeCurrent(),TIME_DATE|TIME_SECONDS),
           TesterDualStrategyMode,style,signal,signal_reason,
-          original_entry_reason,(int)exposure,(int)direction_veto,
+          frozen_entry_decision,(int)exposure,(int)direction_veto,
           DoubleToString(atr,8),DoubleToString(rank,4),
           DoubleToString(adx,6),DoubleToString(h1_delta,6),
           DoubleToString(quote_ok ? q.bid : -1.0,_Digits),
