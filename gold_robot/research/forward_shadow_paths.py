@@ -15,6 +15,7 @@ import csv
 import hashlib
 import json
 import math
+import os
 import statistics
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,19 +40,40 @@ def _require(ok: bool, why: str) -> None:
         raise ValueError(why)
 
 
-def _demo_terminal():
-    """Connected WMMarkets DEMO read-only; never trade, login or change account."""
+def _canonical_path(value: str | Path) -> str:
+    """Compare terminal roots on Windows without leaking user-specific paths."""
+    return os.path.normcase(os.path.normpath(str(Path(value).resolve()))).casefold()
+
+
+def _demo_terminal(*, executable: Path | None = None,
+                   data_dir: Path | None = None):
+    """Open the explicitly selected MT5 DEMO, never guess a second instance.
+
+    A terminal/data-folder binding is mandatory for prospective quote review.
+    Identity must match BOTH the executable's installation folder and the
+    native terminal data folder, not merely a WMMarkets server label.
+    """
+    if executable is None or data_dir is None:
+        raise ValueError("PINNED_MT5_TARGET_REQUIRED_NO_GO")
+    if not executable.is_absolute() or not executable.is_file():
+        raise ValueError("PINNED_MT5_EXE_INVALID_NO_GO")
+    if executable.name.casefold() != "terminal64.exe":
+        raise ValueError("PINNED_MT5_EXE_NAME_INVALID_NO_GO")
+    if not data_dir.is_absolute() or not data_dir.is_dir():
+        raise ValueError("PINNED_MT5_DATA_DIR_INVALID_NO_GO")
     try:
         import MetaTrader5 as mt5
     except ImportError as exc:
         raise ValueError("MetaTrader5 Python package unavailable") from exc
-    if not mt5.initialize():
+    if not mt5.initialize(path=str(executable)):
         mt5.shutdown()
-        raise ValueError("WMMarkets DEMO terminal not connected")
+        raise ValueError("PINNED_WMMARKETS_DEMO_NOT_CONNECTED_NO_GO")
     account = mt5.account_info()
     terminal = mt5.terminal_info()
     server = str(getattr(account, "server", "")).lower().replace(" ", "")
     expected_mode = getattr(mt5, "ACCOUNT_TRADE_MODE_DEMO", None)
+    install_path = str(getattr(terminal, "path", "") or "")
+    actual_data = str(getattr(terminal, "data_path", "") or "")
     if not (
         account is not None
         and terminal is not None
@@ -60,9 +82,12 @@ def _demo_terminal():
         and account.trade_mode == expected_mode
         and "wmmarkets" in server
         and mt5.symbol_info("XAUUSD@") is not None
+        and bool(install_path) and bool(actual_data)
+        and _canonical_path(install_path) == _canonical_path(executable.parent)
+        and _canonical_path(actual_data) == _canonical_path(data_dir)
     ):
         mt5.shutdown()
-        raise ValueError("Wrong disconnected/non-WMMarkets/REAL account or missing XAUUSD@")
+        raise ValueError("PINNED_MT5_IDENTITY_OR_DEMO_MISMATCH_NO_GO")
     return mt5
 
 
@@ -237,6 +262,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report-dir", required=True, type=Path)
     parser.add_argument("--signals-dir", type=Path)
+    parser.add_argument("--terminal-path", type=Path)
+    parser.add_argument("--terminal-data-dir", type=Path)
     args = parser.parse_args()
     report_dir = args.report_dir.resolve()
     ea_source = Path(__file__).resolve().parents[1] / "mt5_robot" / "QTS_Gold_Robot.mq5"
@@ -253,10 +280,17 @@ def main() -> int:
         matured = any(now * 1000 >= e["tick_server_msc"] +
                       (HORIZON_SECONDS + 60) * 1000 for e in events[-MAX_EVENTS_PER_REVIEW:])
         if matured:
-            mt5 = _demo_terminal()
+            mt5 = _demo_terminal(
+                executable=args.terminal_path,
+                data_dir=args.terminal_data_dir,
+            )
         result = review(study, sigdir, ea_source, mt5, now_utc_s=now)
         result["study_epoch_dir"] = str(study)
         result["legacy_frozen_cohort_preserved"] = study != report_dir
+        result["terminal_identity_bound_for_mature_quotes"] = (
+            bool(mt5 is not None) and bool(args.terminal_path)
+            and bool(args.terminal_data_dir)
+        )
     except (ValueError, TypeError, OSError, KeyError, RuntimeError,
             csv.Error, json.JSONDecodeError) as exc:
         result = {
