@@ -1510,6 +1510,39 @@ bool QtsPositionEntriesExclusivelyOwned(const long identifier)
    return found;
   }
 
+// Compare the ACTUAL execution to the risk already authorized for the
+// original pending LIMIT order. Do not recompute the old budget from today's
+// post-fill equity (spread/commission already changes it).
+bool QtsFillRiskNotWorseThanOriginalOrder(const ulong entry_deal,
+                                          const int side,
+                                          const double actual_price,
+                                          const double original_sl,
+                                          const double volume)
+  {
+   if(entry_deal==0 || (side!=1 && side!=-1) ||
+      volume<=0.0 || !MathIsValidNumber(actual_price))
+      return false;
+   ulong entry_order=(ulong)HistoryDealGetInteger(entry_deal,DEAL_ORDER);
+   if(entry_order==0 || !HistoryOrderSelect(entry_order))
+      return false;
+   ENUM_ORDER_TYPE kind=(ENUM_ORDER_TYPE)HistoryOrderGetInteger(entry_order,ORDER_TYPE);
+   if((side>0 && kind!=ORDER_TYPE_BUY_LIMIT) ||
+      (side<0 && kind!=ORDER_TYPE_SELL_LIMIT))
+      return false;
+   double plan_price=HistoryOrderGetDouble(entry_order,ORDER_PRICE_OPEN);
+   double plan_sl=HistoryOrderGetDouble(entry_order,ORDER_SL);
+   if(plan_price<=0.0 || plan_sl<=0.0 ||
+      MathAbs(plan_sl-original_sl)>_Point*0.51)
+      return false;
+   double planned_loss=EstimatedMonetaryLoss(side,volume,plan_price,plan_sl);
+   double actual_loss=EstimatedMonetaryLoss(side,volume,actual_price,original_sl);
+   if(planned_loss<=0.0 || actual_loss<=0.0)
+      return false;
+   // Do not approve a broker fill that increases planned stop-loss money.
+   // Exact source calculations carry a tiny floating-point rounding margin.
+   return actual_loss<=planned_loss+0.000001;
+  }
+
 void ManageOwnedPositions()
   {
    if(RealAccountBlocked())
@@ -1692,11 +1725,14 @@ void QtsAuditActiveOriginalFills()
          seen=true;
          int side=HistoryDealGetInteger(deal,DEAL_TYPE)==DEAL_TYPE_BUY ? 1 :
                   (HistoryDealGetInteger(deal,DEAL_TYPE)==DEAL_TYPE_SELL ? -1 : 0);
+         double fill=HistoryDealGetDouble(deal,DEAL_PRICE);
+         double original_sl=HistoryDealGetDouble(deal,DEAL_SL);
          if(kind==DEAL_ENTRY_INOUT ||
-            !QtsFillStopsConsistent(side,
-                                   HistoryDealGetDouble(deal,DEAL_PRICE),
-                                   HistoryDealGetDouble(deal,DEAL_SL),
-                                   HistoryDealGetDouble(deal,DEAL_TP)))
+            !QtsFillStopsConsistent(side,fill,original_sl,
+                                    HistoryDealGetDouble(deal,DEAL_TP)) ||
+            !QtsFillRiskNotWorseThanOriginalOrder(
+                deal,side,fill,original_sl,
+                HistoryDealGetDouble(deal,DEAL_VOLUME)))
             bad=true;
         }
       if(foreign || !seen)
@@ -2089,8 +2125,9 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
       long identifier=HistoryDealGetInteger(trans.deal,DEAL_POSITION_ID);
       bool geometry_ok=QtsFillStopsConsistent(entry_side,fill_price,
                                               original_sl,original_tp);
-      bool budget_ok=geometry_ok && volume>0.0 &&
-                     PlannedOrderFitsRisk(entry_side,volume,fill_price,original_sl);
+      bool budget_ok=geometry_ok &&
+                     QtsFillRiskNotWorseThanOriginalOrder(
+                        trans.deal,entry_side,fill_price,original_sl,volume);
       if(entry_kind==DEAL_ENTRY_INOUT || !geometry_ok || !budget_ok ||
          identifier<=0)
         {
