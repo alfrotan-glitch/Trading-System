@@ -142,6 +142,15 @@ def test_mql5_compile_regression_reserved_identifier_not_parameter():
     assert "string cleaned=raw_text;" in ledger
 
 
+def test_compile_failures_include_metaeditor_diagnostics_and_keep_rollback():
+    installer=(GOLD/"mt5_robot/Install_QTS_Gold_Robot.ps1").read_text(encoding="utf-8")
+    assert "MetaEditor did not create its compilation log" in installer
+    assert "$diagnostics=@($logText -split" in installer
+    assert "$details,$log)" in installer
+    assert "Previous EA restored. Compiler log: {3}" in installer
+    assert "if (-not $completed)" in installer
+
+
 def test_native_tester_only_and_unchanged_trade_decision():
     ea=(GOLD/"mt5_robot/QTS_Gold_Robot.mq5").read_text(encoding="utf-8")
     ledger=(GOLD/"mt5_robot/DualOpportunityLedger.mqh").read_text(encoding="utf-8")
