@@ -58,6 +58,8 @@ bool SelectDualResearchCandidate(const MqlTick &quote,
    qts_dual_router_verdict="EVALUATING";
    int eligible=0;
    double first_quality=-1.0;
+   double second_quality=-1.0;
+   int second_side=0;
    bool resolved_quality_collision=false;
    for(int i=0;i<2;i++)
      {
@@ -98,6 +100,11 @@ bool SelectDualResearchCandidate(const MqlTick &quote,
       eligible++;
       double quality=TesterDualStrategyMode==3 ?
             QtsDualCandidateQualityScore(quote,a,p,sl,tp) : -1.0;
+      if(eligible==2)
+        {
+         second_quality=quality;
+         second_side=signal;
+        }
       if(EnableEntryDiagnostics)
          PrintFormat("QTS DUAL CANDIDATE style=%d side=%d verdict=ELIGIBLE limit=%.5f sl=%.5f tp=%.5f",
                      style,signal,p,sl,tp);
@@ -139,6 +146,19 @@ bool SelectDualResearchCandidate(const MqlTick &quote,
       evaluated_style=(int)EntryStyle;
       status_text=eligible==0 ? "DUAL: no executable closed-bar setup" :
                                 "DUAL: collision of eligible candidates; no order";
+      if(eligible==2 && TesterDualStrategyMode==3)
+        {
+         if(second_side!=side)
+            status_text="DUAL: quality abstain: opposing candidate directions";
+         else if(first_quality<0.0 || second_quality<0.0 ||
+                 !MathIsValidNumber(first_quality) ||
+                 !MathIsValidNumber(second_quality))
+            status_text="DUAL: quality abstain: invalid stressed R score";
+         else
+            status_text=StringFormat("DUAL: quality abstain: scores %.5f %.5f margin %.5f below 0.15",
+                                      first_quality,second_quality,
+                                      MathAbs(first_quality-second_quality));
+        }
       if(EnableEntryDiagnostics)
          PrintFormat("QTS DUAL DECISION mode=%d eligible=%d verdict=ABSTAIN",
                      TesterDualStrategyMode,eligible);
