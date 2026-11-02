@@ -98,6 +98,33 @@ def freeze(report_dir: Path, ea_source: Path, *, now_utc_s: int) -> dict:
     return data
 
 
+def select_study_dir(report_dir: Path, ea_source: Path) -> Path:
+    """Keep old study frozen. A changed source starts a new isolated epoch.
+
+    Do not rewrite an existing freeze, and do not reuse old signals in the new
+    cohort: the new freeze timestamp excludes all earlier observed events.
+    An existing epoch with invalid/corrupt evidence must still fail closed.
+    The supervisor verifies installed source before calling this reader.
+    """
+    base = report_dir.resolve()
+    original = base / "QTS_FORWARD_SHADOW_V2_FROZEN.json"
+    if not original.exists():
+        return base
+    old = json.loads(original.read_text(encoding="utf-8"))
+    _required(old.get("schema") == FREEZE_SCHEMA and
+              old.get("live") == "LOCKED" and
+              old.get("validated_edge") is False and
+              old.get("native_orders_allowed") is False and
+              old.get("policy_sha256") == POLICY_DIGEST,
+              "Existing frozen study is corrupted or rules changed; refusing migration")
+    current_hash = _sha256(ea_source)
+    if old.get("ea_source_sha256") == current_hash:
+        return base
+    # Source changed, not policy. A distinct immutable prospective cohort.
+    # Preserve old baseline and user evidence, never silently edit them.
+    return base / "epochs" / current_hash[:24]
+
+
 def _valid_row(row: dict, filename: str, now_utc_s: int) -> dict:
     _required(set(row) == set(FIELDS), "Unexpected native signal CSV fields")
     _required(row["schema"] == EVENT_SCHEMA and
@@ -295,13 +322,17 @@ def main() -> int:
     parser.add_argument("--ea-source", type=Path)
     args = parser.parse_args()
     report_dir = args.report_dir.resolve()
+    source = (args.ea_source or (Path(__file__).resolve().parents[1] /
+                                "mt5_robot" / "QTS_Gold_Robot.mq5")).resolve()
     marker_path = report_dir / "QTS_FORWARD_SHADOW_V2_FROZEN.json"
-    source = args.ea_source or (Path(__file__).resolve().parents[1] /
-                               "mt5_robot" / "QTS_Gold_Robot.mq5")
     try:
+        study = select_study_dir(report_dir, source)
+        marker_path = study / "QTS_FORWARD_SHADOW_V2_FROZEN.json"
         result = review(
-            report_dir, (args.signals_dir or default_signals_dir()).resolve(),
-            source.resolve(), now_utc_s=int(datetime.now(timezone.utc).timestamp()))
+            study, (args.signals_dir or default_signals_dir()).resolve(),
+            source, now_utc_s=int(datetime.now(timezone.utc).timestamp()))
+        result["study_epoch_dir"] = str(study)
+        result["legacy_frozen_cohort_preserved"] = study != report_dir
     except (ValueError, OSError, KeyError, TypeError, json.JSONDecodeError) as exc:
         result = {"schema": SCHEMA, "status": "FORWARD_OBSERVER_BLOCKED_NO_GO",
                   "error": str(exc)[:260], "freeze_file": str(marker_path),
@@ -318,6 +349,8 @@ def main() -> int:
         print("QTS SHADOW NO-GO: failed to save report: " + str(exc)[:200])
         return 2
     print("QTS FORWARD SHADOW: " + result["status"])
+    if "error" in result:
+        print("Blocking reason: " + result["error"])
     print("Native candidate events: " +
           str(result.get("candidate_events_since_registration", "UNKNOWN")))
     print("Report: " + str(path))
