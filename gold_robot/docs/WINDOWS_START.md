@@ -22,6 +22,7 @@ as technical/research compatibility tools, not separate production robots.
 | 4 | Open the most recent saved native tester HTML summary |
 | 5 | Generate a local broker/installation readiness report |
 | 6 | Advanced tools: presets, V4 decision diagnosis, post-stop data, saved-report comparison, research desktop |
+| 8 | **Owner Verdict:** immediate offline review of saved historical results; no new MT5 session or broker orders |
 | 7 | Exit |
 
 **First-time install:** Install the broker's Windows MT5 terminal, sign in to
@@ -41,6 +42,33 @@ The sample period defaults to the last six completed calendar months.
 This is a research screen; previously examined months are NOT an untouched
 holdout. A fresh out-of-sample/forward period is required before selecting
 the strongest strategy.
+
+## Immediate owner verdict — no waiting, no trading
+
+From `START_HERE.bat` choose **8**, or double-click
+`QTS_OWNER_VERDICT.bat`. It produces:
+
+- `gold_robot/reports_local/owner_decision/QTS_OWNER_VERDICT.html`
+- `gold_robot/reports_local/owner_decision/QTS_OWNER_VERDICT.json`
+
+This is **immediate and offline**: no MT5 connection, historical tick download,
+Strategy Tester, continuous laptop uptime, broker login, cloud agents, or
+orders. It reconciles the *documented* eight-style April–October 2026
+native report (938 completed positions in eight **separate simulations**)
+with seven existing 365-day research summary verdicts and the canonical
+release status. It displays previously positive Retest (Style 1) and
+Sweep/Reclaim (Style 3) as **exploratory only**, never approved winners.
+Older source reports lack verified all-in broker costs and an independently
+unseen current-build native holdout. A fail-closed source inconsistency
+creates NO-GO rather than inventing a new performance result.
+
+This dashboard deliberately does **not** interpret private, unverified
+`reports_local` broker HTML/CSV as proved outcomes: it counts their available
+files and leaves independent reconciliation outstanding. A generated page
+is a summary of already saved research, **not a new backtest** and not a
+promise of profitable live trading. It does not replace future legitimate
+out-of-sample MT5 testing; it does remove the pointless requirement to wait
+days for a new signal just to read existing findings.
 
 ## Native tester evidence and interpretation
 
