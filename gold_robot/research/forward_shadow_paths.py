@@ -21,6 +21,7 @@ from pathlib import Path
 
 from forward_shadow_observer import (
     FILE_PATTERN, FIELDS, _event_files, _valid_row, default_signals_dir, freeze,
+    select_study_dir,
 )
 
 UTC = timezone.utc
@@ -241,14 +242,21 @@ def main() -> int:
     ea_source = Path(__file__).resolve().parents[1] / "mt5_robot" / "QTS_Gold_Robot.mq5"
     mt5 = None
     try:
-        mt5 = _demo_terminal()
-        result = review(
-            report_dir,
-            (args.signals_dir or default_signals_dir()).resolve(),
-            ea_source,
-            mt5,
-            now_utc_s=int(datetime.now(UTC).timestamp()),
-        )
+        study = select_study_dir(report_dir, ea_source)
+        sigdir = (args.signals_dir or default_signals_dir()).resolve()
+        now = int(datetime.now(UTC).timestamp())
+        registration = freeze(study, ea_source, now_utc_s=now)
+        events, errors, old = _native_events(sigdir, registration["frozen_at_utc_s"], now)
+        # Without a mature prospective event, importing/initializing MT5
+        # cannot add any evidence and can spuriously fail on busy terminals.
+        # Still use the complete read-only review for NO-GO input errors.
+        matured = any(now * 1000 >= e["tick_server_msc"] +
+                      (HORIZON_SECONDS + 60) * 1000 for e in events[-MAX_EVENTS_PER_REVIEW:])
+        if matured:
+            mt5 = _demo_terminal()
+        result = review(study, sigdir, ea_source, mt5, now_utc_s=now)
+        result["study_epoch_dir"] = str(study)
+        result["legacy_frozen_cohort_preserved"] = study != report_dir
     except (ValueError, TypeError, OSError, KeyError, RuntimeError,
             csv.Error, json.JSONDecodeError) as exc:
         result = {
