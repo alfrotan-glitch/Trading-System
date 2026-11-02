@@ -30,8 +30,50 @@ foreach($variant in $variants){
     & (Join-Path $PSHOME 'powershell.exe') @arguments
     $exitCode=[int]$LASTEXITCODE
     if($exitCode -ne 0){
+        $outcome=Join-Path $out 'OPEN_RESULTS.json'
+        if($exitCode -eq 2 -and (Test-Path -LiteralPath $outcome -PathType Leaf)){
+            $nativeStatus=Get-Content -LiteralPath $outcome -Raw -Encoding UTF8 | ConvertFrom-Json
+            $safetyFile=Join-Path $out 'QTS_POST_FILL_SAFETY_AUDIT.json'
+            if([string]$nativeStatus.state -ceq 'SELECTED_TESTS_WITH_SAFETY_INCIDENT_NO_GO' -and
+               [string]$nativeStatus.research_variant -ceq $variant -and
+               [string]$nativeStatus.live -ceq 'LOCKED' -and
+               (Test-Path -LiteralPath $safetyFile -PathType Leaf)){
+                $safety=Get-Content -LiteralPath $safetyFile -Raw -Encoding UTF8 | ConvertFrom-Json
+                if([string]$safety.status -ceq 'POST_FILL_SAFETY_INCIDENT_NO_GO' -and
+                   [string]$safety.live -ceq 'LOCKED' -and
+                   $safety.edge_validated -eq $false -and
+                   $safety.trade_permission -eq $false){
+                    # Never synthesize a three-way profit ranking from a
+                    # truncated native test. Preserve only real broker facts.
+                    $stage=Join-Path $folder 'QTS_SAFETY_INCIDENT_NO_GO'
+                    $target=Join-Path $stage $variant
+                    New-Item -ItemType Directory -Path $target -Force | Out-Null
+                    foreach($relative in @('OPEN_RESULTS.json',
+                                           'QTS_TRADE_BY_TRADE.json',
+                                           'QTS_DUAL_OPPORTUNITY_SUMMARY.json',
+                                           'QTS_POST_FILL_SAFETY_AUDIT.json',
+                                           'native\QTS_7_trades.csv',
+                                           'native\QTS_7_opportunities.csv',
+                                           'native\QTS_7.htm')){
+                        $source=Join-Path $out $relative
+                        if(-not (Test-Path -LiteralPath $source -PathType Leaf)){
+                            throw ('Native safety incident evidence missing: '+$source)
+                        }
+                        $dest=Join-Path $target $relative
+                        New-Item -ItemType Directory -Path (Split-Path -Parent $dest) -Force | Out-Null
+                        Copy-Item -LiteralPath $source -Destination $dest -Force
+                    }
+                    $zip=Join-Path $folder 'QTS_SAFETY_INCIDENT_NO_GO.zip'
+                    Compress-Archive -LiteralPath $stage -DestinationPath $zip -CompressionLevel Optimal -Force
+                    Write-Host ('SAFETY NO-GO. Send evidence ZIP, no comparison: '+$zip) -ForegroundColor Red
+                    try{explorer.exe /select,"$zip"}
+                    catch{Write-Warning ('Open ZIP manually: '+$zip)}
+                    exit 2
+                }
+            }
+        }
         throw ($variant+' native tester failed exit='+$exitCode+
-               '; inspect '+(Join-Path $out 'OPEN_RESULTS.json'))
+               '; inspect '+$outcome)
     }
 }
 $review=Join-Path $folder 'QTS_DUAL_THREEWAY_REVIEW.json'
