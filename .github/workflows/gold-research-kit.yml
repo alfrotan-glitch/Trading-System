@@ -52,6 +52,21 @@ jobs:
           $stage = Join-Path $env:RUNNER_TEMP 'QTS Gold Customer Kit'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item -LiteralPath 'gold_robot' -Destination $stage -Recurse
+          # The owner verdict needs ONLY seven tiny public, published research
+          # summaries, not broker credentials, account records or raw ticks.
+          $publicEvidence=Join-Path $stage 'data/evidence'
+          New-Item -ItemType Directory -Force -Path $publicEvidence | Out-Null
+          foreach($name in @(
+            'mt5_365d_microstructure_summary_20261023.json',
+            'mt5_broker_regime_365d_summary_20261023.json',
+            'mt5_broker_ema_365d_summary_20261023.json',
+            'mt5_broker_rsi_365d_summary_20261023.json',
+            'mt5_broker_opening_range_365d_summary_20261023.json',
+            'mt5_session_assay_365d_summary_20261023.json',
+            'mt5_session_reversal_365d_summary_20261023.json'
+          )){
+            Copy-Item -LiteralPath (Join-Path 'data/evidence' $name) -Destination $publicEvidence
+          }
           foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','START_HERE.bat','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
             Copy-Item -LiteralPath $file -Destination $stage
           }
@@ -111,6 +126,17 @@ jobs:
           try {
             foreach($file in @('OPEN_FIRST.txt','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','START_HERE.bat','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
               if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing kit file: $file" }
+            }
+            foreach($name in @('mt5_365d_microstructure_summary_20261023.json',
+                                   'mt5_broker_regime_365d_summary_20261023.json',
+                                   'mt5_broker_ema_365d_summary_20261023.json',
+                                   'mt5_broker_rsi_365d_summary_20261023.json',
+                                   'mt5_broker_opening_range_365d_summary_20261023.json',
+                                   'mt5_session_assay_365d_summary_20261023.json',
+                                   'mt5_session_reversal_365d_summary_20261023.json')){
+              if(-not (Test-Path -LiteralPath (Join-Path 'data/evidence' $name))){
+                throw "Missing required public research summary in kit: $name"
+              }
             }
             python gold_robot/research/update_manifest.py --check
             if ($LASTEXITCODE -ne 0) { throw 'Extracted kit source hash mismatch' }
