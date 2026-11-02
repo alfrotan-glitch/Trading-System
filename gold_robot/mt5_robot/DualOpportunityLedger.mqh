@@ -38,7 +38,8 @@ bool QtsOpenDualOpportunityLedger()
   }
 
 void QtsObserveDualOpportunities(const datetime bar_time,
-                                const string original_entry_reason)
+                                const string original_entry_reason,
+                                const bool exposure_before_decision)
   {
    if(TesterDualStrategyMode==0 || MQLInfoInteger(MQL_TESTER)==0)
       return;
@@ -85,7 +86,7 @@ void QtsObserveDualOpportunities(const datetime bar_time,
         }
       if(all_good) rank=100.0*(double)less_equal/192.0;
      }
-   bool exposure=AnyConflictingPositionOrOrder();
+   bool exposure=exposure_before_decision;
    double spread=quote_ok ? q.ask-q.bid : -1.0;
    for(int k=0;k<2;k++)
      {
