@@ -337,8 +337,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 48868,
-      "sha256": "de213985a9c8199edcf8e43bde4d47fe1d8a4715792900f0f553d4e9d69135e9"
+      "bytes": 51702,
+      "sha256": "dfd9ccdc5b50478a2647d260c3f8d335da4d7858dfb64c49518df06b541bd05e"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
@@ -379,6 +379,11 @@
       "path": "research/audit_mt5_logs.py",
       "bytes": 17563,
       "sha256": "1c8874483f56e8391c888adc378fec898922a11552fab7823cf862dea05cfa60"
+    },
+    {
+      "path": "research/audit_post_fill_safety.py",
+      "bytes": 5641,
+      "sha256": "9408108e13e7acad7a9ce700cdcae64c17861637509051906b6b152d27f16de7"
     },
     {
       "path": "research/auto_context_review.py",
@@ -729,6 +734,11 @@
       "path": "tests/test_owner_evidence_brief.py",
       "bytes": 4235,
       "sha256": "a054ebb6261e37454a44282fdc25e67b82685b4708f136a54a8213c0730617f7"
+    },
+    {
+      "path": "tests/test_post_fill_safety_audit.py",
+      "bytes": 4246,
+      "sha256": "7853b5c2416b90d92aee48098393c30bea256578d92d9a9368f3f8253d62d3cf"
     },
     {
       "path": "tests/test_post_stop_replay.py",
