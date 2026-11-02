@@ -154,14 +154,6 @@ try{
         throw 'INSTALLED_EA_SOURCE_MISMATCH_NO_GO: cannot attribute this live heartbeat to the canonical EA source'
     }
     Save 'NATIVE_UNARMED_DEMO_HEALTH_OK' 'Single-chart dual-style research, no broker orders; not an edge.'
-    if(-not $NoAutostart){
-        $bat=Join-Path $repo 'QTS_AUTO_FORWARD.bat'
-        if(Test-Path -LiteralPath $bat -PathType Leaf){
-            $key='HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-            New-Item -Path $key -Force|Out-Null
-            New-ItemProperty -Path $key -Name 'QTS_Demo_Shadow' -PropertyType String -Value ('"{0}"' -f $bat) -Force|Out-Null
-        }
-    }
     $venv=Join-Path $gold 'reports_local\mt5_quote_bridge_env'
     $python=Join-Path $venv 'Scripts\python.exe'
     if(-not (Test-Path -LiteralPath $python -PathType Leaf)){
@@ -177,6 +169,8 @@ try{
         & $python -m pip install --no-input --only-binary=:all: MetaTrader5
         if($LASTEXITCODE -ne 0){throw 'NO_OFFICIAL_MT5_READER_NO_GO'}
     }
+    $consecutiveNoGo=0
+    $autostartRegistered=$false
     do{
         if(-not (Health $common (Get-Date).ToUniversalTime())){
             throw 'NATIVE_HEARTBEAT_LOST_NO_GO: research is not operational'
@@ -208,14 +202,39 @@ try{
             observer_status=$observerStatus;price_path_status=$pathsStatus
             observer_reason=$observerReason;price_path_reason=$pathsReason
         }
-        if($observerCode -ne 0 -or $pathCode -ne 0 -or
-           $observerStatus -match 'NO_GO|BLOCKED|MISSING' -or
-           $pathsStatus -match 'NO_GO|BLOCKED|MISSING'){
+        $blocked=($observerCode -ne 0 -or $pathCode -ne 0 -or
+                  $observerStatus -match 'NO_GO|BLOCKED|MISSING' -or
+                  $pathsStatus -match 'NO_GO|BLOCKED|MISSING')
+        if($blocked){
+            $consecutiveNoGo+=1
+            $facts.consecutive_no_go=$consecutiveNoGo
             Save 'FORWARD_ANALYSIS_BLOCKED_NO_GO' ('Observer: '+$observerReason+'; Quotes: '+$pathsReason) $facts
-        }elseif($observerStatus -eq 'REGISTERED_WAITING_FOR_NATIVE_DEMO_SIGNALS'){
-            Save 'FORWARD_WAITING_FOR_NATIVE_SIGNALS' 'EA connected and no new native M15 signal yet. No trades or profit inferred.' $facts
+            # An unchanged failure is NOT an active research experiment.
+            # Give transient broker/IO faults at most two retries. Never send
+            # orders, restart/close the operator MT5 terminal, or loop forever.
+            if($RunOnce -or $consecutiveNoGo -ge 3){
+                Save 'FORWARD_ANALYSIS_STOPPED_NO_GO' 'Research reports blocked repeatedly; no new evidence generated; supervisor exiting, MT5 left untouched.' $facts
+                exit 2
+            }
         }else{
-            Save 'FORWARD_RESEARCH_UPDATED_UNVALIDATED' 'Evidence was recorded; no trading edge claimed.' $facts
+            $consecutiveNoGo=0
+            if($observerStatus -eq 'REGISTERED_WAITING_FOR_NATIVE_DEMO_SIGNALS'){
+                Save 'FORWARD_WAITING_FOR_NATIVE_SIGNALS' 'EA connected and no new native M15 signal yet. No trades or profit inferred.' $facts
+            }else{
+                Save 'FORWARD_RESEARCH_UPDATED_UNVALIDATED' 'Evidence was recorded; no trading edge claimed.' $facts
+            }
+            # Automatic Windows logon launch is installed ONLY after both
+            # reports have completed without a NO-GO. A healthy EA heartbeat
+            # by itself is insufficient proof that the research works.
+            if(-not $NoAutostart -and -not $autostartRegistered){
+                $bat=Join-Path $repo 'QTS_AUTO_FORWARD.bat'
+                if(Test-Path -LiteralPath $bat -PathType Leaf){
+                    $key='HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+                    New-Item -Path $key -Force | Out-Null
+                    New-ItemProperty -Path $key -Name 'QTS_Demo_Shadow' -PropertyType String -Value ('"{0}"' -f $bat) -Force | Out-Null
+                    $autostartRegistered=$true
+                }
+            }
         }
         if($RunOnce){break}
         Start-Sleep -Seconds 300
