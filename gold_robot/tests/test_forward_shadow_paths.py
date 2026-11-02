@@ -197,8 +197,8 @@ def test_broker_quote_reader_requires_exact_native_terminal_binding(tmp_path, mo
     class FakeMt5:
         ACCOUNT_TRADE_MODE_DEMO = 0
 
-        def initialize(self, **kwargs):
-            calls.append(("initialize", kwargs))
+        def initialize(self, path):
+            calls.append(("initialize", path))
             return True
 
         def account_info(self):
@@ -221,7 +221,7 @@ def test_broker_quote_reader_requires_exact_native_terminal_binding(tmp_path, mo
     with pytest.raises(ValueError, match="PINNED_MT5_TARGET_REQUIRED_NO_GO"):
         _demo_terminal()
     assert _demo_terminal(executable=exe, data_dir=data) is fake
-    assert calls == [("initialize", {"path": str(exe)})]
+    assert calls == [("initialize", str(exe))]
 
 
 def test_broker_reader_rejects_another_terminal_with_same_broker(tmp_path, monkeypatch):
@@ -238,7 +238,7 @@ def test_broker_reader_rejects_another_terminal_with_same_broker(tmp_path, monke
     class WrongInstance:
         ACCOUNT_TRADE_MODE_DEMO = 0
 
-        def initialize(self, **kwargs):
+        def initialize(self, path):
             return True
 
         def account_info(self):
