@@ -715,13 +715,14 @@ try{
             $auditOutput=Join-Path $OutputDirectory 'QTS_POST_FILL_SAFETY_AUDIT.json'
             $forensicsFile=Join-Path $OutputDirectory 'QTS_TRADE_BY_TRADE.json'
             $nativeEvents=Join-Path $native 'QTS_7_opportunities.csv'
+            $nativeDeals=Join-Path $native 'QTS_7_trades.csv'
             $pythonLauncher=Get-Command py -ErrorAction SilentlyContinue
             if($pythonLauncher){
-                & $pythonLauncher.Source -3 $auditScript --forensics $forensicsFile --opportunities $nativeEvents --output $auditOutput
+                & $pythonLauncher.Source -3 $auditScript --forensics $forensicsFile --opportunities $nativeEvents --deals $nativeDeals --mode $dualMode --output $auditOutput
             }else{
                 $pythonLauncher=Get-Command python -ErrorAction SilentlyContinue
                 if(-not $pythonLauncher){throw 'Python required for strict post-fill safety audit.'}
-                & $pythonLauncher.Source $auditScript --forensics $forensicsFile --opportunities $nativeEvents --output $auditOutput
+                & $pythonLauncher.Source $auditScript --forensics $forensicsFile --opportunities $nativeEvents --deals $nativeDeals --mode $dualMode --output $auditOutput
             }
             if($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $auditOutput -PathType Leaf)){
                 throw 'Native post-fill safety audit could not be verified. FAIL CLOSED.'
@@ -730,6 +731,8 @@ try{
             if($safetySummary.live -ne 'LOCKED' -or
                $safetySummary.edge_validated -ne $false -or
                $safetySummary.trade_permission -ne $false -or
+               $safetySummary.individual_entry_deals_verified -ne $true -or
+               [int]$safetySummary.native_entry_deal_count -lt 1 -or
                $safetySummary.status -notin @('NO_POST_FILL_SAFETY_INCIDENT_OBSERVED_RESEARCH_ONLY',
                                                'POST_FILL_SAFETY_INCIDENT_NO_GO')){
                 throw 'Native post-fill safety audit state invalid. FAIL CLOSED.'
