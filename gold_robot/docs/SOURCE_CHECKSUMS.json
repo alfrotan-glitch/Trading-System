@@ -182,8 +182,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 11544,
-      "sha256": "71441a5e611d60c7b61360bde3370aa831b80132761e11d0b2c79fbae29e004e"
+      "bytes": 11913,
+      "sha256": "8d1991ad9c8edaf21ddbf4315e8d22e32ca2e88fc7f0eaf497ac460be382c026"
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
@@ -327,8 +327,8 @@
     },
     {
       "path": "research/StartAutoForwardShadow.ps1",
-      "bytes": 11845,
-      "sha256": "750c647b6abd6f1893a8f453418788b1cb63fbb5f14680ce65f1e9cc38fc0fff"
+      "bytes": 11931,
+      "sha256": "d69ba81de1e3264cad341c71d20cbec6fb5b62b3eeb10e36b06b731b236e1ce7"
     },
     {
       "path": "research/ablate_revised_variants.py",
@@ -417,8 +417,8 @@
     },
     {
       "path": "research/forward_shadow_paths.py",
-      "bytes": 13056,
-      "sha256": "a104f6dedf872f0a91c28cfe033a7d9cabfdf06ec54f0a0e325f87bd4d215ed7"
+      "bytes": 14783,
+      "sha256": "bc96caebb8d9f55540777ef5cf6695dc52ee3d9b1b103ea3642bd03c1e391a9b"
     },
     {
       "path": "research/gold_decision_audit.py",
@@ -602,8 +602,8 @@
     },
     {
       "path": "tests/test_forward_shadow_autostart.py",
-      "bytes": 3747,
-      "sha256": "10d9cf21f31a46659170f2619d29eda32494f46670b988c09e844950ba577e8a"
+      "bytes": 3879,
+      "sha256": "af9deedfd40c1010d9a8921c15926cac2b72eaf006c0e681cdc3103800ba6308"
     },
     {
       "path": "tests/test_forward_shadow_observer.py",
@@ -612,8 +612,8 @@
     },
     {
       "path": "tests/test_forward_shadow_paths.py",
-      "bytes": 8315,
-      "sha256": "fb8c8c597d6a8b18be770395663dd5a65a60a7fdb450aad79cf5d4b950238068"
+      "bytes": 10719,
+      "sha256": "a5e1d70d70760d22f99342faf0d3bdee759a53b37096f6bfba2c2a784aaf90c0"
     },
     {
       "path": "tests/test_gold_decision_audit.py",
