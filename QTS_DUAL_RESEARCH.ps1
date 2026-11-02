@@ -59,6 +59,16 @@ try {
         if($LASTEXITCODE -ne 0){
             throw 'Dual evidence audit failed closed; inspect QTS_DUAL_EVIDENCE_AUDIT.json'
         }
+        $cross=Join-Path $repo 'gold_robot\research\crosscheck_dual_opportunities.py'
+        $crossResult=Join-Path $folder 'QTS_DUAL_OPPORTUNITY_CROSSCHECK.json'
+        if(-not (Test-Path -LiteralPath $cross -PathType Leaf)){
+            throw 'Missing native cross-arm signal/collision verifier.'
+        }
+        & py -3 $cross --both (Join-Path $folder 'DUAL_BOTH\native\QTS_7_opportunities.csv') --directional (Join-Path $folder 'DUAL_DIRECTIONAL\native\QTS_7_opportunities.csv') --output $crossResult
+        if($LASTEXITCODE -ne 0){
+            throw 'Native paired opportunity analysis FAILED; inspect QTS_DUAL_OPPORTUNITY_CROSSCHECK.json'
+        }
+
     }
     $state=if($PrepareOnly){'PREPARED_ONLY_NO_TRADES'}else{'TWO_NATIVE_RUNS_FINISHED_REVIEW_REQUIRED'}
     $reason='Each tested separately; no combined portfolio PnL, no profit approval.'
@@ -105,7 +115,7 @@ if(-not $PrepareOnly){
             Copy-Item -LiteralPath $source -Destination $dest -Force
         }
     }
-    foreach($name in @('QTS_DUAL_EVIDENCE_AUDIT.json','QTS_DUAL_RESEARCH_STATUS.json')){
+    foreach($name in @('QTS_DUAL_EVIDENCE_AUDIT.json','QTS_DUAL_OPPORTUNITY_CROSSCHECK.json','QTS_DUAL_RESEARCH_STATUS.json')){
         $source=Join-Path $folder $name
         if(-not (Test-Path -LiteralPath $source -PathType Leaf)){
             throw ('Cannot package missing dual native audit: '+$source)
