@@ -38,8 +38,11 @@ if($targeted){
 
 # V3 is a NEW strategy hypothesis, never a hidden replacement for V2 or the baseline.
 # Only Style 7 / M15 is allowed to use the opt-in V3 native market-context filter.
-if($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO','DUAL_BOTH','DUAL_DIRECTIONAL') -and ($OnlyStyles -ne '7')){
-    throw 'Adaptive and dual strategy variants require -OnlyStyles 7 (M15 research only).'
+if($ResearchVariant -in @('CONTEXT_V3','ADAPTIVE_V4','ADAPTIVE_V5_VETO') -and ($OnlyStyles -ne '7')){
+    throw 'Adaptive V3/V4/V5 variants require -OnlyStyles 7 (M15 research only).'
+}
+if($ResearchVariant -in @('DUAL_BOTH','DUAL_DIRECTIONAL') -and ($OnlyStyles -ne '7')){
+    throw 'Dual Retest/Sweep requires -OnlyStyles 7 (M15 research only).'
 }
 if($ResearchVariant -eq 'ADAPTIVE_V5_VETO'){
     if($VetoStyle -lt 0 -or $VetoStyle -gt 8 -or $VetoStyle -eq 7 -or
