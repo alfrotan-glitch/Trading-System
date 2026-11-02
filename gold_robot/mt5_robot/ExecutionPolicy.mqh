@@ -34,3 +34,15 @@ QTS_RECEIPT PendingReceipt(const bool sent,const uint code,
      }
    return QTS_AMBIGUOUS; // Timeout, connection loss, unknown codes, no ticket.
   }
+
+bool QtsFillStopsConsistent(const int direction,const double fill_price,
+                            const double initial_sl,const double initial_tp)
+  {
+   if(direction!=1 && direction!=-1) return false;
+   if(fill_price<=0 || initial_sl<=0 || initial_tp<=0)
+      return false;
+   if(!MathIsValidNumber(fill_price) || !MathIsValidNumber(initial_sl) ||
+      !MathIsValidNumber(initial_tp)) return false;
+   if(direction==1) return initial_sl<fill_price && fill_price<initial_tp;
+   return initial_tp<fill_price && fill_price<initial_sl;
+  }
