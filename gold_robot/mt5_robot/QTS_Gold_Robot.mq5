@@ -2230,6 +2230,11 @@ void OnTick()
       last_closed_bar=closed;
       if(MQLInfoInteger(MQL_TESTER)!=0 && TesterUseAdaptiveRouterV4)
          status_text="ENTRY_AUDIT_PENDING";
+      if(TesterDualStrategyMode>0 && MQLInfoInteger(MQL_TESTER)!=0)
+        {
+         qts_dual_router_verdict="NOT_EVALUATED";
+         qts_dual_router_eligible=-1;
+        }
       // Observe exposure BEFORE the entry decision; a freshly placed order
       // must not be misclassified as an already-blocking position.
       bool dual_exposure_before=(TesterDualStrategyMode>0 && MQLInfoInteger(MQL_TESTER)!=0) ?
