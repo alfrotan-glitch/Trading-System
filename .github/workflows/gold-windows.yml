@@ -287,7 +287,23 @@ jobs:
           if(-not (Test-Path (Join-Path $out 'OPEN_RESULTS.html'))) {
             throw 'One-click report shell was not produced'
           }
-          Write-Host 'Ten native tester configurations prepared; zero MT5 launches/orders: PASS'
+          foreach($pair in @(@('DUAL_BOTH','1'),@('DUAL_DIRECTIONAL','2'))) {
+            $variant=$pair[0]; $mode=$pair[1]
+            $path=Join-Path $env:RUNNER_TEMP ('QTS dual preparation '+$variant)
+            ./gold_robot/research/RunAutomaticTester.ps1 -TerminalExe $exe -TerminalDataFolder $data -OutputDirectory $path -FromDate '2026.04.01' -ToDate '2026.09.01' -OnlyStyles '7' -ResearchVariant $variant -PrepareOnly -NoOpen
+            if($LASTEXITCODE -ne 0){ throw ('Dual offline preparation refused '+$variant) }
+            $set=Get-Content -LiteralPath (Join-Path $path ('presets/research_'+$variant+'_7.set')) -Encoding Unicode
+            if(('TesterDualStrategyMode='+$mode) -notin $set -or
+               'EntryStyle=7' -notin $set -or 'EnableDemoForwardOrders=false' -notin $set -or
+               'TesterIgnoreDailyAndPeakStops=false' -notin $set){
+              throw ('Wrong isolated native tester flags in '+$variant)
+            }
+            $result=Get-Content -LiteralPath (Join-Path $path 'OPEN_RESULTS.json') -Raw | ConvertFrom-Json
+            if($result.state -ne 'PREPARED_ONLY' -or $result.live -ne 'LOCKED'){
+              throw ('Unsafe dual native preparation outcome: '+$variant)
+            }
+          }
+          Write-Host 'Ten native tester configurations and both dual variants prepared; zero MT5 launches/orders: PASS'
       - name: Generate and verify ten isolated MT5 tester presets
         shell: pwsh
         run: |
