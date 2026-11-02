@@ -183,6 +183,83 @@ def test_no_signals_produces_waiting_report_without_terminal(tmp_path, monkeypat
     assert result["validated_edge"] is False
 
 
+def test_broker_quote_reader_requires_exact_native_terminal_binding(tmp_path, monkeypatch):
+    import types
+    from forward_shadow_paths import _demo_terminal
+
+    exe = tmp_path / "mt5" / "terminal64.exe"
+    exe.parent.mkdir()
+    exe.write_bytes(b"fixture: not an executable")
+    data = tmp_path / "terminal_data"
+    data.mkdir()
+    calls = []
+
+    class FakeMt5:
+        ACCOUNT_TRADE_MODE_DEMO = 0
+
+        def initialize(self, **kwargs):
+            calls.append(("initialize", kwargs))
+            return True
+
+        def account_info(self):
+            return types.SimpleNamespace(trade_mode=0, server="WMMarkets-Demo")
+
+        def terminal_info(self):
+            return types.SimpleNamespace(
+                connected=True, path=str(exe.parent), data_path=str(data)
+            )
+
+        def symbol_info(self, name):
+            assert name == "XAUUSD@"
+            return object()
+
+        def shutdown(self):
+            calls.append(("shutdown", {}))
+
+    fake = FakeMt5()
+    monkeypatch.setitem(sys.modules, "MetaTrader5", fake)
+    with pytest.raises(ValueError, match="PINNED_MT5_TARGET_REQUIRED_NO_GO"):
+        _demo_terminal()
+    assert _demo_terminal(executable=exe, data_dir=data) is fake
+    assert calls == [("initialize", {"path": str(exe)})]
+
+
+def test_broker_reader_rejects_another_terminal_with_same_broker(tmp_path, monkeypatch):
+    import types
+    from forward_shadow_paths import _demo_terminal
+
+    exe = tmp_path / "first" / "terminal64.exe"
+    exe.parent.mkdir()
+    exe.write_bytes(b"fake")
+    data = tmp_path / "requested_data"
+    data.mkdir()
+    calls = []
+
+    class WrongInstance:
+        ACCOUNT_TRADE_MODE_DEMO = 0
+
+        def initialize(self, **kwargs):
+            return True
+
+        def account_info(self):
+            return types.SimpleNamespace(trade_mode=0, server="WMMarkets-Demo")
+
+        def terminal_info(self):
+            return types.SimpleNamespace(connected=True, path=str(exe.parent),
+                                         data_path=str(tmp_path / "WRONG_DATA"))
+
+        def symbol_info(self, name):
+            return object()
+
+        def shutdown(self):
+            calls.append("shutdown")
+
+    monkeypatch.setitem(sys.modules, "MetaTrader5", WrongInstance())
+    with pytest.raises(ValueError, match="PINNED_MT5_IDENTITY_OR_DEMO_MISMATCH_NO_GO"):
+        _demo_terminal(executable=exe, data_dir=data)
+    assert calls == ["shutdown"]
+
+
 def test_quote_path_source_is_read_only():
     source = (GOLD / "research" / "forward_shadow_paths.py").read_text(encoding="utf-8")
     for illegal in ("order_send(", "OrderSend(", "mt5.login(", "strategy_promotion("):
