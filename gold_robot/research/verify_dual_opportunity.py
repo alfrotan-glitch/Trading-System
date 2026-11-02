@@ -32,6 +32,10 @@ def verify(path:Path,mode:int)->dict:
         classified=Counter()
         previous=None
         bars=set()
+        decision_by_bar={}
+        exposure_by_bar={}
+        quote_by_bar={}
+        frozen_reason_evidence=0
         observed=0
         atr_known=0
         rank_known=0
@@ -73,6 +77,23 @@ def verify(path:Path,mode:int)->dict:
                          "SIGNAL_NOT_FILL_PROOF")
             if row["candidate_class"]!=expected_cat or row["candidate_class"] not in CATEGORIES:
                 raise LedgerError("Misclassified native opportunity")
+            # Both rows share one pre-observation trading decision.
+            # If each row instead inherits its own signal_reason, the
+            # decision was overwritten by the diagnostic signal calls.
+            if bar in decision_by_bar and row["entry_decision_reason"]!=decision_by_bar[bar]:
+                raise LedgerError("Decision provenance changed between styles on one closed bar")
+            decision_by_bar[bar]=row["entry_decision_reason"]
+            if bar in exposure_by_bar and exposed!=exposure_by_bar[bar]:
+                raise LedgerError("Pre-decision exposure snapshot differs across styles")
+            exposure_by_bar[bar]=exposed
+            market=(row["observed_time_server"],row["atr14_closed"],
+                    row["atr_rank_prior_192_pct"],row["adx_closed"],
+                    row["h1_close_minus_ema50"],row["bid"],row["ask"],row["spread"])
+            if bar in quote_by_bar and market!=quote_by_bar[bar]:
+                raise LedgerError("One closed bar has conflicting native market observations")
+            quote_by_bar[bar]=market
+            if row["entry_decision_reason"]!=row["signal_reason"]:
+                frozen_reason_evidence+=1
             if previous is not None and bar<previous:
                 raise LedgerError("Nonmonotonic closed-bar sequence")
             previous=bar
@@ -88,6 +109,8 @@ def verify(path:Path,mode:int)->dict:
             raise LedgerError("Missing bars or incomplete two-style coverage")
         if any(counts[(bar,style)]!=1 for bar in bars for style in (1,3)):
             raise LedgerError("Missing one strategy on closed bar")
+        if frozen_reason_evidence==0:
+            raise LedgerError("Decision reason aliases strategy signal_reason in all rows")
     return {
         "schema":"qts.dual_native_opportunity.v1",
         "status":"NATIVE_OPPORTUNITIES_VERIFIED_RESEARCH_ONLY",
@@ -96,6 +119,7 @@ def verify(path:Path,mode:int)->dict:
         "mode":mode,"bars":len(bars),"rows":observed,
         "atr_available_rows":atr_known,"atr_rank_available_rows":rank_known,
         "raw_signal_rows":signaled,"raw_signal_while_exposed_rows":signal_exposed,
+        "same_bar_decision_provenance_verified":True,
         "by_strategy_class":[{"style":style,"category":c,"rows":n} for (style,c),n in sorted(classified.items())],
         "atr_rank_is_native_iatr_not_retro_simple_tr":True,
         "limitation":"Closed-bar signals are not executable missed fills or counterfactual profits."
