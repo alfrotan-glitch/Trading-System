@@ -26,6 +26,25 @@ if(-not (Test-Path -LiteralPath $runner -PathType Leaf) -or
 $folder=Join-Path $repo ('gold_robot\reports_local\history_2025_to_date\'+
                          (Get-Date -Format 'yyyyMMdd_HHmmss_ffff')+'_'+$Variant)
 New-Item -ItemType Directory -Path $folder -Force|Out-Null
+function ExportHistoricalDiagnostic([string]$reason){
+    $diag=Join-Path $folder 'QTS_2025_DIAGNOSTIC_NO_GO'
+    New-Item -ItemType Directory -Path $diag -Force|Out-Null
+    Set-Content -LiteralPath (Join-Path $diag 'WHY_NO_GO.txt') -Value $reason -Encoding UTF8
+    foreach($rel in @('OPEN_RESULTS.json','OPEN_RESULTS.html',
+                      'QTS_2025_TO_DATE_SUMMARY.json',
+                      'QTS_POST_FILL_SAFETY_AUDIT.json',
+                      'QTS_TRADE_BY_TRADE.json',
+                      'QTS_DUAL_OPPORTUNITY_SUMMARY.json')){
+        $source=Join-Path $folder $rel
+        if(Test-Path -LiteralPath $source -PathType Leaf){
+            Copy-Item -LiteralPath $source -Destination $diag -Force
+        }
+    }
+    $diagnosticZip=Join-Path $folder 'QTS_2025_DIAGNOSTIC_NO_GO.zip'
+    Compress-Archive -LiteralPath $diag -DestinationPath $diagnosticZip -Force -CompressionLevel Optimal
+    Write-Host ('NO-GO DIAGNOSTIC ZIP: '+$diagnosticZip) -ForegroundColor Yellow
+    try{explorer.exe /select,"$diagnosticZip"}catch{Write-Warning ('Open ZIP manually: '+$diagnosticZip)}
+}
 Write-Host ('QTS GOLD MT5: '+$Variant+' | '+$start+' -> '+$ToDate)
 Write-Host 'The end date is EXCLUSIVE: current partial trading day is not tested.'
 Write-Host 'RESEARCH ONLY. LIVE LOCKED. NO REAL MONEY ORDERS.' -ForegroundColor Yellow
@@ -39,7 +58,8 @@ $params=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$runner,
 $nativeExit=[int]$LASTEXITCODE
 $metaPath=Join-Path $folder 'OPEN_RESULTS.json'
 if(-not (Test-Path -LiteralPath $metaPath -PathType Leaf)){
-    throw ('MT5 did not produce a native completion report. Child exit='+$nativeExit)
+    ExportHistoricalDiagnostic ('MT5 did not produce a native completion report. Exit='+$nativeExit)
+    exit 2
 }
 $meta=Get-Content -LiteralPath $metaPath -Raw -Encoding UTF8|ConvertFrom-Json
 $validState=([string]$meta.state -cin @('SELECTED_TESTS_FINISHED_REVIEW_REQUIRED',
@@ -62,8 +82,9 @@ if($nativeExit -notin @(0,2) -or
    @($meta.selected_styles).Count -ne 1 -or
    [int]$meta.selected_styles[0] -ne 7 -or
    [string]::IsNullOrWhiteSpace([string]$meta.compiled_ex5_sha256)){
-    throw ('Native tester returned invalid/failed identity or evidence: exit='+$nativeExit+
-           ' state='+[string]$meta.state+'. Read '+$metaPath)
+    ExportHistoricalDiagnostic ('Native tester returned invalid/incomplete identity: exit='+
+       $nativeExit+' state='+[string]$meta.state)
+    exit 2
 }
 $python=Get-Command py -ErrorAction SilentlyContinue
 if($python){
