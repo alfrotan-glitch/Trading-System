@@ -76,9 +76,9 @@ if($python){
     $prefix=@()
 }
 $summary=Join-Path $folder 'QTS_2025_TO_DATE_SUMMARY.json'
-$args=@($prefix)+@($summaryTool,'--folder',$folder,'--variant',$Variant,
+$summaryArgs=@($prefix)+@($summaryTool,'--folder',$folder,'--variant',$Variant,
                   '--from-date',$start,'--to-date',$ToDate,'--output',$summary)
-& $bin @args
+& $bin @summaryArgs
 $summaryExit=[int]$LASTEXITCODE
 if(-not (Test-Path -LiteralPath $summary -PathType Leaf)){
     throw 'Independent historical summary missing; result not reportable.'
