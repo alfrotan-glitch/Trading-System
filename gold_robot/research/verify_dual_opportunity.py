@@ -24,7 +24,7 @@ class LedgerError(ValueError): pass
 
 def verify(path:Path,mode:int)->dict:
     if mode not in (1,2,3):raise LedgerError("Invalid tester dual mode")
-    if path.stat().st_size>25_000_000:raise LedgerError("Oversized native ledger")
+    if path.stat().st_size>100_000_000:raise LedgerError("Oversized native ledger")
     with path.open(newline="",encoding="ascii",errors="strict") as source:
         reader=csv.DictReader(source,delimiter=";")
         if reader.fieldnames!=list(FIELDS):
