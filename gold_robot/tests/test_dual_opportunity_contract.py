@@ -110,6 +110,34 @@ def test_historical_alias_bug_detected(tmp_path):
         verify(write(tmp_path,data),1)
 
 
+def test_mode3_native_quality_collision_requires_same_side_signals(tmp_path):
+    data=rows(3)
+    for row in data[:2]:
+        row["side"]="1"
+        row["exposure_blocked"]="0"
+        row["candidate_class"]="SIGNAL_NOT_FILL_PROOF"
+        row["router_eligible_count"]="2"
+        row["router_verdict"]="QUALITY_COLLISION_SELECTED"
+    summary=verify(write(tmp_path,data),3)
+    assert summary["router_verdicts_by_closed_bar"]["QUALITY_COLLISION_SELECTED"]==1
+    assert summary["edge_validated"] is False
+    data[1]["side"]="-1"
+    with pytest.raises(LedgerError,match="Quality collision lacks same-side"):
+        verify(write(tmp_path,data),3)
+
+
+def test_mode3_rejects_quality_claim_from_directional_baseline(tmp_path):
+    data=rows(2)
+    for row in data[:2]:
+        row["side"]="1"
+        row["exposure_blocked"]="0"
+        row["candidate_class"]="SIGNAL_NOT_FILL_PROOF"
+        row["router_eligible_count"]="2"
+        row["router_verdict"]="QUALITY_COLLISION_SELECTED"
+    with pytest.raises(LedgerError,match="Invalid router eligibility"):
+        verify(write(tmp_path,data),2)
+
+
 def test_nonfinite_atr_or_quote_rejected(tmp_path):
     data=rows(1)
     data[0]["atr14_closed"]="nan"
