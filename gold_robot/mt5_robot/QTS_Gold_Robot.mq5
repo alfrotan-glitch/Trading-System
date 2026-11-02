@@ -16,6 +16,7 @@
 input bool            EnableDemoOrders          = false; // OFF by default.
 input bool            EnableDemoForwardOrders    = false; // Independent authorization, connected WMMarkets DEMO only.
 input double          DemoForwardRiskCapPct      = 0.25; // DEMO hard cap; never weakens trade-level risk.
+input bool            ForwardShadowObserveBothStyles = false; // Single DEMO chart observes Style 1 & 3; no orders.
 input bool            EnableEntryDiagnostics    = true; // Closed-bar diagnostic reasons in Tester and connected DEMO Experts logs.
 input bool            PauseNewEntries           = false;
 input bool            EmergencyFlattenOwned     = false; // Emergency CLOSE of THIS magic only.
@@ -1514,8 +1515,49 @@ void DisplayStatus()
            status_text);
   }
 
+// Dual native diagnostic mode: no broker execution path is reachable.
+bool ForwardShadowDualSafe()
+  {
+   return ForwardShadowObserveBothStyles &&
+          MQLInfoInteger(MQL_TESTER)==0 &&
+          AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO &&
+          StringFind(AccountInfoString(ACCOUNT_SERVER),"WMMarkets")==0 &&
+          AccountInfoString(ACCOUNT_CURRENCY)=="USD" &&
+          _Symbol=="XAUUSD@" && SignalTimeframe==PERIOD_M15 &&
+          EntryStyle==QTS_RETEST_LIMIT &&
+          !EnableDemoOrders && !EnableDemoForwardOrders &&
+          !ResetExecutionHalt && !EmergencyFlattenOwned;
+  }
+
+// Health beacon contains no account identifiers or execution commands.
+void WriteForwardShadowHeartbeat(const string phase)
+  {
+   if(!ForwardShadowDualSafe())
+      return;
+   int h=FileOpen("QTS_ForwardShadowV2_HEALTH.csv",
+                  FILE_WRITE|FILE_COMMON|FILE_CSV|FILE_ANSI,';');
+   if(h==INVALID_HANDLE)
+     {
+      PrintFormat("QTS FORWARD HEALTH: cannot write beacon error=%d",GetLastError());
+      return;
+     }
+   FileWrite(h,"schema","utc_s","server_s","bar_server_s",
+             "symbol","timeframe","mode","connected","orders_authorized","phase");
+   FileWrite(h,"qts.mt5.forward_shadow_health.v1",(long)TimeGMT(),
+             (long)TimeTradeServer(),(long)last_closed_bar,
+             _Symbol,"M15","ONE_CHART_TWO_STYLES",
+             TerminalInfoInteger(TERMINAL_CONNECTED)!=0 ? 1 : 0,0,phase);
+   FileFlush(h);
+   FileClose(h);
+  }
+
 int OnInit()
   {
+   if(ForwardShadowObserveBothStyles && !ForwardShadowDualSafe())
+     {
+      Print("QTS FORWARD: one-chart observation refused: DEMO/WMMarkets/order flags not safe");
+      return INIT_FAILED;
+     }
    if(!DemoOrTester())
      {
       Print("QTS: LIVE/CONTEST account refused. DEMO or TESTER ONLY.");
@@ -1693,6 +1735,8 @@ int OnInit()
                   "DEMO observation: two forward authorization inputs required";
    PrintFormat("QTS Gold Robot research: entry_style=%d tester_no_daily_stops=%d; LIVE blocked; edge UNVALIDATED.",
                (int)EntryStyle,(int)TesterResearchNoDailyStops());
+   if(ForwardShadowObserveBothStyles)
+      WriteForwardShadowHeartbeat("INITIALIZED");
    DisplayStatus();
    return INIT_SUCCEEDED;
   }
@@ -1932,7 +1976,7 @@ void OnDeinit(const int reason)
    EventKillTimer();
    // Removing/restarting the EA is not authorization to leave a new order
    // resting indefinitely; server expiry remains primary if offline.
-   if(!RealAccountBlocked())
+   if(!ForwardShadowObserveBothStyles && !RealAccountBlocked())
       ManageOwnedPendingOrders(true);
    Comment("");
    if(fast_handle!=INVALID_HANDLE) IndicatorRelease(fast_handle);
@@ -1944,6 +1988,11 @@ void OnDeinit(const int reason)
 
 void OnTimer()
   {
+   if(ForwardShadowObserveBothStyles)
+     {
+      WriteForwardShadowHeartbeat("WAITING_FOR_M15_CLOSE");
+      return; // Do not enter broker order and position managers.
+     }
    if(RealAccountBlocked())
       return;
    ManageOwnedPendingOrders();
@@ -1961,13 +2010,14 @@ void OnTimer()
 // earlier ATR observations. All inputs are closed M15 rates, shift=1..64.
 // This deliberately does NOT use iATR (Wilder), which differs from the
 // fixed 14-bar TR mean in retrospective_context.py::market_at_entry.
-void RecordNativeForwardShadow(const int side,const double atr_value)
+void RecordNativeForwardShadow(const int side,const double atr_value,
+                               const int style)
   {
    if(MQLInfoInteger(MQL_TESTER)!=0 ||
       AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO ||
       EnableDemoOrders || EnableDemoForwardOrders ||
       _Symbol!="XAUUSD@" || SignalTimeframe!=PERIOD_M15 ||
-      (EntryStyle!=QTS_RETEST_LIMIT && EntryStyle!=QTS_SWEEP_RECLAIM) ||
+      (style!=QTS_RETEST_LIMIT && style!=QTS_SWEEP_RECLAIM) ||
       side==0 || !MathIsValidNumber(atr_value) || atr_value<=0.0)
       return;
    MqlTick tick={};
@@ -2033,7 +2083,7 @@ void RecordNativeForwardShadow(const int side,const double atr_value)
    MqlDateTime parts={};
    TimeToStruct(utc_now,parts);
    string filename=StringFormat("QTS_ForwardShadowV2_Style%d_%04d%02d.csv",
-                               (int)EntryStyle,parts.year,parts.mon);
+                               style,parts.year,parts.mon);
    ResetLastError();
    int handle=FileOpen(filename,FILE_READ|FILE_WRITE|FILE_CSV|
                        FILE_COMMON|FILE_ANSI,';');
@@ -2082,7 +2132,7 @@ void ObserveUnarmedDemoSignal()
       (opportunity ? CompletedOpportunitySignal(atr,level,anchor) :
       (structural ? CompletedStructureSignal(atr,level,anchor) : CompletedBarSignal(atr))));
    // Prospective native signal record. No limit order, trade sizing or send.
-   RecordNativeForwardShadow(side,atr);
+   RecordNativeForwardShadow(side,atr,(int)EntryStyle);
    if(side>0)
       status_text="OBSERVE: unvalidated BUY candidate; orders not authorized";
    else if(side<0)
@@ -2092,6 +2142,38 @@ void ObserveUnarmedDemoSignal()
 
 void OnTick()
   {
+   if(ForwardShadowObserveBothStyles)
+     {
+      if(!ForwardShadowDualSafe())
+        {
+         Comment("QTS FORWARD: unsafe DEMO account/config; no orders");
+         return;
+        }
+      // No ConsiderNewEntry, OrderSend, or position management in this mode.
+      datetime closed=iTime(_Symbol,PERIOD_M15,1);
+      if(closed>0 && last_closed_bar>0 && closed!=last_closed_bar)
+        {
+         last_closed_bar=closed;
+         evaluated_style=QTS_RETEST_LIMIT;
+         double a1=0.0;
+         int s1=CompletedBarSignal(a1);
+         string reason1=status_text;
+         RecordNativeForwardShadow(s1,a1,QTS_RETEST_LIMIT);
+         evaluated_style=QTS_SWEEP_RECLAIM;
+         double a3=0.0,level=0.0,anchor=0.0;
+         int s3=CompletedStructureSignal(a3,level,anchor);
+         string reason3=status_text;
+         RecordNativeForwardShadow(s3,a3,QTS_SWEEP_RECLAIM);
+         evaluated_style=QTS_RETEST_LIMIT;
+         status_text=StringFormat("SHADOW NO ORDERS: Retest %d (%s); Sweep %d (%s)",
+                                  s1,reason1,s3,reason3);
+         WriteForwardShadowHeartbeat("M15_BAR_SCANNED");
+        }
+      else if(last_closed_bar==0)
+         last_closed_bar=closed;
+      DisplayStatus();
+      return;
+     }
    if(RealAccountBlocked())
      {
       Comment("QTS GOLD ROBOT: LIVE ACCOUNT BLOCKED");
