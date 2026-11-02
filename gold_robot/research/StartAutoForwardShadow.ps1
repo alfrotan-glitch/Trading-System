@@ -92,6 +92,11 @@ try{
         throw ("AMBIGUOUS_MT5_NO_GO: {0} possible native terminal(s); no guessed account or target" -f @($eligible).Count)
     }
     $target=@($eligible)[0]
+    # A healthy heartbeat from an OLD binary is not evidence that the
+    # currently checked out canonical source was installed. Never start a
+    # new prospective study against an unverified/stale native EA.
+    $installedSource=Join-Path $target.mql 'Experts\QTS_Gold_Robot.mq5'
+    $currentSource=Join-Path $gold 'mt5_robot\QTS_Gold_Robot.mq5'
     $common=Join-Path $env:APPDATA 'MetaQuotes\Terminal\Common\Files'
     New-Item -Path $common -ItemType Directory -Force|Out-Null
     # Never kill/restart an already-running terminal (it may manage other EAs).
@@ -143,6 +148,11 @@ try{
         }
         if(-not $healthy){throw 'NO_HEALTH_AFTER_STARTUP_NO_GO: no proof that DEMO EA attached'}
     }
+    if(-not (Test-Path -LiteralPath $installedSource -PathType Leaf) -or
+       (Get-FileHash -LiteralPath $installedSource -Algorithm SHA256).Hash -ne
+       (Get-FileHash -LiteralPath $currentSource -Algorithm SHA256).Hash){
+        throw 'INSTALLED_EA_SOURCE_MISMATCH_NO_GO: cannot attribute this live heartbeat to the canonical EA source'
+    }
     Save 'NATIVE_UNARMED_DEMO_HEALTH_OK' 'Single-chart dual-style research, no broker orders; not an edge.'
     if(-not $NoAutostart){
         $bat=Join-Path $repo 'QTS_AUTO_FORWARD.bat'
@@ -175,8 +185,37 @@ try{
         $observerCode=$LASTEXITCODE
         & $python (Join-Path $gold 'research\forward_shadow_paths.py') --report-dir $out
         $pathCode=$LASTEXITCODE
-        Save 'FORWARD_REPORT_CYCLE_FINISHED_UNVALIDATED' 'Native signal/price reports updated; no P&L or live orders.' @{
+        $observerStatus='REPORT_MISSING'
+        $pathsStatus='REPORT_MISSING'
+        $observerReason=''
+        $pathsReason=''
+        $observerFile=Join-Path $out 'QTS_FORWARD_SHADOW_V2_REPORT.json'
+        $pathsFile=Join-Path $out 'QTS_FORWARD_SHADOW_V2_QUOTE_PATHS.json'
+        if(Test-Path -LiteralPath $observerFile -PathType Leaf){
+            $details=Get-Content -LiteralPath $observerFile -Raw | ConvertFrom-Json
+            $observerStatus=[string]$details.status
+            $observerReason=[string]$details.error
+            if(-not $observerReason){$observerReason=[string]$details.reason}
+        }
+        if(Test-Path -LiteralPath $pathsFile -PathType Leaf){
+            $details=Get-Content -LiteralPath $pathsFile -Raw | ConvertFrom-Json
+            $pathsStatus=[string]$details.status
+            $pathsReason=[string]$details.reason
+            if(-not $pathsReason){$pathsReason=[string]$details.error}
+        }
+        $facts=@{
             observer_exit=$observerCode;price_path_exit=$pathCode
+            observer_status=$observerStatus;price_path_status=$pathsStatus
+            observer_reason=$observerReason;price_path_reason=$pathsReason
+        }
+        if($observerCode -ne 0 -or $pathCode -ne 0 -or
+           $observerStatus -match 'NO_GO|BLOCKED|MISSING' -or
+           $pathsStatus -match 'NO_GO|BLOCKED|MISSING'){
+            Save 'FORWARD_ANALYSIS_BLOCKED_NO_GO' ('Observer: '+$observerReason+'; Quotes: '+$pathsReason) $facts
+        }elseif($observerStatus -eq 'REGISTERED_WAITING_FOR_NATIVE_DEMO_SIGNALS'){
+            Save 'FORWARD_WAITING_FOR_NATIVE_SIGNALS' 'EA connected and no new native M15 signal yet. No trades or profit inferred.' $facts
+        }else{
+            Save 'FORWARD_RESEARCH_UPDATED_UNVALIDATED' 'Evidence was recorded; no trading edge claimed.' $facts
         }
         if($RunOnce){break}
         Start-Sleep -Seconds 300
