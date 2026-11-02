@@ -82,6 +82,26 @@ $op=Join-Path $childDir 'QTS_DUAL_OPPORTUNITY_SUMMARY.json'
 if(Test-Path -LiteralPath $op -PathType Leaf){
     Copy-Item -LiteralPath $op -Destination $stage -Force
 }
+# Read the original broken native CSV, if present, WITHOUT exposing its raw
+# rows or calling MT5. The verifier reports record/line/column counts only.
+$nativeLedger=Join-Path $childDir 'native\QTS_7_opportunities.csv'
+$ledgerScanner=Join-Path $repo 'gold_robot\research\verify_dual_opportunity.py'
+if((Test-Path -LiteralPath $nativeLedger -PathType Leaf) -and
+   (Test-Path -LiteralPath $ledgerScanner -PathType Leaf)){
+    $scanResult=Join-Path $stage 'QTS_DUAL_RAW_LEDGER_SCAN.json'
+    $py=Get-Command py -ErrorAction SilentlyContinue
+    $python=Get-Command python -ErrorAction SilentlyContinue
+    $mode=if($arm -eq 'DUAL_DIRECTIONAL'){2}else{1}
+    if($py){
+        & $py.Source -3 $ledgerScanner --input $nativeLedger --mode $mode --output $scanResult
+        Write-Host ('NATIVE RAW LEDGER SCAN EXIT: '+$LASTEXITCODE)
+    }elseif($python){
+        & $python.Source $ledgerScanner --input $nativeLedger --mode $mode --output $scanResult
+        Write-Host ('NATIVE RAW LEDGER SCAN EXIT: '+$LASTEXITCODE)
+    }else{
+        Write-Warning 'Python not available for native row inspection; original summary retained.'
+    }
+}
 $zip=Join-Path $chosen.FullName 'QTS_DUAL_FAILURE_EVIDENCE.zip'
 Compress-Archive -LiteralPath $stage -DestinationPath $zip -CompressionLevel Optimal -Force
 Write-Host ('FAILED VARIANT: '+$arm)
