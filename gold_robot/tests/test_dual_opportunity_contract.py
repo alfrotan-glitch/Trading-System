@@ -55,6 +55,8 @@ def test_two_styles_per_bar_even_when_exposed(tmp_path):
     ("future","Missing native decision provenance"),
     ("spread","Inconsistent quoted spread"),
     ("classifier","Misclassified native opportunity"),
+    ("decision_mutated","Decision provenance changed"),
+    ("exposure_mismatch","Pre-decision exposure snapshot differs"),
 ])
 def test_corruption_fails_closed(tmp_path,mutation,error):
     data=rows(2)
@@ -65,8 +67,20 @@ def test_corruption_fails_closed(tmp_path,mutation,error):
     elif mutation=="future":data[0]["observed_time_server"]="2026.04.01 00:00:00"
     elif mutation=="spread":data[0]["spread"]="0.05"
     elif mutation=="classifier":data[0]["candidate_class"]="UNKNOWN"
+    elif mutation=="decision_mutated":data[1]["entry_decision_reason"]="SIGNAL: sell confirmed"
+    elif mutation=="exposure_mismatch":data[1]["exposure_blocked"]="0";data[1]["candidate_class"]="SIGNAL_NOT_FILL_PROOF"
     with pytest.raises(LedgerError,match=error):
         verify(write(tmp_path,data),2)
+
+def test_historical_alias_bug_detected(tmp_path):
+    data=rows(1)
+    for row in data:
+        # Reproduces the real uploaded evidence: decision_reason is aliased
+        # to the respective signal reason, instead of an immutable decision.
+        row["entry_decision_reason"]="SIGNAL: fake" if row["style"]=="1" else "STRUCTURE: fake"
+    with pytest.raises(LedgerError,match="Decision provenance changed"):
+        verify(write(tmp_path,data),1)
+
 
 def test_nonfinite_atr_or_quote_rejected(tmp_path):
     data=rows(1)
@@ -98,7 +112,10 @@ def test_native_tester_only_and_unchanged_trade_decision():
     assert '#include "DualOpportunityLedger.mqh"' in ea
     assert "      bool dual_exposure_before=" in ea
     assert "      ConsiderNewEntry();\n      // Signals are inspected AFTER" in ea
-    assert "      QtsObserveDualOpportunities(closed,status_text,dual_exposure_before);" in ea
+    assert "      QtsObserveDualOpportunities(closed,dual_decision_snapshot,dual_exposure_before);" in ea
+    assert "string dual_decision_snapshot=status_text;" in ea
+    assert "string frozen_entry_decision=original_entry_reason;" in ledger
+    assert "frozen_entry_decision,(int)exposure" in ledger
     assert "   if(MQLInfoInteger(MQL_TESTER)==0 || EntryStyle!=QTS_ADAPTIVE_ROUTER" in ledger
     assert "   if(TesterDualStrategyMode==0 || MQLInfoInteger(MQL_TESTER)==0)" in ledger
     assert "int original_style=evaluated_style;" in ledger
