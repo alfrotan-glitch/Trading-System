@@ -90,7 +90,7 @@ echo  [8] Audit saved MT5 agent logs
 echo  [9] Diagnose adaptive V4 decisions (last completed month)
 echo  [A] Review historical post-stop broker quote paths
 echo  [B] AUTO-REVIEW saved Retest/Sweep reports (no ZIP path or new tester)
-echo  [C] Forward Shadow: freeze rules / read native DEMO signal journal (NO ORDERS)
+echo  [C] AUTO Forward Shadow: install, start ONE demo chart, monitor and report
 echo.
 choice /C 123456789ABC /N /M "Choose 1-9, A, B or C: "
 if errorlevel 12 goto FORWARD_SHADOW
@@ -167,32 +167,21 @@ goto MENU
 
 :FORWARD_SHADOW
 echo.
-echo QTS: FORWARD SHADOW - native closed-bar signal journal only.
-echo No connected broker orders; MT5 DEMO must be OPEN for the EA to log signals.
-echo Attach the installed QTS EA to TWO XAUUSD@ M15 charts:
-echo Chart A: EntryStyle=1 (Retest). Chart B: EntryStyle=3 (Sweep/Reclaim).
-echo Keep EnableDemoOrders=false AND EnableDemoForwardOrders=false on both.
-echo Keep EnableEntryDiagnostics=true. Do NOT enable Algo Trading.
-set "QTS_FORWARD_DIR=%QTS_ROOT_DIR%gold_robot\reports_local\forward_shadow"
-py -3 "%QTS_ROOT_DIR%gold_robot\research\forward_shadow_observer.py" --report-dir "%QTS_FORWARD_DIR%"
-set "CODE=%ERRORLEVEL%"
-if not "%CODE%"=="0" echo FORWARD SHADOW NO-GO: see report for exact problem.
-echo Reviewing only completed 60-minute broker Bid/Ask windows after native signals.
-echo This never reconstructs fills, TP/SL or P/L.
-py -3 "%QTS_ROOT_DIR%gold_robot\research\forward_shadow_paths.py" --report-dir "%QTS_FORWARD_DIR%"
-set "QTS_PATH_CODE=%ERRORLEVEL%"
-if not "%QTS_PATH_CODE%"=="0" echo PRICE PATH UNKNOWN/NO-GO: read the local quote-path report.
-if exist "%QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_V2_REPORT.json" (
-  start "" notepad.exe "%QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_V2_REPORT.json"
+echo QTS: ONE-CLICK DEMO FORWARD SHADOW SUPERVISOR.
+echo Automatic compilation, one-chart observation of Styles 1 and 3,
+echo health beacon, frozen evidence and recurring quote-path reports.
+echo Never submits an order. No broker credentials or operator questions.
+if not exist "%QTS_ROOT_DIR%QTS_AUTO_FORWARD.bat" (
+  echo ERROR: full automatic Forward Shadow launcher missing.
+  pause
+  goto MENU
 )
-echo.
-echo Frozen registration and results: %QTS_FORWARD_DIR%
-echo The saved 60-minute report shows quote excursions only, never a trade win or P/L.
-echo Report: %QTS_FORWARD_DIR%\QTS_FORWARD_SHADOW_V2_QUOTE_PATHS.json
-echo Native signals, actual fills, SL/TP and profits must not be conflated.
+start "" "%QTS_ROOT_DIR%QTS_AUTO_FORWARD.bat"
+echo Automatic supervisor started in its own window.
+echo All diagnostic results are saved under gold_robot\reports_local\forward_shadow.
+echo If broker/terminal safety is uncertain it saves NO-GO and does NOT guess.
 pause
 goto MENU
-
 :STOP_QUOTES
 call "%QTS_ROOT_DIR%QTS_POST_STOP_REVIEW.bat"
 set "CODE=%ERRORLEVEL%"
