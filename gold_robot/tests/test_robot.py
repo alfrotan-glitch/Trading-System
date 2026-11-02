@@ -763,7 +763,7 @@ def test_installer_dependency_set_matches_ea_includes():
     includes = set(_re.findall(r'#include\s+"([A-Za-z_]+\.mqh)"', EA))
     assert includes == {'ExecutionPolicy.mqh', 'StructureResearch.mqh',
                         'OpportunityResearch.mqh', 'AdaptiveResearch.mqh',
-                        'SmcResearch.mqh', 'ScalpResearch.mqh'}
+                        'SmcResearch.mqh', 'ScalpResearch.mqh', 'DualResearch.mqh'}
     for inc in includes:
         assert inc in PS, inc
 
