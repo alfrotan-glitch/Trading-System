@@ -13,6 +13,8 @@ on:
       - "QTS_FINISH_STOP_TICKS.ps1"
       - "QTS_ONE_CLICK_ROBOT.bat"
       - "QTS_ONE_CLICK_ROBOT.ps1"
+      - "QTS_AUTO_FORWARD.bat"
+      - "START_HERE.bat"
       - "QTS_REVISED_COMPARE.bat"
       - "QTS_REVISED_COMPARE.ps1"
       - "QTS_V2_ABLATION.bat"
@@ -48,13 +50,19 @@ jobs:
           $stage = Join-Path $env:RUNNER_TEMP 'QTS Gold Customer Kit'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item -LiteralPath 'gold_robot' -Destination $stage -Recurse
-          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
+          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_AUTO_FORWARD.bat','START_HERE.bat','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
             Copy-Item -LiteralPath $file -Destination $stage
           }
           @'
           QTS GOLD — WINDOWS RESEARCH KIT (10 STRATEGIES)
           ================================================
-          1. Extract the complete ZIP to a writable folder on your Windows desktop.
+          1. ONE-CLICK UNARMED DEMO Forward Shadow: double-click QTS_AUTO_FORWARD.bat.
+             It attempts canonical compiler installation, one-chart Retest + Sweep
+             observation, 10-second health checks, frozen prospective signal and
+             quote-path reports. No manual ZIP, dual chart, Python or account data
+             entry prompts. Existing open terminals are NEVER forcibly restarted;
+             ambiguous broker/terminal state saves a NO-GO report instead.
+          2. Extract the complete ZIP to a writable folder on your Windows desktop.
           2. With WMMarkets MetaTrader 5 installed, double-click:
                   gold_robot\SETUP_MT5_GOLD.bat
              Select the correct MT5 Data Folder and MetaEditor if asked.
