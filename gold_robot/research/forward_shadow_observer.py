@@ -121,7 +121,23 @@ def select_study_dir(report_dir: Path, ea_source: Path) -> Path:
     if old.get("ea_source_sha256") == current_hash:
         return base
     # Source changed, not policy. A distinct immutable prospective cohort.
-    # Preserve old baseline and user evidence, never silently edit them.
+    # Before refreshing any root-level "latest" reports, archive the legacy
+    # files under their original source identity. Never overwrite archives.
+    archive = base / "legacy_epochs" / old["ea_source_sha256"][:24]
+    archive.mkdir(parents=True, exist_ok=True)
+    for name in ("QTS_FORWARD_SHADOW_V2_FROZEN.json",
+                 "QTS_FORWARD_SHADOW_V2_REPORT.json",
+                 "QTS_FORWARD_SHADOW_V2_QUOTE_PATHS.json"):
+        original_file = base / name
+        archived_file = archive / name
+        if original_file.is_file() and not archived_file.exists():
+            try:
+                with archived_file.open("xb") as dest:
+                    dest.write(original_file.read_bytes())
+                    dest.flush()
+                    os.fsync(dest.fileno())
+            except FileExistsError:
+                pass
     return base / "epochs" / current_hash[:24]
 
 
