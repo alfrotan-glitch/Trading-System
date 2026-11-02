@@ -77,6 +77,29 @@ def test_corruption_fails_closed(tmp_path,mutation,error):
     with pytest.raises(LedgerError,match=error):
         verify(write(tmp_path,data),2)
 
+def test_unescaped_mql5_semicolon_reproduces_failed_native_csv(tmp_path):
+    # DictWriter quotes delimiters, but native FileWrite writes text fields as
+    # data separated by ;. Reproduce the actual native writer contract.
+    entries=rows(1)
+    sentence="LIMIT submission accepted; fills confirmed only from broker deals"
+    for r in entries:
+        r["entry_decision_reason"]=sentence
+    path=tmp_path/"native.csv"
+    def native_line(row):
+        return ";".join(str(row[f]) for f in FIELDS)
+    path.write_text(";".join(FIELDS)+"\\r\\n"+
+                    "\\r\\n".join(native_line(row) for row in entries)+"\\r\\n",
+                    encoding="ascii")
+    with pytest.raises(LedgerError,match=r"record 1 physical_line 2: expected_fields=19 actual_fields=20"):
+        verify(path,1)
+    for r in entries:
+        r["entry_decision_reason"]=sentence.replace(";"," |")
+    path.write_text(";".join(FIELDS)+"\\r\\n"+
+                    "\\r\\n".join(native_line(row) for row in entries)+"\\r\\n",
+                    encoding="ascii")
+    assert verify(path,1)["rows"]==4
+
+
 def test_historical_alias_bug_detected(tmp_path):
     data=rows(1)
     for row in data:
@@ -120,6 +143,11 @@ def test_native_tester_only_and_unchanged_trade_decision():
     assert "      QtsObserveDualOpportunities(closed,dual_decision_snapshot,dual_exposure_before);" in ea
     assert "string dual_decision_snapshot=status_text;" in ea
     assert "string frozen_entry_decision=original_entry_reason;" in ledger
+    assert "string QtsOpportunityCsvSafe(const string input)" in ledger
+    assert 'StringReplace(cleaned,";"," |");' in ledger
+    assert 'string safe_entry_reason=QtsOpportunityCsvSafe(frozen_entry_decision);' in ledger
+    assert 'string safe_signal_reason=QtsOpportunityCsvSafe(signal_reason);' in ledger
+    assert "          safe_entry_reason,(int)exposure" in ledger
     assert "frozen_entry_decision,(int)exposure" in ledger
     assert "qts_dual_router_eligible,qts_dual_router_verdict" in ledger
     dual=(GOLD/"mt5_robot/DualResearch.mqh").read_text(encoding="utf-8")
