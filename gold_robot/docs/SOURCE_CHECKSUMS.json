@@ -182,8 +182,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 10545,
-      "sha256": "90b2ab1e4790b16ac113928543893759d4ca4b957696dfae6ddb8fcc2696d479"
+      "bytes": 11544,
+      "sha256": "71441a5e611d60c7b61360bde3370aa831b80132761e11d0b2c79fbae29e004e"
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
@@ -327,8 +327,8 @@
     },
     {
       "path": "research/StartAutoForwardShadow.ps1",
-      "bytes": 9512,
-      "sha256": "8e9a40b739db6de0b376c7ce0ca517278c17bef7b89d11a9cf419d88c880591d"
+      "bytes": 11845,
+      "sha256": "750c647b6abd6f1893a8f453418788b1cb63fbb5f14680ce65f1e9cc38fc0fff"
     },
     {
       "path": "research/ablate_revised_variants.py",
@@ -412,13 +412,13 @@
     },
     {
       "path": "research/forward_shadow_observer.py",
-      "bytes": 15413,
-      "sha256": "b858f94a9b9660a41630375cc7c1e54ec7291d3ab210b70f2e95e6fda9893ba3"
+      "bytes": 17813,
+      "sha256": "c2d94b8f6db212b54da10758ef4bc1ffa6c3d95c8493f29634ec3c0f71fc66ca"
     },
     {
       "path": "research/forward_shadow_paths.py",
-      "bytes": 12339,
-      "sha256": "29d3770acd3005055ce524b2a73cfcee0b080e709e72d917b893b756e2d8668a"
+      "bytes": 13056,
+      "sha256": "a104f6dedf872f0a91c28cfe033a7d9cabfdf06ec54f0a0e325f87bd4d215ed7"
     },
     {
       "path": "research/gold_decision_audit.py",
@@ -602,18 +602,18 @@
     },
     {
       "path": "tests/test_forward_shadow_autostart.py",
-      "bytes": 3115,
-      "sha256": "1319ba394db4c5410508aec922f59854f5dc73c1738775622613d9108f46fe77"
+      "bytes": 3747,
+      "sha256": "10d9cf21f31a46659170f2619d29eda32494f46670b988c09e844950ba577e8a"
     },
     {
       "path": "tests/test_forward_shadow_observer.py",
-      "bytes": 9239,
-      "sha256": "5b2f0baaeecaa41f153392279289234ac8780632848c46d838c7aa77c775f2c5"
+      "bytes": 11052,
+      "sha256": "90c510d2638f9e5f3cfca09a185a985c1d2ba0c0411feccff91e6efe50d5882c"
     },
     {
       "path": "tests/test_forward_shadow_paths.py",
-      "bytes": 7558,
-      "sha256": "2e4b7d08fcfd1f450314543dd9cb593006650abe85257aa8e73330be613ca310"
+      "bytes": 8315,
+      "sha256": "fb8c8c597d6a8b18be770395663dd5a65a60a7fdb450aad79cf5d4b950238068"
     },
     {
       "path": "tests/test_gold_decision_audit.py",
