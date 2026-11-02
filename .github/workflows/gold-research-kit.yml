@@ -14,6 +14,7 @@ on:
       - "QTS_ONE_CLICK_ROBOT.bat"
       - "QTS_ONE_CLICK_ROBOT.ps1"
       - "QTS_AUTO_FORWARD.bat"
+      - "QTS_REFRESH_FORWARD.bat"
       - "START_HERE.bat"
       - "QTS_REVISED_COMPARE.bat"
       - "QTS_REVISED_COMPARE.ps1"
@@ -50,13 +51,16 @@ jobs:
           $stage = Join-Path $env:RUNNER_TEMP 'QTS Gold Customer Kit'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item -LiteralPath 'gold_robot' -Destination $stage -Recurse
-          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_AUTO_FORWARD.bat','START_HERE.bat','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
+          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','START_HERE.bat','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
             Copy-Item -LiteralPath $file -Destination $stage
           }
           @'
           QTS GOLD — WINDOWS RESEARCH KIT (10 STRATEGIES)
           ================================================
           1. ONE-CLICK UNARMED DEMO Forward Shadow: double-click QTS_AUTO_FORWARD.bat.
+             To replace a stale running QTS Shadow loop without touching MT5,
+             use QTS_REFRESH_FORWARD.bat. It safely updates main and starts
+             a new supervisor after stopping only the old QTS script.
              It attempts canonical compiler installation, one-chart Retest + Sweep
              observation, 10-second health checks, frozen prospective signal and
              quote-path reports. No manual ZIP, dual chart, Python or account data
@@ -102,7 +106,7 @@ jobs:
           Expand-Archive -LiteralPath 'QTS-Gold-Windows-Research-Kit.zip' -DestinationPath $dst -Force
           Push-Location $dst
           try {
-            foreach($file in @('OPEN_FIRST.txt','QTS_AUTO_FORWARD.bat','START_HERE.bat','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
+            foreach($file in @('OPEN_FIRST.txt','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','START_HERE.bat','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
               if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing kit file: $file" }
             }
             python gold_robot/research/update_manifest.py --check
