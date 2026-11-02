@@ -76,6 +76,11 @@
       "sha256": "c46e7907895917de788672d4b45a11a51a30e68683996f3f6e1e9cfcee6ec196"
     },
     {
+      "path": "docs/DUAL_STRATEGY_SELECTION_PROTOCOL.md",
+      "bytes": 3891,
+      "sha256": "e09464d5cc1dc8a9b6bccfbfe7f2fc5c558b9eb06820d5147773989f7b1c811d"
+    },
+    {
       "path": "docs/ENGINEERING_AUDIT.md",
       "bytes": 2598,
       "sha256": "ff8600f78e93837af41b6b3c45d0e21352b138cfe4d62e936af62b4a640455ae"
@@ -212,8 +217,8 @@
     },
     {
       "path": "mt5_robot/DualResearch.mqh",
-      "bytes": 4486,
-      "sha256": "e2fc245fdceec206b99a6cafb99ecf6a338530df92ba1f706b5c101dfed82a3e"
+      "bytes": 7361,
+      "sha256": "2c29d93543fcb020ce1a0b4917405b5c74aa36ead4691fcf0d80b06ae008d5af"
     },
     {
       "path": "mt5_robot/ExecutionPolicy.mqh",
@@ -247,8 +252,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 97574,
-      "sha256": "507626b86081bb6bef556f6006421f2aeebdc14fb9ed5150422b5773cc67917d"
+      "bytes": 97581,
+      "sha256": "a7156a9f9552b41b9ec9dfcba73aaa1bad8023666e2d284ba7bd3ac952ad5e10"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -327,8 +332,8 @@
     },
     {
       "path": "research/RunAutomaticTester.ps1",
-      "bytes": 48743,
-      "sha256": "648ae4baaeaa2285e8276f4179b47ec33818c885fe45766a427692091f894ce5"
+      "bytes": 48868,
+      "sha256": "de213985a9c8199edcf8e43bde4d47fe1d8a4715792900f0f553d4e9d69135e9"
     },
     {
       "path": "research/RunNativeV5Challenge.ps1",
@@ -432,8 +437,8 @@
     },
     {
       "path": "research/dual_router_contract.py",
-      "sha256": "aaee2aa606acfda71f3e57a3f08cd4096634c28308359041c8c0a317fea9ecec",
-      "bytes": 1538
+      "bytes": 2822,
+      "sha256": "6bbd1f003f1887729321d5f1ca339336b071b8ae68f274474d62e2c0c83c5996"
     },
     {
       "path": "research/edge_gate.py",
@@ -592,8 +597,8 @@
     },
     {
       "path": "research/verify_dual_opportunity.py",
-      "bytes": 9369,
-      "sha256": "a70ac76b0223ce3b85eec706dc8090b3d38d0e1fc121a7ab1046d7f8108ff90b"
+      "bytes": 9954,
+      "sha256": "667ab53ad505ed7ae148fcac6e5e282db0798c7eb0046ce978a92cce7e2afb9e"
     },
     {
       "path": "research/verify_stop_causality_gate.py",
@@ -647,8 +652,8 @@
     },
     {
       "path": "tests/test_dual_opportunity_contract.py",
-      "bytes": 9021,
-      "sha256": "af040d53fb873338286c948c81d2167a84acf977885c6676b10ddb4a2d1da450"
+      "bytes": 10119,
+      "sha256": "ef868d597ef3fe8c1fcb19c443a0224dd5145702883b9cec74ba4687da966c61"
     },
     {
       "path": "tests/test_dual_opportunity_crosscheck.py",
@@ -657,8 +662,8 @@
     },
     {
       "path": "tests/test_dual_research.py",
-      "sha256": "f4e42c20af5309bab87ae49f00dd19ad63b99ee5f10b7c4515d52052b995f2d6",
-      "bytes": 3143
+      "bytes": 5281,
+      "sha256": "8dacb9d6668194fe1d23fdab07d9f1222d1ad8060c6fd88520eb28f4ec314496"
     },
     {
       "path": "tests/test_edge_gate.py",
