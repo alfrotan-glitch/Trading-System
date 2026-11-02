@@ -208,7 +208,7 @@ def test_forward_14tr_48reference_definition_matches_retrospective():
 def test_observational_path_excludes_broker_execution_and_historical_fitting():
     source = (GOLD / "research" / "forward_shadow_observer.py").read_text("utf-8")
     ea = (GOLD / "mt5_robot" / "QTS_Gold_Robot.mq5").read_text("utf-8")
-    assert "RecordNativeForwardShadow(side,atr);" in ea
+    assert "RecordNativeForwardShadow(side,atr,(int)EntryStyle);" in ea
     assert "EnableDemoOrders || EnableDemoForwardOrders" in ea
     assert "CopyRates(_Symbol,PERIOD_M15,1,64,closed_bars)" in ea
     assert "NATIVE_CLOSED_BAR_UNARMED_DEMO" in ea
