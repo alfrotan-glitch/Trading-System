@@ -58,6 +58,19 @@ def test_auto_ps1_refuses_guessing_and_cannot_send_broker_orders():
         assert forbidden not in source
 
 
+def test_auto_supervisor_surfaces_child_failures_instead_of_claiming_success():
+    source = PS1.read_text("utf-8")
+    assert "FORWARD_ANALYSIS_BLOCKED_NO_GO" in source
+    assert "FORWARD_WAITING_FOR_NATIVE_SIGNALS" in source
+    assert "FORWARD_REPORT_CYCLE_FINISHED_UNVALIDATED" not in source
+    assert "observer_exit=$observerCode" in source
+    assert "price_path_exit=$pathCode" in source
+    assert "observer_reason=$observerReason" in source
+    assert "price_path_reason=$pathsReason" in source
+    assert "INSTALLED_EA_SOURCE_MISMATCH_NO_GO" in source
+    assert "Get-FileHash -LiteralPath $installedSource" in source
+
+
 def test_one_click_and_control_panel_do_not_request_manual_chart_or_zip():
     bat = BAT.read_text("utf-8")
     menu = MENU.read_text("utf-8")
