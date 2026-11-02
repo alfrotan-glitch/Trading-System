@@ -17,9 +17,9 @@ string QtsOpportunityCsvSafe(const string input)
   {
    string cleaned=input;
    StringReplace(cleaned,";"," |");
-   StringReplace(cleaned,"\\r"," ");
-   StringReplace(cleaned,"\\n"," ");
-   StringReplace(cleaned,"\\t"," ");
+   StringReplace(cleaned,"\r"," ");
+   StringReplace(cleaned,"\n"," ");
+   StringReplace(cleaned,"\t"," ");
    StringReplace(cleaned,"\"","'");
    if(StringLen(cleaned)>256)
       cleaned=StringSubstr(cleaned,0,256);
