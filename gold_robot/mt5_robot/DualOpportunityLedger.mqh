@@ -13,9 +13,9 @@ bool qts_opportunity_fault=false;
 // invalidates native evidence. Sanitize ONLY text exported to research CSV;
 // never mutate status_text, router logic, order requests, or risk checks.
 // ASCII bounded text prevents delimiter/newline injection and large records.
-string QtsOpportunityCsvSafe(const string input)
+string QtsOpportunityCsvSafe(const string raw_text)
   {
-   string cleaned=input;
+   string cleaned=raw_text;
    StringReplace(cleaned,";"," |");
    StringReplace(cleaned,"\r"," ");
    StringReplace(cleaned,"\n"," ");
