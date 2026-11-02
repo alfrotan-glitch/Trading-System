@@ -1993,6 +1993,38 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
       // unsafe automatic market-side replay of the broker transaction.
       LatchExecutionHalt("broker transaction ledger could not be appended");
      }
+
+   // A LIMIT submission is checked against its PLANNED entry. The true
+   // broker DEAL_PRICE can gap beyond its attached original DEAL_SL.
+   // Detect this from immutable entry-deal history, not current position SL:
+   // a later legitimate trailing SL may be above a BUY entry.
+   ENUM_DEAL_ENTRY entry_kind=(ENUM_DEAL_ENTRY)HistoryDealGetInteger(trans.deal,DEAL_ENTRY);
+   if(entry_kind==DEAL_ENTRY_IN || entry_kind==DEAL_ENTRY_INOUT)
+     {
+      int entry_side=direction==DEAL_TYPE_BUY ? 1 :
+                     (direction==DEAL_TYPE_SELL ? -1 : 0);
+      double original_sl=HistoryDealGetDouble(trans.deal,DEAL_SL);
+      double original_tp=HistoryDealGetDouble(trans.deal,DEAL_TP);
+      long identifier=HistoryDealGetInteger(trans.deal,DEAL_POSITION_ID);
+      bool geometry_ok=QtsFillStopsConsistent(entry_side,fill_price,
+                                              original_sl,original_tp);
+      bool budget_ok=geometry_ok && volume>0.0 &&
+                     PlannedOrderFitsRisk(entry_side,volume,fill_price,original_sl);
+      if(entry_kind==DEAL_ENTRY_INOUT || !geometry_ok || !budget_ok ||
+         identifier<=0)
+        {
+         PrintFormat("QTS CRITICAL FILL: deal=%I64u position_id=%I64d side=%d actual=%.5f original_SL=%.5f original_TP=%.5f lots=%.5f geometry_ok=%d risk_ok=%d",
+                     trans.deal,identifier,entry_side,fill_price,
+                     original_sl,original_tp,volume,(int)geometry_ok,(int)budget_ok);
+         QtsMarkUnsafeFill(identifier,
+                           "broker entry filled across stop or exceeds post-fill risk; protect owned exposure");
+         // Even during quiet trading, trigger protective management now.
+         // Existing on-tick and timer managers retry, and no replacement
+         // entry is ever submitted. Mixed netting ownership abstains.
+         ManageOwnedPendingOrders(true);
+         ManageOwnedPositions();
+        }
+     }
   }
 
 // Tester-only complete, broker-authoritative position/deal evidence.
