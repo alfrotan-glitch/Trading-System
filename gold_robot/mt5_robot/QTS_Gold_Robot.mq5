@@ -1523,14 +1523,24 @@ bool QtsFillRiskNotWorseThanOriginalOrder(const ulong entry_deal,
       volume<=0.0 || !MathIsValidNumber(actual_price))
       return false;
    ulong entry_order=(ulong)HistoryDealGetInteger(entry_deal,DEAL_ORDER);
-   if(entry_order==0 || !HistoryOrderSelect(entry_order))
+   if(entry_order==0) return false;
+   // MT5 trade transaction callbacks are NOT guaranteed to arrive in
+   // ORDER_ADD -> DEAL_ADD -> HISTORY_ADD order. Check both broker books.
+   bool in_history=HistoryOrderSelect(entry_order);
+   if(!in_history && !OrderSelect(entry_order))
       return false;
-   ENUM_ORDER_TYPE kind=(ENUM_ORDER_TYPE)HistoryOrderGetInteger(entry_order,ORDER_TYPE);
+   ENUM_ORDER_TYPE kind=in_history ?
+       (ENUM_ORDER_TYPE)HistoryOrderGetInteger(entry_order,ORDER_TYPE) :
+       (ENUM_ORDER_TYPE)OrderGetInteger(ORDER_TYPE);
    if((side>0 && kind!=ORDER_TYPE_BUY_LIMIT) ||
       (side<0 && kind!=ORDER_TYPE_SELL_LIMIT))
       return false;
-   double plan_price=HistoryOrderGetDouble(entry_order,ORDER_PRICE_OPEN);
-   double plan_sl=HistoryOrderGetDouble(entry_order,ORDER_SL);
+   double plan_price=in_history ?
+       HistoryOrderGetDouble(entry_order,ORDER_PRICE_OPEN) :
+       OrderGetDouble(ORDER_PRICE_OPEN);
+   double plan_sl=in_history ?
+       HistoryOrderGetDouble(entry_order,ORDER_SL) :
+       OrderGetDouble(ORDER_SL);
    if(plan_price<=0.0 || plan_sl<=0.0 ||
       MathAbs(plan_sl-original_sl)>_Point*0.51)
       return false;
