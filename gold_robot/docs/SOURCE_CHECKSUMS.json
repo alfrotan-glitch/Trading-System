@@ -182,8 +182,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 11913,
-      "sha256": "8d1991ad9c8edaf21ddbf4315e8d22e32ca2e88fc7f0eaf497ac460be382c026"
+      "bytes": 12841,
+      "sha256": "64aac2ff41f68073d20bc5db90ce59aa792c51b6d37679305a10c99a5a3fa437"
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
@@ -311,6 +311,11 @@
       "sha256": "bec296cc409c2826591088d720fe95a7cc585a4591b865cdcd6b6f43f314ac64"
     },
     {
+      "path": "research/RefreshAutoForwardShadow.ps1",
+      "sha256": "3d55fa7f11fde175e57aeaaf6b7993bb48d243abc764ac4ed26ce5519b27446e",
+      "bytes": 3484
+    },
+    {
       "path": "research/RunAutomaticTester.ps1",
       "bytes": 44387,
       "sha256": "a7955aaf5bb3dd70f831157a2d209fc45db657a1cd09fe9b856e1df630f32245"
@@ -327,8 +332,8 @@
     },
     {
       "path": "research/StartAutoForwardShadow.ps1",
-      "bytes": 11931,
-      "sha256": "d69ba81de1e3264cad341c71d20cbec6fb5b62b3eeb10e36b06b731b236e1ce7"
+      "bytes": 13041,
+      "sha256": "279926e5cee9b45377d39886b661e175d588bae8ff15204470597bdaa7fc33d0"
     },
     {
       "path": "research/ablate_revised_variants.py",
@@ -602,8 +607,8 @@
     },
     {
       "path": "tests/test_forward_shadow_autostart.py",
-      "bytes": 3879,
-      "sha256": "af9deedfd40c1010d9a8921c15926cac2b72eaf006c0e681cdc3103800ba6308"
+      "bytes": 5741,
+      "sha256": "5b5ece4ed8294bc1870e4b5839f7d034d69c5250b137d2951e2b96139a1ca2aa"
     },
     {
       "path": "tests/test_forward_shadow_observer.py",
