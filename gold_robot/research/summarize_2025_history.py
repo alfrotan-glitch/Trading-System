@@ -134,7 +134,22 @@ def summarize(folder: Path, variant: str, from_date: str, to_date: str) -> dict:
     coverage_start = earliest is not None and earliest <= requested_start+timedelta(days=14)
     coverage_end = latest is not None and latest >= requested_end-timedelta(days=14)
     coverage_gaps = gap_days > 14
-    full_coverage = coverage_start and coverage_end and not coverage_gaps
+    # On extended periods, isolated daily records must not masquerade as
+    # complete M15 broker history. Gold ordinarily has hundreds of CLOSED
+    # M15 bars even in shortened/holiday trading months.
+    thin_full_months=[]
+    if (requested_end-requested_start).days>=45:
+        first_of_month=datetime(requested_start.year,requested_start.month,1)
+        month=first_of_month
+        while month<requested_end:
+            nxt=(datetime(month.year+1,1,1) if month.month==12 else
+                 datetime(month.year,month.month+1,1))
+            if month>=requested_start and nxt<=requested_end:
+                label=month.strftime("%Y-%m")
+                if monthly[label]["closed_bars"]<300:
+                    thin_full_months.append(label)
+            month=nxt
+    full_coverage = coverage_start and coverage_end and not coverage_gaps and not thin_full_months
     if safety.get("new_positions_after_first_unsafe_fill", 0)>0:
         status = "HISTORICAL_UNSAFE_POST_HALT_TRADING_NO_GO"
     elif incident:
@@ -158,6 +173,7 @@ def summarize(folder: Path, variant: str, from_date: str, to_date: str) -> dict:
         "last_observed_bar_server": latest.strftime("%Y.%m.%d %H:%M:%S") if latest else None,
         "market_data_window_coverage_checked": bool(full_coverage),
         "maximum_gap_calendar_days": round(gap_days,2),
+        "months_with_insufficient_m15_bars": thin_full_months,
         "native_m15_closed_bars": total_bars,
         "native_raw_signal_rows": total_rows,
         "raw_signals_not_broker_fills": True,
