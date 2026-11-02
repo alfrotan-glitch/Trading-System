@@ -75,7 +75,7 @@ input bool            TesterUseAdaptiveRouterV4  = false; // Each opportunity ch
 input bool            TesterUsePreregisteredVetoV5 = false; // TESTER ONLY, default OFF.
 input int             TesterVetoStyleV5          = -1; // Allowed 0-6,8 ONLY when veto enabled.
 input int             TesterVetoRegimeV5         = -1; // Closed-bar 0 range,1 transition,2 trend.
-input int             TesterDualStrategyMode     = 0;  // 0 OFF; 1 both sides; 2 BUY-Retest/SELL-Sweep. TESTER ONLY.
+input int             TesterDualStrategyMode     = 0;  // 0 OFF; 1 both; 2 directional; 3 quality arbitration. TESTER ONLY.
 
 
 CTrade trader;
@@ -1625,7 +1625,7 @@ int OnInit()
       AssumedRoundTurnFeePerLot<0.0 || AssumedRoundTurnFeePerLot>100.0 ||
       AdverseStopSlipPrice<0.0 || AdverseStopSlipPrice>2.0 ||
       MinimumTargetFeeMultiple<1.0 || MinimumTargetFeeMultiple>10.0 ||
-      TesterDualStrategyMode<0 || TesterDualStrategyMode>2)
+      TesterDualStrategyMode<0 || TesterDualStrategyMode>3)
      {
       Print("QTS: invalid parameters, no initialization.");
       return INIT_PARAMETERS_INCORRECT;
