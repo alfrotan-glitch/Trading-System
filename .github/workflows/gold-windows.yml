@@ -6,6 +6,7 @@ on:
       - "START_HERE.bat"
       - "QTS_AUTO_FORWARD.bat"
       - "QTS_REFRESH_FORWARD.bat"
+      - "QTS_OWNER_VERDICT.bat"
       - "QTS_AUTO_TEST.bat"
       - "QTS_POST_STOP_REVIEW.bat"
       - "gold_robot/**"
@@ -50,6 +51,22 @@ jobs:
           $rootLauncher = (Resolve-Path 'START_HERE.bat').Path
           & $env:ComSpec /d /c ('call "{0}" /verify-setup' -f $rootLauncher)
           if ($LASTEXITCODE -ne 0) { throw "Windows cmd launcher path failed: $LASTEXITCODE" }
+      - name: Verify immediate offline owner research verdict without any MT5 access
+        shell: pwsh
+        run: |
+          $env:QTS_NO_OPEN='1'
+          & $env:ComSpec /d /c 'call "QTS_OWNER_VERDICT.bat"'
+          if($LASTEXITCODE -ne 0){throw 'Owner verdict one-click failed offline'}
+          $data=Get-Content -LiteralPath 'gold_robot/reports_local/owner_decision/QTS_OWNER_VERDICT.json' -Raw | ConvertFrom-Json
+          $html=Get-Content -LiteralPath 'gold_robot/reports_local/owner_decision/QTS_OWNER_VERDICT.html' -Raw
+          if($data.live -ne 'LOCKED' -or $data.validated_edge -ne $false -or
+             $data.broker_calls -ne 0 -or $data.orders_sent -ne 0 -or
+             $data.forensics.positions_across_separate_tests -ne 938 -or
+             $data.forensics.not_a_portfolio_pnl -ne $true -or
+             $html -notmatch 'NO INDEPENDENTLY VALIDATED PROFITABLE EDGE'){
+            throw 'Owner report wrong source or unsupported profit claim'
+          }
+          Write-Host 'Owner evidence report: source-backed, no broker, no orders, PASS'
       - name: Verify new automatic DEMO Shadow runner without launching MT5
         shell: pwsh
         run: |
