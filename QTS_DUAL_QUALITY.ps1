@@ -39,6 +39,28 @@ if([string]$report.research_variant -cne 'DUAL_QUALITY' -or
    $report.real_money_orders -ne $false){
     throw 'Native quality research identity, safety or completion evidence is invalid.'
 }
+if(@($report.selected_styles).Count -ne 1 -or
+   [int]$report.selected_styles[0] -ne 7 -or
+   [string]$report.timeframe -cne 'M15' -or
+   [int]$report.model -ne 4 -or
+   [string]$report.from_date -cne $FromDate -or
+   [string]$report.to_date -cne $ToDate -or
+   [string]::IsNullOrWhiteSpace([string]$report.compiled_ex5_sha256)){
+    throw 'Quality run native style/timeframe/model/dates/compiled EA identity mismatch.'
+}
+$nativeSummary=Join-Path $folder 'QTS_DUAL_OPPORTUNITY_SUMMARY.json'
+if(-not (Test-Path -LiteralPath $nativeSummary -PathType Leaf)){
+    throw 'Native quality opportunity summary missing: no research acceptance.'
+}
+$nativeResult=Get-Content -LiteralPath $nativeSummary -Raw -Encoding UTF8 | ConvertFrom-Json
+if([string]$nativeResult.status -cne 'NATIVE_OPPORTUNITIES_VERIFIED_RESEARCH_ONLY' -or
+   [int]$nativeResult.mode -ne 3 -or
+   [int]$nativeResult.bars -le 0 -or
+   [int]$nativeResult.rows -ne 2*[int]$nativeResult.bars -or
+   $nativeResult.edge_validated -ne $false -or
+   [string]$nativeResult.live -cne 'LOCKED'){
+    throw 'Native mode-3 paired opportunity validation failed or evidence was incomplete.'
+}
 $stage=Join-Path $folder 'QTS_DUAL_QUALITY_EVIDENCE'
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
 foreach($relative in @('OPEN_RESULTS.json','QTS_TRADE_BY_TRADE.json',
