@@ -133,6 +133,53 @@ def _valid_row(row: dict, filename: str, now_utc_s: int) -> dict:
             "atr14": atr, "prior_48_atr_median": median}
 
 
+def native_heartbeat(signal_dir: Path, *, now_utc_s: int) -> dict:
+    """Distinguish an attached, unarmed EA from an empty signal archive.
+
+    Missing health is not proof of a functioning system. A healthy heartbeat
+    proves only that the local EA has recently written its diagnostic file,
+    not compilation provenance or validated market signals.
+    """
+    file = signal_dir / "QTS_ForwardShadowV2_HEALTH.csv"
+    if not file.is_file():
+        return {"status": "NATIVE_EA_HEARTBEAT_MISSING_NO_GO"}
+    fields = [
+        "schema", "utc_s", "server_s", "bar_server_s", "symbol",
+        "timeframe", "mode", "connected", "orders_authorized", "phase",
+    ]
+    try:
+        if file.stat().st_size > 4096:
+            raise ValueError("Oversized native health snapshot")
+        with file.open("r", encoding="utf-8-sig", newline="") as stream:
+            reader = csv.DictReader(stream, delimiter=";")
+            if reader.fieldnames != fields:
+                raise ValueError("Unexpected health schema")
+            rows = list(reader)
+        if len(rows) != 1:
+            raise ValueError("Health snapshot is incomplete")
+        row = rows[0]
+        clock = int(row["utc_s"])
+        if row["schema"] != "qts.mt5.forward_shadow_health.v1" or (
+            row["symbol"], row["timeframe"], row["mode"]
+        ) != ("XAUUSD@", "M15", "ONE_CHART_TWO_STYLES"):
+            raise ValueError("Wrong EA mode or symbol")
+        if row["orders_authorized"] != "0" or row["connected"] != "1":
+            raise ValueError("Native orders/connection are unsafe or unavailable")
+        if not 0 <= now_utc_s - clock <= 90:
+            raise ValueError("Native health is stale or future-dated")
+        if int(row["bar_server_s"]) < 0:
+            raise ValueError("Invalid native last-bar timestamp")
+        return {
+            "status": "NATIVE_DEMO_OBSERVER_HEARTBEAT_OK",
+            "last_seen_utc_s": clock,
+            "age_seconds": now_utc_s - clock,
+            "last_bar_server_s": int(row["bar_server_s"]),
+            "phase": row["phase"],
+        }
+    except (OSError, ValueError, KeyError, TypeError, UnicodeError, csv.Error):
+        return {"status": "NATIVE_EA_HEARTBEAT_INVALID_OR_STALE_NO_GO"}
+
+
 def _event_files(signal_dir: Path) -> list[Path]:
     if not signal_dir.is_dir():
         return []
@@ -145,6 +192,7 @@ def _event_files(signal_dir: Path) -> list[Path]:
 def review(report_dir: Path, signal_dir: Path, ea_source: Path,
            *, now_utc_s: int) -> dict:
     registration = freeze(report_dir, ea_source, now_utc_s=now_utc_s)
+    health = native_heartbeat(signal_dir, now_utc_s=now_utc_s)
     records, excluded_old, invalid = [], 0, []
     seen = set()
     files = _event_files(signal_dir)
@@ -196,10 +244,13 @@ def review(report_dir: Path, signal_dir: Path, ea_source: Path,
             for x in sweeps),
     }
     status = ("EVIDENCE_GAPS_NO_GO" if invalid else
+              health["status"] if health["status"] !=
+              "NATIVE_DEMO_OBSERVER_HEARTBEAT_OK" else
               "REGISTERED_WAITING_FOR_NATIVE_DEMO_SIGNALS" if not records else
               "FORWARD_SIGNALS_OBSERVED_ONLY_NO_TRADE_OUTCOME")
     return {
         "schema": SCHEMA, "status": status,
+        "native_ea_health": health,
         "frozen_at_utc_s": registration["frozen_at_utc_s"],
         "rule_sha256": POLICY_DIGEST,
         "native_ea_source_sha256": registration["ea_source_sha256"],
