@@ -63,16 +63,16 @@ def arm_result(folder: Path, variant: str) -> tuple[dict, dict]:
             item.get("side") not in ("BUY","SELL")):
             raise LedgerError("Incomplete or mismatched broker position attribution: "+variant)
         net=float(item["net_usd"]);volume=float(item["entry_lots"])
+        closed_volume=float(item["exit_lots"])
         charges=float(item["charges_usd"])
         entry=float(item["entry_price"]);sl=float(item["initial_sl"])
-        if not all(math.isfinite(x) for x in (net,volume,charges,entry,sl)):
+        if not all(math.isfinite(x) for x in
+                   (net,volume,closed_volume,charges,entry,sl)):
             raise LedgerError("Nonfinite trade economics: "+variant)
-        if volume<=0 or charges>0.00001:
-            # Some native sources store charges as signed negatives, but this
-            # export convention uses negative or zero fee entries. Unexpected
-            # positive values remain for explicit review rather than guessing.
-            if volume<=0:
-                raise LedgerError("Nonpositive trade volume: "+variant)
+        if (volume<=0 or closed_volume<=0 or
+            abs(volume-closed_volume)>0.000001 or
+            int(item.get("deal_count",0))<2):
+            raise LedgerError("Unreconciled open/exit lots or missing broker deals: "+variant)
         zero_charges=zero_charges and abs(charges)<1e-8
         stop_wrong_side+=int((item["side"]=="BUY" and sl>=entry) or
                              (item["side"]=="SELL" and sl<=entry))
