@@ -326,7 +326,16 @@ try {
     $errorsCount = [int]$summaries[0].Groups[1].Value
     $warningsCount = [int]$summaries[0].Groups[2].Value
     if ($errorsCount -ne 0 -or $warningsCount -ne 0) {
-        throw ('Compilation rejected: {0} errors and {1} warnings. Previous EA restored.' -f $errorsCount, $warningsCount)
+        # Forward the real MetaEditor line diagnostics to the caller/HTML.
+        # The fail-closed rollback still runs in finally.
+        $diagnostics=@($logText -split '[\r\n]+' |
+            Where-Object { $_ -match '(?i)\b(error|warning)\b' -and
+                           $_ -notmatch '(?i)^\s*Result:' } |
+            Select-Object -First 15)
+        $details=if($diagnostics.Count -gt 0){$diagnostics -join ' || '}
+                 else{'No per-line compiler details; inspect '+$log}
+        throw ('Compilation rejected: {0} errors and {1} warnings. {2}. Previous EA restored. Compiler log: {3}' -f
+               $errorsCount,$warningsCount,$details,$log)
     }
     if (-not (Test-Path -LiteralPath $compiled -PathType Leaf)) {
         throw 'No NEW EX5 file created by this compile. Previous EA restored.'
