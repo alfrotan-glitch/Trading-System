@@ -140,6 +140,8 @@ bool SelectDualResearchCandidate(const MqlTick &quote,
                            (eligible>1 ? "COLLISION_ABSTAIN" : "CANDIDATE_SELECTED"));
    if(eligible!=1 && !resolved_quality_collision)
      {
+      // Capture original first candidate BEFORE resetting the output side.
+      int candidate_side_before_reset=side;
       // Collision abstention is preregistered; never rank by in-sample PnL.
       chosen_style=-1;side=0;atr=0.0;level=0.0;anchor=0.0;
       price=0.0;stop=0.0;target=0.0;
@@ -148,7 +150,7 @@ bool SelectDualResearchCandidate(const MqlTick &quote,
                                 "DUAL: collision of eligible candidates; no order";
       if(eligible==2 && TesterDualStrategyMode==3)
         {
-         if(second_side!=side)
+         if(second_side!=candidate_side_before_reset)
             status_text="DUAL: quality abstain: opposing candidate directions";
          else if(first_quality<0.0 || second_quality<0.0 ||
                  !MathIsValidNumber(first_quality) ||
