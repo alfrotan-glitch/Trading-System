@@ -108,3 +108,18 @@ def test_frozen_strategy_inputs_unchanged():
     assert "RetestDepthAtr            = 0.35;" in SOURCE
     assert "AdverseStopSlipPrice      = 0.10;" in SOURCE
     assert "RiskPerTradePct           = 1.0;" in SOURCE
+
+
+def test_timer_reconciles_owned_positions_independently_of_trade_callback():
+    timer=SOURCE.split("void OnTimer()",1)[1].split("void RecordNativeForwardShadow",1)[0]
+    assert "if(connected && PositionsTotal()>0)" in timer
+    assert "QtsAuditActiveOriginalFills();" in timer
+    assert timer.index("QtsAuditActiveOriginalFills();") < timer.index("ManageOwnedPositions();")
+    assert "RealAccountBlocked()" in timer
+    assert "ManageOwnedPendingOrders();" in timer
+
+
+def test_unverified_position_never_triggered_forced_liquidation():
+    assert "if(unsafe_fill &&" in SOURCE
+    assert "QtsPositionEntriesExclusivelyOwned(PositionGetInteger(POSITION_IDENTIFIER))" in SOURCE
+    assert "refusing automatic close of mixed/unverified position" in SOURCE
