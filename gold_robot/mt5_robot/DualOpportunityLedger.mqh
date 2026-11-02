@@ -24,7 +24,8 @@ bool QtsOpenDualOpportunityLedger()
    uint written=FileWrite(qts_opportunity_handle,
        "bar_time_server","observed_time_server","mode","style","side",
        "signal_reason","entry_decision_reason","exposure_blocked",
-       "mode_direction_veto","atr14_closed","atr_rank_prior_192_pct",
+       "mode_direction_veto","router_eligible_count","router_verdict",
+       "atr14_closed","atr_rank_prior_192_pct",
        "adx_closed","h1_close_minus_ema50","bid","ask",
        "spread","candidate_class");
    if(written==0)
@@ -115,6 +116,7 @@ void QtsObserveDualOpportunities(const datetime bar_time,
           TimeToString(TimeCurrent(),TIME_DATE|TIME_SECONDS),
           TesterDualStrategyMode,style,signal,signal_reason,
           frozen_entry_decision,(int)exposure,(int)direction_veto,
+          qts_dual_router_eligible,qts_dual_router_verdict,
           DoubleToString(atr,8),DoubleToString(rank,4),
           DoubleToString(adx,6),DoubleToString(h1_delta,6),
           DoubleToString(quote_ok ? q.bid : -1.0,_Digits),
