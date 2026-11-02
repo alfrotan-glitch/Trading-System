@@ -30,6 +30,15 @@ try {
             throw ('Missing native outcome for '+$name)
         }
         $data=Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
+        # Check the child's result independently of its process exit code.
+        # A present JSON file is not evidence that the native test passed.
+        $expectedState=if($PrepareOnly){'PREPARED_ONLY'}else{'SELECTED_TESTS_FINISHED_REVIEW_REQUIRED'}
+        if([string]$data.state -cne $expectedState){
+            throw ('Native outcome not accepted for '+$name+': expected '+$expectedState+', got '+[string]$data.state)
+        }
+        if($data.edge_validated -eq $true){
+            throw ('Report unexpectedly claims validated profitable edge: '+$name)
+        }
         if($data.live -ne 'LOCKED'){
             # Current native outcome schema does not necessarily include a
             # live field; enforce no unsupported positive authorization instead.
