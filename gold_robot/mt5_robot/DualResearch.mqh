@@ -3,6 +3,11 @@
 // A single shared broker/risk book is kept. No overlapping positions, no
 // simultaneous conflicting pending orders and no autonomous live trading.
 // Research modes: 1 both directions each; 2 BUY Retest, SELL Sweep (post-hoc).
+// Research observation only. These variables are assigned by the frozen
+// router; they do not affect eligibility, stop placement, sizing or orders.
+int qts_dual_router_eligible=-1;
+string qts_dual_router_verdict="NOT_EVALUATED";
+
 bool SelectDualResearchCandidate(const MqlTick &quote,
                                  int &side,double &atr,double &level,double &anchor,
                                  double &price,double &stop,double &target,
@@ -10,6 +15,8 @@ bool SelectDualResearchCandidate(const MqlTick &quote,
   {
    side=0;atr=0.0;level=0.0;anchor=0.0;price=0.0;stop=0.0;target=0.0;
    chosen_style=-1;
+   qts_dual_router_eligible=0;
+   qts_dual_router_verdict="CONFIG_REFUSED";
    if(MQLInfoInteger(MQL_TESTER)==0 || EntryStyle!=QTS_ADAPTIVE_ROUTER ||
       SignalTimeframe!=PERIOD_M15 || TesterDualStrategyMode<1 ||
       TesterDualStrategyMode>2 || TesterUseMarketContextV3 ||
@@ -19,6 +26,7 @@ bool SelectDualResearchCandidate(const MqlTick &quote,
       status_text="DUAL: tester-only research configuration refused";
       return false;
      }
+   qts_dual_router_verdict="EVALUATING";
    int eligible=0;
    for(int i=0;i<2;i++)
      {
@@ -66,6 +74,9 @@ bool SelectDualResearchCandidate(const MqlTick &quote,
          price=p;stop=sl;target=tp;
         }
      }
+   qts_dual_router_eligible=eligible;
+   qts_dual_router_verdict=eligible==0 ? "NO_EXECUTABLE" :
+                          (eligible>1 ? "COLLISION_ABSTAIN" : "CANDIDATE_SELECTED");
    if(eligible!=1)
      {
       // Collision abstention is preregistered; never rank by in-sample PnL.
