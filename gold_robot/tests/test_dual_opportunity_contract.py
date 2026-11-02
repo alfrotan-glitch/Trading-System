@@ -87,15 +87,15 @@ def test_unescaped_mql5_semicolon_reproduces_failed_native_csv(tmp_path):
     path=tmp_path/"native.csv"
     def native_line(row):
         return ";".join(str(row[f]) for f in FIELDS)
-    path.write_text(";".join(FIELDS)+"\\r\\n"+
-                    "\\r\\n".join(native_line(row) for row in entries)+"\\r\\n",
+    path.write_text(";".join(FIELDS)+"\r\n"+
+                    "\r\n".join(native_line(row) for row in entries)+"\r\n",
                     encoding="ascii")
     with pytest.raises(LedgerError,match=r"record 1 physical_line 2: expected_fields=19 actual_fields=20"):
         verify(path,1)
     for r in entries:
         r["entry_decision_reason"]=sentence.replace(";"," |")
-    path.write_text(";".join(FIELDS)+"\\r\\n"+
-                    "\\r\\n".join(native_line(row) for row in entries)+"\\r\\n",
+    path.write_text(";".join(FIELDS)+"\r\n"+
+                    "\r\n".join(native_line(row) for row in entries)+"\r\n",
                     encoding="ascii")
     assert verify(path,1)["rows"]==4
 
@@ -132,6 +132,16 @@ def test_no_signal_and_veto_provenance(tmp_path):
     data[1]["candidate_class"]="MODE_DIRECTION_VETO"
     assert verify(write(tmp_path,data),2)["rows"]==4
 
+def test_mql5_compile_regression_reserved_identifier_not_parameter():
+    # In MQL5, input is a reserved storage-class keyword. Using it as the
+    # CSV helper parameter caused MetaEditor parse failures.
+    import re
+    ledger=(GOLD/"mt5_robot/DualOpportunityLedger.mqh").read_text(encoding="utf-8")
+    assert "QtsOpportunityCsvSafe(const string raw_text)" in ledger
+    assert not re.search(r"\\bconst\\s+string\\s+input\\b", ledger)
+    assert "string cleaned=raw_text;" in ledger
+
+
 def test_native_tester_only_and_unchanged_trade_decision():
     ea=(GOLD/"mt5_robot/QTS_Gold_Robot.mq5").read_text(encoding="utf-8")
     ledger=(GOLD/"mt5_robot/DualOpportunityLedger.mqh").read_text(encoding="utf-8")
@@ -143,7 +153,7 @@ def test_native_tester_only_and_unchanged_trade_decision():
     assert "      QtsObserveDualOpportunities(closed,dual_decision_snapshot,dual_exposure_before);" in ea
     assert "string dual_decision_snapshot=status_text;" in ea
     assert "string frozen_entry_decision=original_entry_reason;" in ledger
-    assert "string QtsOpportunityCsvSafe(const string input)" in ledger
+    assert "string QtsOpportunityCsvSafe(const string raw_text)" in ledger
     assert 'StringReplace(cleaned,";"," |");' in ledger
     assert 'string safe_entry_reason=QtsOpportunityCsvSafe(frozen_entry_decision);' in ledger
     assert 'string safe_signal_reason=QtsOpportunityCsvSafe(signal_reason);' in ledger
