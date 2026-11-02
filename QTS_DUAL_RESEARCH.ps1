@@ -12,6 +12,11 @@ $summary=Join-Path $folder 'QTS_DUAL_RESEARCH_STATUS.json'
 $results=@()
 $state='FAILED_NO_GO'
 $reason=''
+$failedVariant=''
+$failedChildDirectory=''
+$failedChildState=''
+$failedChildMessage=''
+$failedChildExitCode=$null
 try {
     if(-not (Test-Path -LiteralPath $runner -PathType Leaf)){
         throw 'Native tester not present. Obtain the full canonical QTS kit.'
@@ -24,8 +29,35 @@ try {
         if($PrepareOnly){$args+=,'-PrepareOnly'}
         Write-Host ('QTS research-only: '+$name)
         & (Join-Path $PSHOME 'powershell.exe') @args
-        if($LASTEXITCODE -ne 0){throw ('Native tester refused '+$name)}
+        $childExitCode=[int]$LASTEXITCODE
         $report=Join-Path $target 'OPEN_RESULTS.json'
+        if($childExitCode -ne 0){
+            # Preserve the actual child failure instead of hiding its root
+            # cause behind the uninformative "tester refused" wrapper.
+            $failedVariant=$name
+            $failedChildDirectory=$target
+            $failedChildExitCode=$childExitCode
+            $failedChildState='CHILD_REPORT_MISSING'
+            $failedChildMessage='Native tester exited nonzero but did not produce OPEN_RESULTS.json.'
+            if(Test-Path -LiteralPath $report -PathType Leaf){
+                try{
+                    $childFailure=Get-Content -LiteralPath $report -Raw -Encoding UTF8 | ConvertFrom-Json
+                    $failedChildState=[string]$childFailure.state
+                    $failedChildMessage=[string]$childFailure.message
+                    if([string]::IsNullOrWhiteSpace($failedChildState)){
+                        $failedChildState='CHILD_STATE_MISSING'
+                    }
+                    if([string]::IsNullOrWhiteSpace($failedChildMessage)){
+                        $failedChildMessage='Child error message missing; inspect the native report.'
+                    }
+                }catch{
+                    $failedChildState='CHILD_REPORT_UNREADABLE'
+                    $failedChildMessage=$_.Exception.Message
+                }
+            }
+            throw ('{0} failed: child_state={1}; child_reason={2}; exit={3}; child_report={4}' -f
+                   $name,$failedChildState,$failedChildMessage,$failedChildExitCode,$report)
+        }
         if(-not (Test-Path -LiteralPath $report -PathType Leaf)){
             throw ('Missing native outcome for '+$name)
         }
@@ -82,6 +114,11 @@ finally {
         status=$state
         reason=$reason
         variants=@($results)
+        failed_variant=$failedVariant
+        failed_child_directory=$failedChildDirectory
+        failed_child_state=$failedChildState
+        failed_child_message=$failedChildMessage
+        failed_child_exit_code=$failedChildExitCode
         live='LOCKED'
         edge_validated=$false
         broker_orders_sent_by_launcher=0
@@ -93,7 +130,30 @@ finally {
 }
 if($state -eq 'FAILED_NO_GO'){
     if(-not $PrepareOnly){
-        # Even a failed audit must be visible. Never hide a diagnostic folder.
+        # Collect only research diagnostics (no account details, broker
+        # credentials, terminal configs, arbitrary logs or customer files).
+        # This can be shared when the detailed child cause is still unclear.
+        $stage=Join-Path $folder 'QTS_DUAL_FAILURE_DIAGNOSTICS'
+        New-Item -ItemType Directory -Path $stage -Force | Out-Null
+        Copy-Item -LiteralPath $summary -Destination $stage -Force
+        if($failedChildDirectory -and (Test-Path -LiteralPath $failedChildDirectory -PathType Container)){
+            $dest=Join-Path $stage $failedVariant
+            New-Item -ItemType Directory -Path $dest -Force | Out-Null
+            foreach($name in @('OPEN_RESULTS.json','QTS_DUAL_OPPORTUNITY_SUMMARY.json')){
+                $source=Join-Path $failedChildDirectory $name
+                if(Test-Path -LiteralPath $source -PathType Leaf){
+                    Copy-Item -LiteralPath $source -Destination $dest -Force
+                }
+            }
+        }
+        $zip=Join-Path $folder 'QTS_DUAL_FAILURE_EVIDENCE.zip'
+        try {
+            Compress-Archive -LiteralPath $stage -DestinationPath $zip -CompressionLevel Optimal -Force
+            Write-Host ('SEND THIS FAILURE ZIP FOR ROOT-CAUSE REVIEW: '+$zip)
+            explorer.exe /select,"$zip"
+        }catch{
+            Write-Warning ('Failure evidence packaging unavailable: '+$_.Exception.Message)
+        }
         try { Start-Process -FilePath $folder -ErrorAction Stop }
         catch { Write-Warning ('Open diagnostic folder manually: '+$folder) }
     }
