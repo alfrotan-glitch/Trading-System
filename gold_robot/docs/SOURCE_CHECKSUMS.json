@@ -182,8 +182,8 @@
     },
     {
       "path": "docs/WINDOWS_START.md",
-      "bytes": 12097,
-      "sha256": "d6e58ab61713b96251f83ac67d23b983b767af6c6c246149cd4cb0b7d4537de2"
+      "bytes": 10545,
+      "sha256": "90b2ab1e4790b16ac113928543893759d4ca4b957696dfae6ddb8fcc2696d479"
     },
     {
       "path": "docs/WINDOWS_START_ADAPTIVE_2026-10-30.md",
@@ -237,8 +237,8 @@
     },
     {
       "path": "mt5_robot/QTS_Gold_Robot.mq5",
-      "bytes": 91427,
-      "sha256": "a59205a0724243b2c479548959fc0d8e0ca5254d6f8fde35dddbbea1fb8d627d"
+      "bytes": 94821,
+      "sha256": "f873b6e328355098608b05eb2266fcc46b6228a372b65c6b45e2081c0596c927"
     },
     {
       "path": "mt5_robot/ScalpResearch.mqh",
@@ -326,6 +326,11 @@
       "sha256": "8482fff5672dade9bbfdfd823ab34f53176a91339c0d411a2519a76e02a41290"
     },
     {
+      "path": "research/StartAutoForwardShadow.ps1",
+      "bytes": 9512,
+      "sha256": "8e9a40b739db6de0b376c7ce0ca517278c17bef7b89d11a9cf419d88c880591d"
+    },
+    {
       "path": "research/ablate_revised_variants.py",
       "bytes": 11588,
       "sha256": "526600767ac22b392b0757db75e16d811a8c43e8e86fdad72b8087f9ceba5cc7"
@@ -407,8 +412,8 @@
     },
     {
       "path": "research/forward_shadow_observer.py",
-      "bytes": 12978,
-      "sha256": "a51037f10361fcae6f502c03ade7b21e6adf9ef1cffb91cc4ee6089bb2795b73"
+      "bytes": 15413,
+      "sha256": "b858f94a9b9660a41630375cc7c1e54ec7291d3ab210b70f2e95e6fda9893ba3"
     },
     {
       "path": "research/forward_shadow_paths.py",
@@ -596,9 +601,14 @@
       "sha256": "c004b3ace31fedd876c9545db2648fd76841fbced6b830683bfe000208f693ca"
     },
     {
+      "path": "tests/test_forward_shadow_autostart.py",
+      "bytes": 3115,
+      "sha256": "1319ba394db4c5410508aec922f59854f5dc73c1738775622613d9108f46fe77"
+    },
+    {
       "path": "tests/test_forward_shadow_observer.py",
-      "bytes": 7383,
-      "sha256": "b73450454b7b0390b0342d05034edbce9f0f45398091f0fb75cc66e124923cf8"
+      "bytes": 9223,
+      "sha256": "47da2e10175acf6c1e04baf5740e55a23af0d51a6ec71d91f22512a30b6d8118"
     },
     {
       "path": "tests/test_forward_shadow_paths.py",
