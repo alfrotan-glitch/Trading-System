@@ -63,6 +63,10 @@ def test_native_source_reads_broker_entry_deal_and_original_order_not_current_sl
     assert "HistoryDealGetInteger(entry_deal,DEAL_ORDER)" in SOURCE
     assert "HistoryOrderGetDouble(entry_order,ORDER_PRICE_OPEN)" in SOURCE
     assert "HistoryOrderGetDouble(entry_order,ORDER_SL)" in SOURCE
+    assert "bool in_history=HistoryOrderSelect(entry_order);" in SOURCE
+    assert "if(!in_history && !OrderSelect(entry_order))" in SOURCE
+    assert "OrderGetDouble(ORDER_PRICE_OPEN)" in SOURCE
+    assert "OrderGetDouble(ORDER_SL)" in SOURCE
     assert "actual_loss<=planned_loss+0.000001" in SOURCE
     assert "PlannedOrderFitsRisk(entry_side,volume,fill_price,original_sl)" not in SOURCE
     assert "bool QtsFillStopsConsistent(" in POLICY
