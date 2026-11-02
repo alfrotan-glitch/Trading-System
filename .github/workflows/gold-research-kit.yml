@@ -15,6 +15,7 @@ on:
       - "QTS_ONE_CLICK_ROBOT.ps1"
       - "QTS_AUTO_FORWARD.bat"
       - "QTS_REFRESH_FORWARD.bat"
+      - "QTS_OWNER_VERDICT.bat"
       - "START_HERE.bat"
       - "QTS_REVISED_COMPARE.bat"
       - "QTS_REVISED_COMPARE.ps1"
@@ -51,13 +52,15 @@ jobs:
           $stage = Join-Path $env:RUNNER_TEMP 'QTS Gold Customer Kit'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item -LiteralPath 'gold_robot' -Destination $stage -Recurse
-          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','START_HERE.bat','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
+          foreach ($file in @('QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','START_HERE.bat','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
             Copy-Item -LiteralPath $file -Destination $stage
           }
           @'
           QTS GOLD — WINDOWS RESEARCH KIT (10 STRATEGIES)
           ================================================
-          1. ONE-CLICK UNARMED DEMO Forward Shadow: double-click QTS_AUTO_FORWARD.bat.
+          0. IMMEDIATE OFFLINE VERDICT (no waiting / no MT5): QTS_OWNER_VERDICT.bat.
+             Uses previously saved evidence, shows rejected and exploratory
+             strategies, and never claims profits or sends orders.\n          1. ONE-CLICK UNARMED DEMO Forward Shadow: double-click QTS_AUTO_FORWARD.bat.
              To replace a stale running QTS Shadow loop without touching MT5,
              use QTS_REFRESH_FORWARD.bat. It safely updates main and starts
              a new supervisor after stopping only the old QTS script.
@@ -106,11 +109,21 @@ jobs:
           Expand-Archive -LiteralPath 'QTS-Gold-Windows-Research-Kit.zip' -DestinationPath $dst -Force
           Push-Location $dst
           try {
-            foreach($file in @('OPEN_FIRST.txt','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','START_HERE.bat','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
+            foreach($file in @('OPEN_FIRST.txt','QTS_AUTO_FORWARD.bat','QTS_REFRESH_FORWARD.bat','QTS_OWNER_VERDICT.bat','START_HERE.bat','gold_robot\SETUP_MT5_GOLD.bat','gold_robot\mt5_robot\QTS_Gold_Robot.mq5','gold_robot\mt5_robot\SmcResearch.mqh','gold_robot\mt5_robot\ScalpResearch.mqh','QTS_AUTO_TEST.bat','QTS_SHARE_RESULTS.bat','QTS_POST_STOP_REVIEW.bat','QTS_FAST_OPTIMIZE.bat','QTS_FAST_OPTIMIZE.ps1','QTS_FOUR_FINALISTS.bat','QTS_PREPARE_STOP_TICKS.bat','QTS_PREPARE_STOP_TICKS.ps1','QTS_FINISH_STOP_TICKS.bat','QTS_FINISH_STOP_TICKS.ps1','QTS_ONE_CLICK_ROBOT.bat','QTS_ONE_CLICK_ROBOT.ps1','QTS_REVISED_COMPARE.bat','QTS_REVISED_COMPARE.ps1','QTS_V2_ABLATION.bat','QTS_V2_ABLATION.ps1')) {
               if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing kit file: $file" }
             }
             python gold_robot/research/update_manifest.py --check
             if ($LASTEXITCODE -ne 0) { throw 'Extracted kit source hash mismatch' }
+            $env:QTS_NO_OPEN='1'
+            & $env:ComSpec /d /c 'call "QTS_OWNER_VERDICT.bat"'
+            if ($LASTEXITCODE -ne 0) { throw 'Extracted kit owner decision failed' }
+            $owner = Get-Content -LiteralPath 'gold_robot/reports_local/owner_decision/QTS_OWNER_VERDICT.json' -Raw | ConvertFrom-Json
+            if ($owner.live -ne 'LOCKED' -or $owner.validated_edge -ne $false -or
+                $owner.forensics.positions_across_separate_tests -ne 938 -or
+                $owner.forensics.not_a_portfolio_pnl -ne $true -or
+                $owner.broker_calls -ne 0 -or $owner.orders_sent -ne 0) {
+              throw 'Unsafe/incomplete owner verdict in extracted Windows kit'
+            }
             $env:QTS_SETUP_VALIDATE_ONLY = '1'
             & $env:ComSpec /d /c 'call "gold_robot\SETUP_MT5_GOLD.bat"'
             if ($LASTEXITCODE -ne 0) { throw "Extracted kit setup path validation failed: $LASTEXITCODE" }
