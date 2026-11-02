@@ -196,3 +196,14 @@ def test_native_auditor_requires_each_broker_entry_deal():
     assert "set(entries)!=set(positions)" in audit_source
     assert "--deals $nativeDeals --mode $dualMode" in runner
     assert "individual_entry_deals_verified -ne $true" in runner
+
+
+def test_windows_launcher_distinguishes_expected_safety_no_go_from_execution_error():
+    for launcher in ("QTS_DUAL_QUALITY.bat","QTS_DUAL_THREEWAY.bat"):
+        source=(ROOT.parent/launcher).read_text("utf-8")
+        assert 'if "%QTS_EXIT%"=="2"' in source
+        assert 'if not "%QTS_EXIT%"=="0"' in source
+        assert "exit /b 2" in source
+        assert "exit /b 1" in source
+        assert "SAFETY NO-GO" in source
+        assert "LIVE LOCKED" in source or "real-money orders" in source
