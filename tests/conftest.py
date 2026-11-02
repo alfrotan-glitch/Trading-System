@@ -435,6 +435,25 @@ def _digest_if_file(rel_path: str) -> str | None:
         return None
 
 
+@pytest.fixture(autouse=True)
+def detect_new_repo_sqlite_rollback_journal(request):
+    """Attribute any test-created canonical SQLite journal to that exact test.
+
+    Do NOT redirect QTS_DB_PATH globally: startup/recovery tests intentionally
+    exercise canonical state and must remain fail-closed on corrupt databases.
+    This diagnostic guard is read-only and never removes operator files.
+    """
+    rollback = _REPO_ROOT / "data" / "sqlite" / "qts.db-journal"
+    existed = rollback.exists()
+    yield
+    if not existed and rollback.exists():
+        pytest.fail(
+            "test created canonical data/sqlite/qts.db-journal: "
+            + request.node.nodeid
+            + "; isolate the specific test's database under tmp_path"
+        )
+
+
 #: Gitignored, machine-local stores that tests must never write to. ``git status``
 #: cannot see them, so the session guard compares their digests directly.
 _GUARDED_IGNORED_STORES = (
