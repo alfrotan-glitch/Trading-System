@@ -90,6 +90,38 @@ if($state -eq 'FAILED_NO_GO'){
     exit 2
 }
 if(-not $PrepareOnly){
+    # One evidence ZIP with distinct arm folders; no stale reports or credentials.
+    $stage=Join-Path $folder 'QTS_DUAL_OPPORTUNITY_PACKAGE'
+    New-Item -ItemType Directory -Path $stage -Force | Out-Null
+    foreach($arm in @('DUAL_BOTH','DUAL_DIRECTIONAL')){
+        $dest=Join-Path $stage $arm
+        New-Item -ItemType Directory -Path $dest -Force | Out-Null
+        foreach($relative in @('OPEN_RESULTS.json','QTS_TRADE_BY_TRADE.json',
+                               'QTS_DUAL_OPPORTUNITY_SUMMARY.json','native\QTS_7_opportunities.csv')){
+            $source=Join-Path (Join-Path $folder $arm) $relative
+            if(-not (Test-Path -LiteralPath $source -PathType Leaf)){
+                throw ('Cannot package missing verified native opportunity: '+$source)
+            }
+            Copy-Item -LiteralPath $source -Destination $dest -Force
+        }
+    }
+    foreach($name in @('QTS_DUAL_EVIDENCE_AUDIT.json','QTS_DUAL_RESEARCH_STATUS.json')){
+        $source=Join-Path $folder $name
+        if(-not (Test-Path -LiteralPath $source -PathType Leaf)){
+            throw ('Cannot package missing dual native audit: '+$source)
+        }
+        Copy-Item -LiteralPath $source -Destination $stage -Force
+    }
+    $zip=Join-Path $folder 'QTS_DUAL_OPPORTUNITY_EVIDENCE.zip'
+    Compress-Archive -LiteralPath $stage -DestinationPath $zip -CompressionLevel Optimal -Force
+    if(-not (Test-Path -LiteralPath $zip -PathType Leaf)){
+        throw 'Native opportunity package could not be created.'
+    }
+    Write-Host ('SEND THIS ZIP FOR INDEPENDENT REVIEW: '+$zip)
+    try { explorer.exe /select,"$zip" }
+    catch { Write-Warning ('Open ZIP manually: '+$zip) }
+}
+if(-not $PrepareOnly){
     $html=Join-Path $folder 'QTS_DUAL_EVIDENCE_AUDIT.html'
     if(Test-Path -LiteralPath $html -PathType Leaf){
         try { Start-Process -FilePath $html -ErrorAction Stop }
