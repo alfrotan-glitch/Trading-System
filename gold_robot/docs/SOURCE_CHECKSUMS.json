@@ -411,6 +411,11 @@
       "sha256": "709900fb833c2cbc7b29c99df0578c149cf89be965e82f01f3494cfa924b219e"
     },
     {
+      "path": "research/compare_dual_modes.py",
+      "bytes": 8267,
+      "sha256": "16be1f90e087708a90114e3bce162d7cd2eb6198e3822c020647d393be997fdf"
+    },
+    {
       "path": "research/compare_revised_variants.py",
       "bytes": 6546,
       "sha256": "cd3a2589bc96c4b71a75aa3a3dbfc73014dbd3fbc56410d974dbf18a0dea101a"
@@ -639,6 +644,11 @@
       "path": "tests/test_capital_readiness.py",
       "bytes": 9078,
       "sha256": "627c1dd74dfd274691c9e1afa70677edbc94974b624f9ddb78496dc071046404"
+    },
+    {
+      "path": "tests/test_compare_dual_modes.py",
+      "bytes": 4323,
+      "sha256": "d6e5aa60da99b838afa82f7f234caa2b0b6ef4b044e13c68bcf031ec345c7792"
     },
     {
       "path": "tests/test_dual_atr_market_audit.py",
