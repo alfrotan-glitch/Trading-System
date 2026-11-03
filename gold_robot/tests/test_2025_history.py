@@ -33,7 +33,9 @@ def fixture(tmp_path: Path, incident=False, bar="2025.01.02 11:00:00"):
     (tmp_path/"QTS_DUAL_OPPORTUNITY_SUMMARY.json").write_text(
         json.dumps(opportunity),encoding="utf-8")
     trades={"live":"LOCKED","edge_validated":False,"selected_styles":[7],
-            "trades":[{"status":"COMPLETE","net_usd":-2.88 if incident else 11.18}]}
+            "trades":[{"status":"COMPLETE","net_usd":-2.88 if incident else 11.18,
+                       "entry_time_msc":"1735815600000",
+                       "entry_lots":0.06,"setup_reason":"QTS-DUAL-M2-S1"}]}
     (tmp_path/"QTS_TRADE_BY_TRADE.json").write_text(
         json.dumps(trades),encoding="utf-8")
     with (tmp_path/"native"/"QTS_7_opportunities.csv").open(
@@ -60,6 +62,11 @@ def test_full_coverage_reports_signals_but_never_live_or_missed_fills(tmp_path):
     assert review["native_raw_signal_rows"]==2
     assert review["raw_signals_by_style_side"]=={"retest_buy":1,"sweep_sell":1}
     assert review["native_positions_net_usd"]==11.18
+    assert review["native_total_entry_lots"]==0.06
+    assert review["illustrative_fee_stress_10_usd_per_lot_net_usd"]==10.58
+    assert review["monthly_native_broker_positions_by_utc_entry_month"]["2025-01"]["positions"]==1
+    assert review["monthly_native_broker_positions_by_utc_entry_month"]["2025-01"]["retest_buy"]==1
+    assert review["monthly_native_broker_positions_by_utc_entry_month"]["2025-01"]["net_usd"]==11.18
     assert review["live"]=="LOCKED"
     assert review["trade_permission"] is False
     assert review["edge_validated"] is False
