@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+from datetime import datetime, timezone
 from decimal import Decimal
 import json
 from pathlib import Path
@@ -32,6 +33,17 @@ def base_deals():
     return [entry, exit_]
 
 
+
+def native_deal_html(record):
+    stamp = datetime.fromtimestamp(int(record["time_msc"]) / 1000, timezone.utc).strftime("%Y.%m.%d %H:%M:%S")
+    fields = [stamp, record["deal_id"], "XAUUSD@",
+              record["type"].removeprefix("DEAL_TYPE_").lower(),
+              "in" if record["entry"] == "DEAL_ENTRY_IN" else "out",
+              record["volume"], record["price"], record["order_id"], record["commission"],
+              record["swap"], record["gross"], "3000.00", record["setup_reason"]]
+    return "<tr bgcolor='#FFFFFF'>" + "".join("<td>" + str(x) + "</td>" for x in fields) + "</tr>"
+
+
 def write_run(folder, deals=None, *, forensics=None, report_net="14.70", report_count=1, pf="1.10"):
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "native").mkdir(exist_ok=True)
@@ -43,7 +55,9 @@ def write_run(folder, deals=None, *, forensics=None, report_net="14.70", report_
     (folder / "native" / "QTS_7.htm").write_text(
         '<html><td>Total Net Profit:</td><td>' + str(report_net) + '</td>'
         '<td>Total Trades:</td><td>' + str(report_count) + '</td>'
-        '<td>Profit Factor:</td><td>' + pf + '</td></html>', encoding="utf-16")
+        '<td>Profit Factor:</td><td>' + pf + '</td>'
+        '<div><b>Deals</b></div>' + ''.join(native_deal_html(d) for d in deals) +
+        '</html>', encoding="utf-16")
     (folder / "OPEN_RESULTS.json").write_text(json.dumps({
         "research_variant": "DUAL_DIRECTIONAL", "selected_styles": [7],
         "symbol": "XAUUSD@", "timeframe": "M15", "model": 4, "deposit_usd": 3000,
@@ -177,3 +191,23 @@ def test_run_window_mismatch_rejected(tmp_path):
     folder = write_run(tmp_path)
     with pytest.raises(AuditError, match="exclusive end date"):
         reconcile(folder, expect_to="2026.11.04")
+
+
+def test_native_mt5_deal_price_tamper_rejected(tmp_path):
+    folder = write_run(tmp_path)
+    report = folder / "native" / "QTS_7.htm"
+    source = report.read_text(encoding="utf-16")
+    assert "<td>3005</td>" in source
+    report.write_text(source.replace("<td>3005</td>", "<td>3004</td>", 1), encoding="utf-16")
+    with pytest.raises(AuditError, match="Native MT5 deal row"):
+        reconcile(folder)
+
+
+def test_missing_native_mt5_deal_row_rejected(tmp_path):
+    folder = write_run(tmp_path)
+    report = folder / "native" / "QTS_7.htm"
+    source = report.read_text(encoding="utf-16")
+    source = source.replace(native_deal_html(base_deals()[1]), "", 1)
+    report.write_text(source, encoding="utf-16")
+    with pytest.raises(AuditError, match="deal ID set"):
+        reconcile(folder)
