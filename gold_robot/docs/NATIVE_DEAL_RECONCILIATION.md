@@ -21,7 +21,7 @@ From the `Trading-System-Clean` repository, with the evidence folder already ext
 
 ```powershell
 git pull --ff-only origin main
-py -3 .\gold_robot\research\reconcile_native_deals.py "C:\PATH\TO\QTS_2025_TO_DATE_EVIDENCE" --output "C:\PATH\TO\QTS_2025_TO_DATE_EVIDENCE\reconciliation" --expect-positions 172 --expect-net 98.45
+py -3 .\gold_robot\research\reconcile_native_deals.py "C:\PATH\TO\QTS_2025_TO_DATE_EVIDENCE" --output "C:\PATH\TO\QTS_2025_TO_DATE_EVIDENCE\reconciliation" --expect-positions 172 --expect-net 98.45 --expect-from 2025.01.01 --expect-to 2026.11.03
 ```
 
 The output folder contains `QTS_NATIVE_RECONCILIATION.json` and, **only on success**, `QTS_INDEPENDENT_POSITION_LEDGER.csv`.
