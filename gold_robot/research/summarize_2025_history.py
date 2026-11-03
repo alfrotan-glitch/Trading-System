@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter, defaultdict
 import csv
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, time
 import json
 import math
 from pathlib import Path
@@ -28,6 +28,32 @@ class HistoricalEvidenceError(ValueError):
 def read_json(path: Path) -> dict:
     with path.open(encoding="utf-8-sig") as source:
         return json.load(source)
+
+def trailing_session_coverage(latest: datetime | None, requested_end: datetime) -> tuple[list[str], bool]:
+    """Fail closed on missing recent weekdays in the broker-server bar ledger.
+
+    This is a minimum coverage check, not proof that broker ticks were
+    complete or that a weekday was necessarily an active broker session.
+    Holidays and exceptional closures require separate broker evidence.
+    The last expected weekday must have an observed bar at/after 18:00
+    broker-server time; earlier final sessions remain unverified.
+    """
+    if latest is None:
+        return [], False
+    last_expected = (requested_end - timedelta(days=1)).date()
+    while last_expected.weekday() >= 5:
+        last_expected -= timedelta(days=1)
+    missing = []
+    day = latest.date() + timedelta(days=1)
+    while day <= last_expected:
+        if day.weekday() < 5:
+            missing.append(day.isoformat())
+        day += timedelta(days=1)
+    full_last_session_observed = (
+        latest.date() >= last_expected and
+        latest >= datetime.combine(last_expected, time(18, 0))
+    )
+    return missing, full_last_session_observed
 
 
 def summarize(folder: Path, variant: str, from_date: str, to_date: str) -> dict:
@@ -209,7 +235,15 @@ def summarize(folder: Path, variant: str, from_date: str, to_date: str) -> dict:
                 if monthly[label]["closed_bars"]<300:
                     thin_full_months.append(label)
             month=nxt
-    full_coverage = coverage_start and coverage_end and not coverage_gaps and not thin_full_months
+    # Calendar proximity alone (14 days) is insufficient. In the supplied
+    # 2025-to-date run the last bar is Friday 2026-10-30, while Monday
+    # 2026-11-02 is absent despite a Tuesday-exclusive end. Do not promote.
+    trailing_missing_weekdays, final_weekday_session_observed = trailing_session_coverage(
+        latest, requested_end
+    )
+    full_coverage = (coverage_start and coverage_end and not coverage_gaps
+                     and not thin_full_months and not trailing_missing_weekdays
+                     and final_weekday_session_observed)
     if safety.get("new_positions_after_first_unsafe_fill", 0)>0:
         status = "HISTORICAL_UNSAFE_POST_HALT_TRADING_NO_GO"
     elif incident:
@@ -234,6 +268,9 @@ def summarize(folder: Path, variant: str, from_date: str, to_date: str) -> dict:
         "market_data_window_coverage_checked": bool(full_coverage),
         "maximum_gap_calendar_days": round(gap_days,2),
         "months_with_insufficient_m15_bars": thin_full_months,
+        "trailing_weekdays_without_closed_bars": trailing_missing_weekdays,
+        "last_expected_weekday_session_observed_after_18_server": final_weekday_session_observed,
+        "market_data_window_coverage_is_only_closed_bar_heuristic": True,
         "native_m15_closed_bars": total_bars,
         "native_raw_signal_rows": total_rows-prestart_warmup_rows,
         "native_original_export_rows": total_rows,
