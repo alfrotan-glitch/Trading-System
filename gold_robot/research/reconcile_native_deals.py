@@ -9,6 +9,8 @@ import argparse
 import csv
 import hashlib
 import json
+import re
+from datetime import datetime, timezone
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
@@ -144,6 +146,49 @@ def reconstruct(pid: str, deals: list[dict], contract_size: Decimal | None) -> d
             "exit_reason": reason, "r_multiple_indicative": risk, "r_limitation": risk_issue}
 
 
+
+def verify_native_deal_table(document: str, groups: dict[str, list[dict]]) -> int:
+    """Validate each native MT5 HTML deal against broker-exported CSV fields.
+
+    Summary-only matching can conceal offsetting per-deal corruption.
+    The MT5 HTML does not expose DEAL_FEE, which is counted only from CSV.
+    """
+    from parse_native_report import cells
+
+    section = document.split(">Deals</b>", 1)
+    if len(section) != 2:
+        raise AuditError("Native MT5 deals table missing")
+    reported = {}
+    for row in re.findall(r"<tr\b[^>]*>.*?</tr>", section[1], re.I | re.S):
+        fields = cells(row)
+        if len(fields) != 13 or fields[3].lower() not in ("buy", "sell"):
+            continue
+        if fields[1] in reported:
+            raise AuditError("Duplicate native MT5 deal ID")
+        reported[fields[1]] = fields
+    raw = {d["deal_id"]: d for records in groups.values() for d in records}
+    if set(reported) != set(raw) or len(reported) != sum(len(x) for x in groups.values()):
+        raise AuditError("Native MT5 deal ID set does not match original broker CSV")
+    for ticket, d in raw.items():
+        row = reported[ticket]
+        direction = "in" if d["entry"] == IN else "out"
+        side = d["type"].removeprefix("DEAL_TYPE_").lower()
+        stamp = datetime.fromtimestamp(int(d["time_msc"]) / 1000, timezone.utc).strftime("%Y.%m.%d %H:%M:%S")
+        match = (
+            row[0] == stamp and row[2] == "XAUUSD@" and
+            row[3].lower() == side and row[4].lower() == direction and
+            row[7] == d["order_id"] and
+            abs(num(row[5]) - d["volume"]) < Decimal("0.000001") and
+            abs(num(row[6]) - d["price"]) < Decimal("0.00001") and
+            abs(num(row[8]) - d["commission"]) <= CENT and
+            abs(num(row[9]) - d["swap"]) <= CENT and
+            abs(num(row[10]) - d["gross"]) <= CENT
+        )
+        if not match:
+            raise AuditError("Native MT5 deal row does not match broker CSV ticket " + ticket)
+    return len(reported)
+
+
 def reconcile(run: Path, *, contract_size: Decimal | None = None,
               expect_positions: int | None = None, expect_net: Decimal | None = None,
               expect_from: str | None = None, expect_to: str | None = None) -> tuple[dict, list[dict]]:
@@ -194,6 +239,7 @@ def reconcile(run: Path, *, contract_size: Decimal | None = None,
     # Use native totals as recorded; do not double-count hypothetical commissions.
     from parse_native_report import number, value
     document = native_report.read_text(encoding="utf-16")
+    native_deal_rows_verified = verify_native_deal_table(document, groups)
     tester_net = num(number(value(document, "Total Net Profit:")))
     tester_trades = int(number(value(document, "Total Trades:")))
     tester_pf = num(number(value(document, "Profit Factor:")))
@@ -217,6 +263,7 @@ def reconcile(run: Path, *, contract_size: Decimal | None = None,
         "independent_broker_fee_verification": False, "spread_already_reflected_in_mt5_fills": True,
         "no_extra_costs_added_to_native_net": True,
         "contract_size_supplied_but_not_independently_verified": contract_size is not None,
+        "verified_native_deal_rows": native_deal_rows_verified,
         "positions": len(positions), "winners": winners, "losers": losers,
         "native_recorded_net_usd": str(money(total)), "tester_net_usd": str(money(tester_net)),
         "native_profit_factor_positions": str(pf), "tester_profit_factor": str(tester_pf),
