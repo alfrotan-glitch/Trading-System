@@ -577,8 +577,8 @@
     },
     {
       "path": "research/summarize_2025_history.py",
-      "bytes": 12952,
-      "sha256": "b0390ed8efd7a178b9a5e7f8d72db9cc0c61c28fa5b912c40ac92fb10ecafeb7"
+      "bytes": 14800,
+      "sha256": "6991471a6f8394f6c30996a98776ea4905ce53b760a873eed1727dccfe614eca"
     },
     {
       "path": "research/sweep_diagnostics.py",
@@ -637,8 +637,8 @@
     },
     {
       "path": "tests/test_2025_history.py",
-      "bytes": 8417,
-      "sha256": "a44b9235230d7f1e2293c138ed5697afb0b19cefe6556ba921d6746a27eb8e6c"
+      "bytes": 8974,
+      "sha256": "949e947550060502cc47bb20a0fa8f8a58a8f2aa40836b31c76bebe299183ace"
     },
     {
       "path": "tests/test_adaptive_v4_contract.py",
