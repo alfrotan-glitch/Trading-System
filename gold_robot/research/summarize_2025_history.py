@@ -77,6 +77,8 @@ def summarize(folder: Path, variant: str, from_date: str, to_date: str) -> dict:
     earliest = latest = prior = None
     total_rows = 0
     total_bars = 0
+    prestart_warmup_styles = defaultdict(set)
+    prestart_warmup_rows = 0
     signal_counts = Counter()
     gap_days = 0.0
     with opportunities.open(encoding="ascii", newline="") as fh:
@@ -94,10 +96,28 @@ def summarize(folder: Path, variant: str, from_date: str, to_date: str) -> dict:
                 side = int(row["side"])
             except (ValueError, TypeError) as exc:
                 raise HistoricalEvidenceError("Invalid native bar timestamp or signal") from exc
-            if not (requested_start <= bar < requested_end) or style not in (1,3) or side not in (-1,0,1):
-                raise HistoricalEvidenceError("Native signal outside requested period or invalid style")
+            if style not in (1,3) or side not in (-1,0,1):
+                raise HistoricalEvidenceError("Native signal style or side invalid")
             if prior is not None and bar < prior:
                 raise HistoricalEvidenceError("Nonmonotonic native closed-bar timeline")
+            if bar < requested_start:
+                # MT5 may emit one previously CLOSED holiday/warmup bar on
+                # the first tick inside the requested period. This must not
+                # be treated as an entry opportunity inside the test window.
+                # Any signal or excessive/partial prestart bars fail closed.
+                if (bar < requested_start-timedelta(days=7) or
+                    side != 0 or row.get("candidate_class") != "NO_SIGNAL" or
+                    earliest is not None):
+                    raise HistoricalEvidenceError("Unsafe native prestart bar, not a harmless warmup")
+                prestart_warmup_rows += 1
+                prestart_warmup_styles[bar].add(style)
+                if (prestart_warmup_rows>2 or len(prestart_warmup_styles)>1 or
+                    len(prestart_warmup_styles[bar])!=prestart_warmup_rows):
+                    raise HistoricalEvidenceError("More than one paired zero-signal prestart warmup bar")
+                prior=bar
+                continue
+            if bar >= requested_end:
+                raise HistoricalEvidenceError("Native signal outside requested period")
             if bar != prior:
                 if prior is not None:
                     gap_days = max(gap_days, (bar-prior).total_seconds()/86400)
@@ -113,7 +133,14 @@ def summarize(folder: Path, variant: str, from_date: str, to_date: str) -> dict:
                 monthly[bar.strftime("%Y-%m")][key] += 1
                 signal_counts[key] += 1
             prior = bar
-    if total_rows != 2*total_bars or total_rows != int(verified["rows"]) or total_bars != int(verified["bars"]):
+    if prestart_warmup_rows not in (0,2) or (
+        prestart_warmup_rows==2 and
+        set(next(iter(prestart_warmup_styles.values())))!={1,3}
+    ):
+        raise HistoricalEvidenceError("Prestart warmup pair is incomplete")
+    if (total_rows != 2*total_bars+prestart_warmup_rows or
+        total_rows != int(verified["rows"]) or
+        total_bars+prestart_warmup_rows//2 != int(verified["bars"])):
         raise HistoricalEvidenceError("Native signal coverage disagrees with verified two-row ledger")
 
     trades = read_json(folder/"QTS_TRADE_BY_TRADE.json")
@@ -175,7 +202,13 @@ def summarize(folder: Path, variant: str, from_date: str, to_date: str) -> dict:
         "maximum_gap_calendar_days": round(gap_days,2),
         "months_with_insufficient_m15_bars": thin_full_months,
         "native_m15_closed_bars": total_bars,
-        "native_raw_signal_rows": total_rows,
+        "native_raw_signal_rows": total_rows-prestart_warmup_rows,
+        "native_original_export_rows": total_rows,
+        "excluded_prestart_warmup_rows": prestart_warmup_rows,
+        "excluded_prestart_warmup_bar_server": (
+            next(iter(prestart_warmup_styles)).strftime("%Y.%m.%d %H:%M:%S")
+            if prestart_warmup_styles else None
+        ),
         "raw_signals_not_broker_fills": True,
         "raw_signals_by_style_side": dict(sorted(signal_counts.items())),
         "native_completed_positions": len(trades["trades"]),
