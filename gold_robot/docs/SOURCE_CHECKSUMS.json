@@ -131,6 +131,11 @@
       "sha256": "13d9c5a2e25038318d2d3f51c5c3169c5fc02b1507524233aa4205724997c35d"
     },
     {
+      "path": "docs/NATIVE_DEAL_RECONCILIATION.md",
+      "bytes": 3122,
+      "sha256": "dcf9ecce789f3152849924667e7c96b42ed257b8b6e04c34c20af7b57bc7d30f"
+    },
+    {
       "path": "docs/OWNER_PLAN_STOPLOSS_ROOTCAUSE_2026-10-26.md",
       "bytes": 10511,
       "sha256": "fc35074fa500fbc5e04c8d31e04bc0b6eadfcb22569915672933024c4afb8c82"
@@ -531,6 +536,11 @@
       "sha256": "76d1c397e2a53f10c0f2023307a34aa1a66f778823df0ac84e34d2d52f0e1283"
     },
     {
+      "path": "research/reconcile_native_deals.py",
+      "bytes": 17501,
+      "sha256": "b765983a4d0ad7a563cfc7982382293072fc48fba661f06d793d4bee9055529c"
+    },
+    {
       "path": "research/reference_benchmark.py",
       "bytes": 13817,
       "sha256": "82c7e8080e3e5b44de746c21981f1b25c8b65588e032acd379ac30d2519574eb"
@@ -577,8 +587,8 @@
     },
     {
       "path": "research/summarize_2025_history.py",
-      "bytes": 14800,
-      "sha256": "6991471a6f8394f6c30996a98776ea4905ce53b760a873eed1727dccfe614eca"
+      "bytes": 16653,
+      "sha256": "8a9bd5d328e3f6cb3d50cda1aedfe15db01c51fe251ef86679b6058d40273f4b"
     },
     {
       "path": "research/sweep_diagnostics.py",
@@ -637,8 +647,8 @@
     },
     {
       "path": "tests/test_2025_history.py",
-      "bytes": 8974,
-      "sha256": "949e947550060502cc47bb20a0fa8f8a58a8f2aa40836b31c76bebe299183ace"
+      "bytes": 11009,
+      "sha256": "8bd979e380954117cd0ed99ce6cc2838243313613d479cfd5904916e121d7157"
     },
     {
       "path": "tests/test_adaptive_v4_contract.py",
@@ -679,6 +689,11 @@
       "path": "tests/test_dual_atr_market_audit.py",
       "bytes": 3386,
       "sha256": "c689be8655ced258530666eb6f5614477d132eb6237ddf874d083c3d2d492235"
+    },
+    {
+      "path": "tests/test_dual_diagnostics_contract.py",
+      "bytes": 2156,
+      "sha256": "984520a1187e4261e7f8e2d5d716570db60e47a58a290bff0b552ba539743f99"
     },
     {
       "path": "tests/test_dual_evidence_audit.py",
@@ -769,6 +784,11 @@
       "path": "tests/test_preregistered_v5_study.py",
       "bytes": 13984,
       "sha256": "7e18a9c5de2d3a8db5f34d5a6ad33f25ad9ad98f250be44aa4c9383aaef591df"
+    },
+    {
+      "path": "tests/test_reconcile_native_deals.py",
+      "bytes": 9572,
+      "sha256": "80654278cc5629b7a9602805510030bed3a9ea50b9f406512cb367fd2b4059f7"
     },
     {
       "path": "tests/test_reference_benchmark.py",
