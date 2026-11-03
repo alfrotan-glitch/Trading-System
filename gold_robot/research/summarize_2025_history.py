@@ -150,13 +150,46 @@ def summarize(folder: Path, variant: str, from_date: str, to_date: str) -> dict:
         raise HistoricalEvidenceError("Native broker position forensics unavailable")
     net = 0.0
     wins = losses = 0
+    lots_sum = 0.0
+    monthly_fills = defaultdict(lambda: {
+        "positions":0,"wins":0,"losses":0,
+        "retest_buy":0,"sweep_sell":0,"net_usd":0.0,"entry_lots":0.0
+    })
     for trade in trades["trades"]:
         value = float(trade["net_usd"])
-        if trade.get("status") != "COMPLETE" or not math.isfinite(value):
-            raise HistoricalEvidenceError("Incomplete or invalid broker position")
+        vol = float(trade["entry_lots"])
+        try:
+            epoch_ms = int(trade["entry_time_msc"])
+            trade_time_utc = datetime.fromtimestamp(epoch_ms/1000.0,timezone.utc)
+        except (KeyError,ValueError,TypeError,OverflowError) as exc:
+            raise HistoricalEvidenceError("Invalid broker trade timestamp") from exc
+        if (trade.get("status")!="COMPLETE" or
+            not math.isfinite(value) or
+            not math.isfinite(vol) or vol<=0 or
+            trade.get("setup_reason") not in
+              (f"QTS-DUAL-M{mode}-S1",f"QTS-DUAL-M{mode}-S3")):
+            raise HistoricalEvidenceError("Incomplete or invalid broker position/strategy")
+        if not (requested_start.replace(tzinfo=timezone.utc) <= trade_time_utc <
+                requested_end.replace(tzinfo=timezone.utc)):
+            raise HistoricalEvidenceError("Broker fill outside requested test range")
         net += value
+        lots_sum += vol
         wins += int(value>0)
         losses += int(value<0)
+        k=trade_time_utc.strftime("%Y-%m")
+        r=monthly_fills[k]
+        r["positions"]+=1
+        r["wins"]+=int(value>0)
+        r["losses"]+=int(value<0)
+        r["net_usd"]+=value
+        r["entry_lots"]+=vol
+        if trade["setup_reason"].endswith("-S1"):
+            r["retest_buy"]+=1
+        else:
+            r["sweep_sell"]+=1
+    for r in monthly_fills.values():
+        r["net_usd"]=round(r["net_usd"],2)
+        r["entry_lots"]=round(r["entry_lots"],4)
 
     coverage_start = earliest is not None and earliest <= requested_start+timedelta(days=14)
     coverage_end = latest is not None and latest >= requested_end-timedelta(days=14)
@@ -215,7 +248,13 @@ def summarize(folder: Path, variant: str, from_date: str, to_date: str) -> dict:
         "native_winners": wins,
         "native_losers": losses,
         "native_positions_net_usd": round(net,2),
+        "native_total_entry_lots": round(lots_sum,4),
+        "illustrative_fee_stress_10_usd_per_lot_net_usd": round(net-10*lots_sum,2),
+        "illustrative_fee_not_verified_broker_cost": True,
         "native_position_results_cover_full_window": bool(full_coverage and not incident),
+        "monthly_native_broker_positions_by_utc_entry_month": dict(sorted(monthly_fills.items())),
+        "monthly_signal_month_uses_broker_server_bar_time": True,
+        "monthly_broker_trade_month_uses_epoch_utc": True,
         "native_safety_audit_status": safety["status"],
         "unsafe_original_entry_deals": int(safety["unsafe_original_fill_count"]),
         "positions_entered_after_first_unsafe_fill": int(safety["new_positions_after_first_unsafe_fill"]),
