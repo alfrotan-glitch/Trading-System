@@ -118,6 +118,9 @@ def reconstruct(pid: str, deals: list[dict], contract_size: Decimal | None) -> d
     if first is None or last is None or abs(opened) > TOL or abs(in_lots-out_lots) > TOL:
         raise AuditError(f"Position {pid}: missing exit or unclosed/partially reconciled volume")
     side = "BUY" if first["type"] == "DEAL_TYPE_BUY" else "SELL"
+    setup = first.get("setup_reason", "").strip()
+    if (setup, side) not in {("QTS-DUAL-M2-S1", "BUY"), ("QTS-DUAL-M2-S3", "SELL")}:
+        raise AuditError(f"Position {pid}: invalid dual directional setup/side attribution")
     entry_price, exit_price = in_value/in_lots, out_value/out_lots
     stop = first["sl"]
     risk = None
@@ -133,7 +136,7 @@ def reconstruct(pid: str, deals: list[dict], contract_size: Decimal | None) -> d
         risk = str((gross + charges)/risk_usd) if risk_usd > 0 else None
     reason = next(iter(exit_reasons)) if len(exit_reasons) == 1 else "MIXED_EXIT_REASONS"
     return {"position_id": pid, "status": "COMPLETE_MULTI_EXIT" if sum(d["entry"] in OUT for d in deals) > 1 else "COMPLETE",
-            "setup_reason": first.get("setup_reason", "").strip() or "NOT_RECORDED",
+            "setup_reason": setup,
             "side": side, "entry_time_msc": str(first["time_msc"]), "exit_time_msc": str(last["time_msc"]),
             "entry_price": entry_price, "exit_price": exit_price, "initial_sl": stop,
             "entry_lots": in_lots, "exit_lots": out_lots, "deal_count": len(deals),
@@ -142,7 +145,8 @@ def reconstruct(pid: str, deals: list[dict], contract_size: Decimal | None) -> d
 
 
 def reconcile(run: Path, *, contract_size: Decimal | None = None,
-              expect_positions: int | None = None, expect_net: Decimal | None = None) -> tuple[dict, list[dict]]:
+              expect_positions: int | None = None, expect_net: Decimal | None = None,
+              expect_from: str | None = None, expect_to: str | None = None) -> tuple[dict, list[dict]]:
     native = run / "native" / "QTS_7_trades.csv"
     positions_json = run / "QTS_TRADE_BY_TRADE.json"
     metadata_json = run / "OPEN_RESULTS.json"
@@ -160,6 +164,10 @@ def reconcile(run: Path, *, contract_size: Decimal | None = None,
         or forensic.get("live") != "LOCKED" or forensic.get("edge_validated") is not False
         or forensic.get("selected_styles") != [7]):
         raise AuditError("Source identity or safety lock mismatch")
+    if expect_from is not None and meta.get("from_date") != expect_from:
+        raise AuditError("Run start date disagrees with expected period")
+    if expect_to is not None and meta.get("to_date") != expect_to:
+        raise AuditError("Run exclusive end date disagrees with expected period")
     if contract_size is not None and contract_size <= 0:
         raise AuditError("Contract size must be strictly positive")
     groups = read_csv(native)
@@ -229,6 +237,8 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--expect-positions", type=int)
     parser.add_argument("--expect-net", type=Decimal)
+    parser.add_argument("--expect-from")
+    parser.add_argument("--expect-to")
     parser.add_argument("--contract-size", type=Decimal, help="Optional indicative only; not broker verified")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -238,7 +248,8 @@ def main() -> int:
     ledger_path.unlink(missing_ok=True)
     try:
         report, positions = reconcile(args.run, contract_size=args.contract_size,
-                                      expect_positions=args.expect_positions, expect_net=args.expect_net)
+                                      expect_positions=args.expect_positions, expect_net=args.expect_net,
+                                      expect_from=args.expect_from, expect_to=args.expect_to)
         fields = ("position_id", "setup_reason", "side", "status", "entry_time_msc", "exit_time_msc",
                   "entry_price", "exit_price", "initial_sl", "entry_lots", "exit_lots",
                   "gross_usd", "charges_usd", "net_usd", "exit_reason", "r_multiple_indicative", "r_limitation")
