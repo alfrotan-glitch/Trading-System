@@ -29,6 +29,7 @@ def read_json(path: Path) -> dict:
     with path.open(encoding="utf-8-sig") as source:
         return json.load(source)
 
+
 def trailing_session_coverage(latest: datetime | None, requested_end: datetime) -> tuple[list[str], bool]:
     """Fail closed on missing recent weekdays in the broker-server bar ledger.
 
