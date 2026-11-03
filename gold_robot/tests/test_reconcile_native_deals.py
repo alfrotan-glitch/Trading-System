@@ -17,11 +17,12 @@ HEADERS = ["position_id", "deal_id", "order_id", "entry", "reason", "type",
 
 def deal(*, pid="100", did="1001", oid="2001", entry="DEAL_ENTRY_IN", side="DEAL_TYPE_BUY",
          time="1000000000000", lots="0.03", price="3000", sl="2995", tp="3005",
-         gross="0", commission="-0.15", swap="0", fee="0", reason="DEAL_REASON_EXPERT"):
+         gross="0", commission="-0.15", swap="0", fee="0", reason="DEAL_REASON_EXPERT",
+         setup_reason="QTS-DUAL-M2-S1"):
     return dict(position_id=pid, deal_id=did, order_id=oid, entry=entry, reason=reason,
                 type=side, time_msc=time, volume=lots, price=price, sl=sl, tp=tp,
                 gross=gross, commission=commission, swap=swap, fee=fee,
-                setup_reason="QTS-DUAL-M2-S1")
+                setup_reason=setup_reason)
 
 
 def base_deals():
@@ -46,7 +47,8 @@ def write_run(folder, deals=None, *, forensics=None, report_net="14.70", report_
     (folder / "OPEN_RESULTS.json").write_text(json.dumps({
         "research_variant": "DUAL_DIRECTIONAL", "selected_styles": [7],
         "symbol": "XAUUSD@", "timeframe": "M15", "model": 4, "deposit_usd": 3000,
-        "live": "LOCKED", "validated_edge": False, "real_money_orders": False}), encoding="utf-8")
+        "live": "LOCKED", "validated_edge": False, "real_money_orders": False,
+        "from_date": "2025.01.01", "to_date": "2026.11.03"}), encoding="utf-8")
     t = dict(position_id="100", status="COMPLETE", setup_reason="QTS-DUAL-M2-S1",
              side="BUY", exit_reason="DEAL_REASON_TP", entry_time_msc="1000000000000",
              exit_time_msc="1000000060000", deal_count=2, net_usd=14.7, gross_usd=15,
@@ -74,14 +76,14 @@ def test_closed_deal_reconstructs_and_counts_entry_charges(tmp_path):
 def test_complete_2_position_native_report_reconciliation(tmp_path):
     deals = base_deals()
     deals += [deal(pid="101", did="1011", oid="2011", time="1000000100000", side="DEAL_TYPE_SELL",
-                   sl="3005", tp="2995", reason="DEAL_REASON_EXPERT"),
+                   sl="3005", tp="2995", reason="DEAL_REASON_EXPERT", setup_reason="QTS-DUAL-M2-S3"),
               deal(pid="101", did="1012", oid="2012", entry="DEAL_ENTRY_OUT",
                    side="DEAL_TYPE_BUY", time="1000000160000", price="3004", sl="3005", tp="2995",
-                   gross="-12", reason="DEAL_REASON_SL")]
+                   gross="-12", reason="DEAL_REASON_SL", setup_reason="QTS-DUAL-M2-S3")]
     folder = write_run(tmp_path, deals=deals, report_net="2.40", report_count=2, pf="1.20")
     data = json.loads((folder/"QTS_TRADE_BY_TRADE.json").read_text())
     data["trades"].append(dict(position_id="101", status="COMPLETE", side="SELL",
-        setup_reason="QTS-DUAL-M2-S1", exit_reason="DEAL_REASON_SL",
+        setup_reason="QTS-DUAL-M2-S3", exit_reason="DEAL_REASON_SL",
         entry_time_msc="1000000100000", exit_time_msc="1000000160000",
         entry_price=3000, exit_price=3004, initial_sl=3005, entry_lots=.03, exit_lots=.03,
         gross_usd=-12, charges_usd=-.3, net_usd=-12.3, deal_count=2))
@@ -161,3 +163,17 @@ def test_invalid_contract_size_rejected(tmp_path):
     folder = write_run(tmp_path)
     with pytest.raises(AuditError, match="Contract size"):
         reconcile(folder, contract_size=Decimal("-1"))
+
+
+def test_directional_style_mapping_rejected(tmp_path):
+    deals = base_deals()
+    deals[0]["setup_reason"] = "QTS-DUAL-M2-S3"  # Sweep BUY forbidden in Mode 2
+    folder = write_run(tmp_path, deals=deals)
+    with pytest.raises(AuditError, match="dual directional setup/side"):
+        reconcile(folder)
+
+
+def test_run_window_mismatch_rejected(tmp_path):
+    folder = write_run(tmp_path)
+    with pytest.raises(AuditError, match="exclusive end date"):
+        reconcile(folder, expect_to="2026.11.04")
