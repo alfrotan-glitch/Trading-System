@@ -11,7 +11,7 @@ sys.path.insert(0,str(ROOT/"research"))
 from summarize_2025_history import summarize
 
 
-def fixture(tmp_path: Path, incident=False, bar="2025.01.02 11:00:00"):
+def fixture(tmp_path: Path, incident=False, bar="2025.01.02 20:00:00"):
     (tmp_path/"native").mkdir()
     meta={"research_variant":"DUAL_DIRECTIONAL",
           "state":"SELECTED_TESTS_WITH_SAFETY_INCIDENT_NO_GO" if incident else
@@ -176,3 +176,44 @@ def test_prestart_trade_signal_is_rejected_even_if_marked_warmup(tmp_path):
     import pytest
     with pytest.raises(HistoricalEvidenceError,match="prestart"):
         summarize(folder,"DUAL_DIRECTIONAL","2025.01.01","2025.01.03")
+
+
+def test_missing_last_weekday_blocks_false_full_window_claim(tmp_path):
+    folder=fixture(tmp_path)
+    path=folder/"OPEN_RESULTS.json"
+    metadata=json.loads(path.read_text(encoding="utf-8"))
+    metadata["to_date"]="2025.01.07"
+    path.write_text(json.dumps(metadata),encoding="utf-8")
+    review=summarize(folder,"DUAL_DIRECTIONAL","2025.01.01","2025.01.07")
+    assert review["status"]=="HISTORICAL_MARKET_DATA_COVERAGE_NO_GO"
+    assert review["trailing_weekdays_without_closed_bars"]==["2025-01-03","2025-01-06"]
+    assert review["market_data_window_coverage_checked"] is False
+    assert review["native_completed_positions"]==1
+    assert review["native_positions_net_usd"]==11.18
+    assert review["live"]=="LOCKED" and review["trade_permission"] is False
+
+
+def test_proper_friday_close_is_not_a_missing_weekend(tmp_path):
+    folder=fixture(tmp_path,bar="2025.01.03 20:00:00")
+    path=folder/"OPEN_RESULTS.json"
+    metadata=json.loads(path.read_text(encoding="utf-8"))
+    metadata["to_date"]="2025.01.06"
+    path.write_text(json.dumps(metadata),encoding="utf-8")
+    review=summarize(folder,"DUAL_DIRECTIONAL","2025.01.01","2025.01.06")
+    assert review["status"]=="HISTORICAL_RESEARCH_COMPLETE_NOT_LIVE_APPROVED"
+    assert review["trailing_weekdays_without_closed_bars"]==[]
+    assert review["last_expected_weekday_session_observed_after_18_server"] is True
+
+
+def test_abrupt_final_weekday_truncation_is_not_full_coverage(tmp_path):
+    folder=fixture(tmp_path,bar="2025.01.02 11:00:00")
+    review=summarize(folder,"DUAL_DIRECTIONAL","2025.01.01","2025.01.03")
+    assert review["status"]=="HISTORICAL_MARKET_DATA_COVERAGE_NO_GO"
+    assert review["trailing_weekdays_without_closed_bars"]==[]
+    assert review["last_expected_weekday_session_observed_after_18_server"] is False
+
+
+def test_no_bar_is_not_sufficient_session_evidence():
+    from datetime import datetime
+    from summarize_2025_history import trailing_session_coverage
+    assert trailing_session_coverage(None, datetime(2025,1,7)) == ([], False)
