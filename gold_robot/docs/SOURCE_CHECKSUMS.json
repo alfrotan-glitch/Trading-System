@@ -707,8 +707,8 @@
     },
     {
       "path": "tests/test_dual_opportunity_crosscheck.py",
-      "bytes": 3509,
-      "sha256": "7052123c85ca095ed6150fd7d9b54d568d909169dcbcbefb3bae1ca87a5b54b8"
+      "bytes": 3526,
+      "sha256": "a1007b6b57d6c51edae0c46e8ac42c7b89c272ec8cab877713a92be739bbd555"
     },
     {
       "path": "tests/test_dual_research.py",
@@ -812,8 +812,8 @@
     },
     {
       "path": "tests/test_robot.py",
-      "bytes": 37093,
-      "sha256": "8dfd14e198bc062029bc22a56a00420f6254560e0c829e31dae70f0eb4805119"
+      "bytes": 37146,
+      "sha256": "e3bb739ced632fd33fcd7bfa31957999656d32239412234041fad79b778b6b0f"
     },
     {
       "path": "tests/test_router_hardening.py",
