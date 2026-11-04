@@ -63,7 +63,7 @@ def test_same_market_same_signals_different_router_decisions(tmp_path):
 def test_market_mismatch_fails_closed(tmp_path):
     a,b=tmp_path/"both.csv",tmp_path/"dir.csv"
     emit(a,1);emit(b,2,bad_market=True)
-    with pytest.raises(LedgerError,match="signal/price mismatch"):
+    with pytest.raises(LedgerError,match="conflicting native market observations"):
         crosscheck(a,b)
 
 
